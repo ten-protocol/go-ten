@@ -200,7 +200,7 @@ func (rl *RateLimiter) Allow(userID common.Address) (bool, uuid.UUID) {
 	userComputeTimeForUser := rl.SumComputeTime(userID)
 	if userComputeTimeForUser > rl.userComputeTime {
 		rl.IncrementRateLimitedRequests()
-		rl.logger.Info("User %s has reached the rate limit threshold.", userID.Hex())
+		rl.logger.Info("User has reached the rate limit threshold.", "user", userID.Hex())
 		return false, zeroUUID
 	}
 

@@ -187,7 +187,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	}
 
 	var service nodetype.NodeType
-	if config.NodeType == common.Sequencer {
+	if config.NodeType == common.ActiveSequencer {
 		service = nodetype.NewSequencer(
 			blockProcessor,
 			batchExecutor,
@@ -483,13 +483,6 @@ func (e *enclaveImpl) ingestL1Block(ctx context.Context, br *common.BlockAndRece
 	return ingestion, nil
 }
 
-func (e *enclaveImpl) SubmitTx(ctx context.Context, encryptedTxParams common.EncryptedTx) (*responses.RawTx, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitTx with the enclave stopping"))
-	}
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedTxParams, rpc.SubmitTxValidate, rpc.SubmitTxExecute)
-}
-
 func (e *enclaveImpl) Validator() nodetype.ObsValidator {
 	validator, ok := e.service.(nodetype.ObsValidator)
 	if !ok {
@@ -592,38 +585,12 @@ func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*comm
 	return rollup, nil
 }
 
-// ObsCall handles param decryption, validation and encryption
-// and requests the Rollup chain to execute the payload (eth_call)
-func (e *enclaveImpl) ObsCall(ctx context.Context, encryptedParams common.EncryptedParamsCall) (*responses.Call, common.SystemError) {
+func (e *enclaveImpl) EncryptedRPC(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.EnclaveResponse, common.SystemError) {
 	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested ObsCall with the enclave stopping"))
+		return nil, responses.ToInternalError(fmt.Errorf("RPC requested with the enclave stopping"))
 	}
 
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.TenCallValidate, rpc.TenCallExecute)
-}
-
-func (e *enclaveImpl) GetTransactionCount(ctx context.Context, encryptedParams common.EncryptedParamsGetTxCount) (*responses.TxCount, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionCount with the enclave stopping"))
-	}
-
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetTransactionCountValidate, rpc.GetTransactionCountExecute)
-}
-
-func (e *enclaveImpl) GetTransaction(ctx context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*responses.TxByHash, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransaction with the enclave stopping"))
-	}
-
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetTransactionValidate, rpc.GetTransactionExecute)
-}
-
-func (e *enclaveImpl) GetTransactionReceipt(ctx context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.TxReceipt, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetTransactionReceipt with the enclave stopping"))
-	}
-
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetTransactionReceiptValidate, rpc.GetTransactionReceiptExecute)
+	return rpc.HandleEncryptedRPC(ctx, e.rpcEncryptionManager, encryptedParams)
 }
 
 func (e *enclaveImpl) Attestation(ctx context.Context) (*common.AttestationReport, common.SystemError) {
@@ -681,16 +648,6 @@ func (e *enclaveImpl) EnclaveID(context.Context) (common.EnclaveID, common.Syste
 	return e.enclaveKey.EnclaveID(), nil
 }
 
-// GetBalance handles param decryption, validation and encryption
-// and requests the Rollup chain to execute the payload (eth_getBalance)
-func (e *enclaveImpl) GetBalance(ctx context.Context, encryptedParams common.EncryptedParamsGetBalance) (*responses.Balance, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetBalance with the enclave stopping"))
-	}
-
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetBalanceValidate, rpc.GetBalanceExecute)
-}
-
 func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash gethrpc.BlockNumberOrHash) ([]byte, common.SystemError) {
 	if e.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
@@ -701,14 +658,6 @@ func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, b
 		return nil, responses.ToInternalError(fmt.Errorf("could not create stateDB. Cause: %w", err))
 	}
 	return stateDB.GetCode(address), nil
-}
-
-func (e *enclaveImpl) GetStorageSlot(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageSlot) (*responses.EnclaveResponse, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetCode with the enclave stopping"))
-	}
-
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.TenStorageReadValidate, rpc.TenStorageReadExecute)
 }
 
 func (e *enclaveImpl) Subscribe(ctx context.Context, id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
@@ -761,24 +710,6 @@ func (e *enclaveImpl) Stop() common.SystemError {
 	}
 
 	return nil
-}
-
-// EstimateGas decrypts CallMsg data, runs the gas estimation for the data.
-// Using the callMsg.From Viewing Key, returns the encrypted gas estimation
-func (e *enclaveImpl) EstimateGas(ctx context.Context, encryptedParams common.EncryptedParamsEstimateGas) (*responses.Gas, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested EstimateGas with the enclave stopping"))
-	}
-
-	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "enclave.go:EstimateGas()")
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.EstimateGasValidate, rpc.EstimateGasExecute)
-}
-
-func (e *enclaveImpl) GetLogs(ctx context.Context, encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetLogs with the enclave stopping"))
-	}
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetLogsValidate, rpc.GetLogsExecute)
 }
 
 // HealthCheck returns whether the enclave is deemed healthy
@@ -836,19 +767,6 @@ func (e *enclaveImpl) DebugTraceTransaction(ctx context.Context, txHash gethcomm
 	return jsonMsg, nil
 }
 
-func (e *enclaveImpl) DebugEventLogRelevancy(ctx context.Context, encryptedParams common.EncryptedParamsDebugLogRelevancy) (*responses.DebugLogs, common.SystemError) {
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested DebugEventLogRelevancy with the enclave stopping"))
-	}
-
-	// ensure the debug namespace is enabled
-	if !e.config.DebugNamespaceEnabled {
-		return nil, responses.ToInternalError(fmt.Errorf("debug namespace not enabled"))
-	}
-
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.DebugLogsValidate, rpc.DebugLogsExecute)
-}
-
 func (e *enclaveImpl) GetTotalContractCount(ctx context.Context) (*big.Int, common.SystemError) {
 	// ensure the enclave is running
 	if e.stopControl.IsStopping() {
@@ -856,16 +774,6 @@ func (e *enclaveImpl) GetTotalContractCount(ctx context.Context) (*big.Int, comm
 	}
 
 	return e.storage.GetContractCount(ctx)
-}
-
-// GetPersonalTransactions returns the recent private transactions for the given account
-func (e *enclaveImpl) GetPersonalTransactions(ctx context.Context, encryptedParams common.EncryptedParamsGetPersonalTransactions) (*responses.PersonalTransactionsResponse, common.SystemError) {
-	// ensure the enclave is running
-	if e.stopControl.IsStopping() {
-		return nil, responses.ToInternalError(fmt.Errorf("requested GetPrivateTransactions with the enclave stopping"))
-	}
-
-	return rpc.WithVKEncryption(ctx, e.rpcEncryptionManager, encryptedParams, rpc.GetPersonalTransactionsValidate, rpc.GetPersonalTransactionsExecute)
 }
 
 func (e *enclaveImpl) EnclavePublicConfig(context.Context) (*common.EnclavePublicConfig, common.SystemError) {

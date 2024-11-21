@@ -6,6 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 
+	rpc2 "github.com/ten-protocol/go-ten/go/rpc"
+
+	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
+
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -36,12 +40,12 @@ func NewBlockChainAPI(we *services.Services) *BlockChainAPI {
 }
 
 func (api *BlockChainAPI) ChainId() *hexutil.Big { //nolint:stylecheck
-	chainID, _ := UnauthenticatedTenRPCCall[hexutil.Big](context.Background(), api.we, &cache.Cfg{Type: cache.LongLiving}, "eth_chainId")
+	chainID, _ := UnauthenticatedTenRPCCall[hexutil.Big](context.Background(), api.we, &cache.Cfg{Type: cache.LongLiving}, "ten_chainId")
 	return chainID
 }
 
 func (api *BlockChainAPI) BlockNumber() hexutil.Uint64 {
-	nr, err := UnauthenticatedTenRPCCall[hexutil.Uint64](context.Background(), api.we, &cache.Cfg{Type: cache.LatestBatch}, "eth_blockNumber")
+	nr, err := UnauthenticatedTenRPCCall[hexutil.Uint64](context.Background(), api.we, &cache.Cfg{Type: cache.LatestBatch}, rpc2.BatchNumber)
 	if err != nil {
 		return hexutil.Uint64(0)
 	}
@@ -61,7 +65,7 @@ func (api *BlockChainAPI) GetBalance(ctx context.Context, address gethcommon.Add
 			account:            &address,
 			tryUntilAuthorised: true, // the user can request the balance of a contract account
 		},
-		"eth_getBalance",
+		tenrpc.ERPCGetBalance,
 		address,
 		blockNrOrHash,
 	)
@@ -91,7 +95,7 @@ func (s *BlockChainAPI) GetProof(ctx context.Context, address gethcommon.Address
 func (api *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (map[string]interface{}, error) {
 	resp, err := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &cache.Cfg{DynamicType: func() cache.Strategy {
 		return cacheBlockNumber(number)
-	}}, "eth_getHeaderByNumber", number)
+	}}, "ten_getHeaderByNumber", number)
 	if resp == nil {
 		return nil, err
 	}
@@ -99,7 +103,7 @@ func (api *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.Bloc
 }
 
 func (api *BlockChainAPI) GetHeaderByHash(ctx context.Context, hash gethcommon.Hash) map[string]interface{} {
-	resp, _ := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "eth_getHeaderByHash", hash)
+	resp, _ := UnauthenticatedTenRPCCall[map[string]interface{}](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "ten_getHeaderByHash", hash)
 	if resp == nil {
 		return nil
 	}
@@ -114,7 +118,7 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 			DynamicType: func() cache.Strategy {
 				return cacheBlockNumber(number)
 			},
-		}, "eth_getBlockByNumber", number, fullTx)
+		}, rpc2.GetBatchByNumber, number, fullTx)
 	if resp == nil {
 		return nil, err
 	}
@@ -132,7 +136,7 @@ func (api *BlockChainAPI) GetBlockByNumber(ctx context.Context, number rpc.Block
 }
 
 func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash gethcommon.Hash, fullTx bool) (map[string]interface{}, error) {
-	resp, err := UnauthenticatedTenRPCCall[common.BatchHeader](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "eth_getBlockByHash", hash, fullTx)
+	resp, err := UnauthenticatedTenRPCCall[common.BatchHeader](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, rpc2.GetBatchByHash, hash, fullTx)
 	if resp == nil {
 		return nil, err
 	}
@@ -159,7 +163,7 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 				return cacheBlockNumberOrHash(blockNrOrHash)
 			},
 		},
-		"eth_getCode",
+		"ten_getCode",
 		address,
 		blockNrOrHash,
 	)
@@ -220,7 +224,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		res, err := api.we.SKManager.DeleteSessionKey(user)
 		return []byte{boolToByte(res)}, err
 	default: // address was not a recognised custom query method address
-		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, "eth_getStorageAt", address, params, nil)
+		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
 		if err != nil {
 			return nil, fmt.Errorf("unable to execute eth_getStorageAt: %w", err)
 		}
@@ -283,7 +287,7 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 			return []any{argsClone, blockNrOrHash, overrides, blockOverrides}
 		},
 		tryAll: true,
-	}, "eth_call", args, blockNrOrHash, overrides, blockOverrides)
+	}, tenrpc.ERPCCall, args, blockNrOrHash, overrides, blockOverrides)
 	if resp == nil {
 		return nil, err
 	}
@@ -309,7 +313,7 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 		},
 		// is this a security risk?
 		tryAll: true,
-	}, "eth_estimateGas", args, blockNrOrHash, overrides)
+	}, tenrpc.ERPCEstimateGas, args, blockNrOrHash, overrides)
 	if resp == nil {
 		return 0, err
 	}

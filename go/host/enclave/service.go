@@ -118,10 +118,10 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 	return clients
 }
 
-func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
-	enclaveResponse, sysError := e.GetEnclaveClient().SubmitTx(ctx, encryptedTx)
+	enclaveResponse, sysError := e.GetEnclaveClient().EncryptedRPC(ctx, encryptedParams)
 	if sysError != nil {
 		e.logger.Warn("Could not submit transaction due to sysError.", log.ErrKey, sysError)
 		return nil, sysError

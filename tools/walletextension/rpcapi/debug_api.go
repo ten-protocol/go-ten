@@ -3,6 +3,8 @@ package rpcapi
 import (
 	"context"
 
+	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
@@ -67,7 +69,7 @@ func (api *DebugAPI) EventLogRelevancy(ctx context.Context, crit common.FilterCr
 			},
 			tryUntilAuthorised: true,
 		},
-		"debug_eventLogRelevancy",
+		tenrpc.ERPCDebugLogs,
 		common.SerializableFilterCriteria(crit),
 	)
 	if err != nil {
