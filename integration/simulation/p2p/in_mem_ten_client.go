@@ -79,7 +79,7 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 		return err
 
 	case rpc.BatchNumber:
-		*result.(*hexutil.Uint64) = c.ethAPI.BlockNumber()
+		*result.(*hexutil.Uint64) = c.ethAPI.BatchNumber()
 		return nil
 
 	case rpc.StopHost:
@@ -196,7 +196,7 @@ func (c *inMemTenClient) getBatchByNumber(result interface{}, args []interface{}
 		return fmt.Errorf("arg to %s could not be decoded from hex. Cause: %w", rpc.GetBatchByNumber, err)
 	}
 
-	headerMap, err := c.ethAPI.GetBlockByNumber(nil, gethrpc.BlockNumber(blockNumber), false) //nolint:staticcheck
+	headerMap, err := c.ethAPI.GetBatchByNumber(nil, gethrpc.BlockNumber(blockNumber), false) //nolint:staticcheck
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchByNumber, err)
 	}
@@ -221,7 +221,7 @@ func (c *inMemTenClient) getBatchByHash(result interface{}, args []interface{}) 
 		return fmt.Errorf("arg to %s is of type %T, expected common.Hash", rpc.GetBatchByHash, args[0])
 	}
 
-	headerMap, err := c.ethAPI.GetBlockByHash(nil, blockHash, false) //nolint:staticcheck
+	headerMap, err := c.ethAPI.GetBatchByHash(nil, blockHash, false) //nolint:staticcheck
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchByHash, err)
 	}
