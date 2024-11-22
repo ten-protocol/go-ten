@@ -450,37 +450,33 @@ func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash commo
 	return enclavedb.ExistsReceipt(ctx, s.db.GetSQLDB(), txHash)
 }
 
-func (s *storageImpl) FetchAttestedKey(ctx context.Context, address gethcommon.Address) (*ecdsa.PublicKey, error) {
+func (s *storageImpl) FetchAttestedKey(ctx context.Context, enclaveId common.EnclaveID) (*ecdsa.PublicKey, bool, error) {
 	defer s.logDuration("FetchAttestedKey", measure.NewStopwatch())
-	key, err := enclavedb.FetchAttKey(ctx, s.db.GetSQLDB(), address)
+	key, isSeq, err := enclavedb.FetchAttestation(ctx, s.db.GetSQLDB(), enclaveId)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", address, err)
+		return nil, false, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", enclaveId, err)
 	}
 
 	publicKey, err := gethcrypto.DecompressPubkey(key)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse key from db. Cause: %w", err)
+		return nil, false, fmt.Errorf("could not parse key from db. Cause: %w", err)
 	}
 
-	return publicKey, nil
+	return publicKey, isSeq, nil
 }
 
-func (s *storageImpl) StoreAttestedKey(ctx context.Context, aggregator gethcommon.Address, key *ecdsa.PublicKey) error {
+func (s *storageImpl) StoreAttestedKey(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error {
 	defer s.logDuration("StoreAttestedKey", measure.NewStopwatch())
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.WriteAttKey(ctx, dbTx, aggregator, gethcrypto.CompressPubkey(key))
+	_, err = enclavedb.WriteAttestation(ctx, dbTx, enclaveId, gethcrypto.CompressPubkey(key), false)
 	if err != nil {
 		return err
 	}
-	err = dbTx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
+	return dbTx.Commit()
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*core.Batch, error) {

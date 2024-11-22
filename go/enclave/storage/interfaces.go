@@ -97,16 +97,16 @@ type SharedSecretStorage interface {
 type TransactionStorage interface {
 	// GetTransaction - returns the positional metadata of the tx by hash
 	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
-	// GetFilteredReceipt - returns the receipt of a tx with event logs visible to the requester
+	// GetFilteredInternalReceipt - returns the receipt of a tx with event logs visible to the requester
 	GetFilteredInternalReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error)
 	ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error)
 }
 
 type AttestationStorage interface {
-	// FetchAttestedKey returns the public key of an attested aggregator
-	FetchAttestedKey(ctx context.Context, aggregator gethcommon.Address) (*ecdsa.PublicKey, error)
-	// StoreAttestedKey - store the public key of an attested aggregator
-	StoreAttestedKey(ctx context.Context, aggregator gethcommon.Address, key *ecdsa.PublicKey) error
+	// FetchAttestedKey returns the public key of an attested node
+	FetchAttestedKey(ctx context.Context, enclaveId common.EnclaveID) (*ecdsa.PublicKey, bool, error)
+	// StoreAttestedKey - store the public key of an attested node
+	StoreAttestedKey(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error
 }
 
 type CrossChainMessagesStorage interface {

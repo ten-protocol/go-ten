@@ -15,11 +15,12 @@ create table if not exists config
 insert into config
 values ('CURRENT_SEQ', -1);
 
-create table if not exists attestation_key
+create table if not exists attestation
 (
---     party  binary(20) primary key, // todo -pk
-    party binary(20),
-    ky    binary(33) NOT NULL
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    enclave_id   binary(20),
+    pub_key      binary(33) NOT NULL,
+    is_sequencer boolean    NOT NULL
 );
 
 create table if not exists block
