@@ -149,11 +149,10 @@ func (t *Testnet) Start() error {
 	}
 	fmt.Println("L2 Contracts were successfully deployed...")
 
-	// Grant enclaves sequencer status
-	//err = t.grantSequencerStatus(networkConfig.ManagementContractAddress)
-	//if err != nil {
-	//	return fmt.Errorf("failed to grant sequencer status: %w", err)
-	//}
+	err = t.grantSequencerStatus(networkConfig.ManagementContractAddress)
+	if err != nil {
+		return fmt.Errorf("failed to grant sequencer status: %w", err)
+	}
 
 	faucetPort := 99
 	faucetInst, err := faucet.NewDockerFaucet(
