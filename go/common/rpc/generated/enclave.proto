@@ -4,103 +4,31 @@ option go_package = "enclave/rpc/generated";
 
 package generated;
 
-// todo (low priority) - remove these comments which duplicate those in common/enclave.go.
 service EnclaveProto {
-  // Status is used to check whether the server is ready for requests.
   rpc Status(StatusRequest) returns (StatusResponse) {}
-
-  // Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
   rpc Attestation(AttestationRequest) returns (AttestationResponse) {}
-
-  // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
   rpc GenerateSecret(GenerateSecretRequest) returns (GenerateSecretResponse) {}
-
-  // Init - initialise an enclave with a seed received by another enclave
   rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
-
-  // EnclaveID - request the EnclaveID from the enclave
   rpc EnclaveID(EnclaveIDRequest) returns (EnclaveIDResponse) {}
-
-  // SubmitL1Block - Used for the host to submit blocks to the enclave, these may be:
-  //  a. historic block - if the enclave is behind and in the process of catching up with the L1 state
-  //  b. the latest block published by the L1, to which the enclave should respond with a rollup
-  // It is the responsibility of the host to gossip the returned rollup
-  // For good functioning the caller should always submit blocks ordered by height
-  // submitting a block before receiving ancestors of it, will result in it being ignored
   rpc SubmitL1Block(SubmitBlockRequest) returns (SubmitBlockResponse) {}
-
-  // SubmitTx - user transactions
-  rpc SubmitTx(SubmitTxRequest) returns (SubmitTxResponse) {}
-
-  // SubmitBatch submits a batch received from the sequencer for processing.
+  rpc EncryptedRPC(EncCallRequest) returns (EncCallResponse){}
   rpc SubmitBatch(SubmitBatchRequest) returns (SubmitBatchResponse) {}
-
-  // ObsCall - returns the result of executing the smart contract as a user, encrypted with the
-  // viewing key corresponding to the `from` field
-  rpc ObsCall(ObsCallRequest) returns (ObsCallResponse) {}
-
-  // GetTransactionCount - returns the nonce of the wallet with the given address.
-  rpc GetTransactionCount(GetTransactionCountRequest) returns (GetTransactionCountResponse) {}
-
-  // Stop gracefully stops the enclave
   rpc Stop(StopRequest) returns (StopResponse) {}
-
-  // GetTransaction returns a transaction given its Signed Hash, returns nil, false when Transaction is unknown
-  rpc GetTransaction(GetTransactionRequest) returns (GetTransactionResponse) {}
-
-  // GetTransaction returns a transaction receipt given the transaction's signed hash, encrypted with the viewing key
-  // corresponding to the original transaction submitter
-  rpc GetTransactionReceipt(GetTransactionReceiptRequest) returns (GetTransactionReceiptResponse) {}
-
-  // GetBalance returns the address's balance on the Obscuro network, encrypted with the viewing key corresponding to
-  // the address
-  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {}
-
-  // GetCode returns the code stored at the given address in the state for the given rollup height or rollup hash
   rpc GetCode(GetCodeRequest) returns (GetCodeResponse) {}
-
-  rpc GetStorageSlot(GetStorageSlotRequest) returns (GetStorageSlotResponse) {}
-
-
   rpc Subscribe(SubscribeRequest) returns (SubscribeResponse) {}
-
   rpc Unsubscribe(UnsubscribeRequest) returns (UnsubscribeResponse) {}
-
-  // EstimateGas returns the estimation of gas used for the given transactions
-  rpc EstimateGas(EstimateGasRequest) returns (EstimateGasResponse) {}
-
-  rpc GetLogs(GetLogsRequest) returns (GetLogsResponse) {}
-
-  // HealthCheck returns the health status of enclave + db
   rpc HealthCheck(EmptyArgs) returns (HealthCheckResponse) {}
-
-  // GetBatch returns the encrypted batch based on a hash
   rpc GetBatch(GetBatchRequest) returns (GetBatchResponse) {}
-
-  // GetBatch returns the encrypted batch based on a hash
   rpc GetBatchBySeqNo(GetBatchBySeqNoRequest) returns (GetBatchResponse) {}
-
-  // GetRollupData returns the first batch sequence number in the rollup and the timestamp
   rpc GetRollupData(GetRollupDataRequest) returns (GetRollupDataResponse) {}
-
   rpc CreateBatch(CreateBatchRequest) returns (CreateBatchResponse) {}
-
   rpc CreateRollup(CreateRollupRequest) returns (CreateRollupResponse) {}
-
   rpc ExportCrossChainData(ExportCrossChainDataRequest) returns (ExportCrossChainDataResponse) {}
-
   rpc DebugTraceTransaction(DebugTraceTransactionRequest) returns (DebugTraceTransactionResponse) {}
-
   rpc StreamL2Updates(StreamL2UpdatesRequest) returns (stream EncodedUpdateResponse) {}
-
-  rpc DebugEventLogRelevancy(DebugEventLogRelevancyRequest) returns (DebugEventLogRelevancyResponse) {}
-
   rpc GetTotalContractCount(GetTotalContractCountRequest) returns (GetTotalContractCountResponse) {}
-
-  rpc GetReceiptsByAddress(GetReceiptsByAddressRequest) returns (GetReceiptsByAddressResponse) {}
-
-  // EnclavePublicConfig returns public network data that is known to the enclave but may not be known to the host
   rpc EnclavePublicConfig(EnclavePublicConfigRequest) returns (EnclavePublicConfigResponse) {}
+  rpc MakeActive(MakeActiveRequest) returns (MakeActiveResponse) {}
 }
 
 message EnclavePublicConfigRequest {}
@@ -110,15 +38,6 @@ message EnclavePublicConfigResponse{
   bytes transactionPostProcessorAddress = 2;
   map<string, bytes> publicSystemContracts = 3;
   SystemError systemError = 4;
-}
-
-message GetReceiptsByAddressRequest {
-  bytes encryptedParams = 1;
-}
-
-message GetReceiptsByAddressResponse{
-  bytes encodedEnclaveResponse = 1;
-  SystemError systemError = 2;
 }
 
 message GetBatchRequest {
@@ -171,15 +90,6 @@ message GetTotalContractCountResponse{
   SystemError systemError = 2;
 }
 
-message DebugEventLogRelevancyRequest {
-  bytes encryptedParams = 1;
-}
-
-message DebugEventLogRelevancyResponse {
-  bytes encodedEnclaveResponse = 1;
-  SystemError systemError = 2;
-}
-
 message DebugTraceTransactionRequest{
   bytes txHash = 1;
   bytes config = 2;
@@ -219,7 +129,13 @@ message StatusResponse {
   int32 statusCode = 1;
   bytes l1Head = 2; // hash for the L1 head block in enclave's view of the canonical chain
   bytes l2Head = 3; // seq number (big.Int) for the L2 head batch that the enclave has seen
-  SystemError systemError = 4;
+  bytes enclaveID = 4; // enclave ID derived from the public key
+  SystemError systemError = 5;
+}
+
+message MakeActiveRequest {}
+message MakeActiveResponse {
+  SystemError systemError = 1;
 }
 
 message AttestationRequest {}
@@ -264,10 +180,10 @@ message SubmitBlockResponse {
   SystemError systemError = 2;
 }
 
-message SubmitTxRequest {
-  bytes encryptedTx = 1;
+message EncCallRequest {
+  bytes encryptedParams = 1;
 }
-message SubmitTxResponse {
+message EncCallResponse {
   bytes encodedEnclaveResponse = 1;
   SystemError systemError = 2;
 }
@@ -279,57 +195,10 @@ message SubmitBatchResponse {
   SystemError systemError = 1;
 }
 
-message ObsCallRequest {
-  bytes encryptedParams = 1;
-}
-message ObsCallResponse {
-  bytes encodedEnclaveResponse = 1;
-  SystemError systemError = 2;
-}
-
-message GetTransactionCountRequest {
-  bytes encryptedParams = 1;
-}
-message GetTransactionCountResponse {
-  bytes encodedEnclaveResponse = 1;
-  SystemError systemError = 2;
-}
 
 message StopRequest {}
 message StopResponse {
   SystemError systemError = 1;
-}
-
-message GetTransactionRequest {
-  bytes encryptedParams = 1;
-}
-message GetTransactionResponse {
-  bytes encodedEnclaveResponse = 1;
-  SystemError systemError = 2;
-}
-
-message GetTransactionReceiptRequest {
-  bytes encryptedParams = 1;
-}
-message GetTransactionReceiptResponse {
-  bytes encodedEnclaveResponse = 1;
-  SystemError systemError = 2;
-}
-
-message GetBalanceRequest {
-  bytes encryptedParams = 1;
-}
-message GetBalanceResponse {
-  bytes encodedEnclaveResponse = 1;
-  SystemError systemError = 2;
-}
-
-message GetStorageSlotRequest {
-  bytes encryptedParams = 1;
-}
-message GetStorageSlotResponse {
-  bytes encodedEnclaveResponse = 1;
-  SystemError systemError = 2;
 }
 
 message GetCodeRequest {
@@ -356,23 +225,6 @@ message UnsubscribeResponse {
   SystemError systemError = 2;
 }
 
-message EstimateGasRequest {
-  bytes encryptedParams = 1;
-}
-
-message EstimateGasResponse {
-  bytes encodedEnclaveResponse = 1;
-  SystemError systemError = 2;
-}
-
-message GetLogsRequest {
-  bytes encryptedParams = 1;
-}
-
-message GetLogsResponse {
-  bytes encodedEnclaveResponse = 1;
-  SystemError systemError = 2;
-}
 
 message HealthCheckResponse {
   bool status = 1;

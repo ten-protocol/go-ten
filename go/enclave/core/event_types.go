@@ -36,7 +36,6 @@ type TxExecResult struct {
 	Tx               *types.Transaction
 	From             *gethcommon.Address
 	Err              error
-	IsSynthetic      bool
 }
 
 type SyntheticTx struct {

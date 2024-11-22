@@ -117,6 +117,8 @@ func (g *Guardian) Start() error {
 		g.enclaveID = &enclID
 		// include the enclave ID in guardian log messages (for multi-enclave nodes)
 		g.logger = g.logger.New(log.EnclaveIDKey, g.enclaveID)
+		// recreate status with new logger
+		g.state = NewStateTracker(g.logger)
 		g.logger.Info("Starting guardian process.")
 	}
 
@@ -217,7 +219,7 @@ func (g *Guardian) HandleTransaction(tx common.EncryptedTx) {
 		g.logger.Info("Enclave is not ready yet, dropping transaction.")
 		return // ignore transactions when enclave unavailable
 	}
-	resp, sysError := g.enclaveClient.SubmitTx(context.Background(), tx)
+	resp, sysError := g.enclaveClient.EncryptedRPC(context.Background(), common.EncryptedRequest(tx))
 	if sysError != nil {
 		g.logger.Warn("could not submit transaction due to sysError", log.ErrKey, sysError)
 		return

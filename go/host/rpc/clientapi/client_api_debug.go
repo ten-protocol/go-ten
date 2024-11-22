@@ -3,10 +3,6 @@ package clientapi
 import (
 	"context"
 
-	"github.com/ten-protocol/go-ten/go/responses"
-
-	"github.com/ten-protocol/go-ten/go/common"
-
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/tracers"
 
@@ -32,14 +28,4 @@ func (api *NetworkDebug) TraceTransaction(ctx context.Context, hash gethcommon.H
 		return "", err
 	}
 	return response, nil
-}
-
-func (api *NetworkDebug) EventLogRelevancy(ctx context.Context, encryptedParams common.EncryptedParamsDebugLogRelevancy) (responses.DebugLogs, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().DebugEventLogRelevancy(ctx, encryptedParams)
-	if sysError != nil {
-		return responses.EnclaveResponse{
-			Err: &responses.InternalErrMsg,
-		}, nil
-	}
-	return *enclaveResponse, nil
 }

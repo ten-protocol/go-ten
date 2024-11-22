@@ -64,7 +64,7 @@ func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
 		HostID:                    gethcommon.BytesToAddress([]byte("")),
 		HostAddress:               "127.0.0.1:10000",
 		Address:                   "127.0.0.1:11000",
-		NodeType:                  common.Sequencer,
+		NodeType:                  common.ActiveSequencer,
 		L1ChainID:                 1337,
 		ObscuroChainID:            443,
 		WillAttest:                false, // todo (config) - attestation should be on by default before production release

@@ -28,7 +28,7 @@ func (d *devNetworkEnv) Prepare() (networktest.NetworkConnector, func(), error) 
 }
 
 func awaitNodesAvailable(nc networktest.NetworkConnector) error {
-	err := awaitHealthStatus(nc.GetSequencerNode().HostRPCWSAddress(), 60*time.Second)
+	err := awaitHealthStatus(nc.GetSequencerNode().HostRPCWSAddress(), 90*time.Second)
 	if err != nil {
 		return err
 	}
