@@ -38,9 +38,11 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-// todo - this will require a dedicated table when upgrades are implemented
+// these are the keys from the config table
 const (
+	// todo - this will require a dedicated table when upgrades are implemented
 	masterSeedCfg = "MASTER_SEED"
+	enclaveKeyCfg = "ENCLAVE_KEY"
 )
 
 // todo - this file needs splitting up based on concerns
@@ -694,8 +696,6 @@ func (s *storageImpl) GetL1Transfers(ctx context.Context, blockHash common.L1Blo
 	return enclavedb.FetchL1Messages[common.ValueTransferEvent](ctx, s.db.GetSQLDB(), blockHash, true)
 }
 
-const enclaveKeyKey = "ek"
-
 func (s *storageImpl) StoreEnclaveKey(ctx context.Context, enclaveKey *crypto.EnclaveKey) error {
 	defer s.logDuration("StoreEnclaveKey", measure.NewStopwatch())
 	if enclaveKey == nil {
@@ -708,20 +708,16 @@ func (s *storageImpl) StoreEnclaveKey(ctx context.Context, enclaveKey *crypto.En
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.WriteConfig(ctx, dbTx, enclaveKeyKey, keyBytes)
+	_, err = enclavedb.WriteConfig(ctx, dbTx, enclaveKeyCfg, keyBytes)
 	if err != nil {
 		return err
 	}
-	err = dbTx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
+	return dbTx.Commit()
 }
 
 func (s *storageImpl) GetEnclaveKey(ctx context.Context) (*crypto.EnclaveKey, error) {
 	defer s.logDuration("GetEnclaveKey", measure.NewStopwatch())
-	keyBytes, err := enclavedb.FetchConfig(ctx, s.db.GetSQLDB(), enclaveKeyKey)
+	keyBytes, err := enclavedb.FetchConfig(ctx, s.db.GetSQLDB(), enclaveKeyCfg)
 	if err != nil {
 		return nil, err
 	}

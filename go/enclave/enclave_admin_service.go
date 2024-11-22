@@ -76,6 +76,21 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.
 	}
 }
 
+func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, proof types.Receipt) common.SystemError {
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
+
+	// todo
+	// store in the database the enclave id
+	// by default all enclaves start their life as a validator
+	// compare the id with the current enclaveId and if they match - do something so that the current enclave behaves as a "backup sequencer"
+	// the host will specifically mark the active enclave
+	// todo - remove the NodeType config, and only use the stuff in the db
+	// until this is implemented
+
+	return nil
+}
+
 func (e *enclaveAdminService) MakeActive() common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
@@ -426,8 +441,8 @@ func (e *enclaveAdminService) validator() nodetype.Validator {
 	return validator
 }
 
-func (e *enclaveAdminService) sequencer() nodetype.Sequencer {
-	sequencer, ok := e.service.(nodetype.Sequencer)
+func (e *enclaveAdminService) sequencer() nodetype.ActiveSequencer {
+	sequencer, ok := e.service.(nodetype.ActiveSequencer)
 	if !ok {
 		panic("enclave service is not a sequencer but sequencer was requested!")
 	}

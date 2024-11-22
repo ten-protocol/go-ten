@@ -83,6 +83,15 @@ func (s *RPCServer) Status(ctx context.Context, _ *generated.StatusRequest) (*ge
 	}, nil
 }
 
+func (s *RPCServer) AddSequencer(ctx context.Context, in *generated.AddSequencerRequest) (*generated.AddSequencerResponse, error) {
+	rec := types.Receipt{}
+	err := rec.UnmarshalBinary(in.Proof)
+	if err != nil {
+		return &generated.AddSequencerResponse{SystemError: toRPCError(err)}, nil
+	}
+	return &generated.AddSequencerResponse{SystemError: toRPCError(s.enclave.AddSequencer(gethcommon.BytesToAddress(in.EnclaveId), rec))}, nil
+}
+
 func (s *RPCServer) MakeActive(ctx context.Context, in *generated.MakeActiveRequest) (*generated.MakeActiveResponse, error) {
 	return &generated.MakeActiveResponse{SystemError: toRPCError(s.enclave.MakeActive())}, nil
 }

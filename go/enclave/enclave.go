@@ -290,6 +290,13 @@ func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) common.SystemError {
 	return e.rpcService.Unsubscribe(id)
 }
 
+func (e *enclaveImpl) AddSequencer(id common.EnclaveID, proof types.Receipt) common.SystemError {
+	if systemError := checkStopping(e.stopControl); systemError != nil {
+		return systemError
+	}
+	return e.adminService.AddSequencer(id, proof)
+}
+
 func (e *enclaveImpl) MakeActive() common.SystemError {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return systemError

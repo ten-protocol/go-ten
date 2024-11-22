@@ -500,3 +500,23 @@ func (c *Client) MakeActive() common.SystemError {
 	}
 	return nil
 }
+
+func (c *Client) AddSequencer(id common.EnclaveID, proof types.Receipt) common.SystemError {
+	blob, err := proof.MarshalBinary()
+	if err != nil {
+		return syserr.NewRPCError(err)
+	}
+	response, err := c.protoClient.AddSequencer(
+		context.Background(),
+		&generated.AddSequencerRequest{
+			EnclaveId: id.Bytes(),
+			Proof:     blob,
+		})
+	if err != nil {
+		return syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+	return nil
+}

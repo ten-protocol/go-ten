@@ -203,8 +203,9 @@ func startMempool(registry components.BatchRegistry, mempool *txpool.TxPool) {
 	}
 }
 
+// todo - why is this here
 func (v *validator) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
-	bundle, err := ExportCrossChainData(ctx, v.storage, fromSeqNo, toSeqNo)
+	bundle, err := exportCrossChainData(ctx, v.storage, fromSeqNo, toSeqNo)
 	if err != nil {
 		return nil, err
 	}

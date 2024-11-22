@@ -21,7 +21,7 @@ const (
 )
 
 func WriteConfigToTx(ctx context.Context, dbtx *sql.Tx, key string, value any) (sql.Result, error) {
-	return dbtx.Exec(cfgInsert, key, value)
+	return dbtx.ExecContext(ctx, cfgInsert, key, value)
 }
 
 func WriteConfig(ctx context.Context, db *sql.Tx, key string, value []byte) (sql.Result, error) {

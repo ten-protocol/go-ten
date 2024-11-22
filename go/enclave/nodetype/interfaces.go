@@ -29,13 +29,22 @@ type NodeType interface {
 	Close() error
 }
 
-type Sequencer interface {
+type ActiveSequencer interface {
 	// CreateBatch - creates a new head batch for the latest known L1 head block.
 	CreateBatch(ctx context.Context, skipBatchIfEmpty bool) error
 
 	// CreateRollup - creates a new rollup from the latest recorded rollup in the head l1 chain
 	// and adds as many batches to it as possible.
 	CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, error)
+
+	NodeType
+}
+
+type BackupSequencer interface {
+	// ExecuteStoredBatches - try to execute all stored by unexecuted batches
+	ExecuteStoredBatches(context.Context) error
+
+	VerifySequencerSignature(*core.Batch) error
 
 	NodeType
 }
