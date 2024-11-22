@@ -28,7 +28,7 @@ func (s *GrantSequencers) Start() error {
                 "live": false,
                 "saveDeployments": true,
                 "deploy": [ 
-                    "deployment_scripts/testnet/layer1/003_grant_sequencers"
+                    "deployment_scripts/testnet/sequencer/"
                 ],
                 "accounts": [ "%s" ]
             }

@@ -118,25 +118,15 @@ func (oc *ObsClient) GetTransaction(hash gethcommon.Hash) (*common.PublicTransac
 	return tx, err
 }
 
-// Health returns the health of the node.
-func (oc *ObsClient) Health() (bool, error) {
-	var healthy *hostcommon.HealthCheck
-	err := oc.rpcClient.Call(&healthy, rpc.Health)
-	if err != nil {
-		return false, err
-	}
-	if !healthy.OverallHealth {
-		return false, errors.New(strings.Join(healthy.Errors, ", "))
-	}
-	return healthy.OverallHealth, nil
-}
-
-// HealthCheck returns the health of the node.TODO update API above
-func (oc *ObsClient) HealthCheck() (*hostcommon.HealthCheck, error) {
+// Health returns the Health status of the node.
+func (oc *ObsClient) Health() (*hostcommon.HealthCheck, error) {
 	var healthy *hostcommon.HealthCheck
 	err := oc.rpcClient.Call(&healthy, rpc.Health)
 	if err != nil {
 		return nil, err
+	}
+	if !healthy.OverallHealth {
+		return nil, errors.New(strings.Join(healthy.Errors, ", "))
 	}
 	return healthy, nil
 }

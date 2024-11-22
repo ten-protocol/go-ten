@@ -32,7 +32,11 @@ func (b *Backend) GetLatestBatch() (*common.BatchHeader, error) {
 }
 
 func (b *Backend) GetTenNodeHealthStatus() (bool, error) {
-	return b.obsClient.Health()
+	health, err := b.obsClient.Health()
+	if err != nil {
+		return false, err
+	}
+	return health.OverallHealth, nil
 }
 
 func (b *Backend) GetLatestRollup() (*common.RollupHeader, error) {

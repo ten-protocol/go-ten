@@ -44,6 +44,13 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
 
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+
 	edgelessDBImage := "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
 	// todo: revisit how we should configure the image, this condition is not ideal
 	if !t.cfg.isSGXEnabled {
@@ -143,10 +150,10 @@ func (t *Testnet) Start() error {
 	fmt.Println("L2 Contracts were successfully deployed...")
 
 	// Grant enclaves sequencer status
-	err = t.grantSequencerStatus(networkConfig.ManagementContractAddress)
-	if err != nil {
-		return fmt.Errorf("failed to grant sequencer status: %w", err)
-	}
+	//err = t.grantSequencerStatus(networkConfig.ManagementContractAddress)
+	//if err != nil {
+	//	return fmt.Errorf("failed to grant sequencer status: %w", err)
+	//}
 
 	faucetPort := 99
 	faucetInst, err := faucet.NewDockerFaucet(
@@ -280,7 +287,7 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 			if err != nil {
 				return err
 			}
-			if health {
+			if health.OverallHealth {
 				fmt.Println("Obscuro node is ready")
 				return nil
 			}
@@ -305,9 +312,17 @@ func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
 	defer client.Stop()
 
 	obsClient := obsclient.NewObsClient(client)
-	health, err := obsClient.HealthCheck()
+	health, err := obsClient.Health()
 	if err != nil {
 		return fmt.Errorf("failed to get health status: %w", err)
+	}
+
+	println("HEALTH: ", health.OverallHealth)
+	println("HEALTH ENCLAVES: ", len(health.Enclaves))
+	println("ENCLAVE ID: ", health.Enclaves[0].EnclaveID.Hex())
+
+	if len(health.Enclaves) == 0 {
+		return fmt.Errorf("could not retrieve enclave IDs from health endpoint")
 	}
 
 	var enclaveIDs []string
@@ -316,13 +331,14 @@ func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
 	}
 	enclaveIDsStr := strings.Join(enclaveIDs, ",")
 
+	println("enclaveIDsStr: ", enclaveIDsStr)
 	l1grantsequencers, err := l1gs.NewGrantSequencers(
 		l1gs.NewGrantSequencerConfig(
+			l1gs.WithL1HTTPURL("http://eth2network:8025"),
 			l1gs.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1gs.WithDockerImage(t.cfg.contractDeployerDockerImage),
 			l1gs.WithMgmtContractAddress(mgmtContractAddr),
 			l1gs.WithEnclaveIDs(enclaveIDsStr),
-			//l1gs.WithDebugEnabled(t.cfg.contractDeployerDebug),
 		),
 	)
 	if err != nil {

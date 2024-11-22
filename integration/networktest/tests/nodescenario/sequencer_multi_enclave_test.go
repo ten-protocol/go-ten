@@ -13,7 +13,7 @@ import (
 var _transferAmount = big.NewInt(100_000_000)
 
 func TestMultiEnclaveSequencer(t *testing.T) {
-	//networktest.TestOnlyRunsInIDE(t)
+	networktest.TestOnlyRunsInIDE(t)
 	networktest.Run(
 		"multi-enclave-sequencer",
 		t,
