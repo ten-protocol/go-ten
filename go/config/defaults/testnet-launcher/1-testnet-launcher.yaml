@@ -20,3 +20,5 @@ enclave:
       enableDebugNamespace: true
    log:
         level: 4
+sequencer:
+   systemContractsUpgrader: 0xDEe530E22045939e6f6a0A593F829e35A140D3F1
