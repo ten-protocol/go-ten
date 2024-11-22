@@ -489,3 +489,14 @@ func (c *Client) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublic
 		PublicSystemContracts:           publicSystemContracts,
 	}, nil
 }
+
+func (c *Client) MakeActive() common.SystemError {
+	response, err := c.protoClient.MakeActive(context.Background(), &generated.MakeActiveRequest{})
+	if err != nil {
+		return syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+	return nil
+}
