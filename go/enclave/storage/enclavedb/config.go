@@ -34,7 +34,7 @@ func FetchConfig(ctx context.Context, db *sql.DB, key string) ([]byte, error) {
 }
 
 func WriteAttestation(ctx context.Context, db *sql.Tx, enclaveId common.EnclaveID, key []byte, isSequencer bool) (sql.Result, error) {
-	return db.ExecContext(ctx, attInsert, enclaveId.Bytes(), key)
+	return db.ExecContext(ctx, attInsert, enclaveId.Bytes(), key, isSequencer)
 }
 
 func UpdateAttestation(ctx context.Context, db *sql.Tx, enclaveId common.EnclaveID, isSequencer bool) (sql.Result, error) {
