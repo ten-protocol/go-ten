@@ -74,7 +74,7 @@ const (
 	rateLimitMaxConcurrentRequestsUsage   = "Number of concurrent requests allowed per user. Default: 3"
 
 	insideEnclaveFlagName    = "insideEnclave"
-	insideEnclaveFlagDefault = true
+	insideEnclaveFlagDefault = false
 	insideEnclaveFlagUsage   = "Flag to indicate if the program is running inside an enclave. Default: false"
 
 	keyExchangeURLFlagName    = "keyExchangeURL"

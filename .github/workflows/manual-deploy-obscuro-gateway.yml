@@ -303,12 +303,12 @@ jobs:
             ego run /home/ten/go-ten/tools/walletextension/main/main \
             -host=0.0.0.0 -port=80 -portWS=81 -nodeHost="${{ env.L2_RPC_URL_VALIDATOR }}" -verbose=true \
             -logPath=sys_out -dbType=cosmosDB -dbConnectionURL="${{ secrets.COSMOS_DB_CONNECTION_STRING }}" \
-            -keyExchangeURL="${{ env.GATEWAY_KEY_EXCHANGE_URL }}" \
             -rateLimitUserComputeTime="${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }}" \
             -rateLimitWindow="${{ env.GATEWAY_RATE_LIMIT_WINDOW }}" \
             -maxConcurrentRequestsPerUser="${{ env.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }}"
             -keyExchangeURL="${{ env.GATEWAY_KEY_EXCHANGE_URL }}" \
-            -insideEnclave  \
+            -insideEnclave=true \
+            
 
             # After starting the container, verify the volume mount
             docker exec "${{ env.VM_NAME }}" sh -c "
