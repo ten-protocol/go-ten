@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"net/http"
 
+	tencommon "github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
 
 	"github.com/status-im/keycard-go/hexutils"
