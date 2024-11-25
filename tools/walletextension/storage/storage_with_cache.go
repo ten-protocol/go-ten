@@ -42,6 +42,33 @@ func (s *UserStorageWithCache) DeleteUser(userID []byte) error {
 	return nil
 }
 
+func (s *UserStorageWithCache) ActivateSessionKey(userID []byte, active bool) error {
+	err := s.storage.ActivateSessionKey(userID, active)
+	if err != nil {
+		return err
+	}
+	s.cache.Remove(userID)
+	return nil
+}
+
+func (s *UserStorageWithCache) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error {
+	err := s.storage.AddSessionKey(userID, key)
+	if err != nil {
+		return err
+	}
+	s.cache.Remove(userID)
+	return nil
+}
+
+func (s *UserStorageWithCache) RemoveSessionKey(userID []byte) error {
+	err := s.storage.RemoveSessionKey(userID)
+	if err != nil {
+		return err
+	}
+	s.cache.Remove(userID)
+	return nil
+}
+
 // AddAccount adds an account to a user and invalidates the cache for the userID
 func (s *UserStorageWithCache) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
 	err := s.storage.AddAccount(userID, accountAddress, signature, signatureType)

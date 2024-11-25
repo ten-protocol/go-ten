@@ -40,7 +40,7 @@ type Sequencer interface {
 	NodeType
 }
 
-type ObsValidator interface {
+type Validator interface {
 	// ExecuteStoredBatches - try to execute all stored by unexecuted batches
 	ExecuteStoredBatches(context.Context) error
 

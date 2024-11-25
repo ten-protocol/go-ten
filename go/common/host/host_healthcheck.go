@@ -1,5 +1,9 @@
 package host
 
+import (
+	"github.com/ten-protocol/go-ten/go/common"
+)
+
 // HealthStatus is an interface supported by all Services on the host
 type HealthStatus interface {
 	OK() bool
@@ -10,6 +14,7 @@ type HealthStatus interface {
 type HealthCheck struct {
 	OverallHealth bool
 	Errors        []string
+	Enclaves      []common.Status
 }
 
 // BasicErrHealthStatus is a simple health status implementation, if the ErrMsg is non-empty then OK() returns false

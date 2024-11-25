@@ -8,8 +8,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 )
 
-func searchFromAndData(possibleAddresses []*common.Address, args gethapi.TransactionArgs) *common.Address {
-	if args.From != nil {
+func searchFromAndData(possibleAddresses []common.Address, args gethapi.TransactionArgs) *common.Address {
+	if args.From != nil && (*args.From != common.Address{}) {
 		return args.From
 	}
 
@@ -22,7 +22,7 @@ func searchFromAndData(possibleAddresses []*common.Address, args gethapi.Transac
 	return searchDataFieldForAccount(addressesMap, *args.Data)
 }
 
-func searchDataFieldForAccount(addressesMap map[common.Address]*common.Address, data []byte) *common.Address {
+func searchDataFieldForAccount(addressesMap map[common.Address]bool, data []byte) *common.Address {
 	hexEncodedData := hexutils.BytesToHex(data)
 
 	// We check that the data field is long enough before removing the leading "0x" (1 bytes/2 chars) and the method ID
@@ -57,10 +57,10 @@ func searchDataFieldForAccount(addressesMap map[common.Address]*common.Address, 
 	return nil
 }
 
-func toMap(possibleAddresses []*common.Address) map[common.Address]*common.Address {
-	addresses := map[common.Address]*common.Address{}
+func toMap(possibleAddresses []common.Address) map[common.Address]bool {
+	addresses := map[common.Address]bool{}
 	for i := range possibleAddresses {
-		addresses[*possibleAddresses[i]] = possibleAddresses[i]
+		addresses[possibleAddresses[i]] = true
 	}
 	return addresses
 }

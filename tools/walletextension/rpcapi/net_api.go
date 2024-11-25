@@ -28,5 +28,5 @@ type ConfigResponseJson struct {
 }
 
 func (api *NetAPI) Config(ctx context.Context) (*ConfigResponseJson, error) {
-	return UnauthenticatedTenRPCCall[ConfigResponseJson](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "obscuro_config")
+	return UnauthenticatedTenRPCCall[ConfigResponseJson](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "ten_config")
 }

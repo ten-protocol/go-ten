@@ -15,9 +15,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
-	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
 
-	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/httputil"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
@@ -69,6 +67,26 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 		{
 			Name: common.APIVersion1 + common.PathKeyExchange,
 			Func: httpHandler(walletExt, keyExchangeRequestHandler),
+		},
+		{
+			Name: common.APIVersion1 + common.PathSessionKeys + "create",
+			Func: httpHandler(walletExt, createSKRequestHandler),
+		},
+		{
+			Name: common.APIVersion1 + common.PathSessionKeys + "activate",
+			Func: httpHandler(walletExt, activateSKRequestHandler),
+		},
+		{
+			Name: common.APIVersion1 + common.PathSessionKeys + "deactivate",
+			Func: httpHandler(walletExt, deactivateSKRequestHandler),
+		},
+		{
+			Name: common.APIVersion1 + common.PathSessionKeys + "delete",
+			Func: httpHandler(walletExt, deleteSKRequestHandler),
+		},
+		{
+			Name: common.APIVersion1 + common.PathSessionKeys + "list",
+			Func: httpHandler(walletExt, listSKRequestHandler),
 		},
 	}
 }
@@ -186,6 +204,7 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 }
 
+// todo - is this needed?
 // This function handles request to /query endpoint.
 // In the query parameters address and userID are required. We check if provided address is registered for given userID
 // and return true/false in json response
@@ -524,6 +543,81 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
+}
+
+func listSKRequestHandler(walletExt *services.Services, conn UserConn) {
+}
+
+func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
+	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
+		sk, err := walletExt.SKManager.CreateSessionKey(user)
+		if err != nil {
+			handleError(conn, walletExt.Logger(), fmt.Errorf("could not create session key: %w", err))
+			return nil, err
+		}
+		return []byte(hexutils.BytesToHex(sk.Account.Address.Bytes())), nil
+	})
+}
+
+func deleteSKRequestHandler(walletExt *services.Services, conn UserConn) {
+	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
+		res, err := walletExt.SKManager.DeleteSessionKey(user)
+		return []byte{boolToByte(res)}, err
+	})
+}
+
+func activateSKRequestHandler(walletExt *services.Services, conn UserConn) {
+	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
+		res, err := walletExt.SKManager.ActivateSessionKey(user)
+		return []byte{boolToByte(res)}, err
+	})
+}
+
+func deactivateSKRequestHandler(walletExt *services.Services, conn UserConn) {
+	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
+		res, err := walletExt.SKManager.DeactivateSessionKey(user)
+		return []byte{boolToByte(res)}, err
+	})
+}
+
+// extracts the user from the request, and writes the response to the connection
+func withUser(walletExt *services.Services, conn UserConn, withUser func(user *common.GWUser) ([]byte, error)) {
+	_, err := conn.ReadRequest()
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		return
+	}
+
+	userID, err := getUserID(conn)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
+		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
+		return
+	}
+
+	user, err := walletExt.Storage.GetUser(userID)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("could not get user: %w", err))
+		return
+	}
+
+	resp, err := withUser(user)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("could not process request: %w", err))
+		return
+	}
+
+	err = conn.WriteResponse(resp)
+	if err != nil {
+		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+	}
+}
+
+func boolToByte(res bool) byte {
+	if res {
+		return 1
+	}
+	return 0
 }
 
 func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {

@@ -12,13 +12,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
+
+	"github.com/ten-protocol/go-ten/go/responses"
+
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension"
 
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
-
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ethereum/go-ethereum"
@@ -51,7 +54,7 @@ func init() { //nolint:gochecknoinits
 		LogDir:      testLogs,
 		TestType:    "tengateway",
 		TestSubtype: "test",
-		LogLevel:    log.LvlInfo,
+		LogLevel:    log.LvlTrace,
 	})
 }
 
@@ -115,6 +118,7 @@ func TestTenGateway(t *testing.T) {
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
 		"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
 		"testRateLimiter":                      testRateLimiter,
+		"testSessionKeys":                      testSessionKeys,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, startPort, httpURL, wsURL, w)
@@ -165,6 +169,138 @@ func testRateLimiter(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
 	require.Error(t, err)
 	require.Equal(t, "rate limit exceeded", err.Error())
+}
+
+func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
+	err = user0.RegisterAccounts()
+	require.NoError(t, err)
+
+	var amountToTransfer int64 = 1_000_000_000_000_000_000
+	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user0.Wallets[0].Address(), amountToTransfer)
+	require.NoError(t, err)
+
+	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	require.NoError(t, err)
+
+	contractAddr := deployContract(t, w, user0)
+
+	// create session key
+	skAddr, err := user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.CreateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+	skAddress := gethcommon.BytesToAddress(skAddr)
+
+	// move some funds to the SK
+	var skAmount int64 = 100_000_000_000_000_000
+	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], skAddress, skAmount)
+	require.NoError(t, err)
+
+	// activate SK
+	_, err = user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.ActivateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+
+	skNonce := uint64(0)
+
+	// interact with the contract - unsigned tx calling "sendRawTransaction"
+	contractInteractionData, err := eventsContractABI.Pack("setMessage", "user0PrivateEvent")
+	require.NoError(t, err)
+	rec, err := interactWithSmartContractUnsigned(user0.HTTPClient, true, skNonce, contractAddr, contractInteractionData, nil)
+	require.NoError(t, err)
+	require.Equal(t, uint64(0x1), rec.Status)
+
+	// move money back - unsigned tx calling "sendTransaction"
+	skNonce++
+	rec1, err := interactWithSmartContractUnsigned(user0.HTTPClient, false, skNonce, user0.Wallets[0].Address(), nil, big.NewInt(1_000))
+	require.NoError(t, err)
+	require.Equal(t, uint64(0x1), rec1.Status)
+
+	// deactivate
+	_, err = user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.DeactivateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+
+	// interact with the contract - unsigned - should fail
+	skNonce++
+	rec2, err := interactWithSmartContractUnsigned(user0.HTTPClient, false, skNonce, contractAddr, contractInteractionData, nil)
+	require.Error(t, err)
+	require.Nil(t, rec2)
+}
+
+func deployContract(t *testing.T, w wallet.Wallet, user0 *GatewayUser) gethcommon.Address {
+	// deploy events contract
+	deployTx := &types.LegacyTx{
+		Nonce:    w.GetNonceAndIncrement(),
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
+		Data:     gethcommon.FromHex(eventsContractBytecode),
+	}
+
+	err := getFeeAndGas(user0.HTTPClient, w, deployTx)
+	require.NoError(t, err)
+
+	signedTx, err := w.SignTransaction(deployTx)
+	require.NoError(t, err)
+
+	err = user0.HTTPClient.SendTransaction(context.Background(), signedTx)
+	require.NoError(t, err)
+
+	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
+	require.NoError(t, err)
+	return contractReceipt.ContractAddress
+}
+
+func interactWithSmartContractUnsigned(client *ethclient.Client, sendRaw bool, nonce uint64, contractAddress gethcommon.Address, contractInteractionData []byte, value *big.Int) (*types.Receipt, error) {
+	var result responses.GasPriceType
+	err := client.Client().CallContext(context.Background(), &result, "eth_gasPrice")
+	if err != nil {
+		return nil, err
+	}
+
+	var txHash gethcommon.Hash
+
+	if sendRaw {
+		interactionTx := types.LegacyTx{
+			Nonce:    nonce,
+			To:       &contractAddress,
+			Gas:      uint64(10_000_000),
+			GasPrice: result.ToInt(),
+			Data:     contractInteractionData,
+			Value:    value,
+		}
+		unSignedTx := types.NewTx(&interactionTx)
+		blob, err := unSignedTx.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		err = client.Client().CallContext(context.Background(), &txHash, "eth_sendRawTransaction", hexutil.Encode(blob))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		n := hexutil.Uint64(nonce)
+		g := hexutil.Uint64(10_000_000)
+		d := hexutil.Bytes(contractInteractionData)
+		interactionTx := gethapi.TransactionArgs{
+			Nonce:    &n,
+			To:       &contractAddress,
+			Gas:      &g,
+			GasPrice: &result,
+			Data:     &d,
+			Value:    (*hexutil.Big)(value),
+		}
+		err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	txReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), client, txHash, 10*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	return txReceipt, nil
 }
 
 func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
@@ -757,9 +893,9 @@ func testInvokeNonSensitiveMethod(t *testing.T, _ int, httpURL, wsURL string, w 
 
 	// call one of the non-sensitive methods with unauthenticated user
 	// and make sure gateway is not complaining about not having viewing keys
-	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.ChainID, user.tgClient.UserID(), nil)
-	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", tenrpc.ChainID)) {
-		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", tenrpc.ChainID)
+	respBody := makeHTTPEthJSONReq(httpURL, "eth_chainId", user.tgClient.UserID(), nil)
+	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", "eth_chainId")) {
+		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", "eth_chainId")
 	}
 }
 
@@ -773,16 +909,16 @@ func testGetStorageAtForReturningUserID(t *testing.T, _ int, httpURL, wsURL stri
 	var response JSONResponse
 
 	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
-	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{common.UserIDRequestCQMethod, "0", nil})
+	respBody := makeHTTPEthJSONReq(httpURL, "eth_getStorageAt", user.tgClient.UserID(), []interface{}{common.UserIDRequestCQMethod, "0", nil})
 	if err = json.Unmarshal(respBody, &response); err != nil {
 		t.Error("Unable to unmarshal response")
 	}
 	if !bytes.Equal(gethcommon.FromHex(response.Result), user.tgClient.UserIDBytes()) {
-		t.Errorf("Wrong UserID returned. Expected: %s, received: %s", user.tgClient.UserID(), response.Result)
+		t.Errorf("Wrong ID returned. Expected: %s, received: %s", user.tgClient.UserID(), response.Result)
 	}
 
 	// make a request to GetStorageAt with correct parameters to get userID, but with wrong userID
-	respBody2 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, "0x0000000000000000000000000000000000000001", []interface{}{common.UserIDRequestCQMethod, "0", nil})
+	respBody2 := makeHTTPEthJSONReq(httpURL, "eth_getStorageAt", "0x0000000000000000000000000000000000000001", []interface{}{common.UserIDRequestCQMethod, "0", nil})
 	if !strings.Contains(string(respBody2), "not found") {
 		t.Error("eth_getStorageAt did not respond with not found error")
 	}
@@ -794,7 +930,7 @@ func testGetStorageAtForReturningUserID(t *testing.T, _ int, httpURL, wsURL stri
 	}
 
 	// make a request to GetStorageAt with wrong parameters to get userID, but correct userID
-	respBody3 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"0x0000000000000000000000000000000000000007", "0", nil})
+	respBody3 := makeHTTPEthJSONReq(httpURL, "eth_getStorageAt", user.tgClient.UserID(), []interface{}{"0x0000000000000000000000000000000000000007", "0", nil})
 	expectedErr := "not supported"
 	if !strings.Contains(string(respBody3), expectedErr) {
 		t.Errorf("eth_getStorageAt did not respond with error: %s, it was: %s", expectedErr, string(respBody3))
@@ -805,7 +941,7 @@ func testGetStorageAtForReturningUserID(t *testing.T, _ int, httpURL, wsURL stri
 		Pagination: common.QueryPagination{Size: 10},
 	})
 
-	respBody4 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{common.ListPrivateTransactionsCQMethod, string(privateTxs), nil})
+	respBody4 := makeHTTPEthJSONReq(httpURL, "eth_getStorageAt", user.tgClient.UserID(), []interface{}{common.ListPrivateTransactionsCQMethod, string(privateTxs), nil})
 	if err = json.Unmarshal(respBody4, &response); err != nil {
 		t.Error("Unable to unmarshal response")
 	}

@@ -19,7 +19,7 @@ type Host interface {
 	// Start initializes the main loop of the host.
 	Start() error
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
-	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
+	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error)
 	// SubscribeLogs feeds logs matching the encrypted log subscription to the matchedLogs channel.
 	SubscribeLogs(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error
 	// UnsubscribeLogs terminates a log subscription between the host and the enclave.

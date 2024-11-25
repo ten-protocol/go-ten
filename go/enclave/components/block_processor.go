@@ -121,7 +121,7 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(ctx context.Context, br *common.Bl
 	}
 
 	bp.logger.Trace("BlockHeader inserted successfully",
-		log.BlockHeightKey, block.Number, log.BlockHashKey, block.Hash(), "ingestionType", ingestionType)
+		log.BlockHeightKey, block.Number, log.BlockHashKey, block.Hash(), "parentHash", block.ParentHash, "ingestionType", ingestionType)
 
 	return ingestionType, nil
 }
@@ -136,6 +136,11 @@ func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *types.Header
 		}
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
+
+	if prevL1Head.Hash() == block.Hash() {
+		return &BlockIngestionType{OldCanonicalBlock: true}, nil
+	}
+
 	// we do a basic sanity check, comparing the received block to the head block on the chain
 	if block.ParentHash != prevL1Head.Hash() {
 		isCanon, err := bp.storage.IsBlockCanonical(ctx, block.Hash())
@@ -158,6 +163,8 @@ func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *types.Header
 
 		if chainFork.IsFork() {
 			bp.logger.Info("Fork detected in the l1 chain", "can", chainFork.CommonAncestor.Hash(), "noncan", prevL1Head.Hash())
+		} else {
+			bp.logger.Error("Should not happen. Weird Fork detected in the l1 chain", "fork", chainFork)
 		}
 		return &BlockIngestionType{ChainFork: chainFork, PreGenesis: false}, nil
 	}

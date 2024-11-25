@@ -24,9 +24,7 @@ func newHTTPParamsHandler(exposedParam string, next http.Handler) http.Handler {
 func (handler *httpParamsHandler) ServeHTTP(out http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	val := q.Get(handler.exposedParam)
-	if len(val) > 0 {
-		ctx := context.WithValue(r.Context(), rpc.GWTokenKey{}, val)
-		handler.next.ServeHTTP(out, r.WithContext(ctx))
-	}
+	ctx := context.WithValue(r.Context(), rpc.GWTokenKey{}, val)
+	handler.next.ServeHTTP(out, r.WithContext(ctx))
 	handler.next.ServeHTTP(out, r)
 }

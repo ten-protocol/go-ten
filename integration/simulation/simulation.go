@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/PublicCallbacksTest"
 	"github.com/ten-protocol/go-ten/contracts/generated/TransactionPostProcessor"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -77,6 +78,9 @@ func (s *Simulation) Start() {
 
 	fmt.Printf("Deploying ZenBase contract\n")
 	s.deployTenZen() // Deploy the ZenBase contract
+
+	fmt.Printf("Deploying PublicCallbacksTest contract\n")
+	s.deployPublicCallbacksTest()
 
 	fmt.Printf("Creating log subscriptions\n")
 	s.trackLogs() // Create log subscriptions, to validate that they're working correctly later.
@@ -249,6 +253,52 @@ func (s *Simulation) prefundTenAccounts() {
 	// as a lot of the hardcodes were giving way too little and choking the gas payments
 	allocObsWallets := big.NewInt(0).Mul(big.NewInt(1000000), big.NewInt(gethparams.Ether))
 	testcommon.PrefundWallets(s.ctx, faucetWallet, faucetClient, nonce, s.Params.Wallets.AllObsWallets(), allocObsWallets, s.Params.ReceiptTimeout)
+}
+
+func (s *Simulation) deployPublicCallbacksTest() {
+	testlog.Logger().Info("Deploying PublicCallbacksTest contract")
+
+	auth, err := bind.NewKeyedTransactorWithChainID(s.Params.Wallets.L2FaucetWallet.PrivateKey(), s.Params.Wallets.L2FaucetWallet.ChainID())
+	if err != nil {
+		panic(fmt.Errorf("failed to create transactor in order to bootstrap sim test: %w", err))
+	}
+	rpcClient := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
+	var cfg *common.TenNetworkInfo
+	for cfg == nil || cfg.TransactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
+		cfg, err = rpcClient.GetConfig()
+		if err != nil {
+			s.TxInjector.logger.Info("failed to get config", log.ErrKey, err)
+		}
+		time.Sleep(2 * time.Second)
+	}
+
+	publicCallbacksAddress := cfg.PublicSystemContracts["PublicCallbacks"]
+	if publicCallbacksAddress.Cmp(gethcommon.Address{}) == 0 {
+		panic(fmt.Errorf("public callbacks address is not set"))
+	}
+
+	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, s.Params.Wallets.L2FaucetWallet))
+	auth.GasPrice = big.NewInt(0).SetUint64(gethparams.InitialBaseFee)
+	auth.Context = s.ctx
+	auth.Value = big.NewInt(0).Mul(big.NewInt(1), big.NewInt(gethparams.Ether))
+
+	_, tx, instance, err := PublicCallbacksTest.DeployPublicCallbacksTest(auth, rpcClient, publicCallbacksAddress)
+	if err != nil {
+		panic(fmt.Errorf("failed to deploy public callbacks test contract: %w", err))
+	}
+
+	receipt, err := bind.WaitMined(s.ctx, rpcClient, tx)
+	if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+		panic(fmt.Errorf("failed to deploy public callbacks test contract"))
+	}
+
+	success, err := instance.IsLastCallSuccess(&bind.CallOpts{Context: s.ctx, From: s.Params.Wallets.L2FaucetWallet.Address()})
+	if err != nil {
+		panic(fmt.Errorf("failed to check if last call was successful: %w", err))
+	}
+	if !success {
+		panic(fmt.Errorf("last call was not successful"))
+	}
 }
 
 func (s *Simulation) deployTenZen() {

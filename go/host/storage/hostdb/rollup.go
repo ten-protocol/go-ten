@@ -29,12 +29,12 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 	}
 
 	var blockId int
-	err = dbtx.tx.QueryRow("select id from block_host where hash="+statements.Placeholder, block.Hash().Bytes()).Scan(&blockId)
+	err = dbtx.Tx.QueryRow("select id from block_host where hash="+statements.Placeholder, block.Hash().Bytes()).Scan(&blockId)
 	if err != nil {
 		return fmt.Errorf("could not read block id: %w", err)
 	}
 
-	_, err = dbtx.tx.Exec(statements.InsertRollup,
+	_, err = dbtx.Tx.Exec(statements.InsertRollup,
 		rollup.Header.Hash().Bytes(),         //  hash
 		metadata.FirstBatchSequence.Uint64(), // first batch sequence
 		rollup.Header.LastBatchSeqNo,         // last batch sequence

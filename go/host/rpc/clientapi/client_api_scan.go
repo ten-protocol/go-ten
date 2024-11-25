@@ -5,8 +5,6 @@ import (
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/go/responses"
-
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
@@ -118,11 +116,4 @@ func (s *ScanAPI) GetRollupBatches(rollupHash gethcommon.Hash) (*common.BatchLis
 // GetBatchTransactions returns the public tx data of all txs present in a rollup given its hash
 func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
 	return s.host.Storage().FetchBatchTransactions(batchHash)
-}
-
-// These methods are for private user data, they will need to be requested with VK (e.g. via the gateway)
-
-// GetPersonalTransactions gets the private transactions data for a given user
-func (s *ScanAPI) GetPersonalTransactions(ctx context.Context, encryptedParams common.EncryptedParamsGetPersonalTransactions) (*responses.Receipts, error) {
-	return s.host.EnclaveClient().GetPersonalTransactions(ctx, encryptedParams)
 }

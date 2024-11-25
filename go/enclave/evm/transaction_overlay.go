@@ -3,17 +3,12 @@ package evm
 import (
 	"math/big"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 )
-
-func MaskedSender(address gethcommon.Address) gethcommon.Address {
-	return gethcommon.BigToAddress(big.NewInt(0).Sub(address.Big(), big.NewInt(1)))
-}
 
 // TransactionToMessageWithOverrides is used to convert a transaction to a message to be applied to the evm.
 // Overrides can change how stuff in the message is derived, e.g. the sender. This is useful for synthetic transactions,
@@ -26,7 +21,7 @@ func TransactionToMessageWithOverrides(
 	// Override from can be used for calling system contracts from underivable addresses like all zeroes
 	if tx.FromSelf {
 		msg := TransactionToMessageNoSender(tx.Tx, header.BaseFee)
-		msg.From = MaskedSender(*msg.To)
+		msg.From = common.MaskedSender(*msg.To)
 		return msg, nil
 	}
 	return core.TransactionToMessage(tx.Tx, types.MakeSigner(config, header.Number, header.Time), header.BaseFee)

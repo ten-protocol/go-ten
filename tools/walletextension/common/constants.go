@@ -22,6 +22,7 @@ const (
 	PathQuery                     = "/query/"
 	PathRevoke                    = "/revoke/"
 	PathHealth                    = "/health/"
+	PathSessionKeys               = "/session-key/"
 	PathNetworkHealth             = "/network-health/"
 	PathNetworkConfig             = "/network-config/"
 	PathKeyExchange               = "/key-exchange/"

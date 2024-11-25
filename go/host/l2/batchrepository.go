@@ -68,7 +68,7 @@ func NewBatchRepository(cfg *hostconfig.HostConfig, hostService batchRepoService
 		validatedBatchSubscribers: subscription.NewManager[host.L2BatchHandler](),
 		sl:                        hostService,
 		storage:                   storage,
-		isSequencer:               cfg.NodeType == common.Sequencer,
+		isSequencer:               cfg.NodeType == common.ActiveSequencer,
 		latestBatchSeqNo:          big.NewInt(0),
 		latestValidatedSeqNo:      big.NewInt(0),
 		running:                   atomic.Bool{},
