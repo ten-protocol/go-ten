@@ -1,6 +1,8 @@
 package walletextension
 
 import (
+	"crypto/tls"
+	"net/http"
 	"os"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 type Container struct {
@@ -67,6 +70,32 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		HTTPPath:   wecommon.APIVersion1 + "/",
 		Host:       config.WalletExtensionHost,
 	}
+
+	// check if TLS is enabled
+	if config.EnableTLS {
+		// Create autocert manager for automatic certificate management
+		certManager := &autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(config.TLSDomain),
+			// Cache:      autocert.DirCache("certs"), // TODO: We can add cache for certs (+ don't forget to include the directory in enclave.json)
+		}
+
+		// Create HTTP-01 challenge handler
+		httpServer := &http.Server{
+			Addr:    ":http", // Port 80
+			Handler: certManager.HTTPHandler(nil),
+		}
+		go httpServer.ListenAndServe() // Start HTTP server for ACME challenges
+
+		tlsConfig := &tls.Config{
+			GetCertificate: certManager.GetCertificate,
+			MinVersion:     tls.VersionTLS12,
+		}
+
+		// Update RPC server config to use TLS
+		cfg.TLSConfig = tlsConfig
+	}
+
 	rpcServer := node.NewServer(cfg, logger)
 
 	rpcServer.RegisterRoutes(httpapi.NewHTTPRoutes(walletExt))
