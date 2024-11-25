@@ -33,24 +33,24 @@ type ContractVisibilityConfig struct {
 type TxExecResult struct {
 	Receipt          *types.Receipt
 	CreatedContracts map[gethcommon.Address]*ContractVisibilityConfig
-	Tx               *types.Transaction
-	From             *gethcommon.Address
+	TxWithSender     *TxWithSender
 	Err              error
 }
 
-type SyntheticTx struct {
-	Tx     *types.Transaction
-	Sender *gethcommon.Address
+type TxWithSender struct {
+	Tx          *types.Transaction
+	Sender      *gethcommon.Address
+	IsSynthetic bool
 }
 
-type SyntheticTxs []*SyntheticTx
+type TransactionsWithSender []*TxWithSender
 
-func (stxs *SyntheticTxs) Add(tx *common.L2PricedTransaction) error {
+func (stxs *TransactionsWithSender) Add(tx *common.L2PricedTransaction) error {
 	sender, err := GetTxSigner(tx)
 	if err != nil {
 		return err
 	}
-	*stxs = append(*stxs, &SyntheticTx{Tx: tx.Tx, Sender: &sender})
+	*stxs = append(*stxs, &TxWithSender{Tx: tx.Tx, Sender: &sender})
 	return nil
 }
 
@@ -141,4 +141,38 @@ type TxExecResults []*TxExecResult
 
 func (txResults *TxExecResults) Add(other ...*TxExecResult) {
 	*txResults = append(*txResults, other...)
+}
+
+func (txResults *TxExecResults) MarkSynthetic(isSynthetic bool) {
+	for _, txResult := range *txResults {
+		txResult.TxWithSender.IsSynthetic = isSynthetic
+	}
+}
+
+func (txResults *TxExecResults) GetSynthetic() *TxExecResults {
+	syntheticTxs := make(TxExecResults, 0)
+	for _, txResult := range *txResults {
+		if txResult.TxWithSender.IsSynthetic {
+			syntheticTxs = append(syntheticTxs, txResult)
+		}
+	}
+	return &syntheticTxs
+}
+
+func (txResults *TxExecResults) GetReal() *TxExecResults {
+	realTxs := make(TxExecResults, 0)
+	for _, txResult := range *txResults {
+		if !txResult.TxWithSender.IsSynthetic {
+			realTxs = append(realTxs, txResult)
+		}
+	}
+	return &realTxs
+}
+
+func (txResults *TxExecResults) ToTransactionsWithSenders() TransactionsWithSender {
+	transactionsWithSenders := make(TransactionsWithSender, len(*txResults))
+	for i, txResult := range *txResults {
+		transactionsWithSenders[i] = txResult.TxWithSender
+	}
+	return transactionsWithSenders
 }

@@ -147,7 +147,7 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 		return fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.StoreExecutedBatch(ctx, batch, nil, nil); err != nil {
+	if err := s.StoreExecutedBatch(ctx, batch, nil); err != nil {
 		return fmt.Errorf("1. failed storing batch. Cause: %w", err)
 	}
 
@@ -291,7 +291,7 @@ func (s *sequencer) produceBatch(
 		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.StoreExecutedBatch(ctx, cb.Batch, cb.TxExecResults, cb.SyntheticTxs); err != nil {
+	if err := s.StoreExecutedBatch(ctx, cb.Batch, cb.TxExecResults); err != nil {
 		return nil, fmt.Errorf("2. failed storing batch. Cause: %w", err)
 	}
 
@@ -309,7 +309,7 @@ func (s *sequencer) produceBatch(
 
 // StoreExecutedBatch - stores an executed batch in one go. This can be done for the sequencer because it is guaranteed
 // that all dependencies are in place for the execution to be successful.
-func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, txResults []*core.TxExecResult, syntheticTxs []*core.SyntheticTx) error {
+func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, txResults []*core.TxExecResult) error {
 	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "Registry StoreBatch() exit", log.BatchHashKey, batch.Hash())
 
 	// Check if this batch is already stored.
@@ -327,7 +327,7 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	if err := s.storage.StoreExecutedBatch(ctx, batch.Header, txResults, syntheticTxs); err != nil {
+	if err := s.storage.StoreExecutedBatch(ctx, batch.Header, txResults); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
