@@ -1,17 +1,7 @@
 import { ethers } from "hardhat";
-import { ManagementContract } from "../../../../typechain-types";
+import { ManagementContract } from "../../typechain-types";
 
-async function main() {
-    const mgmtContractAddr = process.env.MGMT_CONTRACT_ADDRESS;
-    if (!mgmtContractAddr) {
-        throw new Error("MGMT_CONTRACT_ADDRESS not set");
-    }
-
-    const enclaveIDs = process.env.ENCLAVE_IDS;
-    if (!enclaveIDs) {
-        throw new Error("ENCLAVE_IDS not set");
-    }
-
+const grantSequencerStatus = async function (mgmtContractAddr: string, enclaveIDsStr: string) {
     // Get the Management Contract
     const managementContract = await ethers.getContractAt(
         "ManagementContract",
@@ -19,7 +9,7 @@ async function main() {
     ) as ManagementContract;
 
     // Parse the comma-separated list of enclave IDs
-    const enclaveAddresses = enclaveIDs.split(",");
+    const enclaveAddresses = enclaveIDsStr.split(",");
 
     // Grant sequencer status to each enclave
     for (const enclaveAddr of enclaveAddresses) {
@@ -42,11 +32,20 @@ async function main() {
         const isSequencer = await managementContract.IsSequencerEnclave(enclaveAddr);
         console.log(`Enclave ${enclaveAddr}: IsSequencerEnclave = ${isSequencer}`);
     }
+};
+
+// Get command line arguments and execute
+const args = process.argv.slice(2);
+if (args.length !== 2) {
+    throw new Error("Required arguments: <mgmtContractAddr> <enclaveIDs>");
 }
 
-main()
+const [mgmtContractAddr, enclaveIDs] = args as [string, string];
+grantSequencerStatus(mgmtContractAddr, enclaveIDs)
     .then(() => process.exit(0))
     .catch((error) => {
         console.error(error);
         process.exit(1);
     });
+
+export default grantSequencerStatus;

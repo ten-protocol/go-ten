@@ -316,10 +316,6 @@ func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
 		return fmt.Errorf("failed to get health status: %w", err)
 	}
 
-	println("HEALTH: ", health.OverallHealth)
-	println("HEALTH ENCLAVES: ", len(health.Enclaves))
-	println("ENCLAVE ID: ", health.Enclaves[0].EnclaveID.Hex())
-
 	if len(health.Enclaves) == 0 {
 		return fmt.Errorf("could not retrieve enclave IDs from health endpoint")
 	}
@@ -330,7 +326,6 @@ func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
 	}
 	enclaveIDsStr := strings.Join(enclaveIDs, ",")
 
-	println("enclaveIDsStr: ", enclaveIDsStr)
 	l1grantsequencers, err := l1gs.NewGrantSequencers(
 		l1gs.NewGrantSequencerConfig(
 			l1gs.WithL1HTTPURL("http://eth2network:8025"),

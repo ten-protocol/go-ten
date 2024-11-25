@@ -17,19 +17,22 @@ func NewGrantSequencers(cfg *Config) (*GrantSequencers, error) {
 }
 
 func (s *GrantSequencers) Start() error {
-	cmds := []string{"npx", "hardhat", "deploy", "--network", "layer1"}
+	cmds := []string{
+		"npx",
+		"run",
+		"--network",
+		"layer1",
+		"scripts/sequencer/001_grant_sequencers.ts",
+		s.cfg.mgmtContractAddress,
+		s.cfg.enclaveIDs,
+	}
 
 	envs := map[string]string{
-		"MGMT_CONTRACT_ADDRESS": s.cfg.mgmtContractAddress,
-		"ENCLAVE_IDS":           s.cfg.enclaveIDs,
 		"NETWORK_JSON": fmt.Sprintf(`{ 
             "layer1": {
                 "url": "%s",
                 "live": false,
                 "saveDeployments": true,
-                "deploy": [ 
-                    "deployment_scripts/testnet/sequencer/"
-                ],
                 "accounts": [ "%s" ]
             }
         }`, s.cfg.l1HTTPURL, s.cfg.privateKey),
