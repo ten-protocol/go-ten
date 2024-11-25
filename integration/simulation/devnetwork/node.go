@@ -222,6 +222,7 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		GasLocalExecutionCapFlag:  defaultCfg.GasLocalExecutionCapFlag,
 		GasPaymentAddress:         defaultCfg.GasPaymentAddress,
 		RPCTimeout:                5 * time.Second,
+		SystemContractOwner:       gethcommon.HexToAddress("0x0000000000000000000000000000000000000001"),
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }
