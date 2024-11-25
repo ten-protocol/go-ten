@@ -235,19 +235,6 @@ func GetReport(pubKey []byte) (*tencommon.AttestationReport, error) {
 	}, nil
 }
 
-// GetReport returns the attestation report for the given public key
-// TODO: Remove this because we want to run this only inside the enclave
-func GetReportTestFake(pubKey []byte) (*tencommon.AttestationReport, error) {
-	randomBytes, _ := common.GenerateRandomKey()
-
-	return &tencommon.AttestationReport{
-		Report:      randomBytes,
-		PubKey:      pubKey,
-		EnclaveID:   gethcommon.Address{}, // this field is not needed for the key exchange
-		HostAddress: "",                   // this field is not needed for the key exchange
-	}, nil
-}
-
 // VerifyReport verifies the attestation report and returns the embedded data
 func VerifyReport(att *tencommon.AttestationReport) ([]byte, error) {
 	remoteReport, err := enclave.VerifyRemoteReport(att.Report)

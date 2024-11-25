@@ -36,6 +36,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
 
+	// get the encryption key (method is determined by the config)
 	encryptionKey, err := keymanager.GetEncryptionKey(config, logger)
 	if err != nil {
 		logger.Crit("unable to get encryption key", log.ErrKey, err)
