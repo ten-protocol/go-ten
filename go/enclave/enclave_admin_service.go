@@ -44,9 +44,10 @@ type enclaveAdminService struct {
 	stopControl            *stopcontrol.StopControl
 	profiler               *profiler.Profiler
 	subscriptionManager    *events.SubscriptionManager
+	initService            common.EnclaveInit
 }
 
-func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, service nodetype.NodeType, sharedSecretProcessor *components.SharedSecretProcessor, rollupConsumer components.RollupConsumer, registry components.BatchRegistry, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, storage storage.Storage, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager) common.EnclaveAdmin {
+func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, service nodetype.NodeType, sharedSecretProcessor *components.SharedSecretProcessor, rollupConsumer components.RollupConsumer, registry components.BatchRegistry, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, storage storage.Storage, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, initService common.EnclaveInit) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -73,14 +74,42 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.
 		stopControl:            stopControl,
 		profiler:               prof,
 		subscriptionManager:    subscriptionManager,
+		initService:            initService,
 	}
+}
+
+func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, proof types.Receipt) common.SystemError {
+	e.mainMutex.Lock()
+	defer e.mainMutex.Unlock()
+
+	// by default all enclaves start their life as a validator
+
+	// store in the database the enclave id
+	err := e.storage.StoreNodeType(context.Background(), id, common.BackupSequencer)
+	if err != nil {
+		return responses.ToInternalError(err)
+	}
+
+	// compare the id with the current enclaveId and if they match - do something so that the current enclave behaves as a "backup sequencer"
+	// the host will specifically mark the active enclave
+	//currentEnclaveId, err := e.initService.EnclaveID(context.Background())
+	//if err != nil {
+	//	return err
+	//}
+
+	//if currentEnclaveId == id {
+	//	todo
+	//}
+
+	// todo - use the proof
+	return nil
 }
 
 func (e *enclaveAdminService) MakeActive() common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	if !e.isBackupSequencer() {
+	if !e.isBackupSequencer(context.Background()) {
 		return fmt.Errorf("only backup sequencer can become active")
 	}
 	// todo
@@ -125,7 +154,7 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *ty
 }
 
 func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {
-	if e.isActiveSequencer() {
+	if e.isActiveSequencer(ctx) {
 		e.logger.Crit("Can't submit a batch to the active sequencer")
 	}
 
@@ -174,7 +203,7 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 }
 
 func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) common.SystemError {
-	if !e.isActiveSequencer() {
+	if !e.isActiveSequencer(ctx) {
 		e.logger.Crit("Only the active sequencer can create batches")
 	}
 
@@ -192,7 +221,7 @@ func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty 
 }
 
 func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
-	if !e.isActiveSequencer() {
+	if !e.isActiveSequencer(ctx) {
 		e.logger.Crit("Only the active sequencer can create rollups")
 	}
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateRollup call ended")
@@ -426,22 +455,36 @@ func (e *enclaveAdminService) validator() nodetype.Validator {
 	return validator
 }
 
-func (e *enclaveAdminService) sequencer() nodetype.Sequencer {
-	sequencer, ok := e.service.(nodetype.Sequencer)
+func (e *enclaveAdminService) sequencer() nodetype.ActiveSequencer {
+	sequencer, ok := e.service.(nodetype.ActiveSequencer)
 	if !ok {
 		panic("enclave service is not a sequencer but sequencer was requested!")
 	}
 	return sequencer
 }
 
-func (e *enclaveAdminService) isActiveSequencer() bool {
-	return e.config.NodeType == common.ActiveSequencer
+func (e *enclaveAdminService) isActiveSequencer(ctx context.Context) bool {
+	return e.getNodeType(ctx) == common.ActiveSequencer
 }
 
-func (e *enclaveAdminService) isBackupSequencer() bool {
-	return e.config.NodeType == common.ActiveSequencer
+func (e *enclaveAdminService) isBackupSequencer(ctx context.Context) bool {
+	return e.getNodeType(ctx) == common.BackupSequencer
 }
 
-func (e *enclaveAdminService) isValidator() bool { //nolint:unused
-	return e.config.NodeType == common.Validator
+func (e *enclaveAdminService) isValidator(ctx context.Context) bool { //nolint:unused
+	return e.getNodeType(ctx) == common.Validator
+}
+
+func (e *enclaveAdminService) getNodeType(ctx context.Context) common.NodeType {
+	id, err := e.initService.EnclaveID(ctx)
+	if err != nil {
+		e.logger.Crit("Enclave service is not active", log.ErrKey, err)
+		return 0
+	}
+	_, nodeType, err := e.storage.GetEnclavePubKey(ctx, id)
+	if err != nil {
+		e.logger.Crit("could not read enclave pub key", log.ErrKey, err)
+		return 0
+	}
+	return nodeType
 }

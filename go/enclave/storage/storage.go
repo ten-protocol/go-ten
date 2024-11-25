@@ -38,9 +38,11 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-// todo - this will require a dedicated table when upgrades are implemented
+// these are the keys from the config table
 const (
+	// todo - this will require a dedicated table when upgrades are implemented
 	masterSeedCfg = "MASTER_SEED"
+	enclaveKeyCfg = "ENCLAVE_KEY"
 )
 
 // todo - this file needs splitting up based on concerns
@@ -448,37 +450,48 @@ func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash commo
 	return enclavedb.ExistsReceipt(ctx, s.db.GetSQLDB(), txHash)
 }
 
-func (s *storageImpl) FetchAttestedKey(ctx context.Context, address gethcommon.Address) (*ecdsa.PublicKey, error) {
-	defer s.logDuration("FetchAttestedKey", measure.NewStopwatch())
-	key, err := enclavedb.FetchAttKey(ctx, s.db.GetSQLDB(), address)
+// todo - cache
+func (s *storageImpl) GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*ecdsa.PublicKey, common.NodeType, error) {
+	defer s.logDuration("GetEnclavePubKey", measure.NewStopwatch())
+	key, nodeType, err := enclavedb.FetchAttestation(ctx, s.db.GetSQLDB(), enclaveId)
 	if err != nil {
-		return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", address, err)
+		return nil, 0, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", enclaveId, err)
 	}
 
 	publicKey, err := gethcrypto.DecompressPubkey(key)
 	if err != nil {
-		return nil, fmt.Errorf("could not parse key from db. Cause: %w", err)
+		return nil, 0, fmt.Errorf("could not parse key from db. Cause: %w", err)
 	}
 
-	return publicKey, nil
+	return publicKey, nodeType, nil
 }
 
-func (s *storageImpl) StoreAttestedKey(ctx context.Context, aggregator gethcommon.Address, key *ecdsa.PublicKey) error {
-	defer s.logDuration("StoreAttestedKey", measure.NewStopwatch())
+func (s *storageImpl) StoreNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) error {
+	defer s.logDuration("StoreNodeType", measure.NewStopwatch())
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.WriteAttKey(ctx, dbTx, aggregator, gethcrypto.CompressPubkey(key))
+	_, err = enclavedb.UpdateAttestation(ctx, dbTx, enclaveId, nodeType)
 	if err != nil {
 		return err
 	}
-	err = dbTx.Commit()
+	return dbTx.Commit()
+}
+
+func (s *storageImpl) StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error {
+	defer s.logDuration("StoreNewEnclave", measure.NewStopwatch())
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+	_, err = enclavedb.WriteAttestation(ctx, dbTx, enclaveId, gethcrypto.CompressPubkey(key), common.Validator)
 	if err != nil {
 		return err
 	}
-	return nil
+	return dbTx.Commit()
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*core.Batch, error) {
@@ -694,8 +707,6 @@ func (s *storageImpl) GetL1Transfers(ctx context.Context, blockHash common.L1Blo
 	return enclavedb.FetchL1Messages[common.ValueTransferEvent](ctx, s.db.GetSQLDB(), blockHash, true)
 }
 
-const enclaveKeyKey = "ek"
-
 func (s *storageImpl) StoreEnclaveKey(ctx context.Context, enclaveKey *crypto.EnclaveKey) error {
 	defer s.logDuration("StoreEnclaveKey", measure.NewStopwatch())
 	if enclaveKey == nil {
@@ -708,20 +719,16 @@ func (s *storageImpl) StoreEnclaveKey(ctx context.Context, enclaveKey *crypto.En
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.WriteConfig(ctx, dbTx, enclaveKeyKey, keyBytes)
+	_, err = enclavedb.WriteConfig(ctx, dbTx, enclaveKeyCfg, keyBytes)
 	if err != nil {
 		return err
 	}
-	err = dbTx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
+	return dbTx.Commit()
 }
 
 func (s *storageImpl) GetEnclaveKey(ctx context.Context) (*crypto.EnclaveKey, error) {
 	defer s.logDuration("GetEnclaveKey", measure.NewStopwatch())
-	keyBytes, err := enclavedb.FetchConfig(ctx, s.db.GetSQLDB(), enclaveKeyKey)
+	keyBytes, err := enclavedb.FetchConfig(ctx, s.db.GetSQLDB(), enclaveKeyCfg)
 	if err != nil {
 		return nil, err
 	}

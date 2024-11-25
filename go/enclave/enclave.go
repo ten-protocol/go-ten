@@ -116,6 +116,19 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	var service nodetype.NodeType
 	if config.NodeType == common.ActiveSequencer {
+		// Todo - this is temporary - until the host calls `AddSequencer`
+		err := storage.StoreNewEnclave(context.Background(), enclaveKey.EnclaveID(), enclaveKey.PublicKey())
+		if err != nil {
+			logger.Crit("Failed to store enclave key", log.ErrKey, err)
+			return nil
+		}
+		err = storage.StoreNodeType(context.Background(), enclaveKey.EnclaveID(), common.ActiveSequencer)
+		if err != nil {
+			logger.Crit("Failed to store node type", log.ErrKey, err)
+			return nil
+		}
+
+		// todo - next PR - update the service logic to be swappable
 		service = nodetype.NewSequencer(
 			blockProcessor,
 			batchExecutor,
@@ -182,7 +195,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	debug := debugger.New(chain, storage, chainConfig)
 	stopControl := stopcontrol.New()
 	initService := NewEnclaveInitService(config, storage, blockProcessor, logger, enclaveKey, attestationProvider)
-	adminService := NewEnclaveAdminService(config, logger, blockProcessor, service, sharedSecretProcessor, rConsumer, registry, dataEncryptionService, dataCompressionService, storage, gethEncodingService, stopControl, subscriptionManager)
+	adminService := NewEnclaveAdminService(config, logger, blockProcessor, service, sharedSecretProcessor, rConsumer, registry, dataEncryptionService, dataCompressionService, storage, gethEncodingService, stopControl, subscriptionManager, initService)
 	rpcService := NewEnclaveRPCService(rpcEncryptionManager, registry, subscriptionManager, config, debug, storage, crossChainProcessors, scb)
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKey.EnclaveID())
 	return &enclaveImpl{
@@ -288,6 +301,13 @@ func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) common.SystemError {
 		return systemError
 	}
 	return e.rpcService.Unsubscribe(id)
+}
+
+func (e *enclaveImpl) AddSequencer(id common.EnclaveID, proof types.Receipt) common.SystemError {
+	if systemError := checkStopping(e.stopControl); systemError != nil {
+		return systemError
+	}
+	return e.adminService.AddSequencer(id, proof)
 }
 
 func (e *enclaveImpl) MakeActive() common.SystemError {

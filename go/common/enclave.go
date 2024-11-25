@@ -61,6 +61,9 @@ type EnclaveInit interface {
 
 // EnclaveAdmin provides administrative functions for managing an enclave.
 type EnclaveAdmin interface {
+	// AddSequencer - called by the host when a new sequencer is added to the management contract
+	AddSequencer(id EnclaveID, proof types.Receipt) SystemError
+
 	// MakeActive - backup sequencer enclave can become active at the command of the host
 	MakeActive() SystemError
 
