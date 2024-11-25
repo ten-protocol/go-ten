@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	l1gs "github.com/ten-protocol/go-ten/testnet/launcher/l1grantsequencers"
 	"os"
+
+	l1gs "github.com/ten-protocol/go-ten/testnet/launcher/l1grantsequencers"
 )
 
 func main() {

@@ -2,6 +2,7 @@ package l1grantsequencers
 
 import (
 	"fmt"
+
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
