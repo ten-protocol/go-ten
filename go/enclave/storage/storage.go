@@ -591,42 +591,6 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	return nil
 }
 
-func (s *storageImpl) handleSyntheticTxsSendersAndReceivers(ctx context.Context, syntheticTxs core.TransactionsWithSender, dbTx *sql.Tx) ([]uint64, []*uint64, error) {
-	senders := make([]uint64, len(syntheticTxs))
-	toContracts := make([]*uint64, len(syntheticTxs))
-
-	if syntheticTxs == nil {
-		return senders, toContracts, nil
-	}
-
-	for i, syntheticTx := range syntheticTxs {
-		tx := syntheticTx.Tx
-		sender := syntheticTx.Sender
-		if sender == nil {
-			return nil, nil, errors.New("synthetic tx sender is nil")
-		}
-
-		eoaID, err := s.readOrWriteEOA(ctx, dbTx, *sender)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not insert EOA. cause: %w", err)
-		}
-		s.logger.Trace("Tx sender", "tx", tx.Hash(), "sender", sender.Hex(), "eoaId", *eoaID)
-		senders[i] = *eoaID
-
-		to := tx.To()
-		if to != nil {
-			ctr, err := s.ReadContract(ctx, *to)
-			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-				return nil, nil, fmt.Errorf("could not read contract. cause: %w", err)
-			}
-			if ctr != nil {
-				toContracts[i] = &ctr.Id
-			}
-		}
-	}
-	return senders, toContracts, nil
-}
-
 func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, transactionsWithSenders []*core.TxWithSender, dbTx *sql.Tx) ([]uint64, []*uint64, error) {
 	senders := make([]uint64, len(transactionsWithSenders))
 	toContracts := make([]*uint64, len(transactionsWithSenders))
