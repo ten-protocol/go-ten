@@ -24,8 +24,6 @@ type NodeType interface {
 	// OnL1Block - performed after the block was processed
 	OnL1Block(ctx context.Context, block *types.Header, result *components.BlockIngestionType) error
 
-	ExportCrossChainData(context.Context, uint64, uint64) (*common.ExtCrossChainBundle, error)
-
 	Close() error
 }
 

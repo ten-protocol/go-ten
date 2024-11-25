@@ -8,11 +8,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/common/gethencoding"
-	"github.com/ten-protocol/go-ten/go/common/signature"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -53,7 +51,7 @@ type sequencer struct {
 	logger gethlog.Logger
 
 	chainConfig            *params.ChainConfig
-	enclaveKey             *crypto.EnclaveKey
+	enclaveKeyService      *components.EnclaveKeyService
 	mempool                *txpool.TxPool
 	storage                storage.Storage
 	dataEncryptionService  crypto.DataEncryptionService
@@ -71,7 +69,7 @@ func NewSequencer(
 	gethEncodingService gethencoding.EncodingService,
 	logger gethlog.Logger,
 	chainConfig *params.ChainConfig,
-	enclavePrivateKey *crypto.EnclaveKey,
+	enclaveKeyService *components.EnclaveKeyService,
 	mempool *txpool.TxPool,
 	storage storage.Storage,
 	dataEncryptionService crypto.DataEncryptionService,
@@ -88,7 +86,7 @@ func NewSequencer(
 		gethEncoding:           gethEncodingService,
 		logger:                 logger,
 		chainConfig:            chainConfig,
-		enclaveKey:             enclavePrivateKey,
+		enclaveKeyService:      enclaveKeyService,
 		mempool:                mempool,
 		storage:                storage,
 		dataEncryptionService:  dataEncryptionService,
@@ -497,8 +495,7 @@ func (s *sequencer) OnL1Fork(ctx context.Context, fork *common.ChainFork) error 
 
 func (s *sequencer) signBatch(batch *core.Batch) error {
 	var err error
-	h := batch.Hash()
-	batch.Header.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
+	batch.Header.Signature, err = s.enclaveKeyService.Sign(batch.Hash())
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
@@ -507,18 +504,7 @@ func (s *sequencer) signBatch(batch *core.Batch) error {
 
 func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
 	var err error
-	h := rollup.Header.Hash()
-	rollup.Header.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
-	if err != nil {
-		return fmt.Errorf("could not sign batch. Cause: %w", err)
-	}
-	return nil
-}
-
-func (s *sequencer) signCrossChainBundle(bundle *common.ExtCrossChainBundle) error {
-	var err error
-	h := bundle.HashPacked()
-	bundle.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
+	rollup.Header.Signature, err = s.enclaveKeyService.Sign(rollup.Header.Hash())
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
@@ -532,19 +518,4 @@ func (s *sequencer) OnL1Block(ctx context.Context, block *types.Header, result *
 
 func (s *sequencer) Close() error {
 	return s.mempool.Close()
-}
-
-func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
-	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "exportCrossChainData()", "fromSeqNo", fromSeqNo, "toSeqNo", toSeqNo)
-	bundle, err := exportCrossChainData(ctx, s.storage, fromSeqNo, toSeqNo)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.signCrossChainBundle(bundle)
-	if err != nil {
-		return nil, err
-	}
-
-	return bundle, nil
 }

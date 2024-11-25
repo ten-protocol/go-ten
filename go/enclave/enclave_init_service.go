@@ -29,17 +29,17 @@ type enclaveInitService struct {
 	storage             storage.Storage
 	l1BlockProcessor    components.L1BlockProcessor
 	logger              gethlog.Logger
-	enclaveKey          *crypto.EnclaveKey             // the enclave's private key (used to identify the enclave and sign messages)
+	enclaveKeyService   *components.EnclaveKeyService  // the enclave's private key (used to identify the enclave and sign messages)
 	attestationProvider components.AttestationProvider // interface for producing attestation reports and verifying them
 }
 
-func NewEnclaveInitService(config *enclaveconfig.EnclaveConfig, storage storage.Storage, l1BlockProcessor components.L1BlockProcessor, logger gethlog.Logger, enclaveKey *crypto.EnclaveKey, attestationProvider components.AttestationProvider) common.EnclaveInit {
+func NewEnclaveInitService(config *enclaveconfig.EnclaveConfig, storage storage.Storage, l1BlockProcessor components.L1BlockProcessor, logger gethlog.Logger, enclaveKeyService *components.EnclaveKeyService, attestationProvider components.AttestationProvider) common.EnclaveInit {
 	return &enclaveInitService{
 		config:              config,
 		storage:             storage,
 		l1BlockProcessor:    l1BlockProcessor,
 		logger:              logger,
-		enclaveKey:          enclaveKey,
+		enclaveKeyService:   enclaveKeyService,
 		attestationProvider: attestationProvider,
 	}
 }
@@ -71,15 +71,15 @@ func (e *enclaveInitService) Status(ctx context.Context) (common.Status, common.
 	} else {
 		l2HeadSeqNo = currSeqNo
 	}
-	enclaveID := e.enclaveKey.EnclaveID()
+	enclaveID := e.enclaveKeyService.EnclaveID()
 	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadSeqNo, EnclaveID: enclaveID}, nil
 }
 
 func (e *enclaveInitService) Attestation(ctx context.Context) (*common.AttestationReport, common.SystemError) {
-	if e.enclaveKey == nil {
+	if e.enclaveKeyService.PublicKey() == nil {
 		return nil, responses.ToInternalError(fmt.Errorf("public key not initialized, we can't produce the attestation report"))
 	}
-	report, err := e.attestationProvider.GetReport(ctx, e.enclaveKey.PublicKeyBytes(), e.enclaveKey.EnclaveID(), e.config.HostAddress)
+	report, err := e.attestationProvider.GetReport(ctx, e.enclaveKeyService.PublicKeyBytes(), e.enclaveKeyService.EnclaveID(), e.config.HostAddress)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not produce remote report. Cause %w", err))
 	}
@@ -93,7 +93,7 @@ func (e *enclaveInitService) GenerateSecret(ctx context.Context) (common.Encrypt
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not store secret. Cause: %w", err))
 	}
-	encSec, err := crypto.EncryptSecret(e.enclaveKey.PublicKeyBytes(), secret, e.logger)
+	encSec, err := crypto.EncryptSecret(e.enclaveKeyService.PublicKeyBytes(), secret, e.logger)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("failed to encrypt secret. Cause: %w", err))
 	}
@@ -102,7 +102,7 @@ func (e *enclaveInitService) GenerateSecret(ctx context.Context) (common.Encrypt
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
 func (e *enclaveInitService) InitEnclave(ctx context.Context, s common.EncryptedSharedEnclaveSecret) common.SystemError {
-	secret, err := crypto.DecryptSecret(s, e.enclaveKey.PrivateKey())
+	secret, err := e.enclaveKeyService.Decrypt(s)
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
@@ -115,5 +115,5 @@ func (e *enclaveInitService) InitEnclave(ctx context.Context, s common.Encrypted
 }
 
 func (e *enclaveInitService) EnclaveID(context.Context) (common.EnclaveID, common.SystemError) {
-	return e.enclaveKey.EnclaveID(), nil
+	return e.enclaveKeyService.EnclaveID(), nil
 }
