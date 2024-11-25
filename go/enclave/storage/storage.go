@@ -450,29 +450,44 @@ func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash commo
 	return enclavedb.ExistsReceipt(ctx, s.db.GetSQLDB(), txHash)
 }
 
-func (s *storageImpl) FetchAttestedKey(ctx context.Context, enclaveId common.EnclaveID) (*ecdsa.PublicKey, bool, error) {
-	defer s.logDuration("FetchAttestedKey", measure.NewStopwatch())
-	key, isSeq, err := enclavedb.FetchAttestation(ctx, s.db.GetSQLDB(), enclaveId)
+// todo - cache
+func (s *storageImpl) GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*ecdsa.PublicKey, common.NodeType, error) {
+	defer s.logDuration("GetEnclavePubKey", measure.NewStopwatch())
+	key, nodeType, err := enclavedb.FetchAttestation(ctx, s.db.GetSQLDB(), enclaveId)
 	if err != nil {
-		return nil, false, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", enclaveId, err)
+		return nil, 0, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", enclaveId, err)
 	}
 
 	publicKey, err := gethcrypto.DecompressPubkey(key)
 	if err != nil {
-		return nil, false, fmt.Errorf("could not parse key from db. Cause: %w", err)
+		return nil, 0, fmt.Errorf("could not parse key from db. Cause: %w", err)
 	}
 
-	return publicKey, isSeq, nil
+	return publicKey, nodeType, nil
 }
 
-func (s *storageImpl) StoreAttestedKey(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error {
-	defer s.logDuration("StoreAttestedKey", measure.NewStopwatch())
+func (s *storageImpl) StoreNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) error {
+	defer s.logDuration("StoreNodeType", measure.NewStopwatch())
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.WriteAttestation(ctx, dbTx, enclaveId, gethcrypto.CompressPubkey(key), false)
+	_, err = enclavedb.UpdateAttestation(ctx, dbTx, enclaveId, nodeType)
+	if err != nil {
+		return err
+	}
+	return dbTx.Commit()
+}
+
+func (s *storageImpl) StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error {
+	defer s.logDuration("StoreNewEnclave", measure.NewStopwatch())
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+	_, err = enclavedb.WriteAttestation(ctx, dbTx, enclaveId, gethcrypto.CompressPubkey(key), common.Validator)
 	if err != nil {
 		return err
 	}

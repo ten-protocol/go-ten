@@ -32,7 +32,7 @@ func (sigChecker *SignatureValidator) CheckSequencerSignature(_ gethcommon.Hash,
 	// This must be re-enabled once sequencer enclaveIDs are available from the management contract
 
 	//if sigChecker.attestedKey == nil {
-	//	attestedKey, err := sigChecker.storage.FetchAttestedKey(sigChecker.SequencerID)
+	//	attestedKey, err := sigChecker.storage.GetEnclavePubKey(sigChecker.SequencerID)
 	//	if err != nil {
 	//		return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", sigChecker.SequencerID, err)
 	//	}

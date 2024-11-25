@@ -103,10 +103,9 @@ type TransactionStorage interface {
 }
 
 type AttestationStorage interface {
-	// FetchAttestedKey returns the public key of an attested node
-	FetchAttestedKey(ctx context.Context, enclaveId common.EnclaveID) (*ecdsa.PublicKey, bool, error)
-	// StoreAttestedKey - store the public key of an attested node
-	StoreAttestedKey(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error
+	GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*ecdsa.PublicKey, common.NodeType, error)
+	StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error
+	StoreNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) error
 }
 
 type CrossChainMessagesStorage interface {

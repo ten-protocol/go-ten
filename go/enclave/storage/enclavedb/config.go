@@ -16,9 +16,9 @@ const (
 )
 
 const (
-	attInsert = "insert into attestation (enclave_id, pub_key, is_sequencer)  values (?,?,?)"
-	attSelect = "select pub_key, is_sequencer from attestation where enclave_id=?"
-	attUpdate = "update attestation set is_sequencer=? where enclave_id=?"
+	attInsert = "insert into attestation (enclave_id, pub_key, node_type)  values (?,?,?)"
+	attSelect = "select pub_key, node_type from attestation where enclave_id=?"
+	attUpdate = "update attestation set node_type=? where enclave_id=?"
 )
 
 func WriteConfigToTx(ctx context.Context, dbtx *sql.Tx, key string, value any) (sql.Result, error) {
@@ -33,27 +33,27 @@ func FetchConfig(ctx context.Context, db *sql.DB, key string) ([]byte, error) {
 	return readSingleRow(ctx, db, cfgSelect, key)
 }
 
-func WriteAttestation(ctx context.Context, db *sql.Tx, enclaveId common.EnclaveID, key []byte, isSequencer bool) (sql.Result, error) {
-	return db.ExecContext(ctx, attInsert, enclaveId.Bytes(), key, isSequencer)
+func WriteAttestation(ctx context.Context, db *sql.Tx, enclaveId common.EnclaveID, key []byte, nodeType common.NodeType) (sql.Result, error) {
+	return db.ExecContext(ctx, attInsert, enclaveId.Bytes(), key, nodeType)
 }
 
-func UpdateAttestation(ctx context.Context, db *sql.Tx, enclaveId common.EnclaveID, isSequencer bool) (sql.Result, error) {
-	return db.ExecContext(ctx, attUpdate, enclaveId.Bytes(), isSequencer)
+func UpdateAttestation(ctx context.Context, db *sql.Tx, enclaveId common.EnclaveID, nodeType common.NodeType) (sql.Result, error) {
+	return db.ExecContext(ctx, attUpdate, nodeType, enclaveId.Bytes())
 }
 
-func FetchAttestation(ctx context.Context, db *sql.DB, enclaveId common.EnclaveID) ([]byte, bool, error) {
+func FetchAttestation(ctx context.Context, db *sql.DB, enclaveId common.EnclaveID) ([]byte, common.NodeType, error) {
 	var pubKey []byte
-	var isSequencer bool
+	var nodeType common.NodeType
 
-	err := db.QueryRowContext(ctx, attSelect, enclaveId.Bytes()).Scan(&pubKey, &isSequencer)
+	err := db.QueryRowContext(ctx, attSelect, enclaveId.Bytes()).Scan(&pubKey, &nodeType)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
-			return nil, false, errutil.ErrNotFound
+			return nil, 0, errutil.ErrNotFound
 		}
-		return nil, false, err
+		return nil, 0, err
 	}
-	return pubKey, isSequencer, nil
+	return pubKey, nodeType, nil
 }
 
 func readSingleRow(ctx context.Context, db *sql.DB, query string, v any) ([]byte, error) {
