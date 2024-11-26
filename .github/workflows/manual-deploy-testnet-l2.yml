@@ -311,7 +311,7 @@ jobs:
             && docker run -d --name prometheus \
               --network node_network \
               -p 9090:9090 \
-              -v /home/obscuro/metrics:/etc/prometheus/prometheus.yml \
+              -v /home/obscuro/metrics/prometheus.yaml:/etc/prometheus/prometheus.yml \
               -v prometheus-data:/prometheus \
               prom/prometheus:latest \
               --config.file=/etc/prometheus/prometheus.yml \
