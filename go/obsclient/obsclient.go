@@ -1,7 +1,7 @@
 package obsclient
 
 import (
-	"errors"
+	"fmt"
 	"math/big"
 	"strings"
 
@@ -119,15 +119,23 @@ func (oc *ObsClient) GetTransaction(hash gethcommon.Hash) (*common.PublicTransac
 }
 
 // Health returns the Health status of the node.
-func (oc *ObsClient) Health() (*hostcommon.HealthCheck, error) {
-	var healthy *hostcommon.HealthCheck
-	err := oc.rpcClient.Call(&healthy, rpc.Health)
-	if err != nil {
-		return nil, err
+func (oc *ObsClient) Health() (hostcommon.HealthCheck, error) {
+	var healthy hostcommon.HealthCheck
+
+	if err := oc.rpcClient.Call(&healthy, rpc.Health); err != nil {
+		return hostcommon.HealthCheck{
+			OverallHealth: false,
+			Errors:        []string{fmt.Sprintf("RPC call failed: %v", err)},
+		}, err
 	}
+
 	if !healthy.OverallHealth {
-		return nil, errors.New(strings.Join(healthy.Errors, ", "))
+		if len(healthy.Errors) == 0 {
+			healthy.Errors = []string{"Node reported unhealthy state without specific errors"}
+		}
+		return healthy, fmt.Errorf("node unhealthy: %s", strings.Join(healthy.Errors, ", "))
 	}
+
 	return healthy, nil
 }
 
