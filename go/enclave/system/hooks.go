@@ -18,7 +18,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
-	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 var (
@@ -29,12 +28,12 @@ var (
 
 type SystemContractCallbacks interface {
 	// Getters
-	GetOwner() gethcommon.Address
 	PublicCallbackHandler() *gethcommon.Address
 	TransactionPostProcessor() *gethcommon.Address
+	SystemContractsUpgrader() *gethcommon.Address
 
 	// Initialization
-	Initialize(batch *core.Batch, receipts types.Receipts, msgBusManager SystemContractsInitializable) error
+	Initialize(batch *core.Batch, receipts types.Receipt, msgBusManager SystemContractsInitializable) error
 	Load() error
 
 	// Usage
@@ -49,29 +48,29 @@ type SystemContractsInitializable interface {
 
 type systemContractCallbacks struct {
 	transactionsPostProcessorAddress *gethcommon.Address
-	ownerWallet                      wallet.Wallet
 	storage                          storage.Storage
 	systemAddresses                  SystemContractAddresses
+	systemContractsUpgrader          *gethcommon.Address
 
 	logger gethlog.Logger
 }
 
-func NewSystemContractCallbacks(ownerWallet wallet.Wallet, storage storage.Storage, logger gethlog.Logger) SystemContractCallbacks {
+func NewSystemContractCallbacks(storage storage.Storage, upgrader *gethcommon.Address, logger gethlog.Logger) SystemContractCallbacks {
 	return &systemContractCallbacks{
 		transactionsPostProcessorAddress: nil,
-		ownerWallet:                      ownerWallet,
 		logger:                           logger,
 		storage:                          storage,
 		systemAddresses:                  make(SystemContractAddresses),
+		systemContractsUpgrader:          upgrader,
 	}
+}
+
+func (s *systemContractCallbacks) SystemContractsUpgrader() *gethcommon.Address {
+	return s.systemContractsUpgrader
 }
 
 func (s *systemContractCallbacks) TransactionPostProcessor() *gethcommon.Address {
 	return s.transactionsPostProcessorAddress
-}
-
-func (s *systemContractCallbacks) GetOwner() gethcommon.Address {
-	return s.ownerWallet.Address()
 }
 
 func (s *systemContractCallbacks) PublicCallbackHandler() *gethcommon.Address {
@@ -94,12 +93,13 @@ func (s *systemContractCallbacks) Load() error {
 		return fmt.Errorf("failed fetching batch %w", err)
 	}
 
-	if len(batch.Transactions) < 1 {
-		s.logger.Error("Load: Genesis batch does not have enough transactions", "batchSeqNo", batchSeqNo, "transactionCount", len(batch.Transactions))
-		return fmt.Errorf("genesis batch does not have enough transactions")
+	tx, err := SystemDeployerInitTransaction(s.logger, *s.systemContractsUpgrader)
+	if err != nil {
+		s.logger.Error("Load: Failed creating system deployer init transaction", "error", err)
+		return fmt.Errorf("failed creating system deployer init transaction %w", err)
 	}
 
-	receipt, err := s.storage.GetFilteredInternalReceipt(context.Background(), batch.Transactions[0].Hash(), nil, true)
+	receipt, err := s.storage.GetFilteredInternalReceipt(context.Background(), tx.Hash(), nil, true)
 	if err != nil {
 		s.logger.Error("Load: Failed fetching receipt", "transactionHash", batch.Transactions[0].Hash().Hex(), "error", err)
 		return fmt.Errorf("failed fetching receipt %w", err)
@@ -125,23 +125,17 @@ func (s *systemContractCallbacks) initializeRequiredAddresses(addresses SystemCo
 	return nil
 }
 
-func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipts types.Receipts, msgBusManager SystemContractsInitializable) error {
+func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipt types.Receipt, msgBusManager SystemContractsInitializable) error {
 	s.logger.Info("Initialize: Starting initialization of system contracts", "batchSeqNo", batch.SeqNo())
 	if batch.SeqNo().Uint64() != 2 {
 		s.logger.Error("Initialize: Batch is not genesis", "batchSeqNo", batch.SeqNo)
 		return fmt.Errorf("batch is not genesis")
 	}
 
-	if len(receipts) < 1 {
-		s.logger.Error("Initialize: Genesis batch does not have enough receipts", "expected", 1, "got", len(receipts))
-		return fmt.Errorf("genesis batch does not have enough receipts")
-	}
-
-	receiptIndex := 0
-	s.logger.Debug("Initialize: Deriving addresses from receipt", "receiptIndex", receiptIndex, "transactionHash", receipts[receiptIndex].TxHash.Hex())
-	addresses, err := DeriveAddresses(receipts[receiptIndex])
+	s.logger.Debug("Initialize: Deriving addresses from receipt", "transactionHash", receipt.TxHash.Hex())
+	addresses, err := DeriveAddresses(&receipt)
 	if err != nil {
-		s.logger.Error("Initialize: Failed deriving addresses", "error", err, "receiptHash", receipts[receiptIndex].TxHash.Hex())
+		s.logger.Error("Initialize: Failed deriving addresses", "error", err, "receiptHash", receipt.TxHash.Hex())
 		return fmt.Errorf("failed deriving addresses %w", err)
 	}
 

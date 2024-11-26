@@ -91,9 +91,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
-
-	systemContractsWallet := system.GetPlaceholderWallet(chainConfig.ChainID, logger)
-	scb := system.NewSystemContractCallbacks(systemContractsWallet, storage, logger)
+	scb := system.NewSystemContractCallbacks(storage, &config.SystemContractOwner, logger)
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)

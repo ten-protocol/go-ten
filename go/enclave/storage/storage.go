@@ -577,12 +577,21 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 
 	// only insert transactions if this is the first time a batch of this height is created
 	if !existsHeight {
-		senders, toContracts, err := s.handleTxSendersAndReceivers(ctx, batch, dbTx)
+		transactionsWithSenders := make([]*core.TxWithSender, len(batch.Transactions))
+		for i, tx := range batch.Transactions {
+			sender, err := core.GetExternalTxSigner(tx)
+			if err != nil {
+				return fmt.Errorf("could not get tx sender. Cause: %w", err)
+			}
+			transactionsWithSenders[i] = &core.TxWithSender{Tx: tx, Sender: &sender}
+		}
+
+		senders, toContracts, err := s.handleTxSendersAndReceivers(ctx, transactionsWithSenders, dbTx)
 		if err != nil {
 			return err
 		}
 
-		if err := enclavedb.WriteTransactions(ctx, dbTx, batch, senders, toContracts); err != nil {
+		if err := enclavedb.WriteTransactions(ctx, dbTx, transactionsWithSenders, batch.Header.Number.Uint64(), false, senders, toContracts); err != nil {
 			return fmt.Errorf("could not write transactions. Cause: %w", err)
 		}
 	}
@@ -595,23 +604,19 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	return nil
 }
 
-func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *core.Batch, dbTx *sql.Tx) ([]uint64, []*uint64, error) {
-	senders := make([]uint64, len(batch.Transactions))
-	toContracts := make([]*uint64, len(batch.Transactions))
+func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, transactionsWithSenders []*core.TxWithSender, dbTx *sql.Tx) ([]uint64, []*uint64, error) {
+	senders := make([]uint64, len(transactionsWithSenders))
+	toContracts := make([]*uint64, len(transactionsWithSenders))
 	// insert the tx signers as externally owned accounts
-	for i, tx := range batch.Transactions {
-		sender, err := core.GetExternalTxSigner(tx)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not read tx sender. Cause: %w", err)
-		}
-		eoaID, err := s.readOrWriteEOA(ctx, dbTx, sender)
+	for i, tx := range transactionsWithSenders {
+		eoaID, err := s.readOrWriteEOA(ctx, dbTx, *tx.Sender)
 		if err != nil {
 			return nil, nil, fmt.Errorf("could not insert EOA. cause: %w", err)
 		}
-		s.logger.Trace("Tx sender", "tx", tx.Hash(), "sender", sender.Hex(), "eoaId", *eoaID)
+		s.logger.Trace("Tx sender", "tx", tx.Tx.Hash(), "sender", tx.Sender.Hex(), "eoaId", *eoaID)
 		senders[i] = *eoaID
 
-		to := tx.To()
+		to := tx.Tx.To()
 		if to != nil {
 			ctr, err := s.ReadContract(ctx, *to)
 			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -625,7 +630,7 @@ func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, batch *co
 	return senders, toContracts, nil
 }
 
-func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results []*core.TxExecResult) error {
+func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results core.TxExecResults) error {
 	defer s.logDuration("StoreExecutedBatch", measure.NewStopwatch())
 	executed, err := enclavedb.BatchWasExecuted(ctx, s.db.GetSQLDB(), batch.Hash())
 	if err != nil {
@@ -646,6 +651,17 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 
 	if err := enclavedb.MarkBatchExecuted(ctx, dbTx, batch.SequencerOrderNo); err != nil {
 		return fmt.Errorf("could not set the executed flag. Cause: %w", err)
+	}
+
+	transactionsWithSenders := results.GetSynthetic().ToTransactionsWithSenders()
+
+	senders, toContracts, err := s.handleTxSendersAndReceivers(ctx, transactionsWithSenders, dbTx)
+	if err != nil {
+		return fmt.Errorf("could not handle synthetic txs senders and receivers. Cause: %w", err)
+	}
+
+	if err := enclavedb.WriteTransactions(ctx, dbTx, transactionsWithSenders, batch.Number.Uint64(), true, senders, toContracts); err != nil {
+		return fmt.Errorf("could not write synthetic txs. Cause: %w", err)
 	}
 
 	for _, txExecResult := range results {
