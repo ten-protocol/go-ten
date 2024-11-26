@@ -13,7 +13,7 @@
 
 ## Proposed Solution
 
-Create a central registry of the L1 events we care about:
+Loop through transactions to find events we care about in the guardian and submit these with the block to the enclave:
 
 * Rollup
 * Secret request
