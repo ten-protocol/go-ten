@@ -29,13 +29,13 @@ const (
 
 var encryptionKeyFile = filepath.Join(dataDir, "encryption-key.json")
 
-// KeyExchangeRequest represents the structure of the data sent from REQ to OG
+// KeyExchangeRequest represents the structure of the data sent from KeyRequester to KeyProvider
 type KeyExchangeRequest struct {
 	PublicKey   []byte `json:"public_key"`
 	Attestation []byte `json:"attestation"`
 }
 
-// KeyExchangeResponse represents the structure of the data sent from OG to REQ
+// KeyExchangeResponse represents the structure of the data sent from KeyProvider to KeyRequester
 type KeyExchangeResponse struct {
 	EncryptedKey string `json:"encrypted_key"` // Base64 encoded encrypted encryption key
 }
@@ -44,7 +44,7 @@ type KeyExchangeResponse struct {
 // 1.) If we use sqlite database we don't need to do anything since sqlite does not need encryption and is usually running in dev environments / for testing
 // 2.) We need to check if the key is already sealed and unseal it if so
 // 3.) If there is a URL to exchange the key with another enclave we need to get the key from there and seal it on this enclave
-// III) If the key is not sealed and we don't have the URL to exchange the key we need to generate a new one and seal it
+// 4.) If the key is not sealed and we don't have the URL to exchange the key we need to generate a new one and seal it
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
 	// 1.) check if we are using sqlite database and no encryption key needed
 	if config.DBType == "sqlite" {
@@ -69,7 +69,7 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	if config.KeyExchangeURL != "" {
 		encryptionKey, err = HandleKeyExchange(config, logger)
 		if err != nil {
-			logger.Warn("unable to exchange key", log.ErrKey, err)
+			logger.Crit("unable to exchange key", log.ErrKey, err)
 		} else {
 			logger.Info("successfully exchanged key with another enclave")
 		}
@@ -129,21 +129,21 @@ func trySealKey(key []byte, keyPath string, isEnclave bool) error {
 	return nil
 }
 
-// HandleKeyExchange handles the key exchange process from REQ side.
+// HandleKeyExchange handles the key exchange process from KeyRequester side.
 func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, error) {
 	// Step 1: Generate RSA key pair
-	privkey, err := GenerateKeyPair(RSAKeySize) // Using 2048-bit RSA key
+	privkey, err := GenerateKeyPair(RSAKeySize)
 	if err != nil {
-		logger.Error("REQ: Unable to generate RSA key pair", "error", err)
+		logger.Error("KeyRequester: Unable to generate RSA key pair", "error", err)
 		return nil, fmt.Errorf("unable to generate RSA key pair: %w", err)
 	}
 	pubkey := &privkey.PublicKey
-	logger.Info("REQ: Generated RSA key pair for key exchange")
+	logger.Info("KeyRequester: Generated RSA key pair for key exchange")
 
 	// Step 2: Serialize and encode the public key (needed for sending it over the network)
 	serializedPubKey, err := SerializePublicKey(pubkey)
 	if err != nil {
-		logger.Error("REQ: Failed to serialize public key", "error", err)
+		logger.Error("KeyRequester: Failed to serialize public key", "error", err)
 		return nil, fmt.Errorf("failed to serialize public key: %w", err)
 	}
 
@@ -152,7 +152,7 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	pubKeyHash := sha256.Sum256(serializedPubKey)
 	attestationReport, err := GetReport(pubKeyHash[:])
 	if err != nil {
-		logger.Error("REQ: Failed to get attestation report", "error", err)
+		logger.Error("KeyRequester: Failed to get attestation report", "error", err)
 		return nil, fmt.Errorf("failed to get attestation report: %w", err)
 	}
 
@@ -163,62 +163,62 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 6: Create the message to send (PublicKey and Attestation)
-	messageREQ := KeyExchangeRequest{
+	messageRequester := KeyExchangeRequest{
 		PublicKey:   serializedPubKey,
 		Attestation: marshalledAttestation,
 	}
 
 	// Step 7: Serialize the message to JSON for transmission
-	messageBytesREQ, err := json.Marshal(messageREQ)
+	messageBytesRequester, err := json.Marshal(messageRequester)
 	if err != nil {
-		logger.Error("REQ: Failed to serialize message", "error", err)
+		logger.Error("KeyRequester: Failed to serialize message", "error", err)
 		return nil, fmt.Errorf("failed to serialize message: %w", err)
 	}
 
-	// Step 8: Send the message to OG via HTTP POST
-	resp, err := http.Post(config.KeyExchangeURL+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesREQ))
+	// Step 8: Send the message to KeyProvider via HTTP POST
+	resp, err := http.Post(config.KeyExchangeURL+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
 	if err != nil {
-		logger.Error("REQ: Failed to send message to OG", "error", err)
-		return nil, fmt.Errorf("failed to send message to OG: %w", err)
+		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err)
+		return nil, fmt.Errorf("failed to send message to KeyProvider: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Step 9: Read the response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logger.Error("REQ: Failed to read response body from OG", "error", err)
-		return nil, fmt.Errorf("failed to read response body from OG: %w", err)
+		logger.Error("KeyRequester: Failed to read response body from KeyProvider", "error", err)
+		return nil, fmt.Errorf("failed to read response body from KeyProvider: %w", err)
 	}
 
 	// Check the HTTP response status
 	if resp.StatusCode != http.StatusOK {
-		logger.Error("REQ: Received non-OK response from OG", "status", resp.Status, "body", string(bodyBytes))
-		return nil, fmt.Errorf("received non-OK response from OG: %s", resp.Status)
+		logger.Error("KeyRequester: Received non-OK response from KeyProvider", "status", resp.Status, "body", string(bodyBytes))
+		return nil, fmt.Errorf("received non-OK response from KeyProvider: %s", resp.Status)
 	}
 
 	// Step 10: Deserialize the received message
-	var receivedMessageREQ KeyExchangeResponse
-	err = json.Unmarshal(bodyBytes, &receivedMessageREQ)
+	var receivedMessageRequester KeyExchangeResponse
+	err = json.Unmarshal(bodyBytes, &receivedMessageRequester)
 	if err != nil {
-		logger.Error("REQ: Failed to deserialize received message", "error", err)
+		logger.Error("KeyRequester: Failed to deserialize received message", "error", err)
 		return nil, fmt.Errorf("failed to deserialize received message: %w", err)
 	}
 
 	// Step 11: Extract and decode the encrypted encryption key from Base64
-	encryptedKeyBytesREQ, err := DecodeBase64(receivedMessageREQ.EncryptedKey)
+	encryptedKeyBytesRequester, err := DecodeBase64(receivedMessageRequester.EncryptedKey)
 	if err != nil {
-		logger.Error("REQ: Failed to decode encrypted encryption key", "error", err)
+		logger.Error("KeyRequester: Failed to decode encrypted encryption key", "error", err)
 		return nil, fmt.Errorf("failed to decode encrypted encryption key: %w", err)
 	}
 
-	// Step 12: Decrypt the encryption key using REQ's private key
-	decryptedKeyREQ, err := DecryptWithPrivateKey(encryptedKeyBytesREQ, privkey)
+	// Step 12: Decrypt the encryption key using KeyRequester's private key
+	decryptedKeyRequester, err := DecryptWithPrivateKey(encryptedKeyBytesRequester, privkey)
 	if err != nil {
-		logger.Error("REQ: Decryption failed", "error", err)
+		logger.Error("KeyRequester: Decryption failed", "error", err)
 		return nil, fmt.Errorf("decryption failed: %w", err)
 	}
 
-	return decryptedKeyREQ, nil
+	return decryptedKeyRequester, nil
 }
 
 // GetReport returns the attestation report for the given public key

@@ -673,7 +673,7 @@ func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {
 		walletExt.Logger().Error("OG: Public keys do not match")
 	}
 
-	// Step 5Encrypt the public key using the received public key
+	// Step 5 Encrypt the encryption key using the received public key
 	encryptedKeyOG, err := keymanager.EncryptWithPublicKey(walletExt.Storage.GetEncryptionKey(), receivedPubKey)
 	if err != nil {
 		walletExt.Logger().Error("OG: Encryption failed", log.ErrKey, err)
