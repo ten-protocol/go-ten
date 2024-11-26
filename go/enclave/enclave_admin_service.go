@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
 	"time"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -44,10 +46,10 @@ type enclaveAdminService struct {
 	stopControl            *stopcontrol.StopControl
 	profiler               *profiler.Profiler
 	subscriptionManager    *events.SubscriptionManager
-	initService            common.EnclaveInit
+	enclaveKeyService      *components.EnclaveKeyService
 }
 
-func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, service nodetype.NodeType, sharedSecretProcessor *components.SharedSecretProcessor, rollupConsumer components.RollupConsumer, registry components.BatchRegistry, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, storage storage.Storage, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, initService common.EnclaveInit) common.EnclaveAdmin {
+func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, service nodetype.NodeType, sharedSecretProcessor *components.SharedSecretProcessor, rollupConsumer components.RollupConsumer, registry components.BatchRegistry, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, storage storage.Storage, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *components.EnclaveKeyService) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -74,7 +76,7 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.
 		stopControl:            stopControl,
 		profiler:               prof,
 		subscriptionManager:    subscriptionManager,
-		initService:            initService,
+		enclaveKeyService:      enclaveKeyService,
 	}
 }
 
@@ -242,7 +244,18 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 }
 
 func (e *enclaveAdminService) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
-	return e.service.ExportCrossChainData(ctx, fromSeqNo, toSeqNo)
+	bundle, err := exportCrossChainData(ctx, e.storage, fromSeqNo, toSeqNo)
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := e.enclaveKeyService.Sign(bundle.HashPacked())
+	if err != nil {
+		return nil, err
+	}
+
+	bundle.Signature = sig
+	return bundle, nil
 }
 
 func (e *enclaveAdminService) GetBatch(ctx context.Context, hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
@@ -476,15 +489,51 @@ func (e *enclaveAdminService) isValidator(ctx context.Context) bool { //nolint:u
 }
 
 func (e *enclaveAdminService) getNodeType(ctx context.Context) common.NodeType {
-	id, err := e.initService.EnclaveID(ctx)
-	if err != nil {
-		e.logger.Crit("Enclave service is not active", log.ErrKey, err)
-		return 0
-	}
+	id := e.enclaveKeyService.EnclaveID()
 	_, nodeType, err := e.storage.GetEnclavePubKey(ctx, id)
 	if err != nil {
 		e.logger.Crit("could not read enclave pub key", log.ErrKey, err)
 		return 0
 	}
 	return nodeType
+}
+
+func exportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
+	canonicalBatches, err := storage.FetchCanonicalBatchesBetween((ctx), fromSeqNo, toSeqNo)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(canonicalBatches) == 0 {
+		return nil, errutil.ErrCrossChainBundleNoBatches
+	}
+
+	// todo - siliev - all those fetches need to be atomic
+	header, err := storage.FetchHeadBatchHeader(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	blockHash := header.L1Proof
+	batchHash := canonicalBatches[len(canonicalBatches)-1].Hash()
+
+	block, err := storage.FetchBlock(ctx, blockHash)
+	if err != nil {
+		return nil, err
+	}
+
+	crossChainHashes := make([][]byte, 0)
+	for _, batch := range canonicalBatches {
+		if batch.CrossChainRoot != gethcommon.BigToHash(gethcommon.Big0) {
+			crossChainHashes = append(crossChainHashes, batch.CrossChainRoot.Bytes())
+		}
+	}
+
+	bundle := &common.ExtCrossChainBundle{
+		LastBatchHash:        batchHash, // unused for now.
+		L1BlockHash:          block.Hash(),
+		L1BlockNum:           big.NewInt(0).Set(block.Number),
+		CrossChainRootHashes: crossChainHashes,
+	} // todo: check fromSeqNo
+	return bundle, nil
 }

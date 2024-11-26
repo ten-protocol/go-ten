@@ -78,9 +78,10 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 		attestationProvider = &components.DummyAttestationProvider{}
 	}
 
+	enclaveKeyService := components.NewEnclaveKeyService(storage, logger)
 	// attempt to fetch the enclave key from the database
 	// the enclave key is part of the attestation and identifies the current enclave
-	enclaveKey, err := loadOrCreateEnclaveKey(storage, logger)
+	err := enclaveKeyService.LoadOrCreateEnclaveKey()
 	if err != nil {
 		logger.Crit("Failed to load or create enclave key", "err", err)
 	}
@@ -99,13 +100,13 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	registry := components.NewBatchRegistry(storage, logger)
 	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, scb, logger)
 	sigVerifier, err := components.NewSignatureValidator(storage)
-	rProducer := components.NewRollupProducer(enclaveKey.EnclaveID(), storage, registry, logger)
+	rProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
 	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
 	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
-	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKey.EnclaveID(), storage, logger)
+	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, logger)
 
 	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, *config, logger)
 	// todo  - mempool for backup sequencer needs to store all txs
@@ -117,12 +118,12 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	var service nodetype.NodeType
 	if config.NodeType == common.ActiveSequencer {
 		// Todo - this is temporary - until the host calls `AddSequencer`
-		err := storage.StoreNewEnclave(context.Background(), enclaveKey.EnclaveID(), enclaveKey.PublicKey())
+		err := storage.StoreNewEnclave(context.Background(), enclaveKeyService.EnclaveID(), enclaveKeyService.PublicKey())
 		if err != nil {
 			logger.Crit("Failed to store enclave key", log.ErrKey, err)
 			return nil
 		}
-		err = storage.StoreNodeType(context.Background(), enclaveKey.EnclaveID(), common.ActiveSequencer)
+		err = storage.StoreNodeType(context.Background(), enclaveKeyService.EnclaveID(), common.ActiveSequencer)
 		if err != nil {
 			logger.Crit("Failed to store node type", log.ErrKey, err)
 			return nil
@@ -138,7 +139,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 			gethEncodingService,
 			logger,
 			chainConfig,
-			enclaveKey,
+			enclaveKeyService,
 			mempool,
 			storage,
 			dataEncryptionService,
@@ -161,7 +162,6 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 			storage,
 			sigVerifier,
 			mempool,
-			enclaveKey,
 			logger,
 		)
 	}
@@ -194,38 +194,16 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	// TODO ensure debug is allowed/disallowed
 	debug := debugger.New(chain, storage, chainConfig)
 	stopControl := stopcontrol.New()
-	initService := NewEnclaveInitService(config, storage, blockProcessor, logger, enclaveKey, attestationProvider)
-	adminService := NewEnclaveAdminService(config, logger, blockProcessor, service, sharedSecretProcessor, rConsumer, registry, dataEncryptionService, dataCompressionService, storage, gethEncodingService, stopControl, subscriptionManager, initService)
+	initService := NewEnclaveInitService(config, storage, blockProcessor, logger, enclaveKeyService, attestationProvider)
+	adminService := NewEnclaveAdminService(config, logger, blockProcessor, service, sharedSecretProcessor, rConsumer, registry, dataEncryptionService, dataCompressionService, storage, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService)
 	rpcService := NewEnclaveRPCService(rpcEncryptionManager, registry, subscriptionManager, config, debug, storage, crossChainProcessors, scb)
-	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKey.EnclaveID())
+	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{
 		initService:  initService,
 		adminService: adminService,
 		rpcService:   rpcService,
 		stopControl:  stopControl,
 	}
-}
-
-func loadOrCreateEnclaveKey(storage storage.Storage, logger gethlog.Logger) (*crypto.EnclaveKey, error) {
-	enclaveKey, err := storage.GetEnclaveKey(context.Background())
-	if err != nil {
-		if !errors.Is(err, errutil.ErrNotFound) {
-			logger.Crit("Failed to fetch enclave key", log.ErrKey, err)
-		}
-		// enclave key not found - new key should be generated
-		// todo (#1053) - revisit the crypto for this key generation/lifecycle before production
-		logger.Info("Generating new enclave key")
-		enclaveKey, err = crypto.GenerateEnclaveKey()
-		if err != nil {
-			logger.Crit("Failed to generate enclave key.", log.ErrKey, err)
-		}
-		err = storage.StoreEnclaveKey(context.Background(), enclaveKey)
-		if err != nil {
-			logger.Crit("Failed to store enclave key.", log.ErrKey, err)
-		}
-	}
-	logger.Info(fmt.Sprintf("Enclave key available. EnclaveID=%s, publicKey=%s", enclaveKey.EnclaveID(), gethcommon.Bytes2Hex(enclaveKey.PublicKeyBytes())))
-	return enclaveKey, err
 }
 
 // Status is only implemented by the RPC wrapper

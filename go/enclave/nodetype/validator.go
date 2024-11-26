@@ -8,12 +8,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/common/signature"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -34,8 +32,6 @@ type validator struct {
 	sigValidator *components.SignatureValidator
 	mempool      *txpool.TxPool
 
-	enclaveKey *crypto.EnclaveKey
-
 	logger gethlog.Logger
 }
 
@@ -47,7 +43,6 @@ func NewValidator(
 	storage storage.Storage,
 	sigValidator *components.SignatureValidator,
 	mempool *txpool.TxPool,
-	enclaveKey *crypto.EnclaveKey,
 	logger gethlog.Logger,
 ) Validator {
 	startMempool(registry, mempool)
@@ -60,7 +55,6 @@ func NewValidator(
 		storage:        storage,
 		sigValidator:   sigValidator,
 		mempool:        mempool,
-		enclaveKey:     enclaveKey,
 		logger:         logger,
 	}
 }
@@ -201,29 +195,4 @@ func startMempool(registry components.BatchRegistry, mempool *txpool.TxPool) {
 			panic(fmt.Errorf("could not start mempool: %w", err))
 		}
 	}
-}
-
-// todo - why is this here
-func (v *validator) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
-	bundle, err := exportCrossChainData(ctx, v.storage, fromSeqNo, toSeqNo)
-	if err != nil {
-		return nil, err
-	}
-
-	err = v.signCrossChainBundle(bundle)
-	if err != nil {
-		return nil, err
-	}
-
-	return bundle, nil
-}
-
-func (v *validator) signCrossChainBundle(bundle *common.ExtCrossChainBundle) error {
-	var err error
-	h := bundle.HashPacked()
-	bundle.Signature, err = signature.Sign(h.Bytes(), v.enclaveKey.PrivateKey())
-	if err != nil {
-		return fmt.Errorf("could not sign batch. Cause: %w", err)
-	}
-	return nil
 }
