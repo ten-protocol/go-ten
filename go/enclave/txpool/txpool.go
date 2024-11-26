@@ -81,7 +81,7 @@ func (t *TxPool) start() {
 	)
 	defer newHeadSub.Unsubscribe()
 	defer close(newHeadCh)
-	for {
+	for { //nolint:gosimple
 		select {
 		case event := <-newHeadCh:
 			newHead := event.Block.Header()
