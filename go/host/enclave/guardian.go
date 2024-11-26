@@ -584,7 +584,9 @@ func (g *Guardian) periodicBatchProduction() {
 			skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
 			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
-				g.logger.Crit("Unable to produce batch", log.ErrKey, err)
+				// todo: is this too low a bar for failover? Retry first?
+				g.logger.Error("Unable to produce batch", log.ErrKey, err)
+				g.evictEnclaveFromHAPool()
 			}
 		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
