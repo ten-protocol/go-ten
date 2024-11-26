@@ -13,11 +13,6 @@ import (
 // NodeType - the interface for any service type running in Obscuro nodes.
 // Should only contain the shared functionality that every service type needs to have.
 type NodeType interface {
-	// SubmitTransaction - L2 obscuro transactions need to be passed here. Sequencers
-	// will put them in the mempool while validators might put them in a queue and monitor
-	// for censorship.
-	// SubmitTransaction(*common.L2Tx) error
-
 	// OnL1Fork - logic to be performed when there is an L1 Fork
 	OnL1Fork(ctx context.Context, fork *common.ChainFork) error
 

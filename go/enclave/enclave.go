@@ -180,10 +180,6 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	// todo - security
 	obscuroKey := crypto.GetObscuroKey(logger)
 
-	// submit tx becomes part of the mempool impl - with a toggle based on the node type : either validate or store
-	// which is set when the node loads - or can be commuted
-	// otherwise, the service is validator, and is commuted to sequencer when the node is made active
-
 	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, cachingService, registry, mempool, crossChainProcessors, config, gasOracle, storage, blockProcessor, chain, logger)
 	subscriptionManager := events.NewSubscriptionManager(storage, registry, config.ObscuroChainID, logger)
 
