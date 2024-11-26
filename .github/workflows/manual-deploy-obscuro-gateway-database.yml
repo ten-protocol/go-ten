@@ -90,7 +90,7 @@ jobs:
             && curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
             && docker network create --driver bridge node_network || true \
-            && mkdir -p /home/obscuro/promtail \
+            && mkdir -p /home/obscuro/metrics \
             && echo "
             server:
               http_listen_port: 9080
@@ -124,16 +124,58 @@ jobs:
                   target_label: \"job\"
                 - replacement: ${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }}
                   target_label: "node_name"
-            " > /home/obscuro/promtail/promtail-config.yaml \
+            " > /home/obscuro/metrics/promtail-config.yaml \
+            && echo "
+            global:
+              scrape_interval: 15s
+              evaluation_interval: 15s
+            remote_write:
+              - url: ${{ vars.METRICS_URI }}
+                tls_config:
+                  insecure_skip_verify: true
+                basic_auth:
+                  username: ${{ secrets.LOKI_USER }}
+                  password: ${{ secrets.LOKI_PASSWORD }}
+            scrape_configs:
+              # Node metrics
+              - job_name:  node-${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }}
+                scrape_interval: 5s  # Frequent scrapes for node metrics
+                static_configs:
+                  - targets:
+                      - node_exporter:9100  # Node Exporter instance
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: 'node'
+                    replacement:  ${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }}
+
+              # Container metrics
+              - job_name:  container-${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }}
+                scrape_interval: 5s
+                static_configs:
+                  - targets:
+                      - cadvisor:8080  # cAdvisor instance for container metrics
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: 'node'
+                    replacement:  ${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }}
+
+            " > /home/obscuro/metrics/prometheus.yaml \
             && docker run -d --name promtail \
               --network node_network \
               -e HOSTNAME=${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }} \
               -v /var/log:/var/log \
-              -v /home/obscuro/promtail:/etc/promtail \
+              -v /home/obscuro/metrics:/etc/promtail \
               -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
               -v /var/run/docker.sock:/var/run/docker.sock \
               grafana/promtail:latest \
               -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true \
+            && docker run -d --name prometheus \
+              --network node_network \
+              -p 9090:9090 \
+              -v /home/obscuro/metrics/prometheus.yaml:/etc/prometheus/prometheus.yml \
+              -v prometheus-data:/prometheus \
+              prom/prometheus:latest \
+              --config.file=/etc/prometheus/prometheus.yml \
             && cd /home/obscuro/go-obscuro/ \
             && docker run -d --name ${{ github.event.inputs.testnet_type }}-OG-MariaDB-${{ GITHUB.RUN_NUMBER }} \
                 -p 3306:3306 \
