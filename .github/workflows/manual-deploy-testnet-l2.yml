@@ -276,7 +276,7 @@ jobs:
                   password: ${{ secrets.LOKI_PASSWORD }}
             scrape_configs:
               # Node metrics
-              - job_name:  ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+              - job_name:  node-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
                 scrape_interval: 5s  # Frequent scrapes for node metrics
                 static_configs:
                   - targets:
@@ -287,7 +287,7 @@ jobs:
                     replacement:  ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
 
               # Container metrics
-              - job_name:  ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+              - job_name:  container-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
                 scrape_interval: 5s
                 static_configs:
                   - targets:
