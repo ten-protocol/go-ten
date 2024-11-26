@@ -26,7 +26,7 @@ import (
 )
 
 // this is how long the node waits to receive the second batch
-var startMempoolTimeout = 120 * time.Second
+var startMempoolTimeout = 5 * time.Minute
 
 // TxPool is an obscuro wrapper around geths transaction pool
 type TxPool struct {
