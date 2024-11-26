@@ -366,8 +366,11 @@ func (c *inMemTenClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) erro
 }
 
 func (c *inMemTenClient) health(result interface{}) error {
-	*result.(**hostcommon.HealthCheck) = &hostcommon.HealthCheck{OverallHealth: true}
-	return nil
+	if resPtr, ok := result.(*hostcommon.HealthCheck); ok {
+		*resPtr = hostcommon.HealthCheck{OverallHealth: true}
+		return nil
+	}
+	return fmt.Errorf("invalid type for result: expected *hostcommon.HealthCheck")
 }
 
 func (c *inMemTenClient) getTotalTransactions(result interface{}) error {
