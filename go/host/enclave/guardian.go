@@ -179,6 +179,11 @@ func (g *Guardian) GetEnclaveID() *common.EnclaveID {
 }
 
 func (g *Guardian) PromoteToActiveSequencer() error {
+	if g.hostData.IsSequencer {
+		// this shouldn't happen and shouldn't be an issue if it does, but good to have visibility on it
+		g.logger.Error("Unable to promote to active sequencer, already active")
+		return nil
+	}
 	err := g.enclaveClient.MakeActive()
 	if err != nil {
 		return errors.Wrap(err, "could not promote enclave to active sequencer")
