@@ -71,7 +71,9 @@ func GetExternalTxSigner(tx *types.Transaction) (gethcommon.Address, error) {
 }
 
 func GetTxSigner(tx *common.L2PricedTransaction) (gethcommon.Address, error) {
-	if tx.FromSelf {
+	if tx.SystemDeployer {
+		return common.MaskedSender(gethcommon.BigToAddress(big.NewInt(tx.Tx.ChainId().Int64()))), nil
+	} else if tx.FromSelf {
 		return common.MaskedSender(*tx.Tx.To()), nil
 	}
 

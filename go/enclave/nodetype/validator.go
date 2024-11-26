@@ -8,12 +8,10 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/common/signature"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -23,7 +21,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
-type obsValidator struct {
+type validator struct {
 	blockProcessor components.L1BlockProcessor
 	batchExecutor  components.BatchExecutor
 	batchRegistry  components.BatchRegistry
@@ -33,8 +31,6 @@ type obsValidator struct {
 	storage      storage.Storage
 	sigValidator *components.SignatureValidator
 	mempool      *txpool.TxPool
-
-	enclaveKey *crypto.EnclaveKey
 
 	logger gethlog.Logger
 }
@@ -47,12 +43,11 @@ func NewValidator(
 	storage storage.Storage,
 	sigValidator *components.SignatureValidator,
 	mempool *txpool.TxPool,
-	enclaveKey *crypto.EnclaveKey,
 	logger gethlog.Logger,
-) ObsValidator {
+) Validator {
 	startMempool(registry, mempool)
 
-	return &obsValidator{
+	return &validator{
 		blockProcessor: consumer,
 		batchExecutor:  batchExecutor,
 		batchRegistry:  registry,
@@ -60,12 +55,11 @@ func NewValidator(
 		storage:        storage,
 		sigValidator:   sigValidator,
 		mempool:        mempool,
-		enclaveKey:     enclaveKey,
 		logger:         logger,
 	}
 }
 
-func (val *obsValidator) SubmitTransaction(tx *common.L2Tx) error {
+func (val *validator) SubmitTransaction(tx *common.L2Tx) error {
 	headBatch := val.batchRegistry.HeadBatchSeq()
 	if headBatch == nil || headBatch.Uint64() <= common.L2GenesisSeqNo+1 {
 		return fmt.Errorf("not initialised")
@@ -77,16 +71,16 @@ func (val *obsValidator) SubmitTransaction(tx *common.L2Tx) error {
 	return err
 }
 
-func (val *obsValidator) OnL1Fork(ctx context.Context, fork *common.ChainFork) error {
+func (val *validator) OnL1Fork(ctx context.Context, fork *common.ChainFork) error {
 	// nothing to do
 	return nil
 }
 
-func (val *obsValidator) VerifySequencerSignature(b *core.Batch) error {
+func (val *validator) VerifySequencerSignature(b *core.Batch) error {
 	return val.sigValidator.CheckSequencerSignature(b.Hash(), b.Header.Signature)
 }
 
-func (val *obsValidator) ExecuteStoredBatches(ctx context.Context) error {
+func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 	val.logger.Trace("Executing stored batches")
 	headBatchSeq := val.batchRegistry.HeadBatchSeq()
 	if headBatchSeq == nil {
@@ -147,7 +141,7 @@ func (val *obsValidator) ExecuteStoredBatches(ctx context.Context) error {
 	return nil
 }
 
-func (val *obsValidator) executionPrerequisites(ctx context.Context, batch *common.BatchHeader) (bool, error) {
+func (val *validator) executionPrerequisites(ctx context.Context, batch *common.BatchHeader) (bool, error) {
 	// 1.l1 block exists
 	block, err := val.storage.FetchBlock(ctx, batch.L1Proof)
 	if err != nil && errors.Is(err, errutil.ErrNotFound) {
@@ -166,7 +160,7 @@ func (val *obsValidator) executionPrerequisites(ctx context.Context, batch *comm
 	return block != nil && parentExecuted, nil
 }
 
-func (val *obsValidator) handleGenesis(ctx context.Context, batch *common.BatchHeader) error {
+func (val *validator) handleGenesis(ctx context.Context, batch *common.BatchHeader) error {
 	genBatch, _, err := val.batchExecutor.CreateGenesisState(ctx, batch.L1Proof, batch.Time, batch.Coinbase, batch.BaseFee)
 	if err != nil {
 		return err
@@ -184,11 +178,11 @@ func (val *obsValidator) handleGenesis(ctx context.Context, batch *common.BatchH
 	return nil
 }
 
-func (val *obsValidator) OnL1Block(ctx context.Context, block *types.Header, result *components.BlockIngestionType) error {
+func (val *validator) OnL1Block(ctx context.Context, block *types.Header, result *components.BlockIngestionType) error {
 	return val.ExecuteStoredBatches(ctx)
 }
 
-func (val *obsValidator) Close() error {
+func (val *validator) Close() error {
 	return val.mempool.Close()
 }
 
@@ -201,28 +195,4 @@ func startMempool(registry components.BatchRegistry, mempool *txpool.TxPool) {
 			panic(fmt.Errorf("could not start mempool: %w", err))
 		}
 	}
-}
-
-func (v *obsValidator) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
-	bundle, err := ExportCrossChainData(ctx, v.storage, fromSeqNo, toSeqNo)
-	if err != nil {
-		return nil, err
-	}
-
-	err = v.signCrossChainBundle(bundle)
-	if err != nil {
-		return nil, err
-	}
-
-	return bundle, nil
-}
-
-func (v *obsValidator) signCrossChainBundle(bundle *common.ExtCrossChainBundle) error {
-	var err error
-	h := bundle.HashPacked()
-	bundle.Signature, err = signature.Sign(h.Bytes(), v.enclaveKey.PrivateKey())
-	if err != nil {
-		return fmt.Errorf("could not sign batch. Cause: %w", err)
-	}
-	return nil
 }

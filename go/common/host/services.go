@@ -163,7 +163,7 @@ type EnclaveService interface {
 	GetEnclaveClients() []common.Enclave
 
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to other hosts on the network (in particular, to the sequencer)
-	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
+	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error)
 
 	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription) error
 	Unsubscribe(id rpc.ID) error

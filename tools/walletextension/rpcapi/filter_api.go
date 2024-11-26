@@ -7,6 +7,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	rpc2 "github.com/ten-protocol/go-ten/go/common/rpc"
+	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
@@ -16,8 +19,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
-
-	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -92,7 +93,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 		backendWSConnections = append(backendWSConnections, rpcWSClient)
 
 		inCh := make(chan types.Log)
-		backendSubscription, err := rpcWSClient.Subscribe(ctx, "eth", inCh, "logs", crit)
+		backendSubscription, err := rpcWSClient.Subscribe(ctx, tenrpc.SubscribeNamespace, inCh, "logs", crit)
 		if err != nil {
 			fmt.Printf("could not connect to backend %s", err)
 			return nil, err
@@ -193,7 +194,7 @@ func (api *FilterAPI) NewFilter(crit common.FilterCriteria) (rpc.ID, error) {
 }
 
 func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) ([]*types.Log, error) {
-	method := "eth_getLogs"
+	method := rpc2.ERPCGetLogs
 	audit(api.we, "RPC start method=%s args=%v", method, ctx)
 	requestStartTime := time.Now()
 	user, err := extractUserForRequest(ctx, api.we)

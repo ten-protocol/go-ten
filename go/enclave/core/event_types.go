@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -32,9 +33,25 @@ type ContractVisibilityConfig struct {
 type TxExecResult struct {
 	Receipt          *types.Receipt
 	CreatedContracts map[gethcommon.Address]*ContractVisibilityConfig
-	Tx               *types.Transaction
-	From             *gethcommon.Address
+	TxWithSender     *TxWithSender
 	Err              error
+}
+
+type TxWithSender struct {
+	Tx          *types.Transaction
+	Sender      *gethcommon.Address
+	IsSynthetic bool
+}
+
+type TransactionsWithSender []*TxWithSender
+
+func (stxs *TransactionsWithSender) Add(tx *common.L2PricedTransaction) error {
+	sender, err := GetTxSigner(tx)
+	if err != nil {
+		return err
+	}
+	*stxs = append(*stxs, &TxWithSender{Tx: tx.Tx, Sender: &sender})
+	return nil
 }
 
 // InternalReceipt - Equivalent to the geth types.Receipt, but without weird quirks
@@ -121,3 +138,41 @@ func (receipt *InternalReceipt) ToReceipt() *types.Receipt {
 }
 
 type TxExecResults []*TxExecResult
+
+func (txResults *TxExecResults) Add(other ...*TxExecResult) {
+	*txResults = append(*txResults, other...)
+}
+
+func (txResults *TxExecResults) MarkSynthetic(isSynthetic bool) {
+	for _, txResult := range *txResults {
+		txResult.TxWithSender.IsSynthetic = isSynthetic
+	}
+}
+
+func (txResults *TxExecResults) GetSynthetic() *TxExecResults {
+	syntheticTxs := make(TxExecResults, 0)
+	for _, txResult := range *txResults {
+		if txResult.TxWithSender.IsSynthetic {
+			syntheticTxs = append(syntheticTxs, txResult)
+		}
+	}
+	return &syntheticTxs
+}
+
+func (txResults *TxExecResults) GetReal() *TxExecResults {
+	realTxs := make(TxExecResults, 0)
+	for _, txResult := range *txResults {
+		if !txResult.TxWithSender.IsSynthetic {
+			realTxs = append(realTxs, txResult)
+		}
+	}
+	return &realTxs
+}
+
+func (txResults *TxExecResults) ToTransactionsWithSenders() TransactionsWithSender {
+	transactionsWithSenders := make(TransactionsWithSender, len(*txResults))
+	for i, txResult := range *txResults {
+		transactionsWithSenders[i] = txResult.TxWithSender
+	}
+	return transactionsWithSenders
+}

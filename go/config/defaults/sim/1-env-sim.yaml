@@ -10,3 +10,5 @@ enclave:
    log:
      level: 1
      path: ""
+sequencer:
+   systemContractsUpgrader: 0x5

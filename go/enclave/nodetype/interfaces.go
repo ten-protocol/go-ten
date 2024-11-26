@@ -24,12 +24,10 @@ type NodeType interface {
 	// OnL1Block - performed after the block was processed
 	OnL1Block(ctx context.Context, block *types.Header, result *components.BlockIngestionType) error
 
-	ExportCrossChainData(context.Context, uint64, uint64) (*common.ExtCrossChainBundle, error)
-
 	Close() error
 }
 
-type Sequencer interface {
+type ActiveSequencer interface {
 	// CreateBatch - creates a new head batch for the latest known L1 head block.
 	CreateBatch(ctx context.Context, skipBatchIfEmpty bool) error
 
@@ -40,7 +38,16 @@ type Sequencer interface {
 	NodeType
 }
 
-type ObsValidator interface {
+type BackupSequencer interface {
+	// ExecuteStoredBatches - try to execute all stored by unexecuted batches
+	ExecuteStoredBatches(context.Context) error
+
+	VerifySequencerSignature(*core.Batch) error
+
+	NodeType
+}
+
+type Validator interface {
 	// ExecuteStoredBatches - try to execute all stored by unexecuted batches
 	ExecuteStoredBatches(context.Context) error
 

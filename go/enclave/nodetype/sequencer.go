@@ -8,15 +8,12 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/common/gethencoding"
-	"github.com/ten-protocol/go-ten/go/common/signature"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
-	"github.com/ten-protocol/go-ten/go/enclave/system"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
@@ -53,7 +50,7 @@ type sequencer struct {
 	logger gethlog.Logger
 
 	chainConfig            *params.ChainConfig
-	enclaveKey             *crypto.EnclaveKey
+	enclaveKeyService      *components.EnclaveKeyService
 	mempool                *txpool.TxPool
 	storage                storage.Storage
 	dataEncryptionService  crypto.DataEncryptionService
@@ -71,14 +68,14 @@ func NewSequencer(
 	gethEncodingService gethencoding.EncodingService,
 	logger gethlog.Logger,
 	chainConfig *params.ChainConfig,
-	enclavePrivateKey *crypto.EnclaveKey,
+	enclaveKeyService *components.EnclaveKeyService,
 	mempool *txpool.TxPool,
 	storage storage.Storage,
 	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
 	blockchain *ethchainadapter.EthChainAdapter,
-) Sequencer {
+) ActiveSequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
 		batchProducer:          batchExecutor,
@@ -88,7 +85,7 @@ func NewSequencer(
 		gethEncoding:           gethEncodingService,
 		logger:                 logger,
 		chainConfig:            chainConfig,
-		enclaveKey:             enclavePrivateKey,
+		enclaveKeyService:      enclaveKeyService,
 		mempool:                mempool,
 		storage:                storage,
 		dataEncryptionService:  dataEncryptionService,
@@ -168,22 +165,13 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	// this ensures that there is enough gap so that batch 1 is issued before batch 2
 	time.Sleep(time.Second)
 
-	wallet := system.GetPlaceholderWallet(s.chainConfig.ChainID, s.logger)
-	systemDeployerTx, err := system.SystemDeployerInitTransaction(wallet, s.logger, wallet.Address())
-	if err != nil {
-		s.logger.Crit("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
-		return err
-	}
-
 	// produce batch #2 which has the message bus and any other system contracts
-	cb, err := s.produceBatch(
+	_, err = s.produceBatch(
 		ctx,
 		big.NewInt(0).Add(batch.Header.SequencerOrderNo, big.NewInt(1)),
 		block.Hash(),
 		batch.Hash(),
-		common.L2Transactions{
-			systemDeployerTx,
-		},
+		common.L2Transactions{},
 		uint64(time.Now().Unix()),
 		false,
 	)
@@ -196,19 +184,6 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 		}
 		return fmt.Errorf("[SystemContracts] failed producing batch. Cause: %w", err)
 	}
-
-	if len(cb.TxExecResults) == 0 || cb.TxExecResults[0].Receipt.TxHash.Hex() != systemDeployerTx.Hash().Hex() {
-		err = fmt.Errorf("failed to instantiate system contracts: expected receipt for transaction %s, but no receipts found in batch", systemDeployerTx.Hash().Hex())
-		s.logger.Crit(err.Error()) // Fatal error, the node cannot be started.
-	}
-
-	systemAddresses, err := system.DeriveAddresses(cb.TxExecResults[0].Receipt)
-	if err != nil {
-		s.logger.Crit("Failed to derive system contract addresses", log.ErrKey, err)
-		return err
-	}
-	s.logger.Info("[SystemContracts] Deployer initialized", "transactionPostProcessor", systemAddresses["TransactionPostProcessor"])
-	s.logger.Info("[SystemContracts] Message Bus Contract minted successfully", "address", systemAddresses["MessageBus"])
 
 	return nil
 }
@@ -497,8 +472,7 @@ func (s *sequencer) OnL1Fork(ctx context.Context, fork *common.ChainFork) error 
 
 func (s *sequencer) signBatch(batch *core.Batch) error {
 	var err error
-	h := batch.Hash()
-	batch.Header.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
+	batch.Header.Signature, err = s.enclaveKeyService.Sign(batch.Hash())
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
@@ -507,18 +481,7 @@ func (s *sequencer) signBatch(batch *core.Batch) error {
 
 func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
 	var err error
-	h := rollup.Header.Hash()
-	rollup.Header.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
-	if err != nil {
-		return fmt.Errorf("could not sign batch. Cause: %w", err)
-	}
-	return nil
-}
-
-func (s *sequencer) signCrossChainBundle(bundle *common.ExtCrossChainBundle) error {
-	var err error
-	h := bundle.HashPacked()
-	bundle.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
+	rollup.Header.Signature, err = s.enclaveKeyService.Sign(rollup.Header.Hash())
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
@@ -532,19 +495,4 @@ func (s *sequencer) OnL1Block(ctx context.Context, block *types.Header, result *
 
 func (s *sequencer) Close() error {
 	return s.mempool.Close()
-}
-
-func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
-	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "ExportCrossChainData()", "fromSeqNo", fromSeqNo, "toSeqNo", toSeqNo)
-	bundle, err := ExportCrossChainData(ctx, s.storage, fromSeqNo, toSeqNo)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.signCrossChainBundle(bundle)
-	if err != nil {
-		return nil, err
-	}
-
-	return bundle, nil
 }

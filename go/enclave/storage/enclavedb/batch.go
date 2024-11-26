@@ -65,25 +65,26 @@ func ExistsBatchAtHeight(ctx context.Context, dbTx *sql.Tx, height *big.Int) (bo
 }
 
 // WriteTransactions - persists the batch and the transactions
-func WriteTransactions(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, senders []uint64, toContracts []*uint64) error {
+func WriteTransactions(ctx context.Context, dbtx *sql.Tx, transactions []*core.TxWithSender, height uint64, isSynthetic bool, senders []uint64, toContracts []*uint64) error {
 	// creates a batch insert statement for all entries
-	if len(batch.Transactions) > 0 {
-		insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height) values " + repeat("(?,?,?,?,?,?,?)", ",", len(batch.Transactions))
+	if len(transactions) > 0 {
+		insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height, is_synthetic) values " + repeat("(?,?,?,?,?,?,?,?)", ",", len(transactions))
 
 		args := make([]any, 0)
-		for i, transaction := range batch.Transactions {
-			txBytes, err := rlp.EncodeToBytes(transaction)
+		for i, transaction := range transactions {
+			txBytes, err := rlp.EncodeToBytes(transaction.Tx)
 			if err != nil {
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
-			args = append(args, transaction.Hash())           // tx_hash
-			args = append(args, txBytes)                      // content
-			args = append(args, toContracts[i])               // To
-			args = append(args, transaction.Type())           // Type
-			args = append(args, senders[i])                   // sender_address
-			args = append(args, i)                            // idx
-			args = append(args, batch.Header.Number.Uint64()) // the batch height which contained it
+			args = append(args, transaction.Tx.Hash()) // tx_hash
+			args = append(args, txBytes)               // content
+			args = append(args, toContracts[i])        // To
+			args = append(args, transaction.Tx.Type()) // Type
+			args = append(args, senders[i])            // sender_address
+			args = append(args, i)                     // idx
+			args = append(args, height)                // the batch height which contained it
+			args = append(args, isSynthetic)           // is_synthetic if the transaction is a synthetic (internally derived transaction)
 		}
 		_, err := dbtx.ExecContext(ctx, insert, args...)
 		if err != nil {
@@ -308,7 +309,7 @@ func ReadTransaction(ctx context.Context, db *sql.DB, txHash gethcommon.Hash) (*
 func ReadBatchTransactions(ctx context.Context, db *sql.DB, height uint64) ([]*common.L2Tx, error) {
 	var txs []*common.L2Tx
 
-	rows, err := db.QueryContext(ctx, "select content from tx where batch_height=? order by idx", height)
+	rows, err := db.QueryContext(ctx, "select content from tx where batch_height=? and is_synthetic=? order by idx", height, false)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error

@@ -89,7 +89,8 @@ type RollupConfig struct {
 //	yaml: `network.sequencer`
 type Sequencer struct {
 	// P2PAddress is the address that the sequencer will listen on for incoming P2P connections
-	P2PAddress string `mapstructure:"p2pAddress"`
+	P2PAddress              string             `mapstructure:"p2pAddress"`
+	SystemContractsUpgrader gethcommon.Address `mapstructure:"systemContractsUpgrader"`
 }
 
 // CrossChainConfig contains the configuration for the cross chain processing on the Ten network

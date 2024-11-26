@@ -50,6 +50,8 @@ type EnclaveConfig struct {
 	MinGasPrice *big.Int
 	// MessageBus L1 Address
 	MessageBusAddress gethcommon.Address
+	// SystemContractOwner is the address that owns the system contracts
+	SystemContractOwner gethcommon.Address
 	// P2P address for validators to connect to the sequencer for live batch data
 	SequencerP2PAddress string
 	// A json string that specifies the prefunded addresses at the genesis of the TEN network
@@ -92,9 +94,9 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 		GenesisJSON:               tenCfg.Enclave.L1.GenesisJSON,
 		ManagementContractAddress: tenCfg.Network.L1.L1Contracts.ManagementContract,
 		MessageBusAddress:         tenCfg.Network.L1.L1Contracts.MessageBusContract,
-
-		LogLevel: tenCfg.Enclave.Log.Level,
-		LogPath:  tenCfg.Enclave.Log.Path,
+		SystemContractOwner:       tenCfg.Network.Sequencer.SystemContractsUpgrader,
+		LogLevel:                  tenCfg.Enclave.Log.Level,
+		LogPath:                   tenCfg.Enclave.Log.Path,
 
 		UseInMemoryDB:  tenCfg.Enclave.DB.UseInMemory,
 		EdgelessDBHost: tenCfg.Enclave.DB.EdgelessDBHost,

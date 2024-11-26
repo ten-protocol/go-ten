@@ -72,7 +72,7 @@ type BatchResolver interface {
 	// StoreBatch stores an un-executed batch.
 	StoreBatch(ctx context.Context, batch *core.Batch, convertedHash gethcommon.Hash) error
 	// StoreExecutedBatch - store the batch after it was executed
-	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results []*core.TxExecResult) error
+	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results core.TxExecResults) error
 
 	// StoreRollup
 	StoreRollup(ctx context.Context, rollup *common.ExtRollup, header *common.CalldataRollupHeader) error
@@ -97,16 +97,15 @@ type SharedSecretStorage interface {
 type TransactionStorage interface {
 	// GetTransaction - returns the positional metadata of the tx by hash
 	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
-	// GetFilteredReceipt - returns the receipt of a tx with event logs visible to the requester
+	// GetFilteredInternalReceipt - returns the receipt of a tx with event logs visible to the requester
 	GetFilteredInternalReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error)
 	ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error)
 }
 
 type AttestationStorage interface {
-	// FetchAttestedKey returns the public key of an attested aggregator
-	FetchAttestedKey(ctx context.Context, aggregator gethcommon.Address) (*ecdsa.PublicKey, error)
-	// StoreAttestedKey - store the public key of an attested aggregator
-	StoreAttestedKey(ctx context.Context, aggregator gethcommon.Address, key *ecdsa.PublicKey) error
+	GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*ecdsa.PublicKey, common.NodeType, error)
+	StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error
+	StoreNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) error
 }
 
 type CrossChainMessagesStorage interface {

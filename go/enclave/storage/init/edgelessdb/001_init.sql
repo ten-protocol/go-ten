@@ -21,10 +21,13 @@ create table if not exists tendb.config
 insert into tendb.config
 values ('CURRENT_SEQ', -1);
 
-create table if not exists tendb.attestation_key
+create table if not exists tendb.attestation
 (
-    party binary(20),
-    ky    binary(33) NOT NULL
+    id         INTEGER AUTO_INCREMENT,
+    enclave_id binary(20),
+    pub_key    binary(33) NOT NULL,
+    node_type  smallint   NOT NULL,
+    primary key (id)
 );
 
 create table if not exists tendb.block
@@ -92,6 +95,7 @@ create table if not exists tendb.tx
     sender_address int        NOT NULL,
     idx            int        NOT NULL,
     batch_height   int        NOT NULL,
+    is_synthetic   boolean    NOT NULL,
     INDEX USING HASH (hash),
     INDEX (sender_address),
     INDEX (batch_height, idx),
