@@ -138,17 +138,23 @@ func (e *Service) EvictEnclave(enclaveID *common.EnclaveID) {
 
 	// remove the failed enclave from the list of enclaves
 	e.enclaveGuardians = append(e.enclaveGuardians[:failedEnclaveIdx], e.enclaveGuardians[failedEnclaveIdx+1:]...)
-	e.logger.Warn("Evicted enclave.", log.EnclaveIDKey, enclaveID)
+	e.logger.Warn("Evicted enclave from HA pool.", log.EnclaveIDKey, enclaveID)
 
 	if e.activeSequencerID == enclaveID {
 		// sequencer enclave has failed, so we need to select another one to promote as the active sequencer
-		if len(e.enclaveGuardians) == 0 {
-			e.logger.Crit("All enclaves have failed, no sequencer to promote.")
+		var i int
+		for i = 0; i < len(e.enclaveGuardians); i++ {
+			e.logger.Warn("Attempting to promote new sequencer.", log.EnclaveIDKey, e.enclaveGuardians[i].GetEnclaveID())
+			err := e.enclaveGuardians[i].PromoteToActiveSequencer()
+			if err != nil {
+				e.logger.Warn("Failed to promote new sequencer.", log.ErrKey, err)
+				continue
+			}
+			e.activeSequencerID = e.enclaveGuardians[i].GetEnclaveID()
+			e.logger.Warn("Successfully promoted new sequencer.", log.EnclaveIDKey, e.activeSequencerID)
 			return
 		}
-		e.activeSequencerID = e.enclaveGuardians[0].GetEnclaveID()
-		e.enclaveGuardians[0].PromoteToActiveSequencer()
-		e.logger.Warn("Promoted new sequencer.", log.EnclaveIDKey, e.activeSequencerID)
+		e.logger.Crit("All enclaves have failed, no sequencer to promote.")
 	}
 }
 

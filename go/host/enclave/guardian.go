@@ -178,10 +178,14 @@ func (g *Guardian) GetEnclaveID() *common.EnclaveID {
 	return g.enclaveID
 }
 
-func (g *Guardian) PromoteToActiveSequencer() {
+func (g *Guardian) PromoteToActiveSequencer() error {
+	err := g.enclaveClient.MakeActive()
+	if err != nil {
+		return errors.Wrap(err, "could not promote enclave to active sequencer")
+	}
 	g.hostData.IsSequencer = true
 	g.startSequencerProcesses()
-	// todo (@matt) - do we need to do anything else here? Tell the enclave it is promoted?
+	return nil
 }
 
 // HandleBlock is called by the L1 repository when new blocks arrive.
