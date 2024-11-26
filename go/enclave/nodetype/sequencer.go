@@ -113,15 +113,6 @@ func (s *sequencer) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) erro
 		return s.createGenesisBatch(ctx, l1HeadBlock)
 	}
 
-	if running := s.mempool.Running(); !running {
-		// the mempool can only be started after at least 1 block (the genesis) is in the blockchain object
-		// if the node restarted the mempool must be started again
-		err = s.mempool.Start()
-		if err != nil {
-			return err
-		}
-	}
-
 	return s.createNewHeadBatch(ctx, l1HeadBlock, skipBatchIfEmpty)
 }
 
@@ -154,12 +145,6 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	err = s.blockchain.IngestNewBlock(batch)
 	if err != nil {
 		return fmt.Errorf("failed to feed batch into the virtual eth chain - %w", err)
-	}
-
-	// the mempool can only be started after at least 1 block is in the blockchain object
-	err = s.mempool.Start()
-	if err != nil {
-		return err
 	}
 
 	// errors in unit test seem to suggest that batch 2 was received before batch 1
@@ -464,10 +449,6 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Header, 
 	//}
 
 	return nil
-}
-
-func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
-	return s.mempool.Add(transaction)
 }
 
 func (s *sequencer) OnL1Fork(ctx context.Context, fork *common.ChainFork) error {

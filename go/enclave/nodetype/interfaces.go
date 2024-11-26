@@ -16,7 +16,7 @@ type NodeType interface {
 	// SubmitTransaction - L2 obscuro transactions need to be passed here. Sequencers
 	// will put them in the mempool while validators might put them in a queue and monitor
 	// for censorship.
-	SubmitTransaction(*common.L2Tx) error
+	// SubmitTransaction(*common.L2Tx) error
 
 	// OnL1Fork - logic to be performed when there is an L1 Fork
 	OnL1Fork(ctx context.Context, fork *common.ChainFork) error

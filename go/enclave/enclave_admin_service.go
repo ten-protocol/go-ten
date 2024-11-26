@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
@@ -47,9 +49,10 @@ type enclaveAdminService struct {
 	profiler               *profiler.Profiler
 	subscriptionManager    *events.SubscriptionManager
 	enclaveKeyService      *components.EnclaveKeyService
+	mempool                *txpool.TxPool
 }
 
-func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, service nodetype.NodeType, sharedSecretProcessor *components.SharedSecretProcessor, rollupConsumer components.RollupConsumer, registry components.BatchRegistry, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, storage storage.Storage, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *components.EnclaveKeyService) common.EnclaveAdmin {
+func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, service nodetype.NodeType, sharedSecretProcessor *components.SharedSecretProcessor, rollupConsumer components.RollupConsumer, registry components.BatchRegistry, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, storage storage.Storage, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *components.EnclaveKeyService, mempool *txpool.TxPool) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -77,6 +80,7 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.
 		profiler:               prof,
 		subscriptionManager:    subscriptionManager,
 		enclaveKeyService:      enclaveKeyService,
+		mempool:                mempool,
 	}
 }
 
@@ -94,14 +98,9 @@ func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, proof types.Rece
 
 	// compare the id with the current enclaveId and if they match - do something so that the current enclave behaves as a "backup sequencer"
 	// the host will specifically mark the active enclave
-	//currentEnclaveId, err := e.initService.EnclaveID(context.Background())
-	//if err != nil {
-	//	return err
-	//}
-
-	//if currentEnclaveId == id {
-	//	todo
-	//}
+	if e.enclaveKeyService.EnclaveID() == id {
+		e.mempool.ChangeMode(false)
+	}
 
 	// todo - use the proof
 	return nil

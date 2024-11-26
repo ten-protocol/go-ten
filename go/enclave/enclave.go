@@ -109,14 +109,15 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, logger)
 
 	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, *config, logger)
-	// todo  - mempool for backup sequencer needs to store all txs
-	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
+	// start all mempools in validate only
+	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, true, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
 
 	var service nodetype.NodeType
 	if config.NodeType == common.ActiveSequencer {
+		mempool.ChangeMode(false)
 		// Todo - this is temporary - until the host calls `AddSequencer`
 		err := storage.StoreNewEnclave(context.Background(), enclaveKeyService.EnclaveID(), enclaveKeyService.PublicKey())
 		if err != nil {
@@ -176,8 +177,14 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 		registry,
 		config.GasLocalExecutionCapFlag,
 	)
+	// todo - security
 	obscuroKey := crypto.GetObscuroKey(logger)
-	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, cachingService, registry, crossChainProcessors, service, config, gasOracle, storage, blockProcessor, chain, logger)
+
+	// submit tx becomes part of the mempool impl - with a toggle based on the node type : either validate or store
+	// which is set when the node loads - or can be commuted
+	// otherwise, the service is validator, and is commuted to sequencer when the node is made active
+
+	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, cachingService, registry, mempool, crossChainProcessors, config, gasOracle, storage, blockProcessor, chain, logger)
 	subscriptionManager := events.NewSubscriptionManager(storage, registry, config.ObscuroChainID, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
@@ -195,7 +202,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	debug := debugger.New(chain, storage, chainConfig)
 	stopControl := stopcontrol.New()
 	initService := NewEnclaveInitService(config, storage, blockProcessor, logger, enclaveKeyService, attestationProvider)
-	adminService := NewEnclaveAdminService(config, logger, blockProcessor, service, sharedSecretProcessor, rConsumer, registry, dataEncryptionService, dataCompressionService, storage, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService)
+	adminService := NewEnclaveAdminService(config, logger, blockProcessor, service, sharedSecretProcessor, rConsumer, registry, dataEncryptionService, dataCompressionService, storage, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool)
 	rpcService := NewEnclaveRPCService(rpcEncryptionManager, registry, subscriptionManager, config, debug, storage, crossChainProcessors, scb)
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{

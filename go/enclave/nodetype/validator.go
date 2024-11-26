@@ -45,8 +45,6 @@ func NewValidator(
 	mempool *txpool.TxPool,
 	logger gethlog.Logger,
 ) Validator {
-	startMempool(registry, mempool)
-
 	return &validator{
 		blockProcessor: consumer,
 		batchExecutor:  batchExecutor,
@@ -57,18 +55,6 @@ func NewValidator(
 		mempool:        mempool,
 		logger:         logger,
 	}
-}
-
-func (val *validator) SubmitTransaction(tx *common.L2Tx) error {
-	headBatch := val.batchRegistry.HeadBatchSeq()
-	if headBatch == nil || headBatch.Uint64() <= common.L2GenesisSeqNo+1 {
-		return fmt.Errorf("not initialised")
-	}
-	err := val.mempool.Validate(tx)
-	if err != nil {
-		val.logger.Info("Error validating transaction.", log.ErrKey, err, log.TxKey, tx.Hash())
-	}
-	return err
 }
 
 func (val *validator) OnL1Fork(ctx context.Context, fork *common.ChainFork) error {
@@ -93,8 +79,6 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 		}
 		return err
 	}
-
-	startMempool(val.batchRegistry, val.mempool)
 
 	for _, batchHeader := range batches {
 		if batchHeader.IsGenesis() {
@@ -184,15 +168,4 @@ func (val *validator) OnL1Block(ctx context.Context, block *types.Header, result
 
 func (val *validator) Close() error {
 	return val.mempool.Close()
-}
-
-func startMempool(registry components.BatchRegistry, mempool *txpool.TxPool) {
-	// the mempool can only be started when there are a couple of blocks already processed
-	headBatchSeq := registry.HeadBatchSeq()
-	if !mempool.Running() && headBatchSeq != nil && headBatchSeq.Uint64() > common.L2GenesisSeqNo+1 {
-		err := mempool.Start()
-		if err != nil {
-			panic(fmt.Errorf("could not start mempool: %w", err))
-		}
-	}
 }
