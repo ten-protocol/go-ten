@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 	_ "unsafe"
 
 	"github.com/ethereum/go-ethereum/core"
@@ -23,6 +24,9 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 )
+
+// this is how long the node waits to receive the second batch
+var startMempoolTimeout = 20 * time.Second
 
 // TxPool is an obscuro wrapper around geths transaction pool
 type TxPool struct {
@@ -56,11 +60,12 @@ func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int, val
 	return txp, nil
 }
 
-func (t *TxPool) ChangeMode(validateOnly bool) {
+func (t *TxPool) SetValidateMode(validateOnly bool) {
 	t.validateOnly.Store(validateOnly)
 }
 
 // can only be started after t.blockchain has at least one block inside
+// note - blocking method that waits for the block.Call only as goroutine
 func (t *TxPool) start() {
 	if t.running {
 		return
@@ -92,6 +97,9 @@ func (t *TxPool) start() {
 				}
 				return
 			}
+		case <-time.After(startMempoolTimeout):
+			t.logger.Crit("Timeout waiting to start mempool.")
+			return
 		}
 	}
 }
@@ -110,14 +118,35 @@ func (t *TxPool) _startInternalPool() error {
 }
 
 func (t *TxPool) SubmitTx(transaction *common.L2Tx) error {
-	if !t.running {
-		return fmt.Errorf("tx pool not running")
+	err := t.waitUntilPoolRunning()
+	if err != nil {
+		return err
 	}
 
 	if t.validateOnly.Load() {
 		return t.validate(transaction)
 	}
 	return t.add(transaction)
+}
+
+func (t *TxPool) waitUntilPoolRunning() error {
+	if t.running {
+		return nil
+	}
+
+	timeout := time.After(startMempoolTimeout)
+	tick := time.NewTicker(500 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		select {
+		case <-tick.C:
+			if t.running {
+				return nil
+			}
+		case <-timeout:
+			return fmt.Errorf("timed out waiting for tx pool to start")
+		}
+	}
 }
 
 // PendingTransactions returns all pending transactions grouped per address and ordered per nonce

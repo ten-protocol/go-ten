@@ -117,7 +117,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	var service nodetype.NodeType
 	if config.NodeType == common.ActiveSequencer {
-		mempool.ChangeMode(false)
+		mempool.SetValidateMode(false)
 		// Todo - this is temporary - until the host calls `AddSequencer`
 		err := storage.StoreNewEnclave(context.Background(), enclaveKeyService.EnclaveID(), enclaveKeyService.PublicKey())
 		if err != nil {

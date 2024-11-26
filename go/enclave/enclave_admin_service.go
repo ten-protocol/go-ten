@@ -99,7 +99,7 @@ func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, proof types.Rece
 	// compare the id with the current enclaveId and if they match - do something so that the current enclave behaves as a "backup sequencer"
 	// the host will specifically mark the active enclave
 	if e.enclaveKeyService.EnclaveID() == id {
-		e.mempool.ChangeMode(false)
+		e.mempool.SetValidateMode(false)
 	}
 
 	// todo - use the proof
