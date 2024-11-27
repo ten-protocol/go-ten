@@ -8,6 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -37,6 +40,8 @@ type enclaveAdminService struct {
 	mainMutex              sync.Mutex // serialises all data ingestion or creation to avoid weird races
 	logger                 gethlog.Logger
 	l1BlockProcessor       components.L1BlockProcessor
+	validatorService       nodetype.Validator
+	sequencerService       nodetype.ActiveSequencer
 	service                nodetype.NodeType
 	sharedSecretProcessor  *components.SharedSecretProcessor
 	rollupConsumer         components.RollupConsumer
@@ -52,7 +57,7 @@ type enclaveAdminService struct {
 	mempool                *txpool.TxPool
 }
 
-func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, service nodetype.NodeType, sharedSecretProcessor *components.SharedSecretProcessor, rollupConsumer components.RollupConsumer, registry components.BatchRegistry, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, storage storage.Storage, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *components.EnclaveKeyService, mempool *txpool.TxPool) common.EnclaveAdmin {
+func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *components.EnclaveKeyService, mempool *txpool.TxPool, chainConfig *params.ChainConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, attestationProvider components.AttestationProvider) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -62,13 +67,77 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.
 			logger.Crit("unable to start the profiler", log.ErrKey, err)
 		}
 	}
+	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, logger)
+
+	dataEncryptionService := crypto.NewDataEncryptionService(logger)
+	dataCompressionService := compression.NewBrotliDataCompressionService()
+	rProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
+	sigVerifier, err := components.NewSignatureValidator(storage)
+	if err != nil {
+		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
+	}
+	rollupConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
+
+	sequencerService := nodetype.NewSequencer(
+		blockProcessor,
+		batchExecutor,
+		registry,
+		rProducer,
+		rollupCompression,
+		gethEncodingService,
+		logger,
+		chainConfig,
+		enclaveKeyService,
+		mempool,
+		storage,
+		dataEncryptionService,
+		dataCompressionService,
+		nodetype.SequencerSettings{
+			MaxBatchSize:      config.MaxBatchSize,
+			MaxRollupSize:     config.MaxRollupSize,
+			GasPaymentAddress: config.GasPaymentAddress,
+			BatchGasLimit:     config.GasBatchExecutionLimit,
+			BaseFee:           config.BaseFee,
+		},
+	)
+
+	validatorService := nodetype.NewValidator(
+		blockProcessor,
+		batchExecutor,
+		registry,
+		chainConfig,
+		storage,
+		sigVerifier,
+		mempool,
+		logger,
+	)
+
+	var service nodetype.NodeType = validatorService
+	if config.NodeType == common.ActiveSequencer {
+		mempool.SetValidateMode(false)
+		// Todo - this is temporary - until the host calls `AddSequencer`
+		err := storage.StoreNewEnclave(context.Background(), enclaveKeyService.EnclaveID(), enclaveKeyService.PublicKey())
+		if err != nil {
+			logger.Crit("Failed to store enclave key", log.ErrKey, err)
+			return nil
+		}
+		err = storage.StoreNodeType(context.Background(), enclaveKeyService.EnclaveID(), common.ActiveSequencer)
+		if err != nil {
+			logger.Crit("Failed to store node type", log.ErrKey, err)
+			return nil
+		}
+		service = sequencerService
+	}
 
 	return &enclaveAdminService{
 		config:                 config,
 		mainMutex:              sync.Mutex{},
 		logger:                 logger,
-		l1BlockProcessor:       l1BlockProcessor,
+		l1BlockProcessor:       blockProcessor,
 		service:                service,
+		sequencerService:       sequencerService,
+		validatorService:       validatorService,
 		sharedSecretProcessor:  sharedSecretProcessor,
 		rollupConsumer:         rollupConsumer,
 		registry:               registry,
