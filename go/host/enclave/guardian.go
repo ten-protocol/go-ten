@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
@@ -74,6 +75,7 @@ type Guardian struct {
 	maxRollupSize      uint64
 
 	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
+	running         atomic.Bool
 
 	logger           gethlog.Logger
 	maxBatchInterval time.Duration
@@ -102,13 +104,19 @@ func NewGuardian(cfg *hostconfig.HostConfig, hostData host.Identity, serviceLoca
 
 func (g *Guardian) Start() error {
 	// sanity check, Start() spawns new go-routines and should only be called once
-	if g.enclaveID != nil {
+	if g.running.Load() {
 		return errors.New("guardian already started")
 	}
 
+	g.running.Store(true)
+	g.hostInterrupter.OnStop(func() {
+		g.logger.Info("Guardian stopping (because host is stopping)")
+		g.running.Store(false)
+	})
+
 	// Identify the enclave before starting (the enclave generates its ID immediately at startup)
 	// (retry until we get the enclave ID or the host is stopping)
-	for g.enclaveID == nil && !g.hostInterrupter.IsStopping() {
+	for g.enclaveID == nil && g.running.Load() {
 		enclID, err := g.enclaveClient.EnclaveID(context.Background())
 		if err != nil {
 			g.logger.Warn("could not get enclave ID", log.ErrKey, err)
@@ -158,7 +166,7 @@ func (g *Guardian) Stop() error {
 func (g *Guardian) HealthStatus(context.Context) host.HealthStatus {
 	// todo (@matt) do proper health status based on enclave state
 	errMsg := ""
-	if !g.hostInterrupter.IsStopping() {
+	if !g.running.Load() {
 		errMsg = "not running"
 	}
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
@@ -250,7 +258,7 @@ func (g *Guardian) HandleTransaction(tx common.EncryptedTx) {
 func (g *Guardian) mainLoop() {
 	g.logger.Debug("starting guardian main loop")
 	unavailableCounter := 0
-	for !g.hostInterrupter.IsStopping() {
+	for g.running.Load() {
 		// check enclave status on every loop (this will happen whenever we hit an error while trying to resolve a state,
 		// or after the monitoring interval if we are healthy)
 		g.checkEnclaveStatus()
@@ -389,7 +397,7 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 
 func (g *Guardian) catchupWithL1() error {
 	// while we are behind the L1 head and still running, fetch and submit L1 blocks
-	for !g.hostInterrupter.IsStopping() && g.state.GetStatus() == L1Catchup {
+	for g.running.Load() && g.state.GetStatus() == L1Catchup {
 		// generally we will be feeding the block after the enclave's current head
 		enclaveHead := g.state.GetEnclaveL1Head()
 		if enclaveHead == gethutil.EmptyHash {
@@ -417,7 +425,7 @@ func (g *Guardian) catchupWithL1() error {
 
 func (g *Guardian) catchupWithL2() error {
 	// while we are behind the L2 head and still running:
-	for !g.hostInterrupter.IsStopping() && g.state.GetStatus() == L2Catchup {
+	for g.running.Load() && g.state.GetStatus() == L2Catchup {
 		if g.hostData.IsSequencer {
 			return errors.New("l2 catchup is not supported for sequencer")
 		}
@@ -567,7 +575,7 @@ func (g *Guardian) periodicBatchProduction() {
 	batchProdTicker := time.NewTicker(interval)
 	// attempt to produce rollup every time the timer ticks until we are stopped/interrupted
 	for {
-		if g.hostInterrupter.IsStopping() {
+		if !g.running.Load() {
 			batchProdTicker.Stop()
 			return // stop periodic rollup production
 		}

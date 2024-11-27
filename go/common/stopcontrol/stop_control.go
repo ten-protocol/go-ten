@@ -33,3 +33,11 @@ func (s *StopControl) IsStopping() bool {
 func (s *StopControl) Done() chan interface{} {
 	return s.stopChan
 }
+
+// OnStop registers a callback to be notified when stop control is stopping
+func (s *StopControl) OnStop(callback func()) {
+	go func() {
+		<-s.stopChan
+		callback()
+	}()
+}

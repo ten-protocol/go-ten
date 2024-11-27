@@ -52,6 +52,7 @@ func (e *Service) Start() error {
 			return err
 		}
 	}
+	e.activeSequencerID = e.enclaveGuardians[0].GetEnclaveID()
 	return nil
 }
 
