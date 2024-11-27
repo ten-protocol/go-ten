@@ -85,8 +85,8 @@ func (t *TxPool) start() {
 		newHeadCh  = make(chan core.ChainHeadEvent)
 		newHeadSub = t.Chain.SubscribeChainHeadEvent(newHeadCh)
 	)
-	defer newHeadSub.Unsubscribe()
 	defer close(newHeadCh)
+	defer newHeadSub.Unsubscribe()
 	for {
 		select {
 		case event := <-newHeadCh:
