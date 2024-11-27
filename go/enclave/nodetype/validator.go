@@ -87,20 +87,21 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 			}
 		}
 
-		val.logger.Trace("Executing stored batchHeader", log.BatchSeqNoKey, batchHeader.SequencerOrderNo)
+		val.logger.Trace("Executing stored batch", log.BatchSeqNoKey, batchHeader.SequencerOrderNo)
 
 		// check batchHeader execution prerequisites
 		canExecute, err := val.executionPrerequisites(ctx, batchHeader)
 		if err != nil {
 			return fmt.Errorf("could not determine the execution prerequisites for batchHeader %s. Cause: %w", batchHeader.Hash(), err)
 		}
-		val.logger.Trace("Can execute stored batchHeader", log.BatchSeqNoKey, batchHeader.SequencerOrderNo, "can", canExecute)
+		val.logger.Trace("Can execute stored batch", log.BatchSeqNoKey, batchHeader.SequencerOrderNo, "can", canExecute)
 
 		if canExecute {
 			txs, err := val.storage.FetchBatchTransactionsBySeq(ctx, batchHeader.SequencerOrderNo.Uint64())
 			if err != nil {
 				return fmt.Errorf("could not get txs for batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
+			val.logger.Info("2")
 
 			batch := &core.Batch{
 				Header:       batchHeader,
@@ -109,17 +110,16 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 
 			txResults, err := val.batchExecutor.ExecuteBatch(ctx, batch)
 			if err != nil {
-				return fmt.Errorf("could not execute batchHeader %s. Cause: %w", batchHeader.Hash(), err)
+				return fmt.Errorf("could not execute batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
 			err = val.storage.StoreExecutedBatch(ctx, batchHeader, txResults)
 			if err != nil {
-				return fmt.Errorf("could not store executed batchHeader %s. Cause: %w", batchHeader.Hash(), err)
+				return fmt.Errorf("could not store executed batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
-			err = val.mempool.Chain.IngestNewBlock(batch)
+			err = val.batchRegistry.OnBatchExecuted(batchHeader, txResults)
 			if err != nil {
-				return fmt.Errorf("failed to feed batchHeader into the virtual eth chain- %w", err)
+				return err
 			}
-			val.batchRegistry.OnBatchExecuted(batchHeader, txResults)
 		}
 	}
 	return nil
@@ -158,7 +158,10 @@ func (val *validator) handleGenesis(ctx context.Context, batch *common.BatchHead
 	if err != nil {
 		return err
 	}
-	val.batchRegistry.OnBatchExecuted(batch, nil)
+	err = val.batchRegistry.OnBatchExecuted(batch, nil)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

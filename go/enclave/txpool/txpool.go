@@ -11,6 +11,8 @@ import (
 	"time"
 	_ "unsafe"
 
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ten-protocol/go-ten/go/common/log"
 
@@ -22,28 +24,27 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 )
 
 // this is how long the node waits to receive the second batch
-var startMempoolTimeout = 5 * time.Minute
+var startMempoolTimeout = 90 * time.Second
 
 // TxPool is an obscuro wrapper around geths transaction pool
 type TxPool struct {
 	txPoolConfig legacypool.Config
 	legacyPool   *legacypool.LegacyPool
 	pool         *gethtxpool.TxPool
-	Chain        *ethchainadapter.EthChainAdapter
+	Chain        *components.EthChainAdapter
 	gasTip       *big.Int
-	running      bool
+	running      atomic.Bool
 	stateMutex   sync.Mutex
 	logger       gethlog.Logger
 	validateOnly atomic.Bool
 }
 
 // NewTxPool returns a new instance of the tx pool
-func NewTxPool(blockchain *ethchainadapter.EthChainAdapter, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
-	txPoolConfig := ethchainadapter.NewLegacyPoolConfig()
+func NewTxPool(blockchain *components.EthChainAdapter, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
+	txPoolConfig := components.NewLegacyPoolConfig()
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
 
 	txp := &TxPool{
@@ -67,7 +68,7 @@ func (t *TxPool) SetValidateMode(validateOnly bool) {
 // can only be started after t.blockchain has at least one block inside
 // note - blocking method that waits for the block.Call only as goroutine
 func (t *TxPool) start() {
-	if t.running {
+	if t.running.Load() {
 		return
 	}
 
@@ -86,7 +87,7 @@ func (t *TxPool) start() {
 	)
 	defer newHeadSub.Unsubscribe()
 	defer close(newHeadCh)
-	for { //nolint:gosimple
+	for {
 		select {
 		case event := <-newHeadCh:
 			newHead := event.Block.Header()
@@ -113,7 +114,7 @@ func (t *TxPool) _startInternalPool() error {
 	t.logger.Info("Tx pool started")
 
 	t.pool = memp
-	t.running = true
+	t.running.Store(true)
 	return nil
 }
 
@@ -130,7 +131,7 @@ func (t *TxPool) SubmitTx(transaction *common.L2Tx) error {
 }
 
 func (t *TxPool) waitUntilPoolRunning() error {
-	if t.running {
+	if t.running.Load() {
 		return nil
 	}
 
@@ -140,7 +141,7 @@ func (t *TxPool) waitUntilPoolRunning() error {
 	for {
 		select {
 		case <-tick.C:
-			if t.running {
+			if t.running.Load() {
 				return nil
 			}
 		case <-timeout:
@@ -151,7 +152,7 @@ func (t *TxPool) waitUntilPoolRunning() error {
 
 // PendingTransactions returns all pending transactions grouped per address and ordered per nonce
 func (t *TxPool) PendingTransactions() map[gethcommon.Address][]*gethtxpool.LazyTransaction {
-	if !t.running {
+	if !t.running.Load() {
 		t.logger.Error("tx pool not running")
 		return nil
 	}
@@ -184,9 +185,6 @@ func (t *TxPool) Close() error {
 
 // Add adds a new transactions to the pool
 func (t *TxPool) add(transaction *common.L2Tx) error {
-	if !t.running {
-		return fmt.Errorf("tx pool not running")
-	}
 	var strErrors []string
 	for _, err := range t.pool.Add([]*types.Transaction{transaction}, false, false) {
 		if err != nil {

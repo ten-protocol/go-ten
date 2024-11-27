@@ -12,7 +12,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/measure"
-	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/enclave/system"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
@@ -57,7 +56,6 @@ type sequencer struct {
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
-	blockchain             *ethchainadapter.EthChainAdapter
 }
 
 func NewSequencer(
@@ -75,7 +73,6 @@ func NewSequencer(
 	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
-	blockchain *ethchainadapter.EthChainAdapter,
 ) ActiveSequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
@@ -92,7 +89,6 @@ func NewSequencer(
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		settings:               settings,
-		blockchain:             blockchain,
 	}
 }
 
@@ -142,7 +138,7 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	}
 
 	// this is the actual first block produced in chain
-	err = s.blockchain.IngestNewBlock(batch)
+	err = s.batchRegistry.EthChain().IngestNewBlock(batch)
 	if err != nil {
 		return fmt.Errorf("failed to feed batch into the virtual eth chain - %w", err)
 	}
@@ -305,7 +301,7 @@ func (s *sequencer) produceBatch(
 		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions), log.BatchSeqNoKey, cb.Batch.SeqNo(), "parent", cb.Batch.Header.ParentHash)
 
 	// add the batch to the chain so it can remove pending transactions from the pool
-	err = s.blockchain.IngestNewBlock(cb.Batch)
+	err = s.batchRegistry.EthChain().IngestNewBlock(cb.Batch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to feed batch into the virtual eth chain - %w", err)
 	}
@@ -337,7 +333,10 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	s.batchRegistry.OnBatchExecuted(batch.Header, txResults)
+	err = s.batchRegistry.OnBatchExecuted(batch.Header, txResults)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

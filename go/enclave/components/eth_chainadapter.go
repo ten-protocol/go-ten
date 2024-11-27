@@ -1,8 +1,10 @@
-package ethchainadapter
+package components
 
 import (
 	"context"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -11,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/enclave/components"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -24,7 +25,7 @@ import (
 // EthChainAdapter is an obscuro wrapper around the ethereum core.Blockchain object
 type EthChainAdapter struct {
 	newHeadChan   chan gethcore.ChainHeadEvent
-	batchRegistry components.BatchRegistry
+	batchRegistry BatchRegistry
 	gethEncoding  gethencoding.EncodingService
 	storage       storage.Storage
 	config        enclaveconfig.EnclaveConfig
@@ -33,7 +34,7 @@ type EthChainAdapter struct {
 }
 
 // NewEthChainAdapter returns a new instance
-func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, config enclaveconfig.EnclaveConfig, logger gethlog.Logger) *EthChainAdapter {
+func NewEthChainAdapter(chainID *big.Int, batchRegistry BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, config enclaveconfig.EnclaveConfig, logger gethlog.Logger) *EthChainAdapter {
 	return &EthChainAdapter{
 		newHeadChan:   make(chan gethcore.ChainHeadEvent),
 		batchRegistry: batchRegistry,
@@ -47,7 +48,7 @@ func NewEthChainAdapter(chainID *big.Int, batchRegistry components.BatchRegistry
 
 // Config retrieves the chain's fork configuration.
 func (e *EthChainAdapter) Config() *params.ChainConfig {
-	return ChainParams(e.chainID)
+	return ethchainadapter.ChainParams(e.chainID)
 }
 
 // CurrentBlock returns the current head of the chain.

@@ -97,23 +97,23 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	registry := components.NewBatchRegistry(storage, logger)
+	registry := components.NewBatchRegistry(storage, config, gethEncodingService, logger)
 	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, scb, logger)
 	sigVerifier, err := components.NewSignatureValidator(storage)
 	rProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
-	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
-	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
-	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, logger)
 
-	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, *config, logger)
 	// start all mempools in validate only
-	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, true, logger)
+	mempool, err := txpool.NewTxPool(registry.EthChain(), config.MinGasPrice, true, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
+
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
+	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
+	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, logger)
 
 	var service nodetype.NodeType
 	if config.NodeType == common.ActiveSequencer {
@@ -152,7 +152,6 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 				BatchGasLimit:     config.GasBatchExecutionLimit,
 				BaseFee:           config.BaseFee,
 			},
-			blockchain,
 		)
 	} else {
 		service = nodetype.NewValidator(
