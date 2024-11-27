@@ -8,7 +8,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/measure"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -34,9 +36,10 @@ type batchRegistry struct {
 	callbackMutex     sync.RWMutex
 	healthTimeout     time.Duration
 	lastExecutedBatch *async.Timestamp
+	ethChainAdapter   *EthChainAdapter
 }
 
-func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegistry {
+func NewBatchRegistry(storage storage.Storage, config *enclaveconfig.EnclaveConfig, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger) BatchRegistry {
 	var headBatchSeq *big.Int
 	headBatch, err := storage.FetchHeadBatchHeader(context.Background())
 	if err != nil {
@@ -49,14 +52,20 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 	} else {
 		headBatchSeq = headBatch.SequencerOrderNo
 	}
-
-	return &batchRegistry{
+	br := &batchRegistry{
 		storage:           storage,
 		headBatchSeq:      headBatchSeq,
 		logger:            logger,
 		healthTimeout:     time.Minute,
 		lastExecutedBatch: async.NewAsyncTimestamp(time.Now().Add(-time.Minute)),
 	}
+
+	br.ethChainAdapter = NewEthChainAdapter(big.NewInt(config.ObscuroChainID), br, storage, gethEncodingService, *config, logger)
+	return br
+}
+
+func (br *batchRegistry) EthChain() *EthChainAdapter {
+	return br.ethChainAdapter
 }
 
 func (br *batchRegistry) HeadBatchSeq() *big.Int {
@@ -86,7 +95,7 @@ func (br *batchRegistry) OnL1Reorg(_ *BlockIngestionType) {
 	br.headBatchSeq = headBatch.SequencerOrderNo
 }
 
-func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExecResults []*core.TxExecResult) {
+func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExecResults []*core.TxExecResult) error {
 	defer core.LogMethodDuration(br.logger, measure.NewStopwatch(), "OnBatchExecuted", log.BatchHashKey, batchHeader.Hash())
 	br.callbackMutex.RLock()
 	defer br.callbackMutex.RUnlock()
@@ -96,12 +105,17 @@ func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExec
 		// this function is called after a batch was successfully executed. This is a catastrophic failure
 		br.logger.Crit("should not happen. cannot get transactions. ", log.ErrKey, err)
 	}
+	batch := &core.Batch{
+		Header:       batchHeader,
+		Transactions: txs,
+	}
+	err = br.ethChainAdapter.IngestNewBlock(batch)
+	if err != nil {
+		return fmt.Errorf("failed to feed batch into the virtual eth chain. cause %w", err)
+	}
+
 	br.headBatchSeq = batchHeader.SequencerOrderNo
 	if br.batchesCallback != nil {
-		batch := &core.Batch{
-			Header:       batchHeader,
-			Transactions: txs,
-		}
 		txReceipts := make([]*types.Receipt, len(txExecResults))
 		for i, txExecResult := range txExecResults {
 			txReceipts[i] = txExecResult.Receipt
@@ -110,6 +124,7 @@ func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExec
 	}
 
 	br.lastExecutedBatch.Mark()
+	return nil
 }
 
 func (br *batchRegistry) HasGenesisBatch() (bool, error) {

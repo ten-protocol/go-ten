@@ -95,26 +95,27 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	registry := components.NewBatchRegistry(storage, logger)
+	registry := components.NewBatchRegistry(storage, config, gethEncodingService, logger)
 	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, scb, logger)
 	sigVerifier, err := components.NewSignatureValidator(storage)
 	rProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
-	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
-	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
-	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, logger)
 
-	blockchain := ethchainadapter.NewEthChainAdapter(big.NewInt(config.ObscuroChainID), registry, storage, gethEncodingService, *config, logger)
-	// todo  - mempool for backup sequencer needs to store all txs
-	mempool, err := txpool.NewTxPool(blockchain, config.MinGasPrice, logger)
+	// start all mempools in validate only
+	mempool, err := txpool.NewTxPool(registry.EthChain(), config.MinGasPrice, true, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
 
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
+	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
+	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, logger)
+
 	var service nodetype.NodeType
 	if config.NodeType == common.ActiveSequencer {
+		mempool.SetValidateMode(false)
 		// Todo - this is temporary - until the host calls `AddSequencer`
 		err := storage.StoreNewEnclave(context.Background(), enclaveKeyService.EnclaveID(), enclaveKeyService.PublicKey())
 		if err != nil {
@@ -149,7 +150,6 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 				BatchGasLimit:     config.GasBatchExecutionLimit,
 				BaseFee:           config.BaseFee,
 			},
-			blockchain,
 		)
 	} else {
 		service = nodetype.NewValidator(
@@ -174,8 +174,10 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 		registry,
 		config.GasLocalExecutionCapFlag,
 	)
+	// todo - security
 	obscuroKey := crypto.GetObscuroKey(logger)
-	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, cachingService, registry, crossChainProcessors, service, config, gasOracle, storage, blockProcessor, chain, logger)
+
+	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, cachingService, registry, mempool, crossChainProcessors, config, gasOracle, storage, blockProcessor, chain, logger)
 	subscriptionManager := events.NewSubscriptionManager(storage, registry, config.ObscuroChainID, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
@@ -193,7 +195,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	debug := debugger.New(chain, storage, chainConfig)
 	stopControl := stopcontrol.New()
 	initService := NewEnclaveInitService(config, storage, blockProcessor, logger, enclaveKeyService, attestationProvider)
-	adminService := NewEnclaveAdminService(config, logger, blockProcessor, service, sharedSecretProcessor, rConsumer, registry, dataEncryptionService, dataCompressionService, storage, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService)
+	adminService := NewEnclaveAdminService(config, logger, blockProcessor, service, sharedSecretProcessor, rConsumer, registry, dataEncryptionService, dataCompressionService, storage, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool)
 	rpcService := NewEnclaveRPCService(rpcEncryptionManager, registry, subscriptionManager, config, debug, storage, crossChainProcessors, scb)
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{

@@ -45,8 +45,6 @@ func NewValidator(
 	mempool *txpool.TxPool,
 	logger gethlog.Logger,
 ) Validator {
-	startMempool(registry, mempool)
-
 	return &validator{
 		blockProcessor: consumer,
 		batchExecutor:  batchExecutor,
@@ -57,18 +55,6 @@ func NewValidator(
 		mempool:        mempool,
 		logger:         logger,
 	}
-}
-
-func (val *validator) SubmitTransaction(tx *common.L2Tx) error {
-	headBatch := val.batchRegistry.HeadBatchSeq()
-	if headBatch == nil || headBatch.Uint64() <= common.L2GenesisSeqNo+1 {
-		return fmt.Errorf("not initialised")
-	}
-	err := val.mempool.Validate(tx)
-	if err != nil {
-		val.logger.Info("Error validating transaction.", log.ErrKey, err, log.TxKey, tx.Hash())
-	}
-	return err
 }
 
 func (val *validator) OnL1Fork(ctx context.Context, fork *common.ChainFork) error {
@@ -94,8 +80,6 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 		return err
 	}
 
-	startMempool(val.batchRegistry, val.mempool)
-
 	for _, batchHeader := range batches {
 		if batchHeader.IsGenesis() {
 			if err = val.handleGenesis(ctx, batchHeader); err != nil {
@@ -103,14 +87,14 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 			}
 		}
 
-		val.logger.Trace("Executing stored batchHeader", log.BatchSeqNoKey, batchHeader.SequencerOrderNo)
+		val.logger.Trace("Executing stored batch", log.BatchSeqNoKey, batchHeader.SequencerOrderNo)
 
 		// check batchHeader execution prerequisites
 		canExecute, err := val.executionPrerequisites(ctx, batchHeader)
 		if err != nil {
 			return fmt.Errorf("could not determine the execution prerequisites for batchHeader %s. Cause: %w", batchHeader.Hash(), err)
 		}
-		val.logger.Trace("Can execute stored batchHeader", log.BatchSeqNoKey, batchHeader.SequencerOrderNo, "can", canExecute)
+		val.logger.Trace("Can execute stored batch", log.BatchSeqNoKey, batchHeader.SequencerOrderNo, "can", canExecute)
 
 		if canExecute {
 			txs, err := val.storage.FetchBatchTransactionsBySeq(ctx, batchHeader.SequencerOrderNo.Uint64())
@@ -125,17 +109,16 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 
 			txResults, err := val.batchExecutor.ExecuteBatch(ctx, batch)
 			if err != nil {
-				return fmt.Errorf("could not execute batchHeader %s. Cause: %w", batchHeader.Hash(), err)
+				return fmt.Errorf("could not execute batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
 			err = val.storage.StoreExecutedBatch(ctx, batchHeader, txResults)
 			if err != nil {
-				return fmt.Errorf("could not store executed batchHeader %s. Cause: %w", batchHeader.Hash(), err)
+				return fmt.Errorf("could not store executed batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
-			err = val.mempool.Chain.IngestNewBlock(batch)
+			err = val.batchRegistry.OnBatchExecuted(batchHeader, txResults)
 			if err != nil {
-				return fmt.Errorf("failed to feed batchHeader into the virtual eth chain- %w", err)
+				return err
 			}
-			val.batchRegistry.OnBatchExecuted(batchHeader, txResults)
 		}
 	}
 	return nil
@@ -174,7 +157,10 @@ func (val *validator) handleGenesis(ctx context.Context, batch *common.BatchHead
 	if err != nil {
 		return err
 	}
-	val.batchRegistry.OnBatchExecuted(batch, nil)
+	err = val.batchRegistry.OnBatchExecuted(batch, nil)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -184,15 +170,4 @@ func (val *validator) OnL1Block(ctx context.Context, block *types.Header, result
 
 func (val *validator) Close() error {
 	return val.mempool.Close()
-}
-
-func startMempool(registry components.BatchRegistry, mempool *txpool.TxPool) {
-	// the mempool can only be started when there are a couple of blocks already processed
-	headBatchSeq := registry.HeadBatchSeq()
-	if !mempool.Running() && headBatchSeq != nil && headBatchSeq.Uint64() > common.L2GenesisSeqNo+1 {
-		err := mempool.Start()
-		if err != nil {
-			panic(fmt.Errorf("could not start mempool: %w", err))
-		}
-	}
 }

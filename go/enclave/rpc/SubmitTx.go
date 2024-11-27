@@ -29,7 +29,7 @@ func SubmitTxExecute(builder *CallBuilder[common.L2Tx, gethcommon.Hash], rpc *En
 		return nil
 	}
 
-	if err := rpc.service.SubmitTransaction(builder.Param); err != nil {
+	if err := rpc.mempool.SubmitTx(builder.Param); err != nil {
 		rpc.logger.Debug("Could not submit transaction", log.TxKey, builder.Param.Hash(), log.ErrKey, err)
 		builder.Err = err
 		return nil
