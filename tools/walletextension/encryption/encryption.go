@@ -63,3 +63,8 @@ func (e *Encryptor) HashWithHMAC(data []byte) []byte {
 	h.Write(data)
 	return h.Sum(nil)
 }
+
+// GetKey returns the encryption key
+func (e *Encryptor) GetKey() []byte {
+	return e.key
+}
