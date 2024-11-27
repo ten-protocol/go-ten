@@ -3,6 +3,8 @@ package ethadapter
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -75,4 +77,30 @@ type L1InitializeSecretTx struct {
 	EnclaveID     *gethcommon.Address
 	InitialSecret []byte
 	Attestation   common.EncodedAttestationReport
+}
+
+type L1TxType int
+
+const (
+	RollupTx L1TxType = iota
+	SecretRequestTx
+	InitialiseSecretTx
+	CrossChainMessageTx
+	SequencerAddedTx
+	SetImportantContractsTx
+)
+
+// ProcessedL1Data is submitted to the enclave by the guardian
+type ProcessedL1Data struct {
+	BlockHeader *types.Header
+	Events      map[L1TxType][]*L1TxData
+}
+
+// L1TxData represents a processed L1 transaction that's relevant to us
+type L1TxData struct {
+	Type               L1Transaction
+	Transaction        *types.Transaction
+	Receipt            *types.Receipt
+	Blobs              []*kzg4844.Blob            // Only populated for blob transactions
+	CrossChainMessages *common.CrossChainMessages // Only populated for xchain txs
 }

@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"errors"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -38,7 +39,7 @@ func (bit *BlockIngestionType) IsFork() bool {
 }
 
 type L1BlockProcessor interface {
-	Process(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error)
+	Process(ctx context.Context, br *ethadapter.ProcessedL1Data) (*BlockIngestionType, error)
 	GetHead(context.Context) (*types.Header, error)
 	GetCrossChainContractAddress() *gethcommon.Address
 	HealthCheck() (bool, error)

@@ -87,6 +87,8 @@ type L1BlockRepository interface {
 	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error)
 	// FetchObscuroReceipts returns the receipts for a given L1 block
 	FetchObscuroReceipts(block *common.L1Block) (types.Receipts, error)
+	// ExtractTenTransactions returns the tx data and types of those relevant to Ten to be consumed by the enclave
+	ExtractTenTransactions(block *common.L1Block) (*ethadapter.ProcessedL1Data, error)
 }
 
 // L1BlockHandler is an interface for receiving new blocks from the repository as they arrive

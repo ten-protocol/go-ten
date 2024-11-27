@@ -423,14 +423,15 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
 		return false, nil
 	}
-	receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
+
+	processedData, err := g.sl.L1Repo().ExtractTenTransactions(block)
 	if err != nil {
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
 	}
-	txsReceiptsAndBlobs, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractRelevantTenTransactions(block, receipts)
+	rollupTxs, contractAddressTxs := g.getRollupsAndContractAddrTxs(*processedData)
 
-	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txsReceiptsAndBlobs)
+	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), processedData)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -752,4 +753,36 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 		fromBatch++
 	}
 	return fromBatch, nil
+}
+
+func (g *Guardian) getRollupsAndContractAddrTxs(data ethadapter.ProcessedL1Data) ([]*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
+	rollupTxs := make([]*ethadapter.L1RollupTx, 0)
+	contractAddressTxs := make([]*ethadapter.L1SetImportantContractsTx, 0)
+
+	for !g.hostInterrupter.IsStopping() {
+		// Get rollup transactions
+		for _, event := range data.Events[ethadapter.RollupTx] {
+			encodedRlp, err := ethadapter.DecodeBlobs(event.Blobs)
+			if err != nil {
+				g.logger.Crit("could not decode blobs.", log.ErrKey, err)
+				continue
+			}
+
+			rlp := &ethadapter.L1RollupTx{
+				Rollup: encodedRlp,
+			}
+			rollupTxs = append(rollupTxs, rlp)
+		}
+
+		// Get contract address transactions
+		for _, event := range data.Events[ethadapter.SetImportantContractsTx] {
+			if contractTx, ok := event.Type.(*ethadapter.L1SetImportantContractsTx); ok {
+				contractAddressTxs = append(contractAddressTxs, contractTx)
+			} else {
+				g.logger.Warn("Unexpected type for SetImportantContractsTx event", "type", fmt.Sprintf("%T", event.Type))
+			}
+		}
+
+	}
+	return rollupTxs, contractAddressTxs
 }

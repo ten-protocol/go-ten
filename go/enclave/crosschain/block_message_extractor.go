@@ -123,7 +123,7 @@ func (m *blockMessageExtractor) getCrossChainMessages(block *types.Header, recei
 	}
 	m.logger.Trace("Extracted cross chain logs from receipts", "logCount", len(logs))
 
-	messages, err := convertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
+	messages, err := ConvertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
 	if err != nil {
 		m.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err

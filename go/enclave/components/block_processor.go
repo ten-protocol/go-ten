@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -59,8 +60,8 @@ func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOr
 	}
 }
 
-func (bp *l1BlockProcessor) Process(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error) {
-	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, br.BlockHeader.Hash())
+func (bp *l1BlockProcessor) Process(ctx context.Context, processed *ethadapter.ProcessedL1Data) (*BlockIngestionType, error) {
+	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, processed.BlockHeader.Hash())
 
 	ingestion, err := bp.tryAndInsertBlock(ctx, br)
 	if err != nil {

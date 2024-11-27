@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
 	"sync"
 	"time"
@@ -125,18 +126,16 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceiptAndBlobs) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processedData *ethadapter.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
 	e.logger.Info("SubmitL1Block", log.BlockHeightKey, blockHeader.Number, log.BlockHashKey, blockHeader.Hash())
 
-	// If the block and receipts do not match, reject the block.
-	br, err := common.ParseBlockAndReceipts(blockHeader, receipts)
-	if err != nil {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
+	// Verify the block header matches the one in processedData
+	if blockHeader.Hash() != processedData.BlockHeader.Hash() {
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("block header mismatch"))
 	}
-
 	result, err := e.ingestL1Block(ctx, br)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
@@ -418,8 +417,8 @@ func (e *enclaveAdminService) streamEventsForNewHeadBatch(ctx context.Context, b
 	}
 }
 
-func (e *enclaveAdminService) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
-	e.logger.Info("Start ingesting block", log.BlockHashKey, br.BlockHeader.Hash())
+func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *ethadapter.ProcessedL1Data) (*components.BlockIngestionType, error) {
+	e.logger.Info("Start ingesting block", log.BlockHashKey, processed.BlockHeader.Hash())
 	ingestion, err := e.l1BlockProcessor.Process(ctx, br)
 	if err != nil {
 		// only warn for unexpected errors

@@ -23,11 +23,13 @@ import (
 )
 
 var (
-	MessageBusABI, _       = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	CrossChainEventName    = "LogMessagePublished"
-	CrossChainEventID      = MessageBusABI.Events[CrossChainEventName].ID
-	ValueTransferEventName = "ValueTransfer"
-	ValueTransferEventID   = MessageBusABI.Events["ValueTransfer"].ID
+	MessageBusABI, _                 = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	CrossChainEventName              = "LogMessagePublished"
+	CrossChainEventID                = MessageBusABI.Events[CrossChainEventName].ID
+	ValueTransferEventName           = "ValueTransfer"
+	ValueTransferEventID             = MessageBusABI.Events["ValueTransfer"].ID
+	SequencerEnclaveGrantedEventName = "SequencerEnclaveGranted"
+	SequencerEnclaveGrantedEventID   = MessageBusABI.Events["SequencerEnclaveGranted"].ID
 )
 
 func lazilyLogReceiptChecksum(block *types.Header, receipts types.Receipts, logger gethlog.Logger) {
@@ -64,7 +66,7 @@ func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address
 			continue
 		}
 
-		logsForReceipt, err := filterLogsFromReceipt(receipt, address, topic)
+		logsForReceipt, err := FilterLogsFromReceipt(receipt, address, topic)
 		if err != nil {
 			return logs, err
 		}
@@ -75,8 +77,8 @@ func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address
 	return logs, nil
 }
 
-// filterLogsFromReceipt - filters the receipt for logs matching address, if provided and matching any of the provided topics.
-func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
+// FilterLogsFromReceipt - filters the receipt for logs matching address, if provided and matching any of the provided topics.
+func FilterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
 
 	if receipt == nil {
@@ -105,7 +107,7 @@ func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, 
 }
 
 // convertLogsToMessages - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
-func convertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.CrossChainMessages, error) {
+func ConvertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.CrossChainMessages, error) {
 	messages := make(common.CrossChainMessages, 0)
 
 	for _, log := range logs {
