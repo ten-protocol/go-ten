@@ -101,7 +101,6 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("could not get txs for batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
-			val.logger.Info("2")
 
 			batch := &core.Batch{
 				Header:       batchHeader,
