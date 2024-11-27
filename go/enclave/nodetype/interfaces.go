@@ -33,15 +33,6 @@ type ActiveSequencer interface {
 	NodeType
 }
 
-type BackupSequencer interface {
-	// ExecuteStoredBatches - try to execute all stored by unexecuted batches
-	ExecuteStoredBatches(context.Context) error
-
-	VerifySequencerSignature(*core.Batch) error
-
-	NodeType
-}
-
 type Validator interface {
 	// ExecuteStoredBatches - try to execute all stored by unexecuted batches
 	ExecuteStoredBatches(context.Context) error

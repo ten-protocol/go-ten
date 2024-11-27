@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/common/compression"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
@@ -16,9 +15,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/enclave/components"
-	"github.com/ten-protocol/go-ten/go/enclave/nodetype"
-
-	"github.com/ten-protocol/go-ten/go/enclave/l2chain"
 	"github.com/ten-protocol/go-ten/go/responses"
 
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
@@ -26,18 +22,14 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/common/tracers"
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
-	"github.com/ten-protocol/go-ten/go/enclave/crypto"
-	"github.com/ten-protocol/go-ten/go/enclave/debugger"
 	"github.com/ten-protocol/go-ten/go/enclave/events"
 
-	"github.com/ten-protocol/go-ten/go/enclave/rpc"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	_ "github.com/ten-protocol/go-ten/go/common/tracers/native" // make sure the tracers are loaded
@@ -62,12 +54,49 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Creating enclave service with following config", log.CfgKey, string(jsonConfig))
 
-	// todo (#1053) - add the delay: N hashes
+	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
 
 	// Initialise the database
 	cachingService := storage.NewCacheService(logger, config.UseInMemoryDB)
-	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
 	storage := storage.NewStorageFromConfig(config, cachingService, chainConfig, logger)
+
+	// attempt to fetch the enclave key from the database
+	// the enclave key is part of the attestation and identifies the current enclave
+	enclaveKeyService := components.NewEnclaveKeyService(storage, logger)
+	err := enclaveKeyService.LoadOrCreateEnclaveKey()
+	if err != nil {
+		logger.Crit("Failed to load or create enclave key", "err", err)
+	}
+
+	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, logger)
+
+	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
+
+	// initialise system contracts
+	scb := system.NewSystemContractCallbacks(storage, &config.SystemContractOwner, logger)
+	err = scb.Load()
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		logger.Crit("failed to load system contracts", log.ErrKey, err)
+	}
+
+	gasOracle := gas.NewGasOracle()
+	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
+	batchRegistry := components.NewBatchRegistry(storage, config, gethEncodingService, logger)
+	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, scb, logger)
+
+	// ensure cached chain state data is up-to-date using the persisted batch data
+	err = restoreStateDBCache(context.Background(), storage, batchRegistry, batchExecutor, genesis, logger)
+	if err != nil {
+		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
+	}
+
+	// start the mempool in validate only. Based on the config, it might become sequencer
+	mempool, err := txpool.NewTxPool(batchRegistry.EthChain(), config.MinGasPrice, true, logger)
+	if err != nil {
+		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
+	}
+
+	subscriptionManager := events.NewSubscriptionManager(storage, batchRegistry, config.ObscuroChainID, logger)
 
 	// todo (#1474) - make sure the enclave cannot be started in production with WillAttest=false
 	var attestationProvider components.AttestationProvider
@@ -78,125 +107,13 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 		attestationProvider = &components.DummyAttestationProvider{}
 	}
 
-	enclaveKeyService := components.NewEnclaveKeyService(storage, logger)
-	// attempt to fetch the enclave key from the database
-	// the enclave key is part of the attestation and identifies the current enclave
-	err := enclaveKeyService.LoadOrCreateEnclaveKey()
-	if err != nil {
-		logger.Crit("Failed to load or create enclave key", "err", err)
-	}
-
-	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, logger)
-	dataEncryptionService := crypto.NewDataEncryptionService(logger)
-	dataCompressionService := compression.NewBrotliDataCompressionService()
-
-	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
-	scb := system.NewSystemContractCallbacks(storage, &config.SystemContractOwner, logger)
-
-	gasOracle := gas.NewGasOracle()
-	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	registry := components.NewBatchRegistry(storage, config, gethEncodingService, logger)
-	batchExecutor := components.NewBatchExecutor(storage, registry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, scb, logger)
-	sigVerifier, err := components.NewSignatureValidator(storage)
-	rProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
-	if err != nil {
-		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
-	}
-
-	// start all mempools in validate only
-	mempool, err := txpool.NewTxPool(registry.EthChain(), config.MinGasPrice, true, logger)
-	if err != nil {
-		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
-	}
-
-	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
-	rConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
-	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, logger)
-
-	var service nodetype.NodeType
-	if config.NodeType == common.ActiveSequencer {
-		mempool.SetValidateMode(false)
-		// Todo - this is temporary - until the host calls `AddSequencer`
-		err := storage.StoreNewEnclave(context.Background(), enclaveKeyService.EnclaveID(), enclaveKeyService.PublicKey())
-		if err != nil {
-			logger.Crit("Failed to store enclave key", log.ErrKey, err)
-			return nil
-		}
-		err = storage.StoreNodeType(context.Background(), enclaveKeyService.EnclaveID(), common.ActiveSequencer)
-		if err != nil {
-			logger.Crit("Failed to store node type", log.ErrKey, err)
-			return nil
-		}
-
-		// todo - next PR - update the service logic to be swappable
-		service = nodetype.NewSequencer(
-			blockProcessor,
-			batchExecutor,
-			registry,
-			rProducer,
-			rollupCompression,
-			gethEncodingService,
-			logger,
-			chainConfig,
-			enclaveKeyService,
-			mempool,
-			storage,
-			dataEncryptionService,
-			dataCompressionService,
-			nodetype.SequencerSettings{
-				MaxBatchSize:      config.MaxBatchSize,
-				MaxRollupSize:     config.MaxRollupSize,
-				GasPaymentAddress: config.GasPaymentAddress,
-				BatchGasLimit:     config.GasBatchExecutionLimit,
-				BaseFee:           config.BaseFee,
-			},
-		)
-	} else {
-		service = nodetype.NewValidator(
-			blockProcessor,
-			batchExecutor,
-			registry,
-			chainConfig,
-			storage,
-			sigVerifier,
-			mempool,
-			logger,
-		)
-	}
-
-	chain := l2chain.NewChain(
-		storage,
-		*config,
-		gethEncodingService,
-		chainConfig,
-		genesis,
-		logger,
-		registry,
-		config.GasLocalExecutionCapFlag,
-	)
-	// todo - security
-	obscuroKey := crypto.GetObscuroKey(logger)
-
-	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, cachingService, registry, mempool, crossChainProcessors, config, gasOracle, storage, blockProcessor, chain, logger)
-	subscriptionManager := events.NewSubscriptionManager(storage, registry, config.ObscuroChainID, logger)
-
-	// ensure cached chain state data is up-to-date using the persisted batch data
-	err = restoreStateDBCache(context.Background(), storage, registry, batchExecutor, genesis, logger)
-	if err != nil {
-		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
-	}
-
-	err = scb.Load()
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		logger.Crit("failed to load system contracts", log.ErrKey, err)
-	}
-
-	// TODO ensure debug is allowed/disallowed
-	debug := debugger.New(chain, storage, chainConfig)
+	// signal to stop the enclave
 	stopControl := stopcontrol.New()
-	initService := NewEnclaveInitService(config, storage, blockProcessor, logger, enclaveKeyService, attestationProvider)
-	adminService := NewEnclaveAdminService(config, logger, blockProcessor, service, sharedSecretProcessor, rConsumer, registry, dataEncryptionService, dataCompressionService, storage, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool)
-	rpcService := NewEnclaveRPCService(rpcEncryptionManager, registry, subscriptionManager, config, debug, storage, crossChainProcessors, scb)
+
+	initService := NewEnclaveInitService(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider)
+	adminService := NewEnclaveAdminService(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, mgmtContractLib, attestationProvider)
+	rpcService := NewEnclaveRPCService(config, storage, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle)
+
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{
 		initService:  initService,
