@@ -104,7 +104,7 @@ func StartSequencerHost() networktest.Action {
 
 func StopSequencerEnclave(enclaveIdx int) networktest.Action {
 	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
-		fmt.Println("Sequencer: stopping enclave")
+		fmt.Printf("Sequencer: stopping enclave %d\n", enclaveIdx)
 		sequencer := network.GetSequencerNode()
 		err := sequencer.StopEnclave(enclaveIdx)
 		if err != nil {
@@ -116,7 +116,7 @@ func StopSequencerEnclave(enclaveIdx int) networktest.Action {
 
 func StartSequencerEnclave(enclaveIdx int) networktest.Action {
 	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
-		fmt.Println("Sequencer: starting enclave")
+		fmt.Printf("Sequencer: starting enclave %d\n", enclaveIdx)
 		sequencer := network.GetSequencerNode()
 		err := sequencer.StartEnclave(enclaveIdx)
 		if err != nil {
