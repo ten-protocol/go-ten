@@ -103,7 +103,7 @@ type TransactionStorage interface {
 }
 
 type AttestationStorage interface {
-	GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*ecdsa.PublicKey, common.NodeType, error)
+	GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*AttestedEnclave, error)
 	StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error
 	StoreNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) error
 }

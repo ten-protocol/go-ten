@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"math/big"
 	"sync"
 	"time"
-
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
@@ -37,6 +38,8 @@ type enclaveAdminService struct {
 	mainMutex              sync.Mutex // serialises all data ingestion or creation to avoid weird races
 	logger                 gethlog.Logger
 	l1BlockProcessor       components.L1BlockProcessor
+	validatorService       nodetype.Validator
+	sequencerService       nodetype.ActiveSequencer
 	service                nodetype.NodeType
 	sharedSecretProcessor  *components.SharedSecretProcessor
 	rollupConsumer         components.RollupConsumer
@@ -49,9 +52,10 @@ type enclaveAdminService struct {
 	profiler               *profiler.Profiler
 	subscriptionManager    *events.SubscriptionManager
 	enclaveKeyService      *components.EnclaveKeyService
+	mempool                *txpool.TxPool
 }
 
-func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, service nodetype.NodeType, sharedSecretProcessor *components.SharedSecretProcessor, rollupConsumer components.RollupConsumer, registry components.BatchRegistry, dataEncryptionService crypto.DataEncryptionService, dataCompressionService compression.DataCompressionService, storage storage.Storage, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *components.EnclaveKeyService) common.EnclaveAdmin {
+func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *components.EnclaveKeyService, mempool *txpool.TxPool, chainConfig *params.ChainConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, attestationProvider components.AttestationProvider) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -61,13 +65,38 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.
 			logger.Crit("unable to start the profiler", log.ErrKey, err)
 		}
 	}
+	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, logger)
+	sigVerifier, err := components.NewSignatureValidator(storage)
+	if err != nil {
+		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
+	}
 
-	return &enclaveAdminService{
+	dataEncryptionService := crypto.NewDataEncryptionService(logger)
+	dataCompressionService := compression.NewBrotliDataCompressionService()
+
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
+	rollupProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
+	rollupConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
+
+	seqSettings := nodetype.SequencerSettings{
+		MaxBatchSize:      config.MaxBatchSize,
+		MaxRollupSize:     config.MaxRollupSize,
+		GasPaymentAddress: config.GasPaymentAddress,
+		BatchGasLimit:     config.GasBatchExecutionLimit,
+		BaseFee:           config.BaseFee,
+	}
+
+	sequencerService := nodetype.NewSequencer(blockProcessor, batchExecutor, registry, rollupProducer, rollupCompression, gethEncodingService, logger, chainConfig, enclaveKeyService, mempool, storage, dataEncryptionService, dataCompressionService, seqSettings)
+	validatorService := nodetype.NewValidator(blockProcessor, batchExecutor, registry, chainConfig, storage, sigVerifier, mempool, logger)
+
+	eas := &enclaveAdminService{
 		config:                 config,
 		mainMutex:              sync.Mutex{},
 		logger:                 logger,
-		l1BlockProcessor:       l1BlockProcessor,
-		service:                service,
+		l1BlockProcessor:       blockProcessor,
+		service:                validatorService,
+		sequencerService:       sequencerService,
+		validatorService:       validatorService,
 		sharedSecretProcessor:  sharedSecretProcessor,
 		rollupConsumer:         rollupConsumer,
 		registry:               registry,
@@ -79,27 +108,47 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, logger gethlog.
 		profiler:               prof,
 		subscriptionManager:    subscriptionManager,
 		enclaveKeyService:      enclaveKeyService,
+		mempool:                mempool,
 	}
+
+	// if the current enclave was already marked as an active/backup sequencer, it needs to set the right mempool mode
+	if eas.isBackupSequencer(context.Background()) || eas.isActiveSequencer(context.Background()) {
+		mempool.SetValidateMode(false)
+	}
+	if eas.isActiveSequencer(context.Background()) {
+		eas.service = sequencerService
+	}
+
+	// Todo - this is temporary - until the host calls `AddSequencer` instead of relying on the config - which can be removed
+	if config.NodeType == common.ActiveSequencer {
+		err := storage.StoreNewEnclave(context.Background(), enclaveKeyService.EnclaveID(), enclaveKeyService.PublicKey())
+		if err != nil {
+			logger.Crit("Failed to store enclave key", log.ErrKey, err)
+			return nil
+		}
+		err = eas.MakeActive()
+		if err != nil {
+			logger.Crit("Failed to create sequencer", log.ErrKey, err)
+		}
+	}
+
+	return eas
 }
 
 func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, proof types.Receipt) common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	// by default all enclaves start their life as a validator
+	// todo - use the proof
 
-	// store in the database the enclave id
 	err := e.storage.StoreNodeType(context.Background(), id, common.BackupSequencer)
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
 
-	// compare the id with the current enclaveId and if they match - do something so that the current enclave behaves as a "backup sequencer"
-	// the host will specifically mark the active enclave
-	//currentEnclaveId, err := e.initService.EnclaveID(context.Background())
-	//if err != nil {
-	//	return err
-	//}
+	if e.enclaveKeyService.EnclaveID() == id {
+		e.mempool.SetValidateMode(false)
+	}
 
 	//if currentEnclaveId == id {
 	//	todo
@@ -113,21 +162,24 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	if !e.isBackupSequencer(context.Background()) {
-		return fmt.Errorf("only backup sequencer can become active")
-	}
-	// todo
-	// change the node type service
-	// do something with the mempool
-	// make some other checks?
-	// Once we've got the sequencer Enclave IDs permission list monitoring we should include that check here probably.
-	// We could even make it so that all sequencer enclaves start as backup and it can't be activated until the permissioning is done?
+	// todo - uncomment once AddSequencer is called by the host
+	//if !e.isBackupSequencer(context.Background()) {
+	//	return fmt.Errorf("only backup sequencer can become active")
+	//}
 
+	// todo - remove because this enclave should already be a backup sequencer
+	e.mempool.SetValidateMode(false)
+
+	err := e.storage.StoreNodeType(context.Background(), e.enclaveKeyService.EnclaveID(), common.ActiveSequencer)
+	if err != nil {
+		return err
+	}
+	e.service = e.sequencerService
 	return nil
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processed *ethadapter.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
@@ -418,7 +470,7 @@ func (e *enclaveAdminService) streamEventsForNewHeadBatch(ctx context.Context, b
 	}
 }
 
-func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *ethadapter.ProcessedL1Data) (*components.BlockIngestionType, error) {
+func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*components.BlockIngestionType, error) {
 	e.logger.Info("Start ingesting block", log.BlockHashKey, processed.BlockHeader.Hash())
 	ingestion, err := e.l1BlockProcessor.Process(ctx, processed)
 	if err != nil {
@@ -490,12 +542,12 @@ func (e *enclaveAdminService) isValidator(ctx context.Context) bool { //nolint:u
 
 func (e *enclaveAdminService) getNodeType(ctx context.Context) common.NodeType {
 	id := e.enclaveKeyService.EnclaveID()
-	_, nodeType, err := e.storage.GetEnclavePubKey(ctx, id)
+	attestedEnclave, err := e.storage.GetEnclavePubKey(ctx, id)
 	if err != nil {
-		e.logger.Crit("could not read enclave pub key", log.ErrKey, err)
-		return 0
+		e.logger.Warn("could not read enclave pub key. Defaulting to validator type", log.ErrKey, err)
+		return common.Validator
 	}
-	return nodeType
+	return attestedEnclave.Type
 }
 
 func exportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {

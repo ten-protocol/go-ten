@@ -13,11 +13,6 @@ import (
 // NodeType - the interface for any service type running in Obscuro nodes.
 // Should only contain the shared functionality that every service type needs to have.
 type NodeType interface {
-	// SubmitTransaction - L2 obscuro transactions need to be passed here. Sequencers
-	// will put them in the mempool while validators might put them in a queue and monitor
-	// for censorship.
-	SubmitTransaction(*common.L2Tx) error
-
 	// OnL1Fork - logic to be performed when there is an L1 Fork
 	OnL1Fork(ctx context.Context, fork *common.ChainFork) error
 
@@ -34,15 +29,6 @@ type ActiveSequencer interface {
 	// CreateRollup - creates a new rollup from the latest recorded rollup in the head l1 chain
 	// and adds as many batches to it as possible.
 	CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, error)
-
-	NodeType
-}
-
-type BackupSequencer interface {
-	// ExecuteStoredBatches - try to execute all stored by unexecuted batches
-	ExecuteStoredBatches(context.Context) error
-
-	VerifySequencerSignature(*core.Batch) error
 
 	NodeType
 }

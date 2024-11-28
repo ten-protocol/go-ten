@@ -3,6 +3,8 @@ package rpc
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+
 	"github.com/ten-protocol/go-ten/go/common/privacy"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
@@ -11,7 +13,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/components"
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/enclave/l2chain"
-	"github.com/ten-protocol/go-ten/go/enclave/nodetype"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -25,22 +26,21 @@ type EncryptionManager struct {
 	cacheService           *storage.CacheService
 	registry               components.BatchRegistry
 	processors             *crosschain.Processors
-	service                nodetype.NodeType
+	mempool                *txpool.TxPool
 	gasOracle              gas.Oracle
 	blockResolver          storage.BlockResolver
 	l1BlockProcessor       components.L1BlockProcessor
 	config                 *enclaveconfig.EnclaveConfig
 	logger                 gethlog.Logger
-	whitelist              *privacy.Whitelist
+	storageSlotWhitelist   *privacy.Whitelist
 }
 
-func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, processors *crosschain.Processors, service nodetype.NodeType, config *enclaveconfig.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain l2chain.ObscuroChain, logger gethlog.Logger) *EncryptionManager {
+func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, mempool *txpool.TxPool, processors *crosschain.Processors, config *enclaveconfig.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain l2chain.ObscuroChain, logger gethlog.Logger) *EncryptionManager {
 	return &EncryptionManager{
 		storage:                storage,
 		cacheService:           cacheService,
 		registry:               registry,
 		processors:             processors,
-		service:                service,
 		chain:                  chain,
 		config:                 config,
 		blockResolver:          blockResolver,
@@ -48,7 +48,8 @@ func NewEncryptionManager(enclavePrivateKeyECIES *ecies.PrivateKey, storage stor
 		gasOracle:              oracle,
 		logger:                 logger,
 		enclavePrivateKeyECIES: enclavePrivateKeyECIES,
-		whitelist:              privacy.NewWhitelist(),
+		storageSlotWhitelist:   privacy.NewWhitelist(),
+		mempool:                mempool,
 	}
 }
 

@@ -246,6 +246,11 @@ func createOrLoad(dbPath string) (string, error) {
 	return dbPath, nil
 }
 
+// GetEncryptionKey returns nil for SQLite as it doesn't use encryption
+func (s *SqliteDB) GetEncryptionKey() []byte {
+	return nil
+}
+
 func (s *SqliteDB) withTx(fn func(*sql.Tx) error) error {
 	tx, err := s.db.Begin()
 	if err != nil {

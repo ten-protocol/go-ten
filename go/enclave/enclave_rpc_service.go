@@ -7,6 +7,16 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
+	"github.com/ten-protocol/go-ten/go/enclave/gas"
+	"github.com/ten-protocol/go-ten/go/enclave/genesis"
+	"github.com/ten-protocol/go-ten/go/enclave/l2chain"
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/syserr"
@@ -32,18 +42,38 @@ type enclaveRPCService struct {
 	storage              storage.Storage
 	crossChainProcessors *crosschain.Processors
 	scb                  system.SystemContractCallbacks
+	logger               gethlog.Logger
 }
 
-func NewEnclaveRPCService(rpcEncryptionManager *rpc.EncryptionManager, registry components.BatchRegistry, subscriptionManager *events.SubscriptionManager, config *enclaveconfig.EnclaveConfig, debugger *debugger.Debugger, storage storage.Storage, crossChainProcessors *crosschain.Processors, scb system.SystemContractCallbacks) common.EnclaveClientRPC {
+func NewEnclaveRPCService(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, batchRegistry components.BatchRegistry, gethEncodingService gethencoding.EncodingService, cachingService *storage.CacheService, mempool *txpool.TxPool, chainConfig *params.ChainConfig, crossChainProcessors *crosschain.Processors, scb system.SystemContractCallbacks, subscriptionManager *events.SubscriptionManager, genesis *genesis.Genesis, gasOracle gas.Oracle) common.EnclaveClientRPC {
+	// TODO ensure debug is allowed/disallowed
+	chain := l2chain.NewChain(
+		storage,
+		*config,
+		gethEncodingService,
+		chainConfig,
+		genesis,
+		logger,
+		batchRegistry,
+		config.GasLocalExecutionCapFlag,
+	)
+	debug := debugger.New(chain, storage, chainConfig)
+
+	// todo - security
+	obscuroKey := crypto.GetObscuroKey(logger)
+
+	rpcEncryptionManager := rpc.NewEncryptionManager(ecies.ImportECDSA(obscuroKey), storage, cachingService, batchRegistry, mempool, crossChainProcessors, config, gasOracle, storage, blockProcessor, chain, logger)
+
 	return &enclaveRPCService{
 		rpcEncryptionManager: rpcEncryptionManager,
-		registry:             registry,
+		registry:             batchRegistry,
 		subscriptionManager:  subscriptionManager,
 		config:               config,
-		debugger:             debugger,
+		debugger:             debug,
 		storage:              storage,
 		crossChainProcessors: crossChainProcessors,
 		scb:                  scb,
+		logger:               logger,
 	}
 }
 

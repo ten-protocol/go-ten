@@ -12,7 +12,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/measure"
-	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
@@ -56,7 +55,6 @@ type sequencer struct {
 	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
-	blockchain             *ethchainadapter.EthChainAdapter
 }
 
 func NewSequencer(
@@ -74,7 +72,6 @@ func NewSequencer(
 	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
-	blockchain *ethchainadapter.EthChainAdapter,
 ) ActiveSequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
@@ -91,7 +88,6 @@ func NewSequencer(
 		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		settings:               settings,
-		blockchain:             blockchain,
 	}
 }
 
@@ -110,15 +106,6 @@ func (s *sequencer) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) erro
 	// the sequencer creates the initial genesis batch if one does not exist yet
 	if !hasGenesis {
 		return s.createGenesisBatch(ctx, l1HeadBlock)
-	}
-
-	if running := s.mempool.Running(); !running {
-		// the mempool can only be started after at least 1 block (the genesis) is in the blockchain object
-		// if the node restarted the mempool must be started again
-		err = s.mempool.Start()
-		if err != nil {
-			return err
-		}
 	}
 
 	return s.createNewHeadBatch(ctx, l1HeadBlock, skipBatchIfEmpty)
@@ -150,15 +137,9 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	}
 
 	// this is the actual first block produced in chain
-	err = s.blockchain.IngestNewBlock(batch)
+	err = s.batchRegistry.EthChain().IngestNewBlock(batch)
 	if err != nil {
 		return fmt.Errorf("failed to feed batch into the virtual eth chain - %w", err)
-	}
-
-	// the mempool can only be started after at least 1 block is in the blockchain object
-	err = s.mempool.Start()
-	if err != nil {
-		return err
 	}
 
 	// errors in unit test seem to suggest that batch 2 was received before batch 1
@@ -297,7 +278,7 @@ func (s *sequencer) produceBatch(
 		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions), log.BatchSeqNoKey, cb.Batch.SeqNo(), "parent", cb.Batch.Header.ParentHash)
 
 	// add the batch to the chain so it can remove pending transactions from the pool
-	err = s.blockchain.IngestNewBlock(cb.Batch)
+	err = s.batchRegistry.EthChain().IngestNewBlock(cb.Batch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to feed batch into the virtual eth chain - %w", err)
 	}
@@ -329,7 +310,10 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	s.batchRegistry.OnBatchExecuted(batch.Header, txResults)
+	err = s.batchRegistry.OnBatchExecuted(batch.Header, txResults)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -441,10 +425,6 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Header, 
 	//}
 
 	return nil
-}
-
-func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
-	return s.mempool.Add(transaction)
 }
 
 func (s *sequencer) OnL1Fork(ctx context.Context, fork *common.ChainFork) error {

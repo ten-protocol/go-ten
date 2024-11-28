@@ -33,7 +33,7 @@ type enclaveInitService struct {
 	attestationProvider components.AttestationProvider // interface for producing attestation reports and verifying them
 }
 
-func NewEnclaveInitService(config *enclaveconfig.EnclaveConfig, storage storage.Storage, l1BlockProcessor components.L1BlockProcessor, logger gethlog.Logger, enclaveKeyService *components.EnclaveKeyService, attestationProvider components.AttestationProvider) common.EnclaveInit {
+func NewEnclaveInitService(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, enclaveKeyService *components.EnclaveKeyService, attestationProvider components.AttestationProvider) common.EnclaveInit {
 	return &enclaveInitService{
 		config:              config,
 		storage:             storage,

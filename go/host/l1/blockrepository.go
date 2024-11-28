@@ -188,10 +188,10 @@ func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts
 
 // ExtractTenTransactions does all the filtering of txs to find all the transaction types we care about on the L2. These
 // are pulled from the data in the L1 blocks and then submitted to the enclave for processing
-func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*ethadapter.ProcessedL1Data, error) {
-	processed := &ethadapter.ProcessedL1Data{
+func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error) {
+	processed := &common.ProcessedL1Data{
 		BlockHeader: block.Header(),
-		Events:      make(map[ethadapter.L1TxType][]*ethadapter.L1TxData),
+		Events:      make(map[common.L1TxType][]*common.L1TxData),
 	}
 	txsWithReceipts, err := r.getRelevantTxReceiptsAndBlobs(block)
 	if err != nil {
@@ -214,7 +214,7 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*ethadapter.
 			r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
 		}
 
-		txData := &ethadapter.L1TxData{
+		txData := &common.L1TxData{
 			Transaction:        txWithReceipt.Tx,
 			Receipt:            txWithReceipt.Receipt,
 			Blobs:              txWithReceipt.Blobs,
@@ -223,19 +223,15 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*ethadapter.
 		}
 
 		if len(*txData.CrossChainMessages) > 0 {
-			processed.Events[ethadapter.CrossChainMessageTx] = append(processed.Events[ethadapter.CrossChainMessageTx], txData)
+			processed.Events[common.CrossChainMessageTx] = append(processed.Events[common.CrossChainMessageTx], txData)
 		}
 
 		if len(*txData.ValueTransfers) > 0 {
-			processed.Events[ethadapter.CrossChainValueTranserTx] = append(processed.Events[ethadapter.CrossChainValueTranserTx], txData)
-		}
-
-		if len(txData.Blobs) > 0 {
-			processed.Events[ethadapter.RollupTx] = append(processed.Events[ethadapter.RollupTx], txData)
+			processed.Events[common.CrossChainValueTranserTx] = append(processed.Events[common.CrossChainValueTranserTx], txData)
 		}
 
 		if len(sequencerLogs) > 0 {
-			processed.Events[ethadapter.SequencerAddedTx] = append(processed.Events[ethadapter.SequencerAddedTx], txData)
+			processed.Events[common.SequencerAddedTx] = append(processed.Events[common.SequencerAddedTx], txData)
 		}
 
 		decodedTx := r.mgmtContractLib.DecodeTx(txWithReceipt.Tx)
@@ -246,11 +242,13 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*ethadapter.
 
 		switch _ := decodedTx.(type) {
 		case *ethadapter.L1RequestSecretTx:
-			processed.Events[ethadapter.SecretRequestTx] = append(processed.Events[ethadapter.SecretRequestTx], txData)
+			processed.Events[common.SecretRequestTx] = append(processed.Events[common.SecretRequestTx], txData)
 		case *ethadapter.L1InitializeSecretTx:
-			processed.Events[ethadapter.InitialiseSecretTx] = append(processed.Events[ethadapter.InitialiseSecretTx], txData)
+			processed.Events[common.InitialiseSecretTx] = append(processed.Events[common.InitialiseSecretTx], txData)
 		case *ethadapter.L1SetImportantContractsTx:
-			processed.Events[ethadapter.SetImportantContractsTx] = append(processed.Events[ethadapter.SetImportantContractsTx], txData)
+			processed.Events[common.SetImportantContractsTx] = append(processed.Events[common.SetImportantContractsTx], txData)
+		case *ethadapter.L1RollupHashes:
+			processed.Events[common.RollupTx] = append(processed.Events[common.RollupTx], txData)
 		}
 	}
 

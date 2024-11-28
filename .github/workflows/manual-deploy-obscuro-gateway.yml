@@ -90,6 +90,7 @@ jobs:
             "GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME"
             "GATEWAY_RATE_LIMIT_WINDOW"
             "GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER"
+            "GATEWAY_KEY_EXCHANGE_URL"
           )
 
           for VAR_NAME in "${VAR_NAMES[@]}"; do
@@ -119,6 +120,7 @@ jobs:
           echo "GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME: $GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME"
           echo "GATEWAY_RATE_LIMIT_WINDOW: $GATEWAY_RATE_LIMIT_WINDOW"
           echo "GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER: $GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER"
+          echo "GATEWAY_KEY_EXCHANGE_URL: $GATEWAY_KEY_EXCHANGE_URL"
 
       - name: "Print GitHub variables"
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
@@ -239,9 +241,9 @@ jobs:
             cd /home/obscuro/go-obscuro/
 
             # Promtail Integration Start
-            mkdir -p /home/obscuro/promtail
+            mkdir -p /home/obscuro/metrics
 
-            cat <<EOF > /home/obscuro/promtail/promtail-config.yaml
+            cat <<EOF > /home/obscuro/metrics/promtail-config.yaml
             
             server:
               http_listen_port: 9080
@@ -251,7 +253,7 @@ jobs:
               filename: /tmp/positions.yaml
 
             clients:
-              - url: "${{ vars.METRICS_URI }}"
+              - url: "${{ vars.METRICS_URI }}/loki/api/v1/push"
                 batchwait: 3s
                 batchsize: 1048576
                 tls_config:
@@ -281,20 +283,108 @@ jobs:
             --network node_network \
             -e HOSTNAME="${{ env.VM_NAME }}" \
             -v /var/log:/var/log \
-            -v /home/obscuro/promtail:/etc/promtail \
+            -v /home/obscuro/metrics:/etc/promtail \
             -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
             -v /var/run/docker.sock:/var/run/docker.sock \
             grafana/promtail:latest \
             -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true
+
+            cat <<EOF > /home/obscuro/metrics/prometheus.yaml
+            global:
+              scrape_interval: 15s
+              evaluation_interval: 15s
+            remote_write:
+              - url: "${{ vars.METRICS_URI }}/prometheus/metrics/api/v1/write"
+                tls_config:
+                  insecure_skip_verify: true
+                basic_auth:
+                  username: "${{ secrets.LOKI_USER }}"
+                  password: "${{ secrets.LOKI_PASSWORD }}"
+            scrape_configs:
+              # Node metrics
+              - job_name:  node-${{ env.VM_NAME }}
+                scrape_interval: 5s  # Frequent scrapes for node metrics
+                static_configs:
+                  - targets:
+                      - node_exporter:9100  # Node Exporter instance
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: 'node'
+                    replacement:  node-${{ env.VM_NAME }}
+
+              # Container metrics
+              - job_name:  container-${{ env.VM_NAME }}
+                scrape_interval: 5s
+                static_configs:
+                  - targets:
+                      - cadvisor:8080  # cAdvisor instance for container metrics
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: 'node'
+                    replacement:  container-${{ env.VM_NAME }}
+            EOF
+
+            docker volume create prometheus-data
+            docker run -d --name prometheus \
+            --network node_network \
+            -p 9090:9090 \
+            -v /home/obscuro/metrics/prometheus.yaml:/etc/prometheus/prometheus.yml \
+            -v prometheus-data:/prometheus \
+            prom/prometheus:latest \
+            --config.file=/etc/prometheus/prometheus.yml
+
+            docker run -d --name node_exporter \
+            --network node_network \
+            -p 9100:9100 \
+            --pid="host" \
+            -v /:/host:ro \
+            quay.io/prometheus/node-exporter:latest \
+            --path.rootfs=/host
+
+            docker run -d --name cadvisor \
+            --network node_network \
+            -p 8080:8080 \
+            --privileged \
+            -v /:/rootfs:ro \
+            -v /var/run:/var/run:ro \
+            -v /sys:/sys:ro \
+            -v /var/lib/docker/:/var/lib/docker:ro \
+            -v /dev/disk/:/dev/disk:ro \
+            gcr.io/cadvisor/cadvisor:latest
             # Promtail Integration End
+            
+            # Create a named volume for persistence
+            docker volume create "${{ env.VM_NAME }}-data"
             
             # Start Ten Gateway Container
             docker run -d -p 80:80 -p 81:81 --name "${{ env.VM_NAME }}" \
             --device /dev/sgx_enclave --device /dev/sgx_provision \
+            -v "${{ env.VM_NAME }}-data:/data" \
             -e OBSCURO_GATEWAY_VERSION="${{ github.run_number }}-${{ github.sha }}" \
             -e OE_SIMULATION=0 \
             "${{ env.DOCKER_BUILD_TAG_GATEWAY }}" \
             ego run /home/ten/go-ten/tools/walletextension/main/main \
             -host=0.0.0.0 -port=80 -portWS=81 -nodeHost="${{ env.L2_RPC_URL_VALIDATOR }}" -verbose=true \
             -logPath=sys_out -dbType=cosmosDB -dbConnectionURL="${{ secrets.COSMOS_DB_CONNECTION_STRING }}" \
-            -rateLimitUserComputeTime="${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }}" -rateLimitWindow="${{ env.GATEWAY_RATE_LIMIT_WINDOW }}" -maxConcurrentRequestsPerUser="${{ env.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }}" '
+            -rateLimitUserComputeTime="${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }}" \
+            -rateLimitWindow="${{ env.GATEWAY_RATE_LIMIT_WINDOW }}" \
+            -maxConcurrentRequestsPerUser="${{ env.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }}"
+            -keyExchangeURL="${{ env.GATEWAY_KEY_EXCHANGE_URL }}" \
+            -insideEnclave=true \
+            
+
+            # After starting the container, verify the volume mount
+            docker exec "${{ env.VM_NAME }}" sh -c "
+                echo \"Checking volume mount...\";
+                df -h | grep /data;
+                echo \"Directory listing:\";
+                ls -la /data;
+                echo \"Current working directory:\";
+                pwd;
+                echo \"Directory permissions:\";
+                ls -la /;
+                echo \"Process status:\";
+                ps aux;
+            "
+            '
+            

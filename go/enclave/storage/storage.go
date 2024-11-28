@@ -45,6 +45,11 @@ const (
 	enclaveKeyCfg = "ENCLAVE_KEY"
 )
 
+type AttestedEnclave struct {
+	PubKey *ecdsa.PublicKey
+	Type   common.NodeType
+}
+
 // todo - this file needs splitting up based on concerns
 type storageImpl struct {
 	db                 enclavedb.EnclaveDB
@@ -450,20 +455,21 @@ func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash commo
 	return enclavedb.ExistsReceipt(ctx, s.db.GetSQLDB(), txHash)
 }
 
-// todo - cache
-func (s *storageImpl) GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*ecdsa.PublicKey, common.NodeType, error) {
+func (s *storageImpl) GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*AttestedEnclave, error) {
 	defer s.logDuration("GetEnclavePubKey", measure.NewStopwatch())
-	key, nodeType, err := enclavedb.FetchAttestation(ctx, s.db.GetSQLDB(), enclaveId)
-	if err != nil {
-		return nil, 0, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", enclaveId, err)
-	}
+	return s.cachingService.ReadEnclavePubKey(ctx, enclaveId, func(a any) (*AttestedEnclave, error) {
+		key, nodeType, err := enclavedb.FetchAttestation(ctx, s.db.GetSQLDB(), enclaveId)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", enclaveId, err)
+		}
 
-	publicKey, err := gethcrypto.DecompressPubkey(key)
-	if err != nil {
-		return nil, 0, fmt.Errorf("could not parse key from db. Cause: %w", err)
-	}
+		publicKey, err := gethcrypto.DecompressPubkey(key)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse key from db. Cause: %w", err)
+		}
 
-	return publicKey, nodeType, nil
+		return &AttestedEnclave{PubKey: publicKey, Type: nodeType}, nil
+	})
 }
 
 func (s *storageImpl) StoreNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) error {
