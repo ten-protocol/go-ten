@@ -483,7 +483,13 @@ func (s *storageImpl) StoreNodeType(ctx context.Context, enclaveId common.Enclav
 	if err != nil {
 		return err
 	}
-	return dbTx.Commit()
+	err = dbTx.Commit()
+	if err != nil {
+		return fmt.Errorf("could not commit transaction - %w", err)
+	}
+	// set value in cache to ensure it is up to date
+	s.cachingService.UpdateEnclaveNodeType(ctx, enclaveId, nodeType)
+	return nil
 }
 
 func (s *storageImpl) StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error {
