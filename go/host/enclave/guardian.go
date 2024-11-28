@@ -150,6 +150,7 @@ func (g *Guardian) Start() error {
 }
 
 func (g *Guardian) Stop() error {
+	g.running.Store(false)
 	err := g.enclaveClient.Stop()
 	if err != nil {
 		g.logger.Error("error stopping enclave", log.ErrKey, err)
@@ -798,6 +799,7 @@ func (g *Guardian) startSequencerProcesses() {
 // This is called when the enclave is unrecoverable and we want to notify the host that it should failover if an
 // alternative enclave is available.
 func (g *Guardian) evictEnclaveFromHAPool() {
+	g.logger.Error("Enclave is unrecoverable - requesting to evict it from HA pool")
 	err := g.Stop()
 	if err != nil {
 		g.logger.Error("Error while stopping guardian of failed enclave", log.ErrKey, err)
