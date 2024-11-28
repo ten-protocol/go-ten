@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"github.com/ten-protocol/go-ten/go/common/l1"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/responses"
@@ -10,7 +11,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
 // service names - these are the keys used to register known services with the host
@@ -80,7 +80,7 @@ type P2PBatchRequestHandler interface {
 type L1BlockRepository interface {
 	// Subscribe will register a block handler to receive new blocks as they arrive, returns unsubscribe func
 	Subscribe(handler L1BlockHandler) func()
-
+	// FetchBlockByHeight returns a block at a given height
 	FetchBlockByHeight(height *big.Int) (*types.Block, error)
 	// FetchNextBlock returns the next canonical block after a given block hash
 	// It returns the new block, a bool which is true if the block is the current L1 head and a bool if the block is on a different fork to prevBlock
@@ -104,9 +104,9 @@ type L1Publisher interface {
 	// RequestSecret will send a management contract transaction to request a secret from the enclave, returning the L1 head at time of sending
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
 	// ExtractRelevantTenTransactions will return all TEN relevant tx from an L1 block
-	ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx)
+	ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*l1.L1RollupTx, []*l1.L1SetImportantContractsTx)
 	// FindSecretResponseTx will return the secret response tx from an L1 block
-	FindSecretResponseTx(block *types.Block) []*ethadapter.L1RespondSecretTx
+	FindSecretResponseTx(block *types.Block) []*l1.L1RespondSecretTx
 	// PublishRollup will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
 	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
 	PublishRollup(producedRollup *common.ExtRollup)

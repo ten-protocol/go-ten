@@ -85,3 +85,8 @@ func (s *UserStorageWithCache) GetUser(userID []byte) (*wecommon.GWUser, error) 
 		return s.storage.GetUser(userID)
 	})
 }
+
+// GetEncryptionKey delegates to the underlying storage
+func (s *UserStorageWithCache) GetEncryptionKey() []byte {
+	return s.storage.GetEncryptionKey()
+}

@@ -236,7 +236,7 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 	audit(w, "Getting TEN node health status")
 	res, err := WithPlainRPCConnection[bool](context.Background(), w.BackendRPC, func(client *gethrpc.Client) (*bool, error) {
 		res, err := obsclient.NewObsClient(client).Health()
-		return &res, err
+		return &res.OverallHealth, err
 	})
 	return *res, err
 }

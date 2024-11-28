@@ -28,7 +28,7 @@ func NodeHealthCheck(rpcAddress string) error {
 	if err != nil {
 		return err
 	}
-	if !health {
+	if !health.OverallHealth {
 		return errors.New("node health check failed")
 	}
 	return nil

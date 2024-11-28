@@ -281,3 +281,8 @@ func (c *CosmosDB) dbKey(userID []byte) (string, azcosmos.PartitionKey) {
 	partitionKey := azcosmos.NewPartitionKeyString(keyString)
 	return keyString, partitionKey
 }
+
+// GetEncryptionKey returns the encryption key used by the CosmosDB instance
+func (c *CosmosDB) GetEncryptionKey() []byte {
+	return c.encryptor.GetKey()
+}
