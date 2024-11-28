@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/integration/datagenerator"
@@ -22,13 +24,19 @@ var (
 	storeSecretTxAddr      = datagenerator.RandomAddress()
 	requestSecretTxAddr    = datagenerator.RandomAddress()
 	initializeSecretTxAddr = datagenerator.RandomAddress()
-	// MgmtContractAddresses make all these addresses available for the host to know what receipts will be forwarded to the enclave
-	MgmtContractAddresses = []gethcommon.Address{
-		depositTxAddr,
-		rollupTxAddr,
-		storeSecretTxAddr,
-		requestSecretTxAddr,
-		initializeSecretTxAddr,
+	messageBusAddr         = datagenerator.RandomAddress()
+	// ContractAddresses maps contract types to their addresses
+	ContractAddresses = map[l1.ContractType][]gethcommon.Address{
+		l1.MgmtContract: {
+			depositTxAddr,
+			rollupTxAddr,
+			storeSecretTxAddr,
+			requestSecretTxAddr,
+			initializeSecretTxAddr,
+		},
+		l1.MsgBus: {
+			messageBusAddr,
+		},
 	}
 )
 
@@ -49,7 +57,7 @@ func (m *mockContractLib) GetContractAddr() *gethcommon.Address {
 	return &rollupTxAddr
 }
 
-func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+func (m *mockContractLib) DecodeTx(tx *types.Transaction) common.TenTransaction {
 	// Do not decode erc20 transactions, this is the responsibility
 	// of the erc20 contract lib.
 	if tx.To().Hex() == depositTxAddr.Hex() {
@@ -134,7 +142,7 @@ func (m *mockContractLib) DecodeImportantAddressResponse([]byte) (gethcommon.Add
 	return gethcommon.Address{}, nil
 }
 
-func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+func decodeTx(tx *types.Transaction) common.TenTransaction {
 	if len(tx.Data()) == 0 {
 		panic("Data cannot be 0 in the mock implementation")
 	}
@@ -146,7 +154,7 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	// in the mock implementation we use the To address field to specify the L1 operation (rollup/storesecret/requestsecret)
 	// the mock implementation does not process contracts
 	// so this is a way that we can differentiate different contract calls
-	var t ethadapter.L1Transaction
+	var t common.TenTransaction
 	switch tx.To().Hex() {
 	case storeSecretTxAddr.Hex():
 		t = &ethadapter.L1RespondSecretTx{}
@@ -168,7 +176,7 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	return t
 }
 
-func encodeTx(tx ethadapter.L1Transaction, opType gethcommon.Address) types.TxData {
+func encodeTx(tx common.TenTransaction, opType gethcommon.Address) types.TxData {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 

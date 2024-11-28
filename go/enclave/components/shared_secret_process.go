@@ -34,13 +34,13 @@ func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, a
 }
 
 // ProcessNetworkSecretMsgs we watch for all messages that are requesting or receiving the secret and we store the nodes attested keys
-func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, processed *ethadapter.ProcessedL1Data) []*common.ProducedSecretResponse {
+func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, processed *common.ProcessedL1Data) []*common.ProducedSecretResponse {
 	var responses []*common.ProducedSecretResponse
 	block := processed.BlockHeader
 
 	// process secret requests
-	for _, txData := range processed.Events[ethadapter.SecretRequestTx] {
-		scrtReqTx, ok := (*txData.Type).(*ethadapter.L1RequestSecretTx) // Dereference the interface pointer first
+	for _, txData := range processed.Events[common.SecretRequestTx] {
+		scrtReqTx, ok := txData.Type.(*ethadapter.L1RequestSecretTx)
 		if !ok {
 			continue
 		}
@@ -58,8 +58,8 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 	}
 
 	// process initialize secret events
-	for _, txData := range processed.Events[ethadapter.InitialiseSecretTx] {
-		initSecretTx, ok := (*txData.Type).(*ethadapter.L1InitializeSecretTx)
+	for _, txData := range processed.Events[common.InitialiseSecretTx] {
+		initSecretTx, ok := txData.Type.(*ethadapter.L1InitializeSecretTx)
 		if !ok {
 			continue
 		}

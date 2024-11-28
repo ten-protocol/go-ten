@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/ethadapter"
-
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -75,7 +73,7 @@ type EnclaveAdmin interface {
 	// It is the responsibility of the host to gossip the returned rollup
 	// For good functioning the caller should always submit blocks ordered by height
 	// submitting a block before receiving ancestors of it, will result in it being ignored
-	SubmitL1Block(ctx context.Context, blockHeader *types.Header, processedData *ethadapter.ProcessedL1Data) (*BlockSubmissionResponse, SystemError)
+	SubmitL1Block(ctx context.Context, blockHeader *types.Header, processedData *ProcessedL1Data) (*BlockSubmissionResponse, SystemError)
 
 	// SubmitBatch submits a batch received from the sequencer for processing.
 	SubmitBatch(ctx context.Context, batch *ExtBatch) SystemError

@@ -326,11 +326,11 @@ func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, fu
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceiptAndBlobs) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.adminService.SubmitL1Block(ctx, blockHeader, receipts)
+	return e.adminService.SubmitL1Block(ctx, blockHeader, processed)
 }
 
 func (e *enclaveImpl) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {

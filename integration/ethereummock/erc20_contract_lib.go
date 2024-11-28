@@ -2,11 +2,12 @@ package ethereummock
 
 import (
 	"bytes"
-
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 type contractLib struct{}
@@ -15,8 +16,8 @@ func (c *contractLib) CreateDepositTx(tx *ethadapter.L1DepositTx) types.TxData {
 	return encodeTx(tx, depositTxAddr)
 }
 
-// Return only deposit transactions to the management contract
-func (c *contractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+// DecodeTx - return only deposit transactions to the management contract
+func (c *contractLib) DecodeTx(tx *types.Transaction) common.TenTransaction {
 	if bytes.Equal(tx.To().Bytes(), depositTxAddr.Bytes()) {
 		depositTx, ok := decodeTx(tx).(*ethadapter.L1DepositTx)
 		if !ok {
@@ -25,7 +26,7 @@ func (c *contractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 
 		// Mock deposits towards the L1 bridge target nil as the management contract address
 		// is not set.
-		if bytes.Equal(depositTx.To.Bytes(), common.BigToAddress(common.Big0).Bytes()) {
+		if bytes.Equal(depositTx.To.Bytes(), gethcommon.BigToAddress(gethcommon.Big0).Bytes()) {
 			return depositTx
 		}
 	}

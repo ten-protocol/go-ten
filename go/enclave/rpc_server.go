@@ -139,13 +139,13 @@ func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.Submit
 		return nil, err
 	}
 
-	txReceiptsAndBlobs, err := s.decodeReceiptsAndBlobs(request.EncodedReceipts)
+	processedData, err := s.decodeProcessedData(request.EncodedProcessedData)
 	if err != nil {
 		s.logger.Error("Error decoding receipts", log.ErrKey, err)
 		return nil, err
 	}
 
-	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, bl, txReceiptsAndBlobs)
+	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, bl, processedData)
 	if err != nil {
 		var rejErr *errutil.BlockRejectError
 		isReject := errors.As(err, &rejErr)
@@ -427,16 +427,16 @@ func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Header, error) {
 	return &block, nil
 }
 
-// decodeReceiptsAndBlobs - converts the rlp encoded bytes to receipts if possible.
-func (s *RPCServer) decodeReceiptsAndBlobs(encodedReceipts []byte) ([]*common.TxAndReceiptAndBlobs, error) {
-	receipts := make([]*common.TxAndReceiptAndBlobs, 0)
+// decodeProcessedData - converts the rlp encoded bytes to processed if possible.
+func (s *RPCServer) decodeProcessedData(encodedData []byte) (*common.ProcessedL1Data, error) {
+	var processed common.ProcessedL1Data
 
-	err := rlp.DecodeBytes(encodedReceipts, &receipts)
+	err := rlp.DecodeBytes(encodedData, &processed)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode receipts, bytes=%x, err=%w", encodedReceipts, err)
+		return nil, fmt.Errorf("unable to decode receipts, bytes=%x, err=%w", encodedData, err)
 	}
 
-	return receipts, nil
+	return &processed, nil
 }
 
 func toRPCError(err common.SystemError) *generated.SystemError {

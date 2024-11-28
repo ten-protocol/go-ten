@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/ethadapter"
-
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -41,12 +39,12 @@ func (m *blockMessageExtractor) Enabled() bool {
 	return m.GetBusAddress().Big().Cmp(gethcommon.Big0) != 0
 }
 
-func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, processedData *ethadapter.ProcessedL1Data) error {
+func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, processedData *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader value transfer messages processed", log.BlockHashKey, block.Hash())
 
 	// collect all value transfer events from processed data
 	var transfers common.ValueTransferEvents
-	for _, txData := range processedData.Events[ethadapter.CrossChainValueTranserTx] {
+	for _, txData := range processedData.Events[common.CrossChainValueTranserTx] {
 		if txData.ValueTransfers != nil {
 			transfers = append(transfers, *txData.ValueTransfers...)
 		}
@@ -66,13 +64,13 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 // The messages will be stored in DB storage for later usage.
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
-func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *types.Header, processedData *ethadapter.ProcessedL1Data) error {
+func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *types.Header, processedData *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader cross chain messages processed", log.BlockHashKey, block.Hash())
 
 	// collect all messages from the events
 	var xchain common.CrossChainMessages
 	var receipts types.Receipts
-	for _, txData := range processedData.Events[ethadapter.CrossChainMessageTx] {
+	for _, txData := range processedData.Events[common.CrossChainMessageTx] {
 		if txData.CrossChainMessages != nil {
 			xchain = append(xchain, *txData.CrossChainMessages...)
 			receipts = append(receipts, txData.Receipt)

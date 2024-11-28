@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/ethadapter"
-
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -200,7 +198,7 @@ func (c *Client) EnclaveID(ctx context.Context) (common.EnclaveID, common.System
 	return common.EnclaveID(response.EnclaveID), nil
 }
 
-func (c *Client) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processedData *ethadapter.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
+func (c *Client) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processedData *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	var buffer bytes.Buffer
 	if err := blockHeader.EncodeRLP(&buffer); err != nil {
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)

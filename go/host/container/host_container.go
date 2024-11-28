@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"net/http"
 	"time"
 
@@ -148,7 +149,11 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BlobArchiveUrl)
 	// we can add more fallback clients as they become available
 	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback))
-	l1Repo := l1.NewL1Repository(l1Client, logger, mgmtContractLib, blobResolver, cfg.ManagementContractAddress, cfg.MessageBusAddress)
+	contractAddresses := map[l1.ContractType][]gethcommon.Address{
+		l1.MgmtContract: {cfg.ManagementContractAddress},
+		l1.MsgBus:       {cfg.MessageBusAddress},
+	}
+	l1Repo := l1.NewL1Repository(l1Client, logger, mgmtContractLib, blobResolver, contractAddresses)
 	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Repo, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService, blobResolver)
 }
 

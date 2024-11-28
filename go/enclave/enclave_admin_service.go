@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/ethadapter"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
@@ -127,7 +125,7 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processed *ethadapter.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
@@ -418,7 +416,7 @@ func (e *enclaveAdminService) streamEventsForNewHeadBatch(ctx context.Context, b
 	}
 }
 
-func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *ethadapter.ProcessedL1Data) (*components.BlockIngestionType, error) {
+func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*components.BlockIngestionType, error) {
 	e.logger.Info("Start ingesting block", log.BlockHashKey, processed.BlockHeader.Hash())
 	ingestion, err := e.l1BlockProcessor.Process(ctx, processed)
 	if err != nil {

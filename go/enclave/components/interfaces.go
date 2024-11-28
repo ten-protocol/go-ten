@@ -5,8 +5,6 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/ethadapter"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -40,7 +38,7 @@ func (bit *BlockIngestionType) IsFork() bool {
 }
 
 type L1BlockProcessor interface {
-	Process(ctx context.Context, br *ethadapter.ProcessedL1Data) (*BlockIngestionType, error)
+	Process(ctx context.Context, br *common.ProcessedL1Data) (*BlockIngestionType, error)
 	GetHead(context.Context) (*types.Header, error)
 	GetCrossChainContractAddress() *gethcommon.Address
 	HealthCheck() (bool, error)
@@ -125,5 +123,5 @@ type RollupProducer interface {
 type RollupConsumer interface {
 	// ProcessBlobsInBlock - extracts the blob hashes from the block's transactions and builds the blob hashes from the blobs,
 	// compares this with the hashes seen in the block.
-	ProcessBlobsInBlock(ctx context.Context, processedData *ethadapter.ProcessedL1Data) error
+	ProcessBlobsInBlock(ctx context.Context, processedData *common.ProcessedL1Data) error
 }

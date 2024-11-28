@@ -49,7 +49,7 @@ func NewRollupConsumer(
 }
 
 // ProcessBlobsInBlock - processes the blobs in a block, extracts the rollups, verifies the rollups and stores them
-func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed *ethadapter.ProcessedL1Data) error {
+func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.BlockHashKey, processed.BlockHeader.Hash())
 
 	block := processed.BlockHeader
@@ -122,8 +122,8 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 // It processes each transaction, attempting to extract and verify rollups
 // If a transaction is not a rollup or fails verification, it's skipped
 // The function only returns an error if there's a critical failure in rollup reconstruction
-func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *ethadapter.ProcessedL1Data) ([]*common.ExtRollup, error) {
-	rollupTxs := processed.Events[ethadapter.RollupTx]
+func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error) {
+	rollupTxs := processed.Events[common.RollupTx]
 	rollups := make([]*common.ExtRollup, 0, len(rollupTxs))
 
 	blobs, blobHashes, err := rc.extractBlobsAndHashes(rollupTxs)
@@ -182,7 +182,7 @@ func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []geth
 	return nil
 }
 
-func (rc *rollupConsumerImpl) extractBlobsAndHashes(rollupTxs []*ethadapter.L1TxData) ([]*kzg4844.Blob, []gethcommon.Hash, error) {
+func (rc *rollupConsumerImpl) extractBlobsAndHashes(rollupTxs []*common.L1TxData) ([]*kzg4844.Blob, []gethcommon.Hash, error) {
 	blobs := make([]*kzg4844.Blob, 0)
 	for _, tx := range rollupTxs {
 		blobs = append(blobs, tx.Blobs...)

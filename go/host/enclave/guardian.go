@@ -755,13 +755,13 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 	return fromBatch, nil
 }
 
-func (g *Guardian) getRollupsAndContractAddrTxs(data ethadapter.ProcessedL1Data) ([]*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
+func (g *Guardian) getRollupsAndContractAddrTxs(data common.ProcessedL1Data) ([]*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
 	rollupTxs := make([]*ethadapter.L1RollupTx, 0)
 	contractAddressTxs := make([]*ethadapter.L1SetImportantContractsTx, 0)
 
 	for !g.hostInterrupter.IsStopping() {
 		// Get rollup transactions
-		for _, event := range data.Events[ethadapter.RollupTx] {
+		for _, event := range data.Events[common.RollupTx] {
 			encodedRlp, err := ethadapter.DecodeBlobs(event.Blobs)
 			if err != nil {
 				g.logger.Crit("could not decode blobs.", log.ErrKey, err)
@@ -775,7 +775,7 @@ func (g *Guardian) getRollupsAndContractAddrTxs(data ethadapter.ProcessedL1Data)
 		}
 
 		// Get contract address transactions
-		for _, event := range data.Events[ethadapter.SetImportantContractsTx] {
+		for _, event := range data.Events[common.SetImportantContractsTx] {
 			if contractTx, ok := event.Type.(*ethadapter.L1SetImportantContractsTx); ok {
 				contractAddressTxs = append(contractAddressTxs, contractTx)
 			} else {
