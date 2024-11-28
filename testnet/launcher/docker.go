@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -16,6 +17,7 @@ import (
 	"github.com/ten-protocol/go-ten/testnet/launcher/gateway"
 
 	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
+	l1gs "github.com/ten-protocol/go-ten/testnet/launcher/l1grantsequencers"
 	l2cd "github.com/ten-protocol/go-ten/testnet/launcher/l2contractdeployer"
 )
 
@@ -41,6 +43,13 @@ func (t *Testnet) Start() error {
 	if err != nil {
 		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
+
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
 
 	edgelessDBImage := "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
 	// todo: revisit how we should configure the image, this condition is not ideal
@@ -139,6 +148,11 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unexpected error waiting for l2 contract deployer { ID = %s } to finish - %w", l2ContractDeployer.GetID(), err)
 	}
 	fmt.Println("L2 Contracts were successfully deployed...")
+
+	err = t.grantSequencerStatus(networkConfig.ManagementContractAddress)
+	if err != nil {
+		return fmt.Errorf("failed to grant sequencer status: %w", err)
+	}
 
 	faucetPort := 99
 	faucetInst, err := faucet.NewDockerFaucet(
@@ -272,7 +286,7 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 			if err != nil {
 				return err
 			}
-			if health {
+			if health.OverallHealth {
 				fmt.Println("Obscuro node is ready")
 				return nil
 			}
@@ -284,5 +298,53 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 		return err
 	}
 	fmt.Printf("Node became healthy after %f seconds\n", time.Since(timeStart).Seconds())
+	return nil
+}
+
+func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
+	// fetch enclaveIDs
+	hostURL := fmt.Sprintf("http://localhost:%d", 80)
+	client, err := rpc.NewNetworkClient(hostURL)
+	if err != nil {
+		return fmt.Errorf("failed to create network client: %w", err)
+	}
+	defer client.Stop()
+
+	obsClient := obsclient.NewObsClient(client)
+	health, err := obsClient.Health()
+	if err != nil {
+		return fmt.Errorf("failed to get health status: %w", err)
+	}
+
+	if len(health.Enclaves) == 0 {
+		return fmt.Errorf("could not retrieve enclave IDs from health endpoint")
+	}
+
+	var enclaveIDs []string
+	for _, status := range health.Enclaves {
+		enclaveIDs = append(enclaveIDs, status.EnclaveID.String())
+	}
+	enclaveIDsStr := strings.Join(enclaveIDs, ",")
+
+	l1grantsequencers, err := l1gs.NewGrantSequencers(
+		l1gs.NewGrantSequencerConfig(
+			l1gs.WithL1HTTPURL("http://eth2network:8025"),
+			l1gs.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
+			l1gs.WithDockerImage(t.cfg.contractDeployerDockerImage),
+			l1gs.WithMgmtContractAddress(mgmtContractAddr),
+			l1gs.WithEnclaveIDs(enclaveIDsStr),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to configure l1 grant sequencersr - %w", err)
+	}
+
+	err = l1grantsequencers.Start()
+	if err != nil {
+		return fmt.Errorf("unable to start l1 grant sequencers - %w", err)
+	}
+
+	fmt.Println("Enclaves were successfully granted sequencer roles...")
+
 	return nil
 }
