@@ -3,6 +3,8 @@ package crosschain
 import (
 	"context"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/core"
@@ -19,9 +21,9 @@ type (
 
 type BlockMessageExtractor interface {
 	// StoreCrossChainMessages - Verifies receipts belong to block and saves the relevant cross chain messages from the receipts
-	StoreCrossChainMessages(ctx context.Context, block *types.Header, receipts common.L1Receipts) error
+	StoreCrossChainMessages(ctx context.Context, block *types.Header, processedData *ethadapter.ProcessedL1Data) error
 
-	StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, receipts common.L1Receipts) error
+	StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, processedData *ethadapter.ProcessedL1Data) error
 
 	// GetBusAddress - Returns the L1 message bus address.
 	GetBusAddress() *common.L1Address

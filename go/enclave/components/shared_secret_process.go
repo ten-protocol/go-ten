@@ -34,40 +34,47 @@ func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, a
 }
 
 // ProcessNetworkSecretMsgs we watch for all messages that are requesting or receiving the secret and we store the nodes attested keys
-func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, br *common.BlockAndReceipts) []*common.ProducedSecretResponse {
+func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, processed *ethadapter.ProcessedL1Data) []*common.ProducedSecretResponse {
 	var responses []*common.ProducedSecretResponse
-	transactions := br.RelevantTransactions()
-	block := br.BlockHeader
-	for _, tx := range *transactions {
-		t := ssp.mgmtContractLib.DecodeTx(tx)
+	block := processed.BlockHeader
 
-		// this transaction is for a node that has joined the network and needs to be sent the network secret
-		if scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx); ok {
-			ssp.logger.Info("Process shared secret request.", log.BlockHeightKey, block.Number, log.BlockHashKey, block.Hash(), log.TxKey, tx.Hash())
-			resp, err := ssp.processSecretRequest(ctx, scrtReqTx)
-			if err != nil {
-				ssp.logger.Error("Failed to process shared secret request.", log.ErrKey, err)
-				continue
-			}
-			responses = append(responses, resp)
+	// process secret requests
+	for _, txData := range processed.Events[ethadapter.SecretRequestTx] {
+		scrtReqTx, ok := (*txData.Type).(*ethadapter.L1RequestSecretTx) // Dereference the interface pointer first
+		if !ok {
+			continue
+		}
+		ssp.logger.Info("Process shared secret request.",
+			log.BlockHeightKey, block,
+			log.BlockHashKey, block.Hash(),
+			log.TxKey, txData.Transaction.Hash())
+
+		resp, err := ssp.processSecretRequest(ctx, scrtReqTx)
+		if err != nil {
+			ssp.logger.Error("Failed to process shared secret request.", log.ErrKey, err)
+			continue
+		}
+		responses = append(responses, resp)
+	}
+
+	// process initialize secret events
+	for _, txData := range processed.Events[ethadapter.InitialiseSecretTx] {
+		initSecretTx, ok := (*txData.Type).(*ethadapter.L1InitializeSecretTx)
+		if !ok {
+			continue
 		}
 
-		// this transaction was created by the genesis node, we need to store their attested key to decrypt their rollup
-		if initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx); ok {
-			// todo (#1580) - ensure that we don't accidentally skip over the real `L1InitializeSecretTx` message. Otherwise
-			//  our node will never be able to speak to other nodes.
-			// there must be a way to make sure that this transaction can only be sent once.
-			att, err := common.DecodeAttestation(initSecretTx.Attestation)
-			if err != nil {
-				ssp.logger.Error("Could not decode attestation report", log.ErrKey, err)
-			}
+		att, err := common.DecodeAttestation(initSecretTx.Attestation)
+		if err != nil {
+			ssp.logger.Error("Could not decode attestation report", log.ErrKey, err)
+			continue
+		}
 
-			err = ssp.storeAttestation(ctx, att)
-			if err != nil {
-				ssp.logger.Error("Could not store the attestation report.", log.ErrKey, err)
-			}
+		if err := ssp.storeAttestation(ctx, att); err != nil {
+			ssp.logger.Error("Could not store the attestation report.", log.ErrKey, err)
 		}
 	}
+
 	return responses
 }
 

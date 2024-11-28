@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	"github.com/ten-protocol/go-ten/go/common/subscription"
 
@@ -52,7 +53,8 @@ func NewL1Repository(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	blobResolver BlobResolver,
 	managementContractAddr gethcommon.Address,
-	messageBusAddr gethcommon.Address) *Repository {
+	messageBusAddr gethcommon.Address,
+) *Repository {
 	return &Repository{
 		blockSubscribers:       subscription.NewManager[host.L1BlockHandler](),
 		ethClient:              ethClient,
@@ -184,6 +186,8 @@ func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts
 	return receipts, nil
 }
 
+// ExtractTenTransactions does all the filtering of txs to find all the transaction types we care about on the L2. These
+// are pulled from the data in the L1 blocks and then submitted to the enclave for processing
 func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*ethadapter.ProcessedL1Data, error) {
 	processed := &ethadapter.ProcessedL1Data{
 		BlockHeader: block.Header(),
@@ -200,6 +204,11 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*ethadapter.
 			r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
 		}
 
+		transfers, err := r.getValueTransferEvents(txWithReceipt.Receipt)
+		if err != nil {
+			r.logger.Error("Error encountered converting the extracted logs to value transfers", log.ErrKey, err)
+		}
+
 		sequencerLogs, err := r.getSequencerEventLogs(txWithReceipt.Receipt)
 		if err != nil {
 			r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
@@ -210,10 +219,15 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*ethadapter.
 			Receipt:            txWithReceipt.Receipt,
 			Blobs:              txWithReceipt.Blobs,
 			CrossChainMessages: &messages,
+			ValueTransfers:     &transfers,
 		}
 
 		if len(*txData.CrossChainMessages) > 0 {
 			processed.Events[ethadapter.CrossChainMessageTx] = append(processed.Events[ethadapter.CrossChainMessageTx], txData)
+		}
+
+		if len(*txData.ValueTransfers) > 0 {
+			processed.Events[ethadapter.CrossChainValueTranserTx] = append(processed.Events[ethadapter.CrossChainValueTranserTx], txData)
 		}
 
 		if len(txData.Blobs) > 0 {
@@ -350,7 +364,7 @@ func (r *Repository) getRelevantTxReceiptsAndBlobs(block *common.L1Block) ([]*co
 func (r *Repository) getCrossChainMessages(receipt *types.Receipt) (common.CrossChainMessages, error) {
 	logsForReceipt, err := crosschain.FilterLogsFromReceipt(receipt, &r.messageBusAddr, &crosschain.CrossChainEventID)
 	if err != nil {
-		r.logger.Error("Error encountered when filtering receipt logs.", log.ErrKey, err)
+		r.logger.Error("Error encountered when filtering receipt logs for cross chain messages.", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err
 	}
 	messages, err := crosschain.ConvertLogsToMessages(logsForReceipt, crosschain.CrossChainEventName, crosschain.MessageBusABI)
@@ -362,12 +376,30 @@ func (r *Repository) getCrossChainMessages(receipt *types.Receipt) (common.Cross
 	return messages, nil
 }
 
+func (r *Repository) getValueTransferEvents(receipt *types.Receipt) (common.ValueTransferEvents, error) {
+	logsForReceipt, err := crosschain.FilterLogsFromReceipt(receipt, &r.messageBusAddr, &crosschain.ValueTransferEventID)
+	if err != nil {
+		r.logger.Error("Error encountered when filtering receipt logs for value transfers.", log.ErrKey, err)
+		return make(common.ValueTransferEvents, 0), err
+	}
+	transfers, err := crosschain.ConvertLogsToValueTransfers(logsForReceipt, crosschain.CrossChainEventName, crosschain.MessageBusABI)
+	if err != nil {
+		r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
+		return make(common.ValueTransferEvents, 0), err
+	}
+
+	return transfers, nil
+}
+
 func (r *Repository) getSequencerEventLogs(receipt *types.Receipt) ([]types.Log, error) {
 	sequencerLogs, err := crosschain.FilterLogsFromReceipt(receipt, &r.managementContractAddr, &crosschain.SequencerEnclaveGrantedEventID)
 	if err != nil {
 		r.logger.Error("Error filtering sequencer logs", log.ErrKey, err)
 		return []types.Log{}, err
 	}
+
+	// TODO convert to add sequencer?
+
 	return sequencerLogs, nil
 }
 

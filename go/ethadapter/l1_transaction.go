@@ -3,9 +3,10 @@ package ethadapter
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -86,6 +87,7 @@ const (
 	SecretRequestTx
 	InitialiseSecretTx
 	CrossChainMessageTx
+	CrossChainValueTranserTx
 	SequencerAddedTx
 	SetImportantContractsTx
 )
@@ -96,11 +98,12 @@ type ProcessedL1Data struct {
 	Events      map[L1TxType][]*L1TxData
 }
 
-// L1TxData represents a processed L1 transaction that's relevant to us
+// L1TxData represents an L1 transaction that's relevant to us
 type L1TxData struct {
-	Type               L1Transaction
+	Type               *L1Transaction
 	Transaction        *types.Transaction
 	Receipt            *types.Receipt
-	Blobs              []*kzg4844.Blob            // Only populated for blob transactions
-	CrossChainMessages *common.CrossChainMessages // Only populated for xchain txs
+	Blobs              []*kzg4844.Blob             // Only populated for blob transactions
+	CrossChainMessages *common.CrossChainMessages  // Only populated for xchain messages
+	ValueTransfers     *common.ValueTransferEvents // Only populated for xchain transfers
 }

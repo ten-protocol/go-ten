@@ -3,8 +3,9 @@ package components
 import (
 	"context"
 	"errors"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -124,5 +125,5 @@ type RollupProducer interface {
 type RollupConsumer interface {
 	// ProcessBlobsInBlock - extracts the blob hashes from the block's transactions and builds the blob hashes from the blobs,
 	// compares this with the hashes seen in the block.
-	ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts) error
+	ProcessBlobsInBlock(ctx context.Context, processedData *ethadapter.ProcessedL1Data) error
 }

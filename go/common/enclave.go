@@ -3,8 +3,9 @@ package common
 import (
 	"context"
 	"encoding/json"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
