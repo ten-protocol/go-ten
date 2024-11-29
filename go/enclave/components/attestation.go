@@ -7,6 +7,9 @@ import (
 	"encoding/json"
 	"fmt"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
+
 	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/edgelesssys/ego/enclave"
@@ -19,17 +22,29 @@ type IDData struct {
 	HostAddress string
 }
 
+// AttestationProvider creates and verifies attestation reports
 type AttestationProvider interface {
-	// GetReport returns the verifiable attestation report
-	GetReport(ctx context.Context, pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error)
+	// CreateAttestationReport returns the verifiable attestation report
+	CreateAttestationReport(ctx context.Context, hostAddress string) (*common.AttestationReport, error)
 	// VerifyReport returns the embedded report data
 	VerifyReport(att *common.AttestationReport) ([]byte, error)
 }
 
-type EgoAttestationProvider struct{}
+func NewAttestationProvider(enclaveKeyService *crypto.EnclaveAttestedKeyService, willAttest bool, logger gethlog.Logger) AttestationProvider {
+	if willAttest {
+		return &EgoAttestationProvider{enclaveKeyService: enclaveKeyService, logger: logger}
+	}
+	logger.Warn("WARNING - Attestation is not enabled, enclave will not create a verified attestation report.")
+	return &DummyAttestationProvider{enclaveKeyService: enclaveKeyService}
+}
 
-func (e *EgoAttestationProvider) GetReport(ctx context.Context, pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
-	idHash, err := getIDHash(enclaveID, pubKey, hostAddress)
+type EgoAttestationProvider struct {
+	enclaveKeyService *crypto.EnclaveAttestedKeyService
+	logger            gethlog.Logger
+}
+
+func (e *EgoAttestationProvider) CreateAttestationReport(ctx context.Context, hostAddress string) (*common.AttestationReport, error) {
+	idHash, err := getIDHash(e.enclaveKeyService.EnclaveID(), e.enclaveKeyService.PublicKeyBytes(), hostAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -40,8 +55,8 @@ func (e *EgoAttestationProvider) GetReport(ctx context.Context, pubKey []byte, e
 
 	return &common.AttestationReport{
 		Report:      report,
-		PubKey:      pubKey,
-		EnclaveID:   enclaveID,
+		PubKey:      e.enclaveKeyService.PublicKeyBytes(),
+		EnclaveID:   e.enclaveKeyService.EnclaveID(),
 		HostAddress: hostAddress,
 	}, nil
 }
@@ -55,13 +70,15 @@ func (e *EgoAttestationProvider) VerifyReport(att *common.AttestationReport) ([]
 	return remoteReport.Data, nil
 }
 
-type DummyAttestationProvider struct{}
+type DummyAttestationProvider struct {
+	enclaveKeyService *crypto.EnclaveAttestedKeyService
+}
 
-func (e *DummyAttestationProvider) GetReport(ctx context.Context, pubKey []byte, enclaveID gethcommon.Address, hostAddress string) (*common.AttestationReport, error) {
+func (e *DummyAttestationProvider) CreateAttestationReport(ctx context.Context, hostAddress string) (*common.AttestationReport, error) {
 	return &common.AttestationReport{
 		Report:      []byte("MOCK REPORT"),
-		PubKey:      pubKey,
-		EnclaveID:   enclaveID,
+		PubKey:      e.enclaveKeyService.PublicKeyBytes(),
+		EnclaveID:   e.enclaveKeyService.EnclaveID(),
 		HostAddress: hostAddress,
 	}, nil
 }

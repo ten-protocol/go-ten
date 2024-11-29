@@ -11,8 +11,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/responses"
 
-	"github.com/ten-protocol/go-ten/go/common/errutil"
-
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	_ "github.com/ten-protocol/go-ten/go/common/tracers/native" // make sure the tracers are loaded
@@ -29,11 +27,13 @@ type enclaveInitService struct {
 	storage             storage.Storage
 	l1BlockProcessor    components.L1BlockProcessor
 	logger              gethlog.Logger
-	enclaveKeyService   *components.EnclaveKeyService  // the enclave's private key (used to identify the enclave and sign messages)
-	attestationProvider components.AttestationProvider // interface for producing attestation reports and verifying them
+	sharedSecretService *crypto.SharedSecretService
+	enclaveKeyService   *crypto.EnclaveAttestedKeyService // the enclave's private key (used to identify the enclave and sign messages)
+	attestationProvider components.AttestationProvider    // interface for producing attestation reports and verifying them
+	daEncryptionService *crypto.DAEncryptionService
 }
 
-func NewEnclaveInitService(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, enclaveKeyService *components.EnclaveKeyService, attestationProvider components.AttestationProvider) common.EnclaveInit {
+func NewEnclaveInitAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, enclaveKeyService *crypto.EnclaveAttestedKeyService, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService) common.EnclaveInit {
 	return &enclaveInitService{
 		config:              config,
 		storage:             storage,
@@ -41,17 +41,16 @@ func NewEnclaveInitService(config *enclaveconfig.EnclaveConfig, storage storage.
 		logger:              logger,
 		enclaveKeyService:   enclaveKeyService,
 		attestationProvider: attestationProvider,
+		sharedSecretService: sharedSecretService,
+		daEncryptionService: daEncryptionService,
 	}
 }
 
 // Status is only implemented by the RPC wrapper
 func (e *enclaveInitService) Status(ctx context.Context) (common.Status, common.SystemError) {
-	_, err := e.storage.FetchSecret(ctx)
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			return common.Status{StatusCode: common.AwaitingSecret, L2Head: _noHeadBatch}, nil
-		}
-		return common.Status{StatusCode: common.Unavailable}, responses.ToInternalError(err)
+	initialised := e.sharedSecretService.IsInitialised()
+	if !initialised {
+		return common.Status{StatusCode: common.AwaitingSecret, L2Head: _noHeadBatch}, nil
 	}
 	var l1HeadHash gethcommon.Hash
 	l1Head, err := e.l1BlockProcessor.GetHead(ctx)
@@ -79,7 +78,7 @@ func (e *enclaveInitService) Attestation(ctx context.Context) (*common.Attestati
 	if e.enclaveKeyService.PublicKey() == nil {
 		return nil, responses.ToInternalError(fmt.Errorf("public key not initialized, we can't produce the attestation report"))
 	}
-	report, err := e.attestationProvider.GetReport(ctx, e.enclaveKeyService.PublicKeyBytes(), e.enclaveKeyService.EnclaveID(), e.config.HostAddress)
+	report, err := e.attestationProvider.CreateAttestationReport(ctx, e.config.HostAddress)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not produce remote report. Cause %w", err))
 	}
@@ -87,31 +86,54 @@ func (e *enclaveInitService) Attestation(ctx context.Context) (*common.Attestati
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
+// it returns it encrypted with the enclave key
 func (e *enclaveInitService) GenerateSecret(ctx context.Context) (common.EncryptedSharedEnclaveSecret, common.SystemError) {
-	secret := crypto.GenerateEntropy(e.logger)
-	err := e.storage.StoreSecret(ctx, secret)
+	e.sharedSecretService.GenerateSharedSecret()
+	secret := e.sharedSecretService.Secret()
+	if secret == nil {
+		return nil, responses.ToInternalError(errors.New("Failed to generate secret"))
+	}
+	err := e.storage.StoreSecret(ctx, *secret)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not store secret. Cause: %w", err))
 	}
-	encSec, err := crypto.EncryptSecret(e.enclaveKeyService.PublicKeyBytes(), secret, e.logger)
+
+	err = e.notifyCryptoServices(*secret)
+	if err != nil {
+		return nil, responses.ToInternalError(err)
+	}
+
+	encSec, err := e.enclaveKeyService.Encrypt(secret[:])
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("failed to encrypt secret. Cause: %w", err))
 	}
 	return encSec, nil
 }
 
-// InitEnclave - initialise an enclave with a seed received by another enclave
+// InitEnclave - initialise an enclave with a shared secret received from another enclave
 func (e *enclaveInitService) InitEnclave(ctx context.Context, s common.EncryptedSharedEnclaveSecret) common.SystemError {
 	secret, err := e.enclaveKeyService.Decrypt(s)
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
-	err = e.storage.StoreSecret(ctx, *secret)
+	err = e.storage.StoreSecret(ctx, crypto.SharedEnclaveSecret(secret))
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not store secret. Cause: %w", err))
 	}
-	e.logger.Trace(fmt.Sprintf("Secret decrypted and stored. Secret: %v", secret))
+	var fixedSizeSecret crypto.SharedEnclaveSecret
+	copy(fixedSizeSecret[:], secret)
+
+	// notify the encryption services that depend on the shared secret
+	err = e.notifyCryptoServices(fixedSizeSecret)
+	if err != nil {
+		return responses.ToInternalError(err)
+	}
 	return nil
+}
+
+func (e *enclaveInitService) notifyCryptoServices(sharedSecret crypto.SharedEnclaveSecret) error {
+	e.sharedSecretService.SetSharedSecret(&sharedSecret)
+	return e.daEncryptionService.Initialise()
 }
 
 func (e *enclaveInitService) EnclaveID(context.Context) (common.EnclaveID, common.SystemError) {

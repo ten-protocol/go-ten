@@ -44,6 +44,7 @@ var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution an
 // fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
 func ExecuteTransactions(
 	ctx context.Context,
+	entropyService *crypto.EvmEntropyService,
 	txs common.L2PricedTransactions,
 	s *state.StateDB,
 	header *common.BatchHeader,
@@ -89,6 +90,7 @@ func ExecuteTransactions(
 	for i, t := range txs {
 		txResult := executeTransaction(
 			s,
+			entropyService,
 			chainConfig,
 			chain,
 			&gp,
@@ -127,6 +129,7 @@ const (
 
 func executeTransaction(
 	s *state.StateDB,
+	entropyService *crypto.EvmEntropyService,
 	cc *params.ChainConfig,
 	chain *ObscuroChainContext,
 	gp *gethcore.GasPool,
@@ -168,7 +171,7 @@ func executeTransaction(
 
 	before := header.MixDigest
 	// calculate a random value per transaction
-	header.MixDigest = crypto.CalculateTxRnd(before.Bytes(), tCount)
+	header.MixDigest = entropyService.TxEntropy(before.Bytes(), tCount)
 
 	var vmenv *vm.EVM
 	applyTx := func(
