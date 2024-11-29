@@ -6,7 +6,7 @@ import (
 	"github.com/status-im/keycard-go/hexutils"
 )
 
-const rpcSuffix = 1
+// const rpcSuffix = 1
 
 // RPCKeyService - manages the "TEN - RPC key" used by clients (like the TEN gateway) to make RPC requests
 type RPCKeyService struct {
