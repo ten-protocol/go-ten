@@ -1,15 +1,7 @@
 package backend
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"encoding/base64"
-	"fmt"
 	"math/big"
-
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ten-protocol/go-ten/go/common/compression"
-	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/obsclient"
@@ -123,7 +115,7 @@ func (b *Backend) GetBatchTransactions(hash gethcommon.Hash) (*common.Transactio
 	return b.obsClient.GetBatchTransactions(hash)
 }
 
-func (b *Backend) DecryptTxBlob(payload string) ([]*common.L2Tx, error) {
+/*func (b *Backend) DecryptTxBlob(payload string) ([]*common.L2Tx, error) {
 	encryptedTxBytes, err := base64.StdEncoding.DecodeString(payload)
 	if err != nil {
 		return nil, fmt.Errorf("could not decode encrypted transaction blob from Base64. Cause: %w", err)
@@ -140,8 +132,8 @@ func (b *Backend) DecryptTxBlob(payload string) ([]*common.L2Tx, error) {
 	}
 
 	// The nonce is prepended to the ciphertext.
-	nonce := encryptedTxBytes[0:crypto.NonceLength]
-	ciphertext := encryptedTxBytes[crypto.NonceLength:]
+	nonce := encryptedTxBytes[0:crypto.GCMNonceLength]
+	ciphertext := encryptedTxBytes[crypto.GCMNonceLength:]
 	compressedTxs, err := transactionCipher.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return nil, fmt.Errorf("could not decrypt encrypted L2 transactions. Cause: %w", err)
@@ -160,7 +152,7 @@ func (b *Backend) DecryptTxBlob(payload string) ([]*common.L2Tx, error) {
 	}
 
 	return cleartextTxs, nil
-}
+}*/
 
 func (b *Backend) GetConfig() (*common.TenNetworkInfo, error) {
 	return b.obsClient.GetConfig()

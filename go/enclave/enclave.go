@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
+
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
@@ -40,10 +42,11 @@ import (
 )
 
 type enclaveImpl struct {
-	initService  common.EnclaveInit
-	adminService common.EnclaveAdmin
-	rpcService   common.EnclaveClientRPC
-	stopControl  *stopcontrol.StopControl
+	initAPI  common.EnclaveInit
+	adminAPI common.EnclaveAdmin
+	rpcAPI   common.EnclaveClientRPC
+
+	stopControl *stopcontrol.StopControl
 }
 
 // NewEnclave creates and initializes all the services of the enclave.
@@ -62,13 +65,20 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	// attempt to fetch the enclave key from the database
 	// the enclave key is part of the attestation and identifies the current enclave
-	enclaveKeyService := components.NewEnclaveKeyService(storage, logger)
-	err := enclaveKeyService.LoadOrCreateEnclaveKey()
+	// if this is the first time the enclave starts, it has to generate a new key
+	enclaveKeyService := crypto.NewEnclaveAttestedKeyService(logger)
+	err := loadOrCreateEnclaveKey(storage, enclaveKeyService, logger)
 	if err != nil {
-		logger.Crit("Failed to load or create enclave key", "err", err)
+		logger.Crit("Failed to load or create enclave key", log.ErrKey, err)
 	}
 
-	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, logger)
+	sharedSecretService := crypto.NewSharedSecretService(logger)
+	err = loadSharedSecret(storage, sharedSecretService, logger)
+	if err != nil {
+		logger.Crit("Failed to load shared secret", log.ErrKey, err)
+	}
+
+	daEncryptionService := crypto.NewDAEncryptionService(sharedSecretService, logger)
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
@@ -81,8 +91,10 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
+	evmEntropyService := crypto.NewEvmEntropyService(sharedSecretService, logger)
+	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, evmEntropyService, logger)
 	batchRegistry := components.NewBatchRegistry(storage, config, gethEncodingService, logger)
-	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, scb, logger)
+	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, scb, evmEntropyService, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
 	err = restoreStateDBCache(context.Background(), storage, batchRegistry, batchExecutor, genesis, logger)
@@ -99,40 +111,35 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	subscriptionManager := events.NewSubscriptionManager(storage, batchRegistry, config.ObscuroChainID, logger)
 
 	// todo (#1474) - make sure the enclave cannot be started in production with WillAttest=false
-	var attestationProvider components.AttestationProvider
-	if config.WillAttest {
-		attestationProvider = &components.EgoAttestationProvider{}
-	} else {
-		logger.Info("WARNING - Attestation is not enabled, enclave will not create a verified attestation report.")
-		attestationProvider = &components.DummyAttestationProvider{}
-	}
+	attestationProvider := components.NewAttestationProvider(enclaveKeyService, config.WillAttest, logger)
 
 	// signal to stop the enclave
 	stopControl := stopcontrol.New()
 
-	initService := NewEnclaveInitService(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider)
-	adminService := NewEnclaveAdminService(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, mgmtContractLib, attestationProvider)
-	rpcService := NewEnclaveRPCService(config, storage, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle)
+	// these services are directly exposed as the API of the Enclave
+	initAPI := NewEnclaveInitAPI(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider, sharedSecretService, daEncryptionService)
+	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, mgmtContractLib, attestationProvider, sharedSecretService, daEncryptionService)
+	rpcAPI := NewEnclaveRPCAPI(config, storage, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, sharedSecretService)
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{
-		initService:  initService,
-		adminService: adminService,
-		rpcService:   rpcService,
-		stopControl:  stopControl,
+		initAPI:     initAPI,
+		adminAPI:    adminAPI,
+		rpcAPI:      rpcAPI,
+		stopControl: stopControl,
 	}
 }
 
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status(ctx context.Context) (common.Status, common.SystemError) {
-	return e.initService.Status(ctx)
+	return e.initAPI.Status(ctx)
 }
 
 func (e *enclaveImpl) Attestation(ctx context.Context) (*common.AttestationReport, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.initService.Attestation(ctx)
+	return e.initAPI.Attestation(ctx)
 }
 
 // GenerateSecret - the genesis enclave is responsible with generating the secret entropy
@@ -140,108 +147,108 @@ func (e *enclaveImpl) GenerateSecret(ctx context.Context) (common.EncryptedShare
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.initService.GenerateSecret(ctx)
+	return e.initAPI.GenerateSecret(ctx)
 }
 
 // InitEnclave - initialise an enclave with a seed received by another enclave
 func (e *enclaveImpl) InitEnclave(ctx context.Context, s common.EncryptedSharedEnclaveSecret) common.SystemError {
-	return e.initService.InitEnclave(ctx, s)
+	return e.initAPI.InitEnclave(ctx, s)
 }
 
 func (e *enclaveImpl) EnclaveID(ctx context.Context) (common.EnclaveID, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return common.EnclaveID{}, systemError
 	}
-	return e.initService.EnclaveID(ctx)
+	return e.initAPI.EnclaveID(ctx)
 }
 
 func (e *enclaveImpl) DebugTraceTransaction(ctx context.Context, txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
-	return e.rpcService.DebugTraceTransaction(ctx, txHash, config)
+	return e.rpcAPI.DebugTraceTransaction(ctx, txHash, config)
 }
 
 func (e *enclaveImpl) GetTotalContractCount(ctx context.Context) (*big.Int, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.rpcService.GetTotalContractCount(ctx)
+	return e.rpcAPI.GetTotalContractCount(ctx)
 }
 
 func (e *enclaveImpl) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublicConfig, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.rpcService.EnclavePublicConfig(ctx)
+	return e.rpcAPI.EnclavePublicConfig(ctx)
 }
 
 func (e *enclaveImpl) EncryptedRPC(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.EnclaveResponse, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.rpcService.EncryptedRPC(ctx, encryptedParams)
+	return e.rpcAPI.EncryptedRPC(ctx, encryptedParams)
 }
 
 func (e *enclaveImpl) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash gethrpc.BlockNumberOrHash) ([]byte, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.rpcService.GetCode(ctx, address, blockNrOrHash)
+	return e.rpcAPI.GetCode(ctx, address, blockNrOrHash)
 }
 
 func (e *enclaveImpl) Subscribe(ctx context.Context, id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
-	return e.rpcService.Subscribe(ctx, id, encryptedSubscription)
+	return e.rpcAPI.Subscribe(ctx, id, encryptedSubscription)
 }
 
 func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) common.SystemError {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return systemError
 	}
-	return e.rpcService.Unsubscribe(id)
+	return e.rpcAPI.Unsubscribe(id)
 }
 
 func (e *enclaveImpl) AddSequencer(id common.EnclaveID, proof types.Receipt) common.SystemError {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return systemError
 	}
-	return e.adminService.AddSequencer(id, proof)
+	return e.adminAPI.AddSequencer(id, proof)
 }
 
 func (e *enclaveImpl) MakeActive() common.SystemError {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return systemError
 	}
-	return e.adminService.MakeActive()
+	return e.adminAPI.MakeActive()
 }
 
 func (e *enclaveImpl) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.adminService.ExportCrossChainData(ctx, fromSeqNo, toSeqNo)
+	return e.adminAPI.ExportCrossChainData(ctx, fromSeqNo, toSeqNo)
 }
 
 func (e *enclaveImpl) GetBatch(ctx context.Context, hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.adminService.GetBatch(ctx, hash)
+	return e.adminAPI.GetBatch(ctx, hash)
 }
 
 func (e *enclaveImpl) GetBatchBySeqNo(ctx context.Context, seqNo uint64) (*common.ExtBatch, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.adminService.GetBatchBySeqNo(ctx, seqNo)
+	return e.adminAPI.GetBatchBySeqNo(ctx, seqNo)
 }
 
 func (e *enclaveImpl) GetRollupData(ctx context.Context, hash common.L2RollupHash) (*common.PublicRollupMetadata, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.adminService.GetRollupData(ctx, hash)
+	return e.adminAPI.GetRollupData(ctx, hash)
 }
 
 func (e *enclaveImpl) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func()) {
-	return e.adminService.StreamL2Updates()
+	return e.adminAPI.StreamL2Updates()
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
@@ -249,28 +256,28 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, blockHeader *types.Head
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.adminService.SubmitL1Block(ctx, blockHeader, receipts)
+	return e.adminAPI.SubmitL1Block(ctx, blockHeader, receipts)
 }
 
 func (e *enclaveImpl) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return systemError
 	}
-	return e.adminService.SubmitBatch(ctx, extBatch)
+	return e.adminAPI.SubmitBatch(ctx, extBatch)
 }
 
 func (e *enclaveImpl) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) common.SystemError {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return systemError
 	}
-	return e.adminService.CreateBatch(ctx, skipBatchIfEmpty)
+	return e.adminAPI.CreateBatch(ctx, skipBatchIfEmpty)
 }
 
 func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.adminService.CreateRollup(ctx, fromSeqNo)
+	return e.adminAPI.CreateRollup(ctx, fromSeqNo)
 }
 
 // HealthCheck returns whether the enclave is deemed healthy
@@ -278,21 +285,57 @@ func (e *enclaveImpl) HealthCheck(ctx context.Context) (bool, common.SystemError
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return false, systemError
 	}
-	return e.adminService.HealthCheck(ctx)
+	return e.adminAPI.HealthCheck(ctx)
 }
 
 // StopClient is only implemented by the RPC wrapper
 func (e *enclaveImpl) StopClient() common.SystemError {
-	return e.adminService.StopClient()
+	return e.adminAPI.StopClient()
 }
 
 func (e *enclaveImpl) Stop() common.SystemError {
-	return e.adminService.Stop()
+	return e.adminAPI.Stop()
 }
 
 func checkStopping(s *stopcontrol.StopControl) common.SystemError {
 	if s.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("enclave is stopping"))
 	}
+	return nil
+}
+
+func loadSharedSecret(storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger) error {
+	sharedSecret, err := storage.FetchSecret(context.Background())
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		logger.Crit("Failed to fetch secret", "err", err)
+	}
+	if sharedSecret != nil {
+		sharedSecretService.SetSharedSecret(sharedSecret)
+	}
+	return nil
+}
+
+func loadOrCreateEnclaveKey(storage storage.Storage, enclaveKeyService *crypto.EnclaveAttestedKeyService, logger gethlog.Logger) error {
+	enclaveKey, err := storage.GetEnclaveKey(context.Background())
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("failed to load enclave key: %w", err)
+	}
+	if enclaveKey != nil {
+		enclaveKeyService.SetEnclaveKey(enclaveKey)
+		return nil
+	}
+
+	// enclave key not found - new key should be generated
+	logger.Info("Generating new enclave key")
+	enclaveKey, err = enclaveKeyService.GenerateEnclaveKey()
+	if err != nil {
+		return fmt.Errorf("failed to generate enclave key: %w", err)
+	}
+	err = storage.StoreEnclaveKey(context.Background(), enclaveKey)
+	if err != nil {
+		return fmt.Errorf("failed to store enclave key: %w", err)
+	}
+
+	enclaveKeyService.SetEnclaveKey(enclaveKey)
 	return nil
 }

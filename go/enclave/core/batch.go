@@ -49,7 +49,7 @@ func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }
 func (b *Batch) Number() *big.Int  { return new(big.Int).Set(b.Header.Number) }
 func (b *Batch) SeqNo() *big.Int   { return new(big.Int).Set(b.Header.SequencerOrderNo) }
 
-func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*common.ExtBatch, error) {
+func (b *Batch) ToExtBatch(transactionBlobCrypto *crypto.DAEncryptionService, compression compression.DataCompressionService) (*common.ExtBatch, error) {
 	txHashes := make([]gethcommon.Hash, len(b.Transactions))
 	for idx, tx := range b.Transactions {
 		txHashes[idx] = tx.Hash()
@@ -74,7 +74,7 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, c
 	}, nil
 }
 
-func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*Batch, error) {
+func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto *crypto.DAEncryptionService, compression compression.DataCompressionService) (*Batch, error) {
 	compressed, err := transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob)
 	if err != nil {
 		return nil, err
