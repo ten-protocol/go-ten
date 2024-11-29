@@ -45,7 +45,7 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 	return checksumFormatted(config), nil
 }
 
-func (api *TenAPI) RPCKey() ([]byte, error) {
+func (api *TenAPI) RpcKey() ([]byte, error) {
 	key, err := api.host.EnclaveClient().RPCEncryptionKey(context.Background())
 	if err != nil {
 		return nil, err

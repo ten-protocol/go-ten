@@ -17,7 +17,7 @@ const (
 
 	Health = "ten_health"
 	Config = "ten_config"
-	RPCKey = "ten_rPCKey"
+	RPCKey = "ten_rpcKey"
 
 	StopHost                 = "test_stopHost"
 	SubscribeNamespace       = "ten"
