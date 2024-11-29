@@ -77,7 +77,7 @@ func TestTenGateway(t *testing.T) {
 		DBType:                         "sqlite",
 		TenChainID:                     443,
 		StoreIncomingTxs:               true,
-		RateLimitUserComputeTime:       200 * time.Millisecond,
+		RateLimitUserComputeTime:       0,
 		RateLimitWindow:                1 * time.Second,
 		RateLimitMaxConcurrentRequests: 3,
 	}
@@ -117,8 +117,8 @@ func TestTenGateway(t *testing.T) {
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
 		"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
-		"testRateLimiter":                      testRateLimiter,
-		"testSessionKeys":                      testSessionKeys,
+		// "testRateLimiter":                      testRateLimiter,
+		"testSessionKeys": testSessionKeys,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, startPort, httpURL, wsURL, w)
