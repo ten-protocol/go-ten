@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/responses"
@@ -10,7 +11,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
 // service names - these are the keys used to register known services with the host
@@ -80,13 +80,15 @@ type P2PBatchRequestHandler interface {
 type L1BlockRepository interface {
 	// Subscribe will register a block handler to receive new blocks as they arrive, returns unsubscribe func
 	Subscribe(handler L1BlockHandler) func()
-
+	// FetchBlockByHeight returns a block at a given height
 	FetchBlockByHeight(height *big.Int) (*types.Block, error)
 	// FetchNextBlock returns the next canonical block after a given block hash
 	// It returns the new block, a bool which is true if the block is the current L1 head and a bool if the block is on a different fork to prevBlock
 	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error)
 	// FetchObscuroReceipts returns the receipts for a given L1 block
 	FetchObscuroReceipts(block *common.L1Block) (types.Receipts, error)
+	// ExtractTenTransactions returns the tx data and types of those relevant to Ten to be consumed by the enclave
+	ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error)
 }
 
 // L1BlockHandler is an interface for receiving new blocks from the repository as they arrive

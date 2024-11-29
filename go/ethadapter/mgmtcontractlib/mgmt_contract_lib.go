@@ -31,7 +31,7 @@ type MgmtContractLib interface {
 	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData
 
 	// DecodeTx receives a *types.Transaction and converts it to a common.L1Transaction
-	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
+	DecodeTx(tx *types.Transaction) common.TenTransaction
 	GetContractAddr() *gethcommon.Address
 
 	// The methods below are used to create call messages for mgmt contract data and unpack the responses
@@ -75,7 +75,7 @@ func (c *contractLibImpl) GetContractAddr() *gethcommon.Address {
 	return c.addr
 }
 
-func (c *contractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.TenTransaction {
 	if tx.To() == nil || tx.To().Hex() != c.addr.Hex() || len(tx.Data()) == 0 {
 		return nil
 	}

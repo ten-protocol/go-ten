@@ -252,7 +252,6 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 				contractAddressTxs = append(contractAddressTxs, typedTx)
 			case *ethadapter.L1RollupHashes:
 				blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), typedTx.BlobHashes)
-				// temporarily add this host stopping check to prevent sim test failures until a more robust solution is implemented
 				if err != nil {
 					if errors.Is(err, ethereum.NotFound) {
 						p.logger.Crit("Blobs were not found on beacon chain or archive service", "block", block.Hash(), "error", err)

@@ -8,6 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+
 	"github.com/ten-protocol/go-ten/go/common/subscription"
 
 	"github.com/ten-protocol/go-ten/go/common/host"
@@ -29,25 +32,42 @@ var (
 	ErrNoNextBlock   = errors.New("no next block")
 )
 
+type ContractType int
+
+const (
+	MgmtContract ContractType = iota
+	MsgBus
+)
+
 // Repository is a host service for subscribing to new blocks and looking up L1 data
 type Repository struct {
 	blockSubscribers *subscription.Manager[host.L1BlockHandler]
 	// this eth client should only be used by the repository, the repository may "reconnect" it at any time and don't want to interfere with other processes
-	ethClient ethadapter.EthClient
-	logger    gethlog.Logger
+	ethClient       ethadapter.EthClient
+	logger          gethlog.Logger
+	mgmtContractLib mgmtcontractlib.MgmtContractLib
+	blobResolver    BlobResolver
 
-	running                  atomic.Bool
-	head                     gethcommon.Hash
-	obscuroRelevantContracts []gethcommon.Address
+	running           atomic.Bool
+	head              gethcommon.Hash
+	contractAddresses map[ContractType][]gethcommon.Address
 }
 
-func NewL1Repository(ethClient ethadapter.EthClient, obscuroRelevantContracts []gethcommon.Address, logger gethlog.Logger) *Repository {
+func NewL1Repository(
+	ethClient ethadapter.EthClient,
+	logger gethlog.Logger,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	blobResolver BlobResolver,
+	contractAddresses map[ContractType][]gethcommon.Address,
+) *Repository {
 	return &Repository{
-		blockSubscribers:         subscription.NewManager[host.L1BlockHandler](),
-		ethClient:                ethClient,
-		obscuroRelevantContracts: obscuroRelevantContracts,
-		running:                  atomic.Bool{},
-		logger:                   logger,
+		blockSubscribers:  subscription.NewManager[host.L1BlockHandler](),
+		ethClient:         ethClient,
+		running:           atomic.Bool{},
+		logger:            logger,
+		mgmtContractLib:   mgmtContractLib,
+		blobResolver:      blobResolver,
+		contractAddresses: contractAddresses,
 	}
 }
 
@@ -137,7 +157,10 @@ func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts
 
 	blkHash := block.Hash()
 	// we want to send receipts for any transactions that produced obscuro-relevant log events
-	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{BlockHash: &blkHash, Addresses: r.obscuroRelevantContracts})
+	var allAddresses []gethcommon.Address
+	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
+	allAddresses = append(allAddresses, r.contractAddresses[MsgBus]...)
+	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{BlockHash: &blkHash, Addresses: allAddresses})
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch logs for L1 block - %w", err)
 	}
@@ -168,6 +191,82 @@ func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts
 	}
 
 	return receipts, nil
+}
+
+// ExtractTenTransactions does all the filtering of txs to find all the transaction types we care about on the L2. These
+// are pulled from the data in the L1 blocks and then submitted to the enclave for processing
+func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error) {
+	processed := &common.ProcessedL1Data{
+		BlockHeader: block.Header(),
+		Events:      []common.L1Event{},
+	}
+	txsWithReceipts, err := r.getRelevantTxReceiptsAndBlobs(block)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, txWithReceipt := range txsWithReceipts {
+		// Skip if the entire txWithReceipt is nil
+		if txWithReceipt == nil {
+			println("TX IS NIL WHY")
+			continue
+		}
+		messages, err := r.getCrossChainMessages(txWithReceipt.Receipt)
+		if err != nil {
+			r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
+		}
+
+		transfers, err := r.getValueTransferEvents(txWithReceipt.Receipt)
+		if err != nil {
+			r.logger.Error("Error encountered converting the extracted logs to value transfers", log.ErrKey, err)
+		}
+
+		sequencerLogs, err := r.getSequencerEventLogs(txWithReceipt.Receipt)
+		if err != nil {
+			r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
+		}
+
+		txData := &common.L1TxData{
+			Transaction:        txWithReceipt.Tx,
+			Receipt:            txWithReceipt.Receipt,
+			Blobs:              txWithReceipt.Blobs,
+			CrossChainMessages: &messages,
+			ValueTransfers:     &transfers,
+		}
+
+		if len(*txData.CrossChainMessages) > 0 {
+			processed.AddEvent(common.CrossChainMessageTx, txData)
+		}
+
+		if len(*txData.ValueTransfers) > 0 {
+			processed.AddEvent(common.CrossChainValueTranserTx, txData)
+		}
+
+		if len(txData.Blobs) > 0 {
+			processed.AddEvent(common.RollupTx, txData)
+		}
+
+		if len(sequencerLogs) > 0 {
+			processed.AddEvent(common.SequencerAddedTx, txData)
+		}
+
+		decodedTx := r.mgmtContractLib.DecodeTx(txWithReceipt.Tx)
+		if decodedTx == nil {
+			continue
+		}
+		txData.Type = decodedTx
+
+		switch decodedTx.(type) {
+		case *ethadapter.L1RequestSecretTx:
+			processed.AddEvent(common.SecretRequestTx, txData)
+		case *ethadapter.L1InitializeSecretTx:
+			processed.AddEvent(common.InitialiseSecretTx, txData)
+		case *ethadapter.L1SetImportantContractsTx:
+			processed.AddEvent(common.SetImportantContractsTx, txData)
+		}
+	}
+
+	return processed, nil
 }
 
 // stream blocks from L1 as they arrive and forward them to subscribers, no guarantee of perfect ordering or that there won't be gaps.
@@ -226,12 +325,98 @@ func (r *Repository) FetchBlockByHeight(height *big.Int) (*types.Block, error) {
 
 // isObscuroTransaction will look at the 'to' address of the transaction, we are only interested in management contract and bridge transactions
 func (r *Repository) isObscuroTransaction(transaction *types.Transaction) bool {
-	for _, address := range r.obscuroRelevantContracts {
+	var allAddresses []gethcommon.Address
+	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
+	allAddresses = append(allAddresses, r.contractAddresses[MsgBus]...)
+	for _, address := range allAddresses {
 		if transaction.To() != nil && *transaction.To() == address {
 			return true
 		}
 	}
 	return false
+}
+
+func (r *Repository) getRelevantTxReceiptsAndBlobs(block *common.L1Block) ([]*common.TxAndReceiptAndBlobs, error) {
+	// Create a slice that will only contain valid transactions
+	var txsWithReceipts []*common.TxAndReceiptAndBlobs
+
+	receipts, err := r.FetchObscuroReceipts(block)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch receipts: %w", err)
+	}
+
+	for i, tx := range block.Transactions() {
+		// skip unsuccessful txs
+		if receipts[i].Status == types.ReceiptStatusFailed {
+			continue
+		}
+
+		txWithReceipt := &common.TxAndReceiptAndBlobs{
+			Tx:      tx,
+			Receipt: receipts[i],
+		}
+
+		if tx.Type() == types.BlobTxType {
+			txBlobs := tx.BlobHashes()
+			blobs, err := r.blobResolver.FetchBlobs(context.Background(), block.Header(), txBlobs)
+			if err != nil {
+				if errors.Is(err, ethereum.NotFound) {
+					r.logger.Crit("Blobs were not found on beacon chain or archive service", "block", block.Hash(), "error", err)
+				} else {
+					r.logger.Crit("could not fetch blobs", log.ErrKey, err)
+				}
+				continue
+			}
+			txWithReceipt.Blobs = blobs
+		}
+
+		// Append only valid transactions
+		txsWithReceipts = append(txsWithReceipts, txWithReceipt)
+	}
+
+	return txsWithReceipts, nil
+}
+
+func (r *Repository) getCrossChainMessages(receipt *types.Receipt) (common.CrossChainMessages, error) {
+	logsForReceipt, err := crosschain.FilterLogsFromReceipt(receipt, &r.contractAddresses[MsgBus][0], &crosschain.CrossChainEventID)
+	if err != nil {
+		r.logger.Error("Error encountered when filtering receipt logs for cross chain messages.", log.ErrKey, err)
+		return make(common.CrossChainMessages, 0), err
+	}
+	messages, err := crosschain.ConvertLogsToMessages(logsForReceipt, crosschain.CrossChainEventName, crosschain.MessageBusABI)
+	if err != nil {
+		r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
+		return make(common.CrossChainMessages, 0), err
+	}
+
+	return messages, nil
+}
+
+func (r *Repository) getValueTransferEvents(receipt *types.Receipt) (common.ValueTransferEvents, error) {
+	logsForReceipt, err := crosschain.FilterLogsFromReceipt(receipt, &r.contractAddresses[MsgBus][0], &crosschain.ValueTransferEventID)
+	if err != nil {
+		r.logger.Error("Error encountered when filtering receipt logs for value transfers.", log.ErrKey, err)
+		return make(common.ValueTransferEvents, 0), err
+	}
+	transfers, err := crosschain.ConvertLogsToValueTransfers(logsForReceipt, crosschain.CrossChainEventName, crosschain.MessageBusABI)
+	if err != nil {
+		r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
+		return make(common.ValueTransferEvents, 0), err
+	}
+
+	return transfers, nil
+}
+
+func (r *Repository) getSequencerEventLogs(receipt *types.Receipt) ([]types.Log, error) {
+	sequencerLogs, err := crosschain.FilterLogsFromReceipt(receipt, &r.contractAddresses[MgmtContract][0], &crosschain.SequencerEnclaveGrantedEventID)
+	if err != nil {
+		r.logger.Error("Error filtering sequencer logs", log.ErrKey, err)
+		return []types.Log{}, err
+	}
+
+	// TODO convert to add sequencer?
+
+	return sequencerLogs, nil
 }
 
 func increment(i *big.Int) *big.Int {

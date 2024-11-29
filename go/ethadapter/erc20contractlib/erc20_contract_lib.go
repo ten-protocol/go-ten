@@ -4,6 +4,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ten-protocol/go-ten/go/common"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
@@ -17,7 +19,7 @@ const methodBytesLen = 4
 type ERC20ContractLib interface {
 	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
 	// returns nil if the transaction is not convertible
-	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
+	DecodeTx(tx *types.Transaction) common.TenTransaction
 
 	// CreateDepositTx receives an common.L1Transaction and converts it to an eth transaction
 	CreateDepositTx(tx *ethadapter.L1DepositTx) types.TxData
@@ -56,7 +58,7 @@ func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethadapter.L1DepositTx) types
 	}
 }
 
-func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) common.TenTransaction {
 	if !c.isRelevant(tx) {
 		return nil
 	}
