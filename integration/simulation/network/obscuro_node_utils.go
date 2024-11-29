@@ -95,6 +95,10 @@ func createAuthClientsPerWallet(clients []rpc.Client, wallets *params.SimWallets
 }
 
 func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.AuthObsClient {
+	rpcKey, err := rpc.ReadEnclaveKey(clients[0])
+	if err != nil {
+		return nil
+	}
 	authClients := make([]*obsclient.AuthObsClient, len(clients))
 	for i, client := range clients {
 		vk, err := viewingkey.GenerateViewingKeyForWallet(wal)
@@ -102,7 +106,7 @@ func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 			panic(err)
 		}
 		// todo - use a child logger
-		encClient, err := rpc.NewEncRPCClient(client, vk, testlog.Logger())
+		encClient, err := rpc.NewEncRPCClient(client, vk, rpcKey, testlog.Logger())
 		if err != nil {
 			panic(err)
 		}

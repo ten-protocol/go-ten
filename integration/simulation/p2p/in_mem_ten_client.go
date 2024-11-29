@@ -118,6 +118,11 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 	case rpc.Config:
 		return c.tenConfig(result)
 
+	case rpc.RPCKey:
+		key, err := c.tenAPI.RPCKey()
+		*result.(*[]byte) = key
+		return err
+
 	case rpc.GetCode:
 		return c.getCode(result, args)
 

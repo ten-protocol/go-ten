@@ -79,6 +79,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	}
 
 	daEncryptionService := crypto.NewDAEncryptionService(sharedSecretService, logger)
+	rpcKeyService := crypto.NewRPCKeyService(sharedSecretService, logger)
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
 
@@ -117,9 +118,9 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	stopControl := stopcontrol.New()
 
 	// these services are directly exposed as the API of the Enclave
-	initAPI := NewEnclaveInitAPI(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider, sharedSecretService, daEncryptionService)
+	initAPI := NewEnclaveInitAPI(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider, sharedSecretService, daEncryptionService, rpcKeyService)
 	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, mgmtContractLib, attestationProvider, sharedSecretService, daEncryptionService)
-	rpcAPI := NewEnclaveRPCAPI(config, storage, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, sharedSecretService)
+	rpcAPI := NewEnclaveRPCAPI(config, storage, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, sharedSecretService, rpcKeyService)
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{
@@ -160,6 +161,13 @@ func (e *enclaveImpl) EnclaveID(ctx context.Context) (common.EnclaveID, common.S
 		return common.EnclaveID{}, systemError
 	}
 	return e.initAPI.EnclaveID(ctx)
+}
+
+func (e *enclaveImpl) RPCEncryptionKey(ctx context.Context) ([]byte, common.SystemError) {
+	if systemError := checkStopping(e.stopControl); systemError != nil {
+		return nil, systemError
+	}
+	return e.initAPI.RPCEncryptionKey(ctx)
 }
 
 func (e *enclaveImpl) DebugTraceTransaction(ctx context.Context, txHash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {

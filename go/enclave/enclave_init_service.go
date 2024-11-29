@@ -31,9 +31,10 @@ type enclaveInitService struct {
 	enclaveKeyService   *crypto.EnclaveAttestedKeyService // the enclave's private key (used to identify the enclave and sign messages)
 	attestationProvider components.AttestationProvider    // interface for producing attestation reports and verifying them
 	daEncryptionService *crypto.DAEncryptionService
+	rpcKeyService       *crypto.RPCKeyService
 }
 
-func NewEnclaveInitAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, enclaveKeyService *crypto.EnclaveAttestedKeyService, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService) common.EnclaveInit {
+func NewEnclaveInitAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, l1BlockProcessor components.L1BlockProcessor, enclaveKeyService *crypto.EnclaveAttestedKeyService, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService, rpcKeyService *crypto.RPCKeyService) common.EnclaveInit {
 	return &enclaveInitService{
 		config:              config,
 		storage:             storage,
@@ -43,6 +44,7 @@ func NewEnclaveInitAPI(config *enclaveconfig.EnclaveConfig, storage storage.Stor
 		attestationProvider: attestationProvider,
 		sharedSecretService: sharedSecretService,
 		daEncryptionService: daEncryptionService,
+		rpcKeyService:       rpcKeyService,
 	}
 }
 
@@ -133,9 +135,17 @@ func (e *enclaveInitService) InitEnclave(ctx context.Context, s common.Encrypted
 
 func (e *enclaveInitService) notifyCryptoServices(sharedSecret crypto.SharedEnclaveSecret) error {
 	e.sharedSecretService.SetSharedSecret(&sharedSecret)
+	err := e.rpcKeyService.Initialise()
+	if err != nil {
+		return err
+	}
 	return e.daEncryptionService.Initialise()
 }
 
 func (e *enclaveInitService) EnclaveID(context.Context) (common.EnclaveID, common.SystemError) {
 	return e.enclaveKeyService.EnclaveID(), nil
+}
+
+func (e *enclaveInitService) RPCEncryptionKey(ctx context.Context) ([]byte, common.SystemError) {
+	return e.rpcKeyService.PublicKey(), nil
 }

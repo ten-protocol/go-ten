@@ -3,28 +3,50 @@ package crypto
 import (
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/status-im/keycard-go/hexutils"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
-// const rpcSuffix = 1
+const rpcSuffix = 1
 
 // RPCKeyService - manages the "TEN - RPC key" used by clients (like the TEN gateway) to make RPC requests
 type RPCKeyService struct {
-	privKey *ecies.PrivateKey
+	privKey             *ecies.PrivateKey
+	sharedSecretService *SharedSecretService
+	logger              gethlog.Logger
 }
 
-func NewRPCKeyService(service *SharedSecretService) *RPCKeyService {
+func NewRPCKeyService(sharedSecretService *SharedSecretService, logger gethlog.Logger) *RPCKeyService {
+	s := &RPCKeyService{
+		sharedSecretService: sharedSecretService,
+		logger:              logger,
+	}
+	if sharedSecretService.IsInitialised() {
+		err := s.Initialise()
+		if err != nil {
+			logger.Crit("Failed to initialise RPC key service ", log.ErrKey, err)
+			return nil
+		}
+	}
+	return s
+}
+
+// Initialise - called when the shared secret is available
+func (s *RPCKeyService) Initialise() error {
 	// the key is derived from the shared secret to allow transactions to be broadcast
-	// bytes := service.ExtendEntropy([]byte{byte(rpcSuffix)})
-	// todo - identify where we have the hardcoded public key - and create the logic to get the pub key
-	bytes := hexutils.HexToBytes("81acce9620f0adf1728cb8df7f6b8b8df857955eb9e8b7aed6ef8390c09fc207")
+	bytes := s.sharedSecretService.ExtendEntropy([]byte{byte(rpcSuffix)})
 	ecdsaKey, err := gethcrypto.ToECDSA(bytes)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	return &RPCKeyService{privKey: ecies.ImportECDSA(ecdsaKey)}
+	s.privKey = ecies.ImportECDSA(ecdsaKey)
+	return nil
 }
 
-func (s RPCKeyService) DecryptRPCRequest(bytes []byte) ([]byte, error) {
+func (s *RPCKeyService) DecryptRPCRequest(bytes []byte) ([]byte, error) {
 	return s.privKey.Decrypt(bytes, nil, nil)
+}
+
+func (s *RPCKeyService) PublicKey() []byte {
+	return gethcrypto.CompressPubkey(s.privKey.PublicKey.ExportECDSA())
 }
