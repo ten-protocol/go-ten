@@ -2,6 +2,7 @@ package ethereummock
 
 import (
 	"bytes"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter"

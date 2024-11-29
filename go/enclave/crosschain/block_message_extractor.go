@@ -44,7 +44,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 
 	// collect all value transfer events from processed data
 	var transfers common.ValueTransferEvents
-	for _, txData := range processedData.Events[common.CrossChainValueTranserTx] {
+	for _, txData := range processedData.GetEvents(common.CrossChainValueTranserTx) {
 		if txData.ValueTransfers != nil {
 			transfers = append(transfers, *txData.ValueTransfers...)
 		}
@@ -70,7 +70,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, blo
 	// collect all messages from the events
 	var xchain common.CrossChainMessages
 	var receipts types.Receipts
-	for _, txData := range processedData.Events[common.CrossChainMessageTx] {
+	for _, txData := range processedData.GetEvents(common.CrossChainMessageTx) {
 		if txData.CrossChainMessages != nil {
 			xchain = append(xchain, *txData.CrossChainMessages...)
 			receipts = append(receipts, txData.Receipt)

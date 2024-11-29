@@ -198,7 +198,7 @@ func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts
 func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error) {
 	processed := &common.ProcessedL1Data{
 		BlockHeader: block.Header(),
-		Events:      make(map[common.L1TxType][]*common.L1TxData),
+		Events:      []common.L1Event{},
 	}
 	txsWithReceipts, err := r.getRelevantTxReceiptsAndBlobs(block)
 	if err != nil {
@@ -206,6 +206,11 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 	}
 
 	for _, txWithReceipt := range txsWithReceipts {
+		// Skip if the entire txWithReceipt is nil
+		if txWithReceipt == nil {
+			println("TX IS NIL WHY")
+			continue
+		}
 		messages, err := r.getCrossChainMessages(txWithReceipt.Receipt)
 		if err != nil {
 			r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
@@ -230,19 +235,19 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		}
 
 		if len(*txData.CrossChainMessages) > 0 {
-			processed.Events[common.CrossChainMessageTx] = append(processed.Events[common.CrossChainMessageTx], txData)
+			processed.AddEvent(common.CrossChainMessageTx, txData)
 		}
 
 		if len(*txData.ValueTransfers) > 0 {
-			processed.Events[common.CrossChainValueTranserTx] = append(processed.Events[common.CrossChainValueTranserTx], txData)
+			processed.AddEvent(common.CrossChainValueTranserTx, txData)
 		}
 
 		if len(txData.Blobs) > 0 {
-			processed.Events[common.RollupTx] = append(processed.Events[common.RollupTx], txData)
+			processed.AddEvent(common.RollupTx, txData)
 		}
 
 		if len(sequencerLogs) > 0 {
-			processed.Events[common.SequencerAddedTx] = append(processed.Events[common.SequencerAddedTx], txData)
+			processed.AddEvent(common.SequencerAddedTx, txData)
 		}
 
 		decodedTx := r.mgmtContractLib.DecodeTx(txWithReceipt.Tx)
@@ -253,11 +258,11 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 
 		switch decodedTx.(type) {
 		case *ethadapter.L1RequestSecretTx:
-			processed.Events[common.SecretRequestTx] = append(processed.Events[common.SecretRequestTx], txData)
+			processed.AddEvent(common.SecretRequestTx, txData)
 		case *ethadapter.L1InitializeSecretTx:
-			processed.Events[common.InitialiseSecretTx] = append(processed.Events[common.InitialiseSecretTx], txData)
+			processed.AddEvent(common.InitialiseSecretTx, txData)
 		case *ethadapter.L1SetImportantContractsTx:
-			processed.Events[common.SetImportantContractsTx] = append(processed.Events[common.SetImportantContractsTx], txData)
+			processed.AddEvent(common.SetImportantContractsTx, txData)
 		}
 	}
 
@@ -332,7 +337,8 @@ func (r *Repository) isObscuroTransaction(transaction *types.Transaction) bool {
 }
 
 func (r *Repository) getRelevantTxReceiptsAndBlobs(block *common.L1Block) ([]*common.TxAndReceiptAndBlobs, error) {
-	txsWithReceipts := make([]*common.TxAndReceiptAndBlobs, len(block.Transactions()))
+	// Create a slice that will only contain valid transactions
+	var txsWithReceipts []*common.TxAndReceiptAndBlobs
 
 	receipts, err := r.FetchObscuroReceipts(block)
 	if err != nil {
@@ -364,7 +370,8 @@ func (r *Repository) getRelevantTxReceiptsAndBlobs(block *common.L1Block) ([]*co
 			txWithReceipt.Blobs = blobs
 		}
 
-		txsWithReceipts[i] = txWithReceipt
+		// Append only valid transactions
+		txsWithReceipts = append(txsWithReceipts, txWithReceipt)
 	}
 
 	return txsWithReceipts, nil

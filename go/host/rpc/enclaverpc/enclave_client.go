@@ -206,7 +206,7 @@ func (c *Client) SubmitL1Block(ctx context.Context, blockHeader *types.Header, p
 
 	serializedProcessedData, err := rlp.EncodeToBytes(processedData)
 	if err != nil {
-		return nil, fmt.Errorf("could not encode receipts. Cause: %w", err)
+		return nil, fmt.Errorf("could not encode processed data. Cause: %w", err)
 	}
 
 	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedProcessedData: serializedProcessedData})

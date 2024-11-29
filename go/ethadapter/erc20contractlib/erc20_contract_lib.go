@@ -1,9 +1,10 @@
 package erc20contractlib
 
 import (
-	"github.com/ten-protocol/go-ten/go/common"
 	"math/big"
 	"strings"
+
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"

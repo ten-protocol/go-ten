@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ten-protocol/go-ten/go/enclave/txpool"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"

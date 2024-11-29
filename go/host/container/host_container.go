@@ -2,9 +2,10 @@ package container
 
 import (
 	"fmt"
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"net/http"
 	"time"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 

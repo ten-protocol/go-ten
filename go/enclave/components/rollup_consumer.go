@@ -123,7 +123,7 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 // If a transaction is not a rollup or fails verification, it's skipped
 // The function only returns an error if there's a critical failure in rollup reconstruction
 func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error) {
-	rollupTxs := processed.Events[common.RollupTx]
+	rollupTxs := processed.GetEvents(common.RollupTx)
 	rollups := make([]*common.ExtRollup, 0, len(rollupTxs))
 
 	blobs, blobHashes, err := rc.extractBlobsAndHashes(rollupTxs)

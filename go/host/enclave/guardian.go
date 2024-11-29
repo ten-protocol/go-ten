@@ -427,7 +427,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	processedData, err := g.sl.L1Repo().ExtractTenTransactions(block)
 	if err != nil {
 		g.submitDataLock.Unlock() // lock must be released before returning
-		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
+		return false, fmt.Errorf("could not extract ten transactions for block=%s - %w", block.Hash(), err)
 	}
 	rollupTxs, contractAddressTxs := g.getRollupsAndContractAddrTxs(*processedData)
 
@@ -759,30 +759,26 @@ func (g *Guardian) getRollupsAndContractAddrTxs(data common.ProcessedL1Data) ([]
 	rollupTxs := make([]*ethadapter.L1RollupTx, 0)
 	contractAddressTxs := make([]*ethadapter.L1SetImportantContractsTx, 0)
 
-	for !g.hostInterrupter.IsStopping() {
-		// Get rollup transactions
-		for _, event := range data.Events[common.RollupTx] {
-			encodedRlp, err := ethadapter.DecodeBlobs(event.Blobs)
-			if err != nil {
-				g.logger.Crit("could not decode blobs.", log.ErrKey, err)
-				continue
-			}
-
-			rlp := &ethadapter.L1RollupTx{
-				Rollup: encodedRlp,
-			}
-			rollupTxs = append(rollupTxs, rlp)
+	for _, event := range data.GetEvents(common.RollupTx) {
+		encodedRlp, err := ethadapter.DecodeBlobs(event.Blobs)
+		if err != nil {
+			g.logger.Crit("could not decode blobs.", log.ErrKey, err)
+			continue
 		}
 
-		// Get contract address transactions
-		for _, event := range data.Events[common.SetImportantContractsTx] {
-			if contractTx, ok := event.Type.(*ethadapter.L1SetImportantContractsTx); ok {
-				contractAddressTxs = append(contractAddressTxs, contractTx)
-			} else {
-				g.logger.Warn("Unexpected type for SetImportantContractsTx event", "type", fmt.Sprintf("%T", event.Type))
-			}
+		rlp := &ethadapter.L1RollupTx{
+			Rollup: encodedRlp,
 		}
+		rollupTxs = append(rollupTxs, rlp)
+	}
 
+	// Get contract address transactions
+	for _, event := range data.GetEvents(common.SetImportantContractsTx) {
+		if contractTx, ok := event.Type.(*ethadapter.L1SetImportantContractsTx); ok {
+			contractAddressTxs = append(contractAddressTxs, contractTx)
+		} else {
+			g.logger.Warn("Unexpected type for SetImportantContractsTx event", "type", fmt.Sprintf("%T", event.Type))
+		}
 	}
 	return rollupTxs, contractAddressTxs
 }
