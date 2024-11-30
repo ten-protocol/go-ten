@@ -54,6 +54,9 @@ func TestHASequencerFailover(t *testing.T) {
 
 			&actions.SendNativeFunds{FromUser: 0, ToUser: 1, Amount: _transferAmount},
 
+			// wait for tx to complete
+			actions.SleepAction(5*time.Second), // allow time for shutdown/failover
+
 			// kill the primary enclave
 			actions.StopSequencerEnclave(0),
 
@@ -61,6 +64,9 @@ func TestHASequencerFailover(t *testing.T) {
 			actions.SleepAction(5*time.Second), // allow time for shutdown/failover
 
 			&actions.SendNativeFunds{FromUser: 0, ToUser: 1, Amount: _transferAmount},
+
+			// wait for tx to complete
+			actions.SleepAction(3*time.Second), // allow time for shutdown/failover
 
 			// two transfers should have happened so we verify double the amounts
 			&actions.VerifyBalanceAfterTest{UserID: 1, ExpectedBalance: doubleTransferAmount},

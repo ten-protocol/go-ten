@@ -81,6 +81,8 @@ type Guardian struct {
 	maxBatchInterval time.Duration
 	lastBatchCreated time.Time
 	enclaveID        *common.EnclaveID
+
+	cleanupFuncs []func()
 }
 
 func NewGuardian(cfg *hostconfig.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
@@ -137,11 +139,13 @@ func (g *Guardian) Start() error {
 	}
 
 	// subscribe for L1 and P2P data
-	g.sl.P2P().SubscribeForTx(g)
+	txUnsub := g.sl.P2P().SubscribeForTx(g)
 
 	// note: not keeping the unsubscribe functions because the lifespan of the guardian is the same as the host
-	g.sl.L1Repo().Subscribe(g)
-	g.sl.L2Repo().SubscribeNewBatches(g)
+	l1Unsub := g.sl.L1Repo().Subscribe(g)
+	batchesUnsub := g.sl.L2Repo().SubscribeNewBatches(g)
+
+	g.cleanupFuncs = []func(){txUnsub, l1Unsub, batchesUnsub}
 
 	// start streaming data from the enclave
 	go g.streamEnclaveData()
@@ -159,6 +163,11 @@ func (g *Guardian) Stop() error {
 	err = g.enclaveClient.StopClient()
 	if err != nil {
 		g.logger.Error("error stopping enclave client", log.ErrKey, err)
+	}
+
+	// unsubscribe
+	for _, cleanup := range g.cleanupFuncs {
+		cleanup()
 	}
 
 	return nil
