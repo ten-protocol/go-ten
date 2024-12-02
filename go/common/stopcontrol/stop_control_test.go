@@ -73,10 +73,10 @@ func TestStopControl_OnStop(t *testing.T) {
 
 	sc.Stop()
 
-	select {
-	case <-time.After(50 * time.Millisecond):
-		if !called {
-			t.Error("Expected callback to be called after Stop")
-		}
+	// wait 50ms to ensure the callback is called
+	time.Sleep(50 * time.Millisecond)
+
+	if !called {
+		t.Error("Expected callback to be called after Stop")
 	}
 }
