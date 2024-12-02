@@ -165,7 +165,7 @@ describe("Bridge", function () {
 
       const encodedCalldata = await messengerL2.encodeCall(await bridgeL2.getAddress(), encodedData);
 
-      const tx = busL1.publishMessage(0, 0, encodedCalldata, 0);
+      const tx = busL1.publishMessage(0, 0, encodedCalldata, 0, {value: 100});
       expect(tx, "Anyone should be able to publish a message!");
 
       messages = await submitMessagesFromTx(await tx);

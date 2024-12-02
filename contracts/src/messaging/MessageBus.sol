@@ -6,6 +6,7 @@ import "./Structs.sol";
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../system/Fees.sol";
 
 contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
 
@@ -14,8 +15,9 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(address caller) public initializer {
+    function initialize(address caller, address feesAddress) public initializer {
         __Ownable_init(caller);
+        fees = IFees(feesAddress);
     }
 
     // Since this contract exists on the L2, when messages are added from the L1, we can have the from address be the same as self.
@@ -24,10 +26,6 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         address maskedSelf = address(uint160(address(this)) - 1);
         require(msg.sender == owner() || msg.sender == maskedSelf, "Not owner or self");
         _;
-    }
-
-    function messageFee() internal virtual returns (uint256) {
-        return 0;
     }
 
     // This mapping contains the block timestamps where messages become valid
@@ -41,6 +39,7 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
     // Whenever a message is published, this sequence number increments.
     // This gives ordering to messages, guaranteed by us.
     mapping(address => uint64) addressSequences;
+    IFees fees;
 
     function incrementSequence(
         address sender
@@ -54,8 +53,18 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         uint256 amount
     ) external payable {
         require(msg.value > 0 && msg.value == amount, "Attempting to send value without providing Ether");
+        
+        uint256 amountToTransfer = msg.value;
+        if (address(fees) != address(0)) {
+            uint256 feesToTransfer = getValueTransferFee();
+            require(msg.value >= feesToTransfer, "Insufficient funds to send value");
+            amountToTransfer = msg.value - feesToTransfer;
+            (bool ok, ) = address(fees).call{value: feesToTransfer}("");
+            require(ok, "Failed to send fees to fees contract");
+        }
+
         uint64 sequence = incrementSequence(msg.sender);
-        emit ValueTransfer(msg.sender, receiver, msg.value, sequence);
+        emit ValueTransfer(msg.sender, receiver, amountToTransfer, sequence);
     }
 
     function receiveValueFromL2(
@@ -64,6 +73,21 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
     ) external onlyOwner {
         (bool ok, ) = receiver.call{value: amount}("");
         require(ok, "failed sending value");
+    }
+
+    function getFixedDataLength() internal pure returns (uint256) {
+        return 4 + // nonce (uint32)
+               4 + // topic (uint32) 
+               1 + // consistencyLevel (uint8)
+               8; // sequence (uint64)
+    }
+
+    function getValueTransferFee() internal view returns (uint256) {
+        return fees.messageFee(32); //just a hash
+    }
+
+    function getMessageFee(uint256 payloadLength) internal view returns (uint256) {
+        return fees.messageFee(payloadLength + getFixedDataLength());
     }
 
     // This method is called from contracts to publish messages to the other linked message bus.
@@ -79,9 +103,12 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         uint32 topic,
         bytes calldata payload,
         uint8 consistencyLevel
-    ) external override returns (uint64 sequence) {
-        //TODO: implement messageFee mechanism.
-        //require(msg.value >= messageFee());
+    ) external payable override returns (uint64 sequence) {
+        if (address(fees) != address(0)) { // No fee required for L1 to L2 messages.
+            require(msg.value >= getMessageFee(payload.length), "Insufficient funds to publish message");
+            (bool ok, ) = address(fees).call{value: msg.value}("");
+            require(ok, "Failed to send fees to fees contract");
+        }
 
         sequence = incrementSequence(msg.sender);
         emit LogMessagePublished(
