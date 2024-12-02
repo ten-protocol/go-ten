@@ -74,6 +74,14 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	// check if TLS is enabled
 	if config.EnableTLS {
 		// Create autocert manager for automatic certificate management
+		// Generating a certificate consists of the following steps:
+		// generating a new private key
+		// domain ownership verification (HTTP-01 challenge since certManager.HTTPHandler(nil) is set)
+		// Certificate Signing Request (CRS) is generated
+		// CRS is sent to CA (Let's Encrypt) via ACME (automated certificate management environment) client
+		// CA verifies CRS and issues a certificate
+		// we store store certificate and private key (in memory and also in on a mounted volume attached to docker container - /data/certs/)
+
 		certManager := &autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(config.TLSDomain),
