@@ -48,7 +48,7 @@ Eg. If the time between 2 batches is always 1second, there is no need to store a
 5. The cross chain messages are calculated.
 */
 type RollupCompression struct {
-	dataEncryptionService  crypto.DataEncryptionService
+	daEncryptionService    *crypto.DAEncryptionService
 	dataCompressionService compression.DataCompressionService
 	batchRegistry          BatchRegistry
 	batchExecutor          BatchExecutor
@@ -61,7 +61,7 @@ type RollupCompression struct {
 func NewRollupCompression(
 	batchRegistry BatchRegistry,
 	batchExecutor BatchExecutor,
-	dataEncryptionService crypto.DataEncryptionService,
+	daEncryptionService *crypto.DAEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	storage storage.Storage,
 	gethEncodingService gethencoding.EncodingService,
@@ -71,7 +71,7 @@ func NewRollupCompression(
 	return &RollupCompression{
 		batchRegistry:          batchRegistry,
 		batchExecutor:          batchExecutor,
-		dataEncryptionService:  dataEncryptionService,
+		daEncryptionService:    daEncryptionService,
 		dataCompressionService: dataCompressionService,
 		storage:                storage,
 		gethEncodingService:    gethEncodingService,
@@ -542,7 +542,7 @@ func (rc *RollupCompression) serialiseCompressAndEncrypt(obj any) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	encrypted, err := rc.dataEncryptionService.Encrypt(compressed)
+	encrypted, err := rc.daEncryptionService.Encrypt(compressed)
 	if err != nil {
 		return nil, err
 	}
@@ -550,7 +550,7 @@ func (rc *RollupCompression) serialiseCompressAndEncrypt(obj any) ([]byte, error
 }
 
 func (rc *RollupCompression) decryptDecompressAndDeserialise(blob []byte, obj any) error {
-	plaintextBlob, err := rc.dataEncryptionService.Decrypt(blob)
+	plaintextBlob, err := rc.daEncryptionService.Decrypt(blob)
 	if err != nil {
 		return err
 	}

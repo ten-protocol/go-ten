@@ -117,8 +117,8 @@ type CrossChainMessagesStorage interface {
 }
 
 type EnclaveKeyStorage interface {
-	StoreEnclaveKey(ctx context.Context, enclaveKey *crypto.EnclaveKey) error
-	GetEnclaveKey(ctx context.Context) (*crypto.EnclaveKey, error)
+	StoreEnclaveKey(ctx context.Context, enclaveKey []byte) error
+	GetEnclaveKey(ctx context.Context) ([]byte, error)
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore

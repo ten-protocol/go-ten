@@ -25,11 +25,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-const (
-	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
-	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
-)
-
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type EncRPCClient struct {
 	obscuroClient    Client
@@ -39,9 +34,8 @@ type EncRPCClient struct {
 }
 
 // NewEncRPCClient wrapper over rpc clients with a viewing key for encrypted communication
-func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
-	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
-	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
+func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, enclavePublicKeyBytes []byte, logger gethlog.Logger) (*EncRPCClient, error) {
+	enclPubECDSA, err := crypto.DecompressPubkey(enclavePublicKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decompress key for RPC client: %w", err)
 	}
