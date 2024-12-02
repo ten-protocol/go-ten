@@ -38,12 +38,13 @@ contract PublicCallbacks is Initializable {
         lastUnusedCallbackId = 0;
     }
 
-    function addCallback(address callback, bytes calldata data, uint256 value) internal {
+    function addCallback(address callback, bytes calldata data, uint256 value) internal returns (uint256) {
         callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value, baseFee: block.basefee});
+        return nextCallbackId;
     }
 
-    function getCurrentCallbackToExecute() internal view returns (Callback memory) {
-        return callbacks[lastUnusedCallbackId];
+    function getCurrentCallbackToExecute() internal view returns (Callback memory, uint256) {
+        return (callbacks[lastUnusedCallbackId], lastUnusedCallbackId);
     }
 
     function popCurrentCallback() internal {
@@ -60,10 +61,10 @@ contract PublicCallbacks is Initializable {
     // to msg.sender. 
     // todo: Consider making the callback function named in order to avoid
     // weird potential attacks if any? 
-    function register(bytes calldata callback) external payable { 
+    function register(bytes calldata callback) external payable returns (uint256) { 
         require(msg.value > 0, "No value sent");
         require(calculateGas(msg.value) > 21000, "Gas too low compared to cost of call");
-        addCallback(msg.sender, callback, msg.value);
+        return addCallback(msg.sender, callback, msg.value);
     }
 
     // reattempt a callback that failed to execute.
@@ -92,7 +93,7 @@ contract PublicCallbacks is Initializable {
             return; // todo: change to revert if possible
         }
 
-        Callback memory callback = getCurrentCallbackToExecute();
+        (Callback memory callback, uint256 callbackId) = getCurrentCallbackToExecute();
         uint256 baseFee = callback.baseFee;
         uint256 prepaidGas = callback.value / baseFee;
         uint256 gasBefore = gasleft();
@@ -113,15 +114,15 @@ contract PublicCallbacks is Initializable {
             popCurrentCallback();
         }
 
-        internalRefund(gasRefundValue, target);
+        internalRefund(gasRefundValue, target, callbackId);
         payForCallback(paymentToCoinbase);
     }
 
-    function internalRefund(uint256 gasRefund, address to) internal {
+    function internalRefund(uint256 gasRefund, address to, uint256 callbackId) internal {
         // 22k is the max refund gas limit; 21k for a call and a bit for any accounting the contract might have.
         // ordinarily such accounting should be prepared for beforehand in the callback they pay for, but we give them a
         // slight buffer. 
-        (bool success, ) = to.call{value: gasRefund, gas: 22000}(""); 
+        (bool success, ) = to.call{value: gasRefund, gas: 35000}(abi.encodeWithSignature("handleRefund(uint256)", callbackId)); 
         if (!success) {
             block.coinbase.transfer(gasRefund); // if they dont accept the refund, we gift it to coinbase.
         }

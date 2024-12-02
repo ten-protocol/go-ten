@@ -1,7 +1,10 @@
 package hostdb
 
 import (
+	"database/sql"
 	"fmt"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -10,16 +13,17 @@ import (
 
 const (
 	selectBlocks = "SELECT b.id, b.hash, b.header, r.hash FROM block_host b join rollup_host r on r.compression_block=b.id ORDER BY b.id DESC "
+	selectBlock  = "SELECT id FROM block_host WHERE hash = "
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
-func AddBlock(dbtx *dbTransaction, statements *SQLStatements, b *types.Header) error {
+func AddBlock(dbtx *sql.Tx, statements *SQLStatements, b *types.Header) error {
 	header, err := rlp.EncodeToBytes(b)
 	if err != nil {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
 
-	_, err = dbtx.tx.Exec(statements.InsertBlock,
+	_, err = dbtx.Exec(statements.InsertBlock,
 		b.Hash().Bytes(), // hash
 		header,           // l1 block header
 	)
@@ -28,6 +32,18 @@ func AddBlock(dbtx *dbTransaction, statements *SQLStatements, b *types.Header) e
 	}
 
 	return nil
+}
+
+// GetBlockId returns the block ID given the hash.
+func GetBlockId(db *sql.Tx, statements *SQLStatements, hash gethcommon.Hash) (*int64, error) {
+	query := selectBlock + statements.Placeholder
+	var blockId int64
+	err := db.QueryRow(query, hash.Bytes()).Scan(&blockId)
+	if err != nil {
+		return nil, fmt.Errorf("query execution for select block failed: %w", err)
+	}
+
+	return &blockId, nil
 }
 
 // GetBlockListing returns a paginated list of blocks in descending order against the order they were added

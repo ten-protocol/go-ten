@@ -474,7 +474,11 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			rc.batchRegistry.OnBatchExecuted(genBatch.Header, nil)
+
+			err = rc.batchRegistry.OnBatchExecuted(genBatch.Header, nil)
+			if err != nil {
+				return err
+			}
 
 			rc.logger.Info("Stored genesis", log.BatchHashKey, genBatch.Hash())
 			parentHash = genBatch.Hash()
@@ -518,7 +522,10 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			rc.batchRegistry.OnBatchExecuted(computedBatch.Batch.Header, nil)
+			err = rc.batchRegistry.OnBatchExecuted(computedBatch.Batch.Header, nil)
+			if err != nil {
+				return err
+			}
 
 			parentHash = computedBatch.Batch.Hash()
 		}

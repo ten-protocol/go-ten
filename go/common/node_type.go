@@ -3,26 +3,30 @@ package common
 import "fmt"
 
 const (
-	sequencer = "sequencer"
-	validator = "validator"
-	unknown   = "unknown"
+	activeSequencer = "sequencer"
+	validator       = "validator"
+	backupSequencer = "backup_sequencer"
+	unknown         = "unknown"
 )
 
 // NodeType represents the type of the node.
 type NodeType int
 
 const (
-	Sequencer NodeType = iota
+	ActiveSequencer NodeType = iota
 	Validator
+	BackupSequencer
 	Unknown
 )
 
 func (n NodeType) String() string {
 	switch n {
-	case Sequencer:
-		return sequencer
+	case ActiveSequencer:
+		return activeSequencer
 	case Validator:
 		return validator
+	case BackupSequencer:
+		return backupSequencer
 	case Unknown:
 		return unknown
 	default:
@@ -41,10 +45,12 @@ func (n *NodeType) UnmarshalText(text []byte) error {
 
 func ToNodeType(s string) (NodeType, error) {
 	switch s {
-	case sequencer:
-		return Sequencer, nil
+	case activeSequencer:
+		return ActiveSequencer, nil
 	case validator:
 		return Validator, nil
+	case backupSequencer:
+		return BackupSequencer, nil
 	default:
 		return Unknown, fmt.Errorf("string '%s' cannot be converted to a node type", s)
 	}

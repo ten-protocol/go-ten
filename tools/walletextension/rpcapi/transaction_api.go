@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
@@ -27,7 +29,7 @@ func NewTransactionAPI(we *services.Services) *TransactionAPI {
 func (s *TransactionAPI) GetBlockTransactionCountByNumber(ctx context.Context, blockNr gethrpc.BlockNumber) *hexutil.Uint {
 	count, err := UnauthenticatedTenRPCCall[hexutil.Uint](ctx, s.we, &cache.Cfg{DynamicType: func() cache.Strategy {
 		return cacheBlockNumber(blockNr)
-	}}, "eth_getBlockTransactionCountByNumber", blockNr)
+	}}, "ten_getBlockTransactionCountByNumber", blockNr)
 	if err != nil {
 		return nil
 	}
@@ -74,18 +76,18 @@ func (s *TransactionAPI) GetTransactionCount(ctx context.Context, address common
 				},
 			},
 		},
-		"eth_getTransactionCount",
+		"ten_getTransactionCount",
 		address,
 		blockNrOrHash,
 	)
 }
 
 func (s *TransactionAPI) GetTransactionByHash(ctx context.Context, hash common.Hash) (*rpc.RpcTransaction, error) {
-	return ExecAuthRPC[rpc.RpcTransaction](ctx, s.we, &AuthExecCfg{tryAll: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getTransactionByHash", hash)
+	return ExecAuthRPC[rpc.RpcTransaction](ctx, s.we, &AuthExecCfg{tryAll: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, tenrpc.ERPCGetTransactionByHash, hash)
 }
 
 func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash common.Hash) (hexutil.Bytes, error) {
-	tx, err := ExecAuthRPC[hexutil.Bytes](ctx, s.we, &AuthExecCfg{tryAll: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getRawTransactionByHash", hash)
+	tx, err := ExecAuthRPC[hexutil.Bytes](ctx, s.we, &AuthExecCfg{tryAll: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, tenrpc.ERPCGetRawTransactionByHash, hash)
 	if tx != nil {
 		return *tx, err
 	}
@@ -93,7 +95,7 @@ func (s *TransactionAPI) GetRawTransactionByHash(ctx context.Context, hash commo
 }
 
 func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.Hash) (map[string]interface{}, error) {
-	txRec, err := ExecAuthRPC[map[string]interface{}](ctx, s.we, &AuthExecCfg{tryUntilAuthorised: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, "eth_getTransactionReceipt", hash)
+	txRec, err := ExecAuthRPC[map[string]interface{}](ctx, s.we, &AuthExecCfg{tryUntilAuthorised: true, cacheCfg: &cache.Cfg{Type: cache.LongLiving}}, tenrpc.ERPCGetTransactionReceipt, hash)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +164,7 @@ func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.B
 }
 
 func (s *TransactionAPI) sendRawTx(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{tryAll: true, timeout: sendTransactionDuration}, "eth_sendRawTransaction", input)
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{tryAll: true, timeout: sendTransactionDuration}, tenrpc.ERPCSendRawTransaction, input)
 	if err != nil {
 		return common.Hash{}, err
 	}
@@ -174,7 +176,7 @@ func (s *TransactionAPI) PendingTransactions() ([]*rpc.RpcTransaction, error) {
 }
 
 func (s *TransactionAPI) Resend(ctx context.Context, sendArgs gethapi.TransactionArgs, gasPrice *hexutil.Big, gasLimit *hexutil.Uint64) (common.Hash, error) {
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{account: sendArgs.From}, "eth_resend", sendArgs, gasPrice, gasLimit)
+	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{account: sendArgs.From}, tenrpc.ERPCResend, sendArgs, gasPrice, gasLimit)
 	if txRec != nil {
 		return *txRec, err
 	}

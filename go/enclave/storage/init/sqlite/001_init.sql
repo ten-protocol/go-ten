@@ -15,11 +15,12 @@ create table if not exists config
 insert into config
 values ('CURRENT_SEQ', -1);
 
-create table if not exists attestation_key
+create table if not exists attestation
 (
---     party  binary(20) primary key, // todo -pk
-    party binary(20),
-    ky    binary(33) NOT NULL
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    enclave_id binary(20),
+    pub_key    binary(33) NOT NULL,
+    node_type  smallint   NOT NULL
 );
 
 create table if not exists block
@@ -86,7 +87,8 @@ create table if not exists tx
     type           int8       NOT NULL,
     sender_address int        NOT NULL REFERENCES externally_owned_account,
     idx            int        NOT NULL,
-    batch_height   int        NOT NULL
+    batch_height   int        NOT NULL,
+    is_synthetic   boolean    NOT NULL
 );
 create index IDX_TX_HASH on tx (hash);
 create index IDX_TX_SENDER_ADDRESS on tx (sender_address);

@@ -228,7 +228,7 @@ jobs:
             && chown obscurouser:obscurouser /home/obscurouser/edb-connect.sh \
             && chmod u+x /home/obscurouser/edb-connect.sh \
             && docker network create --driver bridge node_network || true \
-            && mkdir -p /home/obscuro/promtail \
+            && mkdir -p /home/obscuro/metrics \
             && echo "
             server:
               http_listen_port: 9080
@@ -238,7 +238,7 @@ jobs:
               filename: /tmp/positions.yaml
 
             clients:
-              - url: ${{ vars.METRICS_URI }}
+              - url: ${{ vars.METRICS_URI }}/loki/api/v1/push
                 batchwait: 3s
                 batchsize: 1048576
                 tls_config:
@@ -262,16 +262,76 @@ jobs:
                   target_label: \"job\"
                 - replacement: ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
                   target_label: "node_name"
-            " > /home/obscuro/promtail/promtail-config.yaml \
+            " > /home/obscuro/metrics/promtail-config.yaml \
+            && echo "
+            global:
+              scrape_interval: 15s
+              evaluation_interval: 15s
+            remote_write:
+              - url: ${{ vars.METRICS_URI }}/prometheus/metrics/api/v1/write
+                tls_config:
+                  insecure_skip_verify: true
+                basic_auth:
+                  username: ${{ secrets.LOKI_USER }}
+                  password: ${{ secrets.LOKI_PASSWORD }}
+            scrape_configs:
+              # Node metrics
+              - job_name:  node-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+                scrape_interval: 5s  # Frequent scrapes for node metrics
+                static_configs:
+                  - targets:
+                      - node_exporter:9100  # Node Exporter instance
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: 'node'
+                    replacement:  ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+
+              # Container metrics
+              - job_name:  container-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+                scrape_interval: 5s
+                static_configs:
+                  - targets:
+                      - cadvisor:8080  # cAdvisor instance for container metrics
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: 'node'
+                    replacement:  ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+
+            " > /home/obscuro/metrics/prometheus.yaml \
             && docker run -d --name promtail \
               --network node_network \
               -e HOSTNAME=${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }} \
               -v /var/log:/var/log \
-              -v /home/obscuro/promtail:/etc/promtail \
+              -v /home/obscuro/metrics:/etc/promtail \
               -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
               -v /var/run/docker.sock:/var/run/docker.sock \
               grafana/promtail:latest \
               -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true \
+            && docker volume create prometheus-data \
+            && docker run -d --name prometheus \
+              --network node_network \
+              -p 9090:9090 \
+              -v /home/obscuro/metrics/prometheus.yaml:/etc/prometheus/prometheus.yml \
+              -v prometheus-data:/prometheus \
+              prom/prometheus:latest \
+              --config.file=/etc/prometheus/prometheus.yml \
+            && docker run -d --name node_exporter \
+              --network node_network \
+              -p 9100:9100 \
+              --pid="host" \
+              -v /:/host:ro \
+              quay.io/prometheus/node-exporter:latest \
+              --path.rootfs=/host \
+            && docker run -d --name cadvisor \
+              --network node_network \
+              -p 8080:8080 \
+              --privileged \
+              -v /:/rootfs:ro \
+              -v /var/run:/var/run:ro \
+              -v /sys:/sys:ro \
+              -v /var/lib/docker/:/var/lib/docker:ro \
+              -v /dev/disk/:/dev/disk:ro \
+              gcr.io/cadvisor/cadvisor:latest \
             && cd /home/obscuro/go-obscuro/ \
             && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
                -is_genesis=${{ matrix.is_genesis }} \

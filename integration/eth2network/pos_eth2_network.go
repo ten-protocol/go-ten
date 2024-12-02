@@ -177,6 +177,7 @@ func (n *PosImpl) Start() error {
 }
 
 func (n *PosImpl) Stop() error {
+	println("Stopping geth Network")
 	kill(n.gethProcessID)
 	kill(n.validatorProcessID)
 	kill(n.beaconProcessID)
@@ -399,6 +400,7 @@ func fundWallets(walletsToFund []string, buildDir string, chainID int) (string, 
 }
 
 func kill(pid int) {
+	fmt.Printf("Killing %d\n", pid)
 	process, err := os.FindProcess(pid)
 	if err != nil {
 		fmt.Printf("Error finding process with PID %d: %v\n", pid, err)

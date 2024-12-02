@@ -6,14 +6,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
-	"github.com/ten-protocol/go-ten/go/responses"
-
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/go/common/log"
-
-	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
@@ -84,20 +80,4 @@ func (api *FilterAPI) Logs(ctx context.Context, encryptedParams common.Encrypted
 		api.host.UnsubscribeLogs(subscription.ID)
 	})
 	return subscription, nil
-}
-
-// GetLogs returns the logs matching the filter.
-func (api *FilterAPI) GetLogs(ctx context.Context, encryptedParams common.EncryptedParamsGetLogs) (responses.EnclaveResponse, error) {
-	enclaveResponse, sysError := api.host.EnclaveClient().GetLogs(ctx, encryptedParams)
-	if sysError != nil {
-		return api.handleSysError("GetLogs", sysError)
-	}
-	return *enclaveResponse, nil
-}
-
-func (api *FilterAPI) handleSysError(function string, sysError common.SystemError) (responses.EnclaveResponse, error) {
-	api.logger.Error(fmt.Sprintf("Enclave System Error. Function %s", function), log.ErrKey, sysError)
-	return responses.EnclaveResponse{
-		Err: &responses.InternalErrMsg,
-	}, nil
 }

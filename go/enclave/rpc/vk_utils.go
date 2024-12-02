@@ -37,20 +37,20 @@ type CallBuilder[P any, R any] struct {
 	Err         error // error to be returned to the user, encrypted
 }
 
-// WithVKEncryption - handles the decryption, VK, and encryption
-// P - the type of the temporary parameter calculated after phase 1
-// R - the type of the result
+type (
+	ValidateFunc[P any, R any] func([]any, *CallBuilder[P, R], *EncryptionManager) error
+	ExecuteFunc[P any, R any]  func(*CallBuilder[P, R], *EncryptionManager) error
+)
+
+// HandleEncryptedRPC - handles the decryption, VK, and encryption
 // validate - extract and validate the arguments
 // execute - execute the user call only after authorising. Make sure to return a default value that makes sense in case of NotAuthorised
 // note - authorisation is specific to each call
 // e.g. - "getTransaction" or "getBalance" have to perform authorisation
 // "Ten_call" , "Estimate_Gas" - have to authenticate the "From" - which will be used by the EVM
-func WithVKEncryption[P any, R any](
-	ctx context.Context,
+func HandleEncryptedRPC(ctx context.Context,
 	encManager *EncryptionManager,
 	encReq []byte, // encrypted request that contains a signed viewing key
-	validate func([]any, *CallBuilder[P, R], *EncryptionManager) error,
-	execute func(*CallBuilder[P, R], *EncryptionManager) error,
 ) (*responses.EnclaveResponse, common.SystemError) {
 	// 1. Decrypt request
 	plaintextRequest, err := encManager.DecryptBytes(encReq)
@@ -74,9 +74,55 @@ func WithVKEncryption[P any, R any](
 	}
 
 	// 4. Call the function that knows how to validate the request
+	switch decodedRequest.Method {
+	case rpc.ERPCCall:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, TenCallValidate, TenCallExecute)
+	case rpc.ERPCGetBalance:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, GetBalanceValidate, GetBalanceExecute)
+	case rpc.ERPCGetTransactionByHash:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, GetTransactionValidate, GetTransactionExecute)
+	case rpc.ERPCGetRawTransactionByHash:
+		// todo - implement?
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, GetTransactionValidate, GetTransactionExecute)
+	case rpc.ERPCGetTransactionCount:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, GetTransactionCountValidate, GetTransactionCountExecute)
+	case rpc.ERPCGetTransactionReceipt:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, GetTransactionReceiptValidate, GetTransactionReceiptExecute)
+	case rpc.ERPCSendRawTransaction:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, SubmitTxValidate, SubmitTxExecute)
+	case rpc.ERPCResend:
+		// todo - implement
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, SubmitTxValidate, SubmitTxExecute)
+	case rpc.ERPCEstimateGas:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, EstimateGasValidate, EstimateGasExecute)
+	case rpc.ERPCGetLogs:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, GetLogsValidate, GetLogsExecute)
+	case rpc.ERPCGetStorageAt:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, TenStorageReadValidate, TenStorageReadExecute)
+	case rpc.ERPCDebugLogs:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, DebugLogsValidate, DebugLogsExecute)
+	case rpc.ERPCGetPersonalTransactions:
+		return withVKEncryption(ctx, encManager, decodedRequest, vk, GetPersonalTransactionsValidate, GetPersonalTransactionsExecute)
+	default:
+		panic(fmt.Sprintf("unsupported method %s", decodedRequest.Method))
+	}
+}
+
+// withVKEncryption
+// P - the type of the temporary parameter calculated after phase 1
+// R - the type of the result
+func withVKEncryption[P any, R any](
+	ctx context.Context,
+	encManager *EncryptionManager,
+	decodedRequest rpc.RequestWithVk,
+	vk *vkhandler.AuthenticatedViewingKey,
+	validate ValidateFunc[P, R],
+	execute ExecuteFunc[P, R],
+) (*responses.EnclaveResponse, common.SystemError) {
+	// 4. Call the function that knows how to validate the request
 	builder := &CallBuilder[P, R]{Status: NotSet, VK: vk, ctx: ctx}
 
-	err = validate(decodedRequest.Params, builder, encManager)
+	err := validate(decodedRequest.Params, builder, encManager)
 	if err != nil {
 		return responses.AsPlaintextError(errInt), responses.ToInternalError(err)
 	}

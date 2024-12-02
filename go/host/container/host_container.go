@@ -28,13 +28,11 @@ import (
 )
 
 const (
-	APIVersion1         = "1.0"
-	APINamespaceObscuro = "obscuro"
-	APINamespaceEth     = "eth"
-	APINamespaceScan    = "scan"
-	APINamespaceNetwork = "net"
-	APINamespaceTest    = "test"
-	APINamespaceDebug   = "debug"
+	APIVersion1       = "1.0"
+	APINamespaceTen   = "ten"
+	APINamespaceScan  = "scan"
+	APINamespaceTest  = "test"
+	APINamespaceDebug = "debug"
 )
 
 type HostContainer struct {
@@ -172,12 +170,16 @@ func NewHostContainer(cfg *hostconfig.HostConfig, services *host.ServicesRegistr
 		filterAPI := clientapi.NewFilterAPI(h, logger)
 		rpcServer.RegisterAPIs([]rpc.API{
 			{
-				Namespace: APINamespaceObscuro,
-				Service:   clientapi.NewTenAPI(h),
+				Namespace: APINamespaceTen,
+				Service:   clientapi.NewTenAPI(h, logger),
 			},
 			{
-				Namespace: APINamespaceEth,
-				Service:   clientapi.NewEthereumAPI(h, logger),
+				Namespace: APINamespaceTen,
+				Service:   clientapi.NewChainAPI(h, logger),
+			},
+			{
+				Namespace: APINamespaceTen,
+				Service:   filterAPI,
 			},
 			{
 				Namespace: APINamespaceScan,
@@ -186,16 +188,8 @@ func NewHostContainer(cfg *hostconfig.HostConfig, services *host.ServicesRegistr
 				Public:    true,
 			},
 			{
-				Namespace: APINamespaceNetwork,
-				Service:   clientapi.NewNetworkAPI(h),
-			},
-			{
 				Namespace: APINamespaceTest,
 				Service:   clientapi.NewTestAPI(hostContainer),
-			},
-			{
-				Namespace: APINamespaceEth,
-				Service:   filterAPI,
 			},
 		})
 

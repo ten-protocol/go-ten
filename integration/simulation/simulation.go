@@ -458,7 +458,7 @@ func (s *Simulation) checkHealthStatus() {
 	for _, client := range s.RPCHandles.TenClients {
 		err := retry.Do(func() error {
 			healthy, err := client.Health()
-			if !healthy || err != nil {
+			if !healthy.OverallHealth || err != nil {
 				return fmt.Errorf("client is not healthy: %w", err)
 			}
 			return nil

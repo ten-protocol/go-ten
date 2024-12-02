@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -80,7 +82,7 @@ func (tx *rpcTransaction) UnmarshalJSON(msg []byte) error {
 // TransactionByHash returns transaction (if found), isPending (always false currently as we don't search the mempool), error
 func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.Hash) (tx *types.Transaction, isPending bool, err error) {
 	var result *rpcTransaction
-	err = ac.rpcClient.CallContext(ctx, &result, "eth_getTransactionByHash", hash)
+	err = ac.rpcClient.CallContext(ctx, &result, tenrpc.ERPCGetTransactionByHash, hash)
 	if err != nil {
 		return nil, false, err
 	} else if result == nil {
@@ -145,7 +147,7 @@ func (ac *AuthObsClient) GasPrice(ctx context.Context) (*big.Int, error) {
 
 func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcommon.Hash) (*types.Receipt, error) {
 	var r *types.Receipt
-	err := ac.rpcClient.CallContext(ctx, &r, "eth_getTransactionReceipt", txHash)
+	err := ac.rpcClient.CallContext(ctx, &r, tenrpc.ERPCGetTransactionReceipt, txHash)
 	if err == nil {
 		if r == nil {
 			return nil, ethereum.NotFound
@@ -158,7 +160,7 @@ func (ac *AuthObsClient) TransactionReceipt(ctx context.Context, txHash gethcomm
 // nonce cannot be requested for other accounts)
 func (ac *AuthObsClient) NonceAt(ctx context.Context, blockNumber *big.Int) (uint64, error) {
 	var result responses.NonceType
-	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetTransactionCount, ac.account, toBlockNumArg(blockNumber))
+	err := ac.rpcClient.CallContext(ctx, &result, tenrpc.ERPCGetTransactionCount, ac.account, toBlockNumArg(blockNumber))
 	if err != nil {
 		return 0, err
 	}
@@ -168,7 +170,7 @@ func (ac *AuthObsClient) NonceAt(ctx context.Context, blockNumber *big.Int) (uin
 
 func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg, blockNumber *big.Int) ([]byte, error) {
 	var hex hexutil.Bytes
-	err := ac.rpcClient.CallContext(ctx, &hex, "eth_call", ToCallArg(msg), toBlockNumArg(blockNumber))
+	err := ac.rpcClient.CallContext(ctx, &hex, tenrpc.ERPCCall, ToCallArg(msg), toBlockNumArg(blockNumber))
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +179,7 @@ func (ac *AuthObsClient) CallContract(ctx context.Context, msg ethereum.CallMsg,
 
 func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Transaction) error {
 	var result responses.RawTxType
-	err := ac.rpcClient.CallContext(ctx, &result, rpc.SendRawTransaction, encodeTx(signedTx))
+	err := ac.rpcClient.CallContext(ctx, &result, tenrpc.ERPCSendRawTransaction, encodeTx(signedTx))
 	if err != nil {
 		return err
 	}
@@ -188,7 +190,7 @@ func (ac *AuthObsClient) SendTransaction(ctx context.Context, signedTx *types.Tr
 // balance cannot be requested for other accounts)
 func (ac *AuthObsClient) BalanceAt(ctx context.Context, blockNumber *big.Int) (*big.Int, error) {
 	var result hexutil.Big
-	err := ac.rpcClient.CallContext(ctx, &result, "eth_getBalance", ac.account, toBlockNumArg(blockNumber))
+	err := ac.rpcClient.CallContext(ctx, &result, tenrpc.ERPCGetBalance, ac.account, toBlockNumArg(blockNumber))
 	return (*big.Int)(&result), err
 }
 
@@ -205,7 +207,7 @@ func (ac *AuthObsClient) SubscribeFilterLogsTEN(ctx context.Context, filterCrite
 
 func (ac *AuthObsClient) GetLogs(ctx context.Context, filterCriteria common.FilterCriteria) ([]*types.Log, error) {
 	var result responses.LogsType
-	err := ac.rpcClient.CallContext(ctx, &result, rpc.GetLogs, filterCriteria)
+	err := ac.rpcClient.CallContext(ctx, &result, tenrpc.ERPCGetLogs, filterCriteria)
 	if err != nil {
 		return nil, err
 	}
@@ -219,7 +221,7 @@ func (ac *AuthObsClient) Address() gethcommon.Address {
 
 func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
 	var hex hexutil.Uint64
-	err := ac.rpcClient.CallContext(ctx, &hex, "eth_estimateGas", ToCallArg(msg))
+	err := ac.rpcClient.CallContext(ctx, &hex, tenrpc.ERPCEstimateGas, ToCallArg(msg))
 	if err != nil {
 		return 0, err
 	}

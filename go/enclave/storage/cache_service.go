@@ -34,6 +34,7 @@ const (
 	receiptCost     = 1024 * 50
 	contractCost    = 60
 	eventTypeCost   = 120
+	enclaveCost     = 100
 )
 
 type CacheService struct {
@@ -72,6 +73,9 @@ type CacheService struct {
 	// only sender can view configured
 	receiptCache *cache.Cache[*CachedReceipt]
 
+	// store the enclaves from the network
+	attestedEnclavesCache *cache.Cache[*AttestedEnclave]
+
 	logger gethlog.Logger
 }
 
@@ -86,6 +90,8 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 
 	nrBatchesWithContent := 50 // ~100M
 	nrReceipts := 10_000       // ~1G
+
+	nrEnclaves := 20
 
 	if testMode {
 		nrReceipts = 500 //~50M
@@ -105,7 +111,8 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 		contractAddressCache: cache.New[*enclavedb.Contract](newCache(logger, nrContractAddresses, contractCost)),
 		eventTypeCache:       cache.New[*enclavedb.EventType](newCache(logger, nrEventTypes, eventTypeCost)),
 
-		receiptCache: cache.New[*CachedReceipt](newCache(logger, nrReceipts, receiptCost)),
+		receiptCache:          cache.New[*CachedReceipt](newCache(logger, nrReceipts, receiptCost)),
+		attestedEnclavesCache: cache.New[*AttestedEnclave](newCache(logger, nrEnclaves, enclaveCost)),
 
 		// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
 		lastBatchesCache: cache.New[*core.Batch](newCache(logger, nrBatchesWithContent, batchCost)),
@@ -201,6 +208,20 @@ func (cs *CacheService) ReadEventType(ctx context.Context, contractAddress gethc
 
 func (cs *CacheService) ReadConvertedHeader(ctx context.Context, batchHash common.L2BatchHash, onCacheMiss func(any) (*types.Header, error)) (*types.Header, error) {
 	return getCachedValue(ctx, cs.convertedGethHeaderCache, cs.logger, batchHash, blockHeaderCost, onCacheMiss, true)
+}
+
+func (cs *CacheService) ReadEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID, onCacheMiss func(any) (*AttestedEnclave, error)) (*AttestedEnclave, error) {
+	return getCachedValue(ctx, cs.attestedEnclavesCache, cs.logger, enclaveId, enclaveCost, onCacheMiss, true)
+}
+
+func (cs *CacheService) UpdateEnclaveNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) {
+	enclave, err := cs.ReadEnclavePubKey(ctx, enclaveId, nil)
+	if err != nil {
+		cs.logger.Debug("No cache entry found to update", log.ErrKey, err)
+		return
+	}
+	enclave.Type = nodeType
+	cacheValue(ctx, cs.attestedEnclavesCache, cs.logger, enclaveId, enclave, enclaveCost)
 }
 
 // getCachedValue - returns the cached value for the provided key. If the key is not found, then invoke the 'onCacheMiss' function

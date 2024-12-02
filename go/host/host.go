@@ -171,7 +171,7 @@ func (h *host) EnclaveClient() common.Enclave {
 	return h.services.Enclaves().GetEnclaveClient()
 }
 
-func (h *host) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+func (h *host) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error) {
 	if h.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitAndBroadcastTx with the host stopping"))
 	}
@@ -229,9 +229,26 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 		}
 	}
 
+	// fetch all enclaves and check status of each
+	enclaveStatus := make([]common.Status, 0)
+	for _, client := range h.services.Enclaves().GetEnclaveClients() {
+		status, err := client.Status(ctx)
+		if err != nil {
+			healthErrors = append(healthErrors, fmt.Sprintf("Enclave error: failed to get status - %v", err))
+			continue
+		}
+
+		enclaveStatus = append(enclaveStatus, status)
+
+		if status.StatusCode == common.Unavailable {
+			healthErrors = append(healthErrors, fmt.Sprintf("Enclave with ID [%s] is unavailable", status.EnclaveID))
+		}
+	}
+
 	return &hostcommon.HealthCheck{
 		OverallHealth: len(healthErrors) == 0,
 		Errors:        healthErrors,
+		Enclaves:      enclaveStatus,
 	}, nil
 }
 
@@ -269,10 +286,10 @@ func (h *host) NewHeadsChan() chan *common.BatchHeader {
 
 // Checks the host config is valid.
 func (h *host) validateConfig() {
-	if h.config.IsGenesis && h.config.NodeType != common.Sequencer {
+	if h.config.IsGenesis && h.config.NodeType != common.ActiveSequencer {
 		h.logger.Crit("genesis node must be the sequencer")
 	}
-	if !h.config.IsGenesis && h.config.NodeType == common.Sequencer {
+	if !h.config.IsGenesis && h.config.NodeType == common.ActiveSequencer {
 		h.logger.Crit("only the genesis node can be a sequencer")
 	}
 

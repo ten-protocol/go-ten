@@ -96,6 +96,7 @@ func createInMemTenNode(
 		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         l1BusAddress,
 		ManagementContractAddress: *mgtContractAddress,
+		SystemContractOwner:       gethcommon.BigToAddress(big.NewInt(1)), // Irrelevant for in-mem nodes
 		MaxBatchSize:              1024 * 55,
 		MaxRollupSize:             1024 * 128,
 		BaseFee:                   big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different

@@ -72,7 +72,7 @@ func (n *InMemNodeOperator) StopHost() error {
 func (n *InMemNodeOperator) Start() error {
 	var err error
 	numEnclaves := n.config.NumSeqEnclaves
-	if n.nodeType != common.Sequencer {
+	if n.nodeType != common.ActiveSequencer {
 		numEnclaves = 1
 	}
 	n.enclaves = make([]*enclavecontainer.EnclaveContainer, numEnclaves)
@@ -115,7 +115,7 @@ func (n *InMemNodeOperator) StartEnclave(idx int) error {
 func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	enclavePort := n.config.PortStart + integration.DefaultEnclaveOffset + n.operatorIdx
 	var enclaveAddresses []string
-	if n.nodeType == common.Sequencer {
+	if n.nodeType == common.ActiveSequencer {
 		for i := 0; i < n.config.NumSeqEnclaves; i++ {
 			enclaveAddresses = append(enclaveAddresses, fmt.Sprintf("%s:%d", network.Localhost, enclavePort+(i*_multiEnclaveOffset)))
 		}
@@ -129,7 +129,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 
 	hostConfig := &hostconfig.HostConfig{
 		ID:                        n.l1Wallet.Address(),
-		IsGenesis:                 n.nodeType == common.Sequencer,
+		IsGenesis:                 n.nodeType == common.ActiveSequencer,
 		NodeType:                  n.nodeType,
 		HasClientRPCHTTP:          true,
 		ClientRPCPortHTTP:         uint64(n.config.PortStart + integration.DefaultHostRPCHTTPOffset + n.operatorIdx),
@@ -195,7 +195,7 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 
 	defaultCfg := integrationCommon.DefaultEnclaveConfig()
 	enclaveType := n.nodeType
-	if n.nodeType == common.Sequencer && idx > 0 {
+	if n.nodeType == common.ActiveSequencer && idx > 0 {
 		// we only want one sequencer enclave for now
 		enclaveType = common.Validator
 	}
@@ -222,6 +222,7 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		GasLocalExecutionCapFlag:  defaultCfg.GasLocalExecutionCapFlag,
 		GasPaymentAddress:         defaultCfg.GasPaymentAddress,
 		RPCTimeout:                5 * time.Second,
+		SystemContractOwner:       gethcommon.HexToAddress("0x0000000000000000000000000000000000000001"),
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }
@@ -273,7 +274,7 @@ func NewInMemNodeOperator(operatorIdx int, config *TenConfig, nodeType common.No
 ) *InMemNodeOperator {
 	// todo (@matt) - put sqlite and levelDB storage in the same temp dir
 	numEnclaves := config.NumSeqEnclaves
-	if nodeType != common.Sequencer {
+	if nodeType != common.ActiveSequencer {
 		numEnclaves = 1
 	}
 	sqliteDBPaths := make([]string, numEnclaves)

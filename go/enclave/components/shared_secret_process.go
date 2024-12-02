@@ -127,7 +127,7 @@ func (ssp *SharedSecretProcessor) storeAttestation(ctx context.Context, att *com
 	if err != nil {
 		return fmt.Errorf("failed to parse public key %w", err)
 	}
-	err = ssp.storage.StoreAttestedKey(ctx, att.EnclaveID, key)
+	err = ssp.storage.StoreNewEnclave(ctx, att.EnclaveID, key)
 	if err != nil {
 		return fmt.Errorf("could not store attested key. Cause: %w", err)
 	}
