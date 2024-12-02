@@ -19,6 +19,7 @@ package node
 import (
 	"compress/gzip"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -92,6 +93,8 @@ type httpServer struct {
 	port     int
 
 	handlerNames map[string]string
+
+	tlsConfig *tls.Config
 }
 
 const (
@@ -152,7 +155,16 @@ func (h *httpServer) start() error {
 	}
 
 	// Start the server.
-	listener, err := net.Listen("tcp", h.endpoint)
+	var listener net.Listener
+	var err error
+
+	if h.tlsConfig != nil {
+		// If TLS is enabled, use tls.Listen to create a TLS listener
+		listener, err = tls.Listen("tcp", h.endpoint, h.tlsConfig)
+	} else {
+		listener, err = net.Listen("tcp", h.endpoint)
+	}
+
 	if err != nil {
 		// If the server fails to start, we need to clear out the RPC and WS
 		// configuration so they can be configured another time.

@@ -1,6 +1,7 @@
 package node
 
 import (
+	"crypto/tls"
 	"net/http"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -20,6 +21,7 @@ type RPCConfig struct {
 	WsPort     int
 	WsPath     string
 	HTTPPath   string
+	TLSConfig  *tls.Config
 
 	// ExposedURLParamNames - url prams that are available in the services
 	ExposedURLParamNames []string
@@ -49,6 +51,7 @@ func NewServer(config *RPCConfig, logger gethlog.Logger) Server {
 	rpcConfig := Config{
 		Logger:               logger,
 		ExposedURLParamNames: config.ExposedURLParamNames,
+		TLSConfig:            config.TLSConfig,
 	}
 	if config.EnableHTTP {
 		rpcConfig.HTTPHost = config.Host
