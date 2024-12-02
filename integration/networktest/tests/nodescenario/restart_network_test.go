@@ -28,7 +28,7 @@ func TestRestartNetwork(t *testing.T) {
 
 			// stop sequencer and validator
 			actions.StopSequencerHost(),
-			actions.StopSequencerEnclave(),
+			actions.StopSequencerEnclave(0),
 			actions.StopValidatorHost(0),
 			actions.StopValidatorEnclave(0),
 			actions.StopValidatorHost(1),
@@ -45,7 +45,7 @@ func TestRestartNetwork(t *testing.T) {
 			actions.StartValidatorHost(1),
 			actions.StartValidatorEnclave(2),
 			actions.StartValidatorHost(2),
-			actions.StartSequencerEnclave(),
+			actions.StartSequencerEnclave(0),
 			actions.StartSequencerHost(),
 			actions.WaitForValidatorHealthCheck(0, 30*time.Second),
 			actions.WaitForValidatorHealthCheck(1, 30*time.Second),

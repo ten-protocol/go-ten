@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
@@ -48,6 +49,7 @@ type guardianServiceLocator interface {
 	L1Repo() host.L1BlockRepository
 	L2Repo() host.L2BatchRepository
 	LogSubs() host.LogSubscriptionManager
+	Enclaves() host.EnclaveService
 	CrossChainMachine() l1.CrossChainStateMachine
 }
 
@@ -73,11 +75,14 @@ type Guardian struct {
 	maxRollupSize      uint64
 
 	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
+	running         atomic.Bool
 
 	logger           gethlog.Logger
 	maxBatchInterval time.Duration
 	lastBatchCreated time.Time
 	enclaveID        *common.EnclaveID
+
+	cleanupFuncs []func()
 }
 
 func NewGuardian(cfg *hostconfig.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
@@ -101,13 +106,19 @@ func NewGuardian(cfg *hostconfig.HostConfig, hostData host.Identity, serviceLoca
 
 func (g *Guardian) Start() error {
 	// sanity check, Start() spawns new go-routines and should only be called once
-	if g.enclaveID != nil {
+	if g.running.Load() {
 		return errors.New("guardian already started")
 	}
 
+	g.running.Store(true)
+	g.hostInterrupter.OnStop(func() {
+		g.logger.Info("Guardian stopping (because host is stopping)")
+		g.running.Store(false)
+	})
+
 	// Identify the enclave before starting (the enclave generates its ID immediately at startup)
 	// (retry until we get the enclave ID or the host is stopping)
-	for g.enclaveID == nil && !g.hostInterrupter.IsStopping() {
+	for g.enclaveID == nil && g.running.Load() {
 		enclID, err := g.enclaveClient.EnclaveID(context.Background())
 		if err != nil {
 			g.logger.Warn("could not get enclave ID", log.ErrKey, err)
@@ -124,19 +135,17 @@ func (g *Guardian) Start() error {
 
 	go g.mainLoop()
 	if g.hostData.IsSequencer {
-		// if we are a sequencer then we need to start the periodic batch/rollup production
-		// Note: after HA work this will need additional check that we are the **active** sequencer enclave
-		go g.periodicBatchProduction()
-		go g.periodicRollupProduction()
-		go g.periodicBundleSubmission()
+		g.startSequencerProcesses()
 	}
 
 	// subscribe for L1 and P2P data
-	g.sl.P2P().SubscribeForTx(g)
+	txUnsub := g.sl.P2P().SubscribeForTx(g)
 
 	// note: not keeping the unsubscribe functions because the lifespan of the guardian is the same as the host
-	g.sl.L1Repo().Subscribe(g)
-	g.sl.L2Repo().SubscribeNewBatches(g)
+	l1Unsub := g.sl.L1Repo().Subscribe(g)
+	batchesUnsub := g.sl.L2Repo().SubscribeNewBatches(g)
+
+	g.cleanupFuncs = []func(){txUnsub, l1Unsub, batchesUnsub}
 
 	// start streaming data from the enclave
 	go g.streamEnclaveData()
@@ -145,6 +154,7 @@ func (g *Guardian) Start() error {
 }
 
 func (g *Guardian) Stop() error {
+	g.running.Store(false)
 	err := g.enclaveClient.Stop()
 	if err != nil {
 		g.logger.Error("error stopping enclave", log.ErrKey, err)
@@ -155,13 +165,18 @@ func (g *Guardian) Stop() error {
 		g.logger.Error("error stopping enclave client", log.ErrKey, err)
 	}
 
+	// unsubscribe
+	for _, cleanup := range g.cleanupFuncs {
+		cleanup()
+	}
+
 	return nil
 }
 
 func (g *Guardian) HealthStatus(context.Context) host.HealthStatus {
 	// todo (@matt) do proper health status based on enclave state
 	errMsg := ""
-	if !g.hostInterrupter.IsStopping() {
+	if !g.running.Load() {
 		errMsg = "not running"
 	}
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
@@ -175,6 +190,25 @@ func (g *Guardian) GetEnclaveState() *StateTracker {
 // todo (@matt) avoid exposing client directly and return errors if enclave is not ready for requests
 func (g *Guardian) GetEnclaveClient() common.Enclave {
 	return g.enclaveClient
+}
+
+func (g *Guardian) GetEnclaveID() *common.EnclaveID {
+	return g.enclaveID
+}
+
+func (g *Guardian) PromoteToActiveSequencer() error {
+	if g.hostData.IsSequencer {
+		// this shouldn't happen and shouldn't be an issue if it does, but good to have visibility on it
+		g.logger.Error("Unable to promote to active sequencer, already active")
+		return nil
+	}
+	err := g.enclaveClient.MakeActive()
+	if err != nil {
+		return errors.Wrap(err, "could not promote enclave to active sequencer")
+	}
+	g.hostData.IsSequencer = true
+	g.startSequencerProcesses()
+	return nil
 }
 
 // HandleBlock is called by the L1 repository when new blocks arrive.
@@ -233,15 +267,22 @@ func (g *Guardian) HandleTransaction(tx common.EncryptedTx) {
 // required to improve the state (e.g. provide a secret, catch up with L1, etc.)
 func (g *Guardian) mainLoop() {
 	g.logger.Debug("starting guardian main loop")
-	for !g.hostInterrupter.IsStopping() {
+	unavailableCounter := 0
+	for g.running.Load() {
 		// check enclave status on every loop (this will happen whenever we hit an error while trying to resolve a state,
 		// or after the monitoring interval if we are healthy)
 		g.checkEnclaveStatus()
 		g.logger.Trace("mainLoop - enclave status", "status", g.state.GetStatus())
 		switch g.state.GetStatus() {
 		case Disconnected, Unavailable:
+			if unavailableCounter > 3 {
+				// enclave has been unavailable for a while, evict it from the HA pool
+				// todo - @matt - we need to consider more carefully when to evict an enclave
+				g.evictEnclaveFromHAPool()
+			}
 			// nothing to do, we are waiting for the enclave to be available
 			time.Sleep(_retryInterval)
+			unavailableCounter++
 		case AwaitingSecret:
 			err := g.provideSecret()
 			if err != nil {
@@ -263,6 +304,7 @@ func (g *Guardian) mainLoop() {
 				time.Sleep(_retryInterval)
 			}
 		case Live:
+			unavailableCounter = 0
 			// we're healthy: loop back to enclave status again after long monitoring interval
 			select {
 			case <-time.After(_monitoringInterval):
@@ -365,7 +407,7 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 
 func (g *Guardian) catchupWithL1() error {
 	// while we are behind the L1 head and still running, fetch and submit L1 blocks
-	for !g.hostInterrupter.IsStopping() && g.state.GetStatus() == L1Catchup {
+	for g.running.Load() && g.state.GetStatus() == L1Catchup {
 		// generally we will be feeding the block after the enclave's current head
 		enclaveHead := g.state.GetEnclaveL1Head()
 		if enclaveHead == gethutil.EmptyHash {
@@ -393,7 +435,7 @@ func (g *Guardian) catchupWithL1() error {
 
 func (g *Guardian) catchupWithL2() error {
 	// while we are behind the L2 head and still running:
-	for !g.hostInterrupter.IsStopping() && g.state.GetStatus() == L2Catchup {
+	for g.running.Load() && g.state.GetStatus() == L2Catchup {
 		if g.hostData.IsSequencer {
 			return errors.New("l2 catchup is not supported for sequencer")
 		}
@@ -543,7 +585,7 @@ func (g *Guardian) periodicBatchProduction() {
 	batchProdTicker := time.NewTicker(interval)
 	// attempt to produce rollup every time the timer ticks until we are stopped/interrupted
 	for {
-		if g.hostInterrupter.IsStopping() {
+		if !g.running.Load() {
 			batchProdTicker.Stop()
 			return // stop periodic rollup production
 		}
@@ -560,7 +602,9 @@ func (g *Guardian) periodicBatchProduction() {
 			skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
 			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
-				g.logger.Crit("Unable to produce batch", log.ErrKey, err)
+				// todo: is this too low a bar for failover? Retry first?
+				g.logger.Error("Unable to produce batch", log.ErrKey, err)
+				g.evictEnclaveFromHAPool()
 			}
 		case <-g.hostInterrupter.Done():
 			// interrupted - end periodic process
@@ -752,4 +796,22 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 		fromBatch++
 	}
 	return fromBatch, nil
+}
+
+func (g *Guardian) startSequencerProcesses() {
+	go g.periodicBatchProduction()
+	go g.periodicRollupProduction()
+	go g.periodicBundleSubmission()
+}
+
+// evictEnclaveFromHAPool evicts a failing enclave from the HA pool and shuts down the guardian.
+// This is called when the enclave is unrecoverable and we want to notify the host that it should failover if an
+// alternative enclave is available.
+func (g *Guardian) evictEnclaveFromHAPool() {
+	g.logger.Error("Enclave is unrecoverable - requesting to evict it from HA pool")
+	err := g.Stop()
+	if err != nil {
+		g.logger.Error("Error while stopping guardian of failed enclave", log.ErrKey, err)
+	}
+	go g.sl.Enclaves().EvictEnclave(g.enclaveID)
 }
