@@ -77,7 +77,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		certManager := &autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(config.TLSDomain),
-			// Cache:      autocert.DirCache("certs"), // TODO: We can add cache for certs (+ don't forget to include the directory in enclave.json)
+			Cache:      autocert.DirCache("/data/certs"),
 		}
 
 		// Create HTTP-01 challenge handler
