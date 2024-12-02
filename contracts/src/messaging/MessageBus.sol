@@ -53,8 +53,18 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         uint256 amount
     ) external payable {
         require(msg.value > 0 && msg.value == amount, "Attempting to send value without providing Ether");
+        
+        uint256 amountToTransfer = msg.value;
+        if (address(fees) != address(0)) {
+            uint256 feesToTransfer = getValueTransferFee();
+            require(msg.value >= feesToTransfer, "Insufficient funds to send value");
+            amountToTransfer = msg.value - feesToTransfer;
+            (bool ok, ) = address(fees).call{value: feesToTransfer}("");
+            require(ok, "Failed to send fees to fees contract");
+        }
+
         uint64 sequence = incrementSequence(msg.sender);
-        emit ValueTransfer(msg.sender, receiver, msg.value, sequence);
+        emit ValueTransfer(msg.sender, receiver, amountToTransfer, sequence);
     }
 
     function receiveValueFromL2(
@@ -70,6 +80,10 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
                4 + // topic (uint32) 
                1 + // consistencyLevel (uint8)
                8; // sequence (uint64)
+    }
+
+    function getValueTransferFee() internal view returns (uint256) {
+        return fees.messageFee(32); //just a hash
     }
 
     function getMessageFee(uint256 payloadLength) internal view returns (uint256) {
@@ -92,6 +106,8 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
     ) external payable override returns (uint64 sequence) {
         if (address(fees) != address(0)) { // No fee required for L1 to L2 messages.
             require(msg.value >= getMessageFee(payload.length), "Insufficient funds to publish message");
+            (bool ok, ) = address(fees).call{value: msg.value}("");
+            require(ok, "Failed to send fees to fees contract");
         }
 
         sequence = incrementSequence(msg.sender);

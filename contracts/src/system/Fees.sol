@@ -26,7 +26,20 @@ contract Fees is Initializable, OwnableUpgradeable {
         return _messageFeePerByte * messageSize;
     }
 
-    function setMessageFee(uint256 newMessageFeePerByte) external {
+    function setMessageFee(uint256 newMessageFeePerByte) external onlyOwner{
         _messageFeePerByte = newMessageFeePerByte;
+    }
+
+    function withdrawalCollectedFees() external onlyOwner {
+        payable(owner()).transfer(address(this).balance);
+    }
+
+    function collectedFees() external view returns (uint256) {
+        return address(this).balance;
+    }
+
+    // For now channel all here as we only collect fees
+    // from the message bus
+    receive() external payable {
     }
 }
