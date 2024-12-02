@@ -37,6 +37,7 @@ func TestMultiEnclaveSequencer(t *testing.T) {
 
 // This test runs with an HA sequencer, does a transfer then kills the active sequencer enclave,
 // allows it time to failover then performs another transfer to check the failover was successful.
+// Note: this is a happy path failover, we need to test for edge cases etc and test the failover in a live testnet
 func TestHASequencerFailover(t *testing.T) {
 	networktest.TestOnlyRunsInIDE(t)
 	doubleTransferAmount := big.NewInt(2).Mul(big.NewInt(2), _transferAmount)
@@ -54,19 +55,19 @@ func TestHASequencerFailover(t *testing.T) {
 
 			&actions.SendNativeFunds{FromUser: 0, ToUser: 1, Amount: _transferAmount},
 
-			// wait for tx to complete
-			actions.SleepAction(5*time.Second), // allow time for shutdown/failover
+			// wait for tx to complete before killing
+			actions.SleepAction(5*time.Second),
 
 			// kill the primary enclave
 			actions.StopSequencerEnclave(0),
 
 			// wait for failover to complete
-			actions.SleepAction(5*time.Second), // allow time for shutdown/failover
+			actions.SleepAction(5*time.Second),
 
 			&actions.SendNativeFunds{FromUser: 0, ToUser: 1, Amount: _transferAmount},
 
 			// wait for tx to complete
-			actions.SleepAction(3*time.Second), // allow time for shutdown/failover
+			actions.SleepAction(3*time.Second),
 
 			// two transfers should have happened so we verify double the amounts
 			&actions.VerifyBalanceAfterTest{UserID: 1, ExpectedBalance: doubleTransferAmount},
