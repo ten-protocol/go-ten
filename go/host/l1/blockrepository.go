@@ -213,7 +213,7 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 	}
 
 	for _, log := range logs {
-
+		println("LOG")
 		// Fetch the transaction and receipt for each log
 		tx, _, err := r.ethClient.TransactionByHash(log.TxHash)
 		if err != nil {
@@ -259,33 +259,40 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		// Add events only if we have valid data
 		if len(*txData.CrossChainMessages) > 0 {
 			processed.AddEvent(common.CrossChainMessageTx, txData)
+			println("CrossChainMessageTx ADDED")
 		}
 
 		if len(*txData.ValueTransfers) > 0 {
 			processed.AddEvent(common.CrossChainValueTranserTx, txData)
+			println("CrossChainValueTranserTx ADDED")
 		}
 
 		if len(sequencerLogs) > 0 {
 			processed.AddEvent(common.SequencerAddedTx, txData)
+			println("SequencerAddedTx ADDED")
 		}
 
 		decodedTx := r.mgmtContractLib.DecodeTx(tx)
-		if decodedTx == nil {
+		wrappedTx, err := common.WrapTenTransaction(decodedTx)
+		if err != nil {
+			r.logger.Error("Failed to wrap transaction", "error", err)
 			continue
 		}
-		txData.Type = decodedTx
+		txData.Type = wrappedTx
 
 		switch decodedTx.(type) {
-		case *ethadapter.L1RequestSecretTx:
+		case *common.L1RequestSecretTx:
+			println("L1RequestSecretTx ADDED")
 			processed.AddEvent(common.SecretRequestTx, txData)
-		case *ethadapter.L1InitializeSecretTx:
+		case *common.L1InitializeSecretTx:
+			println("InitialiseSecretTx ADDED")
 			processed.AddEvent(common.InitialiseSecretTx, txData)
-		case *ethadapter.L1SetImportantContractsTx:
+		case *common.L1SetImportantContractsTx:
+			println("SetImportantContractsTx ADDED")
 			processed.AddEvent(common.SetImportantContractsTx, txData)
-			//case *ethadapter.L1RollupTx:
-			//	println("ROLLUP ADDED")
-			//	processed.AddEvent(common.RollupTx, txData)
-
+		case *common.L1RollupTx:
+			println("L1RollupTx ADDED")
+			processed.AddEvent(common.RollupTx, txData)
 		}
 	}
 

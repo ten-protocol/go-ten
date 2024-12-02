@@ -160,7 +160,7 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 			continue
 		}
 		switch l1tx := decodedTx.(type) {
-		case *ethadapter.L1RollupHashes:
+		case *common.L1RollupHashes:
 			ctx := context.TODO()
 			blobs, _ := m.BlobResolver.FetchBlobs(ctx, block.Header(), l1tx.BlobHashes)
 			r, err := ethadapter.ReconstructRollup(blobs)

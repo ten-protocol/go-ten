@@ -25,10 +25,10 @@ const methodBytesLen = 4
 // messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
 	IsMock() bool
-	CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error)
-	CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData
-	CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData
-	CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData
+	CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error)
+	CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData
+	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) types.TxData
+	CreateInitializeSecret(tx *common.L1InitializeSecretTx) types.TxData
 
 	// DecodeTx receives a *types.Transaction and converts it to a common.L1Transaction
 	DecodeTx(tx *types.Transaction) common.TenTransaction
@@ -88,7 +88,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.TenTransaction 
 	switch method.Name {
 	case AddRollupMethod:
 		if tx.Type() == types.BlobTxType {
-			return &ethadapter.L1RollupHashes{
+			return &common.L1RollupHashes{
 				BlobHashes: tx.BlobHashes(),
 			}
 		} else {
@@ -116,7 +116,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.TenTransaction 
 }
 
 // CreateBlobRollup creates a BlobTx, encoding the rollup data into blobs.
-func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
+func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		panic(err)
@@ -161,7 +161,7 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	}, nil
 }
 
-func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData {
+func (c *contractLibImpl) CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData {
 	data, err := c.contractABI.Pack(RequestSecretMethod, base64EncodeToString(tx.Attestation))
 	if err != nil {
 		panic(err)
@@ -173,7 +173,7 @@ func (c *contractLibImpl) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) 
 	}
 }
 
-func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, verifyAttester bool) types.TxData {
+func (c *contractLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) types.TxData {
 	data, err := c.contractABI.Pack(
 		RespondSecretMethod,
 		tx.AttesterID,
@@ -191,7 +191,7 @@ func (c *contractLibImpl) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, 
 	}
 }
 
-func (c *contractLibImpl) CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData {
+func (c *contractLibImpl) CreateInitializeSecret(tx *common.L1InitializeSecretTx) types.TxData {
 	data, err := c.contractABI.Pack(
 		InitializeSecretMethod,
 		tx.EnclaveID,
@@ -319,7 +319,7 @@ func (c *contractLibImpl) DecodeImportantAddressResponse(callResponse []byte) (g
 	return address, nil
 }
 
-func (c *contractLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1InitializeSecretTx {
+func (c *contractLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *common.L1InitializeSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		panic(err)
@@ -335,12 +335,12 @@ func (c *contractLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.
 	}
 
 	// todo (#1275) - add the other fields
-	return &ethadapter.L1InitializeSecretTx{
+	return &common.L1InitializeSecretTx{
 		Attestation: att,
 	}
 }
 
-func (c *contractLibImpl) unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1RequestSecretTx {
+func (c *contractLibImpl) unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *common.L1RequestSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		panic(err)
@@ -354,12 +354,12 @@ func (c *contractLibImpl) unpackRequestSecretTx(tx *types.Transaction, method *a
 	if err != nil {
 		c.logger.Crit("could not decode attestation request.", log.ErrKey, err)
 	}
-	return &ethadapter.L1RequestSecretTx{
+	return &common.L1RequestSecretTx{
 		Attestation: att,
 	}
 }
 
-func (c *contractLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *ethadapter.L1RespondSecretTx {
+func (c *contractLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *common.L1RespondSecretTx {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		c.logger.Crit("could not unpack transaction.", log.ErrKey, err)
@@ -392,14 +392,14 @@ func (c *contractLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *a
 		c.logger.Crit("could not decode responseSecret data")
 	}
 
-	return &ethadapter.L1RespondSecretTx{
+	return &common.L1RespondSecretTx{
 		AttesterID:  attesterAddr,
 		RequesterID: requesterAddr,
 		Secret:      responseSecretBytes[:],
 	}
 }
 
-func (c *contractLibImpl) unpackSetImportantContractsTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*ethadapter.L1SetImportantContractsTx, error) {
+func (c *contractLibImpl) unpackSetImportantContractsTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1SetImportantContractsTx, error) {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
 		return nil, fmt.Errorf("could not unpack transaction. Cause: %w", err)
@@ -423,7 +423,7 @@ func (c *contractLibImpl) unpackSetImportantContractsTx(tx *types.Transaction, m
 		return nil, fmt.Errorf("could not decode newAddress data")
 	}
 
-	return &ethadapter.L1SetImportantContractsTx{
+	return &common.L1SetImportantContractsTx{
 		Key:        keyString,
 		NewAddress: contractAddress,
 	}, nil

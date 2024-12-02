@@ -465,7 +465,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx, contractAddressTxs []*ethadapter.L1SetImportantContractsTx) {
+func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*common.L1RollupTx, contractAddressTxs []*common.L1SetImportantContractsTx) {
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
 	if err != nil {
@@ -755,9 +755,9 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 	return fromBatch, nil
 }
 
-func (g *Guardian) getRollupsAndContractAddrTxs(data common.ProcessedL1Data) ([]*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
-	rollupTxs := make([]*ethadapter.L1RollupTx, 0)
-	contractAddressTxs := make([]*ethadapter.L1SetImportantContractsTx, 0)
+func (g *Guardian) getRollupsAndContractAddrTxs(data common.ProcessedL1Data) ([]*common.L1RollupTx, []*common.L1SetImportantContractsTx) {
+	rollupTxs := make([]*common.L1RollupTx, 0)
+	contractAddressTxs := make([]*common.L1SetImportantContractsTx, 0)
 
 	for _, event := range data.GetEvents(common.RollupTx) {
 		encodedRlp, err := ethadapter.DecodeBlobs(event.Blobs)
@@ -766,7 +766,7 @@ func (g *Guardian) getRollupsAndContractAddrTxs(data common.ProcessedL1Data) ([]
 			continue
 		}
 
-		rlp := &ethadapter.L1RollupTx{
+		rlp := &common.L1RollupTx{
 			Rollup: encodedRlp,
 		}
 		rollupTxs = append(rollupTxs, rlp)
@@ -774,7 +774,11 @@ func (g *Guardian) getRollupsAndContractAddrTxs(data common.ProcessedL1Data) ([]
 
 	// Get contract address transactions
 	for _, event := range data.GetEvents(common.SetImportantContractsTx) {
-		if contractTx, ok := event.Type.(*ethadapter.L1SetImportantContractsTx); ok {
+		unwrappedTx, err := event.Type.UnwrapTransaction()
+		if err != nil {
+			g.logger.Error("Could not unwrap ten transaction", "type", err)
+		}
+		if contractTx, ok := unwrappedTx.(*common.L1SetImportantContractsTx); ok {
 			contractAddressTxs = append(contractAddressTxs, contractTx)
 		} else {
 			g.logger.Warn("Unexpected type for SetImportantContractsTx event", "type", fmt.Sprintf("%T", event.Type))

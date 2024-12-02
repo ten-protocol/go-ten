@@ -167,7 +167,7 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 	if err != nil {
 		return errors.Wrap(err, "could not encode attestation")
 	}
-	l1tx := &ethadapter.L1InitializeSecretTx{
+	l1tx := &common.L1InitializeSecretTx{
 		EnclaveID:     &attestation.EnclaveID,
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
@@ -182,7 +182,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 	if err != nil {
 		return gethcommon.Hash{}, errors.Wrap(err, "could not encode attestation")
 	}
-	l1tx := &ethadapter.L1RequestSecretTx{
+	l1tx := &common.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
 	// record the L1 head height before we submit the secret request, so we know which block to watch from
@@ -208,7 +208,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 }
 
 func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error {
-	l1tx := &ethadapter.L1RespondSecretTx{
+	l1tx := &common.L1RespondSecretTx{
 		Secret:      secretResponse.Secret,
 		RequesterID: secretResponse.RequesterID,
 		AttesterID:  secretResponse.AttesterID,
@@ -230,12 +230,12 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 
 // ExtractRelevantTenTransactions will extract any transactions from the block that are relevant to TEN
 // todo (#2495) we should monitor for relevant L1 events instead of scanning every transaction in the block
-func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
+func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*common.L1RollupTx, []*common.L1SetImportantContractsTx) {
 	// temporarily add this host stopping check to prevent sim test failures until a more robust solution is implemented
 	for !p.hostStopper.IsStopping() {
 		txWithReceiptsAndBlobs := make([]*common.TxAndReceiptAndBlobs, 0)
-		rollupTxs := make([]*ethadapter.L1RollupTx, 0)
-		contractAddressTxs := make([]*ethadapter.L1SetImportantContractsTx, 0)
+		rollupTxs := make([]*common.L1RollupTx, 0)
+		contractAddressTxs := make([]*common.L1SetImportantContractsTx, 0)
 
 		txs := block.Transactions()
 		for i, rec := range receipts {
@@ -248,9 +248,9 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 			var err error
 
 			switch typedTx := decodedTx.(type) {
-			case *ethadapter.L1SetImportantContractsTx:
+			case *common.L1SetImportantContractsTx:
 				contractAddressTxs = append(contractAddressTxs, typedTx)
-			case *ethadapter.L1RollupHashes:
+			case *common.L1RollupHashes:
 				blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), typedTx.BlobHashes)
 				if err != nil {
 					if errors.Is(err, ethereum.NotFound) {
@@ -267,7 +267,7 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 					continue
 				}
 
-				rlp := &ethadapter.L1RollupTx{
+				rlp := &common.L1RollupTx{
 					Rollup: encodedRlp,
 				}
 				rollupTxs = append(rollupTxs, rlp)
@@ -288,15 +288,15 @@ func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts 
 
 // FindSecretResponseTx will scan the block for any secret response transactions. This is separate from the above method
 // as we do not require the receipts for these transactions.
-func (p *Publisher) FindSecretResponseTx(block *types.Block) []*ethadapter.L1RespondSecretTx {
-	secretRespTxs := make([]*ethadapter.L1RespondSecretTx, 0)
+func (p *Publisher) FindSecretResponseTx(block *types.Block) []*common.L1RespondSecretTx {
+	secretRespTxs := make([]*common.L1RespondSecretTx, 0)
 
 	for _, tx := range block.Transactions() {
 		t := p.mgmtContractLib.DecodeTx(tx)
 		if t == nil {
 			continue
 		}
-		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
+		if scrtTx, ok := t.(*common.L1RespondSecretTx); ok {
 			secretRespTxs = append(secretRespTxs, scrtTx)
 			continue
 		}
@@ -313,7 +313,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	if err != nil {
 		p.logger.Crit("could not encode rollup.", log.ErrKey, err)
 	}
-	tx := &ethadapter.L1RollupTx{
+	tx := &common.L1RollupTx{
 		Rollup: encRollup,
 	}
 	p.logger.Info("Publishing rollup", "size", len(encRollup)/1024, log.RollupHashKey, producedRollup.Hash())
