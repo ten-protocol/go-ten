@@ -24,7 +24,7 @@ const (
 
 // L1Event represents a single event type and its associated transactions
 type L1Event struct {
-	Type uint8 // Change to uint8 for RLP serialization
+	Type uint8
 	Txs  []*L1TxData
 }
 
@@ -44,7 +44,6 @@ type L1TxData struct {
 	ValueTransfers     *ValueTransferEvents // Only populated for xchain transfers
 }
 
-// helper methods as we can't serialize a map
 func (p *ProcessedL1Data) AddEvent(txType L1TxType, tx *L1TxData) {
 	for i := range p.Events {
 		if p.Events[i].Type == uint8(txType) {

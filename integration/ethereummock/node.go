@@ -145,6 +145,10 @@ func (m *Node) TransactionReceipt(_ gethcommon.Hash) (*types.Receipt, error) {
 	}, nil
 }
 
+func (m *Node) TransactionByHash(_ gethcommon.Hash) (*types.Transaction, bool, error) {
+	panic("not yet implemented")
+}
+
 func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 	return 0, nil
 }

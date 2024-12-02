@@ -200,40 +200,63 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		BlockHeader: block.Header(),
 		Events:      []common.L1Event{},
 	}
-	txsWithReceipts, err := r.getRelevantTxReceiptsAndBlobs(block)
+
+	blkHash := block.Hash()
+	var allAddresses []gethcommon.Address
+	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
+	allAddresses = append(allAddresses, r.contractAddresses[MsgBus]...)
+
+	// Query for logs emitted by relevant contracts in the block
+	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{BlockHash: &blkHash, Addresses: allAddresses})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to fetch logs for L1 block - %w", err)
 	}
 
-	for _, txWithReceipt := range txsWithReceipts {
-		// Skip if the entire txWithReceipt is nil
-		if txWithReceipt == nil {
-			println("TX IS NIL WHY")
+	for _, log := range logs {
+
+		// Fetch the transaction and receipt for each log
+		tx, _, err := r.ethClient.TransactionByHash(log.TxHash)
+		if err != nil {
+			r.logger.Error("Error fetching transaction by hash", log.TxHash, err)
 			continue
 		}
-		messages, err := r.getCrossChainMessages(txWithReceipt.Receipt)
-		if err != nil {
-			r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
-		}
 
-		transfers, err := r.getValueTransferEvents(txWithReceipt.Receipt)
+		receipt, err := r.ethClient.TransactionReceipt(log.TxHash)
 		if err != nil {
-			r.logger.Error("Error encountered converting the extracted logs to value transfers", log.ErrKey, err)
-		}
-
-		sequencerLogs, err := r.getSequencerEventLogs(txWithReceipt.Receipt)
-		if err != nil {
-			r.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
+			r.logger.Error("Error fetching transaction receipt with tx hash", log.TxHash, err)
+			continue
 		}
 
 		txData := &common.L1TxData{
-			Transaction:        txWithReceipt.Tx,
-			Receipt:            txWithReceipt.Receipt,
-			Blobs:              txWithReceipt.Blobs,
-			CrossChainMessages: &messages,
-			ValueTransfers:     &transfers,
+			Transaction: tx,
+			Receipt:     receipt,
+			// Initialize with empty slices instead of nil pointers
+			CrossChainMessages: &common.CrossChainMessages{},
+			ValueTransfers:     &common.ValueTransferEvents{},
 		}
 
+		// Process the transaction based on the log
+		messages, err := r.getCrossChainMessages(receipt)
+		if err != nil {
+			r.logger.Error("Error encountered converting logs to messages", err)
+		} else {
+			txData.CrossChainMessages = &messages
+		}
+
+		transfers, err := r.getValueTransferEvents(receipt)
+		if err != nil {
+			r.logger.Error("Error encountered converting logs to transfers", err)
+		} else {
+			txData.ValueTransfers = &transfers
+		}
+
+		sequencerLogs, err := r.getSequencerEventLogs(receipt)
+		if err != nil {
+			r.logger.Error("Error encountered converting logs to sequencer events", err)
+			sequencerLogs = []types.Log{} // Initialize to empty slice on error
+		}
+
+		// Add events only if we have valid data
 		if len(*txData.CrossChainMessages) > 0 {
 			processed.AddEvent(common.CrossChainMessageTx, txData)
 		}
@@ -242,15 +265,11 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 			processed.AddEvent(common.CrossChainValueTranserTx, txData)
 		}
 
-		if len(txData.Blobs) > 0 {
-			processed.AddEvent(common.RollupTx, txData)
-		}
-
 		if len(sequencerLogs) > 0 {
 			processed.AddEvent(common.SequencerAddedTx, txData)
 		}
 
-		decodedTx := r.mgmtContractLib.DecodeTx(txWithReceipt.Tx)
+		decodedTx := r.mgmtContractLib.DecodeTx(tx)
 		if decodedTx == nil {
 			continue
 		}
@@ -263,6 +282,10 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 			processed.AddEvent(common.InitialiseSecretTx, txData)
 		case *ethadapter.L1SetImportantContractsTx:
 			processed.AddEvent(common.SetImportantContractsTx, txData)
+			//case *ethadapter.L1RollupTx:
+			//	println("ROLLUP ADDED")
+			//	processed.AddEvent(common.RollupTx, txData)
+
 		}
 	}
 
