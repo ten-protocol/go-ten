@@ -16,6 +16,7 @@ import (
 // TenAPI implements Ten-specific JSON RPC operations.
 type TenAPI struct {
 	host   host.Host
+	rpcKey []byte
 	logger gethlog.Logger
 }
 
@@ -46,11 +47,15 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 }
 
 func (api *TenAPI) RpcKey() ([]byte, error) {
-	key, err := api.host.EnclaveClient().RPCEncryptionKey(context.Background())
+	if api.rpcKey != nil {
+		return api.rpcKey, nil
+	}
+	var err error
+	api.rpcKey, err = api.host.EnclaveClient().RPCEncryptionKey(context.Background())
 	if err != nil {
 		return nil, err
 	}
-	return key, nil
+	return api.rpcKey, nil
 }
 
 func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.EncryptedRPCRequest) (responses.EnclaveResponse, error) {

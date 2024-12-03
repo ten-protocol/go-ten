@@ -19,6 +19,7 @@ type BackendRPC struct {
 	// the OG maintains a connection pool of rpc connections to underlying nodes
 	rpcHTTPConnPool *pool.ObjectPool
 	rpcWSConnPool   *pool.ObjectPool
+	encKey          []byte
 	logger          gethlog.Logger
 }
 
@@ -58,12 +59,27 @@ func NewBackendRPC(hostAddrHTTP string, hostAddrWS string, logger gethlog.Logger
 	return &BackendRPC{
 		rpcHTTPConnPool: pool.NewObjectPool(context.Background(), factoryHTTP, cfg),
 		rpcWSConnPool:   pool.NewObjectPool(context.Background(), factoryWS, cfg),
+		encKey:          readEncKey(hostAddrHTTP, logger),
 		logger:          logger,
 	}
 }
 
+func readEncKey(hostAddrHTTP string, logger gethlog.Logger) []byte {
+	// read the encryption key
+	rpcClient, err := gethrpc.Dial(hostAddrHTTP)
+	if err != nil {
+		logger.Crit("failed to connect to the node", "err", err)
+	}
+	defer rpcClient.Close()
+	k, err := tenrpc.ReadEnclaveKey(rpcClient)
+	if err != nil {
+		logger.Crit("failed to read enc key", "err", err)
+	}
+	return k
+}
+
 func (rpc *BackendRPC) ConnectWS(ctx context.Context, account *wecommon.GWAccount) (*tenrpc.EncRPCClient, error) {
-	return connect(ctx, rpc.rpcWSConnPool, account, rpc.logger)
+	return connect(ctx, rpc.rpcWSConnPool, account, rpc.encKey, rpc.logger)
 }
 
 func (rpc *BackendRPC) ReturnConnWS(conn tenrpc.Client) error {
@@ -71,7 +87,7 @@ func (rpc *BackendRPC) ReturnConnWS(conn tenrpc.Client) error {
 }
 
 func (rpc *BackendRPC) ConnectHttp(ctx context.Context, account *wecommon.GWAccount) (*tenrpc.EncRPCClient, error) {
-	return connect(ctx, rpc.rpcHTTPConnPool, account, rpc.logger)
+	return connect(ctx, rpc.rpcHTTPConnPool, account, rpc.encKey, rpc.logger)
 }
 
 func (rpc *BackendRPC) PlainConnectWs(ctx context.Context) (*gethrpc.Client, error) {
@@ -88,7 +104,7 @@ func (rpc *BackendRPC) Stop() {
 }
 
 func WithEncRPCConnection[R any](ctx context.Context, rpc *BackendRPC, acct *wecommon.GWAccount, execute func(*tenrpc.EncRPCClient) (*R, error)) (*R, error) {
-	rpcClient, err := connect(ctx, rpc.rpcHTTPConnPool, acct, rpc.logger)
+	rpcClient, err := connect(ctx, rpc.rpcHTTPConnPool, acct, rpc.encKey, rpc.logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to backed. Cause: %w", err)
 	}
@@ -115,14 +131,14 @@ func connectPlain(ctx context.Context, p *pool.ObjectPool, logger gethlog.Logger
 	return conn, nil
 }
 
-func connect(ctx context.Context, p *pool.ObjectPool, account *wecommon.GWAccount, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
+func connect(ctx context.Context, p *pool.ObjectPool, account *wecommon.GWAccount, key []byte, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
 	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "get rpc connection")
 	connectionObj, err := p.BorrowObject(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
 	}
 	conn := connectionObj.(*rpc.Client)
-	encClient, err := wecommon.CreateEncClient(conn, account.Address.Bytes(), account.User.UserKey, account.Signature, account.SignatureType, logger)
+	encClient, err := wecommon.CreateEncClient(conn, key, account.Address.Bytes(), account.User.UserKey, account.Signature, account.SignatureType, logger)
 	if err != nil {
 		_ = returnConn(p, conn, logger)
 		return nil, fmt.Errorf("error creating new client, %w", err)
