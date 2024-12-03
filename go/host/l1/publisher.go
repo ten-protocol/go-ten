@@ -310,7 +310,8 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, 
 	}
 
 	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
-
+	println("HOST WALLET NONCE: ", p.hostWallet.GetNonce())
+	println("TRANSACTOR NONCE: ", transactor.Nonce.Uint64())
 	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature, rollupNum, forkID)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
@@ -321,6 +322,7 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, 
 		return fmt.Errorf("unable to submit cross chain bundle transaction. Cause: %w", err)
 	}
 
+	println("HASH: ", tx.Hash().Hex())
 	err = p.awaitTransaction(tx)
 	if err != nil {
 		p.logger.Error("Error with receipt of cross chain publish transaction", log.TxKey, tx.Hash(), log.ErrKey, err)

@@ -17,8 +17,8 @@ import (
 func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 	setupSimTestLog("full-network")
 
-	numberOfNodes := 2
-	numberOfSimWallets := 2
+	numberOfNodes := 5
+	numberOfSimWallets := 5
 
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 
