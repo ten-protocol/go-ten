@@ -80,7 +80,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		// Certificate Signing Request (CRS) is generated
 		// CRS is sent to CA (Let's Encrypt) via ACME (automated certificate management environment) client
 		// CA verifies CRS and issues a certificate
-		// Store certificate and pribate key in storage based on the database type
+		// Store certificate and private key in certificate storage based on the database type
 		certStorage, err := storage.NewCertStorage(config.DBType, config.DBConnectionURL, encryptionKey, logger)
 		if err != nil {
 			logger.Crit("unable to create certificate storage", log.ErrKey, err)

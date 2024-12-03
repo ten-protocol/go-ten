@@ -65,9 +65,6 @@ func NewCertStorageCosmosDB(connectionString string, encryptionKey []byte) (*Cer
 func (c *CertStorageCosmosDB) Get(ctx context.Context, key string) ([]byte, error) {
 	keyString, partitionKey := c.dbKey([]byte(key))
 
-	fmt.Println("Get certificate from CosmosDB")
-	fmt.Println("keyString", keyString)
-
 	itemResponse, err := c.certsContainer.ReadItem(ctx, partitionKey, keyString, nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "NotFound") {
@@ -88,9 +85,6 @@ func (c *CertStorageCosmosDB) Get(ctx context.Context, key string) ([]byte, erro
 // Put stores certificate data with the given key
 func (c *CertStorageCosmosDB) Put(ctx context.Context, key string, data []byte) error {
 	keyString, partitionKey := c.dbKey([]byte(key))
-
-	fmt.Println("Put certificate to CosmosDB")
-	fmt.Println("keyString", keyString)
 
 	encryptedData, err := c.encryptor.Encrypt(data)
 	if err != nil {
@@ -118,9 +112,6 @@ func (c *CertStorageCosmosDB) Put(ctx context.Context, key string, data []byte) 
 // Delete removes certificate data for the given key
 func (c *CertStorageCosmosDB) Delete(ctx context.Context, key string) error {
 	keyString, partitionKey := c.dbKey([]byte(key))
-
-	fmt.Println("Delete certificate from CosmosDB")
-	fmt.Println("keyString", keyString)
 
 	_, err := c.certsContainer.DeleteItem(ctx, partitionKey, keyString, nil)
 	if err != nil && !strings.Contains(err.Error(), "NotFound") {
