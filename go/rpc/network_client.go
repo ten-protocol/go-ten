@@ -28,12 +28,8 @@ func NewEncNetworkClient(rpcAddress string, viewingKey *viewingkey.ViewingKey, l
 	return encClient, nil
 }
 
-func NewEncNetworkClientFromConn(connection *gethrpc.Client, viewingKey *viewingkey.ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
-	enclavePublicKeyBytes, err := ReadEnclaveKey(connection)
-	if err != nil {
-		return nil, fmt.Errorf("error reading enclave public key: %v", err)
-	}
-	encClient, err := NewEncRPCClient(connection, viewingKey, enclavePublicKeyBytes, logger)
+func NewEncNetworkClientFromConn(connection *gethrpc.Client, encKey []byte, viewingKey *viewingkey.ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
+	encClient, err := NewEncRPCClient(connection, viewingKey, encKey, logger)
 	if err != nil {
 		return nil, err
 	}
