@@ -86,7 +86,7 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 	// receipt found in cache
 	// for simplicity only the tx sender will access the cache
 	// check whether the requester is the sender
-	if rec.From != requester {
+	if *rec.From != *requester {
 		return nil, nil
 	}
 
@@ -145,8 +145,8 @@ func isAddress(topics []gethcommon.Hash, nr int, requester *gethcommon.Address) 
 	if len(topics) < nr+1 {
 		return false
 	}
-	topic := gethcommon.Address(topics[nr].Bytes())
-	return topic == *requester
+	addressFromTopic := gethcommon.BytesToAddress(topics[nr].Bytes())
+	return addressFromTopic == *requester
 }
 
 // marshalReceipt marshals a transaction receipt into a JSON object.
