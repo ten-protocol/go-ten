@@ -126,9 +126,6 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 	rollupTxs := processed.GetEvents(common.RollupTx)
 	rollups := make([]*common.ExtRollup, 0, len(rollupTxs))
 
-	if len(rollupTxs) > 0 {
-		println("BLOBS PRESENT")
-	}
 	blobs, blobHashes, err := rc.extractBlobsAndHashes(rollupTxs)
 	if err != nil {
 		return nil, err

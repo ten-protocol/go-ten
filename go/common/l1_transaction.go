@@ -7,7 +7,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"github.com/ethereum/go-ethereum/rlp"
 	"math/big"
 )
 
@@ -102,15 +101,15 @@ type ProcessedL1Data struct {
 	Events      []L1Event // Changed from map to slice of L1Event
 }
 
-// TenTransactionWrapper wraps a TenTransaction with its concrete type
-type TenTransactionWrapper struct {
-	TypeName string // The concrete type name
-	Data     []byte // The encoded transaction data
-}
+//// TenTransactionWrapper wraps a TenTransaction with its concrete type
+//type TenTransactionWrapper struct {
+//	TypeName string // The concrete type name
+//	Data     []byte // The encoded transaction data
+//}
 
 // L1TxData represents an L1 transaction that's relevant to us
 type L1TxData struct {
-	Type               *TenTransactionWrapper
+	//Type               *TenTransactionWrapper
 	Transaction        *types.Transaction
 	Receipt            *types.Receipt
 	Blobs              []*kzg4844.Blob      // Only populated for blob transactions
@@ -147,75 +146,75 @@ func (p *ProcessedL1Data) GetEvents(txType L1TxType) []*L1TxData {
 	return nil
 }
 
-func WrapTenTransaction(tx TenTransaction) (*TenTransactionWrapper, error) {
-	if tx == nil {
-		return nil, nil
-	}
-
-	data, err := rlp.EncodeToBytes(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	return &TenTransactionWrapper{
-		TypeName: fmt.Sprintf("%T", tx),
-		Data:     data,
-	}, nil
-}
-
-func (w *TenTransactionWrapper) UnwrapTransaction() (TenTransaction, error) {
-	if w == nil {
-		return nil, nil
-	}
-
-	var result TenTransaction
-	switch w.TypeName {
-	case "*L1InitializeSecretTx":
-		var tx L1InitializeSecretTx
-		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
-			return nil, err
-		}
-		result = &tx
-	case "*L1RequestSecretTx":
-		var tx L1RequestSecretTx
-		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
-			return nil, err
-		}
-		result = &tx
-
-	case "*L1SetImportantContractsTx":
-		var tx L1SetImportantContractsTx
-		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
-			return nil, err
-		}
-		result = &tx
-	case "*L1RespondSecretTx":
-		var tx L1RespondSecretTx
-		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
-			return nil, err
-		}
-		result = &tx
-	case "*L1DepositTx":
-		var tx L1DepositTx
-		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
-			return nil, err
-		}
-		result = &tx
-	case "*L1RollupHashes":
-		var tx L1RollupHashes
-		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
-			return nil, err
-		}
-		result = &tx
-	case "*L1RollupTx":
-		var tx L1RollupTx
-		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
-			return nil, err
-		}
-		result = &tx
-	default:
-		return nil, fmt.Errorf("unknown transaction type: %s", w.TypeName)
-	}
-
-	return result, nil
-}
+//func WrapTenTransaction(tx TenTransaction) (*TenTransactionWrapper, error) {
+//	if tx == nil {
+//		return nil, nil
+//	}
+//
+//	data, err := rlp.EncodeToBytes(tx)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	return &TenTransactionWrapper{
+//		TypeName: fmt.Sprintf("%T", tx),
+//		Data:     data,
+//	}, nil
+//}
+//
+//func (w *TenTransactionWrapper) UnwrapTransaction() (TenTransaction, error) {
+//	if w == nil {
+//		return nil, nil
+//	}
+//
+//	var result TenTransaction
+//	switch w.TypeName {
+//	case "*L1InitializeSecretTx":
+//		var tx L1InitializeSecretTx
+//		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
+//			return nil, err
+//		}
+//		result = &tx
+//	case "*L1RequestSecretTx":
+//		var tx L1RequestSecretTx
+//		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
+//			return nil, err
+//		}
+//		result = &tx
+//
+//	case "*L1SetImportantContractsTx":
+//		var tx L1SetImportantContractsTx
+//		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
+//			return nil, err
+//		}
+//		result = &tx
+//	case "*L1RespondSecretTx":
+//		var tx L1RespondSecretTx
+//		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
+//			return nil, err
+//		}
+//		result = &tx
+//	case "*L1DepositTx":
+//		var tx L1DepositTx
+//		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
+//			return nil, err
+//		}
+//		result = &tx
+//	case "*L1RollupHashes":
+//		var tx L1RollupHashes
+//		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
+//			return nil, err
+//		}
+//		result = &tx
+//	case "*L1RollupTx":
+//		var tx L1RollupTx
+//		if err := rlp.DecodeBytes(w.Data, &tx); err != nil {
+//			return nil, err
+//		}
+//		result = &tx
+//	default:
+//		return nil, fmt.Errorf("unknown transaction type: %s", w.TypeName)
+//	}
+//
+//	return result, nil
+//}

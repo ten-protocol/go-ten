@@ -755,12 +755,12 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 	return fromBatch, nil
 }
 
-func (g *Guardian) getRollupsAndContractAddrTxs(data common.ProcessedL1Data) ([]*common.L1RollupTx, []*common.L1SetImportantContractsTx) {
+func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data) ([]*common.L1RollupTx, []*common.L1SetImportantContractsTx) {
 	rollupTxs := make([]*common.L1RollupTx, 0)
 	contractAddressTxs := make([]*common.L1SetImportantContractsTx, 0)
 
-	for _, event := range data.GetEvents(common.RollupTx) {
-		encodedRlp, err := ethadapter.DecodeBlobs(event.Blobs)
+	for _, txData := range processed.GetEvents(common.RollupTx) {
+		encodedRlp, err := ethadapter.DecodeBlobs(txData.Blobs)
 		if err != nil {
 			g.logger.Crit("could not decode blobs.", log.ErrKey, err)
 			continue
@@ -773,16 +773,17 @@ func (g *Guardian) getRollupsAndContractAddrTxs(data common.ProcessedL1Data) ([]
 	}
 
 	// Get contract address transactions
-	for _, event := range data.GetEvents(common.SetImportantContractsTx) {
-		unwrappedTx, err := event.Type.UnwrapTransaction()
-		if err != nil {
-			g.logger.Error("Could not unwrap ten transaction", "type", err)
-		}
-		if contractTx, ok := unwrappedTx.(*common.L1SetImportantContractsTx); ok {
-			contractAddressTxs = append(contractAddressTxs, contractTx)
-		} else {
-			g.logger.Warn("Unexpected type for SetImportantContractsTx event", "type", fmt.Sprintf("%T", event.Type))
-		}
+	for _, txData := range processed.GetEvents(common.SetImportantContractsTx) {
+		println("I NEED TO SETIMPORTANT CONTRACTS: ", txData)
+		//unwrappedTx, err := event.Type.UnwrapTransaction()
+		//if err != nil {
+		//	g.logger.Error("Could not unwrap ten transaction", "type", err)
+		//}
+		//if contractTx, ok := unwrappedTx.(*common.L1SetImportantContractsTx); ok {
+		//	contractAddressTxs = append(contractAddressTxs, contractTx)
+		//} else {
+		//	g.logger.Warn("Unexpected type for SetImportantContractsTx event", "type", fmt.Sprintf("%T", event.Type))
+		//}
 	}
 	return rollupTxs, contractAddressTxs
 }

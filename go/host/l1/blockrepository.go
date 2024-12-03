@@ -213,7 +213,6 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 	}
 
 	for _, log := range logs {
-		println("LOG")
 		// Fetch the transaction and receipt for each log
 		tx, _, err := r.ethClient.TransactionByHash(log.TxHash)
 		if err != nil {
@@ -228,14 +227,12 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		}
 
 		txData := &common.L1TxData{
-			Transaction: tx,
-			Receipt:     receipt,
-			// Initialize with empty slices instead of nil pointers
+			Transaction:        tx,
+			Receipt:            receipt,
 			CrossChainMessages: &common.CrossChainMessages{},
 			ValueTransfers:     &common.ValueTransferEvents{},
 		}
 
-		// Process the transaction based on the log
 		messages, err := r.getCrossChainMessages(receipt)
 		if err != nil {
 			r.logger.Error("Error encountered converting logs to messages", err)
@@ -256,7 +253,6 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 			sequencerLogs = []types.Log{} // Initialize to empty slice on error
 		}
 
-		// Add events only if we have valid data
 		if len(*txData.CrossChainMessages) > 0 {
 			processed.AddEvent(common.CrossChainMessageTx, txData)
 			println("CrossChainMessageTx ADDED")
@@ -273,14 +269,12 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		}
 
 		decodedTx := r.mgmtContractLib.DecodeTx(tx)
-		wrappedTx, err := common.WrapTenTransaction(decodedTx)
 		if err != nil {
 			r.logger.Error("Failed to wrap transaction", "error", err)
 			continue
 		}
-		txData.Type = wrappedTx
 
-		switch decodedTx.(type) {
+		switch t := decodedTx.(type) {
 		case *common.L1RequestSecretTx:
 			println("L1RequestSecretTx ADDED")
 			processed.AddEvent(common.SecretRequestTx, txData)
@@ -290,8 +284,32 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		case *common.L1SetImportantContractsTx:
 			println("SetImportantContractsTx ADDED")
 			processed.AddEvent(common.SetImportantContractsTx, txData)
-		case *common.L1RollupTx:
-			println("L1RollupTx ADDED")
+		case *common.L1RollupHashes:
+			println("L1RollupHashes ADDED")
+			blobs, err := r.blobResolver.FetchBlobs(context.Background(), block.Header(), t.BlobHashes)
+			if err != nil {
+				if errors.Is(err, ethereum.NotFound) {
+					r.logger.Crit("Blobs were not found on beacon chain or archive service", "block", block.Hash(), "error", err)
+				} else {
+					r.logger.Crit("could not fetch blobs", err)
+				}
+				continue
+			}
+
+			txData.Blobs = blobs
+
+			//encodedRlp, err := ethadapter.DecodeBlobs(blobs)
+			//if err != nil {
+			//	r.logger.Crit("could not decode blobs.", err)
+			//	continue
+			//}
+			//
+			//rlp := &common.L1RollupTx{
+			//	Rollup: encodedRlp,
+			//}
+			//rollupTxs = append(rollupTxs, rlp)
+			//println("L1RollupTx ADDED")
+			//txData.Blobs = t.
 			processed.AddEvent(common.RollupTx, txData)
 		}
 	}
