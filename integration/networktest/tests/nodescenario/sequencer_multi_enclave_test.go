@@ -38,7 +38,7 @@ func TestMultiEnclaveSequencer(t *testing.T) {
 // This test runs with an HA sequencer, does a transfer then kills the active sequencer enclave,
 // allows it time to failover then performs another transfer to check the failover was successful.
 // Note: this is a happy path failover, we need to test for edge cases etc and test the failover in a live testnet
-func TestHASequencerFailover(t *testing.T) {
+func TestHASequencerBackup(t *testing.T) {
 	networktest.TestOnlyRunsInIDE(t)
 	doubleTransferAmount := big.NewInt(2).Mul(big.NewInt(2), _transferAmount)
 	networktest.Run(

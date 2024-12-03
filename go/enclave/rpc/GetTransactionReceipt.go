@@ -145,8 +145,8 @@ func isAddress(topics []gethcommon.Hash, nr int, requester *gethcommon.Address) 
 	if len(topics) < nr+1 {
 		return false
 	}
-	topic := gethcommon.Address(topics[nr].Bytes())
-	return topic == *requester
+	addressFromTopic := gethcommon.BytesToAddress(topics[nr].Bytes())
+	return addressFromTopic == *requester
 }
 
 // marshalReceipt marshals a transaction receipt into a JSON object.

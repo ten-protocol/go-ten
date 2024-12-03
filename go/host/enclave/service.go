@@ -127,7 +127,7 @@ func (e *Service) EvictEnclave(enclaveID *common.EnclaveID) {
 	e.haLock.Lock()
 	defer e.haLock.Unlock()
 	for i, guardian := range e.enclaveGuardians {
-		if guardian.GetEnclaveID() == enclaveID {
+		if *(guardian.GetEnclaveID()) == *enclaveID {
 			failedEnclaveIdx = i
 			break
 		}
@@ -141,7 +141,7 @@ func (e *Service) EvictEnclave(enclaveID *common.EnclaveID) {
 	e.enclaveGuardians = append(e.enclaveGuardians[:failedEnclaveIdx], e.enclaveGuardians[failedEnclaveIdx+1:]...)
 	e.logger.Warn("Evicted enclave from HA pool.", log.EnclaveIDKey, enclaveID)
 
-	if e.activeSequencerID == enclaveID {
+	if *e.activeSequencerID == *enclaveID {
 		// sequencer enclave has failed, so we need to select another one to promote as the active sequencer
 		var i int
 		for i = 0; i < len(e.enclaveGuardians); i++ {
