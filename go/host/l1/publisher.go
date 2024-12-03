@@ -8,10 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
-	"github.com/ethereum/go-ethereum"
-
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -226,64 +222,6 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	}()
 
 	return nil
-}
-
-// ExtractRelevantTenTransactions will extract any transactions from the block that are relevant to TEN
-// todo (#2495) we should monitor for relevant L1 events instead of scanning every transaction in the block
-func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*common.L1RollupTx, []*common.L1SetImportantContractsTx) {
-	// temporarily add this host stopping check to prevent sim test failures until a more robust solution is implemented
-	for !p.hostStopper.IsStopping() {
-		txWithReceiptsAndBlobs := make([]*common.TxAndReceiptAndBlobs, 0)
-		rollupTxs := make([]*common.L1RollupTx, 0)
-		contractAddressTxs := make([]*common.L1SetImportantContractsTx, 0)
-
-		txs := block.Transactions()
-		for i, rec := range receipts {
-			if rec.BlockNumber == nil {
-				continue // Skip non-relevant transactions
-			}
-
-			decodedTx := p.mgmtContractLib.DecodeTx(txs[i])
-			var blobs []*kzg4844.Blob
-			var err error
-
-			switch typedTx := decodedTx.(type) {
-			case *common.L1SetImportantContractsTx:
-				contractAddressTxs = append(contractAddressTxs, typedTx)
-			case *common.L1RollupHashes:
-				blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), typedTx.BlobHashes)
-				if err != nil {
-					if errors.Is(err, ethereum.NotFound) {
-						p.logger.Crit("Blobs were not found on beacon chain or archive service", "block", block.Hash(), "error", err)
-					} else {
-						p.logger.Crit("could not fetch blobs", log.ErrKey, err)
-					}
-					continue
-				}
-
-				encodedRlp, err := ethadapter.DecodeBlobs(blobs)
-				if err != nil {
-					p.logger.Crit("could not decode blobs.", log.ErrKey, err)
-					continue
-				}
-
-				rlp := &common.L1RollupTx{
-					Rollup: encodedRlp,
-				}
-				rollupTxs = append(rollupTxs, rlp)
-			}
-
-			// compile the tx, receipt and blobs into a single struct for submission to the enclave
-			txWithReceiptsAndBlobs = append(txWithReceiptsAndBlobs, &common.TxAndReceiptAndBlobs{
-				Tx:      txs[i],
-				Receipt: rec,
-				Blobs:   blobs,
-			})
-		}
-
-		return txWithReceiptsAndBlobs, rollupTxs, contractAddressTxs
-	}
-	return nil, nil, nil
 }
 
 // FindSecretResponseTx will scan the block for any secret response transactions. This is separate from the above method

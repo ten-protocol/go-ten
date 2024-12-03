@@ -87,6 +87,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.TenTransaction 
 	contractCallData := map[string]interface{}{}
 	switch method.Name {
 	case AddRollupMethod:
+		println("DECODE TX: AddRollupMethod")
 		if tx.Type() == types.BlobTxType {
 			return &common.L1RollupHashes{
 				BlobHashes: tx.BlobHashes(),
@@ -95,15 +96,19 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.TenTransaction 
 			return nil
 		}
 	case RespondSecretMethod:
+		println("DECODE TX: RespondSecretMethod")
 		return c.unpackRespondSecretTx(tx, method, contractCallData)
 
 	case RequestSecretMethod:
+		println("DECODE TX: RequestSecretMethod")
 		return c.unpackRequestSecretTx(tx, method, contractCallData)
 
 	case InitializeSecretMethod:
+		println("DECODE TX: InitializeSecretMethod")
 		return c.unpackInitSecretTx(tx, method, contractCallData)
 
 	case SetImportantContractsMethod:
+		println("DECODE TX: SetImportantContractsMethod")
 		tx, err := c.unpackSetImportantContractsTx(tx, method, contractCallData)
 		if err != nil {
 			c.logger.Warn("could not unpack set important contracts tx", log.ErrKey, err)
@@ -117,6 +122,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.TenTransaction 
 
 // CreateBlobRollup creates a BlobTx, encoding the rollup data into blobs.
 func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error) {
+	println("CREATING L1RollupTx")
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		panic(err)
@@ -162,6 +168,7 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 }
 
 func (c *contractLibImpl) CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData {
+	println("CREATING L1RequestSecretTx")
 	data, err := c.contractABI.Pack(RequestSecretMethod, base64EncodeToString(tx.Attestation))
 	if err != nil {
 		panic(err)
@@ -174,6 +181,7 @@ func (c *contractLibImpl) CreateRequestSecret(tx *common.L1RequestSecretTx) type
 }
 
 func (c *contractLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) types.TxData {
+	println("CREATING L1RespondSecretTx")
 	data, err := c.contractABI.Pack(
 		RespondSecretMethod,
 		tx.AttesterID,
@@ -192,6 +200,7 @@ func (c *contractLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, veri
 }
 
 func (c *contractLibImpl) CreateInitializeSecret(tx *common.L1InitializeSecretTx) types.TxData {
+	println("CREATING L1InitializeSecretTx")
 	data, err := c.contractABI.Pack(
 		InitializeSecretMethod,
 		tx.EnclaveID,

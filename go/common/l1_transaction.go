@@ -82,6 +82,7 @@ type L1TxType uint8 // Change to uint8 for RLP serialization
 const (
 	RollupTx L1TxType = iota
 	SecretRequestTx
+	SecretResponseTx
 	InitialiseSecretTx
 	CrossChainMessageTx
 	CrossChainValueTranserTx

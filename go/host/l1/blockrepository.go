@@ -206,23 +206,21 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
 	allAddresses = append(allAddresses, r.contractAddresses[MsgBus]...)
 
-	// Query for logs emitted by relevant contracts in the block
 	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{BlockHash: &blkHash, Addresses: allAddresses})
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch logs for L1 block - %w", err)
 	}
 
-	for _, log := range logs {
-		// Fetch the transaction and receipt for each log
-		tx, _, err := r.ethClient.TransactionByHash(log.TxHash)
+	for _, l := range logs {
+		tx, _, err := r.ethClient.TransactionByHash(l.TxHash)
 		if err != nil {
-			r.logger.Error("Error fetching transaction by hash", log.TxHash, err)
+			r.logger.Error("Error fetching transaction by hash", l.TxHash, err)
 			continue
 		}
 
-		receipt, err := r.ethClient.TransactionReceipt(log.TxHash)
+		receipt, err := r.ethClient.TransactionReceipt(l.TxHash)
 		if err != nil {
-			r.logger.Error("Error fetching transaction receipt with tx hash", log.TxHash, err)
+			r.logger.Error("Error fetching transaction receipt with tx hash", l.TxHash, err)
 			continue
 		}
 
@@ -275,12 +273,15 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		}
 
 		switch t := decodedTx.(type) {
-		case *common.L1RequestSecretTx:
-			println("L1RequestSecretTx ADDED")
-			processed.AddEvent(common.SecretRequestTx, txData)
 		case *common.L1InitializeSecretTx:
 			println("InitialiseSecretTx ADDED")
 			processed.AddEvent(common.InitialiseSecretTx, txData)
+		case *common.L1RequestSecretTx:
+			println("L1RequestSecretTx ADDED")
+			processed.AddEvent(common.SecretRequestTx, txData)
+		case *common.L1RespondSecretTx:
+			println("L1RespondSecretTx ADDED")
+			processed.AddEvent(common.SecretResponseTx, txData)
 		case *common.L1SetImportantContractsTx:
 			println("SetImportantContractsTx ADDED")
 			processed.AddEvent(common.SetImportantContractsTx, txData)

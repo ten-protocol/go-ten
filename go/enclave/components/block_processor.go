@@ -63,10 +63,6 @@ func (bp *l1BlockProcessor) Process(ctx context.Context, processed *common.Proce
 	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, processed.BlockHeader.Hash())
 	header := processed.BlockHeader
 	ingestion, err := bp.tryAndInsertBlock(ctx, processed.BlockHeader)
-
-	if len(processed.Events) > 0 {
-		println("EVENTS PRESENT")
-	}
 	if err != nil {
 		return nil, err
 	}

@@ -102,8 +102,6 @@ type L1Publisher interface {
 	InitializeSecret(attestation *common.AttestationReport, encSecret common.EncryptedSharedEnclaveSecret) error
 	// RequestSecret will send a management contract transaction to request a secret from the enclave, returning the L1 head at time of sending
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
-	// ExtractRelevantTenTransactions will return all TEN relevant tx from an L1 block
-	ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*common.L1RollupTx, []*common.L1SetImportantContractsTx)
 	// FindSecretResponseTx will return the secret response tx from an L1 block
 	FindSecretResponseTx(block *types.Block) []*common.L1RespondSecretTx
 	// PublishRollup will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
