@@ -86,7 +86,7 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 	// receipt found in cache
 	// for simplicity only the tx sender will access the cache
 	// check whether the requester is the sender
-	if rec.From != requester {
+	if *rec.From != *requester {
 		return nil, nil
 	}
 
