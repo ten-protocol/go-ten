@@ -255,7 +255,7 @@ jobs:
               filename: /tmp/positions.yaml
 
             clients:
-              - url: "${{ vars.METRICS_URI }}/loki/api/v1/push"
+              - url: "${{ vars.LOKI_URI }}"
                 batchwait: 3s
                 batchsize: 1048576
                 tls_config:
@@ -296,7 +296,7 @@ jobs:
               scrape_interval: 15s
               evaluation_interval: 15s
             remote_write:
-              - url: "${{ vars.METRICS_URI }}/prometheus/metrics/api/v1/write"
+              - url: "${{ vars.PROMETHEUS_URI }}"
                 tls_config:
                   insecure_skip_verify: true
                 basic_auth:
