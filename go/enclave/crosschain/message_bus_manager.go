@@ -223,13 +223,13 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 	// There can be forks thus we cannot trust the wallet.
 	startingNonce := rollupState.GetNonce(common.MaskedSender(*m.messageBusAddress))
 
-	signedTransactions := make(types.Transactions, 0)
+	syntheticTransactions := make(types.Transactions, 0)
 	for idx, message := range messages {
 		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
 		data, err := MessageBusABI.Pack("storeCrossChainMessage", message, delayInBlocks)
 		if err != nil {
-			m.logger.Crit("Failed packing submitOutOfNetwork message!")
-			return signedTransactions
+			m.logger.Crit("Failed packing storeCrossChainMessage message!")
+			return syntheticTransactions
 
 			// todo (@stefan) - return error
 			// return nil, fmt.Errorf("failed packing submitOutOfNetworkMessage %w", err)
@@ -244,11 +244,8 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 			To:       m.messageBusAddress,
 		}
 
-		stx, err := m.wallet.SignTransaction(tx)
-		if err != nil {
-			panic(err)
-		}
-		signedTransactions = append(signedTransactions, stx)
+		stx := types.NewTx(tx)
+		syntheticTransactions = append(syntheticTransactions, stx)
 	}
 
 	startingNonce += uint64(len(messages))
@@ -257,17 +254,19 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 		data, err := MessageBusABI.Pack("notifyDeposit", transfer.Receiver, transfer.Amount)
 		if err != nil {
 			m.logger.Crit("Failed packing notifyDeposit message!")
-			return signedTransactions
+			return syntheticTransactions
 		}
 
 		tx := &types.LegacyTx{
-			Nonce: startingNonce + uint64(idx),
-			Value: transfer.Amount,
-			Data:  data,
-			To:    m.messageBusAddress,
+			Nonce:    startingNonce + uint64(idx),
+			Value:    transfer.Amount,
+			Data:     data,
+			To:       m.messageBusAddress,
+			Gas:      5_000_000,
+			GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		}
-		signedTransactions = append(signedTransactions, types.NewTx(tx))
+		syntheticTransactions = append(syntheticTransactions, types.NewTx(tx))
 	}
 
-	return signedTransactions
+	return syntheticTransactions
 }
