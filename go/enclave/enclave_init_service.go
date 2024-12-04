@@ -147,5 +147,9 @@ func (e *enclaveInitService) EnclaveID(context.Context) (common.EnclaveID, commo
 }
 
 func (e *enclaveInitService) RPCEncryptionKey(ctx context.Context) ([]byte, common.SystemError) {
-	return e.rpcKeyService.PublicKey(), nil
+	k, err := e.rpcKeyService.PublicKey()
+	if err != nil {
+		return nil, responses.ToInternalError(err)
+	}
+	return k, nil
 }

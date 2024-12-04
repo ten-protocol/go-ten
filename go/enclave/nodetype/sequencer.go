@@ -198,6 +198,7 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *types.H
 	limiter := limiters.NewBatchSizeLimiter(s.settings.MaxBatchSize)
 	pendingTransactions := s.mempool.PendingTransactions()
 	var transactions []*types.Transaction
+txLoop:
 	for _, group := range pendingTransactions {
 		// lazily resolve transactions until the batch runs out of space
 		for _, lazyTx := range group {
@@ -206,7 +207,7 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *types.H
 				if err != nil {
 					s.logger.Info("Unable to accept transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
 					if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
-						break
+						break txLoop
 					}
 					// Limiter encountered unexpected error
 					return fmt.Errorf("limiter encountered unexpected error - %w", err)
