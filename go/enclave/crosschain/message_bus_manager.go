@@ -211,7 +211,7 @@ func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers
 
 // CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.
 func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, rollupState *state.StateDB) common.L2Transactions {
-	if len(messages) == 0 {
+	if len(messages) == 0 && len(transfers) == 0 {
 		return make(common.L2Transactions, 0)
 	}
 
