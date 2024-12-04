@@ -2,7 +2,6 @@ package cosmosdb
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -123,8 +122,7 @@ func (c *CertStorageCosmosDB) Delete(ctx context.Context, key string) error {
 
 // dbKey generates a consistent key for CosmosDB storage
 func (c *CertStorageCosmosDB) dbKey(key []byte) (string, azcosmos.PartitionKey) {
-	hashedKey := c.encryptor.HashWithHMAC(key)
-	keyString := hex.EncodeToString(hashedKey)
+	keyString := string(key)
 	partitionKey := azcosmos.NewPartitionKeyString(keyString)
 	return keyString, partitionKey
 }
