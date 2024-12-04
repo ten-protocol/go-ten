@@ -22,7 +22,10 @@ contract PublicCallbacksTest {
         }
         // Handle the callback here
         // For testing we'll just allow it to succeed
-        
+    }
+
+    function handleCallbackFail() external {
+        require(false, "This is a test failure");
     }
 
     // Test function that registers a callback
@@ -32,11 +35,27 @@ contract PublicCallbacksTest {
         uint256 expectedGas = msg.value / block.basefee;
         bytes memory callbackData = abi.encodeWithSelector(this.handleCallback.selector, expectedGas);
         
+        bytes memory callbackDataFail = abi.encodeWithSelector(this.handleCallbackFail.selector, expectedGas);
+
         // Register the callback, forwarding any value sent to this call
-        callbacks.register{value: msg.value}(callbackData);
+        callbacks.register{value: msg.value/2}(callbackData);
+        callbacks.register{value: msg.value/2}(callbackDataFail);
     }
 
     function isLastCallSuccess() external view returns (bool) {
         return lastCallSuccess;
     }
+
+    function set_key_with_require(string memory newKey) public payable {
+        bytes memory callbackData = abi.encodeWithSelector(this.handle_set_key_with_require.selector, newKey);
+        callbacks.register{value: msg.value}(callbackData);
+    }
+
+
+    string key;
+    function handle_set_key_with_require(string memory newKey) external {
+        require(bytes(newKey).length != 0, "New key cannot be empty");
+        key = newKey;
+    }
+
 }
