@@ -80,12 +80,17 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		// Certificate Signing Request (CRS) is generated
 		// CRS is sent to CA (Let's Encrypt) via ACME (automated certificate management environment) client
 		// CA verifies CRS and issues a certificate
-		// we store store certificate and private key (in memory and also in on a mounted volume attached to docker container - /data/certs/)
+		// Store certificate and private key in certificate storage based on the database type
+		certStorage, err := storage.NewCertStorage(config.DBType, config.DBConnectionURL, encryptionKey, logger)
+		if err != nil {
+			logger.Crit("unable to create certificate storage", log.ErrKey, err)
+			os.Exit(1)
+		}
 
 		certManager := &autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			HostPolicy: autocert.HostWhitelist(config.TLSDomain),
-			Cache:      autocert.DirCache("/data/certs"),
+			Cache:      certStorage,
 		}
 
 		// Create HTTP-01 challenge handler
