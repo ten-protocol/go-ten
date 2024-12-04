@@ -190,8 +190,6 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 	}
 
 	switch address.Hex() {
-	case common.UserIDRequestCQMethod: // todo - review whether we need this endpoint
-		return user.ID, nil
 	case common.ListPrivateTransactionsCQMethod:
 		// sensitive CustomQuery methods use the convention of having "address" at the top level of the params json
 		userAddr, err := extractCustomQueryAddress(params)
