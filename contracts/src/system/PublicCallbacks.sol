@@ -109,7 +109,7 @@ contract PublicCallbacks is Initializable {
         if (prepaidGas > gasUsed) {
             gasRefundValue = (prepaidGas - gasUsed) * baseFee;
         }
-       
+        uint256 paymentToCoinbase = callback.value - gasRefundValue;
         address target = callback.target;
 
         if (success) {  
@@ -118,7 +118,7 @@ contract PublicCallbacks is Initializable {
         moveToNextCallback();
 
         internalRefund(gasRefundValue, target, callbackId);
-       // payForCallback(paymentToCoinbase); */
+        payForCallback(paymentToCoinbase);
     }
 
     function internalRefund(uint256 gasRefund, address to, uint256 callbackId) internal {
@@ -127,11 +127,15 @@ contract PublicCallbacks is Initializable {
         // slight buffer. 
         (bool success, ) = to.call{value: gasRefund, gas: 35000}(abi.encodeWithSignature("handleRefund(uint256)", callbackId)); 
         if (!success) {
+            // if they dont accept the refund, we gift it to coinbase.
             payForCallback(gasRefund);
         }
     }
 
     function payForCallback(uint256 gasPayment) internal {
+        if (gasPayment == 0) {
+            return;
+        }
         // We don't care about success, should always happen.
         // If not, contract is upgradable and we can recover.
         // solc-ignore-next-line unused-call-retval
