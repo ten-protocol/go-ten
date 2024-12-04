@@ -59,6 +59,7 @@ contract ObscuroBridge is
             data,
             uint32(Topics.MANAGEMENT),
             0,
+            0, 
             0
         );
     }
@@ -106,7 +107,7 @@ contract ObscuroBridge is
             amount,
             receiver
         );
-        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0);
+        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0, 0);
     }
 
     function receiveAssets(

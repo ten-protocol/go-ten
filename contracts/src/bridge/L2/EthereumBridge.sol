@@ -77,7 +77,7 @@ contract EthereumBridge is
             amount,
             receiver
         );
-        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0);
+        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0, msg.value);
     }
 
     function receiveAssets(
