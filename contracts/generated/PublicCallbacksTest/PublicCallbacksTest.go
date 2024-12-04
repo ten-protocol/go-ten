@@ -31,8 +31,8 @@ var (
 
 // PublicCallbacksTestMetaData contains all meta data concerning the PublicCallbacksTest contract.
 var PublicCallbacksTestMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_callbacks\",\"type\":\"address\"}],\"stateMutability\":\"payable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"callbacks\",\"outputs\":[{\"internalType\":\"contractIPublicCallbacks\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"expectedGas\",\"type\":\"uint256\"}],\"name\":\"handleCallback\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"isLastCallSuccess\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
-	Bin: "0x608060408190526000805460ff60a01b191690556104263881900390819083398101604081905261002f91610152565b600080546001600160a81b0319166001600160a01b038316179055610052610058565b50610215565b6000610064483461018e565b9050600063a072d7b060e01b8260405160240161008191906101a2565b60408051601f198184030181529181526020820180516001600160e01b03166001600160e01b03199094169390931790925260005491516320bef72760e21b81529092506001600160a01b03909116906382fbdc9c9034906100e7908590600401610204565b6000604051808303818588803b15801561010057600080fd5b505af1158015610114573d6000803e3d6000fd5b50505050505050565b60006001600160a01b0382165b92915050565b6101398161011d565b811461014457600080fd5b50565b805161012a81610130565b60006020828403121561016757610167600080fd5b6101718383610147565b9392505050565b634e487b7160e01b600052601260045260246000fd5b60008261019d5761019d610178565b500490565b8181526020810161012a565b60005b838110156101c95781810151838201526020016101b1565b50506000910152565b60006101dc825190565b8084526020840193506101f38185602086016101ae565b601f01601f19169290920192915050565b6020808252810161017181846101d2565b610202806102246000396000f3fe608060405234801561001057600080fd5b50600436106100405760003560e01c8062b1278314610045578063a072d7b01461007b578063ee1d587214610090575b600080fd5b6000546100659073ffffffffffffffffffffffffffffffffffffffff1681565b6040516100729190610139565b60405180910390f35b61008e61008936600461014e565b6100aa565b005b600054600160a01b900460ff16604051610072919061017c565b60005a90506100bb610834836101b9565b81106100f057600080547fffffffffffffffffffffff00ffffffffffffffffffffffffffffffffffffffff16600160a01b1790555b5050565b600073ffffffffffffffffffffffffffffffffffffffff82165b92915050565b600061010e826100f4565b600061010e82610114565b6101338161011f565b82525050565b6020810161010e828461012a565b803561010e565b60006020828403121561016357610163600080fd5b61016d8383610147565b9392505050565b801515610133565b6020810161010e8284610174565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b8181038181111561010e5761010e61018a56fea26469706673582212201e5e3094271cbbd280e851d389154c4d4b4127dd8d067ffb902752f665e57e5c64736f6c634300081c0033",
+	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_callbacks\",\"type\":\"address\"}],\"stateMutability\":\"payable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"callbacks\",\"outputs\":[{\"internalType\":\"contractIPublicCallbacks\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"handleAllCallbacksRan\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"expectedGas\",\"type\":\"uint256\"}],\"name\":\"handleCallback\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"handleCallbackFail\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"isLastCallSuccess\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	Bin: "0x608060408190526000805461ffff60a01b1916905561064b3881900390819083398101604081905261003091610285565b600080546001600160b01b0319166001600160a01b038316179055610053610059565b50610348565b6000486100676003346102c1565b61007191906102c1565b9050600063a072d7b060e01b8260405160240161008e91906102d5565b60408051601f19818403018152918152602080830180516001600160e01b039081166001600160e01b031990961695909517905281516004808252602480830185528284018051881663a4c016fb60e01b179052845191825281019093529082018051909416629e79db60e81b17909352600054919350906001600160a01b03166382fbdc9c61011f6003346102c1565b856040518363ffffffff1660e01b815260040161013c9190610337565b6000604051808303818588803b15801561015557600080fd5b505af1158015610169573d6000803e3d6000fd5b50506000546001600160a01b031692506382fbdc9c915061018d90506003346102c1565b846040518363ffffffff1660e01b81526004016101aa9190610337565b6000604051808303818588803b1580156101c357600080fd5b505af11580156101d7573d6000803e3d6000fd5b50506000546001600160a01b031692506382fbdc9c91506101fb90506003346102c1565b836040518363ffffffff1660e01b81526004016102189190610337565b6000604051808303818588803b15801561023157600080fd5b505af1158015610245573d6000803e3d6000fd5b505050505050505050565b60006001600160a01b0382165b92915050565b61026c81610250565b811461027757600080fd5b50565b805161025d81610263565b60006020828403121561029a5761029a600080fd5b6102a4838361027a565b9392505050565b634e487b7160e01b600052601260045260246000fd5b6000826102d0576102d06102ab565b500490565b8181526020810161025d565b60005b838110156102fc5781810151838201526020016102e4565b50506000910152565b600061030f825190565b8084526020840193506103268185602086016102e1565b601f01601f19169290920192915050565b602080825281016102a48184610305565b6102f4806103576000396000f3fe608060405234801561001057600080fd5b50600436106100665760003560e01c8063a072d7b011610050578063a072d7b0146100d6578063a4c016fb146100e9578063ee1d5872146100f157600080fd5b8062b127831461006b5780639e79db00146100a1575b600080fd5b60005461008b9073ffffffffffffffffffffffffffffffffffffffff1681565b60405161009891906101f0565b60405180910390f35b6100d4600080547fffffffffffffffffffff00ffffffffffffffffffffffffffffffffffffffffff16600160a81b179055565b005b6100d46100e4366004610205565b610106565b6100d4610135565b6100f9610183565b6040516100989190610233565b60005a905061011761083483610270565b8110610131576000805460ff60a01b1916600160a01b1790555b5050565b6000805460ff60a01b1916600160a01b1790556040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161017a90610283565b60405180910390fd5b60008054600160a81b900460ff1680156101a65750600054600160a01b900460ff165b905090565b600073ffffffffffffffffffffffffffffffffffffffff82165b92915050565b60006101c5826101ab565b60006101c5826101cb565b6101ea816101d6565b82525050565b602081016101c582846101e1565b80356101c5565b60006020828403121561021a5761021a600080fd5b61022483836101fe565b9392505050565b8015156101ea565b602081016101c5828461022b565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b818103818111156101c5576101c5610241565b602080825281016101c581601681527f5468697320697320612074657374206661696c7572650000000000000000000060208201526040019056fea2646970667358221220a632c12aa58f6a033122d8091a6fa1620beb5a3506b1d4afefb839156694dfec64736f6c634300081c0033",
 }
 
 // PublicCallbacksTestABI is the input ABI used to generate the binding from.
@@ -264,6 +264,27 @@ func (_PublicCallbacksTest *PublicCallbacksTestCallerSession) IsLastCallSuccess(
 	return _PublicCallbacksTest.Contract.IsLastCallSuccess(&_PublicCallbacksTest.CallOpts)
 }
 
+// HandleAllCallbacksRan is a paid mutator transaction binding the contract method 0x9e79db00.
+//
+// Solidity: function handleAllCallbacksRan() returns()
+func (_PublicCallbacksTest *PublicCallbacksTestTransactor) HandleAllCallbacksRan(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _PublicCallbacksTest.contract.Transact(opts, "handleAllCallbacksRan")
+}
+
+// HandleAllCallbacksRan is a paid mutator transaction binding the contract method 0x9e79db00.
+//
+// Solidity: function handleAllCallbacksRan() returns()
+func (_PublicCallbacksTest *PublicCallbacksTestSession) HandleAllCallbacksRan() (*types.Transaction, error) {
+	return _PublicCallbacksTest.Contract.HandleAllCallbacksRan(&_PublicCallbacksTest.TransactOpts)
+}
+
+// HandleAllCallbacksRan is a paid mutator transaction binding the contract method 0x9e79db00.
+//
+// Solidity: function handleAllCallbacksRan() returns()
+func (_PublicCallbacksTest *PublicCallbacksTestTransactorSession) HandleAllCallbacksRan() (*types.Transaction, error) {
+	return _PublicCallbacksTest.Contract.HandleAllCallbacksRan(&_PublicCallbacksTest.TransactOpts)
+}
+
 // HandleCallback is a paid mutator transaction binding the contract method 0xa072d7b0.
 //
 // Solidity: function handleCallback(uint256 expectedGas) returns()
@@ -283,4 +304,25 @@ func (_PublicCallbacksTest *PublicCallbacksTestSession) HandleCallback(expectedG
 // Solidity: function handleCallback(uint256 expectedGas) returns()
 func (_PublicCallbacksTest *PublicCallbacksTestTransactorSession) HandleCallback(expectedGas *big.Int) (*types.Transaction, error) {
 	return _PublicCallbacksTest.Contract.HandleCallback(&_PublicCallbacksTest.TransactOpts, expectedGas)
+}
+
+// HandleCallbackFail is a paid mutator transaction binding the contract method 0xa4c016fb.
+//
+// Solidity: function handleCallbackFail() returns()
+func (_PublicCallbacksTest *PublicCallbacksTestTransactor) HandleCallbackFail(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _PublicCallbacksTest.contract.Transact(opts, "handleCallbackFail")
+}
+
+// HandleCallbackFail is a paid mutator transaction binding the contract method 0xa4c016fb.
+//
+// Solidity: function handleCallbackFail() returns()
+func (_PublicCallbacksTest *PublicCallbacksTestSession) HandleCallbackFail() (*types.Transaction, error) {
+	return _PublicCallbacksTest.Contract.HandleCallbackFail(&_PublicCallbacksTest.TransactOpts)
+}
+
+// HandleCallbackFail is a paid mutator transaction binding the contract method 0xa4c016fb.
+//
+// Solidity: function handleCallbackFail() returns()
+func (_PublicCallbacksTest *PublicCallbacksTestTransactorSession) HandleCallbackFail() (*types.Transaction, error) {
+	return _PublicCallbacksTest.Contract.HandleCallbackFail(&_PublicCallbacksTest.TransactOpts)
 }

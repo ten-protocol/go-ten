@@ -28,6 +28,11 @@ interface IMessageBus {
         uint64 sequence
     );
 
+    event NativeDeposit(
+        address indexed receiver,
+        uint256 amount
+    );
+
     // This method is called from contracts to publish messages to the other linked message bus.
     // nonce - This is provided and serves as deduplication nonce. It can also be used to group a batch of messages together.
     // topic - This is the topic for which the payload is published. 
