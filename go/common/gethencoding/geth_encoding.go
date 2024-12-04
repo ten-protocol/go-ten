@@ -52,12 +52,14 @@ type gethEncodingServiceImpl struct {
 	storage        storage.Storage
 	logger         gethlog.Logger
 	cachingService *storage.CacheService
+	entropyService *crypto.EvmEntropyService
 }
 
-func NewGethEncodingService(storage storage.Storage, cachingService *storage.CacheService, logger gethlog.Logger) EncodingService {
+func NewGethEncodingService(storage storage.Storage, cachingService *storage.CacheService, entropyService *crypto.EvmEntropyService, logger gethlog.Logger) EncodingService {
 	return &gethEncodingServiceImpl{
 		storage:        storage,
 		logger:         logger,
+		entropyService: entropyService,
 		cachingService: cachingService,
 	}
 }
@@ -265,16 +267,12 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context,
 	// wrap in a caching layer
 	return enc.cachingService.ReadConvertedHeader(ctx, h.Hash(), func(a any) (*types.Header, error) {
 		// deterministically calculate the private randomness that will be exposed to the EVM
-		secret, err := enc.storage.FetchSecret(ctx)
-		if err != nil {
-			enc.logger.Crit("Could not fetch shared secret. Exiting.", log.ErrKey, err)
-		}
-		perBatchRandomness := crypto.CalculateRootBatchEntropy(secret[:], h.Number)
+		perBatchRandomness := enc.entropyService.BatchEntropy(h.Number)
 
 		// calculate the converted hash of the parent, for a correct converted chain
 		// default to the genesis
 		convertedParentHash := common.GethGenesisParentHash
-
+		var err error
 		if h.SequencerOrderNo.Uint64() > common.L2GenesisSeqNo {
 			convertedParentHash, err = enc.storage.FetchConvertedHash(ctx, h.ParentHash)
 			if err != nil {

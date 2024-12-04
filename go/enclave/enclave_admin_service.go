@@ -45,18 +45,19 @@ type enclaveAdminService struct {
 	sharedSecretProcessor  *components.SharedSecretProcessor
 	rollupConsumer         components.RollupConsumer
 	registry               components.BatchRegistry
-	dataEncryptionService  crypto.DataEncryptionService
+	daEncryptionService    *crypto.DAEncryptionService
 	dataCompressionService compression.DataCompressionService
 	storage                storage.Storage
 	gethEncodingService    gethencoding.EncodingService
 	stopControl            *stopcontrol.StopControl
 	profiler               *profiler.Profiler
 	subscriptionManager    *events.SubscriptionManager
-	enclaveKeyService      *components.EnclaveKeyService
+	enclaveKeyService      *crypto.EnclaveAttestedKeyService
 	mempool                *txpool.TxPool
+	sharedSecretService    *crypto.SharedSecretService
 }
 
-func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *components.EnclaveKeyService, mempool *txpool.TxPool, chainConfig *params.ChainConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, attestationProvider components.AttestationProvider) common.EnclaveAdmin {
+func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *txpool.TxPool, chainConfig *params.ChainConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -66,16 +67,15 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, storage storage
 			logger.Crit("unable to start the profiler", log.ErrKey, err)
 		}
 	}
-	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, logger)
+	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, sharedSecretService, logger)
 	sigVerifier, err := components.NewSignatureValidator(storage)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
 
-	dataEncryptionService := crypto.NewDataEncryptionService(logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
-	rollupCompression := components.NewRollupCompression(registry, batchExecutor, dataEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, daEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
 	rollupProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
 	rollupConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 
@@ -87,7 +87,7 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, storage storage
 		BaseFee:           config.BaseFee,
 	}
 
-	sequencerService := nodetype.NewSequencer(blockProcessor, batchExecutor, registry, rollupProducer, rollupCompression, gethEncodingService, logger, chainConfig, enclaveKeyService, mempool, storage, dataEncryptionService, dataCompressionService, seqSettings)
+	sequencerService := nodetype.NewSequencer(blockProcessor, batchExecutor, registry, rollupProducer, rollupCompression, gethEncodingService, logger, chainConfig, enclaveKeyService, mempool, storage, dataCompressionService, seqSettings)
 	validatorService := nodetype.NewValidator(blockProcessor, batchExecutor, registry, chainConfig, storage, sigVerifier, mempool, logger)
 
 	eas := &enclaveAdminService{
@@ -101,7 +101,7 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, storage storage
 		sharedSecretProcessor:  sharedSecretProcessor,
 		rollupConsumer:         rollupConsumer,
 		registry:               registry,
-		dataEncryptionService:  dataEncryptionService,
+		daEncryptionService:    daEncryptionService,
 		dataCompressionService: dataCompressionService,
 		storage:                storage,
 		gethEncodingService:    gethEncodingService,
@@ -110,6 +110,7 @@ func NewEnclaveAdminService(config *enclaveconfig.EnclaveConfig, storage storage
 		subscriptionManager:    subscriptionManager,
 		enclaveKeyService:      enclaveKeyService,
 		mempool:                mempool,
+		sharedSecretService:    sharedSecretService,
 	}
 
 	// if the current enclave was already marked as an active/backup sequencer, it needs to set the right mempool mode
@@ -224,7 +225,7 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 		}
 	}
 
-	batch, err := core.ToBatch(extBatch, e.dataEncryptionService, e.dataCompressionService)
+	batch, err := core.ToBatch(extBatch, e.daEncryptionService, e.dataCompressionService)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not convert batch. Cause: %w", err))
 	}
@@ -317,7 +318,7 @@ func (e *enclaveAdminService) GetBatch(ctx context.Context, hash common.L2BatchH
 		return nil, responses.ToInternalError(fmt.Errorf("failed getting batch. Cause: %w", err))
 	}
 
-	b, err := batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+	b, err := batch.ToExtBatch(e.daEncryptionService, e.dataCompressionService)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
@@ -330,7 +331,7 @@ func (e *enclaveAdminService) GetBatchBySeqNo(ctx context.Context, seqNo uint64)
 		return nil, responses.ToInternalError(fmt.Errorf("failed getting batch. Cause: %w", err))
 	}
 
-	b, err := batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+	b, err := batch.ToExtBatch(e.daEncryptionService, e.dataCompressionService)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
@@ -445,7 +446,7 @@ func (e *enclaveAdminService) sendBatch(batch *core.Batch, outChannel chan commo
 	} else {
 		e.logger.Debug("Streaming batch to host", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo())
 	}
-	extBatch, err := batch.ToExtBatch(e.dataEncryptionService, e.dataCompressionService)
+	extBatch, err := batch.ToExtBatch(e.daEncryptionService, e.dataCompressionService)
 	if err != nil {
 		// this error is unrecoverable
 		e.logger.Crit("failed to convert batch", log.ErrKey, err)

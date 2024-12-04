@@ -52,10 +52,9 @@ type AttestedEnclave struct {
 
 // todo - this file needs splitting up based on concerns
 type storageImpl struct {
-	db                 enclavedb.EnclaveDB
-	cachingService     *CacheService
-	eventsStorage      *eventsStorage
-	cachedSharedSecret *crypto.SharedEnclaveSecret
+	db             enclavedb.EnclaveDB
+	cachingService *CacheService
+	eventsStorage  *eventsStorage
 
 	stateCache  state.Database
 	chainConfig *params.ChainConfig
@@ -344,19 +343,12 @@ func (s *storageImpl) StoreSecret(ctx context.Context, secret crypto.SharedEncla
 	if err != nil {
 		return fmt.Errorf("could not shared secret in DB. Cause: %w", err)
 	}
-	err = dbTx.Commit()
-	if err != nil {
-		return err
-	}
-	return nil
+	return dbTx.Commit()
 }
 
+// FetchSecret - this returns the most important secret, and should only be called during startup
 func (s *storageImpl) FetchSecret(ctx context.Context) (*crypto.SharedEnclaveSecret, error) {
 	defer s.logDuration("FetchSecret", measure.NewStopwatch())
-
-	if s.cachedSharedSecret != nil {
-		return s.cachedSharedSecret, nil
-	}
 
 	var ss crypto.SharedEnclaveSecret
 
@@ -368,8 +360,7 @@ func (s *storageImpl) FetchSecret(ctx context.Context) (*crypto.SharedEnclaveSec
 		return nil, fmt.Errorf("could not decode shared secret")
 	}
 
-	s.cachedSharedSecret = &ss
-	return s.cachedSharedSecret, nil
+	return &ss, nil
 }
 
 func (s *storageImpl) IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool {
@@ -483,7 +474,13 @@ func (s *storageImpl) StoreNodeType(ctx context.Context, enclaveId common.Enclav
 	if err != nil {
 		return err
 	}
-	return dbTx.Commit()
+	err = dbTx.Commit()
+	if err != nil {
+		return fmt.Errorf("could not commit transaction - %w", err)
+	}
+	// set value in cache to ensure it is up to date
+	s.cachingService.UpdateEnclaveNodeType(ctx, enclaveId, nodeType)
+	return nil
 }
 
 func (s *storageImpl) StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error {
@@ -729,36 +726,27 @@ func (s *storageImpl) GetL1Transfers(ctx context.Context, blockHash common.L1Blo
 	return enclavedb.FetchL1Messages[common.ValueTransferEvent](ctx, s.db.GetSQLDB(), blockHash, true)
 }
 
-func (s *storageImpl) StoreEnclaveKey(ctx context.Context, enclaveKey *crypto.EnclaveKey) error {
+func (s *storageImpl) StoreEnclaveKey(ctx context.Context, enclaveKey []byte) error {
 	defer s.logDuration("StoreEnclaveKey", measure.NewStopwatch())
-	if enclaveKey == nil {
-		return errors.New("enclaveKey cannot be nil")
+	if len(enclaveKey) == 0 {
+		return errors.New("enclaveKey cannot be empty")
 	}
-	keyBytes := gethcrypto.FromECDSA(enclaveKey.PrivateKey())
 
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.WriteConfig(ctx, dbTx, enclaveKeyCfg, keyBytes)
+	_, err = enclavedb.WriteConfig(ctx, dbTx, enclaveKeyCfg, enclaveKey)
 	if err != nil {
 		return err
 	}
 	return dbTx.Commit()
 }
 
-func (s *storageImpl) GetEnclaveKey(ctx context.Context) (*crypto.EnclaveKey, error) {
+func (s *storageImpl) GetEnclaveKey(ctx context.Context) ([]byte, error) {
 	defer s.logDuration("GetEnclaveKey", measure.NewStopwatch())
-	keyBytes, err := enclavedb.FetchConfig(ctx, s.db.GetSQLDB(), enclaveKeyCfg)
-	if err != nil {
-		return nil, err
-	}
-	ecdsaKey, err := gethcrypto.ToECDSA(keyBytes)
-	if err != nil {
-		return nil, fmt.Errorf("unable to construct ECDSA private key from enclave key bytes - %w", err)
-	}
-	return crypto.NewEnclaveKey(ecdsaKey), nil
+	return enclavedb.FetchConfig(ctx, s.db.GetSQLDB(), enclaveKeyCfg)
 }
 
 func (s *storageImpl) StoreRollup(ctx context.Context, rollup *common.ExtRollup, internalHeader *common.CalldataRollupHeader) error {

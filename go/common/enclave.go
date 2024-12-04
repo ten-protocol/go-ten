@@ -57,6 +57,9 @@ type EnclaveInit interface {
 
 	// EnclaveID - returns the enclave's ID
 	EnclaveID(context.Context) (EnclaveID, SystemError)
+
+	// RPCEncryptionKey - returns the key used
+	RPCEncryptionKey(context.Context) ([]byte, SystemError)
 }
 
 // EnclaveAdmin provides administrative functions for managing an enclave.

@@ -36,14 +36,7 @@ func BytesToPrivateKey(keyBytes []byte) (*ecies.PrivateKey, error) {
 	return eciesPrivateKey, nil
 }
 
-func CreateEncClient(
-	conn *gethrpc.Client,
-	addressBytes []byte,
-	privateKeyBytes []byte,
-	signature []byte,
-	signatureType viewingkey.SignatureType,
-	logger gethlog.Logger,
-) (*rpc.EncRPCClient, error) {
+func CreateEncClient(conn *gethrpc.Client, encKey []byte, addressBytes []byte, privateKeyBytes []byte, signature []byte, signatureType viewingkey.SignatureType, logger gethlog.Logger) (*rpc.EncRPCClient, error) {
 	privateKey, err := BytesToPrivateKey(privateKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert bytes to ecies private key: %w", err)
@@ -58,7 +51,7 @@ func CreateEncClient(
 		SignatureWithAccountKey: signature,
 		SignatureType:           signatureType,
 	}
-	encClient, err := rpc.NewEncNetworkClientFromConn(conn, vk, logger)
+	encClient, err := rpc.NewEncNetworkClientFromConn(conn, encKey, vk, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create EncRPCClient: %w", err)
 	}

@@ -214,6 +214,16 @@ func (cs *CacheService) ReadEnclavePubKey(ctx context.Context, enclaveId common.
 	return getCachedValue(ctx, cs.attestedEnclavesCache, cs.logger, enclaveId, enclaveCost, onCacheMiss, true)
 }
 
+func (cs *CacheService) UpdateEnclaveNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) {
+	enclave, err := cs.ReadEnclavePubKey(ctx, enclaveId, nil)
+	if err != nil {
+		cs.logger.Debug("No cache entry found to update", log.ErrKey, err)
+		return
+	}
+	enclave.Type = nodeType
+	cacheValue(ctx, cs.attestedEnclavesCache, cs.logger, enclaveId, enclave, enclaveCost)
+}
+
 // getCachedValue - returns the cached value for the provided key. If the key is not found, then invoke the 'onCacheMiss' function
 // which returns the value, and cache it
 func getCachedValue[V any](ctx context.Context, cache *cache.Cache[*V], logger gethlog.Logger, key any, cost int64, onCacheMiss func(any) (*V, error), cacheIfMissing bool) (*V, error) {

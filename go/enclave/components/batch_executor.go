@@ -9,6 +9,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
+
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/holiman/uint256"
@@ -51,7 +53,7 @@ type batchExecutor struct {
 	gasOracle            gas.Oracle
 	chainConfig          *params.ChainConfig
 	systemContracts      system.SystemContractCallbacks
-
+	entropyService       *crypto.EvmEntropyService
 	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
 	stateDBMutex sync.Mutex
 
@@ -69,6 +71,7 @@ func NewBatchExecutor(
 	chainConfig *params.ChainConfig,
 	batchGasLimit uint64,
 	systemContracts system.SystemContractCallbacks,
+	entropyService *crypto.EvmEntropyService,
 	logger gethlog.Logger,
 ) BatchExecutor {
 	return &batchExecutor{
@@ -84,6 +87,7 @@ func NewBatchExecutor(
 		stateDBMutex:         sync.Mutex{},
 		batchGasLimit:        batchGasLimit,
 		systemContracts:      systemContracts,
+		entropyService:       entropyService,
 	}
 }
 
@@ -588,6 +592,7 @@ func (executor *batchExecutor) processTransactions(
 	var excludedTransactions []*common.L2Tx
 	txResultsMap, err := evm.ExecuteTransactions(
 		ctx,
+		executor.entropyService,
 		txs,
 		stateDB,
 		batch.Header,

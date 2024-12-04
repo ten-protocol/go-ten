@@ -80,6 +80,14 @@ const (
 	keyExchangeURLFlagName    = "keyExchangeURL"
 	keyExchangeURLFlagDefault = ""
 	keyExchangeURLFlagUsage   = "URL to exchange the key with another enclave. Default: empty"
+
+	enableTLSFlagName    = "enableTLS"
+	enableTLSFlagDefault = false
+	enableTLSFlagUsage   = "Flag to enable TLS/HTTPS"
+
+	tlsDomainFlagName    = "tlsDomain"
+	tlsDomainFlagDefault = ""
+	tlsDomainFlagUsage   = "Domain name for TLS certificate"
 )
 
 func parseCLIArgs() wecommon.Config {
@@ -101,6 +109,8 @@ func parseCLIArgs() wecommon.Config {
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
 	insideEnclaveFlag := flag.Bool(insideEnclaveFlagName, insideEnclaveFlagDefault, insideEnclaveFlagUsage)
 	keyExchangeURL := flag.String(keyExchangeURLFlagName, keyExchangeURLFlagDefault, keyExchangeURLFlagUsage)
+	enableTLSFlag := flag.Bool(enableTLSFlagName, enableTLSFlagDefault, enableTLSFlagUsage)
+	tlsDomainFlag := flag.String(tlsDomainFlagName, tlsDomainFlagDefault, tlsDomainFlagUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -121,5 +131,7 @@ func parseCLIArgs() wecommon.Config {
 		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
 		InsideEnclave:                  *insideEnclaveFlag,
 		KeyExchangeURL:                 *keyExchangeURL,
+		EnableTLS:                      *enableTLSFlag,
+		TLSDomain:                      *tlsDomainFlag,
 	}
 }

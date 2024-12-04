@@ -1,6 +1,8 @@
 package walletextension
 
 import (
+	"crypto/tls"
+	"net/http"
 	"os"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+	"golang.org/x/crypto/acme/autocert"
 )
 
 type Container struct {
@@ -67,6 +70,40 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		HTTPPath:   wecommon.APIVersion1 + "/",
 		Host:       config.WalletExtensionHost,
 	}
+
+	// check if TLS is enabled
+	if config.EnableTLS {
+		// Create autocert manager for automatic certificate management
+		// Generating a certificate consists of the following steps:
+		// generating a new private key
+		// domain ownership verification (HTTP-01 challenge since certManager.HTTPHandler(nil) is set)
+		// Certificate Signing Request (CRS) is generated
+		// CRS is sent to CA (Let's Encrypt) via ACME (automated certificate management environment) client
+		// CA verifies CRS and issues a certificate
+		// we store store certificate and private key (in memory and also in on a mounted volume attached to docker container - /data/certs/)
+
+		certManager := &autocert.Manager{
+			Prompt:     autocert.AcceptTOS,
+			HostPolicy: autocert.HostWhitelist(config.TLSDomain),
+			Cache:      autocert.DirCache("/data/certs"),
+		}
+
+		// Create HTTP-01 challenge handler
+		httpServer := &http.Server{
+			Addr:    ":http", // Port 80
+			Handler: certManager.HTTPHandler(nil),
+		}
+		go httpServer.ListenAndServe() // Start HTTP server for ACME challenges
+
+		tlsConfig := &tls.Config{
+			GetCertificate: certManager.GetCertificate,
+			MinVersion:     tls.VersionTLS12,
+		}
+
+		// Update RPC server config to use TLS
+		cfg.TLSConfig = tlsConfig
+	}
+
 	rpcServer := node.NewServer(cfg, logger)
 
 	rpcServer.RegisterRoutes(httpapi.NewHTTPRoutes(walletExt))

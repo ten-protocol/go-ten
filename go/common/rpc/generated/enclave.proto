@@ -10,6 +10,7 @@ service EnclaveProto {
   rpc GenerateSecret(GenerateSecretRequest) returns (GenerateSecretResponse) {}
   rpc InitEnclave(InitEnclaveRequest) returns (InitEnclaveResponse) {}
   rpc EnclaveID(EnclaveIDRequest) returns (EnclaveIDResponse) {}
+  rpc RPCEncryptionKey(RPCEncryptionKeyRequest) returns (RPCEncryptionKeyResponse) {}
   rpc SubmitL1Block(SubmitBlockRequest) returns (SubmitBlockResponse) {}
   rpc EncryptedRPC(EncCallRequest) returns (EncCallResponse){}
   rpc SubmitBatch(SubmitBatchRequest) returns (SubmitBatchResponse) {}
@@ -169,6 +170,12 @@ message InitEnclaveResponse {
 message EnclaveIDRequest {}
 message EnclaveIDResponse {
   bytes enclaveID = 1;
+  SystemError systemError = 2;
+}
+
+message RPCEncryptionKeyRequest {}
+message RPCEncryptionKeyResponse {
+  bytes rpcPubKey = 1;
   SystemError systemError = 2;
 }
 

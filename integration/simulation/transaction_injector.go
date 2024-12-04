@@ -3,7 +3,6 @@ package simulation
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math/big"
 	"math/rand"
 	"sync/atomic"
@@ -12,8 +11,6 @@ import (
 	"github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -37,10 +34,6 @@ import (
 
 const (
 	nonceTimeoutMillis = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
-
-	// EnclavePublicKeyHex is the public key of the enclave.
-	// todo (@stefan) - retrieve this key from the management contract instead
-	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
@@ -67,8 +60,6 @@ type TransactionInjector struct {
 	interruptRun     *int32
 	fullyStoppedChan chan bool
 
-	enclavePublicKey *ecies.PublicKey
-
 	// The number of transactions of each type to issue, or 0 for unlimited transactions
 	txsToIssue int
 
@@ -94,13 +85,6 @@ func NewTransactionInjector(
 ) *TransactionInjector {
 	interrupt := int32(0)
 
-	// We retrieve the enclave public key to encrypt transactions.
-	enclavePublicKey, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(EnclavePublicKeyHex))
-	if err != nil {
-		panic(fmt.Errorf("could not decompress enclave public key from hex. Cause: %w", err))
-	}
-	enclavePublicKeyEcies := ecies.ImportECDSAPublic(enclavePublicKey)
-
 	return &TransactionInjector{
 		avgBlockDuration: avgBlockDuration,
 		stats:            stats,
@@ -112,7 +96,6 @@ func NewTransactionInjector(
 		erc20ContractLib: erc20ContractLib,
 		wallets:          wallets,
 		TxTracker:        newCounter(),
-		enclavePublicKey: enclavePublicKeyEcies,
 		txsToIssue:       txsToIssue,
 		params:           params,
 		ctx:              context.Background(), // for now we create a new context here, should allow it to be passed in

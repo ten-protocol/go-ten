@@ -24,6 +24,7 @@ const (
 	EnclaveProto_GenerateSecret_FullMethodName        = "/generated.EnclaveProto/GenerateSecret"
 	EnclaveProto_InitEnclave_FullMethodName           = "/generated.EnclaveProto/InitEnclave"
 	EnclaveProto_EnclaveID_FullMethodName             = "/generated.EnclaveProto/EnclaveID"
+	EnclaveProto_RPCEncryptionKey_FullMethodName      = "/generated.EnclaveProto/RPCEncryptionKey"
 	EnclaveProto_SubmitL1Block_FullMethodName         = "/generated.EnclaveProto/SubmitL1Block"
 	EnclaveProto_EncryptedRPC_FullMethodName          = "/generated.EnclaveProto/EncryptedRPC"
 	EnclaveProto_SubmitBatch_FullMethodName           = "/generated.EnclaveProto/SubmitBatch"
@@ -55,6 +56,7 @@ type EnclaveProtoClient interface {
 	GenerateSecret(ctx context.Context, in *GenerateSecretRequest, opts ...grpc.CallOption) (*GenerateSecretResponse, error)
 	InitEnclave(ctx context.Context, in *InitEnclaveRequest, opts ...grpc.CallOption) (*InitEnclaveResponse, error)
 	EnclaveID(ctx context.Context, in *EnclaveIDRequest, opts ...grpc.CallOption) (*EnclaveIDResponse, error)
+	RPCEncryptionKey(ctx context.Context, in *RPCEncryptionKeyRequest, opts ...grpc.CallOption) (*RPCEncryptionKeyResponse, error)
 	SubmitL1Block(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
 	EncryptedRPC(ctx context.Context, in *EncCallRequest, opts ...grpc.CallOption) (*EncCallResponse, error)
 	SubmitBatch(ctx context.Context, in *SubmitBatchRequest, opts ...grpc.CallOption) (*SubmitBatchResponse, error)
@@ -124,6 +126,15 @@ func (c *enclaveProtoClient) InitEnclave(ctx context.Context, in *InitEnclaveReq
 func (c *enclaveProtoClient) EnclaveID(ctx context.Context, in *EnclaveIDRequest, opts ...grpc.CallOption) (*EnclaveIDResponse, error) {
 	out := new(EnclaveIDResponse)
 	err := c.cc.Invoke(ctx, EnclaveProto_EnclaveID_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *enclaveProtoClient) RPCEncryptionKey(ctx context.Context, in *RPCEncryptionKeyRequest, opts ...grpc.CallOption) (*RPCEncryptionKeyResponse, error) {
+	out := new(RPCEncryptionKeyResponse)
+	err := c.cc.Invoke(ctx, EnclaveProto_RPCEncryptionKey_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -342,6 +353,7 @@ type EnclaveProtoServer interface {
 	GenerateSecret(context.Context, *GenerateSecretRequest) (*GenerateSecretResponse, error)
 	InitEnclave(context.Context, *InitEnclaveRequest) (*InitEnclaveResponse, error)
 	EnclaveID(context.Context, *EnclaveIDRequest) (*EnclaveIDResponse, error)
+	RPCEncryptionKey(context.Context, *RPCEncryptionKeyRequest) (*RPCEncryptionKeyResponse, error)
 	SubmitL1Block(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error)
 	EncryptedRPC(context.Context, *EncCallRequest) (*EncCallResponse, error)
 	SubmitBatch(context.Context, *SubmitBatchRequest) (*SubmitBatchResponse, error)
@@ -383,6 +395,9 @@ func (UnimplementedEnclaveProtoServer) InitEnclave(context.Context, *InitEnclave
 }
 func (UnimplementedEnclaveProtoServer) EnclaveID(context.Context, *EnclaveIDRequest) (*EnclaveIDResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EnclaveID not implemented")
+}
+func (UnimplementedEnclaveProtoServer) RPCEncryptionKey(context.Context, *RPCEncryptionKeyRequest) (*RPCEncryptionKeyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RPCEncryptionKey not implemented")
 }
 func (UnimplementedEnclaveProtoServer) SubmitL1Block(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SubmitL1Block not implemented")
@@ -543,6 +558,24 @@ func _EnclaveProto_EnclaveID_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(EnclaveProtoServer).EnclaveID(ctx, req.(*EnclaveIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EnclaveProto_RPCEncryptionKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RPCEncryptionKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EnclaveProtoServer).RPCEncryptionKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EnclaveProto_RPCEncryptionKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EnclaveProtoServer).RPCEncryptionKey(ctx, req.(*RPCEncryptionKeyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -936,6 +969,10 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EnclaveID",
 			Handler:    _EnclaveProto_EnclaveID_Handler,
+		},
+		{
+			MethodName: "RPCEncryptionKey",
+			Handler:    _EnclaveProto_RPCEncryptionKey_Handler,
 		},
 		{
 			MethodName: "SubmitL1Block",

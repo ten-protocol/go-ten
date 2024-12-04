@@ -9,7 +9,6 @@ import (
 	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
@@ -25,38 +24,24 @@ import (
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-const (
-	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
-	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
-)
-
 // todo - move this from the P2P folder
 // An in-memory implementation of `rpc.Client` that speaks directly to the node.
 type inMemTenClient struct {
-	tenAPI           *clientapi.TenAPI
-	ethAPI           *clientapi.ChainAPI
-	filterAPI        *clientapi.FilterAPI
-	tenScanAPI       *clientapi.ScanAPI
-	testAPI          *clientapi.TestAPI
-	enclavePublicKey *ecies.PublicKey
+	tenAPI     *clientapi.TenAPI
+	ethAPI     *clientapi.ChainAPI
+	filterAPI  *clientapi.FilterAPI
+	tenScanAPI *clientapi.ScanAPI
+	testAPI    *clientapi.TestAPI
 }
 
 func NewInMemTenClient(hostContainer *container.HostContainer) rpc.Client {
 	logger := testlog.Logger().New(log.CmpKey, log.RPCClientCmp)
-	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
-	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
-	if err != nil {
-		panic(err)
-	}
-	enclPubKey := ecies.ImportECDSAPublic(enclPubECDSA)
-
 	return &inMemTenClient{
-		tenAPI:           clientapi.NewTenAPI(hostContainer.Host(), logger),
-		ethAPI:           clientapi.NewChainAPI(hostContainer.Host(), logger),
-		filterAPI:        clientapi.NewFilterAPI(hostContainer.Host(), logger),
-		tenScanAPI:       clientapi.NewScanAPI(hostContainer.Host(), logger),
-		testAPI:          clientapi.NewTestAPI(hostContainer),
-		enclavePublicKey: enclPubKey,
+		tenAPI:     clientapi.NewTenAPI(hostContainer.Host(), logger),
+		ethAPI:     clientapi.NewChainAPI(hostContainer.Host(), logger),
+		filterAPI:  clientapi.NewFilterAPI(hostContainer.Host(), logger),
+		tenScanAPI: clientapi.NewScanAPI(hostContainer.Host(), logger),
+		testAPI:    clientapi.NewTestAPI(hostContainer),
 	}
 }
 
@@ -117,6 +102,11 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 
 	case rpc.Config:
 		return c.tenConfig(result)
+
+	case rpc.RPCKey:
+		key, err := c.tenAPI.RpcKey()
+		*result.(*[]byte) = key
+		return err
 
 	case rpc.GetCode:
 		return c.getCode(result, args)

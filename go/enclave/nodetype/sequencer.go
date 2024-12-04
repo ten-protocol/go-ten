@@ -49,10 +49,9 @@ type sequencer struct {
 	logger gethlog.Logger
 
 	chainConfig            *params.ChainConfig
-	enclaveKeyService      *components.EnclaveKeyService
+	enclaveKeyService      *crypto.EnclaveAttestedKeyService
 	mempool                *txpool.TxPool
 	storage                storage.Storage
-	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
 }
@@ -66,10 +65,9 @@ func NewSequencer(
 	gethEncodingService gethencoding.EncodingService,
 	logger gethlog.Logger,
 	chainConfig *params.ChainConfig,
-	enclaveKeyService *components.EnclaveKeyService,
+	enclaveKeyService *crypto.EnclaveAttestedKeyService,
 	mempool *txpool.TxPool,
 	storage storage.Storage,
-	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
 ) ActiveSequencer {
@@ -85,7 +83,6 @@ func NewSequencer(
 		enclaveKeyService:      enclaveKeyService,
 		mempool:                mempool,
 		storage:                storage,
-		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		settings:               settings,
 	}

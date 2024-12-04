@@ -132,6 +132,15 @@ func (s *RPCServer) EnclaveID(ctx context.Context, _ *generated.EnclaveIDRequest
 	return &generated.EnclaveIDResponse{EnclaveID: id.Bytes()}, nil
 }
 
+func (s *RPCServer) RPCEncryptionKey(ctx context.Context, _ *generated.RPCEncryptionKeyRequest) (*generated.RPCEncryptionKeyResponse, error) {
+	key, sysError := s.enclave.RPCEncryptionKey(ctx)
+	if sysError != nil {
+		s.logger.Error("Error getting enclave ID", log.ErrKey, sysError)
+		return &generated.RPCEncryptionKeyResponse{SystemError: toRPCError(sysError)}, nil
+	}
+	return &generated.RPCEncryptionKeyResponse{RpcPubKey: key}, nil
+}
+
 func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
 	bl, err := s.decodeBlock(request.EncodedBlock)
 	if err != nil {

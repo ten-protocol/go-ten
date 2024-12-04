@@ -16,18 +16,20 @@ import (
 
 type SharedSecretProcessor struct {
 	mgmtContractLib     mgmtcontractlib.MgmtContractLib
+	sharedSecretService *crypto.SharedSecretService
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
 	enclaveID           gethcommon.Address
 	storage             storage.Storage
 	logger              gethlog.Logger
 }
 
-func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, logger gethlog.Logger) *SharedSecretProcessor {
+func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger) *SharedSecretProcessor {
 	return &SharedSecretProcessor{
 		mgmtContractLib:     mgmtcontractlib,
 		attestationProvider: attestationProvider,
 		enclaveID:           enclaveID,
 		storage:             storage,
+		sharedSecretService: sharedSecretService,
 		logger:              logger,
 	}
 }
@@ -108,7 +110,7 @@ func (ssp *SharedSecretProcessor) processSecretRequest(ctx context.Context, req 
 }
 
 // ShareSecret verifies the request and if it trusts the report and the public key it will return the secret encrypted with that public key.
-func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(ctx context.Context, att *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
+func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(_ context.Context, att *common.AttestationReport) (common.EncryptedSharedEnclaveSecret, error) {
 	// First we verify the attestation report has come from a valid obscuro enclave running in a verified TEE.
 	data, err := ssp.attestationProvider.VerifyReport(att)
 	if err != nil {
@@ -120,11 +122,7 @@ func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(ctx context.
 	}
 	ssp.logger.Info(fmt.Sprintf("Successfully verified attestation and identity. Owner: %s", att.EnclaveID))
 
-	secret, err := ssp.storage.FetchSecret(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve secret; this should not happen. Cause: %w", err)
-	}
-	return crypto.EncryptSecret(att.PubKey, *secret, ssp.logger)
+	return ssp.sharedSecretService.EncryptSecretWithKey(att.PubKey)
 }
 
 // storeAttestation stores the attested keys of other nodes so we can decrypt their rollups

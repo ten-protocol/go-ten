@@ -58,3 +58,25 @@ func TestStopControl_Done(t *testing.T) {
 		t.Error("Expected Done channel to be closed immediately after Stop")
 	}
 }
+
+func TestStopControl_OnStop(t *testing.T) {
+	sc := New()
+
+	called := false
+	sc.OnStop(func() {
+		called = true
+	})
+
+	if called {
+		t.Error("Expected callback to not be called before Stop")
+	}
+
+	sc.Stop()
+
+	// wait 50ms to ensure the callback is called
+	time.Sleep(50 * time.Millisecond)
+
+	if !called {
+		t.Error("Expected callback to be called after Stop")
+	}
+}

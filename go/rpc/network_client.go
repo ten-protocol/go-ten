@@ -1,6 +1,9 @@
 package rpc
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -14,15 +17,19 @@ func NewEncNetworkClient(rpcAddress string, viewingKey *viewingkey.ViewingKey, l
 	if err != nil {
 		return nil, err
 	}
-	encClient, err := NewEncRPCClient(rpcClient, viewingKey, logger)
+	enclavePublicKeyBytes, err := ReadEnclaveKey(rpcClient)
+	if err != nil {
+		return nil, fmt.Errorf("error reading enclave public key: %v", err)
+	}
+	encClient, err := NewEncRPCClient(rpcClient, viewingKey, enclavePublicKeyBytes, logger)
 	if err != nil {
 		return nil, err
 	}
 	return encClient, nil
 }
 
-func NewEncNetworkClientFromConn(connection *gethrpc.Client, viewingKey *viewingkey.ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
-	encClient, err := NewEncRPCClient(connection, viewingKey, logger)
+func NewEncNetworkClientFromConn(connection *gethrpc.Client, encKey []byte, viewingKey *viewingkey.ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
+	encClient, err := NewEncRPCClient(connection, viewingKey, encKey, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -32,4 +39,13 @@ func NewEncNetworkClientFromConn(connection *gethrpc.Client, viewingKey *viewing
 // NewNetworkClient returns a client that can make RPC calls to an Obscuro node
 func NewNetworkClient(address string) (Client, error) {
 	return rpc.Dial(address)
+}
+
+func ReadEnclaveKey(connection Client) ([]byte, error) {
+	var enclavePublicKeyBytes []byte
+	err := connection.CallContext(context.Background(), &enclavePublicKeyBytes, RPCKey)
+	if err != nil {
+		return nil, err
+	}
+	return enclavePublicKeyBytes, nil
 }

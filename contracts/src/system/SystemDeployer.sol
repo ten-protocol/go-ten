@@ -5,13 +5,15 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import {MessageBus} from "../messaging/MessageBus.sol";
 import "./TransactionPostProcessor.sol";
 import {PublicCallbacks} from "./PublicCallbacks.sol";
+import {Fees} from "./Fees.sol";
 
 contract SystemDeployer {
     event SystemContractDeployed(string name, address contractAddress);
 
     constructor(address eoaAdmin) {
        deployAnalyzer(eoaAdmin);
-       deployMessageBus(eoaAdmin);
+       address feesProxy = deployFees(eoaAdmin, 0);
+       deployMessageBus(eoaAdmin, feesProxy);
        deployPublicCallbacks(eoaAdmin);
     }
 
@@ -23,9 +25,9 @@ contract SystemDeployer {
         emit SystemContractDeployed("TransactionsPostProcessor", transactionsPostProcessorProxy);
     }
 
-    function deployMessageBus(address eoaAdmin) internal {
+    function deployMessageBus(address eoaAdmin, address feesAddress) internal {
         MessageBus messageBus = new MessageBus();
-        bytes memory callData = abi.encodeWithSelector(messageBus.initialize.selector, eoaAdmin);
+        bytes memory callData = abi.encodeWithSelector(messageBus.initialize.selector, eoaAdmin, feesAddress);
         address messageBusProxy = deployProxy(address(messageBus), eoaAdmin, callData);
 
         emit SystemContractDeployed("MessageBus", messageBusProxy);
@@ -37,6 +39,15 @@ contract SystemDeployer {
         address publicCallbacksProxy = deployProxy(address(publicCallbacks), eoaAdmin, callData);
 
         emit SystemContractDeployed("PublicCallbacks", publicCallbacksProxy);
+    }
+
+    function deployFees(address eoaAdmin, uint256 initialMessageFeePerByte) internal returns (address) {
+        Fees fees = new Fees();
+        bytes memory callData = abi.encodeWithSelector(fees.initialize.selector, initialMessageFeePerByte, eoaAdmin);
+        address feesProxy = deployProxy(address(fees), eoaAdmin, callData);
+
+        emit SystemContractDeployed("Fees", feesProxy);
+        return feesProxy;
     }
 
     function deployProxy(address _logic, address _admin, bytes memory _data) internal returns (address proxyAddress) {

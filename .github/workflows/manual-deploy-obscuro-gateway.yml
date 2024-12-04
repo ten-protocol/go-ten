@@ -91,6 +91,7 @@ jobs:
             "GATEWAY_RATE_LIMIT_WINDOW"
             "GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER"
             "GATEWAY_KEY_EXCHANGE_URL"
+            "GATEWAY_TLS_DOMAIN"
           )
 
           for VAR_NAME in "${VAR_NAMES[@]}"; do
@@ -121,6 +122,7 @@ jobs:
           echo "GATEWAY_RATE_LIMIT_WINDOW: $GATEWAY_RATE_LIMIT_WINDOW"
           echo "GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER: $GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER"
           echo "GATEWAY_KEY_EXCHANGE_URL: $GATEWAY_KEY_EXCHANGE_URL"
+          echo "GATEWAY_TLS_DOMAIN: $GATEWAY_TLS_DOMAIN"
 
       - name: "Print GitHub variables"
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
@@ -200,7 +202,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{ env.VM_NAME }}"  --port 80,81
+            az vm open-port -g Testnet -n "${{ env.VM_NAME }}"  --port 80,81,443,444
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: "Allow time for VM initialization"
@@ -253,7 +255,7 @@ jobs:
               filename: /tmp/positions.yaml
 
             clients:
-              - url: "${{ vars.METRICS_URI }}/loki/api/v1/push"
+              - url: "${{ vars.LOKI_URI }}"
                 batchwait: 3s
                 batchsize: 1048576
                 tls_config:
@@ -294,7 +296,7 @@ jobs:
               scrape_interval: 15s
               evaluation_interval: 15s
             remote_write:
-              - url: "${{ vars.METRICS_URI }}/prometheus/metrics/api/v1/write"
+              - url: "${{ vars.PROMETHEUS_URI }}"
                 tls_config:
                   insecure_skip_verify: true
                 basic_auth:
@@ -357,20 +359,22 @@ jobs:
             docker volume create "${{ env.VM_NAME }}-data"
             
             # Start Ten Gateway Container
-            docker run -d -p 80:80 -p 81:81 --name "${{ env.VM_NAME }}" \
+            docker run -d -p 80:80 -p 81:81 -p 443:443 -p 444:444 --name "${{ env.VM_NAME }}" \
             --device /dev/sgx_enclave --device /dev/sgx_provision \
             -v "${{ env.VM_NAME }}-data:/data" \
             -e OBSCURO_GATEWAY_VERSION="${{ github.run_number }}-${{ github.sha }}" \
             -e OE_SIMULATION=0 \
             "${{ env.DOCKER_BUILD_TAG_GATEWAY }}" \
             ego run /home/ten/go-ten/tools/walletextension/main/main \
-            -host=0.0.0.0 -port=80 -portWS=81 -nodeHost="${{ env.L2_RPC_URL_VALIDATOR }}" -verbose=true \
+            -host=0.0.0.0 -port=443 -portWS=444 -nodeHost="${{ env.L2_RPC_URL_VALIDATOR }}" -verbose=true \
             -logPath=sys_out -dbType=cosmosDB -dbConnectionURL="${{ secrets.COSMOS_DB_CONNECTION_STRING }}" \
             -rateLimitUserComputeTime="${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }}" \
             -rateLimitWindow="${{ env.GATEWAY_RATE_LIMIT_WINDOW }}" \
-            -maxConcurrentRequestsPerUser="${{ env.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }}"
+            -maxConcurrentRequestsPerUser="${{ env.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }}" \
             -keyExchangeURL="${{ env.GATEWAY_KEY_EXCHANGE_URL }}" \
             -insideEnclave=true \
+            -enableTLS=true \
+            -tlsDomain="${{ env.GATEWAY_TLS_DOMAIN }}"
             
 
             # After starting the container, verify the volume mount
@@ -388,3 +392,4 @@ jobs:
             "
             '
             
+

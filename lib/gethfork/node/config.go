@@ -17,6 +17,7 @@
 package node
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net"
 	"os"
@@ -171,6 +172,9 @@ type Config struct {
 
 	// TEN
 	ExposedURLParamNames []string
+
+	// TLS
+	TLSConfig *tls.Config
 }
 
 // IPCEndpoint resolves an IPC endpoint based on a configured value, taking into
