@@ -9,10 +9,12 @@ contract PublicCallbacksTest {
     constructor(address _callbacks) payable {
         callbacks = IPublicCallbacks(_callbacks);
         lastCallSuccess = false;
+        allCallbacksRan = false;
         testRegisterCallback();
     }
 
     bool lastCallSuccess = false;
+    bool allCallbacksRan = false;
 
     // This function will be called back by the system
     function handleCallback(uint256 expectedGas) external {
@@ -29,21 +31,27 @@ contract PublicCallbacksTest {
         require(false, "This is a test failure");
     }
 
+    function handleAllCallbacksRan() external {
+        allCallbacksRan = true;
+    }
+
     // Test function that registers a callback
     function testRegisterCallback() internal {
         // Encode the callback data - calling handleCallback()
         // Calculate expected gas based on value sent
-        uint256 expectedGas = (msg.value/2) / block.basefee;
+        uint256 expectedGas = (msg.value/3) / block.basefee;
         bytes memory callbackData = abi.encodeWithSelector(this.handleCallback.selector, expectedGas);
         
         bytes memory callbackDataFail = abi.encodeWithSelector(this.handleCallbackFail.selector);
+        bytes memory callbackDataAllCallbacksRan = abi.encodeWithSelector(this.handleAllCallbacksRan.selector);
 
         // Register the callback, forwarding any value sent to this call
-        callbacks.register{value: msg.value/2}(callbackData);
-        callbacks.register{value: msg.value/2}(callbackDataFail);
+        callbacks.register{value: msg.value/3}(callbackData);
+        callbacks.register{value: msg.value/3}(callbackDataFail);
+        callbacks.register{value: msg.value/3}(callbackDataAllCallbacksRan);
     }
 
     function isLastCallSuccess() external view returns (bool) {
-        return lastCallSuccess;
+        return allCallbacksRan && lastCallSuccess;
     }
 }
