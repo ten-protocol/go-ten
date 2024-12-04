@@ -78,8 +78,6 @@ contract ObscuroBridge is
     // verify ETH deposit.
     function sendNative(address receiver) external payable override {
         require(msg.value > 0, "Empty transfer.");
-        bytes memory data = abi.encode(ValueTransfer(msg.value, receiver));
-        queueMessage(remoteBridgeAddress, data, uint32(Topics.VALUE), 0, 0);
         _messageBus().sendValueToL2{value: msg.value}(receiver, msg.value);
     }
 
