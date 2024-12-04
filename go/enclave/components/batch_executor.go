@@ -190,7 +190,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		messages, transfers = executor.crossChainProcessors.Local.RetrieveInboundMessages(ctx, parentBlock, block, stateDB)
 	}
 
-	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ctx, messages, stateDB)
+	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ctx, messages, transfers, stateDB)
 	executor.crossChainProcessors.Local.ExecuteValueTransfers(ctx, transfers, stateDB)
 
 	transactionsToProcess, freeTransactions := executor.filterTransactionsWithSufficientFunds(ctx, stateDB, context)

@@ -51,7 +51,7 @@ type Manager interface {
 
 	ExtractOutboundTransfers(ctx context.Context, receipts common.L2Receipts) (common.ValueTransferEvents, error)
 
-	CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions
+	CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, rollupState *state.StateDB) common.L2Transactions
 
 	ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB)
 

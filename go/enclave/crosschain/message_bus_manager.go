@@ -210,7 +210,7 @@ func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers
 }
 
 // CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.
-func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions {
+func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, rollupState *state.StateDB) common.L2Transactions {
 	if len(messages) == 0 {
 		return make(common.L2Transactions, 0)
 	}
@@ -249,6 +249,24 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 			panic(err)
 		}
 		signedTransactions = append(signedTransactions, stx)
+	}
+
+	startingNonce += uint64(len(messages))
+
+	for idx, transfer := range transfers {
+		data, err := MessageBusABI.Pack("notifyDeposit", transfer.Receiver, transfer.Amount)
+		if err != nil {
+			m.logger.Crit("Failed packing notifyDeposit message!")
+			return signedTransactions
+		}
+
+		tx := &types.LegacyTx{
+			Nonce: startingNonce + uint64(idx),
+			Value: transfer.Amount,
+			Data:  data,
+			To:    m.messageBusAddress,
+		}
+		signedTransactions = append(signedTransactions, types.NewTx(tx))
 	}
 
 	return signedTransactions
