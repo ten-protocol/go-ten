@@ -91,37 +91,182 @@ func NewBatchExecutor(
 	}
 }
 
+func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) {
+	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
+
+	ec.ctx = ctx
+	if err := executor.verifyContext(ec); err != nil {
+		return nil, err
+	}
+
+	if err := executor.prepareState(ec); err != nil {
+		return nil, err
+	}
+
+	// the batch with seqNo==2 is by convention the batch where we deploy the system contracts
+	if ec.SequencerNo.Uint64() == common.L2SysContractGenesisSeqNo {
+		if err := executor.handleSysContractGenesis(ec); err != nil {
+			return nil, err
+		}
+		// the sys genesis batch will not contain anything else
+		return executor.execResult(ec)
+	}
+
+	// for every batch, the first thing, we execute the xChain messages
+	if err := executor.readXChainMessages(ec); err != nil {
+		return nil, err
+	}
+	if err := executor.execXChainMessages(ec); err != nil {
+		return nil, err
+	}
+
+	// we execute the transactions included in the batch
+	if err := executor.execBatchTransactions(ec); err != nil {
+		return nil, err
+	}
+
+	// execute the callbacks
+	if err := executor.execRegisteredCallbacks(ec); err != nil {
+		return nil, err
+	}
+
+	// execute the system contract registered at the end of the block
+	if err := executor.execOnBlockEndTx(ec); err != nil {
+		return nil, err
+	}
+
+	// When the `failForEmptyBatch` flag is true, we skip if there is no transaction or xChain tx
+	if failForEmptyBatch && len(ec.batchTxResults) == 0 && len(ec.xChainResults) == 0 {
+		if ec.beforeProcessingSnap > 0 {
+			//// revert any unexpected mutation to the statedb
+			ec.stateDB.RevertToSnapshot(ec.beforeProcessingSnap)
+		}
+		return nil, ErrNoTransactionsToProcess
+	}
+
+	return executor.execResult(ec)
+}
+
+func (executor *batchExecutor) verifyContext(ec *BatchExecutionContext) error {
+	// sanity check that the l1 block exists. We don't have to execute batches of forks.
+	block, err := executor.storage.FetchBlock(ec.ctx, ec.BlockPtr)
+	if errors.Is(err, errutil.ErrNotFound) {
+		return errutil.ErrBlockForBatchNotFound
+	} else if err != nil {
+		return fmt.Errorf("failed to retrieve block %s for batch. Cause: %w", ec.BlockPtr, err)
+	}
+
+	ec.l1block = block
+
+	// These variables will be used to create the new batch
+	parentBatch, err := executor.storage.FetchBatchHeader(ec.ctx, ec.ParentPtr)
+	if errors.Is(err, errutil.ErrNotFound) {
+		executor.logger.Error(fmt.Sprintf("can't find parent batch %s. Seq %d", ec.ParentPtr, ec.SequencerNo))
+		return errutil.ErrAncestorBatchNotFound
+	}
+	if err != nil {
+		return fmt.Errorf("failed to retrieve parent batch %s. Cause: %w", ec.ParentPtr, err)
+	}
+	ec.parentBatch = parentBatch
+
+	parentBlock := block
+	if parentBatch.L1Proof != block.Hash() {
+		var err error
+		parentBlock, err = executor.storage.FetchBlock(ec.ctx, parentBatch.L1Proof)
+		if err != nil {
+			executor.logger.Error(fmt.Sprintf("Could not retrieve a proof for batch %s", parentBatch.Hash()), log.ErrKey, err)
+			return err
+		}
+	}
+	ec.parentL1Block = parentBlock
+
+	return nil
+}
+
+func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
+	var err error
+	// Create a new batch based on the provided context
+	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator)
+	ec.stateDB, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
+	if err != nil {
+		return fmt.Errorf("could not create stateDB. Cause: %w", err)
+	}
+	ec.beforeProcessingSnap = ec.stateDB.Snapshot()
+	return nil
+}
+
+func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContext) error {
+	systemDeployerTx, err := system.SystemDeployerInitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader())
+	if err != nil {
+		executor.logger.Error("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
+		return err
+	}
+
+	transactions := common.L2PricedTransactions{
+		common.L2PricedTransaction{
+			Tx:             systemDeployerTx,
+			PublishingCost: big.NewInt(0),
+			SystemDeployer: true,
+		},
+	}
+
+	successfulTxs, _, result, err := executor.processTransactions(ec.ctx, ec.currentBatch, 0, transactions, ec.stateDB, ec.ChainConfig, true)
+	if err != nil {
+		return fmt.Errorf("could not process system deployer transaction. Cause: %w", err)
+	}
+
+	if err = executor.verifySyntheticTransactionsSuccess(transactions, successfulTxs, result); err != nil {
+		return fmt.Errorf("batch computation failed due to system deployer reverting. Cause: %w", err)
+	}
+
+	ec.genesisSysCtrResult = result
+	return nil
+}
+
+func (executor *batchExecutor) readXChainMessages(ec *BatchExecutionContext) error {
+	if ec.SequencerNo.Int64() > int64(common.L2SysContractGenesisSeqNo) {
+		ec.xChainMsgs, ec.xChainValueMsgs = executor.crossChainProcessors.Local.RetrieveInboundMessages(ec.ctx, ec.parentL1Block, ec.l1block)
+	}
+	return nil
+}
+
+func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) error {
+	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ec.ctx, ec.xChainMsgs, ec.stateDB)
+	executor.crossChainProcessors.Local.ExecuteValueTransfers(ec.ctx, ec.xChainValueMsgs, ec.stateDB)
+	xchainTxs := make(common.L2PricedTransactions, 0)
+	for _, xTx := range crossChainTransactions {
+		xchainTxs = append(xchainTxs, common.L2PricedTransaction{
+			Tx:             xTx,
+			PublishingCost: big.NewInt(0),
+			FromSelf:       true,
+		})
+	}
+	_, excluded, results, err := executor.processTransactions(ec.ctx, ec.currentBatch, 0, xchainTxs, ec.stateDB, ec.ChainConfig, true)
+	if err != nil {
+		return fmt.Errorf("could not process cross chain messages. Cause: %w", err)
+	}
+
+	if len(excluded) > 0 {
+		return fmt.Errorf("could not process cross chain messages. Some were excluded. Cause: %w", err)
+	}
+	ec.xChainResults = results
+	return nil
+}
+
 // filterTransactionsWithSufficientFunds - this function estimates hte l1 fees for the transaction in a given batch execution context. It does so by taking the price of the
 // pinned L1 block and using it as the cost per gas for the estimated gas of the calldata encoding of a transaction. It filters out any transactions that cannot afford to pay for their L1
 // publishing cost.
-func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ctx context.Context, stateDB *state.StateDB, context *BatchExecutionContext) (common.L2PricedTransactions, common.L2PricedTransactions) {
+func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ec *BatchExecutionContext) common.L2PricedTransactions {
 	transactions := make(common.L2PricedTransactions, 0)
-	freeTransactions := make(common.L2PricedTransactions, 0)
-	block, _ := executor.storage.FetchBlock(ctx, context.BlockPtr)
+	block, _ := executor.storage.FetchBlock(ec.ctx, ec.BlockPtr)
 
-	for _, tx := range context.Transactions {
-		// Transactions that are created inside the enclave can have no GasPrice set.
-		// External transactions are always required to have a gas price set. Thus we filter
-		// those transactions for separate processing than the normal ones and we run them through the EVM
-		// with a flag that disables the baseFee logic and wont fail them for having price lower than the base fee.
-		isFreeTransaction := tx.GasFeeCap().Cmp(gethcommon.Big0) == 0
-		isFreeTransaction = isFreeTransaction && tx.GasPrice().Cmp(gethcommon.Big0) == 0
-
-		if isFreeTransaction {
-			freeTransactions = append(freeTransactions, common.L2PricedTransaction{
-				Tx:             tx,
-				PublishingCost: big.NewInt(0),
-				FromSelf:       true,
-			})
-			continue
-		}
-
-		sender, err := core.GetAuthenticatedSender(context.ChainConfig.ChainID.Int64(), tx)
+	for _, tx := range ec.Transactions {
+		sender, err := core.GetAuthenticatedSender(ec.ChainConfig.ChainID.Int64(), tx)
 		if err != nil {
 			executor.logger.Error("Unable to extract sender for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
 			continue
 		}
-		accBalance := stateDB.GetBalance(*sender)
+		accBalance := ec.stateDB.GetBalance(*sender)
 
 		cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
 		if err != nil {
@@ -139,198 +284,128 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ctx context
 			PublishingCost: big.NewInt(0).Set(cost),
 		})
 	}
-	return transactions, freeTransactions
+	return transactions
 }
 
-func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) { //nolint:gocognit
-	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
+func (executor *batchExecutor) execBatchTransactions(ec *BatchExecutionContext) error {
+	transactionsToProcess := executor.filterTransactionsWithSufficientFunds(ec)
 
-	// sanity check that the l1 block exists. We don't have to execute batches of forks.
-	block, err := executor.storage.FetchBlock(ctx, context.BlockPtr)
-	if errors.Is(err, errutil.ErrNotFound) {
-		return nil, errutil.ErrBlockForBatchNotFound
-	} else if err != nil {
-		return nil, fmt.Errorf("failed to retrieve block %s for batch. Cause: %w", context.BlockPtr, err)
-	}
-
-	// These variables will be used to create the new batch
-	parentBatch, err := executor.storage.FetchBatchHeader(ctx, context.ParentPtr)
-	if errors.Is(err, errutil.ErrNotFound) {
-		executor.logger.Error(fmt.Sprintf("can't find parent batch %s. Seq %d", context.ParentPtr, context.SequencerNo))
-		return nil, errutil.ErrAncestorBatchNotFound
-	}
+	successfulTxs, _, txResults, err := executor.processTransactions(ec.ctx, ec.currentBatch, len(ec.xChainResults), transactionsToProcess, ec.stateDB, ec.ChainConfig, false)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve parent batch %s. Cause: %w", context.ParentPtr, err)
+		return fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
-	parentBlock := block
-	if parentBatch.L1Proof != block.Hash() {
-		var err error
-		parentBlock, err = executor.storage.FetchBlock(ctx, parentBatch.L1Proof)
-		if err != nil {
-			executor.logger.Error(fmt.Sprintf("Could not retrieve a proof for batch %s", parentBatch.Hash()), log.ErrKey, err)
-			return nil, err
-		}
-	}
+	ec.batchTxResults = txResults
 
-	// Create a new batch based on the fromBlock of inclusion of the previous, including all new transactions
-	batch := core.DeterministicEmptyBatch(parentBatch, block, context.AtTime, context.SequencerNo, context.BaseFee, context.Creator)
-
-	stateDB, err := executor.batchRegistry.GetBatchState(ctx, rpc.BlockNumberOrHash{BlockHash: &batch.Header.ParentHash})
-	if err != nil {
-		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
-	}
-	snap := stateDB.Snapshot()
-
-	syntheticTxResults := make(core.TxExecResults, 0)
-
-	var messages common.CrossChainMessages
-	var transfers common.ValueTransferEvents
-	if context.SequencerNo.Int64() > int64(common.L2GenesisSeqNo+1) {
-		messages, transfers = executor.crossChainProcessors.Local.RetrieveInboundMessages(ctx, parentBlock, block, stateDB)
-	}
-
-	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ctx, messages, stateDB)
-	executor.crossChainProcessors.Local.ExecuteValueTransfers(ctx, transfers, stateDB)
-
-	transactionsToProcess, freeTransactions := executor.filterTransactionsWithSufficientFunds(ctx, stateDB, context)
-
-	systemDeployerOffset, systemContractCreationResult, err := executor.processSystemDeployer(ctx, stateDB, batch, context)
-	if err != nil {
-		return nil, fmt.Errorf("could not deploy system contracts. Cause: %w", err)
-	}
-
-	syntheticTxResults.Add(systemContractCreationResult...)
-
-	xchainTxs := make(common.L2PricedTransactions, 0)
-	for _, xTx := range crossChainTransactions {
-		xchainTxs = append(xchainTxs, common.L2PricedTransaction{
-			Tx:             xTx,
-			PublishingCost: big.NewInt(0),
-			FromSelf:       true,
-		})
-	}
-
-	syntheticTransactions := append(xchainTxs, freeTransactions...)
-
-	// fromTxIndex - Here we start from the 0 index. This will be the same for a validator.
-	successfulTxs, excludedTxs, txResults, err := executor.processTransactions(ctx, batch, systemDeployerOffset, transactionsToProcess, stateDB, context.ChainConfig, false)
-	if err != nil {
-		return nil, fmt.Errorf("could not process transactions. Cause: %w", err)
-	}
+	//todo
 	txReceipts := make(types.Receipts, 0)
 	for _, txResult := range txResults {
 		txReceipts = append(txReceipts, txResult.Receipt)
 	}
 	// populate the derived fields in the receipt
+	batch := ec.currentBatch
 	err = txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), batch.Header.Time, batch.Header.BaseFee, nil, successfulTxs)
 	if err != nil {
-		return nil, fmt.Errorf("could not derive receipts. Cause: %w", err)
+		return fmt.Errorf("could not derive receipts. Cause: %w", err)
 	}
 
-	onBlockTx, err := executor.systemContracts.CreateOnBatchEndTransaction(ctx, stateDB, successfulTxs, txReceipts)
-	if err != nil && !errors.Is(err, system.ErrNoTransactions) {
-		return nil, fmt.Errorf("could not create on block end transaction. Cause: %w", err)
-	}
-	if onBlockTx != nil {
-		onBlockPricedTxes := common.L2PricedTransactions{
-			common.L2PricedTransaction{
-				Tx:             onBlockTx,
-				PublishingCost: big.NewInt(0),
-				FromSelf:       true,
-			},
-		}
-		onBlockSuccessfulTx, _, onBlockTxResult, err := executor.processTransactions(ctx, batch, len(successfulTxs), onBlockPricedTxes, stateDB, context.ChainConfig, true)
-		if err != nil {
-			return nil, fmt.Errorf("could not process on block end transaction hook. Cause: %w", err)
-		}
-		// Ensure the onBlock callback transaction is successful. It should NEVER fail.
-		if err = executor.verifySyntheticTransactionsSuccess(onBlockPricedTxes, onBlockSuccessfulTx, onBlockTxResult); err != nil {
-			return nil, fmt.Errorf("batch computation failed due to onBlock hook reverting. Cause: %w", err)
-		}
-		result := onBlockTxResult[0]
-		if ok, err := executor.systemContracts.VerifyOnBlockReceipt(successfulTxs, result.Receipt); !ok || err != nil {
-			executor.logger.Error("VerifyOnBlockReceipt failed", "error", err, "ok", ok)
-			return nil, fmt.Errorf("VerifyOnBlockReceipt failed")
-		}
+	return nil
+}
 
-		syntheticTxResults.Add(onBlockTxResult...)
-	} else if err == nil && batch.Header.SequencerOrderNo.Uint64() > 2 {
-		executor.logger.Crit("Bootstrapping of network failed! System contract hooks have not been initialised after genesis.")
-	}
-
-	// fromTxIndex - Here we start from the len of the successful transactions; As long as we have the exact same successful transactions in a batch,
-	// we will start from the same place.
-	onBatchTxOffset := 0
-	if onBlockTx != nil {
-		onBatchTxOffset = 1
-	}
-
+func (executor *batchExecutor) execRegisteredCallbacks(ec *BatchExecutionContext) error {
 	// Create and process public callback transaction if needed
-	var publicCallbackTxResult core.TxExecResults
-	onBatchTxOffset, publicCallbackTxResult, err = executor.executePublicCallbacks(ctx, stateDB, context, batch, len(successfulTxs)+onBatchTxOffset)
+	publicCallbackTx, err := executor.systemContracts.CreatePublicCallbackHandlerTransaction(ec.ctx, ec.stateDB)
 	if err != nil {
-		return nil, fmt.Errorf("could not execute public callbacks. Cause: %w", err)
+		return fmt.Errorf("could not create public callback transaction. Cause: %w", err)
 	}
-	syntheticTxResults.Add(publicCallbackTxResult...)
 
-	ccSuccessfulTxs, _, ccTxResults, err := executor.processTransactions(ctx, batch, onBatchTxOffset, syntheticTransactions, stateDB, context.ChainConfig, true)
+	if publicCallbackTx == nil {
+		return nil
+	}
+
+	publicCallbackPricedTxes := common.L2PricedTransactions{
+		common.L2PricedTransaction{
+			Tx:             publicCallbackTx,
+			PublishingCost: big.NewInt(0),
+			FromSelf:       true,
+		},
+	}
+	offset := len(ec.batchTxResults) + len(ec.xChainResults)
+	publicCallbackSuccessfulTx, _, publicCallbackTxResult, err := executor.processTransactions(ec.ctx, ec.currentBatch, offset, publicCallbackPricedTxes, ec.stateDB, ec.ChainConfig, true)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("could not process public callback transaction. Cause: %w", err)
 	}
-	if len(ccSuccessfulTxs) != len(syntheticTransactions) {
-		return nil, fmt.Errorf("failed cross chain transactions")
+	// Ensure the public callback transaction is successful. It should NEVER fail.
+	if err = executor.verifySyntheticTransactionsSuccess(publicCallbackPricedTxes, publicCallbackSuccessfulTx, publicCallbackTxResult); err != nil {
+		return fmt.Errorf("batch computation failed due to public callback reverting. Cause: %w", err)
 	}
+	ec.callbackTxResults = publicCallbackTxResult
+	return nil
+}
 
-	ccReceipts := make(types.Receipts, 0)
-	for _, txResult := range ccTxResults {
-		ccReceipts = append(ccReceipts, txResult.Receipt)
+func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error {
+	onBlockTx, err := executor.systemContracts.CreateOnBatchEndTransaction(ec.ctx, ec.stateDB, ec.batchTxResults)
+	if err != nil && !errors.Is(err, system.ErrNoTransactions) {
+		return fmt.Errorf("could not create on block end transaction. Cause: %w", err)
 	}
-	if err = executor.verifySyntheticTransactionsSuccess(syntheticTransactions, ccSuccessfulTxs, ccTxResults); err != nil {
-		return nil, fmt.Errorf("batch computation failed due to cross chain messages. Cause: %w", err)
+	if onBlockTx == nil {
+		return nil
 	}
+	onBlockPricedTx := common.L2PricedTransactions{
+		common.L2PricedTransaction{
+			Tx:             onBlockTx,
+			PublishingCost: big.NewInt(0),
+			FromSelf:       true,
+		},
+	}
+	onBlockSuccessfulTx, _, onBlockTxResult, err := executor.processTransactions(ec.ctx, ec.currentBatch, len(ec.batchTxResults)+len(ec.xChainResults), onBlockPricedTx, ec.stateDB, ec.ChainConfig, true)
+	if err != nil {
+		return fmt.Errorf("could not process on block end transaction hook. Cause: %w", err)
+	}
+	// Ensure the onBlock callback transaction is successful. It should NEVER fail.
+	if err = executor.verifySyntheticTransactionsSuccess(onBlockPricedTx, onBlockSuccessfulTx, onBlockTxResult); err != nil {
+		return fmt.Errorf("batch computation failed due to onBlock hook reverting. Cause: %w", err)
+	}
+	ec.blockEndResult = onBlockTxResult
+	// todo - stefan not clear what this does
+	//result := onBlockTxResult[0]
+	//if ok, err := executor.systemContracts.VerifyOnBlockReceipt(successfulTxs, result.Receipt); !ok || err != nil {
+	//	executor.logger.Error("VerifyOnBlockReceipt failed", "error", err, "ok", ok)
+	//	return fmt.Errorf("VerifyOnBlockReceipt failed")
+	//}
+	return nil
+}
 
-	if failForEmptyBatch &&
-		len(txResults) == 0 &&
-		len(ccTxResults) == 0 &&
-		len(transactionsToProcess)-len(excludedTxs) == 0 &&
-		len(crossChainTransactions) == 0 &&
-		len(messages) == 0 &&
-		len(transfers) == 0 {
-		if snap > 0 {
-			//// revert any unexpected mutation to the statedb
-			stateDB.RevertToSnapshot(snap)
-		}
-		return nil, ErrNoTransactionsToProcess
-	}
-
+func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedBatch, error) {
 	// we need to copy the batch to reset the internal hash cache
-	copyBatch := *batch
-	copyBatch.Header.Root = stateDB.IntermediateRoot(false)
-	copyBatch.Transactions = append(successfulTxs, freeTransactions.ToTransactions()...)
-	copyBatch.ResetHash()
+	batch := *ec.currentBatch
+	batch.Header.Root = ec.stateDB.IntermediateRoot(false)
+	batch.Transactions = ec.batchTxResults.Transactions()
+	batch.ResetHash()
 
-	if err = executor.populateOutboundCrossChainData(ctx, &copyBatch, block, txReceipts); err != nil {
+	txReceipts := ec.batchTxResults.Receipts()
+	if err := executor.populateOutboundCrossChainData(ec.ctx, &batch, ec.l1block, txReceipts); err != nil {
 		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
 	}
 
-	allReceipts := append(txReceipts, ccReceipts...)
-	executor.populateHeader(&copyBatch, allReceipts)
+	xChainReceipts := ec.xChainResults.Receipts()
+	allReceipts := append(txReceipts, xChainReceipts...)
+	executor.populateHeader(&batch, allReceipts)
 
 	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
-	for _, receipt := range allReceipts {
-		receipt.BlockHash = copyBatch.Hash()
-		for _, l := range receipt.Logs {
-			l.BlockHash = copyBatch.Hash()
-		}
-	}
+	//for _, receipt := range allReceipts {
+	//	receipt.BlockHash = batch.Hash()
+	//	for _, l := range receipt.Logs {
+	//		l.BlockHash = batch.Hash()
+	//	}
+	//}
 
 	commitFunc := func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
 		executor.stateDBMutex.Lock()
 		defer executor.stateDBMutex.Unlock()
-		h, err := stateDB.Commit(copyBatch.Number().Uint64(), deleteEmptyObjects)
+		h, err := ec.stateDB.Commit(batch.Number().Uint64(), deleteEmptyObjects)
 		if err != nil {
-			return gethcommon.Hash{}, fmt.Errorf("commit failure for batch %d. Cause: %w", batch.SeqNo(), err)
+			return gethcommon.Hash{}, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
 		}
 		trieDB := executor.storage.TrieDB()
 		err = trieDB.Commit(h, false)
@@ -338,89 +413,23 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, context *BatchE
 		// When system contract deployment genesis batch is committed, initialize executor's addresses for the hooks.
 		// Further restarts will call into Load() which will take the receipts for batch number 2 (which should never be deleted)
 		// and reinitialize them.
-		if err == nil && batch.Header.SequencerOrderNo.Uint64() == 2 {
-			if len(systemContractCreationResult) == 0 {
+		if err == nil && ec.currentBatch.Header.SequencerOrderNo.Uint64() == common.L2SysContractGenesisSeqNo {
+			if len(ec.genesisSysCtrResult) == 0 {
 				return h, fmt.Errorf("failed to instantiate system contracts: expected receipt for system deployer transaction, but no receipts found in batch")
 			}
 
-			return h, executor.initializeSystemContracts(ctx, batch, systemContractCreationResult[0].Receipt)
+			return h, executor.systemContracts.Initialize(&batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
 		}
 
 		return h, err
 	}
 
-	syntheticTxResults.Add(ccTxResults...)
-	syntheticTxResults.MarkSynthetic(true)
-
+	allResults := append(append(append(ec.xChainResults, ec.batchTxResults...), ec.callbackTxResults...), ec.blockEndResult...)
 	return &ComputedBatch{
-		Batch:         &copyBatch,
-		TxExecResults: append(txResults, syntheticTxResults...),
+		Batch:         &batch,
+		TxExecResults: allResults,
 		Commit:        commitFunc,
 	}, nil
-}
-
-func (executor *batchExecutor) processSystemDeployer(ctx context.Context, stateDB *state.StateDB, batch *core.Batch, context *BatchExecutionContext) (int, []*core.TxExecResult, error) {
-	if context.SequencerNo.Uint64() != 2 {
-		return 0, nil, nil
-	}
-
-	systemDeployerTx, err := system.SystemDeployerInitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader())
-	if err != nil {
-		executor.logger.Crit("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
-		return 0, nil, err
-	}
-
-	transactions := common.L2PricedTransactions{
-		common.L2PricedTransaction{
-			Tx:             systemDeployerTx,
-			PublishingCost: big.NewInt(0),
-			SystemDeployer: true,
-		},
-	}
-
-	successfulTxs, _, result, err := executor.processTransactions(ctx, batch, 0, transactions, stateDB, context.ChainConfig, true)
-	if err != nil {
-		return 0, nil, fmt.Errorf("could not process system deployer transaction. Cause: %w", err)
-	}
-
-	if err = executor.verifySyntheticTransactionsSuccess(transactions, successfulTxs, result); err != nil {
-		return 0, nil, fmt.Errorf("batch computation failed due to system deployer reverting. Cause: %w", err)
-	}
-
-	return 1, result, nil
-}
-
-func (executor *batchExecutor) executePublicCallbacks(ctx context.Context, stateDB *state.StateDB, context *BatchExecutionContext, batch *core.Batch, txOffset int) (int, core.TxExecResults, error) {
-	// Create and process public callback transaction if needed
-	publicCallbackTx, err := executor.systemContracts.CreatePublicCallbackHandlerTransaction(ctx, stateDB)
-	if err != nil {
-		return txOffset, nil, fmt.Errorf("could not create public callback transaction. Cause: %w", err)
-	}
-
-	if publicCallbackTx != nil {
-		publicCallbackPricedTxes := common.L2PricedTransactions{
-			common.L2PricedTransaction{
-				Tx:             publicCallbackTx,
-				PublishingCost: big.NewInt(0),
-				FromSelf:       true,
-			},
-		}
-		publicCallbackSuccessfulTx, _, publicCallbackTxResult, err := executor.processTransactions(ctx, batch, txOffset, publicCallbackPricedTxes, stateDB, context.ChainConfig, true)
-		if err != nil {
-			return txOffset, nil, fmt.Errorf("could not process public callback transaction. Cause: %w", err)
-		}
-		// Ensure the public callback transaction is successful. It should NEVER fail.
-		if err = executor.verifySyntheticTransactionsSuccess(publicCallbackPricedTxes, publicCallbackSuccessfulTx, publicCallbackTxResult); err != nil {
-			return txOffset, nil, fmt.Errorf("batch computation failed due to public callback reverting. Cause: %w", err)
-		}
-
-		return len(publicCallbackSuccessfulTx) + txOffset, publicCallbackTxResult, nil
-	}
-	return txOffset, nil, nil
-}
-
-func (executor *batchExecutor) initializeSystemContracts(_ context.Context, batch *core.Batch, receipts *types.Receipt) error {
-	return executor.systemContracts.Initialize(batch, *receipts, executor.crossChainProcessors.Local)
 }
 
 func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Batch) ([]*core.TxExecResult, error) {
@@ -522,7 +531,7 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 		hasMessages = true
 	}
 
-	var xchainHash gethcommon.Hash = gethcommon.BigToHash(gethcommon.Big0)
+	xchainHash := gethcommon.BigToHash(gethcommon.Big0)
 	if hasMessages {
 		tree, err := smt.Of(xchainTree, crosschain.CrossChainEncodings)
 		if err != nil {

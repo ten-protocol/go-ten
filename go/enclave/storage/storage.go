@@ -589,12 +589,12 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 			transactionsWithSenders[i] = &core.TxWithSender{Tx: tx, Sender: &sender}
 		}
 
-		senders, toContracts, err := s.handleTxSendersAndReceivers(ctx, transactionsWithSenders, dbTx)
+		senderIds, toContractIds, err := s.handleTxSendersAndReceivers(ctx, transactionsWithSenders, dbTx)
 		if err != nil {
 			return err
 		}
 
-		if err := enclavedb.WriteTransactions(ctx, dbTx, transactionsWithSenders, batch.Header.Number.Uint64(), false, senders, toContracts); err != nil {
+		if err := enclavedb.WriteTransactions(ctx, dbTx, transactionsWithSenders, batch.Header.Number.Uint64(), false, senderIds, toContractIds, 0); err != nil {
 			return fmt.Errorf("could not write transactions. Cause: %w", err)
 		}
 	}
@@ -633,7 +633,7 @@ func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, transacti
 	return senders, toContracts, nil
 }
 
-func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results core.TxExecResults) error {
+func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch, results core.TxExecResults) error {
 	defer s.logDuration("StoreExecutedBatch", measure.NewStopwatch())
 	executed, err := enclavedb.BatchWasExecuted(ctx, s.db.GetSQLDB(), batch.Hash())
 	if err != nil {
@@ -644,7 +644,7 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 		return nil
 	}
 
-	s.logger.Trace("storing executed batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SequencerOrderNo, "receipts", len(results))
+	s.logger.Trace("storing executed batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo, "receipts", len(results))
 
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
@@ -652,10 +652,11 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 	}
 	defer dbTx.Rollback()
 
-	if err := enclavedb.MarkBatchExecuted(ctx, dbTx, batch.SequencerOrderNo); err != nil {
+	if err := enclavedb.MarkBatchExecuted(ctx, dbTx, batch.Header.SequencerOrderNo); err != nil {
 		return fmt.Errorf("could not set the executed flag. Cause: %w", err)
 	}
 
+	// store the synthetic transactions
 	transactionsWithSenders := results.GetSynthetic().ToTransactionsWithSenders()
 
 	senders, toContracts, err := s.handleTxSendersAndReceivers(ctx, transactionsWithSenders, dbTx)
@@ -663,12 +664,12 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *common.Batc
 		return fmt.Errorf("could not handle synthetic txs senders and receivers. Cause: %w", err)
 	}
 
-	if err := enclavedb.WriteTransactions(ctx, dbTx, transactionsWithSenders, batch.Number.Uint64(), true, senders, toContracts); err != nil {
+	if err := enclavedb.WriteTransactions(ctx, dbTx, transactionsWithSenders, batch.Header.Number.Uint64(), true, senders, toContracts, len(batch.Transactions)); err != nil {
 		return fmt.Errorf("could not write synthetic txs. Cause: %w", err)
 	}
 
 	for _, txExecResult := range results {
-		err = s.eventsStorage.storeReceiptAndEventLogs(ctx, dbTx, batch, txExecResult)
+		err = s.eventsStorage.storeReceiptAndEventLogs(ctx, dbTx, batch.Header, txExecResult)
 		if err != nil {
 			return fmt.Errorf("could not store receipt. Cause: %w", err)
 		}
@@ -802,7 +803,7 @@ func (s *storageImpl) FilterLogs(
 		return nil, err
 	}
 	// the database returns an unsorted list of event logs.
-	// we have to perform the sorting programatically
+	// we have to perform the sorting programmatically
 	sort.Slice(logs, func(i, j int) bool {
 		if logs[i].BlockNumber == logs[j].BlockNumber {
 			return logs[i].Index < logs[j].Index

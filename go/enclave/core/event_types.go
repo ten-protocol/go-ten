@@ -176,3 +176,19 @@ func (txResults *TxExecResults) ToTransactionsWithSenders() TransactionsWithSend
 	}
 	return transactionsWithSenders
 }
+
+func (txResults *TxExecResults) Transactions() []*common.L2Tx {
+	txs := make([]*common.L2Tx, len(*txResults))
+	for i, txResult := range *txResults {
+		txs[i] = txResult.TxWithSender.Tx
+	}
+	return txs
+}
+
+func (txResults *TxExecResults) Receipts() types.Receipts {
+	receipts := make(types.Receipts, len(*txResults))
+	for i, txResult := range *txResults {
+		receipts[i] = txResult.Receipt
+	}
+	return receipts
+}

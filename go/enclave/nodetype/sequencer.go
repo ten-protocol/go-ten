@@ -304,7 +304,7 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	if err := s.storage.StoreExecutedBatch(ctx, batch.Header, txResults); err != nil {
+	if err := s.storage.StoreExecutedBatch(ctx, batch, txResults); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	pool "github.com/jolestar/go-commons-pool/v2"
@@ -71,11 +72,19 @@ func readEncKey(hostAddrHTTP string, logger gethlog.Logger) []byte {
 		logger.Crit("failed to connect to the node", "err", err)
 	}
 	defer rpcClient.Close()
-	k, err := tenrpc.ReadEnclaveKey(rpcClient)
-	if err != nil {
-		logger.Crit("failed to read enc key", "err", err)
+	n := 0
+	for {
+		n++
+		k, err := tenrpc.ReadEnclaveKey(rpcClient)
+		if err != nil {
+			logger.Warn("failed to read enc key", "err", err)
+			if n > 10 { // wait for ~1m for the backend node to spin up and respond
+				logger.Crit("failed to read enc key", "err", err)
+			}
+			time.Sleep(time.Duration(n) * time.Second)
+		}
+		return k
 	}
-	return k
 }
 
 func (rpc *BackendRPC) ConnectWS(ctx context.Context, account *wecommon.GWAccount) (*tenrpc.EncRPCClient, error) {

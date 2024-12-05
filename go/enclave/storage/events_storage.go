@@ -99,7 +99,7 @@ func (es *eventsStorage) storeReceipt(ctx context.Context, dbTX *sql.Tx, batch *
 	return execTxId, nil
 }
 
-func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId uint64, l *types.Log) error {
+func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, receiptId uint64, l *types.Log) error {
 	eventSig := l.Topics[0]
 
 	contract, err := es.readContract(ctx, dbTX, l.Address)
@@ -130,7 +130,7 @@ func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTx
 	if len(data) == 0 {
 		data = nil
 	}
-	err = enclavedb.WriteEventLog(ctx, dbTX, eventType.Id, topicIds, data, l.Index, execTxId)
+	err = enclavedb.WriteEventLog(ctx, dbTX, eventType.Id, topicIds, data, l.Index, receiptId)
 	if err != nil {
 		return fmt.Errorf("could not write event log. Cause: %w", err)
 	}
