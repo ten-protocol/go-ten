@@ -24,7 +24,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -210,16 +209,16 @@ func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContex
 		},
 	}
 
-	successfulTxs, _, result, err := executor.processTransactions(ec.ctx, ec.currentBatch, 0, transactions, ec.stateDB, ec.ChainConfig, true)
+	sysCtrGenesisResult, err := executor.executeTxs(ec, 0, transactions, true)
 	if err != nil {
 		return fmt.Errorf("could not process system deployer transaction. Cause: %w", err)
 	}
 
-	if err = executor.verifySyntheticTransactionsSuccess(transactions, successfulTxs, result); err != nil {
+	if err = executor.verifySyntheticTransactionsSuccess(transactions, sysCtrGenesisResult); err != nil {
 		return fmt.Errorf("batch computation failed due to system deployer reverting. Cause: %w", err)
 	}
 
-	ec.genesisSysCtrResult = result
+	ec.genesisSysCtrResult = sysCtrGenesisResult
 	ec.genesisSysCtrResult.MarkSynthetic(true)
 	return nil
 }
@@ -242,15 +241,15 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 			FromSelf:       true,
 		})
 	}
-	_, excluded, results, err := executor.processTransactions(ec.ctx, ec.currentBatch, 0, xchainTxs, ec.stateDB, ec.ChainConfig, true)
+	xChainResults, err := executor.executeTxs(ec, 0, xchainTxs, true)
 	if err != nil {
 		return fmt.Errorf("could not process cross chain messages. Cause: %w", err)
 	}
 
-	if len(excluded) > 0 {
+	if len(xchainTxs) != len(xChainResults) {
 		return fmt.Errorf("could not process cross chain messages. Some were excluded. Cause: %w", err)
 	}
-	ec.xChainResults = results
+	ec.xChainResults = xChainResults
 	ec.xChainResults.MarkSynthetic(true)
 	return nil
 }
@@ -292,25 +291,12 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ec *BatchEx
 func (executor *batchExecutor) execBatchTransactions(ec *BatchExecutionContext) error {
 	transactionsToProcess := executor.filterTransactionsWithSufficientFunds(ec)
 
-	successfulTxs, _, txResults, err := executor.processTransactions(ec.ctx, ec.currentBatch, len(ec.xChainResults), transactionsToProcess, ec.stateDB, ec.ChainConfig, false)
+	txResults, err := executor.executeTxs(ec, len(ec.xChainResults), transactionsToProcess, false)
 	if err != nil {
 		return fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
 	ec.batchTxResults = txResults
-
-	// todo
-	txReceipts := make(types.Receipts, 0)
-	for _, txResult := range txResults {
-		txReceipts = append(txReceipts, txResult.Receipt)
-	}
-	// populate the derived fields in the receipt
-	batch := ec.currentBatch
-	err = txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), batch.Header.Time, batch.Header.BaseFee, nil, successfulTxs)
-	if err != nil {
-		return fmt.Errorf("could not derive receipts. Cause: %w", err)
-	}
-
 	return nil
 }
 
@@ -333,12 +319,12 @@ func (executor *batchExecutor) execRegisteredCallbacks(ec *BatchExecutionContext
 		},
 	}
 	offset := len(ec.batchTxResults) + len(ec.xChainResults)
-	publicCallbackSuccessfulTx, _, publicCallbackTxResult, err := executor.processTransactions(ec.ctx, ec.currentBatch, offset, publicCallbackPricedTxes, ec.stateDB, ec.ChainConfig, true)
+	publicCallbackTxResult, err := executor.executeTxs(ec, offset, publicCallbackPricedTxes, true)
 	if err != nil {
 		return fmt.Errorf("could not process public callback transaction. Cause: %w", err)
 	}
 	// Ensure the public callback transaction is successful. It should NEVER fail.
-	if err = executor.verifySyntheticTransactionsSuccess(publicCallbackPricedTxes, publicCallbackSuccessfulTx, publicCallbackTxResult); err != nil {
+	if err = executor.verifySyntheticTransactionsSuccess(publicCallbackPricedTxes, publicCallbackTxResult); err != nil {
 		return fmt.Errorf("batch computation failed due to public callback reverting. Cause: %w", err)
 	}
 	ec.callbackTxResults = publicCallbackTxResult
@@ -362,12 +348,12 @@ func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error
 		},
 	}
 	offset := len(ec.callbackTxResults) + len(ec.batchTxResults) + len(ec.xChainResults)
-	onBlockSuccessfulTx, _, onBlockTxResult, err := executor.processTransactions(ec.ctx, ec.currentBatch, offset, onBlockPricedTx, ec.stateDB, ec.ChainConfig, true)
+	onBlockTxResult, err := executor.executeTxs(ec, offset, onBlockPricedTx, true)
 	if err != nil {
 		return fmt.Errorf("could not process on block end transaction hook. Cause: %w", err)
 	}
 	// Ensure the onBlock callback transaction is successful. It should NEVER fail.
-	if err = executor.verifySyntheticTransactionsSuccess(onBlockPricedTx, onBlockSuccessfulTx, onBlockTxResult); err != nil {
+	if err = executor.verifySyntheticTransactionsSuccess(onBlockPricedTx, onBlockTxResult); err != nil {
 		return fmt.Errorf("batch computation failed due to onBlock hook reverting. Cause: %w", err)
 	}
 	ec.blockEndResult = onBlockTxResult
@@ -579,12 +565,12 @@ func (executor *batchExecutor) populateHeader(batch *core.Batch, receipts types.
 	}
 }
 
-func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions common.L2PricedTransactions, executedTxs types.Transactions, receipts core.TxExecResults) error {
-	if len(transactions) != executedTxs.Len() {
+func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions common.L2PricedTransactions, results core.TxExecResults) error {
+	if len(transactions) != len(results) {
 		return fmt.Errorf("some synthetic transactions have not been executed")
 	}
 
-	for _, rec := range receipts {
+	for _, rec := range results {
 		if rec.Receipt.Status == 1 {
 			continue
 		}
@@ -593,53 +579,55 @@ func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions c
 	return nil
 }
 
-func (executor *batchExecutor) processTransactions(
-	ctx context.Context,
-	batch *core.Batch,
-	tCount int,
-	txs common.L2PricedTransactions,
-	stateDB *state.StateDB,
-	cc *params.ChainConfig,
-	noBaseFee bool,
-) ([]*common.L2Tx, []*common.L2Tx, []*core.TxExecResult, error) {
-	var executedTransactions []*common.L2Tx
-	var excludedTransactions []*common.L2Tx
+func (executor *batchExecutor) executeTxs(ec *BatchExecutionContext, offset int, txs common.L2PricedTransactions, noBaseFee bool) (core.TxExecResults, error) {
 	txResultsMap, err := evm.ExecuteTransactions(
-		ctx,
+		ec.ctx,
 		executor.entropyService,
 		txs,
-		stateDB,
-		batch.Header,
+		ec.stateDB,
+		ec.currentBatch.Header,
 		executor.storage,
 		executor.gethEncodingService,
-		cc,
+		ec.ChainConfig,
 		executor.config,
-		tCount,
+		offset,
 		noBaseFee,
 		executor.batchGasLimit,
 		executor.logger,
 	)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, err
 	}
-	txResults := make([]*core.TxExecResult, 0)
+	txResults := make(core.TxExecResults, 0)
 	for _, tx := range txs {
 		result, f := txResultsMap[tx.Tx.Hash()]
 		if !f {
-			return nil, nil, nil, fmt.Errorf("there should be an entry for each transaction")
+			return nil, fmt.Errorf("there should be an entry for each transaction")
 		}
 		if result.Receipt != nil {
-			executedTransactions = append(executedTransactions, tx.Tx)
 			txResults = append(txResults, result)
 		} else {
 			// Exclude failed transactions
-			excludedTransactions = append(excludedTransactions, tx.Tx)
-			executor.logger.Debug("Excluding transaction from batch", log.TxKey, tx.Tx.Hash(), log.BatchHashKey, batch.Hash(), "cause", result.Err)
+			executor.logger.Debug("Excluding transaction from batch", log.TxKey, tx.Tx.Hash(), log.BatchHashKey, ec.currentBatch.Hash(), "cause", result.Err)
 		}
 	}
-	sort.Sort(sortByTxIndex(txResults))
 
-	return executedTransactions, excludedTransactions, txResults, nil
+	// populate the derived fields in the receipt
+	txReceipts := make(types.Receipts, 0)
+	for _, txResult := range txResults {
+		txReceipts = append(txReceipts, txResult.Receipt)
+	}
+	batch := ec.currentBatch
+	err = txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), batch.Header.Time, batch.Header.BaseFee, nil, txResults.Transactions())
+	if err != nil {
+		return nil, fmt.Errorf("could not derive receipts. Cause: %w", err)
+	}
+	for i, txResult := range txResults {
+		txResult.Receipt = txReceipts[i]
+	}
+
+	sort.Sort(sortByTxIndex(txResults))
+	return txResults, nil
 }
 
 type sortByTxIndex []*core.TxExecResult
