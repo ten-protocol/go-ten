@@ -373,7 +373,7 @@ jobs:
             -maxConcurrentRequestsPerUser="${{ env.GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER }}" \
             -keyExchangeURL="${{ env.GATEWAY_KEY_EXCHANGE_URL }}" \
             -insideEnclave=true \
-            -enableTLS=true \
+            -enableTLS=false \
             -tlsDomain="${{ env.GATEWAY_TLS_DOMAIN }}"
             
 
