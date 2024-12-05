@@ -30,12 +30,14 @@ const grantSequencerStatus = async function (mgmtContractAddr: string, enclaveID
     }
 };
 
-const args = process.argv.slice(2);
-if (args.length !== 2) {
-    throw new Error("Required arguments: <mgmtContractAddr> <enclaveIDs>");
+const mgmtContractAddr = process.env.MGMT_CONTRACT_ADDRESS;
+const enclaveIDs = process.env.ENCLAVE_IDS;
+
+if (!mgmtContractAddr || !enclaveIDs) {
+    console.error("Missing required environment variables: MGMT_CONTRACT_ADDRESS and ENCLAVE_IDS.");
+    process.exit(1);
 }
 
-const [mgmtContractAddr, enclaveIDs] = args as [string, string];
 grantSequencerStatus(mgmtContractAddr, enclaveIDs)
     .then(() => process.exit(0))
     .catch((error) => {

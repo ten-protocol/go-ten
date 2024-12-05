@@ -17,6 +17,7 @@ func main() {
 			l1gs.WithDockerImage(cliConfig.dockerImage),
 			l1gs.WithMgmtContractAddress(cliConfig.mgmtContractAddress),
 			l1gs.WithEnclaveIDs(cliConfig.enclaveIDs),
+			l1gs.WithSequencerURL(cliConfig.sequencerURL),
 		),
 	)
 	if err != nil {
@@ -30,5 +31,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	err = l1grantsequencers.WaitForFinish()
+	if err != nil {
+		fmt.Println("unexpected error waiting for grant sequnecer permission script to finish - %w", err)
+		os.Exit(1)
+	}
+	fmt.Println("L1 Sequencer permissions were successfully granted...")
 	os.Exit(0)
 }
