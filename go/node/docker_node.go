@@ -35,7 +35,7 @@ func NewDockerNode(cfg *config.TenConfig, hostImage, enclaveImage, edgelessDBIma
 
 func (d *DockerNode) Start() error {
 	// todo (@pedro) - this should probably be removed in the future
-	d.cfg.PrettyPrint() // dump config to stdout
+	//d.cfg.PrettyPrint() // dump config to stdout
 
 	err := d.startEdgelessDB()
 	if err != nil {

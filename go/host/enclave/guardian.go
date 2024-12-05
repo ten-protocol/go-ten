@@ -360,9 +360,11 @@ func (g *Guardian) provideSecret() error {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
 				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)
 				if err != nil {
+					println("ENCLAVE INITIALISATION FAILURE: ", g.enclaveID.Hex())
 					g.logger.Error("Could not initialize enclave with received secret response", log.ErrKey, err)
 					continue // try the next secret response in the block if there are more
 				}
+				println("ENCLAVE INITALIZED")
 				return nil // successfully initialized enclave with secret, break out of retry loop function
 			}
 		}
@@ -370,6 +372,7 @@ func (g *Guardian) provideSecret() error {
 		return errors.New("no valid secret received in block")
 	}, retry.NewTimeoutStrategy(_maxWaitForSecretResponse, 500*time.Millisecond))
 	if err != nil {
+		println("TIMED OUT WAITING FOR SECRET RESPONSE after", _maxWaitForSecretResponse.String())
 		// something went wrong, check the enclave status in case it is an enclave problem and let the main loop try again when appropriate
 		return errors.Wrap(err, "no valid secret received for enclave")
 	}
@@ -507,7 +510,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx, contractAddressTxs []*ethadapter.L1SetImportantContractsTx) {
+func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*common.L1RollupTx, contractAddressTxs []*common.L1SetImportantContractsTx) {
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
 	if err != nil {

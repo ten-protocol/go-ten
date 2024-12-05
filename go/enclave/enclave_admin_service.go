@@ -232,8 +232,17 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 
 	err = e.validator().VerifySequencerSignature(batch)
 	if err != nil {
+		println("FAILURE ENCLAVE SERVICE BATCH ADDED SEQ: ", batch.SeqNo().Uint64())
+		println("FAILURE ENCLAVE SERVICE HOSTID: ", e.config.HostID.Hex())
+		println("FAILURE ENCLAVE SERVICE HOST ADDRESS: ", e.config.HostAddress)
+		println("FAILURE ENCLAVE SERVICE NODE TYPE: ", e.config.NodeType)
 		return responses.ToInternalError(fmt.Errorf("invalid batch received. Could not verify signature. Cause: %w", err))
 	}
+
+	println("-----")
+	println("ENCLAVE SERVICE BATCH ADDED SEQ: ", batch.SeqNo().Uint64())
+	println("ENCLAVE SERVICE HOSTID: ", e.config.HostID.Hex())
+	println("ENCLAVE SERVICE NODE TYPE: ", e.config.NodeType)
 
 	// calculate the converted hash, and store it in the db for chaining of the converted chain
 	convertedHeader, err := e.gethEncodingService.CreateEthHeaderForBatch(ctx, extBatch.Header)
@@ -490,6 +499,8 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
 	}
+
+	//TODO call AddSequencer if event present
 
 	if ingestion.IsFork() {
 		e.registry.OnL1Reorg(ingestion)

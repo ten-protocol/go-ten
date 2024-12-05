@@ -81,9 +81,9 @@ type L1TxType uint8 // Change to uint8 for RLP serialization
 
 const (
 	RollupTx L1TxType = iota
+	InitialiseSecretTx
 	SecretRequestTx
 	SecretResponseTx
-	InitialiseSecretTx
 	CrossChainMessageTx
 	CrossChainValueTranserTx
 	SequencerAddedTx
@@ -110,7 +110,6 @@ type ProcessedL1Data struct {
 
 // L1TxData represents an L1 transaction that's relevant to us
 type L1TxData struct {
-	//Type               *TenTransactionWrapper
 	Transaction        *types.Transaction
 	Receipt            *types.Receipt
 	Blobs              []*kzg4844.Blob      // Only populated for blob transactions

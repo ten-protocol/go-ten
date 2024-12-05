@@ -18,18 +18,26 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
 var (
 	MessageBusABI, _                 = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	MgmtContractABI, _               = abi.JSON(strings.NewReader(ManagementContract.ManagementContractMetaData.ABI))
 	CrossChainEventName              = "LogMessagePublished"
 	CrossChainEventID                = MessageBusABI.Events[CrossChainEventName].ID
 	ValueTransferEventName           = "ValueTransfer"
 	ValueTransferEventID             = MessageBusABI.Events["ValueTransfer"].ID
 	SequencerEnclaveGrantedEventName = "SequencerEnclaveGranted"
-	SequencerEnclaveGrantedEventID   = MessageBusABI.Events["SequencerEnclaveGranted"].ID
+	SequencerEnclaveGrantedEventID   = MgmtContractABI.Events["SequencerEnclaveGranted"].ID
+	NetworkSecretRequestedName       = "NetworkSecretRequested"
+	NetworkSecretRequestedID         = MgmtContractABI.Events["NetworkSecretRequested"].ID
+	NetworkSecretRespondedName       = "NetworkSecretResponded"
+	NetworkSecretRespondedID         = MgmtContractABI.Events["NetworkSecretResponded"].ID
+	RollupAddedName                  = "RollupAdded"
+	RollupAddedID                    = MgmtContractABI.Events["RollupAdded"].ID
 )
 
 func lazilyLogReceiptChecksum(block *types.Header, receipts types.Receipts, logger gethlog.Logger) {
@@ -106,7 +114,7 @@ func FilterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, 
 	return logs, nil
 }
 
-// convertLogsToMessages - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
+// ConvertLogsToMessages - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
 func ConvertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.CrossChainMessages, error) {
 	messages := make(common.CrossChainMessages, 0)
 
@@ -135,7 +143,7 @@ func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) Mes
 	}
 }
 
-// convertLogsToMessages - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
+// ConvertLogsToValueTransfers - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
 func ConvertLogsToValueTransfers(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.ValueTransferEvents, error) {
 	messages := make(common.ValueTransferEvents, 0)
 

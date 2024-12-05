@@ -39,8 +39,35 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 	var responses []*common.ProducedSecretResponse
 	block := processed.BlockHeader
 
+	requestSecretEvents := processed.GetEvents(common.SecretRequestTx)
+	if len(requestSecretEvents) > 0 {
+	}
+
+	initializeSecretEvents := processed.GetEvents(common.InitialiseSecretTx)
+	if len(initializeSecretEvents) > 0 {
+	}
+
+	// process initialize secret events
+	for _, txData := range initializeSecretEvents {
+		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		initSecretTx, ok := t.(*common.L1InitializeSecretTx)
+		if !ok {
+			continue
+		}
+
+		att, err := common.DecodeAttestation(initSecretTx.Attestation)
+		if err != nil {
+			ssp.logger.Error("Could not decode attestation report", log.ErrKey, err)
+			continue
+		}
+
+		if err := ssp.storeAttestation(ctx, att); err != nil {
+			ssp.logger.Error("Could not store the attestation report.", log.ErrKey, err)
+		}
+	}
+
 	// process secret requests
-	for _, txData := range processed.GetEvents(common.SecretRequestTx) {
+	for _, txData := range requestSecretEvents {
 		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
 		scrtReqTx, ok := t.(*common.L1RequestSecretTx)
 		if !ok {
@@ -57,25 +84,6 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 			continue
 		}
 		responses = append(responses, resp)
-	}
-
-	// process initialize secret events
-	for _, txData := range processed.GetEvents(common.InitialiseSecretTx) {
-		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
-		initSecretTx, ok := t.(*common.L1InitializeSecretTx)
-		if !ok {
-			continue
-		}
-
-		att, err := common.DecodeAttestation(initSecretTx.Attestation)
-		if err != nil {
-			ssp.logger.Error("Could not decode attestation report", log.ErrKey, err)
-			continue
-		}
-
-		if err := ssp.storeAttestation(ctx, att); err != nil {
-			ssp.logger.Error("Could not store the attestation report.", log.ErrKey, err)
-		}
 	}
 
 	return responses

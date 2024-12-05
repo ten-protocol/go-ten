@@ -310,8 +310,11 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, 
 	}
 
 	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
-	println("HOST WALLET NONCE: ", p.hostWallet.GetNonce())
-	println("TRANSACTOR NONCE: ", transactor.Nonce.Uint64())
+
+	println("PublishCrossChainBundle L1 block num: ", bundle.L1BlockNum.Uint64())
+	println("PublishCrossChainBundle rollupNum: ", rollupNum.Uint64())
+	println("PublishCrossChainBundle nonce: ", nonce)
+
 	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature, rollupNum, forkID)
 	if err != nil {
 		if !errors.Is(err, errutil.ErrCrossChainBundleRepublished) {

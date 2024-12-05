@@ -63,6 +63,9 @@ type Repository struct {
 }
 
 func NewBatchRepository(cfg *hostconfig.HostConfig, hostService batchRepoServiceLocator, storage storage.Storage, logger gethlog.Logger) *Repository {
+	if cfg.NodeType == common.ActiveSequencer {
+		println("SEQUENCER CONFIGURED")
+	}
 	return &Repository{
 		batchSubscribers:          subscription.NewManager[host.L2BatchHandler](),
 		validatedBatchSubscribers: subscription.NewManager[host.L2BatchHandler](),
