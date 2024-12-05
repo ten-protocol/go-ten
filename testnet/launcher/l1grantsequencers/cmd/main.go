@@ -17,6 +17,7 @@ func main() {
 			l1gs.WithDockerImage(cliConfig.dockerImage),
 			l1gs.WithMgmtContractAddress(cliConfig.mgmtContractAddress),
 			l1gs.WithEnclaveIDs(cliConfig.enclaveIDs),
+			l1gs.WithSequencerURL(cliConfig.sequencerURL),
 		),
 	)
 	if err != nil {
