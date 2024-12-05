@@ -259,7 +259,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 
 		tx := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
-			Value:    transfer.Amount,
+			Value:    gethcommon.Big0,
 			Data:     data,
 			To:       m.messageBusAddress,
 			Gas:      5_000_000,
