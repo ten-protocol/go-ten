@@ -3,16 +3,20 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	pool "github.com/jolestar/go-commons-pool/v2"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"google.golang.org/grpc/status"
 )
 
 type BackendRPC struct {
@@ -72,7 +76,13 @@ func readEncKey(hostAddrHTTP string, logger gethlog.Logger) []byte {
 	}
 	defer rpcClient.Close()
 	k, err := tenrpc.ReadEnclaveKey(rpcClient)
-	if err != nil {
+	for ; err != nil; k, err = tenrpc.ReadEnclaveKey(rpcClient) {
+		status := status.Convert(err)
+		rpcErr := status.Message()
+		if strings.Contains(rpcErr, crypto.ErrNotInitialised.Error()) {
+			time.Sleep(1 * time.Second)
+			continue
+		}
 		logger.Crit("failed to read enc key", "err", err)
 	}
 	return k

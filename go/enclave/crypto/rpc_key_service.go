@@ -1,7 +1,7 @@
 package crypto
 
 import (
-	"fmt"
+	"errors"
 
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -10,6 +10,8 @@ import (
 )
 
 const rpcSuffix = 1
+
+var ErrNotInitialised = errors.New("rpc key service is not initialised")
 
 // RPCKeyService - manages the "TEN - RPC key" used by clients (like the TEN gateway) to make RPC requests
 type RPCKeyService struct {
@@ -51,7 +53,7 @@ func (s *RPCKeyService) DecryptRPCRequest(bytes []byte) ([]byte, error) {
 
 func (s *RPCKeyService) PublicKey() ([]byte, error) {
 	if s.privKey == nil {
-		return nil, fmt.Errorf("rpc key service is not initialised")
+		return nil, ErrNotInitialised
 	}
 	return gethcrypto.CompressPubkey(s.privKey.PublicKey.ExportECDSA()), nil
 }
