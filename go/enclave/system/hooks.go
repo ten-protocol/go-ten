@@ -3,9 +3,10 @@ package system
 import (
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common/log"
 	"math/big"
 	"strings"
+
+	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -128,7 +129,7 @@ func (s *systemContractCallbacks) initializeRequiredAddresses(addresses SystemCo
 
 func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipt types.Receipt, msgBusManager SystemContractsInitializable) error {
 	s.logger.Info("Initialize: Starting initialization of system contracts", "batchSeqNo", batch.SeqNo())
-	if batch.SeqNo().Uint64() != 2 {
+	if batch.SeqNo().Uint64() != common.L2SysContractGenesisSeqNo {
 		s.logger.Error("Initialize: Batch is not genesis", "batchSeqNo", batch.SeqNo)
 		return fmt.Errorf("batch is not genesis")
 	}

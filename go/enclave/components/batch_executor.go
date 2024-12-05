@@ -220,6 +220,7 @@ func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContex
 	}
 
 	ec.genesisSysCtrResult = result
+	ec.genesisSysCtrResult.MarkSynthetic(true)
 	return nil
 }
 
@@ -250,6 +251,7 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 		return fmt.Errorf("could not process cross chain messages. Some were excluded. Cause: %w", err)
 	}
 	ec.xChainResults = results
+	ec.xChainResults.MarkSynthetic(true)
 	return nil
 }
 
@@ -297,7 +299,7 @@ func (executor *batchExecutor) execBatchTransactions(ec *BatchExecutionContext) 
 
 	ec.batchTxResults = txResults
 
-	//todo
+	// todo
 	txReceipts := make(types.Receipts, 0)
 	for _, txResult := range txResults {
 		txReceipts = append(txReceipts, txResult.Receipt)
@@ -340,6 +342,7 @@ func (executor *batchExecutor) execRegisteredCallbacks(ec *BatchExecutionContext
 		return fmt.Errorf("batch computation failed due to public callback reverting. Cause: %w", err)
 	}
 	ec.callbackTxResults = publicCallbackTxResult
+	ec.callbackTxResults.MarkSynthetic(true)
 	return nil
 }
 
@@ -358,7 +361,8 @@ func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error
 			FromSelf:       true,
 		},
 	}
-	onBlockSuccessfulTx, _, onBlockTxResult, err := executor.processTransactions(ec.ctx, ec.currentBatch, len(ec.batchTxResults)+len(ec.xChainResults), onBlockPricedTx, ec.stateDB, ec.ChainConfig, true)
+	offset := len(ec.callbackTxResults) + len(ec.batchTxResults) + len(ec.xChainResults)
+	onBlockSuccessfulTx, _, onBlockTxResult, err := executor.processTransactions(ec.ctx, ec.currentBatch, offset, onBlockPricedTx, ec.stateDB, ec.ChainConfig, true)
 	if err != nil {
 		return fmt.Errorf("could not process on block end transaction hook. Cause: %w", err)
 	}
@@ -367,6 +371,7 @@ func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error
 		return fmt.Errorf("batch computation failed due to onBlock hook reverting. Cause: %w", err)
 	}
 	ec.blockEndResult = onBlockTxResult
+	ec.blockEndResult.MarkSynthetic(true)
 	// todo - stefan not clear what this does
 	//result := onBlockTxResult[0]
 	//if ok, err := executor.systemContracts.VerifyOnBlockReceipt(successfulTxs, result.Receipt); !ok || err != nil {
@@ -424,7 +429,7 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return h, err
 	}
 
-	allResults := append(append(append(ec.xChainResults, ec.batchTxResults...), ec.callbackTxResults...), ec.blockEndResult...)
+	allResults := append(append(append(append(ec.xChainResults, ec.batchTxResults...), ec.callbackTxResults...), ec.blockEndResult...), ec.genesisSysCtrResult...)
 	return &ComputedBatch{
 		Batch:         &batch,
 		TxExecResults: allResults,

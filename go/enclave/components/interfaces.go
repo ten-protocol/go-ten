@@ -55,7 +55,7 @@ type BatchExecutionContext struct {
 	SequencerNo  *big.Int
 	BaseFee      *big.Int
 
-	//these properties are calculated during execution
+	// these properties are calculated during execution
 	ctx           context.Context
 	l1block       *types.Header
 	parentL1Block *types.Header

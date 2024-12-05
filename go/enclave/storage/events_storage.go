@@ -29,7 +29,7 @@ func newEventsStorage(cachingService *CacheService, db enclavedb.EnclaveDB, logg
 
 func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx, batch *common.BatchHeader, txExecResult *core.TxExecResult) error {
 	txId, senderId, err := enclavedb.ReadTransactionIdAndSender(ctx, dbTX, txExecResult.Receipt.TxHash)
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+	if err != nil {
 		return fmt.Errorf("could not get transaction id. Cause: %w", err)
 	}
 
