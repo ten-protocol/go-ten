@@ -212,18 +212,18 @@ func (c *Client) RPCEncryptionKey(ctx context.Context) ([]byte, common.SystemErr
 	return response.RpcPubKey, nil
 }
 
-func (c *Client) SubmitL1Block(ctx context.Context, blockHeader *types.Header, txsReceiptsAndBlobs []*common.TxAndReceiptAndBlobs) (*common.BlockSubmissionResponse, common.SystemError) {
+func (c *Client) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processedData *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	var buffer bytes.Buffer
 	if err := blockHeader.EncodeRLP(&buffer); err != nil {
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
-	serializedTxsReceiptsAndBlobs, err := rlp.EncodeToBytes(txsReceiptsAndBlobs)
+	serializedProcessedData, err := rlp.EncodeToBytes(processedData)
 	if err != nil {
-		return nil, fmt.Errorf("could not encode receipts. Cause: %w", err)
+		return nil, fmt.Errorf("could not encode processed data. Cause: %w", err)
 	}
 
-	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serializedTxsReceiptsAndBlobs})
+	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedProcessedData: serializedProcessedData})
 	if err != nil {
 		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
@@ -234,6 +234,7 @@ func (c *Client) SubmitL1Block(ctx context.Context, blockHeader *types.Header, t
 	}
 	return blockSubmissionResponse, nil
 }
+
 
 func (c *Client) SubmitBatch(ctx context.Context, batch *common.ExtBatch) common.SystemError {
 	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "SubmitBatch rpc call")

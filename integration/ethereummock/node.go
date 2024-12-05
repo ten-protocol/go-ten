@@ -145,6 +145,10 @@ func (m *Node) TransactionReceipt(_ gethcommon.Hash) (*types.Receipt, error) {
 	}, nil
 }
 
+func (m *Node) TransactionByHash(_ gethcommon.Hash) (*types.Transaction, bool, error) {
+	panic("not yet implemented")
+}
+
 func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 	return 0, nil
 }
@@ -156,7 +160,7 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 			continue
 		}
 		switch l1tx := decodedTx.(type) {
-		case *ethadapter.L1RollupHashes:
+		case *common.L1RollupHashes:
 			ctx := context.TODO()
 			blobs, _ := m.BlobResolver.FetchBlobs(ctx, block.Header(), l1tx.BlobHashes)
 			r, err := ethadapter.ReconstructRollup(blobs)

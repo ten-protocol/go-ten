@@ -5,9 +5,10 @@ import (
 	"net/http"
 	"time"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -145,12 +146,15 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 	}, logger)
 
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)
-	obscuroRelevantContracts := []gethcommon.Address{cfg.ManagementContractAddress, cfg.MessageBusAddress}
-	l1Repo := l1.NewL1Repository(l1Client, obscuroRelevantContracts, logger)
 	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BeaconUrl)
 	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BlobArchiveUrl)
 	// we can add more fallback clients as they become available
 	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback))
+	contractAddresses := map[l1.ContractType][]gethcommon.Address{
+		l1.MgmtContract: {cfg.ManagementContractAddress},
+		l1.MsgBus:       {cfg.MessageBusAddress},
+	}
+	l1Repo := l1.NewL1Repository(l1Client, logger, mgmtContractLib, blobResolver, contractAddresses)
 	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Repo, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService, blobResolver)
 }
 

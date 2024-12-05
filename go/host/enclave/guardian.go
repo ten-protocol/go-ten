@@ -360,9 +360,11 @@ func (g *Guardian) provideSecret() error {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
 				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)
 				if err != nil {
+					println("ENCLAVE INITIALISATION FAILURE: ", g.enclaveID.Hex())
 					g.logger.Error("Could not initialize enclave with received secret response", log.ErrKey, err)
 					continue // try the next secret response in the block if there are more
 				}
+				println("ENCLAVE INITALIZED")
 				return nil // successfully initialized enclave with secret, break out of retry loop function
 			}
 		}
@@ -370,6 +372,7 @@ func (g *Guardian) provideSecret() error {
 		return errors.New("no valid secret received in block")
 	}, retry.NewTimeoutStrategy(_maxWaitForSecretResponse, 500*time.Millisecond))
 	if err != nil {
+		println("TIMED OUT WAITING FOR SECRET RESPONSE after", _maxWaitForSecretResponse.String())
 		// something went wrong, check the enclave status in case it is an enclave problem and let the main loop try again when appropriate
 		return errors.Wrap(err, "no valid secret received for enclave")
 	}
@@ -465,14 +468,15 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
 		return false, nil
 	}
-	receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
+
+	processedData, err := g.sl.L1Repo().ExtractTenTransactions(block)
 	if err != nil {
 		g.submitDataLock.Unlock() // lock must be released before returning
-		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
+		return false, fmt.Errorf("could not extract ten transactions for block=%s - %w", block.Hash(), err)
 	}
-	txsReceiptsAndBlobs, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractRelevantTenTransactions(block, receipts)
+	rollupTxs, contractAddressTxs := g.getRollupsAndContractAddrTxs(*processedData)
 
-	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txsReceiptsAndBlobs)
+	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), processedData)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -506,7 +510,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx, contractAddressTxs []*ethadapter.L1SetImportantContractsTx) {
+func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*common.L1RollupTx, contractAddressTxs []*common.L1SetImportantContractsTx) {
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
 	if err != nil {
@@ -814,4 +818,37 @@ func (g *Guardian) evictEnclaveFromHAPool() {
 		g.logger.Error("Error while stopping guardian of failed enclave", log.ErrKey, err)
 	}
 	go g.sl.Enclaves().EvictEnclave(g.enclaveID)
+}
+
+func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data) ([]*common.L1RollupTx, []*common.L1SetImportantContractsTx) {
+	rollupTxs := make([]*common.L1RollupTx, 0)
+	contractAddressTxs := make([]*common.L1SetImportantContractsTx, 0)
+
+	for _, txData := range processed.GetEvents(common.RollupTx) {
+		encodedRlp, err := ethadapter.DecodeBlobs(txData.Blobs)
+		if err != nil {
+			g.logger.Crit("could not decode blobs.", log.ErrKey, err)
+			continue
+		}
+
+		rlp := &common.L1RollupTx{
+			Rollup: encodedRlp,
+		}
+		rollupTxs = append(rollupTxs, rlp)
+	}
+
+	// Get contract address transactions
+	for _, txData := range processed.GetEvents(common.SetImportantContractsTx) {
+		println("I NEED TO SETIMPORTANT CONTRACTS: ", txData)
+		//unwrappedTx, err := event.Type.UnwrapTransaction()
+		//if err != nil {
+		//	g.logger.Error("Could not unwrap ten transaction", "type", err)
+		//}
+		//if contractTx, ok := unwrappedTx.(*common.L1SetImportantContractsTx); ok {
+		//	contractAddressTxs = append(contractAddressTxs, contractTx)
+		//} else {
+		//	g.logger.Warn("Unexpected type for SetImportantContractsTx event", "type", fmt.Sprintf("%T", event.Type))
+		//}
+	}
+	return rollupTxs, contractAddressTxs
 }
