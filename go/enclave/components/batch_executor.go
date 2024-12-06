@@ -624,6 +624,7 @@ func (executor *batchExecutor) executeTxs(ec *BatchExecutionContext, offset int,
 			panic("Should not happen. Tx receipts and tx results do not match")
 		}
 		txResult.Receipt = txReceipts[i]
+		txResult.Receipt.TransactionIndex += uint(offset)
 	}
 
 	sort.Sort(sortByTxIndex(txResults))
