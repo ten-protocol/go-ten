@@ -51,11 +51,11 @@ type Manager interface {
 
 	ExtractOutboundTransfers(ctx context.Context, receipts common.L2Receipts) (common.ValueTransferEvents, error)
 
-	CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, rollupState *state.StateDB) common.L2Transactions
+	CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, stateDB *state.StateDB) common.L2Transactions
 
-	ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB)
+	ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, stateDB *state.StateDB)
 
-	RetrieveInboundMessages(ctx context.Context, fromBlock *types.Header, toBlock *types.Header, rollupState *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents)
+	RetrieveInboundMessages(ctx context.Context, fromBlock *types.Header, toBlock *types.Header) (common.CrossChainMessages, common.ValueTransferEvents)
 
 	system.SystemContractsInitializable
 }

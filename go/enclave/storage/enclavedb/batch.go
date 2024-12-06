@@ -65,7 +65,7 @@ func ExistsBatchAtHeight(ctx context.Context, dbTx *sql.Tx, height *big.Int) (bo
 }
 
 // WriteTransactions - persists the batch and the transactions
-func WriteTransactions(ctx context.Context, dbtx *sql.Tx, transactions []*core.TxWithSender, height uint64, isSynthetic bool, senders []uint64, toContracts []*uint64) error {
+func WriteTransactions(ctx context.Context, dbtx *sql.Tx, transactions []*core.TxWithSender, height uint64, isSynthetic bool, senderIds []uint64, toContractIds []*uint64, fromIdx int) error {
 	// creates a batch insert statement for all entries
 	if len(transactions) > 0 {
 		insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height, is_synthetic) values " + repeat("(?,?,?,?,?,?,?,?)", ",", len(transactions))
@@ -79,10 +79,10 @@ func WriteTransactions(ctx context.Context, dbtx *sql.Tx, transactions []*core.T
 
 			args = append(args, transaction.Tx.Hash()) // tx_hash
 			args = append(args, txBytes)               // content
-			args = append(args, toContracts[i])        // To
+			args = append(args, toContractIds[i])      // To
 			args = append(args, transaction.Tx.Type()) // Type
-			args = append(args, senders[i])            // sender_address
-			args = append(args, i)                     // idx
+			args = append(args, senderIds[i])          // sender_address
+			args = append(args, fromIdx+i)             // idx
 			args = append(args, height)                // the batch height which contained it
 			args = append(args, isSynthetic)           // is_synthetic if the transaction is a synthetic (internally derived transaction)
 		}

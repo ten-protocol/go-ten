@@ -111,7 +111,7 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("could not execute batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
-			err = val.storage.StoreExecutedBatch(ctx, batchHeader, txResults)
+			err = val.storage.StoreExecutedBatch(ctx, batch, txResults)
 			if err != nil {
 				return fmt.Errorf("could not store executed batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
@@ -153,7 +153,7 @@ func (val *validator) handleGenesis(ctx context.Context, batch *common.BatchHead
 		return fmt.Errorf("received invalid genesis batch")
 	}
 
-	err = val.storage.StoreExecutedBatch(ctx, genBatch.Header, nil)
+	err = val.storage.StoreExecutedBatch(ctx, genBatch, nil)
 	if err != nil {
 		return err
 	}

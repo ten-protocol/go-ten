@@ -54,6 +54,26 @@ type BatchExecutionContext struct {
 	ChainConfig  *params.ChainConfig
 	SequencerNo  *big.Int
 	BaseFee      *big.Int
+
+	// these properties are calculated during execution
+	ctx           context.Context
+	l1block       *types.Header
+	parentL1Block *types.Header
+	parentBatch   *common.BatchHeader
+
+	xChainMsgs      common.CrossChainMessages
+	xChainValueMsgs common.ValueTransferEvents
+
+	currentBatch         *core.Batch
+	stateDB              *state.StateDB
+	beforeProcessingSnap int
+
+	genesisSysCtrResult core.TxExecResults
+
+	xChainResults     core.TxExecResults
+	batchTxResults    core.TxExecResults
+	callbackTxResults core.TxExecResults
+	blockEndResult    core.TxExecResults
 }
 
 // ComputedBatch - a structure representing the result of a batch

@@ -16,6 +16,9 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
+// HeightCommittedBlocks is the number of blocks deep a transaction must be to be considered safe from reorganisations.
+const HeightCommittedBlocks = 15
+
 // Received blocks ar stored here
 type blockResolverInMem struct {
 	blockCache map[common.L1BlockHash]*types.Block
@@ -162,7 +165,7 @@ func (m *Node) removeCommittedTransactions(
 	resolver *blockResolverInMem,
 	db TxDB,
 ) []*types.Transaction {
-	if cb.NumberU64() <= common.HeightCommittedBlocks {
+	if cb.NumberU64() <= HeightCommittedBlocks {
 		return mempool
 	}
 
@@ -170,7 +173,7 @@ func (m *Node) removeCommittedTransactions(
 	i := 0
 
 	for {
-		if i == common.HeightCommittedBlocks {
+		if i == HeightCommittedBlocks {
 			break
 		}
 

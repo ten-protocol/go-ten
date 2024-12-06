@@ -51,7 +51,7 @@ func WriteEventType(ctx context.Context, dbTX *sql.Tx, et *EventType) (uint64, e
 }
 
 func ReadEventType(ctx context.Context, dbTX *sql.Tx, contract *Contract, eventSignature gethcommon.Hash) (*EventType, error) {
-	var et EventType = EventType{Contract: contract}
+	et := EventType{Contract: contract}
 	err := dbTX.QueryRowContext(ctx,
 		"select id, event_sig, auto_visibility, auto_public, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
 		contract.Id, eventSignature.Bytes(),

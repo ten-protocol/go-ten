@@ -72,7 +72,7 @@ type BatchResolver interface {
 	// StoreBatch stores an un-executed batch.
 	StoreBatch(ctx context.Context, batch *core.Batch, convertedHash gethcommon.Hash) error
 	// StoreExecutedBatch - store the batch after it was executed
-	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, results core.TxExecResults) error
+	StoreExecutedBatch(ctx context.Context, batch *core.Batch, results core.TxExecResults) error
 
 	// StoreRollup
 	StoreRollup(ctx context.Context, rollup *common.ExtRollup, header *common.CalldataRollupHeader) error

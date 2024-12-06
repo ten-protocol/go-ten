@@ -149,7 +149,7 @@ func (m *MessageBusManager) ExtractOutboundTransfers(_ context.Context, receipts
 // todo (@stefan) - fix ordering of messages, currently it is irrelevant.
 // todo (@stefan) - do not extract messages below their consistency level. Irrelevant security wise.
 // todo (@stefan) - surface errors
-func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlock *types.Header, toBlock *types.Header, rollupState *state.StateDB) (common.CrossChainMessages, common.ValueTransferEvents) {
+func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlock *types.Header, toBlock *types.Header) (common.CrossChainMessages, common.ValueTransferEvents) {
 	messages := make(common.CrossChainMessages, 0)
 	transfers := make(common.ValueTransferEvents, 0)
 

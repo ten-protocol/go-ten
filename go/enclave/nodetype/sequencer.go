@@ -146,7 +146,7 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	// produce batch #2 which has the message bus and any other system contracts
 	_, err = s.produceBatch(
 		ctx,
-		big.NewInt(0).Add(batch.Header.SequencerOrderNo, big.NewInt(1)),
+		big.NewInt(0).SetUint64(common.L2SysContractGenesisSeqNo),
 		block.Hash(),
 		batch.Hash(),
 		common.L2Transactions{},
@@ -304,7 +304,7 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	if err := s.storage.StoreExecutedBatch(ctx, batch.Header, txResults); err != nil {
+	if err := s.storage.StoreExecutedBatch(ctx, batch, txResults); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
