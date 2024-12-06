@@ -65,7 +65,6 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed
 
 	rollups, err = rc.getSignedRollup(rollups)
 	if err != nil {
-		println("ERROR IN SIGNED ROLLUPS")
 		return err
 	}
 
@@ -95,7 +94,6 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed
 			// todo - issue challenge as a validator
 			return err
 		}
-		println("STORING ROLLUP WITH SEQ NO: ", rollup.Header.LastBatchSeqNo, " SIG LENGTH: ", len(rollup.Header.Signature))
 		if err := rc.storage.StoreRollup(ctx, rollup, internalHeader); err != nil {
 			rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			return err
@@ -158,7 +156,6 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 
 		rollups = append(rollups, r)
 
-		println("EXTRACTED ROLLUP WITH LAST SEQ NO: ", rollups[0].Header.LastBatchSeqNo)
 		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, processed.BlockHeader.Hash())
 	}
 

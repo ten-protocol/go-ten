@@ -212,7 +212,8 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		return nil, fmt.Errorf("unable to fetch logs for L1 block - %w", err)
 	}
 
-	// Group logs by transaction hash and topic
+	// FIXME clean this monster function up & look for redundant block.transactions() loops on enclave side
+	// group logs by transaction hash and topic
 	type logGroup struct {
 		crossChainLogs     []types.Log
 		valueTransferLogs  []types.Log
@@ -242,7 +243,6 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		case crosschain.NetworkSecretRespondedID:
 			logsByTx[l.TxHash].secretResponseLogs = append(logsByTx[l.TxHash].secretResponseLogs, l)
 		case crosschain.RollupAddedID:
-			println("ROLLUP ADDED LOG")
 			logsByTx[l.TxHash].rollupAddedLogs = append(logsByTx[l.TxHash].rollupAddedLogs, l)
 		}
 	}
@@ -268,7 +268,6 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 			ValueTransfers:     &common.ValueTransferEvents{},
 		}
 
-		// Process all events for this transaction
 		if len(txLogs.crossChainLogs) > 0 {
 			if messages, err := crosschain.ConvertLogsToMessages(txLogs.crossChainLogs, crosschain.CrossChainEventName, crosschain.MessageBusABI); err == nil {
 				txData.CrossChainMessages = &messages
@@ -277,15 +276,18 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		}
 
 		if len(txLogs.valueTransferLogs) > 0 {
-			if transfers, err := crosschain.ConvertLogsToValueTransfers(txLogs.valueTransferLogs, crosschain.CrossChainEventName, crosschain.MessageBusABI); err == nil {
+			if transfers, err := crosschain.ConvertLogsToValueTransfers(txLogs.valueTransferLogs, crosschain.ValueTransferEventName, crosschain.MessageBusABI); err == nil {
 				txData.ValueTransfers = &transfers
 				processed.AddEvent(common.CrossChainValueTranserTx, txData)
 			}
 		}
 
 		if len(txLogs.sequencerLogs) > 0 {
-			//TODO convert log to enclaveID
-			processed.AddEvent(common.SequencerAddedTx, txData)
+			println("SEQUENCER ENCLAVE ADDED ")
+			if enclaveIDs, err := crosschain.ConvertLogsToSequencerEnclaves(txLogs.sequencerLogs, crosschain.SequencerEnclaveGrantedEventName, crosschain.MgmtContractABI); err == nil {
+				txData.SequencerEnclaveIDs = enclaveIDs
+				processed.AddEvent(common.SequencerAddedTx, txData)
+			}
 		}
 
 		if len(txLogs.secretRequestLogs) > 0 {
@@ -303,7 +305,6 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 			case *common.L1SetImportantContractsTx:
 				processed.AddEvent(common.SetImportantContractsTx, txData)
 			case *common.L1RollupHashes:
-				println("ROLLUP DECODE TX")
 				if blobs, err := r.blobResolver.FetchBlobs(context.Background(), block.Header(), t.BlobHashes); err == nil {
 					txData.Blobs = blobs
 					processed.AddEvent(common.RollupTx, txData)

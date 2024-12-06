@@ -235,7 +235,6 @@ func (c *Client) SubmitL1Block(ctx context.Context, blockHeader *types.Header, p
 	return blockSubmissionResponse, nil
 }
 
-
 func (c *Client) SubmitBatch(ctx context.Context, batch *common.ExtBatch) common.SystemError {
 	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "SubmitBatch rpc call")
 

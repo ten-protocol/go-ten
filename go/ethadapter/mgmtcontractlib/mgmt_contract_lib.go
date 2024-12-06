@@ -174,8 +174,6 @@ func (c *contractLibImpl) CreateRequestSecret(tx *common.L1RequestSecretTx) type
 }
 
 func (c *contractLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) types.TxData {
-	println("CREATE RESPOND SECRET TX: ", tx.RequesterID.Hex())
-	println("---------")
 	data, err := c.contractABI.Pack(
 		RespondSecretMethod,
 		tx.AttesterID,

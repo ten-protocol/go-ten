@@ -80,6 +80,11 @@ func (bp *l1BlockProcessor) Process(ctx context.Context, processed *common.Proce
 		}
 	}
 
+	sequencerAddedTx := processed.GetEvents(common.SequencerAddedTx)
+	if len(sequencerAddedTx) > 0 {
+		// FIXME ADD SEQUENCER
+	}
+
 	// todo @siliev - not sure if this is the best way to update the price, will pick up random stale blocks from forks?
 	bp.gasOracle.ProcessL1Block(header)
 

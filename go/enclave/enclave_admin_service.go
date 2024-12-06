@@ -191,6 +191,9 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *ty
 	if blockHeader.Hash() != processed.BlockHeader.Hash() {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("block header mismatch"))
 	}
+
+	// TODO verify proof provided with block processed.Proof
+
 	result, err := e.ingestL1Block(ctx, processed)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
@@ -232,17 +235,8 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 
 	err = e.validator().VerifySequencerSignature(batch)
 	if err != nil {
-		println("FAILURE ENCLAVE SERVICE BATCH ADDED SEQ: ", batch.SeqNo().Uint64())
-		println("FAILURE ENCLAVE SERVICE HOSTID: ", e.config.HostID.Hex())
-		println("FAILURE ENCLAVE SERVICE HOST ADDRESS: ", e.config.HostAddress)
-		println("FAILURE ENCLAVE SERVICE NODE TYPE: ", e.config.NodeType)
 		return responses.ToInternalError(fmt.Errorf("invalid batch received. Could not verify signature. Cause: %w", err))
 	}
-
-	println("-----")
-	println("ENCLAVE SERVICE BATCH ADDED SEQ: ", batch.SeqNo().Uint64())
-	println("ENCLAVE SERVICE HOSTID: ", e.config.HostID.Hex())
-	println("ENCLAVE SERVICE NODE TYPE: ", e.config.NodeType)
 
 	// calculate the converted hash, and store it in the db for chaining of the converted chain
 	convertedHeader, err := e.gethEncodingService.CreateEthHeaderForBatch(ctx, extBatch.Header)

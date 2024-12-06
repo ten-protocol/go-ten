@@ -39,16 +39,8 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 	var responses []*common.ProducedSecretResponse
 	block := processed.BlockHeader
 
-	requestSecretEvents := processed.GetEvents(common.SecretRequestTx)
-	if len(requestSecretEvents) > 0 {
-	}
-
-	initializeSecretEvents := processed.GetEvents(common.InitialiseSecretTx)
-	if len(initializeSecretEvents) > 0 {
-	}
-
 	// process initialize secret events
-	for _, txData := range initializeSecretEvents {
+	for _, txData := range processed.GetEvents(common.InitialiseSecretTx) {
 		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
 		initSecretTx, ok := t.(*common.L1InitializeSecretTx)
 		if !ok {
@@ -67,7 +59,7 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 	}
 
 	// process secret requests
-	for _, txData := range requestSecretEvents {
+	for _, txData := range processed.GetEvents(common.SecretRequestTx) {
 		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
 		scrtReqTx, ok := t.(*common.L1RequestSecretTx)
 		if !ok {
