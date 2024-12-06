@@ -15,6 +15,7 @@ async function sleep(ms: number) {
 }
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+    return;
     const l1Network = hre.companionNetworks.layer1;
     const l2Network = hre; 
 
