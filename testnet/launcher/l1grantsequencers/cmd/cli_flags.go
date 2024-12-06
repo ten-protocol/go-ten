@@ -4,7 +4,7 @@ package main
 const (
 	l1HTTPURLFlag           = "l1_http_url"
 	privateKeyFlag          = "private_key"
-	mgmtContractAddressFlag = "mgmt_contract_address"
+	mgmtContractAddressFlag = "management_contract_addr"
 	enclaveIDsFlag          = "enclave_ids"
 	dockerImageFlag         = "docker_image"
 	contractsEnvFileFlag    = "contracts_env_file"
