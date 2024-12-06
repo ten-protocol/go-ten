@@ -19,7 +19,6 @@ require (
 	github.com/eko/gocache/lib/v4 v4.1.6
 	github.com/eko/gocache/store/ristretto/v4 v4.2.1
 	github.com/ethereum/go-ethereum v1.14.6
-	github.com/fjl/memsize v0.0.2
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
 	github.com/go-kit/kit v0.13.0
