@@ -41,6 +41,7 @@ func (s *GrantSequencers) Start() error {
 	}
 	cmds := []string{
 		"npx",
+		"hardhat",
 		"run",
 		"--network",
 		"layer1",
@@ -59,6 +60,8 @@ func (s *GrantSequencers) Start() error {
             }
         }`, s.cfg.l1HTTPURL, s.cfg.privateKey),
 	}
+
+	fmt.Println("Starting grant sequencers hardhat script...")
 
 	containerID, err := docker.StartNewContainer(
 		"grant-sequencers",
@@ -119,6 +122,7 @@ func fetchEnclaveIDs(url string) (string, error) {
 	}
 	return strings.Join(enclaveIDs, ","), nil
 }
+
 func (s *GrantSequencers) PrintLogs(cli *client.Client) {
 	logsOptions := types.ContainerLogsOptions{
 		ShowStdout: true,
