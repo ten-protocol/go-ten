@@ -319,7 +319,7 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 
 	if requestingAccount != nil {
 		// Add log visibility rules
-		logsVisibQuery, logsVisibParams := logsVisibilityQuery(requestingAccount)
+		logsVisibQuery, logsVisibParams := logsVisibilityQuery(requestingAccount, withReceipts)
 		query += logsVisibQuery
 		queryParams = append(queryParams, logsVisibParams...)
 
@@ -461,15 +461,19 @@ func receiptsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []a
 }
 
 // this function encodes the event log visibility rules
-func logsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
+func logsVisibilityQuery(requestingAccount *gethcommon.Address, withReceipts bool) (string, []any) {
 	acc := requestingAccount.Bytes()
 
 	visibParams := make([]any, 0)
 
 	visibQuery := "AND ("
 
-	// this condition only affects queries that return receipts that have no events logs
-	visibQuery += " (e.id is NULL)  "
+	if withReceipts {
+		// this condition only affects queries that return receipts that have no events logs
+		visibQuery += " (e.id is NULL) "
+	} else {
+		visibQuery += " (1=0) "
+	}
 
 	// everyone can query config_public events
 	visibQuery += " OR (et.config_public=true) "
