@@ -32,7 +32,7 @@ const (
 		"   left join externally_owned_account eoa1 on t1.rel_address=eoa1.id " +
 		"left join event_topic t2 on e.topic2=t2.id and et.id=t2.event_type " +
 		"   left join externally_owned_account eoa2 on t2.rel_address=eoa2.id " +
-		"left join event_topic t3 on e.topic3=t3.id and et.id=t1.event_type " +
+		"left join event_topic t3 on e.topic3=t3.id and et.id=t3.event_type " +
 		"   left join externally_owned_account eoa3 on t3.rel_address=eoa3.id " +
 		"where b.is_canonical=true "
 )
