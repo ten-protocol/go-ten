@@ -77,14 +77,14 @@ func WriteTransactions(ctx context.Context, dbtx *sql.Tx, transactions []*core.T
 				return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 			}
 
-			args = append(args, transaction.Tx.Hash()) // tx_hash
-			args = append(args, txBytes)               // content
-			args = append(args, toContractIds[i])      // To
-			args = append(args, transaction.Tx.Type()) // Type
-			args = append(args, senderIds[i])          // sender_address
-			args = append(args, fromIdx+i)             // idx
-			args = append(args, height)                // the batch height which contained it
-			args = append(args, isSynthetic)           // is_synthetic if the transaction is a synthetic (internally derived transaction)
+			args = append(args, transaction.Tx.Hash().Bytes()) // tx_hash
+			args = append(args, txBytes)                       // content
+			args = append(args, toContractIds[i])              // To
+			args = append(args, transaction.Tx.Type())         // Type
+			args = append(args, senderIds[i])                  // sender_address
+			args = append(args, fromIdx+i)                     // idx
+			args = append(args, height)                        // the batch height which contained it
+			args = append(args, isSynthetic)                   // is_synthetic if the transaction is a synthetic (internally derived transaction)
 		}
 		_, err := dbtx.ExecContext(ctx, insert, args...)
 		if err != nil {
