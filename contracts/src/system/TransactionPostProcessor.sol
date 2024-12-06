@@ -42,7 +42,7 @@ contract TransactionPostProcessor is Initializable, AccessControl{
             revert("No transactions to convert");
         }
         
-        emit TransactionsConverted(transactions.length);
+//        emit TransactionsConverted(transactions.length);
         
         for (uint256 i = 0; i < onBlockEndListeners.length; ++i) {
             OnBlockEndCallback callback = onBlockEndListeners[i];
