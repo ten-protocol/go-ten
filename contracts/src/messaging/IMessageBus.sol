@@ -72,4 +72,10 @@ interface IMessageBus {
 
     // This is a testnet function which allows the bridge owner to retrieve all funds from the message bus.
     function retrieveAllFunds(address receiver) external;
+
+    // the fee needed to be paid in msg.value to publish the value transfer
+    function getValueTransferFee() external view returns (uint256);
+
+    // the fee needed to be paid in msg.value to publish a message
+    function getMessageFee(uint256 payloadLength) external view returns (uint256);
 }

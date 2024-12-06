@@ -82,11 +82,11 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
                8; // sequence (uint64)
     }
 
-    function getValueTransferFee() internal view returns (uint256) {
+    function getValueTransferFee() public view returns (uint256) {
         return fees.messageFee(32); //just a hash
     }
 
-    function getMessageFee(uint256 payloadLength) internal view returns (uint256) {
+    function getMessageFee(uint256 payloadLength) public view returns (uint256) {
         return fees.messageFee(payloadLength + getFixedDataLength());
     }
 
