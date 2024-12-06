@@ -60,7 +60,7 @@ contract ZenTestnet is Initializable, OnBlockEndCallback, ERC20Upgradeable, Owna
         for (uint256 i=0; i<transactions.length; i++) {
             // Process transactions
             _mint(transactions[i].from, 1);
-            emit TransactionProcessed(transactions[i].from, 1);
+//            emit TransactionProcessed(transactions[i].from, 1);
         }
     }
 }
