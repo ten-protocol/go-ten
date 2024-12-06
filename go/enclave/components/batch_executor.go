@@ -598,14 +598,18 @@ func (executor *batchExecutor) executeTxs(ec *BatchExecutionContext, offset int,
 	}
 
 	// populate the derived fields in the receipt
-	txReceipts := make(types.Receipts, 0)
-	for _, txResult := range txResults {
-		txReceipts = append(txReceipts, txResult.Receipt)
-	}
 	batch := ec.currentBatch
+	txReceipts := txResults.Receipts()
 	err = txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), batch.Header.Time, batch.Header.BaseFee, nil, txResults.BatchTransactions())
 	if err != nil {
 		return nil, fmt.Errorf("could not derive receipts. Cause: %w", err)
+	}
+	for i, txResult := range txResults {
+		// sanity check
+		if txResult.Receipt.TxHash != txReceipts[i].TxHash {
+			panic("Should not happen. Tx receipts and tx results do not match")
+		}
+		txResult.Receipt = txReceipts[i]
 	}
 
 	sort.Sort(sortByTxIndex(txResults))
