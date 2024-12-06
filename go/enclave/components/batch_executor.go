@@ -9,6 +9,8 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/trie"
+
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -27,7 +29,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -364,19 +365,10 @@ func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error
 }
 
 func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedBatch, error) {
-	// we need to copy the batch to reset the internal hash cache
-	batch := *ec.currentBatch
-	batch.Header.Root = ec.stateDB.IntermediateRoot(false)
-	batch.Transactions = ec.batchTxResults.BatchTransactions()
-	batch.ResetHash()
-
-	txReceipts := ec.batchTxResults.Receipts()
-	if err := executor.populateOutboundCrossChainData(ec.ctx, &batch, ec.l1block, txReceipts); err != nil {
-		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
+	batch, allResults, err := executor.createBatch(ec)
+	if err != nil {
+		return nil, fmt.Errorf("failed creating batch. Cause: %w", err)
 	}
-
-	allResults := append(append(append(append(ec.batchTxResults, ec.xChainResults...), ec.callbackTxResults...), ec.blockEndResult...), ec.genesisSysCtrResult...)
-	executor.populateHeader(&batch, allResults.Receipts())
 
 	commitFunc := func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
 		executor.stateDBMutex.Lock()
@@ -396,16 +388,52 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 				return h, fmt.Errorf("failed to instantiate system contracts: expected receipt for system deployer transaction, but no receipts found in batch")
 			}
 
-			return h, executor.systemContracts.Initialize(&batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
+			return h, executor.systemContracts.Initialize(batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
 		}
 		return h, err
 	}
 
 	return &ComputedBatch{
-		Batch:         &batch,
+		Batch:         batch,
 		TxExecResults: allResults,
 		Commit:        commitFunc,
 	}, nil
+}
+
+func (executor *batchExecutor) createBatch(ec *BatchExecutionContext) (*core.Batch, core.TxExecResults, error) {
+	// we need to copy the batch to reset the internal hash cache
+	batch := *ec.currentBatch
+	batch.Header.Root = ec.stateDB.IntermediateRoot(false)
+	batch.Transactions = ec.batchTxResults.BatchTransactions()
+	batch.ResetHash()
+
+	txReceipts := ec.batchTxResults.Receipts()
+	if err := executor.populateOutboundCrossChainData(ec.ctx, &batch, ec.l1block, txReceipts); err != nil {
+		return nil, nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
+	}
+
+	allResults := append(append(append(append(ec.batchTxResults, ec.xChainResults...), ec.callbackTxResults...), ec.blockEndResult...), ec.genesisSysCtrResult...)
+	receipts := allResults.Receipts()
+	if len(receipts) == 0 {
+		batch.Header.ReceiptHash = types.EmptyRootHash
+	} else {
+		batch.Header.ReceiptHash = types.DeriveSha(receipts, trie.NewStackTrie(nil))
+	}
+
+	if len(batch.Transactions) == 0 {
+		batch.Header.TxHash = types.EmptyRootHash
+	} else {
+		batch.Header.TxHash = types.DeriveSha(types.Transactions(batch.Transactions), trie.NewStackTrie(nil))
+	}
+
+	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
+	for _, receipt := range receipts {
+		receipt.BlockHash = batch.Hash()
+		for _, l := range receipt.Logs {
+			l.BlockHash = batch.Hash()
+		}
+	}
+	return &batch, allResults, nil
 }
 
 func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Batch) ([]*core.TxExecResult, error) {
@@ -534,20 +562,6 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 	batch.Header.LatestInboundCrossChainHeight = block.Number
 
 	return nil
-}
-
-func (executor *batchExecutor) populateHeader(batch *core.Batch, receipts types.Receipts) {
-	if len(receipts) == 0 {
-		batch.Header.ReceiptHash = types.EmptyRootHash
-	} else {
-		batch.Header.ReceiptHash = types.DeriveSha(receipts, trie.NewStackTrie(nil))
-	}
-
-	if len(batch.Transactions) == 0 {
-		batch.Header.TxHash = types.EmptyRootHash
-	} else {
-		batch.Header.TxHash = types.DeriveSha(types.Transactions(batch.Transactions), trie.NewStackTrie(nil))
-	}
 }
 
 func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions common.L2PricedTransactions, results core.TxExecResults) error {
