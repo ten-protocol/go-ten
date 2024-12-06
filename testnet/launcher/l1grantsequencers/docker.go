@@ -1,9 +1,15 @@
 package l1grantsequencers
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"strings"
+	"time"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	"github.com/ten-protocol/go-ten/go/common/docker"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -71,6 +77,24 @@ func (s *GrantSequencers) Start() error {
 	return nil
 }
 
+func (s *GrantSequencers) WaitForFinish() error {
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return fmt.Errorf("failed to create docker client: %w", err)
+	}
+	defer cli.Close()
+
+	// make sure the container has finished execution
+	err = docker.WaitForContainerToFinish(s.containerID, 15*time.Minute)
+	if err != nil {
+		fmt.Println("Error waiting for container to finish: ", err)
+		s.PrintLogs(cli)
+		return err
+	}
+
+	return nil
+}
+
 func fetchEnclaveIDs(url string) (string, error) {
 	// fetch enclaveIDs
 	client, err := rpc.NewNetworkClient(url)
@@ -94,4 +118,24 @@ func fetchEnclaveIDs(url string) (string, error) {
 		enclaveIDs = append(enclaveIDs, status.EnclaveID.String())
 	}
 	return strings.Join(enclaveIDs, ","), nil
+}
+func (s *GrantSequencers) PrintLogs(cli *client.Client) {
+	logsOptions := types.ContainerLogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+	}
+
+	// Read the container logs
+	out, err := cli.ContainerLogs(context.Background(), s.containerID, logsOptions)
+	if err != nil {
+		fmt.Printf("Error printing out container %s logs... %v\n", s.containerID, err)
+	}
+	defer out.Close()
+
+	var buf bytes.Buffer
+	_, err = io.Copy(&buf, out)
+	if err != nil {
+		fmt.Printf("Error getting logs for container %s\n", s.containerID)
+	}
+	fmt.Println(buf.String())
 }
