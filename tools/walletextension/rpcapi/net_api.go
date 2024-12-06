@@ -25,6 +25,7 @@ type ConfigResponseJson struct {
 	MessageBusAddress               string
 	L2MessageBusAddress             string
 	TransactionPostProcessorAddress string
+	PublicSystemContracts           map[string]string
 }
 
 func (api *NetAPI) Config(ctx context.Context) (*ConfigResponseJson, error) {

@@ -52,6 +52,7 @@
     { "fromHost": true, "name": "NETWORK_ROLLUP_MAXINTERVAL" },
     { "fromHost": true, "name": "NETWORK_ROLLUP_MAXSIZE" },
     { "fromHost": true, "name": "NETWORK_SEQUENCER_P2PADDRESS" },
+    { "fromHost": true, "name": "NETWORK_SEQUENCER_SYSTEMCONTRACTSUPGRADER" },
     { "fromHost": true, "name": "NODE_HOSTADDRESS" },
     { "fromHost": true, "name": "NODE_ID" },
     { "fromHost": true, "name": "NODE_ISGENESIS" },
