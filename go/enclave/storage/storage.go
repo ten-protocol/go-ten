@@ -657,7 +657,7 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 	}
 
 	// store the synthetic transactions
-	transactionsWithSenders := results.GetSynthetic().ToTransactionsWithSenders()
+	transactionsWithSenders := results.SyntheticTransactions().ToTransactionsWithSenders()
 
 	senders, toContracts, err := s.handleTxSendersAndReceivers(ctx, transactionsWithSenders, dbTx)
 	if err != nil {

@@ -149,7 +149,7 @@ func (txResults *TxExecResults) MarkSynthetic(isSynthetic bool) {
 	}
 }
 
-func (txResults *TxExecResults) GetSynthetic() *TxExecResults {
+func (txResults *TxExecResults) SyntheticTransactions() *TxExecResults {
 	syntheticTxs := make(TxExecResults, 0)
 	for _, txResult := range *txResults {
 		if txResult.TxWithSender.IsSynthetic {
@@ -157,6 +157,16 @@ func (txResults *TxExecResults) GetSynthetic() *TxExecResults {
 		}
 	}
 	return &syntheticTxs
+}
+
+func (txResults *TxExecResults) BatchTransactions() []*common.L2Tx {
+	txs := make([]*common.L2Tx, 0)
+	for _, txResult := range *txResults {
+		if !txResult.TxWithSender.IsSynthetic {
+			txs = append(txs, txResult.TxWithSender.Tx)
+		}
+	}
+	return txs
 }
 
 func (txResults *TxExecResults) GetReal() *TxExecResults {
@@ -175,14 +185,6 @@ func (txResults *TxExecResults) ToTransactionsWithSenders() TransactionsWithSend
 		transactionsWithSenders[i] = txResult.TxWithSender
 	}
 	return transactionsWithSenders
-}
-
-func (txResults *TxExecResults) Transactions() []*common.L2Tx {
-	txs := make([]*common.L2Tx, len(*txResults))
-	for i, txResult := range *txResults {
-		txs[i] = txResult.TxWithSender.Tx
-	}
-	return txs
 }
 
 func (txResults *TxExecResults) Receipts() types.Receipts {

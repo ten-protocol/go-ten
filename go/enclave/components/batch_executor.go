@@ -90,6 +90,7 @@ func NewBatchExecutor(
 	}
 }
 
+// ComputeBatch where the batch execution conventions are
 func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) {
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
 
@@ -111,25 +112,22 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		return executor.execResult(ec)
 	}
 
-	// for every batch, the first thing, we execute the xChain messages
-	if err := executor.readXChainMessages(ec); err != nil {
-		return nil, err
-	}
-	if err := executor.execXChainMessages(ec); err != nil {
-		return nil, err
-	}
-
-	// we execute the transactions included in the batch
+	// Step 1: execute the transactions included in the batch
 	if err := executor.execBatchTransactions(ec); err != nil {
 		return nil, err
 	}
 
-	// execute the callbacks
+	// Step 2: execute the xChain messages
+	if err := executor.execXChainMessages(ec); err != nil {
+		return nil, err
+	}
+
+	// Step 3: execute the registered Callbacks
 	if err := executor.execRegisteredCallbacks(ec); err != nil {
 		return nil, err
 	}
 
-	// execute the system contract registered at the end of the block
+	// Step 4: execute the system contract registered at the end of the block
 	if err := executor.execOnBlockEndTx(ec); err != nil {
 		return nil, err
 	}
@@ -223,37 +221,6 @@ func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContex
 	return nil
 }
 
-func (executor *batchExecutor) readXChainMessages(ec *BatchExecutionContext) error {
-	if ec.SequencerNo.Int64() > int64(common.L2SysContractGenesisSeqNo) {
-		ec.xChainMsgs, ec.xChainValueMsgs = executor.crossChainProcessors.Local.RetrieveInboundMessages(ec.ctx, ec.parentL1Block, ec.l1block)
-	}
-	return nil
-}
-
-func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) error {
-	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ec.ctx, ec.xChainMsgs, ec.xChainValueMsgs, ec.stateDB)
-	executor.crossChainProcessors.Local.ExecuteValueTransfers(ec.ctx, ec.xChainValueMsgs, ec.stateDB)
-	xchainTxs := make(common.L2PricedTransactions, 0)
-	for _, xTx := range crossChainTransactions {
-		xchainTxs = append(xchainTxs, common.L2PricedTransaction{
-			Tx:             xTx,
-			PublishingCost: big.NewInt(0),
-			FromSelf:       true,
-		})
-	}
-	xChainResults, err := executor.executeTxs(ec, 0, xchainTxs, true)
-	if err != nil {
-		return fmt.Errorf("could not process cross chain messages. Cause: %w", err)
-	}
-
-	if len(xchainTxs) != len(xChainResults) {
-		return fmt.Errorf("could not process cross chain messages. Some were excluded. Cause: %w", err)
-	}
-	ec.xChainResults = xChainResults
-	ec.xChainResults.MarkSynthetic(true)
-	return nil
-}
-
 // filterTransactionsWithSufficientFunds - this function estimates hte l1 fees for the transaction in a given batch execution context. It does so by taking the price of the
 // pinned L1 block and using it as the cost per gas for the estimated gas of the calldata encoding of a transaction. It filters out any transactions that cannot afford to pay for their L1
 // publishing cost.
@@ -291,12 +258,47 @@ func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ec *BatchEx
 func (executor *batchExecutor) execBatchTransactions(ec *BatchExecutionContext) error {
 	transactionsToProcess := executor.filterTransactionsWithSufficientFunds(ec)
 
-	txResults, err := executor.executeTxs(ec, len(ec.xChainResults), transactionsToProcess, false)
+	txResults, err := executor.executeTxs(ec, 0, transactionsToProcess, false)
 	if err != nil {
 		return fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 
 	ec.batchTxResults = txResults
+	return nil
+}
+
+func (executor *batchExecutor) readXChainMessages(ec *BatchExecutionContext) error {
+	if ec.SequencerNo.Int64() > int64(common.L2SysContractGenesisSeqNo) {
+		ec.xChainMsgs, ec.xChainValueMsgs = executor.crossChainProcessors.Local.RetrieveInboundMessages(ec.ctx, ec.parentL1Block, ec.l1block)
+	}
+	return nil
+}
+
+func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) error {
+	if err := executor.readXChainMessages(ec); err != nil {
+		return err
+	}
+
+	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ec.ctx, ec.xChainMsgs, ec.xChainValueMsgs, ec.stateDB)
+	executor.crossChainProcessors.Local.ExecuteValueTransfers(ec.ctx, ec.xChainValueMsgs, ec.stateDB)
+	xchainTxs := make(common.L2PricedTransactions, 0)
+	for _, xTx := range crossChainTransactions {
+		xchainTxs = append(xchainTxs, common.L2PricedTransaction{
+			Tx:             xTx,
+			PublishingCost: big.NewInt(0),
+			FromSelf:       true,
+		})
+	}
+	xChainResults, err := executor.executeTxs(ec, len(ec.batchTxResults), xchainTxs, true)
+	if err != nil {
+		return fmt.Errorf("could not process cross chain messages. Cause: %w", err)
+	}
+
+	if len(xchainTxs) != len(xChainResults) {
+		return fmt.Errorf("could not process cross chain messages. Some were excluded. Cause: %w", err)
+	}
+	ec.xChainResults = xChainResults
+	ec.xChainResults.MarkSynthetic(true)
 	return nil
 }
 
@@ -365,7 +367,7 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 	// we need to copy the batch to reset the internal hash cache
 	batch := *ec.currentBatch
 	batch.Header.Root = ec.stateDB.IntermediateRoot(false)
-	batch.Transactions = ec.batchTxResults.Transactions()
+	batch.Transactions = ec.batchTxResults.BatchTransactions()
 	batch.ResetHash()
 
 	txReceipts := ec.batchTxResults.Receipts()
@@ -373,17 +375,8 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
 	}
 
-	xChainReceipts := ec.xChainResults.Receipts()
-	allReceipts := append(txReceipts, xChainReceipts...)
-	executor.populateHeader(&batch, allReceipts)
-
-	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
-	//for _, receipt := range allReceipts {
-	//	receipt.BlockHash = batch.Hash()
-	//	for _, l := range receipt.Logs {
-	//		l.BlockHash = batch.Hash()
-	//	}
-	//}
+	allResults := append(append(append(append(ec.batchTxResults, ec.xChainResults...), ec.callbackTxResults...), ec.blockEndResult...), ec.genesisSysCtrResult...)
+	executor.populateHeader(&batch, allResults.Receipts())
 
 	commitFunc := func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
 		executor.stateDBMutex.Lock()
@@ -405,11 +398,9 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 
 			return h, executor.systemContracts.Initialize(&batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
 		}
-
 		return h, err
 	}
 
-	allResults := append(append(append(append(ec.xChainResults, ec.batchTxResults...), ec.callbackTxResults...), ec.blockEndResult...), ec.genesisSysCtrResult...)
 	return &ComputedBatch{
 		Batch:         &batch,
 		TxExecResults: allResults,
@@ -612,12 +603,9 @@ func (executor *batchExecutor) executeTxs(ec *BatchExecutionContext, offset int,
 		txReceipts = append(txReceipts, txResult.Receipt)
 	}
 	batch := ec.currentBatch
-	err = txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), batch.Header.Time, batch.Header.BaseFee, nil, txResults.Transactions())
+	err = txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), batch.Header.Time, batch.Header.BaseFee, nil, txResults.BatchTransactions())
 	if err != nil {
 		return nil, fmt.Errorf("could not derive receipts. Cause: %w", err)
-	}
-	for i, txResult := range txResults {
-		txResult.Receipt = txReceipts[i]
 	}
 
 	sort.Sort(sortByTxIndex(txResults))
