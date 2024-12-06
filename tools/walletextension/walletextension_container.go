@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/metrics"
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
 
 	"github.com/ten-protocol/go-ten/go/common/subscription"
@@ -46,6 +47,8 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		os.Exit(1)
 	}
 
+	metricsTracker := metrics.NewMetricsTracker()
+
 	// start the database with the encryption key
 	userStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride, encryptionKey, logger)
 	if err != nil {
@@ -60,7 +63,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, stopControl, version, logger, &config)
+	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, stopControl, version, logger, metricsTracker, &config)
 	cfg := &node.RPCConfig{
 		EnableHTTP: true,
 		HTTPPort:   config.WalletExtensionPortHTTP,
