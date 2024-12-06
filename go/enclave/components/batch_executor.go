@@ -358,12 +358,6 @@ func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error
 	}
 	ec.blockEndResult = onBlockTxResult
 	ec.blockEndResult.MarkSynthetic(true)
-	// todo - stefan not clear what this does
-	//result := onBlockTxResult[0]
-	//if ok, err := executor.systemContracts.VerifyOnBlockReceipt(successfulTxs, result.Receipt); !ok || err != nil {
-	//	executor.logger.Error("VerifyOnBlockReceipt failed", "error", err, "ok", ok)
-	//	return fmt.Errorf("VerifyOnBlockReceipt failed")
-	//}
 	return nil
 }
 

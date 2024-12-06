@@ -70,6 +70,7 @@ func readEncKey(hostAddrHTTP string, logger gethlog.Logger) []byte {
 	rpcClient, err := gethrpc.Dial(hostAddrHTTP)
 	if err != nil {
 		logger.Crit("failed to connect to the node", "err", err)
+		return nil
 	}
 	defer rpcClient.Close()
 	n := 0
@@ -80,10 +81,12 @@ func readEncKey(hostAddrHTTP string, logger gethlog.Logger) []byte {
 			logger.Warn("failed to read enc key", "err", err)
 			if n > 10 { // wait for ~1m for the backend node to spin up and respond
 				logger.Crit("failed to read enc key", "err", err)
+				return nil
 			}
 			time.Sleep(time.Duration(n) * time.Second)
+		} else {
+			return k
 		}
-		return k
 	}
 }
 

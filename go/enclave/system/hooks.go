@@ -41,6 +41,8 @@ type SystemContractCallbacks interface {
 	// Usage
 	CreateOnBatchEndTransaction(ctx context.Context, stateDB *state.StateDB, results core.TxExecResults) (*types.Transaction, error)
 	CreatePublicCallbackHandlerTransaction(ctx context.Context, stateDB *state.StateDB) (*types.Transaction, error)
+
+	// VerifyOnBlockReceipt - used for debugging
 	VerifyOnBlockReceipt(transactions common.L2Transactions, receipt *types.Receipt) (bool, error)
 }
 
@@ -239,7 +241,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(_ context.Context,
 	}
 
 	formedTx := types.NewTx(tx)
-	s.logger.Info("CreateOnBatchEndTransaction: Successfully created syntethic transaction", log.TxKey, formedTx.Hash())
+	s.logger.Info("CreateOnBatchEndTransaction: Successfully created synthetic transaction", log.TxKey, formedTx.Hash())
 	return formedTx, nil
 }
 
