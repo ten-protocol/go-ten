@@ -169,6 +169,13 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         );
     }
 
+    function notifyDeposit(
+        address receiver,
+        uint256 amount
+    ) external ownerOrSelf {
+        emit NativeDeposit(receiver, amount);
+    }
+
     function retrieveAllFunds(
         address receiver
     ) external onlyOwner {

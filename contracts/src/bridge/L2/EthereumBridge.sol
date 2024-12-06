@@ -58,14 +58,6 @@ contract EthereumBridge is
 
     function sendNative(address receiver) external payable {
         require(msg.value > 0, "Nothing sent.");
-
-        bytes memory data = abi.encodeWithSelector(
-            IBridge.receiveAssets.selector,
-            localToRemoteToken[address(0x0)],
-            msg.value,
-            receiver
-        );
-        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0);
         _messageBus().sendValueToL2{value: msg.value}(receiver, msg.value);
     }
 
@@ -85,7 +77,7 @@ contract EthereumBridge is
             amount,
             receiver
         );
-        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0);
+        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0, msg.value);
     }
 
     function receiveAssets(
