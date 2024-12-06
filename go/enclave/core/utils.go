@@ -60,7 +60,7 @@ func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg 
 	f(fmt.Sprintf("LogMethodDuration::%s", msg), newArgs...)
 }
 
-// GetTxSigner returns the address that signed a transaction
+// GetExternalTxSigner returns the address that signed a transaction
 func GetExternalTxSigner(tx *types.Transaction) (gethcommon.Address, error) {
 	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
 	if err != nil {

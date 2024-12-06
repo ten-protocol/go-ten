@@ -100,14 +100,13 @@ func (es *eventsStorage) storeReceipt(ctx context.Context, dbTX *sql.Tx, batch *
 }
 
 func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, receiptId uint64, l *types.Log) error {
-	eventSig := l.Topics[0]
-
 	contract, err := es.readContract(ctx, dbTX, l.Address)
 	if err != nil {
 		// the contract should already have been stored when it was created
 		return fmt.Errorf("could not read contract address. %s. Cause: %w", l.Address, err)
 	}
 
+	eventSig := l.Topics[0]
 	eventType, err := es.readEventType(ctx, dbTX, l.Address, eventSig)
 	if errors.Is(err, errutil.ErrNotFound) {
 		// this is the first type an event of this type is emitted, so we must store it

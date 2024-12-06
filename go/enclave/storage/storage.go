@@ -657,14 +657,14 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 	}
 
 	// store the synthetic transactions
-	transactionsWithSenders := results.SyntheticTransactions().ToTransactionsWithSenders()
+	syntheticTxs := results.SyntheticTransactions().ToTransactionsWithSenders()
 
-	senders, toContracts, err := s.handleTxSendersAndReceivers(ctx, transactionsWithSenders, dbTx)
+	senders, toContracts, err := s.handleTxSendersAndReceivers(ctx, syntheticTxs, dbTx)
 	if err != nil {
 		return fmt.Errorf("could not handle synthetic txs senders and receivers. Cause: %w", err)
 	}
 
-	if err := enclavedb.WriteTransactions(ctx, dbTx, transactionsWithSenders, batch.Header.Number.Uint64(), true, senders, toContracts, len(batch.Transactions)); err != nil {
+	if err := enclavedb.WriteTransactions(ctx, dbTx, syntheticTxs, batch.Header.Number.Uint64(), true, senders, toContracts, len(batch.Transactions)); err != nil {
 		return fmt.Errorf("could not write synthetic txs. Cause: %w", err)
 	}
 
