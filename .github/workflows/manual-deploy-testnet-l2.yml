@@ -375,10 +375,10 @@ jobs:
          run: |
            go run ./testnet/launcher/l1grantsequencers/cmd \
            -l1_http_url=${{ secrets.L1_HTTP_URL }} \
-           -l2_ws_port=81 \
            -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
            -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
            -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
+           -sequencer_url=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
 
       -  name: 'Save sequencer permissioning container logs'
          run: |
