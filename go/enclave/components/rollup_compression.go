@@ -149,7 +149,6 @@ func (rc *RollupCompression) ProcessExtRollup(ctx context.Context, rollup *commo
 	if err != nil {
 		return nil, err
 	}
-
 	return calldataRollupHeader, nil
 }
 

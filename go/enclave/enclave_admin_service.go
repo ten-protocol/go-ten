@@ -9,9 +9,8 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
-
 	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
@@ -153,6 +152,11 @@ func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, proof types.Rece
 		e.mempool.SetValidateMode(false)
 	}
 
+	//if currentEnclaveId == id {
+	//	todo
+	//}
+
+	// todo - use the proof
 	return nil
 }
 
@@ -177,19 +181,20 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceiptAndBlobs) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
 	e.logger.Info("SubmitL1Block", log.BlockHeightKey, blockHeader.Number, log.BlockHashKey, blockHeader.Hash())
 
-	// If the block and receipts do not match, reject the block.
-	br, err := common.ParseBlockAndReceipts(blockHeader, receipts)
-	if err != nil {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
+	// Verify the block header matches the one in processedData
+	if blockHeader.Hash() != processed.BlockHeader.Hash() {
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("block header mismatch"))
 	}
 
-	result, err := e.ingestL1Block(ctx, br)
+	// TODO verify proof provided with block processed.Proof
+
+	result, err := e.ingestL1Block(ctx, processed)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
@@ -203,7 +208,7 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *ty
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, br)}
+	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, processed)}
 	return bsr, nil
 }
 
@@ -470,24 +475,30 @@ func (e *enclaveAdminService) streamEventsForNewHeadBatch(ctx context.Context, b
 	}
 }
 
-func (e *enclaveAdminService) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
-	e.logger.Info("Start ingesting block", log.BlockHashKey, br.BlockHeader.Hash())
-	ingestion, err := e.l1BlockProcessor.Process(ctx, br)
+func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*components.BlockIngestionType, error) {
+	e.logger.Info("Start ingesting block", log.BlockHashKey, processed.BlockHeader.Hash())
+	ingestion, err := e.l1BlockProcessor.Process(ctx, processed)
 	if err != nil {
 		// only warn for unexpected errors
 		if errors.Is(err, errutil.ErrBlockAncestorNotFound) || errors.Is(err, errutil.ErrBlockAlreadyProcessed) {
-			e.logger.Debug("Did not ingest block", log.ErrKey, err, log.BlockHashKey, br.BlockHeader.Hash())
+			e.logger.Debug("Did not ingest block", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
 		} else {
-			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, br.BlockHeader.Hash())
+			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
 		}
 		return nil, err
 	}
 
-	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, br)
+	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, processed)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
 	}
+
+	sequencerAddedTxs := processed.GetEvents(common.SequencerAddedTx)
+	for _, tx := range sequencerAddedTxs {
+		println("Sequencer ADDED: ", tx.Transaction.Hash().Hex())
+	}
+	//TODO call AddSequencer if event present
 
 	if ingestion.IsFork() {
 		e.registry.OnL1Reorg(ingestion)

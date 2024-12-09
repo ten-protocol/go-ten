@@ -4,7 +4,6 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/wallet"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -13,7 +12,7 @@ import (
 type txInjectorTracker struct {
 	gasTransactionsLock               sync.RWMutex
 	l1TransactionsLock                sync.RWMutex
-	L1Transactions                    []ethadapter.L1Transaction
+	L1Transactions                    []common.TenTransaction
 	l2TransactionsLock                sync.RWMutex
 	TransferL2Transactions            []*common.L2Tx
 	NativeValueTransferL2Transactions []*common.L2Tx
@@ -29,7 +28,7 @@ type GasBridgingRecord struct {
 func newCounter() *txInjectorTracker {
 	return &txInjectorTracker{
 		l1TransactionsLock:                sync.RWMutex{},
-		L1Transactions:                    []ethadapter.L1Transaction{},
+		L1Transactions:                    []common.TenTransaction{},
 		l2TransactionsLock:                sync.RWMutex{},
 		TransferL2Transactions:            []*common.L2Tx{},
 		WithdrawalL2Transactions:          []*common.L2Tx{},
@@ -48,7 +47,7 @@ func (m *txInjectorTracker) trackGasBridgingTx(tx *types.Transaction, receiverWa
 }
 
 // trackL1Tx adds an L1Tx to the internal list
-func (m *txInjectorTracker) trackL1Tx(tx ethadapter.L1Transaction) {
+func (m *txInjectorTracker) trackL1Tx(tx common.TenTransaction) {
 	m.l1TransactionsLock.Lock()
 	defer m.l1TransactionsLock.Unlock()
 	m.L1Transactions = append(m.L1Transactions, tx)
@@ -73,7 +72,7 @@ func (m *txInjectorTracker) trackNativeValueTransferL2Tx(tx *common.L2Tx) {
 }
 
 // GetL1Transactions returns all generated L1 L2Txs
-func (m *txInjectorTracker) GetL1Transactions() []ethadapter.L1Transaction {
+func (m *txInjectorTracker) GetL1Transactions() []common.TenTransaction {
 	return m.L1Transactions
 }
 
