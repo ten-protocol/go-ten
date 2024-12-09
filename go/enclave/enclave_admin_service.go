@@ -494,7 +494,16 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		// Unsure what to do here; block has been stored
 	}
 
-	//TODO call AddSequencer if event present
+	sequencerAddedTx := processed.GetEvents(common.SequencerAddedTx)
+	if len(sequencerAddedTx) > 0 {
+		for _, tx := range sequencerAddedTx {
+			err := e.AddSequencer(*tx.SequencerEnclaveID, *tx.Receipt)
+			if err != nil {
+				e.logger.Crit("Can't add enclave ID as a sequencer")
+			}
+			println("SEQUENCER ADDED TX SUCCESS")
+		}
+	}
 
 	if ingestion.IsFork() {
 		e.registry.OnL1Reorg(ingestion)

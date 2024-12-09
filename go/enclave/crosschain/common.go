@@ -169,24 +169,6 @@ func ConvertLogsToValueTransfers(logs []types.Log, eventName string, messageBusA
 	return messages, nil
 }
 
-// ConvertLogsToSequencerEnclaves converts the logs of SequencerEnclaveGranted events to enclaveIDs
-func ConvertLogsToSequencerEnclaves(logs []types.Log, eventName string, mgmtContractABI abi.ABI) ([]gethcommon.Address, error) {
-	enclaveIDs := make([]gethcommon.Address, 0)
-
-	for _, log := range logs {
-		if len(log.Topics) != 2 {
-			return nil, fmt.Errorf("invalid number of topics in log: %d", len(log.Topics))
-		}
-
-		// The enclaveID is indexed, so it appears in the Topics rather than the Data
-		// Topics[0] is the event signature, Topics[1] is the indexed enclaveID
-		enclaveID := gethcommon.BytesToAddress(log.Topics[1].Bytes())
-		enclaveIDs = append(enclaveIDs, enclaveID)
-	}
-
-	return enclaveIDs, nil
-}
-
 type MerkleBatches []*core.Batch
 
 func (mb MerkleBatches) Len() int {
