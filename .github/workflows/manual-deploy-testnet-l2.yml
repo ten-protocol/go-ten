@@ -359,10 +359,27 @@ jobs:
                -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
                start'
 
-  grant-sequencer-enclaves:
+  check-obscuro-is-healthy:
     needs:
       - build
       - deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Wait until obscuro node is healthy"
+        shell: bash
+        run: |
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-2-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          
+
+  grant-sequencer-enclaves:
+    needs:
+      - check-obscuro-is-healthy
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -391,22 +408,6 @@ jobs:
            path: |
              grant-sequencers.out
            retention-days: 7
-
-  check-obscuro-is-healthy:
-    needs:
-      - grant-sequencer-enclaves
-    runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.testnet_type }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: "Wait until obscuro node is healthy"
-        shell: bash
-        run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-2-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
 
   deploy-l2-contracts:
     needs:
