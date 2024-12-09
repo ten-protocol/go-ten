@@ -12,8 +12,8 @@ func main() {
 
 	l1grantsequencers, err := l1gs.NewGrantSequencers(
 		l1gs.NewGrantSequencerConfig(
-			l1gs.WithL1HTTPURL("http://eth2network:8025"),
-			l1gs.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
+			l1gs.WithL1HTTPURL(cliConfig.l1HTTPURL),
+			l1gs.WithPrivateKey(cliConfig.privateKey),
 			l1gs.WithDockerImage(cliConfig.dockerImage),
 			l1gs.WithMgmtContractAddress(cliConfig.mgmtContractAddress),
 			l1gs.WithEnclaveIDs(cliConfig.enclaveIDs),
