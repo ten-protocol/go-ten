@@ -57,8 +57,8 @@ contract EthereumBridge is
     }
 
     function erc20Fee() public view returns (uint256) {
-        // receiveAssets selector (4 bytes) + address (20 bytes) + uint256 (32 bytes) + address (20 bytes) = 76 bytes
-        uint256 dataLength = 76;
+        // receiveAssets selector (4 bytes) + address (20 bytes) + uint256 (32 bytes) + address (20 bytes) = 76 bytes + overhead...
+        uint256 dataLength = 100;
         return _messageBus().getMessageFee(dataLength);
     }
 
