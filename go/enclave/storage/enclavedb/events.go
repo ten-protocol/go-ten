@@ -32,7 +32,7 @@ const (
 		"   left join externally_owned_account eoa1 on t1.rel_address=eoa1.id " +
 		"left join event_topic t2 on e.topic2=t2.id and et.id=t2.event_type " +
 		"   left join externally_owned_account eoa2 on t2.rel_address=eoa2.id " +
-		"left join event_topic t3 on e.topic3=t3.id and et.id=t1.event_type " +
+		"left join event_topic t3 on e.topic3=t3.id and et.id=t3.event_type " +
 		"   left join externally_owned_account eoa3 on t3.rel_address=eoa3.id " +
 		"where b.is_canonical=true "
 )
@@ -51,7 +51,7 @@ func WriteEventType(ctx context.Context, dbTX *sql.Tx, et *EventType) (uint64, e
 }
 
 func ReadEventType(ctx context.Context, dbTX *sql.Tx, contract *Contract, eventSignature gethcommon.Hash) (*EventType, error) {
-	var et EventType = EventType{Contract: contract}
+	et := EventType{Contract: contract}
 	err := dbTX.QueryRowContext(ctx,
 		"select id, event_sig, auto_visibility, auto_public, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
 		contract.Id, eventSignature.Bytes(),
@@ -319,7 +319,7 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 
 	if requestingAccount != nil {
 		// Add log visibility rules
-		logsVisibQuery, logsVisibParams := logsVisibilityQuery(requestingAccount)
+		logsVisibQuery, logsVisibParams := logsVisibilityQuery(requestingAccount, withReceipts)
 		query += logsVisibQuery
 		queryParams = append(queryParams, logsVisibParams...)
 
@@ -461,15 +461,19 @@ func receiptsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []a
 }
 
 // this function encodes the event log visibility rules
-func logsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
+func logsVisibilityQuery(requestingAccount *gethcommon.Address, withReceipts bool) (string, []any) {
 	acc := requestingAccount.Bytes()
 
 	visibParams := make([]any, 0)
 
 	visibQuery := "AND ("
 
-	// this condition only affects queries that return receipts that have no events logs
-	visibQuery += " (e.id is NULL)  "
+	if withReceipts {
+		// this condition only affects queries that return receipts that have no events logs
+		visibQuery += " (e.id is NULL) "
+	} else {
+		visibQuery += " (1=0) "
+	}
 
 	// everyone can query config_public events
 	visibQuery += " OR (et.config_public=true) "

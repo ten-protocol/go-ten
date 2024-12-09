@@ -102,8 +102,7 @@ create table if not exists receipt
     cumulative_gas_used      int     not null,
     effective_gas_price      int,
     created_contract_address binary(20),
-    --     commenting out the fk until synthetic transactions are also stored
-    tx                       INTEGER,
+    tx                       INTEGER NOT NULL REFERENCES tx,
     batch                    INTEGER NOT NULL REFERENCES batch
 );
 create index IDX_EX_TX_BATCH on receipt (batch);

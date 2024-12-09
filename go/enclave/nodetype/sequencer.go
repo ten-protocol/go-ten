@@ -146,7 +146,7 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 	// produce batch #2 which has the message bus and any other system contracts
 	_, err = s.produceBatch(
 		ctx,
-		big.NewInt(0).Add(batch.Header.SequencerOrderNo, big.NewInt(1)),
+		big.NewInt(0).SetUint64(common.L2SysContractGenesisSeqNo),
 		block.Hash(),
 		batch.Hash(),
 		common.L2Transactions{},
@@ -198,6 +198,7 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *types.H
 	limiter := limiters.NewBatchSizeLimiter(s.settings.MaxBatchSize)
 	pendingTransactions := s.mempool.PendingTransactions()
 	var transactions []*types.Transaction
+txLoop:
 	for _, group := range pendingTransactions {
 		// lazily resolve transactions until the batch runs out of space
 		for _, lazyTx := range group {
@@ -206,7 +207,7 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *types.H
 				if err != nil {
 					s.logger.Info("Unable to accept transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
 					if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
-						break
+						break txLoop
 					}
 					// Limiter encountered unexpected error
 					return fmt.Errorf("limiter encountered unexpected error - %w", err)
@@ -303,7 +304,7 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	if err := s.storage.StoreExecutedBatch(ctx, batch.Header, txResults); err != nil {
+	if err := s.storage.StoreExecutedBatch(ctx, batch, txResults); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
