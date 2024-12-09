@@ -379,6 +379,7 @@ jobs:
 
   grant-sequencer-enclaves:
     needs:
+      - build
       - check-obscuro-is-healthy
     runs-on: ubuntu-latest
     environment:
@@ -412,7 +413,7 @@ jobs:
   deploy-l2-contracts:
     needs:
       - build
-      - check-obscuro-is-healthy
+      - grant-sequencer-enclaves
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -450,7 +451,7 @@ jobs:
 
   update-loadbalancer:
     needs:
-      - check-obscuro-is-healthy
+      - grant-sequencer-enclaves
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -483,7 +484,7 @@ jobs:
       testnet_type: ${{ github.event.inputs.testnet_type }}
     secrets: inherit
     needs:
-      - check-obscuro-is-healthy
+      - grant-sequencer-enclaves
 
   obscuro-test-repository-dispatch:
     runs-on: ubuntu-latest

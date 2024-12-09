@@ -27,6 +27,7 @@ func NewGrantSequencers(cfg *Config) (*GrantSequencers, error) {
 }
 
 func (s *GrantSequencers) Start() error {
+	fmt.Printf("Starting grant sequencers with config: %s\n", s.cfg)
 	var enclaveIDs string
 	var err error
 	if s.cfg.enclaveIDs != "" {
