@@ -67,9 +67,9 @@ export const WalletConnectionProvider = ({
       setVersion(await fetchVersion());
     } catch (error) {
       showToast(
-          ToastType.DESTRUCTIVE,
-      error instanceof Error ? error.message : "Error initializing wallet connection. Please refresh the page."
-    );
+        ToastType.DESTRUCTIVE,
+        error instanceof Error ? error.message : "Error initializing wallet connection. Please refresh the page."
+      );
     } finally {
       setLoading(false);
     }
@@ -189,16 +189,26 @@ export const WalletConnectionProvider = ({
       setProvider(providerInstance);
       initialize(providerInstance);
 
-      ethereum.on("accountsChanged", fetchUserAccounts);
+      const handleAccountsChanged = async (accounts: string[]) => {
+        if (accounts.length === 0) {
+          setAccounts(null);
+          setWalletConnected(false);
+          setToken("");
+        } else {
+          window.location.reload();
+        }
+      };
+
+      ethereum.on("accountsChanged", handleAccountsChanged);
+
+      return () => {
+        if (ethereum && ethereum.removeListener) {
+          ethereum.removeListener("accountsChanged", handleAccountsChanged);
+        }
+      };
     } else {
       setLoading(false);
     }
-
-    return () => {
-      if (ethereum && ethereum.removeListener) {
-        ethereum.removeListener("accountsChanged", fetchUserAccounts);
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
