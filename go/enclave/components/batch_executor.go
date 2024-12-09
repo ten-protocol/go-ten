@@ -143,6 +143,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		return nil, ErrNoTransactionsToProcess
 	}
 
+	// Step 5: burn native value on the message bus according to what has been bridged out to the L1.
 	if err := executor.postProcessState(ec); err != nil {
 		return nil, fmt.Errorf("failed to post process state. Cause: %w", err)
 	}
@@ -340,6 +341,7 @@ func (executor *batchExecutor) execRegisteredCallbacks(ec *BatchExecutionContext
 	return nil
 }
 
+// postProcessState - Function for applying post processing, which currently is removing the value from the balance of the message bus contract.
 func (executor *batchExecutor) postProcessState(ec *BatchExecutionContext) error {
 	receipts := ec.batchTxResults.Receipts()
 	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(ec.ctx, receipts)
