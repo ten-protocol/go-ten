@@ -10,6 +10,8 @@ type Config struct {
 	mgmtContractAddress string
 	enclaveIDs          string
 	dockerImage         string
+	sequencerURL        string
+
 	// debugEnabled        bool
 }
 
@@ -50,6 +52,12 @@ func WithEnclaveIDs(s string) Option {
 func WithDockerImage(s string) Option {
 	return func(c *Config) {
 		c.dockerImage = s
+	}
+}
+
+func WithSequencerURL(s string) Option {
+	return func(c *Config) {
+		c.sequencerURL = s
 	}
 }
 
