@@ -42,15 +42,18 @@ func (m *blockMessageExtractor) Enabled() bool {
 func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, processedData *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader value transfer messages processed", log.BlockHashKey, block.Hash())
 
+	transferEvents := processedData.GetEvents(common.CrossChainValueTranserTx)
 	// collect all value transfer events from processed data
 	var transfers common.ValueTransferEvents
-	for _, txData := range processedData.GetEvents(common.CrossChainValueTranserTx) {
+	for _, txData := range transferEvents {
 		println("VALUE TRANSFER EVENT FOUND")
 		if txData.ValueTransfers != nil {
 			transfers = append(transfers, *txData.ValueTransfers...)
 		}
 	}
-
+	if len(transferEvents) == 0 {
+		return nil
+	}
 	m.logger.Trace("Storing value transfers for block", "nr", len(transfers), log.BlockHashKey, block.Hash())
 	err := m.storage.StoreValueTransfers(ctx, block.Hash(), transfers)
 	if err != nil {

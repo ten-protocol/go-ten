@@ -152,11 +152,6 @@ func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, proof types.Rece
 		e.mempool.SetValidateMode(false)
 	}
 
-	//if currentEnclaveId == id {
-	//	todo
-	//}
-
-	// todo - use the proof
 	return nil
 }
 
@@ -490,17 +485,22 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 
 	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, processed)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
-		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
+		e.logger.Error("Encountered error while processing l1 blobs in block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
 	}
 
 	sequencerAddedTxs := processed.GetEvents(common.SequencerAddedTx)
-	if len(sequencerAddedTxs) > 0 {
-		println("Sequencer ADDED tx hash: ", sequencerAddedTxs[0].Transaction.Hash().Hex())
+	for _, tx := range sequencerAddedTxs {
+		if tx.HasSequencerEnclaveID() {
+			//err = e.AddSequencer(tx.SequencerEnclaveID, *tx.Receipt)
+			//if err != nil {
+			//	e.logger.Crit("Encountered error while adding sequencer enclaveID", log.ErrKey, err)
+			//}
+			println("Sequencer ADDED tx hash: ", sequencerAddedTxs[0].Transaction.Hash().Hex())
+
+		}
+		println("SequencerAddedTx BUT enclaveID not set")
 	}
-	//for _, tx := range sequencerAddedTxs {
-	//}
-	//TODO call AddSequencer if event present
 
 	if ingestion.IsFork() {
 		e.registry.OnL1Reorg(ingestion)

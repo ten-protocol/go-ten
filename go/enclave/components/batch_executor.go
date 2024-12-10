@@ -459,6 +459,36 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	}
 
 	if cb.Batch.Hash() != batch.Hash() {
+		// Debug logging to compare all header fields
+		// println("=== Batch Comparison ===")
+		// println("L1Proof - Computed:", cb.Batch.Header.L1Proof.Hex(), "Incoming:", batch.Header.L1Proof.Hex())
+		// println("ParentHash - Computed:", cb.Batch.Header.ParentHash.Hex(), "Incoming:", batch.Header.ParentHash.Hex())
+		// println("Time - Computed:", cb.Batch.Header.Time, "Incoming:", batch.Header.Time)
+		// println("SequencerOrderNo - Computed:", cb.Batch.Header.SequencerOrderNo, "Incoming:", batch.Header.SequencerOrderNo)
+		// println("Coinbase - Computed:", cb.Batch.Header.Coinbase.Hex(), "Incoming:", batch.Header.Coinbase.Hex())
+		// println("BaseFee - Computed:", cb.Batch.Header.BaseFee, "Incoming:", batch.Header.BaseFee)
+		// println("TxHash - Computed:", cb.Batch.Header.TxHash.Hex(), "Incoming:", batch.Header.TxHash.Hex())
+		// println("ReceiptHash - Computed:", cb.Batch.Header.ReceiptHash.Hex(), "Incoming:", batch.Header.ReceiptHash.Hex())
+		// println("GasUsed - Computed:", cb.Batch.Header.GasUsed, "Incoming:", batch.Header.GasUsed)
+		// println("Transaction Count - Computed:", len(cb.Batch.Transactions), "Incoming:", len(batch.Transactions))
+		// println("Computed Hash:", cb.Batch.Hash().Hex())
+		// println("Incoming Hash:", batch.Hash().Hex())
+		// println("=== End Comparison ===\n")
+
+		// Add detailed receipt comparison
+		//println("\n=== Receipt Comparison ===")
+		//for i, txResult := range cb.TxExecResults {
+		//	println(fmt.Sprintf("\nTransaction %d:", i))
+		//	println("Status - Computed:", txResult.Receipt.Status)
+		//	println("GasUsed - Computed:", txResult.Receipt.GasUsed)
+		//	println("CumulativeGasUsed - Computed:", txResult.Receipt.CumulativeGasUsed)
+		//	println("TxHash - Computed:", txResult.Receipt.TxHash.Hex())
+		//
+		//	// Compare logs
+		//	println(fmt.Sprintf("Log Count - Computed: %d, Incoming: %d", len(txResult.Receipt.Logs)))
+		//}
+		//println("=== End Receipt Comparison ===\n")
+
 		// todo @stefan - generate a validator challenge here and return it
 		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
 		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
