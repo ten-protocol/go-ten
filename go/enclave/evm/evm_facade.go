@@ -248,6 +248,7 @@ func eventCfg(logConfig ContractTransparencyConfigEventLogConfig) *core.EventVis
 	}
 }
 
+/*
 func logReceipt(r *types.Receipt, logger gethlog.Logger) {
 	if logger.Enabled(context.Background(), gethlog.LevelTrace) {
 		logger.Trace("Receipt", log.TxKey, r.TxHash, "Result", receiptToString(r))
@@ -267,7 +268,7 @@ func receiptToString(r *types.Receipt) string {
 	}
 	return fmt.Sprintf("Successfully executed. Receipt: %s", string(receiptJSON))
 }
-
+*/
 // ExecuteObsCall - executes the eth_call call
 func ExecuteObsCall(
 	ctx context.Context,
