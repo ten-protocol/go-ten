@@ -138,9 +138,8 @@ func (e *enclaveRPCService) EnclavePublicConfig(context.Context) (*common.Enclav
 		publicCallbacksAddress = &gethcommon.Address{}
 	}
 
-	publicContracts := e.scb.PublicSystemContracts()
 	publicContractsMap := make(map[string]gethcommon.Address)
-	for name, address := range publicContracts {
+	for name, address := range e.scb.PublicSystemContracts() {
 		publicContractsMap[name] = *address
 	}
 
