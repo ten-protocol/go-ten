@@ -14,7 +14,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/enclave/system"
-	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/enclave/components"
 	"github.com/ten-protocol/go-ten/go/responses"
@@ -90,23 +89,23 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 		logger.Crit("failed to load system contracts", log.ErrKey, err)
 	}
 
-	gasOracle := gas.NewGasOracle()
-	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
+	// start the mempool in validate only. Based on the config, it might become sequencer
 	evmEntropyService := crypto.NewEvmEntropyService(sharedSecretService, logger)
 	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, evmEntropyService, logger)
 	batchRegistry := components.NewBatchRegistry(storage, config, gethEncodingService, logger)
-	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, config.GasBatchExecutionLimit, scb, evmEntropyService, logger)
+	mempool, err := components.NewTxPool(batchRegistry.EthChain(), config.MinGasPrice, true, logger)
+	if err != nil {
+		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
+	}
+
+	gasOracle := gas.NewGasOracle()
+	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
+	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
 	err = restoreStateDBCache(context.Background(), storage, batchRegistry, batchExecutor, genesis, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
-	}
-
-	// start the mempool in validate only. Based on the config, it might become sequencer
-	mempool, err := txpool.NewTxPool(batchRegistry.EthChain(), config.MinGasPrice, true, logger)
-	if err != nil {
-		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
 
 	subscriptionManager := events.NewSubscriptionManager(storage, batchRegistry, config.ObscuroChainID, logger)

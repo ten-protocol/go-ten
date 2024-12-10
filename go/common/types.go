@@ -51,7 +51,7 @@ type (
 		FromSelf       bool
 		SystemDeployer bool // Free contract construction
 	}
-	L2PricedTransactions []L2PricedTransaction
+	L2PricedTransactions []*L2PricedTransaction
 
 	CrossChainMessage  = MessageBus.StructsCrossChainMessage
 	CrossChainMessages = []CrossChainMessage
@@ -95,6 +95,8 @@ const (
 	L2GenesisHeight           = uint64(0)
 	L2GenesisSeqNo            = uint64(1)
 	L2SysContractGenesisSeqNo = uint64(2)
+
+	SyntheticTxGasLimit = uint64(10_000_000_000)
 )
 
 var GethGenesisParentHash = common.Hash{}

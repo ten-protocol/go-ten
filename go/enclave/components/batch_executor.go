@@ -6,8 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"sort"
 	"sync"
+
+	gethcore "github.com/ethereum/go-ethereum/core"
+
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 
 	"github.com/ethereum/go-ethereum/trie"
 
@@ -55,10 +59,12 @@ type batchExecutor struct {
 	chainConfig          *params.ChainConfig
 	systemContracts      system.SystemContractCallbacks
 	entropyService       *crypto.EvmEntropyService
+	mempool              *TxPool
 	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
 	stateDBMutex sync.Mutex
 
 	batchGasLimit uint64 // max execution gas allowed in a batch
+	chainContext  *evm.TenChainContext
 }
 
 func NewBatchExecutor(
@@ -70,9 +76,9 @@ func NewBatchExecutor(
 	genesis *genesis.Genesis,
 	gasOracle gas.Oracle,
 	chainConfig *params.ChainConfig,
-	batchGasLimit uint64,
 	systemContracts system.SystemContractCallbacks,
 	entropyService *crypto.EvmEntropyService,
+	mempool *TxPool,
 	logger gethlog.Logger,
 ) BatchExecutor {
 	return &batchExecutor{
@@ -86,9 +92,11 @@ func NewBatchExecutor(
 		logger:               logger,
 		gasOracle:            gasOracle,
 		stateDBMutex:         sync.Mutex{},
-		batchGasLimit:        batchGasLimit,
+		batchGasLimit:        config.GasBatchExecutionLimit,
 		systemContracts:      systemContracts,
 		entropyService:       entropyService,
+		mempool:              mempool,
+		chainContext:         evm.NewTenChainContext(storage, gethEncodingService, config, logger),
 	}
 }
 
@@ -114,7 +122,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		return executor.execResult(ec)
 	}
 
-	// Step 1: execute the transactions included in the batch
+	// Step 1: execute the transactions included in the batch or pending in the mempool
 	if err := executor.execBatchTransactions(ec); err != nil {
 		return nil, err
 	}
@@ -196,6 +204,17 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 		return fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 	ec.beforeProcessingSnap = ec.stateDB.Snapshot()
+
+	ec.EthHeader, err = executor.gethEncodingService.CreateEthHeaderForBatch(ec.ctx, ec.currentBatch.Header)
+	if err != nil {
+		return fmt.Errorf("could not create eth header for batch. Cause: %w", err)
+	}
+	ec.Chain = evm.NewTenChainContext(executor.storage, executor.gethEncodingService, executor.config, executor.logger)
+
+	zero := uint64(0)
+	ec.usedGas = &zero
+	gp := gethcore.GasPool(executor.batchGasLimit)
+	ec.GasPool = &gp
 	return nil
 }
 
@@ -207,7 +226,7 @@ func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContex
 	}
 
 	transactions := common.L2PricedTransactions{
-		common.L2PricedTransaction{
+		&common.L2PricedTransaction{
 			Tx:             systemDeployerTx,
 			PublishingCost: big.NewInt(0),
 			SystemDeployer: true,
@@ -228,49 +247,142 @@ func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContex
 	return nil
 }
 
-// filterTransactionsWithSufficientFunds - this function estimates hte l1 fees for the transaction in a given batch execution context. It does so by taking the price of the
-// pinned L1 block and using it as the cost per gas for the estimated gas of the calldata encoding of a transaction. It filters out any transactions that cannot afford to pay for their L1
-// publishing cost.
-func (executor *batchExecutor) filterTransactionsWithSufficientFunds(ec *BatchExecutionContext) common.L2PricedTransactions {
-	transactions := make(common.L2PricedTransactions, 0)
+var ErrLowBalance = errors.New("insufficient account balance")
+
+// toPricedTx - this function estimates the l1 fees for the transaction in a given batch execution context. It does so by taking the price of the
+// pinned L1 block and using it as the cost per gas for the estimated gas of the calldata encoding of a transaction.
+func (executor *batchExecutor) toPricedTx(ec *BatchExecutionContext, tx *common.L2Tx) (*common.L2PricedTransaction, error) {
 	block, _ := executor.storage.FetchBlock(ec.ctx, ec.BlockPtr)
 
-	for _, tx := range ec.Transactions {
-		sender, err := core.GetAuthenticatedSender(ec.ChainConfig.ChainID.Int64(), tx)
-		if err != nil {
-			executor.logger.Error("Unable to extract sender for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
-			continue
-		}
-		accBalance := ec.stateDB.GetBalance(*sender)
-
-		cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
-		if err != nil {
-			executor.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
-			continue
-		}
-
-		if accBalance.Cmp(uint256.MustFromBig(cost)) == -1 {
-			executor.logger.Info(fmt.Sprintf("insufficient account balance for tx - want: %d have: %d", cost, accBalance), log.TxKey, tx.Hash(), "addr", sender.Hex())
-			continue
-		}
-
-		transactions = append(transactions, common.L2PricedTransaction{
-			Tx:             tx,
-			PublishingCost: big.NewInt(0).Set(cost),
-		})
+	sender, err := core.GetAuthenticatedSender(ec.ChainConfig.ChainID.Int64(), tx)
+	if err != nil {
+		executor.logger.Error("Unable to extract sender for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
+		return nil, fmt.Errorf("unable to extract sender for tx. Cause: %w", err)
 	}
-	return transactions
+	accBalance := ec.stateDB.GetBalance(*sender)
+
+	cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
+	if err != nil {
+		executor.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
+		return nil, fmt.Errorf("unable to get gas cost for tx. Cause: %w", err)
+	}
+
+	if accBalance.Cmp(uint256.MustFromBig(cost)) == -1 {
+		executor.logger.Debug(fmt.Sprintf("insufficient account balance for tx - want: %d have: %d", cost, accBalance), log.TxKey, tx.Hash(), "addr", sender.Hex())
+		return nil, ErrLowBalance
+	}
+
+	return &common.L2PricedTransaction{
+		Tx:             tx,
+		PublishingCost: big.NewInt(0).Set(cost),
+	}, nil
 }
 
 func (executor *batchExecutor) execBatchTransactions(ec *BatchExecutionContext) error {
-	transactionsToProcess := executor.filterTransactionsWithSufficientFunds(ec)
+	if ec.UseMempool {
+		return executor.execMempoolTransactions(ec)
+	}
+	return executor.executeExistingBatch(ec)
+}
 
+func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext) error {
+	sizeLimiter := limiters.NewBatchSizeLimiter(executor.config.MaxBatchSize)
+	pendingTransactions := executor.mempool.PendingTransactions()
+	cnt := 0
+	for _, group := range pendingTransactions {
+		cnt += len(group)
+	}
+	executor.logger.Debug(fmt.Sprintf("Mempool pending txs: %d\n", cnt))
+
+	mempoolTxs := newTransactionsByPriceAndNonce(nil, pendingTransactions, ec.currentBatch.Header.BaseFee)
+
+	results := make(core.TxExecResults, 0)
+
+	for {
+		// If we don't have enough gas for any further transactions then we're done.
+		if ec.GasPool.Gas() < params.TxGas {
+			executor.logger.Trace("Not enough gas for further transactions", "have", ec.GasPool, "want", params.TxGas)
+			break
+		}
+
+		ltx, _ := mempoolTxs.Peek()
+		if ltx == nil {
+			break
+		}
+		// If we don't have enough space for the next transaction, skip the account.
+		if ec.GasPool.Gas() < ltx.Gas {
+			executor.logger.Trace("Not enough gas left for transaction", "hash", ltx.Hash, "left", ec.GasPool.Gas(), "needed", ltx.Gas)
+			mempoolTxs.Pop()
+			continue
+		}
+
+		tx := ltx.Resolve()
+
+		// check the size limiter
+		err := sizeLimiter.AcceptTransaction(tx)
+		if err != nil {
+			executor.logger.Info("Unable to accept transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
+			if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
+				break
+			}
+		}
+
+		pTx, err := executor.toPricedTx(ec, tx)
+		if err != nil && errors.Is(err, ErrLowBalance) {
+			// the current account doesn't have enough balance
+			// continue with the next account
+			mempoolTxs.Pop()
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("unable to transform to priced tx. Cause: %w", err)
+		}
+		txExecResult, err := executor.executeTx(ec, pTx, len(results), false)
+		if err != nil {
+			return fmt.Errorf("could not process transaction. Cause: %w", err)
+		}
+
+		switch {
+		case errors.Is(txExecResult.Err, gethcore.ErrNonceTooLow):
+			// New head notification data race between the transaction pool and miner, shift
+			executor.logger.Trace("Skipping transaction with low nonce", "hash", ltx.Hash, "nonce", tx.Nonce())
+			mempoolTxs.Shift()
+
+		case errors.Is(txExecResult.Err, nil):
+			// Everything ok, collect the logs and shift in the next transaction from the same account
+			mempoolTxs.Shift()
+			results = append(results, txExecResult)
+		default:
+			// Transaction is regarded as invalid, drop all consecutive transactions from
+			// the same sender because of `nonce-too-high` clause.
+			executor.logger.Debug("Transaction failed, account skipped", "hash", ltx.Hash, "err", err)
+			mempoolTxs.Pop()
+		}
+	}
+
+	ec.stateDB.Finalise(true)
+
+	ec.Transactions = results.BatchTransactions()
+	ec.batchTxResults = results
+
+	return nil
+}
+
+func (executor *batchExecutor) executeExistingBatch(ec *BatchExecutionContext) error {
+	transactionsToProcess := make(common.L2PricedTransactions, len(ec.Transactions))
+	var err error
+	for i, tx := range ec.Transactions {
+		transactionsToProcess[i], err = executor.toPricedTx(ec, tx)
+		if err != nil {
+			return fmt.Errorf("unable to transform to priced tx. Cause: %w", err)
+		}
+	}
 	txResults, err := executor.executeTxs(ec, 0, transactionsToProcess, false)
 	if err != nil {
 		return fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
-
 	ec.batchTxResults = txResults
+	ec.stateDB.Finalise(true)
 	return nil
 }
 
@@ -290,7 +402,7 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 	executor.crossChainProcessors.Local.ExecuteValueTransfers(ec.ctx, ec.xChainValueMsgs, ec.stateDB)
 	xchainTxs := make(common.L2PricedTransactions, 0)
 	for _, xTx := range crossChainTransactions {
-		xchainTxs = append(xchainTxs, common.L2PricedTransaction{
+		xchainTxs = append(xchainTxs, &common.L2PricedTransaction{
 			Tx:             xTx,
 			PublishingCost: big.NewInt(0),
 			FromSelf:       true,
@@ -301,15 +413,17 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 		return fmt.Errorf("could not process cross chain messages. Cause: %w", err)
 	}
 
-	if len(xchainTxs) != len(xChainResults) {
-		return fmt.Errorf("could not process cross chain messages. Some were excluded. Cause: %w", err)
-	}
 	ec.xChainResults = xChainResults
 	ec.xChainResults.MarkSynthetic(true)
 	return nil
 }
 
 func (executor *batchExecutor) execRegisteredCallbacks(ec *BatchExecutionContext) error {
+	// there are no callbacks when there are no transactions
+	if len(ec.batchTxResults) == 0 {
+		return nil
+	}
+
 	// Create and process public callback transaction if needed
 	publicCallbackTx, err := executor.systemContracts.CreatePublicCallbackHandlerTransaction(ec.ctx, ec.stateDB)
 	if err != nil {
@@ -321,7 +435,7 @@ func (executor *batchExecutor) execRegisteredCallbacks(ec *BatchExecutionContext
 	}
 
 	publicCallbackPricedTxes := common.L2PricedTransactions{
-		common.L2PricedTransaction{
+		&common.L2PricedTransaction{
 			Tx:             publicCallbackTx,
 			PublishingCost: big.NewInt(0),
 			FromSelf:       true,
@@ -365,7 +479,7 @@ func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error
 		return nil
 	}
 	onBlockPricedTx := common.L2PricedTransactions{
-		common.L2PricedTransaction{
+		&common.L2PricedTransaction{
 			Tx:             onBlockTx,
 			PublishingCost: big.NewInt(0),
 			FromSelf:       true,
@@ -468,6 +582,7 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	cb, err := executor.ComputeBatch(ctx, &BatchExecutionContext{
 		BlockPtr:     batch.Header.L1Proof,
 		ParentPtr:    batch.Header.ParentHash,
+		UseMempool:   false,
 		Transactions: batch.Transactions,
 		AtTime:       batch.Header.Time,
 		ChainConfig:  executor.chainConfig,
@@ -599,63 +714,50 @@ func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions c
 	return nil
 }
 
-func (executor *batchExecutor) executeTxs(ec *BatchExecutionContext, offset int, txs common.L2PricedTransactions, noBaseFee bool) (core.TxExecResults, error) {
-	txResultsMap, err := evm.ExecuteTransactions(
-		ec.ctx,
-		executor.entropyService,
-		txs,
+func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L2PricedTransaction, offset int, noBaseFee bool) (*core.TxExecResult, error) {
+	vmCfg := vm.Config{
+		NoBaseFee: noBaseFee,
+	}
+	ethHeader := *ec.EthHeader
+	before := ethHeader.MixDigest
+	ethHeader.MixDigest = executor.entropyService.TxEntropy(before.Bytes(), offset)
+
+	// if the tx fails, it handles the revert
+	txResult := evm.ExecuteTransaction(
+		tx,
 		ec.stateDB,
-		ec.currentBatch.Header,
-		executor.storage,
-		executor.gethEncodingService,
+		&ethHeader,
+		ec.Chain,
 		ec.ChainConfig,
-		executor.config,
+		ec.GasPool,
+		ec.usedGas,
+		vmCfg,
 		offset,
-		noBaseFee,
-		executor.batchGasLimit,
 		executor.logger,
 	)
-	if err != nil {
-		return nil, err
-	}
-	txResults := make(core.TxExecResults, 0)
-	for _, tx := range txs {
-		result, f := txResultsMap[tx.Tx.Hash()]
-		if !f {
-			return nil, fmt.Errorf("there should be an entry for each transaction")
+
+	if txResult.Err == nil {
+		// populate the derived fields in the receipt
+		batch := ec.currentBatch
+		txReceipts := &types.Receipts{txResult.Receipt}
+		err := txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), batch.Header.Time, batch.Header.BaseFee, nil, types.Transactions{tx.Tx})
+		if err != nil {
+			return nil, fmt.Errorf("could not process receipts. Cause: %w", err)
 		}
-		if result.Receipt != nil {
-			txResults = append(txResults, result)
-		} else {
-			// Exclude failed transactions
-			executor.logger.Debug("Excluding transaction from batch", log.TxKey, tx.Tx.Hash(), log.BatchHashKey, ec.currentBatch.Hash(), "cause", result.Err)
-		}
+		txResult.Receipt.TransactionIndex = uint(offset)
 	}
 
-	// populate the derived fields in the receipt
-	batch := ec.currentBatch
-	txReceipts := txResults.Receipts()
-	err = txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), batch.Header.Time, batch.Header.BaseFee, nil, txResults.BatchTransactions())
-	if err != nil {
-		return nil, fmt.Errorf("could not derive receipts. Cause: %w", err)
-	}
-	for i, txResult := range txResults {
-		// sanity check
-		if txResult.Receipt.TxHash != txReceipts[i].TxHash {
-			panic("Should not happen. Tx receipts and tx results do not match")
-		}
-		txResult.Receipt = txReceipts[i]
-		txResult.Receipt.TransactionIndex += uint(offset)
-	}
-
-	sort.Sort(sortByTxIndex(txResults))
-	return txResults, nil
+	return txResult, nil
 }
 
-type sortByTxIndex []*core.TxExecResult
-
-func (c sortByTxIndex) Len() int      { return len(c) }
-func (c sortByTxIndex) Swap(i, j int) { c[i], c[j] = c[j], c[i] }
-func (c sortByTxIndex) Less(i, j int) bool {
-	return c[i].Receipt.TransactionIndex < c[j].Receipt.TransactionIndex
+func (executor *batchExecutor) executeTxs(ec *BatchExecutionContext, offset int, txs common.L2PricedTransactions, noBaseFee bool) (core.TxExecResults, error) {
+	txResults := make(core.TxExecResults, len(txs))
+	for i, tx := range txs {
+		result, err := executor.executeTx(ec, tx, offset+i, noBaseFee)
+		if err != nil {
+			return nil, fmt.Errorf("could not execute transactions. Cause: %w", err)
+		}
+		txResults[i] = result
+	}
+	return txResults, nil
 }

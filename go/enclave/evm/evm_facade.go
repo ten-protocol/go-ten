@@ -1,5 +1,7 @@
 package evm
 
+// unsafe package imported in order to link to a private function in go-ethereum.
+// This allows us to customize the message generated from a signed transaction and inject custom gas logic.
 import (
 	"context"
 	"errors"
@@ -13,9 +15,6 @@ import (
 	"github.com/holiman/uint256"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
-	// unsafe package imported in order to link to a private function in go-ethereum.
-	// This allows us to customize the message generated from a signed transaction and inject custom gas logic.
-
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -28,7 +27,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
-	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -39,87 +37,6 @@ import (
 
 var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
 
-// ExecuteTransactions
-// header - the header of the rollup where this transaction will be included
-// fromTxIndex - for the receipts and events, the evm needs to know for each transaction the order in which it was executed in the block.
-func ExecuteTransactions(
-	ctx context.Context,
-	entropyService *crypto.EvmEntropyService,
-	txs common.L2PricedTransactions,
-	s *state.StateDB,
-	header *common.BatchHeader,
-	storage storage.Storage,
-	gethEncodingService gethencoding.EncodingService,
-	chainConfig *params.ChainConfig,
-	config enclaveconfig.EnclaveConfig,
-	fromTxIndex int,
-	noBaseFee bool,
-	batchGasLimit uint64,
-	logger gethlog.Logger,
-) (map[common.TxHash]*core.TxExecResult, error) {
-	chain, vmCfg := initParams(storage, gethEncodingService, config, noBaseFee, logger)
-	// If there is noBaseFee for the batch, we set the gas limit to the max as
-	// we are working with synthetic transactions that either have predefined contracts
-	// or contract enforced gas limits.
-	if noBaseFee {
-		batchGasLimit = params.MaxGasLimit
-	}
-	gp := gethcore.GasPool(batchGasLimit)
-	zero := uint64(0)
-	usedGas := &zero
-	result := map[common.TxHash]*core.TxExecResult{}
-
-	ethHeader, err := gethEncodingService.CreateEthHeaderForBatch(ctx, header)
-	if err != nil {
-		logger.Error("Could not convert to eth header", log.ErrKey, err)
-		return nil, err
-	}
-	if noBaseFee {
-		ethHeader.GasLimit = batchGasLimit
-	}
-
-	hash := header.Hash()
-
-	// tCountRollback - every time a transaction errors out, rather than producing a receipt
-	// we push back the index in the "block" (batch) it will have. This means that errored out transactions
-	// will be shunted by their follow up successful transaction.
-	// This also means the mix digest can be the same for two transactions, but
-	// as the error one reverts and cant mutate the state in order to push back the counter
-	// this should not open up any attack vectors on the randomness.
-	tCountRollback := 0
-	for i, t := range txs {
-		txResult := executeTransaction(
-			s,
-			entropyService,
-			chainConfig,
-			chain,
-			&gp,
-			ethHeader,
-			t,
-			usedGas,
-			vmCfg,
-			(fromTxIndex+i)-tCountRollback,
-			hash,
-			header.Number.Uint64(),
-			logger,
-		)
-		result[t.Tx.Hash()] = txResult
-		if txResult.Err != nil {
-			tCountRollback++
-			// only log tx execution errors if they are unexpected
-			logFailedTx := logger.Info
-			if errors.Is(txResult.Err, gethcore.ErrNonceTooHigh) || errors.Is(txResult.Err, gethcore.ErrNonceTooLow) || errors.Is(txResult.Err, gethcore.ErrFeeCapTooLow) || errors.Is(txResult.Err, ErrGasNotEnoughForL1) {
-				logFailedTx = logger.Debug
-			}
-			logFailedTx("Failed to execute tx:", log.TxKey, t.Tx.Hash(), log.CtrErrKey, err)
-			continue
-		}
-		logReceipt(txResult.Receipt, logger)
-	}
-	s.Finalise(true)
-	return result, nil
-}
-
 const (
 	BalanceDecreaseL1Payment       tracing.BalanceChangeReason = 100
 	BalanceIncreaseL1Payment       tracing.BalanceChangeReason = 101
@@ -127,33 +44,30 @@ const (
 	BalanceRevertIncreaseL1Payment tracing.BalanceChangeReason = 103
 )
 
-func executeTransaction(
+func ExecuteTransaction(
+	tx *common.L2PricedTransaction,
 	s *state.StateDB,
-	entropyService *crypto.EvmEntropyService,
-	cc *params.ChainConfig,
-	chain *ObscuroChainContext,
-	gp *gethcore.GasPool,
 	header *types.Header,
-	t common.L2PricedTransaction,
+	chain *TenChainContext,
+	cc *params.ChainConfig,
+	gp *gethcore.GasPool,
 	usedGas *uint64,
 	vmCfg vm.Config,
 	tCount int,
-	batchHash common.L2BatchHash,
-	batchHeight uint64,
 	logger gethlog.Logger,
 ) *core.TxExecResult {
 	var createdContracts []*gethcommon.Address
 	rules := cc.Rules(big.NewInt(0), true, 0)
-	from, err := core.GetTxSigner(&t)
+	from, err := core.GetTxSigner(tx)
 	if err != nil {
 		return &core.TxExecResult{
-			TxWithSender: &core.TxWithSender{Tx: t.Tx, Sender: &from},
+			TxWithSender: &core.TxWithSender{Tx: tx.Tx, Sender: &from},
 			Err:          err,
 		}
 	}
-	s.Prepare(rules, from, gethcommon.Address{}, t.Tx.To(), nil, nil)
+	s.Prepare(rules, from, gethcommon.Address{}, tx.Tx.To(), nil, nil)
 	snap := s.Snapshot()
-	s.SetTxContext(t.Tx.Hash(), tCount)
+	s.SetTxContext(tx.Tx.Hash(), tCount)
 
 	s.SetLogger(&tracing.Hooks{
 		// called when the code of a contract changes.
@@ -169,10 +83,6 @@ func executeTransaction(
 	})
 	defer s.SetLogger(nil)
 
-	before := header.MixDigest
-	// calculate a random value per transaction
-	header.MixDigest = entropyService.TxEntropy(before.Bytes(), tCount)
-
 	var vmenv *vm.EVM
 	applyTx := func(
 		config *params.ChainConfig,
@@ -181,11 +91,11 @@ func executeTransaction(
 		gp *gethcore.GasPool,
 		statedb *state.StateDB,
 		header *types.Header,
-		tx common.L2PricedTransaction,
+		tx *common.L2PricedTransaction,
 		usedGas *uint64,
 		cfg vm.Config,
 	) (*types.Receipt, error) {
-		msg, err := TransactionToMessageWithOverrides(&tx, config, header)
+		msg, err := TransactionToMessageWithOverrides(tx, config, header)
 		if err != nil {
 			return nil, err
 		}
@@ -247,24 +157,16 @@ func executeTransaction(
 		return receipt, err
 	}
 
-	receipt, err := applyTx(cc, chain, nil, gp, s, header, t, usedGas, vmCfg)
-
+	receipt, err := applyTx(cc, chain, nil, gp, s, header, tx, usedGas, vmCfg)
 	// adjust the receipt to point to the right batch hash
 	if receipt != nil {
-		receipt.Logs = s.GetLogs(t.Tx.Hash(), batchHeight, batchHash)
-		receipt.BlockHash = batchHash
-		receipt.BlockNumber = big.NewInt(int64(batchHeight))
-		for _, l := range receipt.Logs {
-			l.BlockHash = batchHash
-		}
+		receipt.Logs = s.GetLogs(tx.Tx.Hash(), header.Number.Uint64(), header.Hash())
 	}
-
-	header.MixDigest = before
 	if err != nil {
 		s.RevertToSnapshot(snap)
 		return &core.TxExecResult{
 			Receipt:      receipt,
-			TxWithSender: &core.TxWithSender{Tx: t.Tx, Sender: &from},
+			TxWithSender: &core.TxWithSender{Tx: tx.Tx, Sender: &from},
 			Err:          err,
 		}
 	}
@@ -276,7 +178,7 @@ func executeTransaction(
 
 	return &core.TxExecResult{
 		Receipt:          receipt,
-		TxWithSender:     &core.TxWithSender{Tx: t.Tx, Sender: &from},
+		TxWithSender:     &core.TxWithSender{Tx: tx.Tx, Sender: &from},
 		CreatedContracts: contractsWithVisibility,
 	}
 }
@@ -434,11 +336,11 @@ func createCleanState(s *state.StateDB, msg *gethcore.Message, ethHeader *types.
 	return cleanState
 }
 
-func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config enclaveconfig.EnclaveConfig, noBaseFee bool, l gethlog.Logger) (*ObscuroChainContext, vm.Config) {
+func initParams(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config enclaveconfig.EnclaveConfig, noBaseFee bool, l gethlog.Logger) (*TenChainContext, vm.Config) {
 	vmCfg := vm.Config{
 		NoBaseFee: noBaseFee,
 	}
-	return NewObscuroChainContext(storage, gethEncodingService, config, l), vmCfg
+	return NewTenChainContext(storage, gethEncodingService, config, l), vmCfg
 }
 
 func newErrorWithReasonAndCode(err error) error {

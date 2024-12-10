@@ -1,4 +1,4 @@
-package txpool
+package components
 
 // unsafe package imported in order to link to a private function in go-ethereum.
 // This allows us to validate transactions against the tx pool rules.
@@ -10,8 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 	_ "unsafe"
-
-	"github.com/ten-protocol/go-ten/go/enclave/components"
 
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -34,7 +32,7 @@ type TxPool struct {
 	txPoolConfig legacypool.Config
 	legacyPool   *legacypool.LegacyPool
 	pool         *gethtxpool.TxPool
-	Chain        *components.EthChainAdapter
+	Chain        *EthChainAdapter
 	gasTip       *big.Int
 	running      atomic.Bool
 	stateMutex   sync.Mutex
@@ -43,8 +41,8 @@ type TxPool struct {
 }
 
 // NewTxPool returns a new instance of the tx pool
-func NewTxPool(blockchain *components.EthChainAdapter, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
-	txPoolConfig := components.NewLegacyPoolConfig()
+func NewTxPool(blockchain *EthChainAdapter, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
+	txPoolConfig := NewLegacyPoolConfig()
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
 
 	txp := &TxPool{

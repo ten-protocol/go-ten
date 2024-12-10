@@ -161,7 +161,7 @@ func (oc *obscuroChain) GetChainStateAtTransaction(ctx context.Context, batch *c
 		}
 		txContext := gethcore.NewEVMTxContext(msg)
 
-		chain := evm.NewObscuroChainContext(oc.storage, oc.gethEncodingService, oc.config, oc.logger)
+		chain := evm.NewTenChainContext(oc.storage, oc.gethEncodingService, oc.config, oc.logger)
 
 		blockHeader, err := oc.gethEncodingService.CreateEthHeaderForBatch(ctx, batch.Header)
 		if err != nil {

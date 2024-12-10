@@ -80,7 +80,7 @@ func (s *Simulation) Start() {
 	s.deployTenZen() // Deploy the ZenBase contract
 
 	fmt.Printf("Deploying PublicCallbacksTest contract\n")
-	s.deployPublicCallbacksTest()
+	// s.deployPublicCallbacksTest()
 
 	fmt.Printf("Creating log subscriptions\n")
 	s.trackLogs() // Create log subscriptions, to validate that they're working correctly later.

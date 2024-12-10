@@ -8,8 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ten-protocol/go-ten/go/enclave/txpool"
-
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -30,7 +28,7 @@ type validator struct {
 
 	storage      storage.Storage
 	sigValidator *components.SignatureValidator
-	mempool      *txpool.TxPool
+	mempool      *components.TxPool
 
 	logger gethlog.Logger
 }
@@ -42,7 +40,7 @@ func NewValidator(
 	chainConfig *params.ChainConfig,
 	storage storage.Storage,
 	sigValidator *components.SignatureValidator,
-	mempool *txpool.TxPool,
+	mempool *components.TxPool,
 	logger gethlog.Logger,
 ) Validator {
 	return &validator{
