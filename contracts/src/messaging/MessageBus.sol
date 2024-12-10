@@ -76,7 +76,7 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
     }
 
     function getPublishFee() public view returns (uint256) {
-        return fees.messageFee(32); //just a hash
+        return fees.messageFee();
     }
 
     // This method is called from contracts to publish messages to the other linked message bus.

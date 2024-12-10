@@ -28,7 +28,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`Owner = ${owner}`);
     console.log(`Signer = ${l2Accounts.deployer}`);
 
-    const tx = await fees.setMessageFee(10000);
+    const tx = await fees.setMessageFee(32*10000);
     const receipt =await tx.wait();
 
     if (receipt.status != 1) {
