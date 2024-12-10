@@ -133,10 +133,6 @@ func (e *enclaveRPCService) EnclavePublicConfig(context.Context) (*common.Enclav
 	if analyzerAddress == nil {
 		analyzerAddress = &gethcommon.Address{}
 	}
-	publicCallbacksAddress := e.scb.PublicCallbackHandler()
-	if publicCallbacksAddress == nil {
-		publicCallbacksAddress = &gethcommon.Address{}
-	}
 
 	publicContractsMap := make(map[string]gethcommon.Address)
 	for name, address := range e.scb.PublicSystemContracts() {
