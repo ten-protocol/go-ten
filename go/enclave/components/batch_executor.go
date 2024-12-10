@@ -26,6 +26,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -140,6 +141,11 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 			ec.stateDB.RevertToSnapshot(ec.beforeProcessingSnap)
 		}
 		return nil, ErrNoTransactionsToProcess
+	}
+
+	// Step 5: burn native value on the message bus according to what has been bridged out to the L1.
+	if err := executor.postProcessState(ec); err != nil {
+		return nil, fmt.Errorf("failed to post process state. Cause: %w", err)
 	}
 
 	return executor.execResult(ec)
@@ -332,6 +338,21 @@ func (executor *batchExecutor) execRegisteredCallbacks(ec *BatchExecutionContext
 	}
 	ec.callbackTxResults = publicCallbackTxResult
 	ec.callbackTxResults.MarkSynthetic(true)
+	return nil
+}
+
+// postProcessState - Function for applying post processing, which currently is removing the value from the balance of the message bus contract.
+func (executor *batchExecutor) postProcessState(ec *BatchExecutionContext) error {
+	receipts := ec.batchTxResults.Receipts()
+	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(ec.ctx, receipts)
+	if err != nil {
+		return fmt.Errorf("could not extract outbound transfers. Cause: %w", err)
+	}
+
+	for _, msg := range valueTransferMessages {
+		ec.stateDB.SubBalance(*executor.crossChainProcessors.Local.GetBusAddress(), uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
+	}
+
 	return nil
 }
 
@@ -624,6 +645,7 @@ func (executor *batchExecutor) executeTxs(ec *BatchExecutionContext, offset int,
 			panic("Should not happen. Tx receipts and tx results do not match")
 		}
 		txResult.Receipt = txReceipts[i]
+		txResult.Receipt.TransactionIndex += uint(offset)
 	}
 
 	sort.Sort(sortByTxIndex(txResults))

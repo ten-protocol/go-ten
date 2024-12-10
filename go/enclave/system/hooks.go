@@ -204,6 +204,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(_ context.Context,
 		tx := txExecResult.TxWithSender.Tx
 		receipt := txExecResult.Receipt
 		synTx := TransactionPostProcessor.StructsTransaction{
+			From:       *txExecResult.TxWithSender.Sender,
 			Nonce:      big.NewInt(int64(txExecResult.TxWithSender.Tx.Nonce())),
 			GasPrice:   tx.GasPrice(),
 			GasLimit:   big.NewInt(int64(tx.Gas())),
@@ -218,15 +219,8 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(_ context.Context,
 			synTx.To = gethcommon.Address{} // Zero address - contract deployment
 		}
 
-		sender, err := core.GetExternalTxSigner(tx)
-		if err != nil {
-			s.logger.Error("CreateOnBatchEndTransaction: Failed to recover sender address", "error", err, "transactionHash", tx.Hash().Hex())
-			return nil, fmt.Errorf("failed to recover sender address: %w", err)
-		}
-		synTx.From = sender
-
 		synTxs = append(synTxs, synTx)
-		s.logger.Debug("CreateOnBatchEndTransaction: Encoded transaction", log.TxKey, tx.Hash(), "sender", sender.Hex())
+		s.logger.Debug("CreateOnBatchEndTransaction: Encoded transaction", log.TxKey, tx.Hash(), "sender", synTx.From)
 	}
 
 	data, err := transactionPostProcessorABI.Pack("onBlock", synTxs)
