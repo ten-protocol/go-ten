@@ -74,8 +74,5 @@ interface IMessageBus {
     function retrieveAllFunds(address receiver) external;
 
     // the fee needed to be paid in msg.value to publish the value transfer
-    function getValueTransferFee() external view returns (uint256);
-
-    // the fee needed to be paid in msg.value to publish a message
-    function getMessageFee(uint256 payloadLength) external view returns (uint256);
+    function getPublishFee() external view returns (uint256);
 }
