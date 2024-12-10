@@ -4,10 +4,8 @@ import { Receipt } from 'hardhat-deploy/dist/types';
 import { network } from 'hardhat';
 
 /* 
-    This script deploys the ZenTestnet contract on the l2 and whitelists it.
+    This script sets the fee for the message bus to prevent spam.
 */
-
-
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const l2Network = hre; 
 
