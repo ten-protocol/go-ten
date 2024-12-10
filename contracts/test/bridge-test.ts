@@ -2,7 +2,7 @@ import { expect } from "chai";
 import hre, { ethers } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { bridge } from "../typechain-types/src";
-import { MessageBus, ObscuroBridge, WrappedERC20__factory } from "../typechain-types";
+import { MessageBus, TenBridge, WrappedERC20__factory } from "../typechain-types";
 import { EthereumBridge } from "../typechain-types/src/bridge/L2/EthereumBridge";
 import { CrossChainMessenger } from "../typechain-types/src/messaging/messenger";
 import { Contract } from "hardhat/internal/hardhat-network/stack-traces/model";
@@ -22,7 +22,7 @@ describe("Bridge", function () {
   let messengerL1: CrossChainMessenger
   let messengerL2: CrossChainMessenger
 
-  let bridgeL1 : ObscuroBridge
+  let bridgeL1 : TenBridge
   let bridgeL2 : EthereumBridge
 
   let erc20address : any
@@ -30,7 +30,7 @@ describe("Bridge", function () {
   this.beforeEach(async function(){
     const MessageBus = await hre.ethers.getContractFactory("MessageBus");
     const Messenger = await hre.ethers.getContractFactory("CrossChainMessenger");
-    const L1Bridge = await hre.ethers.getContractFactory("ObscuroBridge");
+    const L1Bridge = await hre.ethers.getContractFactory("TenBridge");
     const L2Bridge = await hre.ethers.getContractFactory("EthereumBridge");
 
     const [owner] = await ethers.getSigners();

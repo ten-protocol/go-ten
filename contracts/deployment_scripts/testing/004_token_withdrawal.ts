@@ -55,7 +55,7 @@ async function bridgeTokenToL2(hre: HardhatRuntimeEnvironment, amount: string) {
     const deployerL2 = (await hre.getNamedAccounts()).deployer;
     const token = await l1Network.deployments.get("HOCERC20");
     console.log(`Token address = ${token.address}`);
-    const tenBridge = await l1Network.deployments.get("ObscuroBridge");
+    const tenBridge = await l1Network.deployments.get("TenBridge");
     
     const l1Provider = new HardhatEthersProvider(l1Network.provider, "layer1")
     const signer = await l1Provider.getSigner(deployerL1);
@@ -69,7 +69,7 @@ async function bridgeTokenToL2(hre: HardhatRuntimeEnvironment, amount: string) {
         console.log(`Token approval successful for l1 to l2`);
     }
     {
-        const tenBridgeContract = await hre.ethers.getContractAt("ObscuroBridge", tenBridge.address, signer);
+        const tenBridgeContract = await hre.ethers.getContractAt("TenBridge", tenBridge.address, signer);
         const bridgeTx = await tenBridgeContract.sendERC20(token.address, amount, deployerL2!);
         const receipt = await bridgeTx.wait();
         if (receipt!.status !== 1) {
