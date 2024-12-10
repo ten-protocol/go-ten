@@ -3,11 +3,12 @@ package common
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"math/big"
 )
 
 // TenTransaction is an abstraction that transforms an Ethereum transaction into a format that can be consumed more
@@ -107,7 +108,7 @@ type L1TxData struct {
 	Transaction *types.Transaction
 	Receipt     *types.Receipt
 	Blobs       []*kzg4844.Blob // Only populated for blob transactions
-	//SequencerEnclaveID *EnclaveID           // Only populated when a new enclave is added as a sequencer
+	// SequencerEnclaveID *EnclaveID           // Only populated when a new enclave is added as a sequencer
 	CrossChainMessages *CrossChainMessages  // Only populated for xchain messages
 	ValueTransfers     *ValueTransferEvents // Only populated for xchain transfers
 	Proof              []byte               // Some merkle proof TBC
