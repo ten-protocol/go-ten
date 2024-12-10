@@ -396,7 +396,7 @@ jobs:
            -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
            -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
            -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
-           -sequencer_url=http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000
+           -sequencer_url=http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
 
       -  name: 'Save sequencer permissioning container logs'
          run: |
