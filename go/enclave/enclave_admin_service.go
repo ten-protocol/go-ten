@@ -495,9 +495,11 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	}
 
 	sequencerAddedTxs := processed.GetEvents(common.SequencerAddedTx)
-	for _, tx := range sequencerAddedTxs {
-		println("Sequencer ADDED: ", tx.Transaction.Hash().Hex())
+	if len(sequencerAddedTxs) > 0 {
+		println("Sequencer ADDED tx hash: ", sequencerAddedTxs[0].Transaction.Hash().Hex())
 	}
+	//for _, tx := range sequencerAddedTxs {
+	//}
 	//TODO call AddSequencer if event present
 
 	if ingestion.IsFork() {

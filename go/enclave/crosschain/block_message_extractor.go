@@ -45,6 +45,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 	// collect all value transfer events from processed data
 	var transfers common.ValueTransferEvents
 	for _, txData := range processedData.GetEvents(common.CrossChainValueTranserTx) {
+		println("VALUE TRANSFER EVENT FOUND")
 		if txData.ValueTransfers != nil {
 			transfers = append(transfers, *txData.ValueTransfers...)
 		}

@@ -192,19 +192,19 @@ func (s *Simulation) bridgeFundingToTen() {
 
 	time.Sleep(15 * time.Second)
 	// todo - fix the wait group, for whatever reason it does not find a receipt...
-	//wg := sync.WaitGroup{}
-	//for _, tx := range transactions {
-	//	wg.Add(1)
-	//	transaction := tx
-	//	go func() {
-	//		defer wg.Done()
-	//		err := testcommon.AwaitReceiptEth(s.ctx, s.RPCHandles.RndEthClient(), transaction.Hash(), 20*time.Second)
-	//		if err != nil {
-	//			panic(err)
-	//		}
-	//	}()
-	//}
-	//wg.Wait()
+	/*wg := sync.WaitGroup{}
+	for _, tx := range transactions {
+		wg.Add(1)
+		transaction := tx
+		go func() {
+			defer wg.Done()
+			err := testcommon.AwaitReceiptEth(s.ctx, s.RPCHandles.RndEthClient(), transaction.Hash(), 20*time.Second)
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
+	wg.Wait()*/
 }
 
 // We subscribe to logs on every client for every wallet.
@@ -332,7 +332,7 @@ func (s *Simulation) deployTenZen() {
 				return fmt.Errorf("waiting for positive balance")
 			}
 			return nil
-		}, retry.NewTimeoutStrategy(60*time.Second, 2*time.Second))
+		}, retry.NewTimeoutStrategy(1*time.Minute, 2*time.Second))
 		if err != nil {
 			panic(fmt.Errorf("failed to get positive balance after timeout: %w", err))
 		}

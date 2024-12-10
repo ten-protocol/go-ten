@@ -104,10 +104,10 @@ type ProcessedL1Data struct {
 
 // L1TxData represents an L1 transaction that are relevant to us
 type L1TxData struct {
-	Transaction        *types.Transaction
-	Receipt            *types.Receipt
-	Blobs              []*kzg4844.Blob      // Only populated for blob transactions
-	SequencerEnclaveID *EnclaveID           // Only populated when a new enclave is added as a sequencer
+	Transaction *types.Transaction
+	Receipt     *types.Receipt
+	Blobs       []*kzg4844.Blob // Only populated for blob transactions
+	//SequencerEnclaveID *EnclaveID           // Only populated when a new enclave is added as a sequencer
 	CrossChainMessages *CrossChainMessages  // Only populated for xchain messages
 	ValueTransfers     *ValueTransferEvents // Only populated for xchain transfers
 	Proof              []byte               // Some merkle proof TBC

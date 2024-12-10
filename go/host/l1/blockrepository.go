@@ -283,11 +283,7 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		}
 
 		if len(txLogs.sequencerLogs) > 0 {
-			println("SEQUENCER ENCLAVE ADDED ")
-			//if enclaveIDs, err := crosschain.ConvertLogsToSequencerEnclaves(txLogs.sequencerLogs, crosschain.SequencerEnclaveGrantedEventName, crosschain.MgmtContractABI); err == nil {
-			//	txData.SequencerEnclaveIDs = enclaveIDs
-				processed.AddEvent(common.SequencerAddedTx, txData)
-			//}
+			processed.AddEvent(common.SequencerAddedTx, txData)
 		}
 
 		if len(txLogs.secretRequestLogs) > 0 {
