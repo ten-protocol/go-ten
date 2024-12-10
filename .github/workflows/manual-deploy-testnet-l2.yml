@@ -356,6 +356,7 @@ jobs:
                -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
                -l1_beacon_url=${{ vars.L1_BEACON_URL }} \
                -l1_blob_archive_url=${{ vars.L1_BLOB_ARCHIVE_URL }} \
+               -system_contracts_upgrader=${{ vars.NETWORK_SEQUENCER_SYSTEMCONTRACTSUPGRADER }} \
                -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
                start'
 
