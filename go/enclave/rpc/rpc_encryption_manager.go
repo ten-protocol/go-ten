@@ -5,8 +5,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
-	"github.com/ten-protocol/go-ten/go/enclave/txpool"
-
 	"github.com/ten-protocol/go-ten/go/common/privacy"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
@@ -26,7 +24,7 @@ type EncryptionManager struct {
 	cacheService         *storage.CacheService
 	registry             components.BatchRegistry
 	processors           *crosschain.Processors
-	mempool              *txpool.TxPool
+	mempool              *components.TxPool
 	gasOracle            gas.Oracle
 	blockResolver        storage.BlockResolver
 	l1BlockProcessor     components.L1BlockProcessor
@@ -35,7 +33,7 @@ type EncryptionManager struct {
 	storageSlotWhitelist *privacy.Whitelist
 }
 
-func NewEncryptionManager(storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, mempool *txpool.TxPool, processors *crosschain.Processors, config *enclaveconfig.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain l2chain.ObscuroChain, rpcKeyService *crypto.RPCKeyService, logger gethlog.Logger) *EncryptionManager {
+func NewEncryptionManager(storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, mempool *components.TxPool, processors *crosschain.Processors, config *enclaveconfig.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain l2chain.ObscuroChain, rpcKeyService *crypto.RPCKeyService, logger gethlog.Logger) *EncryptionManager {
 	return &EncryptionManager{
 		storage:              storage,
 		cacheService:         cacheService,

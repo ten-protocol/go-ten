@@ -13,7 +13,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
-	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
@@ -50,7 +49,7 @@ type sequencer struct {
 
 	chainConfig            *params.ChainConfig
 	enclaveKeyService      *crypto.EnclaveAttestedKeyService
-	mempool                *txpool.TxPool
+	mempool                *components.TxPool
 	storage                storage.Storage
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
@@ -66,7 +65,7 @@ func NewSequencer(
 	logger gethlog.Logger,
 	chainConfig *params.ChainConfig,
 	enclaveKeyService *crypto.EnclaveAttestedKeyService,
-	mempool *txpool.TxPool,
+	mempool *components.TxPool,
 	storage storage.Storage,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
@@ -150,6 +149,7 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header)
 		block.Hash(),
 		batch.Hash(),
 		common.L2Transactions{},
+		false,
 		uint64(time.Now().Unix()),
 		false,
 	)
@@ -194,36 +194,13 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *types.H
 		return fmt.Errorf("attempted to create batch on top of batch=%s. With l1 head=%s", headBatch.Hash(), l1HeadBlock.Hash())
 	}
 
-	// todo (@stefan) - limit on receipts too
-	limiter := limiters.NewBatchSizeLimiter(s.settings.MaxBatchSize)
-	pendingTransactions := s.mempool.PendingTransactions()
-	var transactions []*types.Transaction
-txLoop:
-	for _, group := range pendingTransactions {
-		// lazily resolve transactions until the batch runs out of space
-		for _, lazyTx := range group {
-			if tx := lazyTx.Resolve(); tx != nil {
-				err = limiter.AcceptTransaction(tx)
-				if err != nil {
-					s.logger.Info("Unable to accept transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
-					if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
-						break txLoop
-					}
-					// Limiter encountered unexpected error
-					return fmt.Errorf("limiter encountered unexpected error - %w", err)
-				}
-				transactions = append(transactions, tx)
-			}
-		}
-	}
-
 	sequencerNo, err := s.storage.FetchCurrentSequencerNo(ctx)
 	if err != nil {
 		return err
 	}
 
 	// todo - time is set only here; take from l1 block?
-	if _, err := s.produceBatch(ctx, sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
+	if _, err := s.produceBatch(ctx, sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), nil, true, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
 		if errors.Is(err, components.ErrNoTransactionsToProcess) {
 			// skip batch production when there are no transactions to process
 			// todo: this might be a useful event to track for metrics (skipping batch production because empty batch)
@@ -242,6 +219,7 @@ func (s *sequencer) produceBatch(
 	l1Hash common.L1BlockHash,
 	headBatch common.L2BatchHash,
 	transactions common.L2Transactions,
+	useMempool bool,
 	batchTime uint64,
 	failForEmptyBatch bool,
 ) (*components.ComputedBatch, error) {
@@ -249,6 +227,7 @@ func (s *sequencer) produceBatch(
 		&components.BatchExecutionContext{
 			BlockPtr:     l1Hash,
 			ParentPtr:    headBatch,
+			UseMempool:   useMempool,
 			Transactions: transactions,
 			AtTime:       batchTime,
 			Creator:      s.settings.GasPaymentAddress,
@@ -404,7 +383,7 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Header, 
 			return fmt.Errorf("could not fetch transactions to duplicate. Cause %w", err)
 		}
 		// create the duplicate and store/broadcast it, recreate batch even if it was empty
-		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.Hash(), currentHead, transactions, orphanBatch.Time, false)
+		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.Hash(), currentHead, transactions, false, orphanBatch.Time, false)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
+
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 
 	"golang.org/x/exp/slices"
@@ -49,6 +51,7 @@ Eg. If the time between 2 batches is always 1second, there is no need to store a
 */
 type RollupCompression struct {
 	daEncryptionService    *crypto.DAEncryptionService
+	config                 *enclaveconfig.EnclaveConfig
 	dataCompressionService compression.DataCompressionService
 	batchRegistry          BatchRegistry
 	batchExecutor          BatchExecutor
@@ -66,6 +69,7 @@ func NewRollupCompression(
 	storage storage.Storage,
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
+	config *enclaveconfig.EnclaveConfig,
 	logger gethlog.Logger,
 ) *RollupCompression {
 	return &RollupCompression{
@@ -76,6 +80,7 @@ func NewRollupCompression(
 		storage:                storage,
 		gethEncodingService:    gethEncodingService,
 		chainConfig:            chainConfig,
+		config:                 config,
 		logger:                 logger,
 	}
 }
@@ -580,6 +585,7 @@ func (rc *RollupCompression) computeBatch(
 		&BatchExecutionContext{
 			BlockPtr:     BlockPtr,
 			ParentPtr:    ParentPtr,
+			UseMempool:   false,
 			Transactions: Transactions,
 			AtTime:       AtTime,
 			Creator:      Coinbase,

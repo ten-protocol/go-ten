@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/contracts/generated/PublicCallbacks"
 	"github.com/ten-protocol/go-ten/contracts/generated/TransactionPostProcessor"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
@@ -174,7 +173,7 @@ func (s *systemContractCallbacks) CreatePublicCallbackHandlerTransaction(ctx con
 	tx := &types.LegacyTx{
 		Nonce: nonceForSyntheticTx,
 		Value: gethcommon.Big0,
-		Gas:   params.MaxGasLimit,
+		Gas:   common.SyntheticTxGasLimit,
 		Data:  data,
 		To:    s.PublicCallbackHandler(),
 	}
@@ -232,7 +231,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(_ context.Context,
 	tx := &types.LegacyTx{
 		Nonce:    nonceForSyntheticTx,
 		Value:    gethcommon.Big0,
-		Gas:      params.MaxGasLimit,
+		Gas:      common.SyntheticTxGasLimit,
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     data,
 		To:       s.transactionsPostProcessorAddress,

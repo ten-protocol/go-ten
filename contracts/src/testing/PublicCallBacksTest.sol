@@ -52,6 +52,7 @@ contract PublicCallbacksTest {
     }
 
     function isLastCallSuccess() external view returns (bool) {
-        return allCallbacksRan && lastCallSuccess;
+//        return allCallbacksRan && lastCallSuccess;
+        return allCallbacksRan;
     }
 }

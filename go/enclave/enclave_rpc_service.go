@@ -15,7 +15,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/enclave/l2chain"
-	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -46,7 +45,7 @@ type enclaveRPCService struct {
 	logger               gethlog.Logger
 }
 
-func NewEnclaveRPCAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, batchRegistry components.BatchRegistry, gethEncodingService gethencoding.EncodingService, cachingService *storage.CacheService, mempool *txpool.TxPool, chainConfig *params.ChainConfig, crossChainProcessors *crosschain.Processors, scb system.SystemContractCallbacks, subscriptionManager *events.SubscriptionManager, genesis *genesis.Genesis, gasOracle gas.Oracle, sharedSecretService *crypto.SharedSecretService, rpcKeyService *crypto.RPCKeyService) common.EnclaveClientRPC {
+func NewEnclaveRPCAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, batchRegistry components.BatchRegistry, gethEncodingService gethencoding.EncodingService, cachingService *storage.CacheService, mempool *components.TxPool, chainConfig *params.ChainConfig, crossChainProcessors *crosschain.Processors, scb system.SystemContractCallbacks, subscriptionManager *events.SubscriptionManager, genesis *genesis.Genesis, gasOracle gas.Oracle, sharedSecretService *crypto.SharedSecretService, rpcKeyService *crypto.RPCKeyService) common.EnclaveClientRPC {
 	// TODO ensure debug is allowed/disallowed
 	chain := l2chain.NewChain(
 		storage,

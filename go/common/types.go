@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/params"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
@@ -51,7 +53,7 @@ type (
 		FromSelf       bool
 		SystemDeployer bool // Free contract construction
 	}
-	L2PricedTransactions []L2PricedTransaction
+	L2PricedTransactions []*L2PricedTransaction
 
 	CrossChainMessage  = MessageBus.StructsCrossChainMessage
 	CrossChainMessages = []CrossChainMessage
@@ -95,6 +97,8 @@ const (
 	L2GenesisHeight           = uint64(0)
 	L2GenesisSeqNo            = uint64(1)
 	L2SysContractGenesisSeqNo = uint64(2)
+
+	SyntheticTxGasLimit = params.MaxGasLimit
 )
 
 var GethGenesisParentHash = common.Hash{}
