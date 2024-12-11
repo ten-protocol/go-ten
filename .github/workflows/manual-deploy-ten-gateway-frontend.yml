@@ -1,3 +1,6 @@
+# Deploys TEN Gateway Frontend on Azure for Testnet
+# Builds the TEN Gateway image, pushes the image to dockerhub and starts the TEN Gateway on Azure VM
+
 name: "[M] Build and Deploy Ten Gateway Frontend"
 run-name: "[M] Build and Deploy Ten Gateway Frontend ( ${{ inputs.testnet_type }} )"
 on:
