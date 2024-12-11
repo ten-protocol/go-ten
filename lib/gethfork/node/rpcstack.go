@@ -175,17 +175,24 @@ func (h *httpServer) start() error {
 	h.listener = listener
 	go h.server.Serve(listener)
 
+	// Determine the scheme for WebSockets based on TLS presence
 	if h.wsAllowed() {
-		url := fmt.Sprintf("ws://%v", listener.Addr())
+		scheme := "ws"
+		if h.tlsConfig != nil {
+			scheme = "wss"
+		}
+		url := fmt.Sprintf("%s://%v", scheme, listener.Addr())
 		if h.wsConfig.prefix != "" {
 			url += h.wsConfig.prefix
 		}
 		h.log.Info("WebSocket enabled", "url", url)
 	}
-	// if server is websocket only, return after logging
+
+	// If server is websocket only, return after logging
 	if !h.rpcAllowed() {
 		return nil
 	}
+
 	// Log http endpoint.
 	h.log.Info("HTTP server started",
 		"endpoint", listener.Addr(), "auth", (h.httpConfig.jwtSecret != nil),
