@@ -35,6 +35,7 @@ type NodeConfigCLI struct {
 	privateKey              string
 	hostID                  string
 	sequencerP2PAddr        string
+	sequencerUpgraderAddr   string
 	managementContractAddr  string
 	messageBusContractAddr  string
 	l1Start                 string
@@ -92,7 +93,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	postgresDBHost := flag.String(postgresDBHostFlag, "dd", flagUsageMap[postgresDBHostFlag])
 	l1BeaconUrl := flag.String(l1BeaconUrlFlag, "eth2network:126000", flagUsageMap[l1BeaconUrlFlag])
 	l1BlobArchiveUrl := flag.String(l1BlobArchiveUrlFlag, "", flagUsageMap[l1BlobArchiveUrlFlag])
-
+	systemContractsUpgrader := flag.String(systemContractsUpgraderFlag, "", flagUsageMap[systemContractsUpgraderFlag])
 	flag.Parse()
 	cfg.nodeName = *nodeName
 	cfg.nodeType = *nodeType
@@ -126,6 +127,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.postgresDBHost = *postgresDBHost
 	cfg.l1BeaconUrl = *l1BeaconUrl
 	cfg.l1BlobArchiveUrl = *l1BlobArchiveUrl
+	cfg.sequencerUpgraderAddr = *systemContractsUpgrader
 
 	cfg.nodeAction = flag.Arg(0)
 	if !validateNodeAction(cfg.nodeAction) {
@@ -185,6 +187,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 		os.Exit(1)
 	}
 	tenCfg.Network.Sequencer.P2PAddress = cliCfg.sequencerP2PAddr
+	tenCfg.Network.Sequencer.SystemContractsUpgrader = gethcommon.HexToAddress(cliCfg.sequencerUpgraderAddr)
 
 	tenCfg.Node.ID = gethcommon.HexToAddress(cliCfg.hostID)
 	tenCfg.Node.Name = cliCfg.nodeName

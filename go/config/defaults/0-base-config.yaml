@@ -29,7 +29,7 @@ network:
       bridge: 0x0 # L1 address of the Ten bridge contract
   sequencer:
     p2pAddress: 0x0 # address of the sequencer's p2p server
-    systemContractsUpgrader: 0x1 # L2 address of the EOA allowed to upgrade the system contract proxies
+    systemContractsUpgrader: 0x2 # L2 address of the EOA allowed to upgrade the system contract proxies
   crossChain:
     interval: 6s
 
