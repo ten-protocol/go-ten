@@ -42,7 +42,19 @@ type TxPool struct {
 
 // NewTxPool returns a new instance of the tx pool
 func NewTxPool(blockchain *EthChainAdapter, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
-	txPoolConfig := NewLegacyPoolConfig()
+	txPoolConfig := legacypool.Config{
+		Locals:       nil,
+		NoLocals:     false,
+		Journal:      "",
+		Rejournal:    0,
+		PriceLimit:   legacypool.DefaultConfig.PriceLimit,
+		PriceBump:    legacypool.DefaultConfig.PriceBump,
+		AccountSlots: 32,
+		GlobalSlots:  (4096 + 1024) * 2,
+		AccountQueue: 512,
+		GlobalQueue:  2048,
+		Lifetime:     legacypool.DefaultConfig.Lifetime,
+	}
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
 
 	txp := &TxPool{

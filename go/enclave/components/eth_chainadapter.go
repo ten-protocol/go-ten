@@ -8,7 +8,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/txpool/legacypool"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
@@ -146,20 +145,4 @@ func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {
 	}()
 
 	return nil
-}
-
-func NewLegacyPoolConfig() legacypool.Config {
-	return legacypool.Config{
-		Locals:       nil,
-		NoLocals:     false,
-		Journal:      "",
-		Rejournal:    0,
-		PriceLimit:   legacypool.DefaultConfig.PriceLimit,
-		PriceBump:    legacypool.DefaultConfig.PriceBump,
-		AccountSlots: legacypool.DefaultConfig.AccountSlots,
-		GlobalSlots:  legacypool.DefaultConfig.GlobalSlots,
-		AccountQueue: legacypool.DefaultConfig.AccountQueue,
-		GlobalQueue:  legacypool.DefaultConfig.GlobalQueue,
-		Lifetime:     legacypool.DefaultConfig.Lifetime,
-	}
 }

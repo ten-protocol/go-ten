@@ -748,6 +748,8 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 	return txResult, nil
 }
 
+// the assumption is that all txs passed here will execute successfully
+// they are either synthetic txs or transactions previously included in a batch
 func (executor *batchExecutor) executeTxs(ec *BatchExecutionContext, offset int, txs common.L2PricedTransactions, noBaseFee bool) (core.TxExecResults, error) {
 	txResults := make(core.TxExecResults, len(txs))
 	for i, tx := range txs {

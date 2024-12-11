@@ -67,6 +67,7 @@ contract PublicCallbacks is Initializable {
     function register(bytes calldata callback) external payable returns (uint256) { 
         require(msg.value > 0, "No value sent");
         require(calculateGas(msg.value) > 21000, "Gas too low compared to cost of call");
+        // todo - add maximum value to limit
         return addCallback(msg.sender, callback, msg.value);
     }
 
