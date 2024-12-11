@@ -750,10 +750,16 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 
 // the assumption is that all txs passed here will execute successfully
 // they are either synthetic txs or transactions previously included in a batch
-func (executor *batchExecutor) executeTxs(ec *BatchExecutionContext, offset int, txs common.L2PricedTransactions, noBaseFee bool) (core.TxExecResults, error) {
+func (executor *batchExecutor) executeTxs(ec *BatchExecutionContext, offset int, txs common.L2PricedTransactions, synthetic bool) (core.TxExecResults, error) {
+	if synthetic {
+		// we execute synthetic transactions, so we're not counting gas any longer
+		gp := gethcore.GasPool(params.MaxGasLimit)
+		ec.GasPool = &gp
+	}
+
 	txResults := make(core.TxExecResults, len(txs))
 	for i, tx := range txs {
-		result, err := executor.executeTx(ec, tx, offset+i, noBaseFee)
+		result, err := executor.executeTx(ec, tx, offset+i, synthetic)
 		if err != nil {
 			return nil, fmt.Errorf("could not execute transactions. Cause: %w", err)
 		}
