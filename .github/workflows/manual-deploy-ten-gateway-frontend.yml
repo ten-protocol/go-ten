@@ -51,6 +51,10 @@ on:
         description: "NEXT_PUBLIC_GATEWAY_URL"
         required: true
         default: "https://dev-testnet.ten.xyz/"
+      docker_build_tag_gateway_fe:
+        description: "DOCKER_BUILD_TAG_GATEWAY_FE"
+        required: true
+        default: "latest"
 
 jobs:
   validate-inputs:
@@ -89,10 +93,10 @@ jobs:
 
           echo "DNS_NAME_LABEL_GATEWAY_FE=$DNS_NAME_LABEL_GATEWAY_FE" >> $GITHUB_ENV
           echo "IMAGE_NAME_GATEWAY_FE=$IMAGE_NAME_GATEWAY_FE" >> $GITHUB_ENV
+          echo "DOCKER_BUILD_TAG_GATEWAY_FE=${{ inputs.docker_build_tag_gateway_fe }}" >> $GITHUB_ENV
 
           # Set instance-specific variables
           declare -a VAR_NAMES=(
-            "DOCKER_BUILD_TAG_GATEWAY_FE"
             "GATEWAY_URL"
             "NETWORK_NAME"
             "TENSCAN_URL"
@@ -114,7 +118,7 @@ jobs:
           echo "Selected Instance Type: ${{ inputs.instance_type }}"
           echo "DNS_NAME_LABEL_GATEWAY_FE: $DNS_NAME_LABEL_GATEWAY_FE"
           echo "IMAGE_NAME_GATEWAY_FE: $IMAGE_NAME_GATEWAY_FE"
-          echo "DOCKER_BUILD_TAG_GATEWAY_FE: $DOCKER_BUILD_TAG_GATEWAY_FE"
+          echo "DOCKER_BUILD_TAG_GATEWAY_FE: ${{ inputs.docker_build_tag_gateway_fe }}"
           echo "GATEWAY_URL: $GATEWAY_URL"
           echo "NETWORK_NAME: $NETWORK_NAME"
           echo "TENSCAN_URL: $TENSCAN_URL"
@@ -151,9 +155,9 @@ jobs:
             --build-arg NEXT_PUBLIC_NETWORK_NAME="${{ inputs.next_public_network_name }}" \
             --build-arg NEXT_PUBLIC_TENSCAN_URL="${{ inputs.next_public_tenscan_url }}" \
             --build-arg NEXT_PUBLIC_GATEWAY_URL="${{ inputs.next_public_gateway_url }}" \
-            -t "${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}" \
+            -t "${{ inputs.docker_build_tag_gateway_fe }}" \
             -f ./tools/walletextension/frontend/Dockerfile .
-          docker push "${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}"
+          docker push "${{ inputs.docker_build_tag_gateway_fe }}"
 
       - name: "Deploy Gateway FE to Azure Container Instances"
         if: inputs.deploy_gateway_fe == 'true'
@@ -161,7 +165,7 @@ jobs:
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: ${{ env.DNS_NAME_LABEL_GATEWAY_FE }}
-          image: ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}
+          image: ${{ inputs.docker_build_tag_gateway_fe }}
           name: ${{ env.IMAGE_NAME_GATEWAY_FE }}
           location: "uksouth"
           restart-policy: "Never"
