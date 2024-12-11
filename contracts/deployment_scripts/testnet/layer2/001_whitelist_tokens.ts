@@ -36,7 +36,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`Loaded message bus address = ${l2messageBusAddress}`);
 
     // Tell the bridge to whitelist the address of HOC token. This generates a cross chain message.
-    let hocResult = await l1Network.deployments.execute("ObscuroBridge", {
+    let hocResult = await l1Network.deployments.execute("TenBridge", {
         from: l1Accounts.deployer, 
         log: true,
     }, "whitelistToken", HOCDeployment.address, "HOC", "HOC");
@@ -47,7 +47,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     // Tell the bridge to whitelist POC. This also generates a cross chain message.
-    const pocResult = await l1Network.deployments.execute("ObscuroBridge", {
+    const pocResult = await l1Network.deployments.execute("TenBridge", {
         from: l1Accounts.deployer, 
         log: true,
     }, "whitelistToken", POCDeployment.address, "POC", "POC");
