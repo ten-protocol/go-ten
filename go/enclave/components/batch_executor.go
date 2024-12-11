@@ -413,6 +413,7 @@ func (executor *batchExecutor) createBatch(ec *BatchExecutionContext) (*core.Bat
 	}
 
 	allResults := append(append(append(append(ec.batchTxResults, ec.xChainResults...), ec.callbackTxResults...), ec.blockEndResult...), ec.genesisSysCtrResult...)
+
 	receipts := allResults.Receipts()
 	if len(receipts) == 0 {
 		batch.Header.ReceiptHash = types.EmptyRootHash
@@ -459,21 +460,26 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	}
 
 	if cb.Batch.Hash() != batch.Hash() {
-		// Debug logging to compare all header fields
-		// println("=== Batch Comparison ===")
-		// println("L1Proof - Computed:", cb.Batch.Header.L1Proof.Hex(), "Incoming:", batch.Header.L1Proof.Hex())
-		// println("ParentHash - Computed:", cb.Batch.Header.ParentHash.Hex(), "Incoming:", batch.Header.ParentHash.Hex())
-		// println("Time - Computed:", cb.Batch.Header.Time, "Incoming:", batch.Header.Time)
-		// println("SequencerOrderNo - Computed:", cb.Batch.Header.SequencerOrderNo, "Incoming:", batch.Header.SequencerOrderNo)
-		// println("Coinbase - Computed:", cb.Batch.Header.Coinbase.Hex(), "Incoming:", batch.Header.Coinbase.Hex())
-		// println("BaseFee - Computed:", cb.Batch.Header.BaseFee, "Incoming:", batch.Header.BaseFee)
-		// println("TxHash - Computed:", cb.Batch.Header.TxHash.Hex(), "Incoming:", batch.Header.TxHash.Hex())
-		// println("ReceiptHash - Computed:", cb.Batch.Header.ReceiptHash.Hex(), "Incoming:", batch.Header.ReceiptHash.Hex())
-		// println("GasUsed - Computed:", cb.Batch.Header.GasUsed, "Incoming:", batch.Header.GasUsed)
-		// println("Transaction Count - Computed:", len(cb.Batch.Transactions), "Incoming:", len(batch.Transactions))
-		// println("Computed Hash:", cb.Batch.Hash().Hex())
-		// println("Incoming Hash:", batch.Hash().Hex())
-		// println("=== End Comparison ===\n")
+		println("=== Batch Comparison ===")
+		println("L1Proof - Computed:", cb.Batch.Header.L1Proof.Hex(), "Incoming:", batch.Header.L1Proof.Hex())
+		println("ParentHash - Computed:", cb.Batch.Header.ParentHash.Hex(), "Incoming:", batch.Header.ParentHash.Hex())
+		println("Time - Computed:", cb.Batch.Header.Time, "Incoming:", batch.Header.Time)
+		println("SequencerOrderNo - Computed:", cb.Batch.Header.SequencerOrderNo.Uint64(), "Incoming:", batch.Header.SequencerOrderNo.Uint64())
+		println("Coinbase - Computed:", cb.Batch.Header.Coinbase.Hex(), "Incoming:", batch.Header.Coinbase.Hex())
+		println("BaseFee - Computed:", cb.Batch.Header.BaseFee, "Incoming:", batch.Header.BaseFee)
+		println("TxHash - Computed:", cb.Batch.Header.TxHash.Hex(), "Incoming:", batch.Header.TxHash.Hex())
+		println("ReceiptHash - Computed:", cb.Batch.Header.ReceiptHash.Hex(), "Incoming:", batch.Header.ReceiptHash.Hex())
+		println("GasUsed - Computed:", cb.Batch.Header.GasUsed, "Incoming:", batch.Header.GasUsed)
+		println("Transaction Count - Computed:", len(cb.Batch.Transactions), "Incoming:", len(batch.Transactions))
+		println("Computed Hash:", cb.Batch.Hash().Hex())
+		println("Incoming Hash:", batch.Hash().Hex())
+		println("=== End Comparison ===\n")
+
+		println("----COMPUTED BATCH TXS----")
+		for _, rec := range cb.TxExecResults {
+			println("receipt txHash: ", rec.Receipt.TxHash.Hex())
+		}
+		println("----END BATCH TXS----")
 
 		// Add detailed receipt comparison
 		//println("\n=== Receipt Comparison ===")
