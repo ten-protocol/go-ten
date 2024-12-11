@@ -1,5 +1,5 @@
 name: "[M] Deploy Ten Gateway Frontend"
-run-name: "[M] Deploy Ten Gateway Frontend ( ${{ github.event.inputs.testnet_type }} )"
+run-name: "[M] Deploy Ten Gateway Frontend ( ${{ inputs.testnet_type }} )"
 on:
   workflow_dispatch:
     inputs:
@@ -21,7 +21,7 @@ on:
           - "primary"
           - "DEXYNTH"
       deploy_to_azure:
-        description: "Deploy to Azure"
+        description: "Release to ACR"
         required: true
         default: "true"
         type: choice
@@ -39,7 +39,7 @@ on:
       next_public_api_host_environment:
         description: "NEXT_PUBLIC_API_HOST_ENVIRONMENT"
         required: false
-        default: "${{ github.event.inputs.testnet_type }}"
+        default: "dev-testnet"
       next_public_network_name:
         description: "NEXT_PUBLIC_NETWORK_NAME"
         required: false
@@ -56,7 +56,7 @@ jobs:
     steps:
       - name: "Check if deployment is allowed"
         run: |
-          if [[ "${{ github.event.inputs.instance_type }}" == "DEXYNTH" && "${{ github.event.inputs.testnet_type }}" != "sepolia-testnet" ]]; then
+          if [[ "${{ inputs.instance_type }}" == "DEXYNTH" && "${{ inputs.testnet_type }}" != "sepolia-testnet" ]]; then
             echo "Error: Dexynth can only be deployed to sepolia-testnet."
             exit 1
           fi
@@ -64,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: validate-inputs
     environment:
-      name: ${{ github.event.inputs.testnet_type }}
+      name: ${{ inputs.testnet_type }}
     steps:
       - name: "Set up environment variables"
         id: setup_env
@@ -72,18 +72,18 @@ jobs:
           INSTANCE_SUFFIX=""
           INSTANCE_PREFIX=""
 
-          if [[ "${{ github.event.inputs.instance_type }}" != "primary" ]]; then
-            INSTANCE_SUFFIX="_${{ github.event.inputs.instance_type }}"
-            INSTANCE_SUFFIX2="-${{ github.event.inputs.instance_type }}"
-            INSTANCE_PREFIX="${{ github.event.inputs.instance_type }}_"
+          if [[ "${{ inputs.instance_type }}" != "primary" ]]; then
+            INSTANCE_SUFFIX="_${{ inputs.instance_type }}"
+            INSTANCE_SUFFIX2="-${{ inputs.instance_type }}"
+            INSTANCE_PREFIX="${{ inputs.instance_type }}_"
           fi
 
           echo "INSTANCE_SUFFIX=$INSTANCE_SUFFIX" >> $GITHUB_ENV
           echo "INSTANCE_PREFIX=$INSTANCE_PREFIX" >> $GITHUB_ENV
 
 
-          DNS_NAME_LABEL_GATEWAY_FE="${{ github.event.inputs.testnet_type }}-ten-gateway${INSTANCE_SUFFIX2,,}"
-          IMAGE_NAME_GATEWAY_FE="${{ github.event.inputs.testnet_type }}-fe-ten-gateway${INSTANCE_SUFFIX2,,}"
+          DNS_NAME_LABEL_GATEWAY_FE="${{ inputs.testnet_type }}-ten-gateway${INSTANCE_SUFFIX2,,}"
+          IMAGE_NAME_GATEWAY_FE="${{ inputs.testnet_type }}-fe-ten-gateway${INSTANCE_SUFFIX2,,}"
 
           echo "DNS_NAME_LABEL_GATEWAY_FE=$DNS_NAME_LABEL_GATEWAY_FE" >> $GITHUB_ENV
           echo "IMAGE_NAME_GATEWAY_FE=$IMAGE_NAME_GATEWAY_FE" >> $GITHUB_ENV
@@ -108,8 +108,8 @@ jobs:
 
       - name: "Print GitHub variables"
         run: |
-          echo "Selected Testnet Type: ${{ github.event.inputs.testnet_type }}"
-          echo "Selected Instance Type: ${{ github.event.inputs.instance_type }}"
+          echo "Selected Testnet Type: ${{ inputs.testnet_type }}"
+          echo "Selected Instance Type: ${{ inputs.instance_type }}"
           echo "DNS_NAME_LABEL_GATEWAY_FE: $DNS_NAME_LABEL_GATEWAY_FE"
           echo "IMAGE_NAME_GATEWAY_FE: $IMAGE_NAME_GATEWAY_FE"
           echo "DOCKER_BUILD_TAG_GATEWAY_FE: $DOCKER_BUILD_TAG_GATEWAY_FE"
@@ -129,7 +129,7 @@ jobs:
         uses: docker/setup-buildx-action@v3.6.1
 
       - name: "Login to Azure docker registry"
-        if: github.event.inputs.deploy_to_azure == 'true'
+        if: inputs.deploy_to_azure == 'true'
         uses: azure/docker-login@v1
         with:
           login-server: testnetobscuronet.azurecr.io
@@ -137,7 +137,7 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: "Login via Azure CLI"
-        if: github.event.inputs.deploy_to_azure == 'true'
+        if: inputs.deploy_to_azure == 'true'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -145,16 +145,16 @@ jobs:
       - name: "Build and Push Docker Image"
         run: |
           DOCKER_BUILDKIT=1 docker build \
-            --build-arg NEXT_PUBLIC_API_HOST_ENVIRONMENT="${{ github.event.inputs.next_public_api_host_environment }}" \
-            --build-arg NEXT_PUBLIC_NETWORK_NAME="${{ github.event.inputs.next_public_network_name }}" \
-            --build-arg NEXT_PUBLIC_TENSCAN_URL="${{ github.event.inputs.next_public_tenscan_url }}" \
-            --build-arg NEXT_PUBLIC_GATEWAY_URL="${{ github.event.inputs.next_public_gateway_url }}" \
+            --build-arg NEXT_PUBLIC_API_HOST_ENVIRONMENT="${{ inputs.next_public_api_host_environment }}" \
+            --build-arg NEXT_PUBLIC_NETWORK_NAME="${{ inputs.next_public_network_name }}" \
+            --build-arg NEXT_PUBLIC_TENSCAN_URL="${{ inputs.next_public_tenscan_url }}" \
+            --build-arg NEXT_PUBLIC_GATEWAY_URL="${{ inputs.next_public_gateway_url }}" \
             -t "${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}" \
             -f ./tools/walletextension/frontend/Dockerfile .
           docker push "${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}"
 
       - name: "Deploy Gateway FE to Azure Container Instances"
-        if: github.event.inputs.deploy_gateway_fe == 'true'
+        if: inputs.deploy_gateway_fe == 'true'
         uses: "azure/aci-deploy@v1"
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
