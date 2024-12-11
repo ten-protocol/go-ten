@@ -6,6 +6,7 @@ network:
       minGasPrice: +1
    sequencer:
       p2pAddress: sequencer-host:15000
+      systemContractsUpgrader: 0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77
 host:
    debug:
         enableDebugNamespace: true
@@ -20,5 +21,3 @@ enclave:
       enableDebugNamespace: true
    log:
         level: 4
-sequencer:
-   systemContractsUpgrader: 0xDEe530E22045939e6f6a0A593F829e35A140D3F1

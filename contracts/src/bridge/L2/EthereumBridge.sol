@@ -56,8 +56,17 @@ contract EthereumBridge is
         return address(wrappedTokens[wrappedToken]) != address(0x0);
     }
 
+    function erc20Fee() public view returns (uint256) {
+        return _messageBus().getPublishFee();
+    }
+
+    function valueTransferFee() public view returns (uint256) {
+        return _messageBus().getPublishFee();
+    }
+
     function sendNative(address receiver) external payable {
         require(msg.value > 0, "Nothing sent.");
+        require(msg.value >= _messageBus().getPublishFee(), "Insufficient funds to publish value transfer");
         _messageBus().sendValueToL2{value: msg.value}(receiver, msg.value);
     }
 
@@ -77,6 +86,8 @@ contract EthereumBridge is
             amount,
             receiver
         );
+
+        require(msg.value >= _messageBus().getPublishFee(), "Insufficient funds to publish message");
         queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0, msg.value);
     }
 

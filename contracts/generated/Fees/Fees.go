@@ -31,8 +31,8 @@ var (
 
 // FeesMetaData contains all meta data concerning the Fees contract.
 var FeesMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"OwnableInvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"OwnableUnauthorizedAccount\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"collectedFees\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"initialMessageFeePerByte\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"eoaOwner\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"messageSize\",\"type\":\"uint256\"}],\"name\":\"messageFee\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"newMessageFeePerByte\",\"type\":\"uint256\"}],\"name\":\"setMessageFee\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawalCollectedFees\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}]",
-	Bin: "0x6080604052348015600f57600080fd5b506016601a565b60ca565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000900460ff161560695760405163f92ee8a960e01b815260040160405180910390fd5b80546001600160401b039081161460c75780546001600160401b0319166001600160401b0390811782556040519081527fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d29060200160405180910390a15b50565b6106ed806100d96000396000f3fe60806040526004361061007f5760003560e01c8063afe997ea1161004e578063afe997ea1461012c578063da35a26f14610141578063f1d44d5114610161578063f2fde38b1461018157600080fd5b806323aa2a9d1461008b578063715018a6146100ad5780638da5cb5b146100c25780639003adfe1461011057600080fd5b3661008657005b600080fd5b34801561009757600080fd5b506100ab6100a6366004610575565b6101a1565b005b3480156100b957600080fd5b506100ab6101ae565b3480156100ce57600080fd5b507f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031660405161010791906105bb565b60405180910390f35b34801561011c57600080fd5b50475b60405161010791906105cf565b34801561013857600080fd5b506100ab6101c2565b34801561014d57600080fd5b506100ab61015c3660046105f1565b610225565b34801561016d57600080fd5b5061011f61017c366004610575565b61036d565b34801561018d57600080fd5b506100ab61019c366004610629565b610383565b6101a96103e0565b600055565b6101b66103e0565b6101c06000610454565b565b6101ca6103e0565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546040516001600160a01b03909116904780156108fc02916000818181858888f19350505050158015610222573d6000803e3d6000fd5b50565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000810460ff16159067ffffffffffffffff166000811580156102705750825b905060008267ffffffffffffffff16600114801561028d5750303b155b90508115801561029b575080155b156102d2576040517ff92ee8a900000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b845467ffffffffffffffff19166001178555831561030657845468ff00000000000000001916680100000000000000001785555b61030f866104dd565b6000879055831561036457845468ff0000000000000000191685556040517fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d29061035b90600190610663565b60405180910390a15b50505050505050565b60008160005461037d91906106a0565b92915050565b61038b6103e0565b6001600160a01b0381166103d75760006040517f1e4fbdf70000000000000000000000000000000000000000000000000000000081526004016103ce91906105bb565b60405180910390fd5b61022281610454565b336104127f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031690565b6001600160a01b0316146101c057336040517f118cdaa70000000000000000000000000000000000000000000000000000000081526004016103ce91906105bb565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c19930080547fffffffffffffffffffffffff000000000000000000000000000000000000000081166001600160a01b03848116918217845560405192169182907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e090600090a3505050565b6104e56104ee565b61022281610555565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a005468010000000000000000900460ff166101c0576040517fd7e6bcf800000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b61038b6104ee565b805b811461022257600080fd5b803561037d8161055d565b60006020828403121561058a5761058a600080fd5b610594838361056a565b9392505050565b60006001600160a01b03821661037d565b6105b58161059b565b82525050565b6020810161037d82846105ac565b806105b5565b6020810161037d82846105c9565b61055f8161059b565b803561037d816105dd565b6000806040838503121561060757610607600080fd5b610611848461056a565b915061062084602085016105e6565b90509250929050565b60006020828403121561063e5761063e600080fd5b61059483836105e6565b600067ffffffffffffffff821661037d565b6105b581610648565b6020810161037d828461065a565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b818102811582820484141761037d5761037d61067156fea26469706673582212203b15352e8f587de7fab730ebe897ce1d19b5fb0f5a07f4e8af1cc73861e46f5864736f6c634300081c0033",
+	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"OwnableInvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"OwnableUnauthorizedAccount\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"collectedFees\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"flatFee\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"eoaOwner\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"messageFee\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"newFeeForMessage\",\"type\":\"uint256\"}],\"name\":\"setMessageFee\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdrawalCollectedFees\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}]",
+	Bin: "0x6080604052348015600f57600080fd5b506016601a565b60ca565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000900460ff161560695760405163f92ee8a960e01b815260040160405180910390fd5b80546001600160401b039081161460c75780546001600160401b0319166001600160401b0390811782556040519081527fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d29060200160405180910390a15b50565b610688806100d96000396000f3fe60806040526004361061007f5760003560e01c80639003adfe1161004e5780639003adfe1461012e578063afe997ea14610141578063da35a26f14610156578063f2fde38b1461017657600080fd5b80631a90a2191461008b57806323aa2a9d146100b2578063715018a6146100d45780638da5cb5b146100e957600080fd5b3661008657005b600080fd5b34801561009757600080fd5b506000545b6040516100a99190610544565b60405180910390f35b3480156100be57600080fd5b506100d26100cd366004610570565b610196565b005b3480156100e057600080fd5b506100d26101a3565b3480156100f557600080fd5b507f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b03166040516100a991906105b0565b34801561013a57600080fd5b504761009c565b34801561014d57600080fd5b506100d26101b7565b34801561016257600080fd5b506100d26101713660046105d2565b61021a565b34801561018257600080fd5b506100d261019136600461060a565b610362565b61019e6103bf565b600055565b6101ab6103bf565b6101b56000610433565b565b6101bf6103bf565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546040516001600160a01b03909116904780156108fc02916000818181858888f19350505050158015610217573d6000803e3d6000fd5b50565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000810460ff16159067ffffffffffffffff166000811580156102655750825b905060008267ffffffffffffffff1660011480156102825750303b155b905081158015610290575080155b156102c7576040517ff92ee8a900000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b845467ffffffffffffffff1916600117855583156102fb57845468ff00000000000000001916680100000000000000001785555b610304866104bc565b6000879055831561035957845468ff0000000000000000191685556040517fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d29061035090600190610644565b60405180910390a15b50505050505050565b61036a6103bf565b6001600160a01b0381166103b65760006040517f1e4fbdf70000000000000000000000000000000000000000000000000000000081526004016103ad91906105b0565b60405180910390fd5b61021781610433565b336103f17f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031690565b6001600160a01b0316146101b557336040517f118cdaa70000000000000000000000000000000000000000000000000000000081526004016103ad91906105b0565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c19930080547fffffffffffffffffffffffff000000000000000000000000000000000000000081166001600160a01b03848116918217845560405192169182907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e090600090a3505050565b6104c46104cd565b61021781610534565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a005468010000000000000000900460ff166101b5576040517fd7e6bcf800000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b61036a6104cd565b805b82525050565b60208101610552828461053c565b92915050565b805b811461021757600080fd5b803561055281610558565b60006020828403121561058557610585600080fd5b61058f8383610565565b9392505050565b60006001600160a01b038216610552565b61053e81610596565b6020810161055282846105a7565b61055a81610596565b8035610552816105be565b600080604083850312156105e8576105e8600080fd5b6105f28484610565565b915061060184602085016105c7565b90509250929050565b60006020828403121561061f5761061f600080fd5b61058f83836105c7565b600067ffffffffffffffff8216610552565b61053e81610629565b60208101610552828461063b56fea264697066735822122080f0c01e34a6bfd9ed27e9c05c50a018ef9cc6e669f767856b4c30e98b70567764736f6c634300081c0033",
 }
 
 // FeesABI is the input ABI used to generate the binding from.
@@ -233,12 +233,12 @@ func (_Fees *FeesCallerSession) CollectedFees() (*big.Int, error) {
 	return _Fees.Contract.CollectedFees(&_Fees.CallOpts)
 }
 
-// MessageFee is a free data retrieval call binding the contract method 0xf1d44d51.
+// MessageFee is a free data retrieval call binding the contract method 0x1a90a219.
 //
-// Solidity: function messageFee(uint256 messageSize) view returns(uint256)
-func (_Fees *FeesCaller) MessageFee(opts *bind.CallOpts, messageSize *big.Int) (*big.Int, error) {
+// Solidity: function messageFee() view returns(uint256)
+func (_Fees *FeesCaller) MessageFee(opts *bind.CallOpts) (*big.Int, error) {
 	var out []interface{}
-	err := _Fees.contract.Call(opts, &out, "messageFee", messageSize)
+	err := _Fees.contract.Call(opts, &out, "messageFee")
 
 	if err != nil {
 		return *new(*big.Int), err
@@ -250,18 +250,18 @@ func (_Fees *FeesCaller) MessageFee(opts *bind.CallOpts, messageSize *big.Int) (
 
 }
 
-// MessageFee is a free data retrieval call binding the contract method 0xf1d44d51.
+// MessageFee is a free data retrieval call binding the contract method 0x1a90a219.
 //
-// Solidity: function messageFee(uint256 messageSize) view returns(uint256)
-func (_Fees *FeesSession) MessageFee(messageSize *big.Int) (*big.Int, error) {
-	return _Fees.Contract.MessageFee(&_Fees.CallOpts, messageSize)
+// Solidity: function messageFee() view returns(uint256)
+func (_Fees *FeesSession) MessageFee() (*big.Int, error) {
+	return _Fees.Contract.MessageFee(&_Fees.CallOpts)
 }
 
-// MessageFee is a free data retrieval call binding the contract method 0xf1d44d51.
+// MessageFee is a free data retrieval call binding the contract method 0x1a90a219.
 //
-// Solidity: function messageFee(uint256 messageSize) view returns(uint256)
-func (_Fees *FeesCallerSession) MessageFee(messageSize *big.Int) (*big.Int, error) {
-	return _Fees.Contract.MessageFee(&_Fees.CallOpts, messageSize)
+// Solidity: function messageFee() view returns(uint256)
+func (_Fees *FeesCallerSession) MessageFee() (*big.Int, error) {
+	return _Fees.Contract.MessageFee(&_Fees.CallOpts)
 }
 
 // Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
@@ -297,23 +297,23 @@ func (_Fees *FeesCallerSession) Owner() (common.Address, error) {
 
 // Initialize is a paid mutator transaction binding the contract method 0xda35a26f.
 //
-// Solidity: function initialize(uint256 initialMessageFeePerByte, address eoaOwner) returns()
-func (_Fees *FeesTransactor) Initialize(opts *bind.TransactOpts, initialMessageFeePerByte *big.Int, eoaOwner common.Address) (*types.Transaction, error) {
-	return _Fees.contract.Transact(opts, "initialize", initialMessageFeePerByte, eoaOwner)
+// Solidity: function initialize(uint256 flatFee, address eoaOwner) returns()
+func (_Fees *FeesTransactor) Initialize(opts *bind.TransactOpts, flatFee *big.Int, eoaOwner common.Address) (*types.Transaction, error) {
+	return _Fees.contract.Transact(opts, "initialize", flatFee, eoaOwner)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0xda35a26f.
 //
-// Solidity: function initialize(uint256 initialMessageFeePerByte, address eoaOwner) returns()
-func (_Fees *FeesSession) Initialize(initialMessageFeePerByte *big.Int, eoaOwner common.Address) (*types.Transaction, error) {
-	return _Fees.Contract.Initialize(&_Fees.TransactOpts, initialMessageFeePerByte, eoaOwner)
+// Solidity: function initialize(uint256 flatFee, address eoaOwner) returns()
+func (_Fees *FeesSession) Initialize(flatFee *big.Int, eoaOwner common.Address) (*types.Transaction, error) {
+	return _Fees.Contract.Initialize(&_Fees.TransactOpts, flatFee, eoaOwner)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0xda35a26f.
 //
-// Solidity: function initialize(uint256 initialMessageFeePerByte, address eoaOwner) returns()
-func (_Fees *FeesTransactorSession) Initialize(initialMessageFeePerByte *big.Int, eoaOwner common.Address) (*types.Transaction, error) {
-	return _Fees.Contract.Initialize(&_Fees.TransactOpts, initialMessageFeePerByte, eoaOwner)
+// Solidity: function initialize(uint256 flatFee, address eoaOwner) returns()
+func (_Fees *FeesTransactorSession) Initialize(flatFee *big.Int, eoaOwner common.Address) (*types.Transaction, error) {
+	return _Fees.Contract.Initialize(&_Fees.TransactOpts, flatFee, eoaOwner)
 }
 
 // RenounceOwnership is a paid mutator transaction binding the contract method 0x715018a6.
@@ -339,23 +339,23 @@ func (_Fees *FeesTransactorSession) RenounceOwnership() (*types.Transaction, err
 
 // SetMessageFee is a paid mutator transaction binding the contract method 0x23aa2a9d.
 //
-// Solidity: function setMessageFee(uint256 newMessageFeePerByte) returns()
-func (_Fees *FeesTransactor) SetMessageFee(opts *bind.TransactOpts, newMessageFeePerByte *big.Int) (*types.Transaction, error) {
-	return _Fees.contract.Transact(opts, "setMessageFee", newMessageFeePerByte)
+// Solidity: function setMessageFee(uint256 newFeeForMessage) returns()
+func (_Fees *FeesTransactor) SetMessageFee(opts *bind.TransactOpts, newFeeForMessage *big.Int) (*types.Transaction, error) {
+	return _Fees.contract.Transact(opts, "setMessageFee", newFeeForMessage)
 }
 
 // SetMessageFee is a paid mutator transaction binding the contract method 0x23aa2a9d.
 //
-// Solidity: function setMessageFee(uint256 newMessageFeePerByte) returns()
-func (_Fees *FeesSession) SetMessageFee(newMessageFeePerByte *big.Int) (*types.Transaction, error) {
-	return _Fees.Contract.SetMessageFee(&_Fees.TransactOpts, newMessageFeePerByte)
+// Solidity: function setMessageFee(uint256 newFeeForMessage) returns()
+func (_Fees *FeesSession) SetMessageFee(newFeeForMessage *big.Int) (*types.Transaction, error) {
+	return _Fees.Contract.SetMessageFee(&_Fees.TransactOpts, newFeeForMessage)
 }
 
 // SetMessageFee is a paid mutator transaction binding the contract method 0x23aa2a9d.
 //
-// Solidity: function setMessageFee(uint256 newMessageFeePerByte) returns()
-func (_Fees *FeesTransactorSession) SetMessageFee(newMessageFeePerByte *big.Int) (*types.Transaction, error) {
-	return _Fees.Contract.SetMessageFee(&_Fees.TransactOpts, newMessageFeePerByte)
+// Solidity: function setMessageFee(uint256 newFeeForMessage) returns()
+func (_Fees *FeesTransactorSession) SetMessageFee(newFeeForMessage *big.Int) (*types.Transaction, error) {
+	return _Fees.Contract.SetMessageFee(&_Fees.TransactOpts, newFeeForMessage)
 }
 
 // TransferOwnership is a paid mutator transaction binding the contract method 0xf2fde38b.

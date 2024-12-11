@@ -32,7 +32,7 @@ type SystemContractCallbacks interface {
 	PublicCallbackHandler() *gethcommon.Address
 	TransactionPostProcessor() *gethcommon.Address
 	SystemContractsUpgrader() *gethcommon.Address
-
+	PublicSystemContracts() map[string]*gethcommon.Address
 	// Initialization
 	Initialize(batch *core.Batch, receipts types.Receipt, msgBusManager SystemContractsInitializable) error
 	Load() error
@@ -78,6 +78,10 @@ func (s *systemContractCallbacks) TransactionPostProcessor() *gethcommon.Address
 
 func (s *systemContractCallbacks) PublicCallbackHandler() *gethcommon.Address {
 	return s.systemAddresses["PublicCallbacks"]
+}
+
+func (s *systemContractCallbacks) PublicSystemContracts() map[string]*gethcommon.Address {
+	return s.systemAddresses
 }
 
 func (s *systemContractCallbacks) Load() error {
