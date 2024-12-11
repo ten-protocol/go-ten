@@ -54,17 +54,17 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
     ) external payable {
         require(msg.value > 0 && msg.value == amount, "Attempting to send value without providing Ether");
         
-        uint256 amountToTransfer = msg.value;
+        uint256 amountToBridge = msg.value;
         if (address(fees) != address(0)) {
-            uint256 feesToTransfer = getValueTransferFee();
-            require(msg.value >= feesToTransfer, "Insufficient funds to send value");
-            amountToTransfer = msg.value - feesToTransfer;
-            (bool ok, ) = address(fees).call{value: feesToTransfer}("");
+            uint256 fee = getPublishFee();
+            require(msg.value >= fee, "Insufficient funds to send value");
+            amountToBridge = msg.value - fee;
+            (bool ok, ) = address(fees).call{value: fee}("");
             require(ok, "Failed to send fees to fees contract");
         }
 
         uint64 sequence = incrementSequence(msg.sender);
-        emit ValueTransfer(msg.sender, receiver, amountToTransfer, sequence);
+        emit ValueTransfer(msg.sender, receiver, amountToBridge, sequence);
     }
 
     function receiveValueFromL2(
@@ -75,19 +75,8 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         require(ok, "failed sending value");
     }
 
-    function getFixedDataLength() internal pure returns (uint256) {
-        return 4 + // nonce (uint32)
-               4 + // topic (uint32) 
-               1 + // consistencyLevel (uint8)
-               8; // sequence (uint64)
-    }
-
-    function getValueTransferFee() internal view returns (uint256) {
-        return fees.messageFee(32); //just a hash
-    }
-
-    function getMessageFee(uint256 payloadLength) internal view returns (uint256) {
-        return fees.messageFee(payloadLength + getFixedDataLength());
+    function getPublishFee() public view returns (uint256) {
+        return fees.messageFee();
     }
 
     // This method is called from contracts to publish messages to the other linked message bus.
@@ -105,8 +94,9 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         uint8 consistencyLevel
     ) external payable override returns (uint64 sequence) {
         if (address(fees) != address(0)) { // No fee required for L1 to L2 messages.
-            require(msg.value >= getMessageFee(payload.length), "Insufficient funds to publish message");
-            (bool ok, ) = address(fees).call{value: msg.value}("");
+            uint256 fee = getPublishFee();
+            require(msg.value >= fee, "Insufficient funds to publish message");
+            (bool ok, ) = address(fees).call{value: fee}("");
             require(ok, "Failed to send fees to fees contract");
         }
 

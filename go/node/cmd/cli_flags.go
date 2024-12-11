@@ -34,6 +34,7 @@ const (
 	postgresDBHostFlag          = "postgres_db_host"
 	l1BeaconUrlFlag             = "l1_beacon_url"
 	l1BlobArchiveUrlFlag        = "l1_blob_archive_url"
+	systemContractsUpgraderFlag = "system_contracts_upgrader"
 )
 
 // Returns a map of the flag usages.
@@ -72,5 +73,6 @@ func getFlagUsageMap() map[string]string {
 		postgresDBHostFlag:          "Host connection details for Postgres DB",
 		l1BeaconUrlFlag:             "Url for the beacon chain API",
 		l1BlobArchiveUrlFlag:        "Url for the blob archive endpoint",
+		systemContractsUpgraderFlag: "Address of the system contracts upgrader",
 	}
 }
