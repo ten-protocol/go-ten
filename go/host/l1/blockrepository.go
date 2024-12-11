@@ -325,6 +325,7 @@ func (r *Repository) processCrossChainMessages(txLogs *logGroup, txData *common.
 		if err != nil {
 			return err
 		}
+		println("CROSSCHAIN MESSAGE EVENT: ", txData.Receipt.TxHash.Hex())
 		txData.CrossChainMessages = &messages
 		processed.AddEvent(common.CrossChainMessageTx, txData)
 	}
@@ -338,7 +339,7 @@ func (r *Repository) processValueTransfers(txLogs *logGroup, txData *common.L1Tx
 		if err != nil {
 			return err
 		}
-		println("Value transfer event added")
+		println("VALUE TXF EVENT: ", txData.Receipt.TxHash.Hex())
 		txData.ValueTransfers = &transfers
 		processed.AddEvent(common.CrossChainValueTranserTx, txData)
 	}

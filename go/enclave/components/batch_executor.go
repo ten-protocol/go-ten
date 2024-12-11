@@ -412,7 +412,18 @@ func (executor *batchExecutor) createBatch(ec *BatchExecutionContext) (*core.Bat
 		return nil, nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
 	}
 
+	println("---CREATING BATCH----")
+	println("BATCH batch.Transactions: ", len(batch.Transactions))
+	println("BATCH ec.batchTxResults: ", len(ec.batchTxResults))
+	println("BATCH ec.xChainResults: ", len(ec.xChainResults))
+	println("BATCH ec.callbackTxResults: ", len(ec.callbackTxResults))
+	println("BATCH ec.blockEndResult: ", len(ec.blockEndResult))
+	println("BATCH ec.genesisSysCtrResult: ", len(ec.genesisSysCtrResult))
 	allResults := append(append(append(append(ec.batchTxResults, ec.xChainResults...), ec.callbackTxResults...), ec.blockEndResult...), ec.genesisSysCtrResult...)
+	println("BATCH allResults: ", len(allResults))
+	for _, res := range allResults {
+		println("Result : ", res.Receipt.TxHash.Hex())
+	}
 
 	receipts := allResults.Receipts()
 	if len(receipts) == 0 {
@@ -473,21 +484,16 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 		println("Transaction Count - Computed:", len(cb.Batch.Transactions), "Incoming:", len(batch.Transactions))
 		println("Computed Hash:", cb.Batch.Hash().Hex())
 		println("Incoming Hash:", batch.Hash().Hex())
+
+		for _, rec := range cb.TxExecResults {
+			println("CB receipt txHash: ", rec.Receipt.TxHash.Hex())
+		}
+
+		for _, tx := range batch.Transactions {
+			println("INCOMING txHash: ", tx.Hash().Hex())
+		}
 		println("=== End Comparison ===\n")
 
-		println("----COMPUTED BATCH TXS----")
-		for _, rec := range cb.TxExecResults {
-			println("receipt txHash: ", rec.Receipt.TxHash.Hex())
-		}
-		println("----END BATCH TXS----")
-
-		// Add detailed receipt comparison
-		//println("\n=== Receipt Comparison ===")
-		//for i, txResult := range cb.TxExecResults {
-		//	println(fmt.Sprintf("\nTransaction %d:", i))
-		//	println("Status - Computed:", txResult.Receipt.Status)
-		//	println("GasUsed - Computed:", txResult.Receipt.GasUsed)
-		//	println("CumulativeGasUsed - Computed:", txResult.Receipt.CumulativeGasUsed)
 		//	println("TxHash - Computed:", txResult.Receipt.TxHash.Hex())
 		//
 		//	// Compare logs
@@ -549,12 +555,14 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 		executor.logger.Error("Failed extracting L2->L1 messages", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
 	}
+	println("populateOutboundCrossChainData crossChainMessages: ", len(crossChainMessages))
 
 	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(ctx, receipts)
 	if err != nil {
 		executor.logger.Error("Failed extracting L2->L1 messages value transfers", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
 		return fmt.Errorf("could not extract cross chain value transfers. Cause: %w", err)
 	}
+	println("populateOutboundCrossChainData valueTransferMessages: ", len(valueTransferMessages))
 
 	xchainTree := make([][]interface{}, 0)
 
