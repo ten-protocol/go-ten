@@ -215,3 +215,7 @@ func (t *TxPool) validate(tx *common.L2Tx) error {
 	// validate against the state. Things like nonce, balance, etc
 	return validateTx(t.legacyPool, tx, false)
 }
+
+func (t *TxPool) Stats() (int, int) {
+	return t.legacyPool.Stats()
+}

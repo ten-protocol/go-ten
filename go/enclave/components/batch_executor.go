@@ -288,11 +288,9 @@ func (executor *batchExecutor) execBatchTransactions(ec *BatchExecutionContext) 
 func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext) error {
 	sizeLimiter := limiters.NewBatchSizeLimiter(executor.config.MaxBatchSize)
 	pendingTransactions := executor.mempool.PendingTransactions()
-	cnt := 0
-	for _, group := range pendingTransactions {
-		cnt += len(group)
-	}
-	executor.logger.Debug(fmt.Sprintf("Mempool pending txs: %d\n", cnt))
+
+	nrPending, nrQueued := executor.mempool.Stats()
+	executor.logger.Debug(fmt.Sprintf("Mempool pending txs: %d. Queued: %d", nrPending, nrQueued))
 
 	mempoolTxs := newTransactionsByPriceAndNonce(nil, pendingTransactions, ec.currentBatch.Header.BaseFee)
 
