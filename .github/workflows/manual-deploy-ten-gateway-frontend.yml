@@ -38,17 +38,19 @@ on:
           - "false"
       next_public_api_host_environment:
         description: "NEXT_PUBLIC_API_HOST_ENVIRONMENT"
-        required: false
+        required: true
         default: "dev-testnet"
       next_public_network_name:
         description: "NEXT_PUBLIC_NETWORK_NAME"
-        required: false
+        required: true
       next_public_tenscan_url:
         description: "NEXT_PUBLIC_TENSCAN_URL"
-        required: false
+        required: true
+        default: "https://tenscan.io"
       next_public_gateway_url:
         description: "NEXT_PUBLIC_GATEWAY_URL"
-        required: false
+        required: true
+        default: "https://dev-testnet.ten.xyz/"
 
 jobs:
   validate-inputs:
