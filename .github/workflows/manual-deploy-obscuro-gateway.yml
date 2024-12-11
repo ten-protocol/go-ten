@@ -366,7 +366,7 @@ jobs:
             -e OE_SIMULATION=0 \
             "${{ env.DOCKER_BUILD_TAG_GATEWAY }}" \
             ego run /home/ten/go-ten/tools/walletextension/main/main \
-            -host=0.0.0.0 -port=443 -portWS=444 -nodeHost="${{ env.L2_RPC_URL_VALIDATOR }}" -verbose=true \
+            -host=0.0.0.0 -port=443 -portWS=443 -nodeHost="${{ env.L2_RPC_URL_VALIDATOR }}" -verbose=true \
             -logPath=sys_out -dbType=cosmosDB -dbConnectionURL="${{ secrets.COSMOS_DB_CONNECTION_STRING }}" \
             -rateLimitUserComputeTime="${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }}" \
             -rateLimitWindow="${{ env.GATEWAY_RATE_LIMIT_WINDOW }}" \

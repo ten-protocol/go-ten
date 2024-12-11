@@ -160,6 +160,7 @@ func (h *httpServer) start() error {
 
 	if h.tlsConfig != nil {
 		// If TLS is enabled, use tls.Listen to create a TLS listener
+		fmt.Println("STARTING HTTPS ENDPOINT")
 		listener, err = tls.Listen("tcp", h.endpoint, h.tlsConfig)
 	} else {
 		listener, err = net.Listen("tcp", h.endpoint)
@@ -179,12 +180,15 @@ func (h *httpServer) start() error {
 	if h.wsAllowed() {
 		scheme := "ws"
 		if h.tlsConfig != nil {
+			fmt.Println("h.tlsConfig != nil")
 			scheme = "wss"
 		}
+		fmt.Println("scheme", scheme)
 		url := fmt.Sprintf("%s://%v", scheme, listener.Addr())
 		if h.wsConfig.prefix != "" {
 			url += h.wsConfig.prefix
 		}
+		fmt.Println("WEBSOCKETurl", url)
 		h.log.Info("WebSocket enabled", "url", url)
 	}
 
@@ -200,6 +204,11 @@ func (h *httpServer) start() error {
 		"cors", strings.Join(h.httpConfig.CorsAllowedOrigins, ","),
 		"vhosts", strings.Join(h.httpConfig.Vhosts, ","),
 	)
+
+	fmt.Println("endpoint", listener.Addr())
+	fmt.Println("h.httpConfig.prefix", h.httpConfig.prefix)
+	fmt.Println("h.httpConfig.CorsAllowedOrigins", h.httpConfig.CorsAllowedOrigins)
+	fmt.Println("h.httpConfig.Vhosts", h.httpConfig.Vhosts)
 
 	// Log all handlers mounted on server.
 	var paths []string
