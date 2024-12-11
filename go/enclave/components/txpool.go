@@ -51,8 +51,8 @@ func NewTxPool(blockchain *EthChainAdapter, gasTip *big.Int, validateOnly bool, 
 		PriceBump:    legacypool.DefaultConfig.PriceBump,
 		AccountSlots: 32,
 		GlobalSlots:  (4096 + 1024) * 2,
-		AccountQueue: 512,
-		GlobalQueue:  2048,
+		AccountQueue: 2048,
+		GlobalQueue:  2048 * 4,
 		Lifetime:     legacypool.DefaultConfig.Lifetime,
 	}
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
