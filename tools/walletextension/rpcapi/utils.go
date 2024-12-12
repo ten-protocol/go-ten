@@ -167,8 +167,8 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 				candidateAccts = append(candidateAccts, acc)
 				return candidateAccts, nil
 			} else {
-				// this should not happen, because the suggestedAddress is one of the addresses
-				return nil, fmt.Errorf("should not happen. From: %s . UserId: %s", suggestedAddress.Hex(), hexutils.BytesToHex(user.ID))
+				// this can only happen when the "from" is not one of the registered accounts.
+				return nil, fmt.Errorf("account: %s not registered to current user. Please register first", suggestedAddress.Hex())
 			}
 		}
 	}
