@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	contractDeployerPrivateKeyHex = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
+	contractDeployerPrivateKeyHex = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8" // Used only in tests.
 	latestBlock                   = "latest"
 	emptyCode                     = "0x"
 	erc20ParamOne                 = "Hocus"
