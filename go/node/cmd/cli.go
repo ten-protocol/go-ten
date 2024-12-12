@@ -171,7 +171,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	}
 	enclaveAddresses := make([]string, cliCfg.numEnclaves)
 	for i := 0; i < cliCfg.numEnclaves; i++ {
-		enclaveAddresses[i] = fmt.Sprintf("http://%s-enclave-%d:%d",
+		enclaveAddresses[i] = fmt.Sprintf("%s-enclave-%d:%d",
 			cliCfg.nodeName, i, cliCfg.enclaveHTTPPort)
 	}
 
