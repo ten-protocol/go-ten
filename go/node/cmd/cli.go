@@ -23,6 +23,7 @@ type NodeConfigCLI struct {
 	nodeAction              string
 	nodeType                string
 	isGenesis               bool
+	numEnclaves             int
 	isSGXEnabled            bool
 	enclaveDockerImage      string
 	hostDockerImage         string
@@ -64,6 +65,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	nodeName := flag.String(nodeNameFlag, "obscuronode", flagUsageMap[nodeNameFlag])
 	nodeType := flag.String(nodeTypeFlag, "", flagUsageMap[nodeTypeFlag])
 	isGenesis := flag.Bool(isGenesisFlag, false, flagUsageMap[isGenesisFlag])
+	numEnclaves := flag.Int(numEnclavesFlag, 1, flagUsageMap[numEnclavesFlag])
 	isSGXEnabled := flag.Bool(isSGXEnabledFlag, false, flagUsageMap[isSGXEnabledFlag])
 	enclaveDockerImage := flag.String(enclaveDockerImageFlag, "", flagUsageMap[enclaveDockerImageFlag])
 	hostDockerImage := flag.String(hostDockerImageFlag, "", flagUsageMap[hostDockerImageFlag])
@@ -98,6 +100,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.nodeName = *nodeName
 	cfg.nodeType = *nodeType
 	cfg.isGenesis = *isGenesis
+	cfg.numEnclaves = *numEnclaves
 	cfg.isSGXEnabled = *isSGXEnabled
 	cfg.enclaveDockerImage = *enclaveDockerImage
 	cfg.hostDockerImage = *hostDockerImage
@@ -166,6 +169,11 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 		fmt.Printf("Error loading default Ten config: %v\n", err)
 		os.Exit(1)
 	}
+	enclaveAddresses := make([]string, cliCfg.numEnclaves)
+	for i := 0; i < cliCfg.numEnclaves; i++ {
+		enclaveAddresses[i] = fmt.Sprintf("http://%s-enclave-%d:%d",
+			cliCfg.nodeName, i, cliCfg.enclaveHTTPPort)
+	}
 
 	tenCfg.Network.L1.ChainID = int64(cliCfg.l1ChainID)
 	tenCfg.Network.L1.L1Contracts.ManagementContract = gethcommon.HexToAddress(cliCfg.managementContractAddr)
@@ -199,7 +207,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	tenCfg.Host.DB.UseInMemory = false // these nodes always use a persistent DB
 	tenCfg.Host.DB.PostgresHost = cliCfg.postgresDBHost
 	tenCfg.Host.Debug.EnableDebugNamespace = cliCfg.isDebugNamespaceEnabled
-	tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("%s:%d", cliCfg.nodeName+"-enclave", cliCfg.enclaveWSPort)}
+	tenCfg.Host.Enclave.RPCAddresses = enclaveAddresses
 	tenCfg.Host.L1.WebsocketURL = cliCfg.l1WebsocketURL
 	tenCfg.Host.L1.L1BeaconUrl = cliCfg.l1BeaconUrl
 	tenCfg.Host.L1.L1BlobArchiveUrl = cliCfg.l1BlobArchiveUrl
@@ -209,8 +217,8 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	tenCfg.Host.RPC.WSPort = uint64(cliCfg.hostWSPort)
 	tenCfg.Host.Log.Level = cliCfg.logLevel
 
-	tenCfg.Enclave.DB.UseInMemory = false // these nodes always use a persistent DB
-	tenCfg.Enclave.DB.EdgelessDBHost = cliCfg.nodeName + "-edgelessdb"
+	tenCfg.Enclave.DB.UseInMemory = false                                     // these nodes always use a persistent DB
+	tenCfg.Enclave.DB.EdgelessDBHost = cliCfg.nodeName + "-edgelessdb-" + "0" // will be dynamically set for HA
 	tenCfg.Enclave.Debug.EnableDebugNamespace = cliCfg.isDebugNamespaceEnabled
 	tenCfg.Enclave.EnableAttestation = cliCfg.isSGXEnabled
 	tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("0.0.0.0:%d", cliCfg.enclaveWSPort)

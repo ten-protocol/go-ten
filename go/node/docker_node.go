@@ -20,9 +20,10 @@ type DockerNode struct {
 	edgelessDBImage  string
 	enclaveDebugMode bool
 	pccsAddr         string // optional specified PCCS address
+	numEnclaves      int    // number of enclaves to start for the node as an HA setup
 }
 
-func NewDockerNode(cfg *config.TenConfig, hostImage, enclaveImage, edgelessDBImage string, enclaveDebug bool, pccsAddr string) *DockerNode {
+func NewDockerNode(cfg *config.TenConfig, hostImage, enclaveImage, edgelessDBImage string, enclaveDebug bool, pccsAddr string, numEnclaves int) *DockerNode {
 	return &DockerNode{
 		cfg:              cfg,
 		hostImage:        hostImage,
@@ -30,6 +31,7 @@ func NewDockerNode(cfg *config.TenConfig, hostImage, enclaveImage, edgelessDBIma
 		edgelessDBImage:  edgelessDBImage,
 		enclaveDebugMode: enclaveDebug,
 		pccsAddr:         pccsAddr,
+		numEnclaves:      numEnclaves,
 	}
 }
 
@@ -37,14 +39,17 @@ func (d *DockerNode) Start() error {
 	// todo (@pedro) - this should probably be removed in the future
 	d.cfg.PrettyPrint() // dump config to stdout
 
-	err := d.startEdgelessDB()
-	if err != nil {
-		return fmt.Errorf("failed to start edgelessdb: %w", err)
-	}
+	var err error
+	for i := 0; i < d.numEnclaves; i++ {
+		err = d.startEdgelessDB(i)
+		if err != nil {
+			return fmt.Errorf("failed to start edgelessdb: %w", err)
+		}
 
-	err = d.startEnclave()
-	if err != nil {
-		return fmt.Errorf("failed to start enclave: %w", err)
+		err = d.startEnclave(i)
+		if err != nil {
+			return fmt.Errorf("failed to start enclave: %w", err)
+		}
 	}
 
 	err = d.startHost()
@@ -62,9 +67,11 @@ func (d *DockerNode) Stop() error {
 		return err
 	}
 
-	err = docker.StopAndRemove(d.cfg.Node.Name + "-enclave")
-	if err != nil {
-		return err
+	for i := 0; i < d.numEnclaves; i++ {
+		err = docker.StopAndRemove(d.cfg.Node.Name + "-enclave-" + strconv.Itoa(i))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -84,10 +91,12 @@ func (d *DockerNode) Upgrade(networkCfg *NetworkConfig) error {
 	d.cfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkCfg.MessageBusAddress)
 	d.cfg.Network.L1.StartHash = common.HexToHash(networkCfg.L1StartHash)
 
-	fmt.Println("Starting upgraded host and enclave")
-	err = d.startEnclave()
-	if err != nil {
-		return err
+	fmt.Println("Starting upgraded host and enclaves")
+	for i := 0; i < d.numEnclaves; i++ {
+		err = d.startEnclave(i)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = d.startHost()
@@ -124,7 +133,7 @@ func (d *DockerNode) startHost() error {
 	return err
 }
 
-func (d *DockerNode) startEnclave() error {
+func (d *DockerNode) startEnclave(enclaveIdx int) error {
 	devices := map[string]string{}
 	exposedPorts := []int{}
 
@@ -134,6 +143,9 @@ func (d *DockerNode) startEnclave() error {
 	}
 
 	if d.enclaveDebugMode {
+		if d.numEnclaves > 1 {
+			return fmt.Errorf("cannot run multiple enclaves in debug mode")
+		}
 		cmd = []string{
 			"dlv",
 			"--listen=:2345",
@@ -163,16 +175,20 @@ func (d *DockerNode) startEnclave() error {
 		cmd = append(cmd, "-willAttest=false")
 	}
 
+	volumeName := fmt.Sprintf("%s-enclave-volume-%d", d.cfg.Node.Name, enclaveIdx)
+	containerName := fmt.Sprintf("%s-enclave-%d", d.cfg.Node.Name, enclaveIdx)
+
 	// we need the enclave volume to store the db credentials
-	enclaveVolume := map[string]string{d.cfg.Node.Name + "-enclave-volume": _enclaveDataDir}
-	_, err := docker.StartNewContainer(d.cfg.Node.Name+"-enclave", d.enclaveImage, cmd, exposedPorts, envVariables, devices, enclaveVolume, true)
+	enclaveVolume := map[string]string{volumeName: _enclaveDataDir}
+	_, err := docker.StartNewContainer(containerName, d.enclaveImage, cmd, exposedPorts, envVariables, devices, enclaveVolume, true)
 
 	return err
 }
 
-func (d *DockerNode) startEdgelessDB() error {
+func (d *DockerNode) startEdgelessDB(enclaveIdx int) error {
+	containerName := fmt.Sprintf("%s-edgelessdb-%d", d.cfg.Node.Name, enclaveIdx)
 	envs := map[string]string{
-		"EDG_EDB_CERT_DNS": d.cfg.Node.Name + "-edgelessdb",
+		"EDG_EDB_CERT_DNS": containerName,
 	}
 	devices := map[string]string{}
 
@@ -192,7 +208,7 @@ func (d *DockerNode) startEdgelessDB() error {
 	//dbVolume := map[string]string{d.cfg.Node.Name + "-db-volume": "/data"}
 	//_, err := docker.StartNewContainer(d.cfg.Node.Name+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, dbVolume)
 
-	_, err := docker.StartNewContainer(d.cfg.Node.Name+"-edgelessdb", d.edgelessDBImage, nil, nil, envs, devices, nil, true)
+	_, err := docker.StartNewContainer(containerName, d.edgelessDBImage, nil, nil, envs, devices, nil, true)
 
 	return err
 }
