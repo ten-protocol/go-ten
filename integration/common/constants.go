@@ -30,8 +30,8 @@ const (
 	HOCAddr              = "f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
 	pocAddr              = "9802F661d17c65527D7ABB59DAAD5439cb125a67"
 	bridgeAddr           = "deB34A740ECa1eC42C8b8204CBEC0bA34FDD27f3"
-	hocOwnerKeyHex       = "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
-	pocOwnerKeyHex       = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
+	hocOwnerKeyHex       = "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682" // Used only in sim tests. Fine
+	pocOwnerKeyHex       = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8" // Used only in sim tests. Fine
 )
 
 var HOCOwner, _ = crypto.HexToECDSA(hocOwnerKeyHex)
