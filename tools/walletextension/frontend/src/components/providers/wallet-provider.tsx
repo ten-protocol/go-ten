@@ -56,7 +56,7 @@ export const WalletConnectionProvider = ({
     try {
       await ethService.checkIfMetamaskIsLoaded(providerInstance);
 
-      const fetchedToken = await getToken(providerInstance);
+      const fetchedToken = await getToken();
       setToken(fetchedToken);
 
       const status = await ethService.isUserConnectedToTenChain(fetchedToken);
@@ -135,7 +135,7 @@ export const WalletConnectionProvider = ({
       );
       return;
     }
-    const token = await getToken(provider);
+    const token = await getToken();
 
     if (!isValidTokenFormat(token)) {
       showToast(
