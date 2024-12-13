@@ -438,9 +438,9 @@ jobs:
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -l2_ws_port=81 \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-          -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
-          -l2_hoc_private_key=6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682 \
-          -l2_poc_private_key=4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8 \
+          -l2_private_key=${{ secrets.L2_DEPLOYER_KEY }} \
+          -l2_hoc_private_key=${{ secrets.L2_HOC_KEY }} \
+          -l2_poc_private_key=${{ secrets.L2_POC_KEY}} \
           -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
           -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \

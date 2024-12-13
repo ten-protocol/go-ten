@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync/atomic"
@@ -71,7 +72,23 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	}
 
 	if rpc.IsEncryptedMethod(method) {
-		return c.executeEncryptedCall(ctx, result, method, args...)
+		err := c.executeEncryptedCall(ctx, result, method, args...)
+		// this should only be triggered during testing
+		if err != nil && errors.Is(err, common.FailedDecryptErr) {
+			c.logger.Warn("Reconnecting to new backend. Reading the enclave key.")
+			newKey, err := ReadEnclaveKey(c.obscuroClient)
+			if err != nil {
+				return fmt.Errorf("could not refresh enclave key: %w", err)
+			}
+			enclPubECDSA, err := crypto.DecompressPubkey(newKey)
+			if err != nil {
+				return fmt.Errorf("failed to decompress key for RPC client: %w", err)
+			}
+			c.enclavePublicKey = ecies.ImportECDSAPublic(enclPubECDSA)
+			// retry with the updated key
+			return c.executeEncryptedCall(ctx, result, method, args...)
+		}
+		return err
 	}
 
 	// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client

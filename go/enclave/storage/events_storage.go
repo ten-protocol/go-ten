@@ -198,8 +198,9 @@ func (es *eventsStorage) storeTopics(ctx context.Context, dbTX *sql.Tx, eventTyp
 	// if not, discover if there is a relevant externally owned address
 	for i := 1; i < len(l.Topics); i++ {
 		topic := l.Topics[i]
+		var topicId uint64
 		// first check if there is an entry already for this topic
-		topicId, _, err := es.findTopic(ctx, dbTX, topic.Bytes(), eventType.Id)
+		eventTopic, err := es.findTopic(ctx, dbTX, topic.Bytes(), eventType.Id)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, fmt.Errorf("could not read the event topic. Cause: %w", err)
 		}
@@ -209,6 +210,8 @@ func (es *eventsStorage) storeTopics(ctx context.Context, dbTX *sql.Tx, eventTyp
 			if err != nil {
 				return nil, fmt.Errorf("could not store the event topic. Cause: %w", err)
 			}
+		} else {
+			topicId = eventTopic.Id
 		}
 		topicIds[i-1] = &topicId
 	}
@@ -321,9 +324,23 @@ func (es *eventsStorage) readContract(ctx context.Context, dbTX *sql.Tx, addr ge
 	})
 }
 
-func (es *eventsStorage) findTopic(ctx context.Context, dbTX *sql.Tx, topic []byte, eventTypeId uint64) (uint64, *uint64, error) {
+func (es *eventsStorage) ReadContract(ctx context.Context, addr gethcommon.Address) (*enclavedb.Contract, error) {
+	defer es.logDuration("readContract", measure.NewStopwatch())
+	return es.cachingService.ReadContractAddr(ctx, addr, func(v any) (*enclavedb.Contract, error) {
+		dbtx, err := es.db.GetSQLDB().BeginTx(ctx, nil)
+		if err != nil {
+			return nil, err
+		}
+		defer dbtx.Rollback()
+		return enclavedb.ReadContractByAddress(ctx, dbtx, addr)
+	})
+}
+
+func (es *eventsStorage) findTopic(ctx context.Context, dbTX *sql.Tx, topic []byte, eventTypeId uint64) (*enclavedb.EventTopic, error) {
 	defer es.logDuration("findTopic", measure.NewStopwatch())
-	return enclavedb.ReadEventTopic(ctx, dbTX, topic, eventTypeId)
+	return es.cachingService.ReadEventTopic(ctx, topic, eventTypeId, func(v any) (*enclavedb.EventTopic, error) {
+		return enclavedb.ReadEventTopic(ctx, dbTX, topic, eventTypeId)
+	})
 }
 
 func (es *eventsStorage) readEOA(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (*uint64, error) {

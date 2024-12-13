@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -76,6 +77,9 @@ type (
 
 	EnclaveID = common.Address
 )
+
+// FailedDecryptErr - when the TEN enclave fails to decrypt an RPC request
+var FailedDecryptErr = errors.New("failed to decrypt RPC payload. please use the correct enclave key")
 
 // EncryptedRPCRequest - an encrypted request with extra plaintext metadata
 type EncryptedRPCRequest struct {
