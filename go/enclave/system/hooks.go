@@ -6,12 +6,13 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ten-protocol/go-ten/go/common/log"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/contracts/generated/PublicCallbacks"
 	"github.com/ten-protocol/go-ten/contracts/generated/TransactionPostProcessor"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
@@ -31,14 +32,16 @@ type SystemContractCallbacks interface {
 	PublicCallbackHandler() *gethcommon.Address
 	TransactionPostProcessor() *gethcommon.Address
 	SystemContractsUpgrader() *gethcommon.Address
-
+	PublicSystemContracts() map[string]*gethcommon.Address
 	// Initialization
 	Initialize(batch *core.Batch, receipts types.Receipt, msgBusManager SystemContractsInitializable) error
 	Load() error
 
 	// Usage
-	CreateOnBatchEndTransaction(ctx context.Context, stateDB *state.StateDB, transactions common.L2Transactions, receipts types.Receipts) (*types.Transaction, error)
+	CreateOnBatchEndTransaction(ctx context.Context, stateDB *state.StateDB, results core.TxExecResults) (*types.Transaction, error)
 	CreatePublicCallbackHandlerTransaction(ctx context.Context, stateDB *state.StateDB) (*types.Transaction, error)
+
+	// VerifyOnBlockReceipt - used for debugging
 	VerifyOnBlockReceipt(transactions common.L2Transactions, receipt *types.Receipt) (bool, error)
 }
 
@@ -75,6 +78,10 @@ func (s *systemContractCallbacks) TransactionPostProcessor() *gethcommon.Address
 
 func (s *systemContractCallbacks) PublicCallbackHandler() *gethcommon.Address {
 	return s.systemAddresses["PublicCallbacks"]
+}
+
+func (s *systemContractCallbacks) PublicSystemContracts() map[string]*gethcommon.Address {
+	return s.systemAddresses
 }
 
 func (s *systemContractCallbacks) Load() error {
@@ -127,7 +134,7 @@ func (s *systemContractCallbacks) initializeRequiredAddresses(addresses SystemCo
 
 func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipt types.Receipt, msgBusManager SystemContractsInitializable) error {
 	s.logger.Info("Initialize: Starting initialization of system contracts", "batchSeqNo", batch.SeqNo())
-	if batch.SeqNo().Uint64() != 2 {
+	if batch.SeqNo().Uint64() != common.L2SysContractGenesisSeqNo {
 		s.logger.Error("Initialize: Batch is not genesis", "batchSeqNo", batch.SeqNo)
 		return fmt.Errorf("batch is not genesis")
 	}
@@ -166,7 +173,7 @@ func (s *systemContractCallbacks) CreatePublicCallbackHandlerTransaction(ctx con
 	tx := &types.LegacyTx{
 		Nonce: nonceForSyntheticTx,
 		Value: gethcommon.Big0,
-		Gas:   params.MaxGasLimit,
+		Gas:   common.SyntheticTxGasLimit,
 		Data:  data,
 		To:    s.PublicCallbackHandler(),
 	}
@@ -176,13 +183,13 @@ func (s *systemContractCallbacks) CreatePublicCallbackHandlerTransaction(ctx con
 	return formedTx, nil
 }
 
-func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Context, l2State *state.StateDB, transactions common.L2Transactions, receipts types.Receipts) (*types.Transaction, error) {
+func (s *systemContractCallbacks) CreateOnBatchEndTransaction(_ context.Context, l2State *state.StateDB, results core.TxExecResults) (*types.Transaction, error) {
 	if s.transactionsPostProcessorAddress == nil {
 		s.logger.Debug("CreateOnBatchEndTransaction: TransactionsPostProcessorAddress is nil, skipping transaction creation")
 		return nil, nil
 	}
 
-	if len(transactions) == 0 {
+	if len(results) == 0 {
 		s.logger.Debug("CreateOnBatchEndTransaction: Batch has no transactions, skipping transaction creation")
 		return nil, ErrNoTransactions
 	}
@@ -190,53 +197,32 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 	nonceForSyntheticTx := l2State.GetNonce(common.MaskedSender(*s.transactionsPostProcessorAddress))
 	s.logger.Debug("CreateOnBatchEndTransaction: Retrieved nonce for synthetic transaction", "nonce", nonceForSyntheticTx)
 
-	solidityTransactions := make([]TransactionPostProcessor.StructsTransaction, 0)
-
-	type statusWithGasUsed struct {
-		status  bool
-		gasUsed uint64
-	}
-
-	txSuccessMap := map[gethcommon.Hash]statusWithGasUsed{}
-	for _, receipt := range receipts {
-		txSuccessMap[receipt.TxHash] = statusWithGasUsed{
-			status:  receipt.Status == types.ReceiptStatusSuccessful,
-			gasUsed: receipt.GasUsed,
-		}
-	}
-
-	for _, tx := range transactions {
-		// Start of Selection
-
-		txMetadata := txSuccessMap[tx.Hash()]
-
-		transaction := TransactionPostProcessor.StructsTransaction{
-			Nonce:      big.NewInt(int64(tx.Nonce())),
+	// the data that is passed when the block ends
+	synTxs := make([]TransactionPostProcessor.StructsTransaction, 0)
+	for _, txExecResult := range results {
+		tx := txExecResult.TxWithSender.Tx
+		receipt := txExecResult.Receipt
+		synTx := TransactionPostProcessor.StructsTransaction{
+			From:       *txExecResult.TxWithSender.Sender,
+			Nonce:      big.NewInt(int64(txExecResult.TxWithSender.Tx.Nonce())),
 			GasPrice:   tx.GasPrice(),
 			GasLimit:   big.NewInt(int64(tx.Gas())),
 			Value:      tx.Value(),
 			Data:       tx.Data(),
-			Successful: txMetadata.status,
-			GasUsed:    txMetadata.gasUsed,
+			Successful: receipt.Status == types.ReceiptStatusSuccessful,
+			GasUsed:    receipt.GasUsed,
 		}
 		if tx.To() != nil {
-			transaction.To = *tx.To()
+			synTx.To = *tx.To()
 		} else {
-			transaction.To = gethcommon.Address{} // Zero address - contract deployment
+			synTx.To = gethcommon.Address{} // Zero address - contract deployment
 		}
 
-		sender, err := core.GetExternalTxSigner(tx)
-		if err != nil {
-			s.logger.Error("CreateOnBatchEndTransaction: Failed to recover sender address", "error", err, "transactionHash", tx.Hash().Hex())
-			return nil, fmt.Errorf("failed to recover sender address: %w", err)
-		}
-		transaction.From = sender
-
-		solidityTransactions = append(solidityTransactions, transaction)
-		s.logger.Debug("CreateOnBatchEndTransaction: Encoded transaction", "transactionHash", tx.Hash().Hex(), "sender", sender.Hex())
+		synTxs = append(synTxs, synTx)
+		s.logger.Debug("CreateOnBatchEndTransaction: Encoded transaction", log.TxKey, tx.Hash(), "sender", synTx.From)
 	}
 
-	data, err := transactionPostProcessorABI.Pack("onBlock", solidityTransactions)
+	data, err := transactionPostProcessorABI.Pack("onBlock", synTxs)
 	if err != nil {
 		s.logger.Error("CreateOnBatchEndTransaction: Failed packing onBlock data", "error", err)
 		return nil, fmt.Errorf("failed packing onBlock() %w", err)
@@ -245,14 +231,14 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(ctx context.Contex
 	tx := &types.LegacyTx{
 		Nonce:    nonceForSyntheticTx,
 		Value:    gethcommon.Big0,
-		Gas:      params.MaxGasLimit,
+		Gas:      common.SyntheticTxGasLimit,
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     data,
 		To:       s.transactionsPostProcessorAddress,
 	}
 
 	formedTx := types.NewTx(tx)
-	s.logger.Info("CreateOnBatchEndTransaction: Successfully created signed transaction", "transactionHash", formedTx.Hash().Hex())
+	s.logger.Info("CreateOnBatchEndTransaction: Successfully created synthetic transaction", log.TxKey, formedTx.Hash())
 	return formedTx, nil
 }
 

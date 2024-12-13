@@ -2,7 +2,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./IObscuroBridgeAdmin.sol";
+import "./ITenBridgeAdmin.sol";
 import "../IBridge.sol";
 import "../ITokenFactory.sol";
 import "../../messaging/messenger/CrossChainEnabledObscuro.sol";
@@ -12,10 +12,10 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 // This is the Ethereum side of the Obscuro Bridge.
 // End-users can interact with it to transfer ERC20 tokens and native eth to the Layer 2 Obscuro.
-contract ObscuroBridge is
+contract TenBridge is
     CrossChainEnabledObscuro,
     IBridge,
-    IObscuroBridgeAdmin,
+    ITenBridgeAdmin,
     AccessControl
 {
     // This is the role that is given to the address that represents a native currency
@@ -59,6 +59,7 @@ contract ObscuroBridge is
             data,
             uint32(Topics.MANAGEMENT),
             0,
+            0,
             0
         );
     }
@@ -79,7 +80,7 @@ contract ObscuroBridge is
     function sendNative(address receiver) external payable override {
         require(msg.value > 0, "Empty transfer.");
         bytes memory data = abi.encode(ValueTransfer(msg.value, receiver));
-        queueMessage(remoteBridgeAddress, data, uint32(Topics.VALUE), 0, 0);
+        queueMessage(remoteBridgeAddress, data, uint32(Topics.VALUE), 0, 0, 0);
         _messageBus().sendValueToL2{value: msg.value}(receiver, msg.value);
     }
 
@@ -108,7 +109,7 @@ contract ObscuroBridge is
             amount,
             receiver
         );
-        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0);
+        queueMessage(remoteBridgeAddress, data, uint32(Topics.TRANSFER), 0, 0, 0);
     }
 
     function receiveAssets(

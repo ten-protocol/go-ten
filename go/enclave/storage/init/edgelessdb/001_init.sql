@@ -110,7 +110,7 @@ create table if not exists tendb.receipt
     cumulative_gas_used      BIGINT  not null,
     effective_gas_price      BIGINT,
     created_contract_address binary(20),
-    tx                       int,
+    tx                       int     NOT NULL,
     batch                    int     NOT NULL,
     INDEX (batch),
     INDEX (tx, batch),

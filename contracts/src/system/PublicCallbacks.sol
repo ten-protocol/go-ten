@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 interface IPublicCallbacks {
-    function register(bytes calldata callback) external payable;
+    function register(bytes calldata callback) external payable returns (uint256);
     function reattemptCallback(uint256 callbackId) external;
 }
 
@@ -49,6 +49,9 @@ contract PublicCallbacks is Initializable {
 
     function popCurrentCallback() internal {
         delete callbacks[lastUnusedCallbackId];
+    }
+
+    function moveToNextCallback() internal {
         lastUnusedCallbackId++;
     }
 
@@ -64,6 +67,7 @@ contract PublicCallbacks is Initializable {
     function register(bytes calldata callback) external payable returns (uint256) { 
         require(msg.value > 0, "No value sent");
         require(calculateGas(msg.value) > 21000, "Gas too low compared to cost of call");
+        // todo - add maximum value to limit
         return addCallback(msg.sender, callback, msg.value);
     }
 
@@ -106,13 +110,13 @@ contract PublicCallbacks is Initializable {
         if (prepaidGas > gasUsed) {
             gasRefundValue = (prepaidGas - gasUsed) * baseFee;
         }
-       
         uint256 paymentToCoinbase = callback.value - gasRefundValue;
         address target = callback.target;
 
         if (success) {  
             popCurrentCallback();
         }
+        moveToNextCallback();
 
         internalRefund(gasRefundValue, target, callbackId);
         payForCallback(paymentToCoinbase);
@@ -124,11 +128,18 @@ contract PublicCallbacks is Initializable {
         // slight buffer. 
         (bool success, ) = to.call{value: gasRefund, gas: 35000}(abi.encodeWithSignature("handleRefund(uint256)", callbackId)); 
         if (!success) {
-            block.coinbase.transfer(gasRefund); // if they dont accept the refund, we gift it to coinbase.
+            // if they dont accept the refund, we gift it to coinbase.
+            payForCallback(gasRefund);
         }
     }
 
     function payForCallback(uint256 gasPayment) internal {
-        block.coinbase.transfer(gasPayment);
+        if (gasPayment == 0) {
+            return;
+        }
+        // We don't care about success, should always happen.
+        // If not, contract is upgradable and we can recover.
+        // solc-ignore-next-line unused-call-retval
+        block.coinbase.call{value: gasPayment}("");
     }
 }

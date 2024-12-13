@@ -17,7 +17,7 @@ func NewNetAPI(we *services.Services) *NetAPI {
 }
 
 func (api *NetAPI) Version(ctx context.Context) (*string, error) {
-	return UnauthenticatedTenRPCCall[string](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "net_version")
+	return UnauthenticatedTenRPCCall[string](ctx, api.we, &cache.Cfg{Type: cache.LongLiving}, "ten_version")
 }
 
 type ConfigResponseJson struct {
@@ -25,6 +25,7 @@ type ConfigResponseJson struct {
 	MessageBusAddress               string
 	L2MessageBusAddress             string
 	TransactionPostProcessorAddress string
+	PublicSystemContracts           map[string]string
 }
 
 func (api *NetAPI) Config(ctx context.Context) (*ConfigResponseJson, error) {

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ten-protocol/go-ten/go/enclave/txpool"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -53,11 +52,11 @@ type enclaveAdminService struct {
 	profiler               *profiler.Profiler
 	subscriptionManager    *events.SubscriptionManager
 	enclaveKeyService      *crypto.EnclaveAttestedKeyService
-	mempool                *txpool.TxPool
+	mempool                *components.TxPool
 	sharedSecretService    *crypto.SharedSecretService
 }
 
-func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *txpool.TxPool, chainConfig *params.ChainConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService) common.EnclaveAdmin {
+func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *components.TxPool, chainConfig *params.ChainConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -75,7 +74,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 
 	dataCompressionService := compression.NewBrotliDataCompressionService()
 
-	rollupCompression := components.NewRollupCompression(registry, batchExecutor, daEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, logger)
+	rollupCompression := components.NewRollupCompression(registry, batchExecutor, daEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, config, logger)
 	rollupProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
 	rollupConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
 
@@ -152,11 +151,6 @@ func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, proof types.Rece
 		e.mempool.SetValidateMode(false)
 	}
 
-	//if currentEnclaveId == id {
-	//	todo
-	//}
-
-	// todo - use the proof
 	return nil
 }
 
@@ -493,8 +487,6 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
 	}
-
-	//TODO call AddSequencer if event present
 
 	if ingestion.IsFork() {
 		e.registry.OnL1Reorg(ingestion)

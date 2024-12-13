@@ -52,7 +52,7 @@ contract ZenBase is OnBlockEndCallback, ERC20, Ownable {
         for (uint256 i=0; i<transactions.length; i++) {
             // Process transactions
             _mint(transactions[i].from, 1);
-            emit TransactionProcessed(transactions[i].from, 1);
+//            emit TransactionProcessed(transactions[i].from, 1);
         }
     }
 }

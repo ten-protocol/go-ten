@@ -1,6 +1,8 @@
 package crypto
 
 import (
+	"fmt"
+
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -47,6 +49,9 @@ func (s *RPCKeyService) DecryptRPCRequest(bytes []byte) ([]byte, error) {
 	return s.privKey.Decrypt(bytes, nil, nil)
 }
 
-func (s *RPCKeyService) PublicKey() []byte {
-	return gethcrypto.CompressPubkey(s.privKey.PublicKey.ExportECDSA())
+func (s *RPCKeyService) PublicKey() ([]byte, error) {
+	if s.privKey == nil {
+		return nil, fmt.Errorf("rpc key service is not initialised")
+	}
+	return gethcrypto.CompressPubkey(s.privKey.PublicKey.ExportECDSA()), nil
 }

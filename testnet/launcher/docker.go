@@ -2,7 +2,6 @@ package launcher
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -131,6 +130,11 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to configure the l2 contract deployer - %w", err)
 	}
 
+	err = t.grantSequencerStatus(networkConfig.ManagementContractAddress)
+	if err != nil {
+		return fmt.Errorf("failed to grant sequencer status: %w", err)
+	}
+
 	err = l2ContractDeployer.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start the l2 contract deployer - %w", err)
@@ -141,11 +145,6 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unexpected error waiting for l2 contract deployer { ID = %s } to finish - %w", l2ContractDeployer.GetID(), err)
 	}
 	fmt.Println("L2 Contracts were successfully deployed...")
-
-	err = t.grantSequencerStatus(networkConfig.ManagementContractAddress)
-	if err != nil {
-		return fmt.Errorf("failed to grant sequencer status: %w", err)
-	}
 
 	faucetPort := 99
 	faucetInst, err := faucet.NewDockerFaucet(
@@ -297,27 +296,6 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
 	// fetch enclaveIDs
 	hostURL := fmt.Sprintf("http://localhost:%d", 80)
-	client, err := rpc.NewNetworkClient(hostURL)
-	if err != nil {
-		return fmt.Errorf("failed to create network client: %w", err)
-	}
-	defer client.Stop()
-
-	obsClient := obsclient.NewObsClient(client)
-	health, err := obsClient.Health()
-	if err != nil {
-		return fmt.Errorf("failed to get health status: %w", err)
-	}
-
-	if len(health.Enclaves) == 0 {
-		return fmt.Errorf("could not retrieve enclave IDs from health endpoint")
-	}
-
-	var enclaveIDs []string
-	for _, status := range health.Enclaves {
-		enclaveIDs = append(enclaveIDs, status.EnclaveID.String())
-	}
-	enclaveIDsStr := strings.Join(enclaveIDs, ",")
 
 	l1grantsequencers, err := l1gs.NewGrantSequencers(
 		l1gs.NewGrantSequencerConfig(
@@ -325,7 +303,7 @@ func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
 			l1gs.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1gs.WithDockerImage(t.cfg.contractDeployerDockerImage),
 			l1gs.WithMgmtContractAddress(mgmtContractAddr),
-			l1gs.WithEnclaveIDs(enclaveIDsStr),
+			l1gs.WithSequencerURL(hostURL),
 		),
 	)
 	if err != nil {

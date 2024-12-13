@@ -202,7 +202,7 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{ env.VM_NAME }}"  --port 80,81,443,444
+            az vm open-port -g Testnet -n "${{ env.VM_NAME }}"  --port 80,81,443
 
         # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
       - name: "Allow time for VM initialization"
@@ -359,14 +359,14 @@ jobs:
             docker volume create "${{ env.VM_NAME }}-data"
             
             # Start Ten Gateway Container
-            docker run -d -p 80:80 -p 81:81 -p 443:443 -p 444:444 --name "${{ env.VM_NAME }}" \
+            docker run -d -p 80:80 -p 81:81 -p 443:443 --name "${{ env.VM_NAME }}" \
             --device /dev/sgx_enclave --device /dev/sgx_provision \
             -v "${{ env.VM_NAME }}-data:/data" \
             -e OBSCURO_GATEWAY_VERSION="${{ github.run_number }}-${{ github.sha }}" \
             -e OE_SIMULATION=0 \
             "${{ env.DOCKER_BUILD_TAG_GATEWAY }}" \
             ego run /home/ten/go-ten/tools/walletextension/main/main \
-            -host=0.0.0.0 -port=443 -portWS=444 -nodeHost="${{ env.L2_RPC_URL_VALIDATOR }}" -verbose=true \
+            -host=0.0.0.0 -port=443 -portWS=443 -nodeHost="${{ env.L2_RPC_URL_VALIDATOR }}" -verbose=true \
             -logPath=sys_out -dbType=cosmosDB -dbConnectionURL="${{ secrets.COSMOS_DB_CONNECTION_STRING }}" \
             -rateLimitUserComputeTime="${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }}" \
             -rateLimitWindow="${{ env.GATEWAY_RATE_LIMIT_WINDOW }}" \

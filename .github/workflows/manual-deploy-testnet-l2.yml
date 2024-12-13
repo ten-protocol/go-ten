@@ -356,6 +356,7 @@ jobs:
                -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
                -l1_beacon_url=${{ vars.L1_BEACON_URL }} \
                -l1_blob_archive_url=${{ vars.L1_BLOB_ARCHIVE_URL }} \
+               -system_contracts_upgrader=${{ vars.NETWORK_SEQUENCER_SYSTEMCONTRACTSUPGRADER }} \
                -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
                start'
 
@@ -375,11 +376,45 @@ jobs:
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
           ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-2-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          
+
+  grant-sequencer-enclaves:
+    needs:
+      - build
+      - check-obscuro-is-healthy
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      -  uses: actions/checkout@v4
+
+      -  name: 'Grant permission to sequencer enclave(s)'
+         id: grantSequencerPermission
+         shell: bash
+         run: |
+           go run ./testnet/launcher/l1grantsequencers/cmd \
+           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
+           -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
+           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
+           -sequencer_url=http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
+
+      -  name: 'Save sequencer permissioning container logs'
+         run: |
+           docker logs `docker ps -aqf "name=grant-sequencers"` > grant-sequencers.out 2>&1
+
+      -  name: 'Upload sequencer permissioning container logs'
+         uses: actions/upload-artifact@v4
+         with:
+           name: grant-sequencers
+           path: |
+             grant-sequencers.out
+           retention-days: 7
 
   deploy-l2-contracts:
     needs:
       - build
-      - check-obscuro-is-healthy
+      - grant-sequencer-enclaves
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -395,9 +430,9 @@ jobs:
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -l2_ws_port=81 \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-          -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
-          -l2_hoc_private_key=6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682 \
-          -l2_poc_private_key=4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8 \
+          -l2_private_key=${{ secrets.L2_DEPLOYER_KEY }} \
+          -l2_hoc_private_key=${{ secrets.L2_HOC_KEY }} \
+          -l2_poc_private_key=${{ secrets.L2_POC_KEY}} \
           -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
           -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
@@ -417,7 +452,7 @@ jobs:
 
   update-loadbalancer:
     needs:
-      - check-obscuro-is-healthy
+      - grant-sequencer-enclaves
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -450,7 +485,7 @@ jobs:
       testnet_type: ${{ github.event.inputs.testnet_type }}
     secrets: inherit
     needs:
-      - check-obscuro-is-healthy
+      - grant-sequencer-enclaves
 
   obscuro-test-repository-dispatch:
     runs-on: ubuntu-latest

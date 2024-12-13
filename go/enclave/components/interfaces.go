@@ -5,6 +5,9 @@ import (
 	"errors"
 	"math/big"
 
+	gethcore "github.com/ethereum/go-ethereum/core"
+	"github.com/ten-protocol/go-ten/go/enclave/evm"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -44,16 +47,45 @@ type L1BlockProcessor interface {
 	HealthCheck() (bool, error)
 }
 
-// BatchExecutionContext - Contains all of the data that each batch depends on
+// BatchExecutionContext - Contains all data that each batch depends on
 type BatchExecutionContext struct {
-	BlockPtr     common.L1BlockHash // BlockHeader is needed for the cross chain messages
-	ParentPtr    common.L2BatchHash
+	BlockPtr  common.L1BlockHash // BlockHeader is needed for the cross chain messages
+	ParentPtr common.L2BatchHash
+
+	// either use the transactions from an existing batch, or fetch transactions from the mempool
+	UseMempool   bool
 	Transactions common.L2Transactions
-	AtTime       uint64
-	Creator      gethcommon.Address
-	ChainConfig  *params.ChainConfig
-	SequencerNo  *big.Int
-	BaseFee      *big.Int
+
+	AtTime      uint64
+	Creator     gethcommon.Address
+	ChainConfig *params.ChainConfig
+	SequencerNo *big.Int
+	BaseFee     *big.Int
+	GasPool     *gethcore.GasPool
+
+	EthHeader *types.Header
+	Chain     *evm.TenChainContext
+
+	// these properties are calculated during execution
+	ctx           context.Context
+	l1block       *types.Header
+	parentL1Block *types.Header
+	parentBatch   *common.BatchHeader
+	usedGas       *uint64
+
+	xChainMsgs      common.CrossChainMessages
+	xChainValueMsgs common.ValueTransferEvents
+
+	currentBatch         *core.Batch
+	stateDB              *state.StateDB
+	beforeProcessingSnap int
+
+	genesisSysCtrResult core.TxExecResults
+
+	xChainResults     core.TxExecResults
+	batchTxResults    core.TxExecResults
+	callbackTxResults core.TxExecResults
+	blockEndResult    core.TxExecResults
 }
 
 // ComputedBatch - a structure representing the result of a batch

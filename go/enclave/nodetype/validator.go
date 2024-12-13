@@ -8,8 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ten-protocol/go-ten/go/enclave/txpool"
-
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -30,7 +28,7 @@ type validator struct {
 
 	storage      storage.Storage
 	sigValidator *components.SignatureValidator
-	mempool      *txpool.TxPool
+	mempool      *components.TxPool
 
 	logger gethlog.Logger
 }
@@ -42,7 +40,7 @@ func NewValidator(
 	chainConfig *params.ChainConfig,
 	storage storage.Storage,
 	sigValidator *components.SignatureValidator,
-	mempool *txpool.TxPool,
+	mempool *components.TxPool,
 	logger gethlog.Logger,
 ) Validator {
 	return &validator{
@@ -111,7 +109,7 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("could not execute batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
-			err = val.storage.StoreExecutedBatch(ctx, batchHeader, txResults)
+			err = val.storage.StoreExecutedBatch(ctx, batch, txResults)
 			if err != nil {
 				return fmt.Errorf("could not store executed batch %s. Cause: %w", batchHeader.Hash(), err)
 			}
@@ -153,7 +151,7 @@ func (val *validator) handleGenesis(ctx context.Context, batch *common.BatchHead
 		return fmt.Errorf("received invalid genesis batch")
 	}
 
-	err = val.storage.StoreExecutedBatch(ctx, genBatch.Header, nil)
+	err = val.storage.StoreExecutedBatch(ctx, genBatch, nil)
 	if err != nil {
 		return err
 	}

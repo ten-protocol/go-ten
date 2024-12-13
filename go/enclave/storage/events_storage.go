@@ -29,7 +29,7 @@ func newEventsStorage(cachingService *CacheService, db enclavedb.EnclaveDB, logg
 
 func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql.Tx, batch *common.BatchHeader, txExecResult *core.TxExecResult) error {
 	txId, senderId, err := enclavedb.ReadTransactionIdAndSender(ctx, dbTX, txExecResult.Receipt.TxHash)
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+	if err != nil {
 		return fmt.Errorf("could not get transaction id. Cause: %w", err)
 	}
 
@@ -99,15 +99,14 @@ func (es *eventsStorage) storeReceipt(ctx context.Context, dbTX *sql.Tx, batch *
 	return execTxId, nil
 }
 
-func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTxId uint64, l *types.Log) error {
-	eventSig := l.Topics[0]
-
+func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, receiptId uint64, l *types.Log) error {
 	contract, err := es.readContract(ctx, dbTX, l.Address)
 	if err != nil {
 		// the contract should already have been stored when it was created
 		return fmt.Errorf("could not read contract address. %s. Cause: %w", l.Address, err)
 	}
 
+	eventSig := l.Topics[0]
 	eventType, err := es.readEventType(ctx, dbTX, l.Address, eventSig)
 	if errors.Is(err, errutil.ErrNotFound) {
 		// this is the first type an event of this type is emitted, so we must store it
@@ -130,7 +129,7 @@ func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sql.Tx, execTx
 	if len(data) == 0 {
 		data = nil
 	}
-	err = enclavedb.WriteEventLog(ctx, dbTX, eventType.Id, topicIds, data, l.Index, execTxId)
+	err = enclavedb.WriteEventLog(ctx, dbTX, eventType.Id, topicIds, data, l.Index, receiptId)
 	if err != nil {
 		return fmt.Errorf("could not write event log. Cause: %w", err)
 	}
