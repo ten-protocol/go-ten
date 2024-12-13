@@ -187,6 +187,7 @@ func (d *DockerNode) startEnclave(enclaveIdx int) error {
 
 func (d *DockerNode) startEdgelessDB(enclaveIdx int) error {
 	containerName := fmt.Sprintf("%s-edgelessdb-%d", d.cfg.Node.Name, enclaveIdx)
+	volumeName := fmt.Sprintf("%s-db-volume-%d", d.cfg.Node.Name, enclaveIdx)
 	envs := map[string]string{
 		"EDG_EDB_CERT_DNS": containerName,
 	}
@@ -204,11 +205,8 @@ func (d *DockerNode) startEdgelessDB(enclaveIdx int) error {
 		envs["PCCS_ADDR"] = d.pccsAddr
 	}
 
-	// todo - do we need this volume?
-	//dbVolume := map[string]string{d.cfg.Node.Name + "-db-volume": "/data"}
-	//_, err := docker.StartNewContainer(d.cfg.Node.Name+"-edgelessdb", d.cfg.edgelessDBImage, nil, nil, envs, devices, dbVolume)
-
-	_, err := docker.StartNewContainer(containerName, d.edgelessDBImage, nil, nil, envs, devices, nil, true)
+	dbVolume := map[string]string{volumeName: "/data"}
+	_, err := docker.StartNewContainer(containerName, d.edgelessDBImage, nil, nil, envs, devices, dbVolume, true)
 
 	return err
 }
