@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"math/big"
 
@@ -34,6 +35,7 @@ const (
 	receiptCost     = 1024 * 50
 	contractCost    = 60
 	eventTypeCost   = 120
+	eventTopicCost  = 16
 	enclaveCost     = 100
 )
 
@@ -61,6 +63,7 @@ type CacheService struct {
 	// from address ( either eoa or contract) to the id of the db entry
 	eoaCache             *cache.Cache[*uint64]
 	contractAddressCache *cache.Cache[*enclavedb.Contract]
+	eventTopicCache      *cache.Cache[*enclavedb.EventTopic]
 
 	// from contract_address||event_sig to the event_type object
 	eventTypeCache *cache.Cache[*enclavedb.EventType]
@@ -110,6 +113,7 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 		eoaCache:             cache.New[*uint64](newCache(logger, nrEOA, idCost)),
 		contractAddressCache: cache.New[*enclavedb.Contract](newCache(logger, nrContractAddresses, contractCost)),
 		eventTypeCache:       cache.New[*enclavedb.EventType](newCache(logger, nrEventTypes, eventTypeCost)),
+		eventTopicCache:      cache.New[*enclavedb.EventTopic](newCache(logger, nrEventTypes, eventTopicCost)),
 
 		receiptCache:          cache.New[*CachedReceipt](newCache(logger, nrReceipts, receiptCost)),
 		attestedEnclavesCache: cache.New[*AttestedEnclave](newCache(logger, nrEnclaves, enclaveCost)),
@@ -187,6 +191,13 @@ func (cs *CacheService) ReadEOA(ctx context.Context, addr gethcommon.Address, on
 
 func (cs *CacheService) ReadContractAddr(ctx context.Context, addr gethcommon.Address, onCacheMiss func(any) (*enclavedb.Contract, error)) (*enclavedb.Contract, error) {
 	return getCachedValue(ctx, cs.contractAddressCache, cs.logger, addr, contractCost, onCacheMiss, true)
+}
+
+func (cs *CacheService) ReadEventTopic(ctx context.Context, topic []byte, eventTypeId uint64, onCacheMiss func(any) (*enclavedb.EventTopic, error)) (*enclavedb.EventTopic, error) {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, eventTypeId)
+	key := append(topic, b...)
+	return getCachedValue(ctx, cs.eventTopicCache, cs.logger, key, eventTopicCost, onCacheMiss, true)
 }
 
 type CachedReceipt struct {

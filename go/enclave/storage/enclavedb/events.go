@@ -80,16 +80,16 @@ func UpdateEventTypeAutoPublic(ctx context.Context, dbTx *sql.Tx, etId uint64, i
 	return err
 }
 
-func ReadEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte, eventTypeId uint64) (uint64, *uint64, error) {
+func ReadEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte, eventTypeId uint64) (*EventTopic, error) {
 	var id uint64
 	var address *uint64
 	err := dbTX.QueryRowContext(ctx,
 		"select id, rel_address from event_topic where topic=? and event_type=?", topic, eventTypeId).Scan(&id, &address)
 	if errors.Is(err, sql.ErrNoRows) {
 		// make sure the error is converted to obscuro-wide not found error
-		return 0, nil, errutil.ErrNotFound
+		return nil, errutil.ErrNotFound
 	}
-	return id, address, err
+	return &EventTopic{Id: id, RelevantAddressId: address}, err
 }
 
 func ReadRelevantAddressFromEventTopic(ctx context.Context, dbTX *sql.Tx, id uint64) (*uint64, error) {

@@ -61,3 +61,9 @@ func (et EventType) IsTopicRelevant(topicNo int) bool {
 	// this should not happen under any circumstance
 	panic(fmt.Sprintf("unknown topic no: %d", topicNo))
 }
+
+// EventTopic - maps to the "event_topic" table
+type EventTopic struct {
+	Id                uint64
+	RelevantAddressId *uint64
+}
