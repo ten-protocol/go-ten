@@ -15,6 +15,7 @@ import { ToastType } from "@/types/interfaces";
 import {
   authenticateAccountWithTenGatewayEIP712,
   getToken,
+  clearToken
 } from "@/api/ethRequests";
 import { ethers } from "ethers";
 import ethService from "@/services/ethService";
@@ -124,6 +125,7 @@ export const WalletConnectionProvider = ({
       setAccounts(null);
       setWalletConnected(false);
       setToken("");
+      clearToken();
     }
   };
 
@@ -194,6 +196,7 @@ export const WalletConnectionProvider = ({
           setAccounts(null);
           setWalletConnected(false);
           setToken("");
+          clearToken();
         } else {
           window.location.reload();
         }
