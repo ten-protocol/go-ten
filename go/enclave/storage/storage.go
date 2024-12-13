@@ -621,7 +621,7 @@ func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, transacti
 
 		to := tx.Tx.To()
 		if to != nil {
-			ctr, err := s.ReadContract(ctx, *to)
+			ctr, err := s.eventsStorage.ReadContract(ctx, *to)
 			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 				return nil, nil, fmt.Errorf("could not read contract. cause: %w", err)
 			}
@@ -857,12 +857,7 @@ func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sql.Tx, addr get
 }
 
 func (s *storageImpl) ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error) {
-	dbtx, err := s.db.GetSQLDB().BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer dbtx.Rollback()
-	return enclavedb.ReadContractByAddress(ctx, dbtx, address)
+	return s.eventsStorage.ReadContract(ctx, address)
 }
 
 func (s *storageImpl) ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
