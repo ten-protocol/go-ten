@@ -216,5 +216,11 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("0.0.0.0:%d", cliCfg.enclaveWSPort)
 	tenCfg.Enclave.Log.Level = cliCfg.logLevel
 
+	// the sequencer does not store executed transctions
+	// todo - once we replace this launcher we'll configure this flag explicitly via an environment variable
+	if nodeType == common.ActiveSequencer {
+		tenCfg.Enclave.StoreExecutedTransactions = false
+	}
+
 	return tenCfg
 }
