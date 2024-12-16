@@ -84,7 +84,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	// initialise system contracts
 	scb := system.NewSystemContractCallbacks(storage, &config.SystemContractOwner, logger)
-	err = scb.Load()
+	err = scb.Load(crossChainProcessors.Local)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		logger.Crit("failed to load system contracts", log.ErrKey, err)
 	}

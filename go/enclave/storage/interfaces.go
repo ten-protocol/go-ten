@@ -121,6 +121,11 @@ type EnclaveKeyStorage interface {
 	GetEnclaveKey(ctx context.Context) ([]byte, error)
 }
 
+type SystemContractAddressesStorage interface {
+	StoreSystemContractAddresses(ctx context.Context, addresses common.SystemContractAddresses) error
+	GetSystemContractAddresses(ctx context.Context) (common.SystemContractAddresses, error)
+}
+
 // Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
@@ -132,6 +137,7 @@ type Storage interface {
 	CrossChainMessagesStorage
 	EnclaveKeyStorage
 	ScanStorage
+	SystemContractAddressesStorage
 	io.Closer
 
 	// HealthCheck returns whether the storage is deemed healthy or not
