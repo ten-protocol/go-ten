@@ -172,7 +172,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	enclaveAddresses := make([]string, cliCfg.numEnclaves)
 	for i := 0; i < cliCfg.numEnclaves; i++ {
 		enclaveAddresses[i] = fmt.Sprintf("%s-enclave-%d:%d",
-			cliCfg.nodeName, i, cliCfg.enclaveHTTPPort)
+			cliCfg.nodeName, i, cliCfg.enclaveWSPort)
 	}
 
 	tenCfg.Network.L1.ChainID = int64(cliCfg.l1ChainID)
