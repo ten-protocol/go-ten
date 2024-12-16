@@ -28,3 +28,11 @@ type CallParamsWithBlock struct {
 	callParams *gethapi.TransactionArgs
 	block      *gethrpc.BlockNumber
 }
+
+func storeTxEnabled[P any, R any](rpc *EncryptionManager, builder *CallBuilder[P, R]) bool {
+	if !rpc.config.StoreExecutedTransactions {
+		builder.Err = fmt.Errorf("the current TEN enclave is not configured to respond to this query")
+		return false
+	}
+	return true
+}

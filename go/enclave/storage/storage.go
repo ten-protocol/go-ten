@@ -58,6 +58,7 @@ type storageImpl struct {
 
 	stateCache  state.Database
 	chainConfig *params.ChainConfig
+	config      *enclaveconfig.EnclaveConfig
 	logger      gethlog.Logger
 }
 
@@ -66,7 +67,7 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 	if err != nil {
 		logger.Crit("Failed to connect to backing database", log.ErrKey, err)
 	}
-	return NewStorage(backingDB, cachingService, chainConfig, logger)
+	return NewStorage(backingDB, cachingService, config, chainConfig, logger)
 }
 
 var defaultCacheConfig = &gethcore.CacheConfig{
@@ -86,7 +87,7 @@ var trieDBConfig = &triedb.Config{
 	},
 }
 
-func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
+func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	// Open trie database with provided config
 	triedb := triedb.NewDatabase(backingDB, trieDBConfig)
 
@@ -96,6 +97,7 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, cha
 		db:             backingDB,
 		stateCache:     stateDB,
 		chainConfig:    chainConfig,
+		config:         config,
 		cachingService: cachingService,
 		eventsStorage:  newEventsStorage(cachingService, backingDB, logger),
 		logger:         logger,
@@ -668,12 +670,15 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 		return fmt.Errorf("could not write synthetic txs. Cause: %w", err)
 	}
 
-	for _, txExecResult := range results {
-		err = s.eventsStorage.storeReceiptAndEventLogs(ctx, dbTx, batch.Header, txExecResult)
-		if err != nil {
-			return fmt.Errorf("could not store receipt. Cause: %w", err)
+	if s.config.StoreExecutedTransactions {
+		for _, txExecResult := range results {
+			err = s.eventsStorage.storeReceiptAndEventLogs(ctx, dbTx, batch.Header, txExecResult)
+			if err != nil {
+				return fmt.Errorf("could not store receipt. Cause: %w", err)
+			}
 		}
 	}
+
 	if err = dbTx.Commit(); err != nil {
 		return fmt.Errorf("could not commit batch %w", err)
 	}

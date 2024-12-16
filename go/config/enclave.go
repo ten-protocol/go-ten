@@ -7,7 +7,8 @@ import "time"
 //	yaml: `enclave`
 type EnclaveConfig struct {
 	// EnableAttestation specifies whether the enclave will produce verified attestation report.
-	EnableAttestation bool `mapstructure:"enableAttestation"`
+	EnableAttestation         bool `mapstructure:"enableAttestation"`
+	StoreExecutedTransactions bool `mapstructure:"storeExecutedTransactions"`
 
 	DB    *EnclaveDB    `mapstructure:"db"`
 	Debug *EnclaveDebug `mapstructure:"debug"`

@@ -14,7 +14,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
-func GetLogsValidate(reqParams []any, builder *CallBuilder[filters.FilterCriteria, []*types.Log], _ *EncryptionManager) error {
+func GetLogsValidate(reqParams []any, builder *CallBuilder[filters.FilterCriteria, []*types.Log], rpc *EncryptionManager) error {
+	if !storeTxEnabled(rpc, builder) {
+		return nil
+	}
 	// Parameters are [Filter]
 	if len(reqParams) != 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
