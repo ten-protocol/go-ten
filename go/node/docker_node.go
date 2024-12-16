@@ -159,6 +159,9 @@ func (d *DockerNode) startEnclave(enclaveIdx int) error {
 		exposedPorts = append(exposedPorts, 2345)
 	}
 
+	// we set the edgeless DB address dynamically for each enclave
+	d.cfg.Enclave.DB.EdgelessDBHost = fmt.Sprintf("%s-edgelessdb-%d", d.cfg.Node.Name, enclaveIdx)
+
 	envVariables := d.cfg.ToEnvironmentVariables()
 
 	if d.cfg.Enclave.EnableAttestation {
