@@ -426,7 +426,7 @@ jobs:
         shell: bash
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd \
-          -l2_host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com \
+          -l2_host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -l2_ws_port=81 \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
