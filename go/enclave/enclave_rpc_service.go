@@ -88,6 +88,9 @@ func (e *enclaveRPCService) GetCode(ctx context.Context, address gethcommon.Addr
 }
 
 func (e *enclaveRPCService) Subscribe(ctx context.Context, id gethrpc.ID, encryptedSubscription common.EncryptedParamsLogSubscription) common.SystemError {
+	if !e.config.StoreExecutedTransactions {
+		return fmt.Errorf("the current TEN enclave does not support log subscriptions")
+	}
 	encodedSubscription, err := e.rpcEncryptionManager.DecryptBytes(encryptedSubscription)
 	if err != nil {
 		return fmt.Errorf("could not decrypt params in eth_subscribe logs request. Cause: %w", err)

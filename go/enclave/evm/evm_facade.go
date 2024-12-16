@@ -269,8 +269,8 @@ func receiptToString(r *types.Receipt) string {
 	return fmt.Sprintf("Successfully executed. Receipt: %s", string(receiptJSON))
 }
 */
-// ExecuteObsCall - executes the eth_call call
-func ExecuteObsCall(
+// ExecuteCall - executes the eth_call call
+func ExecuteCall(
 	ctx context.Context,
 	msg *gethcore.Message,
 	s *state.StateDB,
@@ -294,7 +294,7 @@ func ExecuteObsCall(
 
 	snapshot := s.Snapshot()
 	defer s.RevertToSnapshot(snapshot) // Always revert after simulation
-	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
+	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
 	gp := gethcore.GasPool(gasEstimationCap)
 	gp.SetGas(gasEstimationCap)

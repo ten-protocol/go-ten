@@ -74,14 +74,18 @@ type EnclaveConfig struct {
 	// RPCTimeout - calls that are longer than this will be cancelled, to prevent resource starvation
 	// normally, the context is propagated from the host, but in some cases ( like the evm, we have to create a context)
 	RPCTimeout time.Duration
+
+	// StoreExecutedTransactions is a flag that instructs the current enclave to store data required to answer RPC queries.
+	StoreExecutedTransactions bool
 }
 
 func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 	return &EnclaveConfig{
-		HostID:      tenCfg.Node.ID,
-		HostAddress: tenCfg.Node.HostAddress,
-		NodeType:    tenCfg.Node.NodeType,
-		WillAttest:  tenCfg.Enclave.EnableAttestation,
+		HostID:                    tenCfg.Node.ID,
+		HostAddress:               tenCfg.Node.HostAddress,
+		NodeType:                  tenCfg.Node.NodeType,
+		WillAttest:                tenCfg.Enclave.EnableAttestation,
+		StoreExecutedTransactions: tenCfg.Enclave.StoreExecutedTransactions,
 
 		ObscuroChainID:      tenCfg.Network.ChainID,
 		SequencerP2PAddress: tenCfg.Network.Sequencer.P2PAddress,
