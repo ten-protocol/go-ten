@@ -263,7 +263,7 @@ func interactWithSmartContractUnsigned(client *ethclient.Client, sendRaw bool, n
 		interactionTx := types.LegacyTx{
 			Nonce:    nonce,
 			To:       &contractAddress,
-			Gas:      uint64(10_000_000),
+			Gas:      uint64(1_000_000),
 			GasPrice: result.ToInt(),
 			Data:     contractInteractionData,
 			Value:    value,
@@ -769,7 +769,7 @@ func testUnsubscribe(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	// deploy events contract
 	deployTx := &types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
-		Gas:      uint64(10_000_000),
+		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
 	}
