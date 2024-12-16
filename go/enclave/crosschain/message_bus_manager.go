@@ -10,7 +10,6 @@ import (
 	"github.com/holiman/uint256"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
-	"github.com/ten-protocol/go-ten/go/enclave/system"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -79,7 +78,7 @@ func (m *MessageBusManager) GetBusAddress() *common.L2Address {
 }
 
 // DeriveMessageBusAddress - Derives the address of the message bus contract.
-func (m *MessageBusManager) Initialize(systemAddresses system.SystemContractAddresses) error {
+func (m *MessageBusManager) Initialize(systemAddresses common.SystemContractAddresses) error {
 	address, ok := systemAddresses["MessageBus"]
 	if !ok {
 		return fmt.Errorf("message bus contract not found in system addresses")

@@ -35,7 +35,7 @@ type SystemContractCallbacks interface {
 	PublicSystemContracts() map[string]*gethcommon.Address
 	// Initialization
 	Initialize(batch *core.Batch, receipts types.Receipt, msgBusManager SystemContractsInitializable) error
-	Load() error
+	Load(msgBusManager SystemContractsInitializable) error
 
 	// Usage
 	CreateOnBatchEndTransaction(ctx context.Context, stateDB *state.StateDB, results core.TxExecResults) (*types.Transaction, error)
@@ -46,13 +46,13 @@ type SystemContractCallbacks interface {
 }
 
 type SystemContractsInitializable interface {
-	Initialize(SystemContractAddresses) error
+	Initialize(common.SystemContractAddresses) error
 }
 
 type systemContractCallbacks struct {
 	transactionsPostProcessorAddress *gethcommon.Address
 	storage                          storage.Storage
-	systemAddresses                  SystemContractAddresses
+	systemAddresses                  common.SystemContractAddresses
 	systemContractsUpgrader          *gethcommon.Address
 
 	logger gethlog.Logger
@@ -63,7 +63,7 @@ func NewSystemContractCallbacks(storage storage.Storage, upgrader *gethcommon.Ad
 		transactionsPostProcessorAddress: nil,
 		logger:                           logger,
 		storage:                          storage,
-		systemAddresses:                  make(SystemContractAddresses),
+		systemAddresses:                  make(common.SystemContractAddresses),
 		systemContractsUpgrader:          upgrader,
 	}
 }
@@ -84,7 +84,7 @@ func (s *systemContractCallbacks) PublicSystemContracts() map[string]*gethcommon
 	return s.systemAddresses
 }
 
-func (s *systemContractCallbacks) Load() error {
+func (s *systemContractCallbacks) Load(msgBusManager SystemContractsInitializable) error {
 	s.logger.Info("Load: Initializing system contracts")
 
 	if s.storage == nil {
@@ -92,36 +92,17 @@ func (s *systemContractCallbacks) Load() error {
 		return fmt.Errorf("storage is not set")
 	}
 
-	batchSeqNo := uint64(2)
-	s.logger.Debug("Load: Fetching batch", "batchSeqNo", batchSeqNo)
-	batch, err := s.storage.FetchBatchBySeqNo(context.Background(), batchSeqNo)
+	addresses, err := s.storage.GetSystemContractAddresses(context.Background())
 	if err != nil {
-		s.logger.Error("Load: Failed fetching batch", "batchSeqNo", batchSeqNo, "error", err)
-		return fmt.Errorf("failed fetching batch %w", err)
+		s.logger.Error("Load: Failed fetching system contract addresses", "error", err)
+		return fmt.Errorf("failed fetching system contract addresses %w", err)
 	}
+	s.logger.Info("Load: Fetched system contract addresses", "addresses", addresses)
 
-	tx, err := SystemDeployerInitTransaction(s.logger, *s.systemContractsUpgrader)
-	if err != nil {
-		s.logger.Error("Load: Failed creating system deployer init transaction", "error", err)
-		return fmt.Errorf("failed creating system deployer init transaction %w", err)
-	}
-
-	receipt, err := s.storage.GetFilteredInternalReceipt(context.Background(), tx.Hash(), nil, true)
-	if err != nil {
-		s.logger.Error("Load: Failed fetching receipt", "transactionHash", batch.Transactions[0].Hash().Hex(), "error", err)
-		return fmt.Errorf("failed fetching receipt %w", err)
-	}
-
-	addresses, err := DeriveAddresses(receipt.ToReceipt())
-	if err != nil {
-		s.logger.Error("Load: Failed deriving addresses", "error", err, "receiptHash", receipt.TxHash.Hex())
-		return fmt.Errorf("failed deriving addresses %w", err)
-	}
-
-	return s.initializeRequiredAddresses(addresses)
+	return s.initializeRequiredAddresses(addresses, msgBusManager)
 }
 
-func (s *systemContractCallbacks) initializeRequiredAddresses(addresses SystemContractAddresses) error {
+func (s *systemContractCallbacks) initializeRequiredAddresses(addresses common.SystemContractAddresses, msgBusManager SystemContractsInitializable) error {
 	if addresses["TransactionsPostProcessor"] == nil {
 		return fmt.Errorf("required contract address TransactionsPostProcessor is nil")
 	}
@@ -129,30 +110,42 @@ func (s *systemContractCallbacks) initializeRequiredAddresses(addresses SystemCo
 	s.transactionsPostProcessorAddress = addresses["TransactionsPostProcessor"]
 	s.systemAddresses = addresses
 
-	return nil
-}
-
-func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipt types.Receipt, msgBusManager SystemContractsInitializable) error {
-	s.logger.Info("Initialize: Starting initialization of system contracts", "batchSeqNo", batch.SeqNo())
-	if batch.SeqNo().Uint64() != common.L2SysContractGenesisSeqNo {
-		s.logger.Error("Initialize: Batch is not genesis", "batchSeqNo", batch.SeqNo)
-		return fmt.Errorf("batch is not genesis")
-	}
-
-	s.logger.Debug("Initialize: Deriving addresses from receipt", "transactionHash", receipt.TxHash.Hex())
-	addresses, err := DeriveAddresses(&receipt)
-	if err != nil {
-		s.logger.Error("Initialize: Failed deriving addresses", "error", err, "receiptHash", receipt.TxHash.Hex())
-		return fmt.Errorf("failed deriving addresses %w", err)
-	}
-
 	if err := msgBusManager.Initialize(addresses); err != nil {
 		s.logger.Error("Initialize: Failed deriving message bus address", "error", err)
 		return fmt.Errorf("failed deriving message bus address %w", err)
 	}
 
+	return nil
+}
+
+func (s *systemContractCallbacks) StoreSystemContractAddresses(addresses common.SystemContractAddresses) error {
+	return s.storage.StoreSystemContractAddresses(context.Background(), addresses)
+}
+
+func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipt types.Receipt, msgBusManager SystemContractsInitializable) error {
+	s.logger.Info("Initialize: Starting initialization of system contracts", "batchSeqNo", batch.SeqNo())
+
+	addresses, err := verifyAndDeriveAddresses(batch, &receipt)
+	if err != nil {
+		s.logger.Error("Initialize: Failed verifying and deriving addresses", "error", err)
+		return fmt.Errorf("failed verifying and deriving addresses %w", err)
+	}
+
 	s.logger.Info("Initialize: Initializing required addresses", "addresses", addresses)
-	return s.initializeRequiredAddresses(addresses)
+	return s.initializeRequiredAddresses(addresses, msgBusManager)
+}
+
+func verifyAndDeriveAddresses(batch *core.Batch, receipt *types.Receipt) (common.SystemContractAddresses, error) {
+	if batch.SeqNo().Uint64() != common.L2SysContractGenesisSeqNo {
+		return nil, fmt.Errorf("batch is not genesis")
+	}
+
+	addresses, err := DeriveAddresses(receipt)
+	if err != nil {
+		return nil, fmt.Errorf("failed deriving addresses %w", err)
+	}
+
+	return addresses, nil
 }
 
 func (s *systemContractCallbacks) CreatePublicCallbackHandlerTransaction(ctx context.Context, l2State *state.StateDB) (*types.Transaction, error) {

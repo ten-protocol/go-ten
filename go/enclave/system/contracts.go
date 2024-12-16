@@ -45,7 +45,7 @@ func VerifyLogs(receipt *types.Receipt) error {
 	return nil
 }
 
-func DeriveAddresses(receipt *types.Receipt) (SystemContractAddresses, error) {
+func DeriveAddresses(receipt *types.Receipt) (common.SystemContractAddresses, error) {
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		return nil, fmt.Errorf("cannot derive system contract addresses from failed receipt")
 	}
@@ -75,14 +75,4 @@ func DeriveAddresses(receipt *types.Receipt) (SystemContractAddresses, error) {
 	}
 
 	return addresses, nil
-}
-
-type SystemContractAddresses map[string]*gethcommon.Address
-
-func (s *SystemContractAddresses) ToString() string {
-	var str string
-	for name, addr := range *s {
-		str += fmt.Sprintf("%s: %s; ", name, addr.Hex())
-	}
-	return str
 }

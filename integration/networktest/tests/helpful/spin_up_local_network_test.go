@@ -1,6 +1,7 @@
 package helpful
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -41,6 +43,29 @@ func TestRunLocalNetwork(t *testing.T) {
 	defer cleanUp()
 
 	keepRunning(networkConnector)
+}
+
+func TestGenerateKeys(t *testing.T) {
+	genKey := func() {
+		pk, err := crypto.GenerateKey()
+		if err != nil {
+			t.Fatal(err)
+		}
+		fmt.Println(hex.EncodeToString(crypto.FromECDSA(pk)))
+		fmt.Printf("Address: 0x%x\n", crypto.PubkeyToAddress(pk.PublicKey))
+	}
+
+	genKey()
+	genKey()
+	genKey()
+}
+
+func TestPrintAddress(t *testing.T) {
+	pk, err := crypto.HexToECDSA("c5f74c49670c0151261af346efb9022792585110bd45ed44933acfde5063067c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(crypto.PubkeyToAddress(pk.PublicKey))
 }
 
 func TestRunLocalGatewayAgainstRemoteTestnet(t *testing.T) {
