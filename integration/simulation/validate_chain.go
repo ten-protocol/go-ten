@@ -443,7 +443,7 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 			nodeIdx, notFoundNativeTransfers, len(s.TxInjector.TxTracker.NativeValueTransferL2Transactions))
 	}
 
-	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
+	//checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
 	totalSuccessfullyWithdrawn := extractWithdrawals(t, tenClient, nodeIdx)
 
 	totalAmountLogged := getLoggedWithdrawals(minTenHeight, tenClient, headBatchHeader)

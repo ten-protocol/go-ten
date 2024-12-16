@@ -693,6 +693,7 @@ func (s *storageImpl) StoreValueTransfers(ctx context.Context, blockHash common.
 		return fmt.Errorf("could not get block id - %w", err)
 	}
 	err = enclavedb.WriteL1Messages(ctx, dbtx, blockId, transfers, true)
+	println()
 	if err != nil {
 		return fmt.Errorf("could not write l1 messages - %w", err)
 	}

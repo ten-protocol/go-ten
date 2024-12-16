@@ -247,6 +247,9 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))
 	}
 
+	if batch.SeqNo().Uint64() > 100 {
+		println("VALIDATOR above 100 batch num: ", ba)
+	}
 	err = e.validator().ExecuteStoredBatches(ctx)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not execute batches. Cause: %w", err))

@@ -99,6 +99,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	}
 
 	gasOracle := gas.NewGasOracle()
+	//l1Client, err := ethadapter.NewEthClientFromURL(config.L1WebsocketURL, cfg.L1RPCTimeout, cfg.ID, logger)
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, logger)
 

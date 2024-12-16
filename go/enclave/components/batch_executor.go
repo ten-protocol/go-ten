@@ -60,6 +60,7 @@ type batchExecutor struct {
 	systemContracts      system.SystemContractCallbacks
 	entropyService       *crypto.EvmEntropyService
 	mempool              *TxPool
+	//ethClient            ethadapter.EthClient
 	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
 	stateDBMutex sync.Mutex
 
@@ -79,6 +80,7 @@ func NewBatchExecutor(
 	systemContracts system.SystemContractCallbacks,
 	entropyService *crypto.EvmEntropyService,
 	mempool *TxPool,
+	//ethClient ethadapter.EthClient,
 	logger gethlog.Logger,
 ) BatchExecutor {
 	return &batchExecutor{
@@ -96,7 +98,8 @@ func NewBatchExecutor(
 		systemContracts:      systemContracts,
 		entropyService:       entropyService,
 		mempool:              mempool,
-		chainContext:         evm.NewTenChainContext(storage, gethEncodingService, config, logger),
+		//ethClient:            ethClient,
+		chainContext: evm.NewTenChainContext(storage, gethEncodingService, config, logger),
 	}
 }
 
@@ -544,6 +547,9 @@ func (executor *batchExecutor) createBatch(ec *BatchExecutionContext) (*core.Bat
 	if err := executor.populateOutboundCrossChainData(ec.ctx, &batch, ec.l1block, txReceipts); err != nil {
 		return nil, nil, fmt.Errorf("failed adding cross chain data to batch. Cause: %w", err)
 	}
+	for _, rec := range txReceipts {
+		println("COMPUTE BATCH RECEIPT TX HASH: ", rec.TxHash.Hex())
+	}
 
 	allResults := append(append(append(append(ec.batchTxResults, ec.xChainResults...), ec.callbackTxResults...), ec.blockEndResult...), ec.genesisSysCtrResult...)
 	receipts := allResults.Receipts()
@@ -593,7 +599,88 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	}
 
 	if cb.Batch.Hash() != batch.Hash() {
-		// todo @stefan - generate a validator challenge here and return it
+		executor.logger.Error("Failed batch comparison", log.BatchHashKey, batch.Header.Hash())
+
+		println("----INVALID BATCH COMPARISON----")
+		println("CB Batch Header hash: ", cb.Batch.Header.TxHash.Hex())
+		println("Incoming Batch Header hash: ", batch.Header.TxHash.Hex())
+
+		// Compare header fields
+		header1 := cb.Batch.Header
+		header2 := batch.Header
+		//
+		//println("ParentHash - Computed:", header1.ParentHash.Hex(), "Incoming:", header2.ParentHash.Hex())
+		//println("L1Proof - Computed:", header1.L1Proof.Hex(), "Incoming:", header2.L1Proof.Hex())
+		//println("Root - Computed:", header1.Root.Hex(), "Incoming:", header2.Root.Hex())
+		println("TxHash - Computed:", header1.TxHash.Hex(), "Incoming:", header2.TxHash.Hex())
+		//println("Number - Computed:", header1.Number.String(), "Incoming:", header2.Number.String())
+		//println("SequencerOrderNo - Computed:", header1.SequencerOrderNo.String(), "Incoming:", header2.SequencerOrderNo.String())
+		//println("ReceiptHash - Computed:", header1.ReceiptHash.Hex(), "Incoming:", header2.ReceiptHash.Hex())
+		//println("CrossChainRoot - Computed:", header1.CrossChainRoot.Hex(), "Incoming:", header2.CrossChainRoot.Hex())
+		//println("Time - Computed:", header1.Time, "Incoming:", header2.Time)
+		//println("Coinbase - Computed:", header1.Coinbase.Hex(), "Incoming:", header2.Coinbase.Hex())
+		//println("BaseFee - Computed:", header1.BaseFee.String(), "Incoming:", header2.BaseFee.String())
+		//println("GasLimit - Computed:", header1.GasLimit, "Incoming:", header2.GasLimit)
+		//
+		//// Compare CrossChain data
+		//println("CrossChainTree length - Computed:", len(header1.CrossChainTree), "Incoming:", len(header2.CrossChainTree))
+		//println("CrossChainMessages length - Computed:", len(header1.CrossChainMessages), "Incoming:", len(header2.CrossChainMessages))
+		//println("LatestInboundCrossChainHash - Computed:", header1.LatestInboundCrossChainHash.Hex(), "Incoming:", header2.LatestInboundCrossChainHash.Hex())
+		//println("LatestInboundCrossChainHeight - Computed:", header1.LatestInboundCrossChainHeight.String(), "Incoming:", header2.LatestInboundCrossChainHeight.String())
+		//
+		//// Add receipt debugging
+		//println("\nReceipt Analysis:")
+		//println("Number of receipts - Computed:", len(cb.TxExecResults), "Incoming:", len(batch.Transactions))
+
+		// Compare receipt details for computed batch
+		println("\nComputed Batch Receipts:")
+		for i, result := range cb.TxExecResults {
+			println("Receipt", i, ":")
+			println("  Status:", result.Receipt.Status)
+			println("  CumulativeGasUsed:", result.Receipt.CumulativeGasUsed)
+			println("  TxHash:", result.Receipt.TxHash.Hex())
+			println("  ContractAddress:", result.Receipt.ContractAddress.Hex())
+			println("  GasUsed:", result.Receipt.GasUsed)
+			println("  BlockHash:", result.Receipt.BlockHash.Hex())
+		}
+
+		println("\nIncoming Batch Receipts:")
+		for i, tx := range batch.Transactions {
+			//receipt, err := executor.storage.GetTransaction(context.Background(), tx.Hash())
+			receipt, err := executor.storage.GetFilteredInternalReceipt(context.Background(), tx.Hash(), nil, true)
+			if err != nil {
+				println("GetFilteredInternalReceipt ERROR: ", err.Error())
+				return nil, err
+			}
+			if receipt != nil {
+				println("Receipt", i, ":")
+				println("  Status:", receipt.Status)
+				println("  CumulativeGasUsed:", receipt.CumulativeGasUsed)
+				println("  TxHash:", receipt.TxHash.Hex())
+				println("  GasUsed:", receipt.EffectiveGasPrice)
+				println("  BlockHash:", receipt.BlockHash.Hex())
+			}
+		}
+
+		//// Get and compare receipt details for incoming batch
+		//println("\nIncoming Batch Receipts:")
+		//incomingReceipts, err := executor.storage.FetchBatch(ctx, batch.Hash())
+		//if err != nil {
+		//	println("Error fetching incoming batch receipts:", err.Error())
+		//} else {
+		//	for i, receipt := range incomingReceipts {
+		//		println("Receipt", i, ":")
+		//		println("  Status:", receipt.Status)
+		//		println("  CumulativeGasUsed:", receipt.CumulativeGasUsed)
+		//		println("  TxHash:", receipt.TxHash.Hex())
+		//		println("  ContractAddress:", receipt.ContractAddress.Hex())
+		//		println("  GasUsed:", receipt.GasUsed)
+		//		println("  BlockHash:", receipt.BlockHash.Hex())
+		//	}
+		//}
+
+		//println("----END INVALID BATCH COMPARISON----")
+
 		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
 		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
 	}

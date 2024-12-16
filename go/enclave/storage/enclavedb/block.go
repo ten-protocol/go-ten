@@ -108,6 +108,7 @@ func GetBlockId(ctx context.Context, db *sql.Tx, hash common.L1BlockHash) (int64
 }
 
 func WriteL1Messages[T any](ctx context.Context, db *sql.Tx, blockId int64, messages []T, isValueTransfer bool) error {
+
 	insert := "insert into l1_msg (message, block, is_transfer) values " + repeat("(?,?,?)", ",", len(messages))
 
 	args := make([]any, 0)

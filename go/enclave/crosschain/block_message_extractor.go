@@ -45,12 +45,15 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 	// collect all value transfer events from processed data
 	var transfers common.ValueTransferEvents
 	for _, txData := range processedData.GetEvents(common.CrossChainValueTranserTx) {
+		println("VALUE TRANSFER CHAIN FOUND")
 		if txData.ValueTransfers != nil {
 			transfers = append(transfers, *txData.ValueTransfers...)
 		}
 	}
-
-	m.logger.Trace("Storing value transfers for block", "nr", len(transfers), log.BlockHashKey, block.Hash())
+	if len(transfers) == 0 {
+		return nil
+	}
+	m.logger.Info("Storing value transfers for block", "nr", len(transfers), log.BlockHashKey, block.Hash())
 	err := m.storage.StoreValueTransfers(ctx, block.Hash(), transfers)
 	if err != nil {
 		m.logger.Crit("Unable to store the transfers", log.ErrKey, err)
@@ -72,6 +75,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, blo
 	var receipts types.Receipts
 	for _, txData := range processedData.GetEvents(common.CrossChainMessageTx) {
 		if txData.CrossChainMessages != nil {
+			println("CROSS CHAIN FOUND")
 			xchain = append(xchain, *txData.CrossChainMessages...)
 			receipts = append(receipts, txData.Receipt)
 		}

@@ -96,6 +96,7 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 
 		if canExecute {
 			txs, err := val.storage.FetchBatchTransactionsBySeq(ctx, batchHeader.SequencerOrderNo.Uint64())
+			//println("Validator fetching txs with seqno: ", batchHeader.SequencerOrderNo.Uint64())
 			if err != nil {
 				return fmt.Errorf("could not get txs for batch %s. Cause: %w", batchHeader.Hash(), err)
 			}

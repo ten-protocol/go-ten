@@ -169,6 +169,7 @@ func ConvertLogsToValueTransfers(logs []types.Log, eventName string, messageBusA
 	return messages, nil
 }
 
+// FIXME unpack from interface?
 // ConvertLogsToSequencerEnclaves converts the logs of SequencerEnclaveGranted events to enclaveIDs
 func ConvertLogsToSequencerEnclaves(logs []types.Log, eventName string, mgmtContractABI abi.ABI) ([]gethcommon.Address, error) {
 	enclaveIDs := make([]gethcommon.Address, 0)
