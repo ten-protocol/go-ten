@@ -20,7 +20,7 @@ type ObscuroChain interface {
 	GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error)
 
 	// ObsCall - The interface for executing eth_call RPC commands against obscuro.
-	ObsCall(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error)
+	Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error)
 
 	// ObsCallAtBlock - Execute eth_call RPC against obscuro for a specific block (batch) number.
 	ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error)

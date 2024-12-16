@@ -25,6 +25,7 @@
     { "fromHost": true, "name": "ENCLAVE_DEBUG_ENABLEDEBUGNAMESPACE" },
     { "fromHost": true, "name": "ENCLAVE_DEBUG_ENABLEPROFILER" },
     { "fromHost": true, "name": "ENCLAVE_ENABLEATTESTATION" },
+    { "fromHost": true, "name": "ENCLAVE_STOREEXECUTEDTRANSACTIONS" },
     { "fromHost": true, "name": "ENCLAVE_L1_ENABLEBLOCKVALIDATION" },
     { "fromHost": true, "name": "ENCLAVE_L1_GENESISJSON" },
     { "fromHost": true, "name": "ENCLAVE_LOG_LEVEL" },

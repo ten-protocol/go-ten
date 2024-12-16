@@ -8,7 +8,7 @@ network:
   batch:
     interval: 1s
     maxInterval: 1s # if this is greater than batch.interval then we make batches more slowly when there are no transactions
-    maxSize: 56320 # 55kb
+    maxSize: 45000 # 55kb
   rollup:
     interval: 5s
     maxInterval: 10m # rollups will be produced after this time even if the data blob is not full
@@ -17,7 +17,7 @@ network:
     baseFee: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
     minGasPrice: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
     paymentAddress: 0xd6C9230053f45F873Cb66D8A02439380a37A4fbF
-    batchExecutionLimit: 300000000000 # 300 gwei
+    batchExecutionLimit: 10000000 # a third of an Ethereum block
     localExecutionCap: 300000000000 # 300 gwei
   l1:
     chainId: 1337
@@ -74,6 +74,7 @@ host:
 
 enclave:
   enableAttestation: false
+  storeExecutedTransactions: true
   db:
     useInMemory: true
     edgelessDBHost: "" # host address for postgres db when used

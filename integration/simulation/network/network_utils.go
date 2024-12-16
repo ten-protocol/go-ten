@@ -103,6 +103,7 @@ func createInMemTenNode(
 		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
 		GasBatchExecutionLimit:    params.MaxGasLimit / 2,
 		RPCTimeout:                5 * time.Second,
+		StoreExecutedTransactions: true,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)

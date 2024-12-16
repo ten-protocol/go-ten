@@ -28,7 +28,7 @@ import (
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-type obscuroChain struct {
+type tenChain struct {
 	chainConfig         *params.ChainConfig
 	config              enclaveconfig.EnclaveConfig
 	storage             storage.Storage
@@ -51,7 +51,7 @@ func NewChain(
 	registry components.BatchRegistry,
 	gasEstimationCap uint64,
 ) ObscuroChain {
-	return &obscuroChain{
+	return &tenChain{
 		storage:             storage,
 		config:              config,
 		gethEncodingService: gethEncodingService,
@@ -63,7 +63,7 @@ func NewChain(
 	}
 }
 
-func (oc *obscuroChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
+func (oc *tenChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
 	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
@@ -72,7 +72,7 @@ func (oc *obscuroChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethc
 	return (*hexutil.Big)(chainState.GetBalance(accountAddr).ToBig()), nil
 }
 
-func (oc *obscuroChain) ObsCall(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+func (oc *tenChain) Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
 	result, err := oc.ObsCallAtBlock(ctx, apiArgs, blockNumber)
 	if err != nil {
 		oc.logger.Debug(fmt.Sprintf("Obs_Call: failed to execute contract %s.", apiArgs.To), log.CtrErrKey, err.Error())
@@ -91,7 +91,7 @@ func (oc *obscuroChain) ObsCall(ctx context.Context, apiArgs *gethapi.Transactio
 	return result, nil
 }
 
-func (oc *obscuroChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
 	// fetch the chain state at given batch
 	blockState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
@@ -117,7 +117,7 @@ func (oc *obscuroChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Tra
 			batch.Header.Root.Hex()))
 	}
 
-	result, err := evm.ExecuteObsCall(ctx, callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.config, oc.logger)
+	result, err := evm.ExecuteCall(ctx, callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.config, oc.logger)
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		return result, err
@@ -128,7 +128,7 @@ func (oc *obscuroChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Tra
 
 // GetChainStateAtTransaction Returns the state of the chain at certain block height after executing transactions up to the selected transaction
 // TODO make this cacheable - why isn't this in the evm_facade?
-func (oc *obscuroChain) GetChainStateAtTransaction(ctx context.Context, batch *core.Batch, txIndex int, _ uint64) (*gethcore.Message, vm.BlockContext, *state.StateDB, error) {
+func (oc *tenChain) GetChainStateAtTransaction(ctx context.Context, batch *core.Batch, txIndex int, _ uint64) (*gethcore.Message, vm.BlockContext, *state.StateDB, error) {
 	// Short circuit if it's genesis batch.
 	if batch.NumberU64() == 0 {
 		return nil, vm.BlockContext{}, nil, errors.New("no transaction in genesis")
