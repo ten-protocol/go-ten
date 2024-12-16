@@ -9,7 +9,7 @@ func main() {
 
 	tenCfg := NodeCLIConfigToTenConfig(cliConfig)
 
-	dockerNode := node.NewDockerNode(tenCfg, cliConfig.hostDockerImage, cliConfig.enclaveDockerImage, cliConfig.edgelessDBImage, false, cliConfig.pccsAddr)
+	dockerNode := node.NewDockerNode(tenCfg, cliConfig.hostDockerImage, cliConfig.enclaveDockerImage, cliConfig.edgelessDBImage, false, cliConfig.pccsAddr, cliConfig.numEnclaves)
 	var err error
 	switch cliConfig.nodeAction {
 	case startAction:
