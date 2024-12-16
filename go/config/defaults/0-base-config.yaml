@@ -17,7 +17,7 @@ network:
     baseFee: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
     minGasPrice: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
     paymentAddress: 0xd6C9230053f45F873Cb66D8A02439380a37A4fbF
-    batchExecutionLimit: 10000000 # a third of an Ethereum block
+    batchExecutionLimit: 30000000 # same as Ethereum blocks
     localExecutionCap: 300000000000 # 300 gwei
   l1:
     chainId: 1337
