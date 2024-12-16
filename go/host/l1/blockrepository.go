@@ -8,6 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+
 	"github.com/ten-protocol/go-ten/go/common/subscription"
 
 	"github.com/ten-protocol/go-ten/go/common/host"
@@ -29,25 +32,42 @@ var (
 	ErrNoNextBlock   = errors.New("no next block")
 )
 
+type ContractType int
+
+const (
+	MgmtContract ContractType = iota
+	MsgBus
+)
+
 // Repository is a host service for subscribing to new blocks and looking up L1 data
 type Repository struct {
 	blockSubscribers *subscription.Manager[host.L1BlockHandler]
 	// this eth client should only be used by the repository, the repository may "reconnect" it at any time and don't want to interfere with other processes
-	ethClient ethadapter.EthClient
-	logger    gethlog.Logger
+	ethClient       ethadapter.EthClient
+	logger          gethlog.Logger
+	mgmtContractLib mgmtcontractlib.MgmtContractLib
+	blobResolver    BlobResolver
 
-	running                  atomic.Bool
-	head                     gethcommon.Hash
-	obscuroRelevantContracts []gethcommon.Address
+	running           atomic.Bool
+	head              gethcommon.Hash
+	contractAddresses map[ContractType][]gethcommon.Address
 }
 
-func NewL1Repository(ethClient ethadapter.EthClient, obscuroRelevantContracts []gethcommon.Address, logger gethlog.Logger) *Repository {
+func NewL1Repository(
+	ethClient ethadapter.EthClient,
+	logger gethlog.Logger,
+	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	blobResolver BlobResolver,
+	contractAddresses map[ContractType][]gethcommon.Address,
+) *Repository {
 	return &Repository{
-		blockSubscribers:         subscription.NewManager[host.L1BlockHandler](),
-		ethClient:                ethClient,
-		obscuroRelevantContracts: obscuroRelevantContracts,
-		running:                  atomic.Bool{},
-		logger:                   logger,
+		blockSubscribers:  subscription.NewManager[host.L1BlockHandler](),
+		ethClient:         ethClient,
+		running:           atomic.Bool{},
+		logger:            logger,
+		mgmtContractLib:   mgmtContractLib,
+		blobResolver:      blobResolver,
+		contractAddresses: contractAddresses,
 	}
 }
 
@@ -137,7 +157,10 @@ func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts
 
 	blkHash := block.Hash()
 	// we want to send receipts for any transactions that produced obscuro-relevant log events
-	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{BlockHash: &blkHash, Addresses: r.obscuroRelevantContracts})
+	var allAddresses []gethcommon.Address
+	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
+	allAddresses = append(allAddresses, r.contractAddresses[MsgBus]...)
+	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{BlockHash: &blkHash, Addresses: allAddresses})
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch logs for L1 block - %w", err)
 	}
@@ -168,6 +191,241 @@ func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts
 	}
 
 	return receipts, nil
+}
+
+// ExtractTenTransactions processes L1 block data to find relevant transactions
+func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error) {
+	processed := &common.ProcessedL1Data{
+		BlockHeader: block.Header(),
+		Events:      []common.L1Event{},
+	}
+
+	// Get all contract logs in a single query
+	logs, err := r.fetchContractLogs(block.Hash())
+	if err != nil {
+		return nil, err
+	}
+
+	// group logs by tx hash for efficiency
+	logsByTx := r.groupLogsByTransaction(logs)
+
+	println("-----ENTERING TX LOOP ------")
+	for txHash, txLog := range logsByTx {
+		println("LOGS BY TX HASH: ", txHash.Hex(), " txLog: ", txLog)
+		if err := r.processTransactionLogs(txHash, txLog, block.Header(), processed); err != nil {
+			r.logger.Error("Error processing transaction logs", "txHash", txHash, "error", err)
+			continue
+		}
+	}
+	println("-----ENDING TX LOOP ------")
+
+	return processed, nil
+}
+
+// fetchContractLogs gets all logs for our tracked contracts in a single query
+func (r *Repository) fetchContractLogs(blockHash gethcommon.Hash) ([]types.Log, error) {
+	var allAddresses []gethcommon.Address
+	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
+	allAddresses = append(allAddresses, r.contractAddresses[MsgBus]...)
+
+	return r.ethClient.GetLogs(ethereum.FilterQuery{
+		BlockHash: &blockHash,
+		Addresses: allAddresses,
+	})
+}
+
+type logGroup struct {
+	crossChainLogs     []types.Log
+	valueTransferLogs  []types.Log
+	sequencerLogs      []types.Log
+	secretRequestLogs  []types.Log
+	secretResponseLogs []types.Log
+	rollupAddedLogs    []types.Log
+}
+
+// groupLogsByTransaction organizes logs by transaction hash and type
+func (r *Repository) groupLogsByTransaction(logs []types.Log) map[gethcommon.Hash]*logGroup {
+	logsByTx := make(map[gethcommon.Hash]*logGroup)
+
+	println("\nGrouping logs by transaction:")
+	for _, l := range logs {
+		if _, exists := logsByTx[l.TxHash]; !exists {
+			println("New transaction:", l.TxHash.Hex())
+			logsByTx[l.TxHash] = &logGroup{}
+		} else {
+			println("Adding log to existing transaction:", l.TxHash.Hex())
+		}
+
+		r.categorizeLog(l, logsByTx[l.TxHash])
+
+		// Debug the current state of this transaction's logs
+		group := logsByTx[l.TxHash]
+		println("Transaction", l.TxHash.Hex(), "now has:")
+		println("  Rollup logs:", len(group.rollupAddedLogs))
+		println("  Sequencer logs:", len(group.sequencerLogs))
+		println("  CrossChain logs:", len(group.crossChainLogs))
+		println("  Value Transfer logs:", len(group.valueTransferLogs))
+		println("  Secret Request logs:", len(group.secretRequestLogs))
+		println("  Secret Response logs:", len(group.secretResponseLogs))
+	}
+
+	return logsByTx
+}
+
+// categorizeLog sorts a log into its appropriate category within a logGroup
+func (r *Repository) categorizeLog(l types.Log, group *logGroup) {
+	switch l.Topics[0] {
+	case crosschain.CrossChainEventID:
+		group.crossChainLogs = append(group.crossChainLogs, l)
+	case crosschain.ValueTransferEventID:
+		group.valueTransferLogs = append(group.valueTransferLogs, l)
+	case crosschain.SequencerEnclaveGrantedEventID:
+		group.sequencerLogs = append(group.sequencerLogs, l)
+	case crosschain.NetworkSecretRequestedID:
+		group.secretRequestLogs = append(group.secretRequestLogs, l)
+	case crosschain.NetworkSecretRespondedID:
+		group.secretResponseLogs = append(group.secretResponseLogs, l)
+	case crosschain.RollupAddedID:
+		group.rollupAddedLogs = append(group.rollupAddedLogs, l)
+	}
+}
+
+// processTransactionLogs handles the logs for a single transaction
+func (r *Repository) processTransactionLogs(txHash gethcommon.Hash, txLogs *logGroup, header *types.Header, processed *common.ProcessedL1Data) error {
+	// Debug logging at start
+	println("Processing tx:", txHash.Hex())
+	println("Existing rollup events:", len(processed.GetEvents(common.RollupTx)))
+	if len(processed.GetEvents(common.RollupTx)) > 0 {
+		println("Previous rollup tx:", processed.GetEvents(common.RollupTx)[0].Transaction.Hash().Hex())
+	}
+
+	tx, receipt, err := r.fetchTransactionAndReceipt(txHash)
+	if err != nil {
+		return err
+	}
+
+	txData := &common.L1TxData{
+		Transaction: tx,
+		Receipt:     receipt,
+	}
+
+	// If this is a rollup transaction
+	if len(txLogs.rollupAddedLogs) > 0 {
+		println("Found rollup logs for tx:", txHash.Hex())
+		// Check if we already have a rollup event for this transaction
+		for _, event := range processed.GetEvents(common.RollupTx) {
+			if event.Transaction.Hash() == txHash {
+				println("Skipping duplicate rollup for tx:", txHash.Hex())
+				return nil
+			}
+		}
+		processed.AddEvent(common.RollupTx, txData)
+		return nil
+	}
+
+	if err := r.processCrossChainMessages(txLogs, txData, processed); err != nil {
+		return err
+	}
+
+	if err := r.processValueTransfers(txLogs, txData, processed); err != nil {
+		return err
+	}
+
+	r.processSequencerLogs(txLogs, txData, processed)
+	r.processSecretLogs(txLogs, txData, processed)
+
+	if err := r.processMgmtContractTx(tx, txData, header, processed); err != nil {
+		return err
+	}
+	return nil
+}
+
+// fetchTransactionAndReceipt gets both transaction and receipt in one method
+func (r *Repository) fetchTransactionAndReceipt(txHash gethcommon.Hash) (*types.Transaction, *types.Receipt, error) {
+	tx, _, err := r.ethClient.TransactionByHash(txHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error fetching transaction: %w", err)
+	}
+
+	receipt, err := r.ethClient.TransactionReceipt(txHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error fetching receipt: %w", err)
+	}
+
+	return tx, receipt, nil
+}
+
+// processCrossChainMessages handles cross-chain message logs
+func (r *Repository) processCrossChainMessages(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
+	if len(txLogs.crossChainLogs) > 0 {
+		messages, err := crosschain.ConvertLogsToMessages(txLogs.crossChainLogs, crosschain.CrossChainEventName, crosschain.MessageBusABI)
+		if err != nil {
+			return err
+		}
+		txData.CrossChainMessages = &messages
+		processed.AddEvent(common.CrossChainMessageTx, txData)
+	}
+	return nil
+}
+
+// processValueTransfers handles value transfer logs
+func (r *Repository) processValueTransfers(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
+	if len(txLogs.valueTransferLogs) > 0 {
+		transfers, err := crosschain.ConvertLogsToValueTransfers(txLogs.valueTransferLogs, crosschain.ValueTransferEventName, crosschain.MessageBusABI)
+		if err != nil {
+			return err
+		}
+		txData.ValueTransfers = &transfers
+		processed.AddEvent(common.CrossChainValueTranserTx, txData)
+	}
+	return nil
+}
+
+// processSequencerLogs handles sequencer-related logs
+func (r *Repository) processSequencerLogs(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+	if len(txLogs.sequencerLogs) > 0 {
+		for _, l := range txLogs.sequencerLogs {
+			if enclaveID, err := getEnclaveIdFromLog(l); err == nil {
+				//println("Before GRPC - Receipt Hash:", txData.Receipt.TxHash.Hex())
+				txData.SequencerEnclaveID = enclaveID
+				processed.AddEvent(common.SequencerAddedTx, txData)
+			}
+		}
+	}
+}
+
+// processSecretLogs handles secret-related logs
+func (r *Repository) processSecretLogs(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+	if len(txLogs.secretRequestLogs) > 0 {
+		processed.AddEvent(common.SecretRequestTx, txData)
+	}
+	if len(txLogs.secretResponseLogs) > 0 {
+		processed.AddEvent(common.SecretResponseTx, txData)
+	}
+}
+
+// processMgmtContractTx handles management contract transactions
+func (r *Repository) processMgmtContractTx(tx *types.Transaction, txData *common.L1TxData, header *types.Header, processed *common.ProcessedL1Data) error {
+	if decodedTx := r.mgmtContractLib.DecodeTx(tx); decodedTx != nil {
+		switch t := decodedTx.(type) {
+		case *ethadapter.L1InitializeSecretTx:
+			processed.AddEvent(common.InitialiseSecretTx, txData)
+		case *ethadapter.L1SetImportantContractsTx:
+			processed.AddEvent(common.SetImportantContractsTx, txData)
+		case *ethadapter.L1RollupHashes:
+			if len(processed.GetEvents(common.RollupTx)) == 1 {
+				println("DECODING TX TWICE")
+				panic("BLAH")
+			}
+			blobs, err := r.blobResolver.FetchBlobs(context.Background(), header, t.BlobHashes)
+			if err != nil {
+				return err
+			}
+			txData.Blobs = blobs
+			processed.AddEvent(common.RollupTx, txData)
+		}
+	}
+	return nil
 }
 
 // stream blocks from L1 as they arrive and forward them to subscribers, no guarantee of perfect ordering or that there won't be gaps.
@@ -226,12 +484,42 @@ func (r *Repository) FetchBlockByHeight(height *big.Int) (*types.Block, error) {
 
 // isObscuroTransaction will look at the 'to' address of the transaction, we are only interested in management contract and bridge transactions
 func (r *Repository) isObscuroTransaction(transaction *types.Transaction) bool {
-	for _, address := range r.obscuroRelevantContracts {
+	var allAddresses []gethcommon.Address
+	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
+	allAddresses = append(allAddresses, r.contractAddresses[MsgBus]...)
+	for _, address := range allAddresses {
 		if transaction.To() != nil && *transaction.To() == address {
 			return true
 		}
 	}
 	return false
+}
+
+// getEnclaveIdFromLog gets the enclave ID from the log topic
+func getEnclaveIdFromLog(log types.Log) (gethcommon.Address, error) {
+	if len(log.Topics) != 1 {
+		return gethcommon.Address{}, fmt.Errorf("invalid number of topics in log: %d", len(log.Topics))
+	}
+
+	return gethcommon.BytesToAddress(log.Topics[0].Bytes()), nil
+}
+
+func (r *Repository) getRequestSecretEventLogs(receipt *types.Receipt) ([]types.Log, error) {
+	requestSecretLogs, err := crosschain.FilterLogsFromReceipt(receipt, &r.contractAddresses[MgmtContract][0], &crosschain.NetworkSecretRequestedID)
+	if err != nil {
+		r.logger.Error("Error filtering sequencer logs", log.ErrKey, err)
+		return []types.Log{}, err
+	}
+	return requestSecretLogs, nil
+}
+
+func (r *Repository) getSecretResponseLogs(receipt *types.Receipt) ([]types.Log, error) {
+	secretResponseLogs, err := crosschain.FilterLogsFromReceipt(receipt, &r.contractAddresses[MgmtContract][0], &crosschain.NetworkSecretRespondedID)
+	if err != nil {
+		r.logger.Error("Error filtering sequencer logs", log.ErrKey, err)
+		return []types.Log{}, err
+	}
+	return secretResponseLogs, nil
 }
 
 func increment(i *big.Int) *big.Int {

@@ -151,6 +151,13 @@ func (e *gethRPCClient) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt
 	return e.client.TransactionReceipt(ctx, hash)
 }
 
+func (e *gethRPCClient) TransactionByHash(hash gethcommon.Hash) (*types.Transaction, bool, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+	defer cancel()
+
+	return e.client.TransactionByHash(ctx, hash)
+}
+
 func (e *gethRPCClient) Nonce(account gethcommon.Address) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()

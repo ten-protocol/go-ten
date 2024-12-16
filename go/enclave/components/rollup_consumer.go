@@ -3,7 +3,6 @@ package components
 import (
 	"context"
 	"fmt"
-
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -49,16 +48,18 @@ func NewRollupConsumer(
 }
 
 // ProcessBlobsInBlock - processes the blobs in a block, extracts the rollups, verifies the rollups and stores them
-func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common.BlockAndReceipts) error {
-	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.BlockHashKey, b.BlockHeader.Hash())
+// FIXME remove BlockAndReceipts
+func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, _ *common.BlockAndReceipts, processed *common.ProcessedL1Data) error {
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.BlockHashKey, processed.BlockHeader.Hash())
 
-	rollups, err := rc.extractAndVerifyRollups(b)
+	block := processed.BlockHeader
+	rollups, err := rc.extractAndVerifyRollups(processed)
 	if err != nil {
-		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, b.BlockHeader.Hash(), log.ErrKey, err)
+		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
 		return err
 	}
 	if len(rollups) == 0 {
-		rc.logger.Trace("No rollups found in block", log.BlockHashKey, b.BlockHeader.Hash())
+		rc.logger.Trace("No rollups found in block", log.BlockHashKey, block.Hash())
 		return nil
 	}
 
@@ -69,7 +70,7 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, b *common
 
 	if len(rollups) > 1 {
 		// todo - we need to sort this out
-		rc.logger.Warn(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), b.BlockHeader.Hash()))
+		rc.logger.Warn(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
 	}
 
 	for _, rollup := range rollups {
@@ -121,16 +122,17 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 // It processes each transaction, attempting to extract and verify rollups
 // If a transaction is not a rollup or fails verification, it's skipped
 // The function only returns an error if there's a critical failure in rollup reconstruction
-func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipts) ([]*common.ExtRollup, error) {
-	rollups := make([]*common.ExtRollup, 0, len(*br.RelevantTransactions()))
-	b := br.BlockHeader
-	blobs, blobHashes, err := rc.extractBlobsAndHashes(br)
+func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error) {
+	rollupTxs := processed.GetEvents(common.RollupTx)
+	rollups := make([]*common.ExtRollup, 0, len(rollupTxs))
+
+	blobs, blobHashes, err := rc.extractBlobsAndHashes(rollupTxs)
 	if err != nil {
 		return nil, err
 	}
 
-	for i, tx := range *br.RelevantTransactions() {
-		t := rc.MgmtContractLib.DecodeTx(tx)
+	for i, tx := range rollupTxs {
+		t := rc.MgmtContractLib.DecodeTx(tx.Transaction)
 		if t == nil {
 			continue
 		}
@@ -153,9 +155,15 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(br *common.BlockAndReceipt
 		}
 
 		rollups = append(rollups, r)
-		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, b.Hash())
-	}
 
+		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, processed.BlockHeader.Hash())
+	}
+	if len(rollups) > 1 {
+		println("HERE")
+		if rollups[0].Hash() == rollups[1].Hash() {
+			println("ROLLUPS THE SAME")
+		}
+	}
 	return rollups, nil
 }
 
@@ -180,12 +188,10 @@ func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []geth
 	return nil
 }
 
-func (rc *rollupConsumerImpl) extractBlobsAndHashes(br *common.BlockAndReceipts) ([]*kzg4844.Blob, []gethcommon.Hash, error) {
+func (rc *rollupConsumerImpl) extractBlobsAndHashes(rollupTxs []*common.L1TxData) ([]*kzg4844.Blob, []gethcommon.Hash, error) {
 	blobs := make([]*kzg4844.Blob, 0)
-	for _, txWithReceipt := range br.TxsWithReceipts {
-		if txWithReceipt.Blobs != nil {
-			blobs = append(blobs, txWithReceipt.Blobs...)
-		}
+	for _, tx := range rollupTxs {
+		blobs = append(blobs, tx.Blobs...)
 	}
 
 	_, blobHashes, err := ethadapter.MakeSidecar(blobs)

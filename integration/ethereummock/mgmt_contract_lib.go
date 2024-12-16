@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/integration/datagenerator"
@@ -22,13 +23,19 @@ var (
 	storeSecretTxAddr      = datagenerator.RandomAddress()
 	requestSecretTxAddr    = datagenerator.RandomAddress()
 	initializeSecretTxAddr = datagenerator.RandomAddress()
-	// MgmtContractAddresses make all these addresses available for the host to know what receipts will be forwarded to the enclave
-	MgmtContractAddresses = []gethcommon.Address{
-		depositTxAddr,
-		rollupTxAddr,
-		storeSecretTxAddr,
-		requestSecretTxAddr,
-		initializeSecretTxAddr,
+	messageBusAddr         = datagenerator.RandomAddress()
+	// ContractAddresses maps contract types to their addresses
+	ContractAddresses = map[l1.ContractType][]gethcommon.Address{
+		l1.MgmtContract: {
+			depositTxAddr,
+			rollupTxAddr,
+			storeSecretTxAddr,
+			requestSecretTxAddr,
+			initializeSecretTxAddr,
+		},
+		l1.MsgBus: {
+			messageBusAddr,
+		},
 	}
 )
 

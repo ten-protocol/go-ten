@@ -175,7 +175,7 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceiptAndBlobs) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, receipts []*common.TxAndReceiptAndBlobs, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
@@ -187,7 +187,14 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *ty
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	result, err := e.ingestL1Block(ctx, br)
+	// Verify the block header matches the one in processedData
+	if blockHeader.Hash() != processed.BlockHeader.Hash() {
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("block header mismatch"))
+	}
+
+	// TODO verify proof provided with block processed.Proof
+
+	result, err := e.ingestL1Block(ctx, br, processed)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
@@ -201,7 +208,7 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *ty
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, br)}
+	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, processed)}
 	return bsr, nil
 }
 
@@ -468,9 +475,9 @@ func (e *enclaveAdminService) streamEventsForNewHeadBatch(ctx context.Context, b
 	}
 }
 
-func (e *enclaveAdminService) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts) (*components.BlockIngestionType, error) {
+func (e *enclaveAdminService) ingestL1Block(ctx context.Context, br *common.BlockAndReceipts, processed *common.ProcessedL1Data) (*components.BlockIngestionType, error) {
 	e.logger.Info("Start ingesting block", log.BlockHashKey, br.BlockHeader.Hash())
-	ingestion, err := e.l1BlockProcessor.Process(ctx, br)
+	ingestion, err := e.l1BlockProcessor.Process(ctx, br, processed)
 	if err != nil {
 		// only warn for unexpected errors
 		if errors.Is(err, errutil.ErrBlockAncestorNotFound) || errors.Is(err, errutil.ErrBlockAlreadyProcessed) {
@@ -481,9 +488,9 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, br *common.Bloc
 		return nil, err
 	}
 
-	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, br)
+	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, br, processed)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
-		e.logger.Error("Encountered error while processing l1 block", log.ErrKey, err)
+		e.logger.Error("Encountered error while processing l1 block rollups", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
 	}
 

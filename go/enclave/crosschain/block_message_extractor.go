@@ -39,7 +39,7 @@ func (m *blockMessageExtractor) Enabled() bool {
 	return m.GetBusAddress().Big().Cmp(gethcommon.Big0) != 0
 }
 
-func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, receipts common.L1Receipts) error {
+func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, receipts common.L1Receipts, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader value transfer messages processed", log.BlockHashKey, block.Hash())
 
 	/*areReceiptsValid := common.VerifyReceiptHash(block, receipts)
@@ -53,10 +53,15 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 		return nil
 	}
 
+	valueTransfers := processed.GetEvents(common.CrossChainValueTranserTx)
 	transfers, err := m.getValueTransferMessages(receipts)
 	if err != nil {
 		m.logger.Error("Error encountered while getting inbound value transfers from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
 		return err
+	}
+
+	if len(valueTransfers) != len(transfers) {
+		println("TRANSFER MISMATCH BETWEEN RECEIPT AND PROCESSED")
 	}
 
 	hasTransfers := len(transfers) > 0
@@ -78,7 +83,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 // The messages will be stored in DB storage for later usage.
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
-func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *types.Header, receipts common.L1Receipts) error {
+func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *types.Header, receipts common.L1Receipts, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader cross chain messages processed", log.BlockHashKey, block.Hash())
 
 	if len(receipts) == 0 {
@@ -90,6 +95,12 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, blo
 	if err != nil {
 		m.logger.Error("Converting receipts to messages failed.", log.ErrKey, err)
 		return err
+	}
+
+	processedMessages := processed.GetEvents(common.CrossChainMessageTx)
+
+	if len(processedMessages) != len(messages) {
+		println("XCHAIN MISMATCH BETWEEN RECEIPT AND PROCESSED")
 	}
 
 	if len(messages) > 0 {
@@ -123,7 +134,7 @@ func (m *blockMessageExtractor) getCrossChainMessages(block *types.Header, recei
 	}
 	m.logger.Trace("Extracted cross chain logs from receipts", "logCount", len(logs))
 
-	messages, err := convertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
+	messages, err := ConvertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
 	if err != nil {
 		m.logger.Error("Error encountered converting the extracted relevant logs to messages", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err

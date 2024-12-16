@@ -59,7 +59,7 @@ func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOr
 	}
 }
 
-func (bp *l1BlockProcessor) Process(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error) {
+func (bp *l1BlockProcessor) Process(ctx context.Context, br *common.BlockAndReceipts, processed *common.ProcessedL1Data) (*BlockIngestionType, error) {
 	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, br.BlockHeader.Hash())
 
 	ingestion, err := bp.tryAndInsertBlock(ctx, br)
@@ -69,12 +69,12 @@ func (bp *l1BlockProcessor) Process(ctx context.Context, br *common.BlockAndRece
 
 	if !ingestion.PreGenesis {
 		// This requires block to be stored first ... but can permanently fail a block
-		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(ctx, br.BlockHeader, br.Receipts())
+		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(ctx, br.BlockHeader, br.Receipts(), processed)
 		if err != nil {
 			return nil, errors.New("failed to process cross chain messages")
 		}
 
-		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(ctx, br.BlockHeader, br.Receipts())
+		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(ctx, br.BlockHeader, br.Receipts(), processed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process cross chain transfers. Cause: %w", err)
 		}
