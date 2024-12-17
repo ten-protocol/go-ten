@@ -54,46 +54,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 		}
 	}
 
-	// Get transfers using old method for comparison
-	transfersOld, err := m.getValueTransferMessages(receipts)
-	if err != nil {
-		m.logger.Error("Error encountered while getting inbound value transfers from block",
-			log.BlockHashKey, block.Hash(),
-			log.ErrKey, err)
-		return err
-	}
-	println("---START COMPARISON ---")
-	// Detailed comparison logging
-	println("Transfer counts comparison",
-		"new_count", len(transfers),
-		"old_count", len(transfersOld),
-		"block_hash", block.Hash().Hex())
-
-	// FIXME ordering is incorrec
-	// Log each transfer's details from both methods
-	for i, t := range transfers {
-		println("New method transfer",
-			"index", i,
-			"sender", t.Sender.Hex(),
-			"receiver", t.Receiver.Hex(),
-			"amount", t.Amount.String(),
-			"sequence", t.Sequence,
-			"raw", fmt.Sprintf("%+v", t))
-	}
-
-	for i, t := range transfersOld {
-		println("Old method transfer",
-			"index", i,
-			"sender", t.Sender.Hex(),
-			"receiver", t.Receiver.Hex(),
-			"amount", t.Amount.String(),
-			"sequence", t.Sequence,
-			"raw", fmt.Sprintf("%+v", t))
-	}
-	println("---END COMPARISON ---")
-
-	// Store using old method for now
-	err = m.storage.StoreValueTransfers(ctx, block.Hash(), transfers)
+	err := m.storage.StoreValueTransfers(ctx, block.Hash(), transfers)
 	if err != nil {
 		m.logger.Crit("Unable to store the transfers", log.ErrKey, err)
 		return err

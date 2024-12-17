@@ -202,23 +202,48 @@ type logGroup struct {
 	rollupAddedLogs    []types.Log
 }
 
-// ExtractTenTransactions does all the filtering of txs to find all the transaction types we care about on the L2.
+// ExtractTenTransactions processes logs in their natural order without grouping by transaction hash.
 func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error) {
 	processed := &common.ProcessedL1Data{
 		BlockHeader: block.Header(),
 		Events:      []common.L1Event{},
 	}
 
+	// Fetch all relevant logs for the block
 	logs, err := r.fetchRelevantLogs(block)
 	if err != nil {
 		return nil, err
 	}
 
-	logsByTx := r.groupLogsByTransaction(logs)
+	// Process each log sequentially, preserving their natural order
+	for _, l := range logs {
+		txData, err := r.createTransactionData(l.TxHash)
+		if err != nil {
+			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
+			continue
+		}
 
-	err = r.processTransactionLogs(block, logsByTx, processed)
-	if err != nil {
-		return nil, err
+		// Categorize logs inline based on their topics
+		switch l.Topics[0] {
+		case crosschain.CrossChainEventID:
+
+			r.processCrossChainLogs(l, txData, processed)
+		case crosschain.ValueTransferEventID:
+			r.processValueTransferLogs(l, txData, processed)
+		case crosschain.SequencerEnclaveGrantedEventID:
+			r.processSequencerLogs(l, txData, processed)
+			r.processDecodedTransaction(txData, processed) // we need to decode the InitialiseSecretTx
+		case crosschain.ImportantContractAddressUpdatedID:
+			r.processDecodedTransaction(txData, processed)
+		case crosschain.NetworkSecretRequestedID:
+			processed.AddEvent(common.SecretRequestTx, txData)
+		case crosschain.NetworkSecretRespondedID:
+			processed.AddEvent(common.SecretResponseTx, txData)
+		case crosschain.RollupAddedID:
+			r.processDecodedTransaction(txData, processed)
+		default:
+			r.logger.Warn("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
+		}
 	}
 
 	return processed, nil
@@ -236,52 +261,6 @@ func (r *Repository) fetchRelevantLogs(block *common.L1Block) ([]types.Log, erro
 		return nil, fmt.Errorf("unable to fetch logs for L1 block - %w", err)
 	}
 	return logs, nil
-}
-
-// groupLogsByTransaction organizes logs by transaction hash and topic
-func (r *Repository) groupLogsByTransaction(logs []types.Log) map[gethcommon.Hash]*logGroup {
-	logsByTx := make(map[gethcommon.Hash]*logGroup)
-
-	for _, l := range logs {
-		if _, exists := logsByTx[l.TxHash]; !exists {
-			logsByTx[l.TxHash] = &logGroup{}
-		}
-		r.categorizeLog(l, logsByTx[l.TxHash])
-	}
-
-	return logsByTx
-}
-
-// categorizeLog sorts a single log into its appropriate category within a logGroup
-func (r *Repository) categorizeLog(l types.Log, group *logGroup) {
-	switch l.Topics[0] {
-	case crosschain.CrossChainEventID:
-		group.crossChainLogs = append(group.crossChainLogs, l)
-	case crosschain.ValueTransferEventID:
-		group.valueTransferLogs = append(group.valueTransferLogs, l)
-	case crosschain.SequencerEnclaveGrantedEventID:
-		group.sequencerLogs = append(group.sequencerLogs, l)
-	case crosschain.NetworkSecretRequestedID:
-		group.secretRequestLogs = append(group.secretRequestLogs, l)
-	case crosschain.NetworkSecretRespondedID:
-		group.secretResponseLogs = append(group.secretResponseLogs, l)
-	case crosschain.RollupAddedID:
-		group.rollupAddedLogs = append(group.rollupAddedLogs, l)
-	}
-}
-
-// processTransactionLogs processes each transaction's logs and adds corresponding events
-func (r *Repository) processTransactionLogs(block *common.L1Block, logsByTx map[gethcommon.Hash]*logGroup, processed *common.ProcessedL1Data) error {
-	for txHash, txLogs := range logsByTx {
-		txData, err := r.createTransactionData(txHash)
-		if err != nil {
-			r.logger.Error("Error processing transaction", "hash", txHash, "error", err)
-			continue
-		}
-
-		r.processLogGroup(txLogs, txData, processed, block)
-	}
-	return nil
 }
 
 // createTransactionData creates a new L1TxData instance for a transaction
@@ -304,68 +283,47 @@ func (r *Repository) createTransactionData(txHash gethcommon.Hash) (*common.L1Tx
 	}, nil
 }
 
-// processLogGroup processes different types of logs within a logGroup
-func (r *Repository) processLogGroup(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data, block *common.L1Block) {
-	r.processCrossChainLogs(txLogs, txData, processed)
-	r.processValueTransferLogs(txLogs, txData, processed)
-	r.processSequencerLogs(txLogs, txData, processed)
-	r.processSecretLogs(txLogs, txData, processed)
-	r.processDecodedTransaction(txData.Transaction, txData, processed, block)
-}
-
 // processCrossChainLogs handles cross-chain message logs
-func (r *Repository) processCrossChainLogs(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	if len(txLogs.crossChainLogs) > 0 {
-		if messages, err := crosschain.ConvertLogsToMessages(txLogs.crossChainLogs, crosschain.CrossChainEventName, crosschain.MessageBusABI); err == nil {
-			txData.CrossChainMessages = messages
-			processed.AddEvent(common.CrossChainMessageTx, txData)
-		}
+func (r *Repository) processCrossChainLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+	if messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, crosschain.CrossChainEventName, crosschain.MessageBusABI); err == nil {
+		txData.CrossChainMessages = messages
+		processed.AddEvent(common.CrossChainMessageTx, txData)
 	}
 }
 
 // processValueTransferLogs handles value transfer logs
-func (r *Repository) processValueTransferLogs(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	if len(txLogs.valueTransferLogs) > 0 {
-		if transfers, err := crosschain.ConvertLogsToValueTransfers(txLogs.valueTransferLogs, crosschain.ValueTransferEventName, crosschain.MessageBusABI); err == nil {
-			txData.ValueTransfers = transfers
-			processed.AddEvent(common.CrossChainValueTranserTx, txData)
-		}
+func (r *Repository) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+	if transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, crosschain.ValueTransferEventName, crosschain.MessageBusABI); err == nil {
+		txData.ValueTransfers = transfers
+		println("VALUE TRANSFER ADDED")
+		processed.AddEvent(common.CrossChainValueTranserTx, txData)
 	}
 }
 
 // processSequencerLogs handles sequencer logs
-func (r *Repository) processSequencerLogs(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	if len(txLogs.sequencerLogs) > 0 {
-		for _, l := range txLogs.sequencerLogs {
-			if enclaveID, err := getEnclaveIdFromLog(l); err == nil {
-				txData.SequencerEnclaveID = enclaveID
-				processed.AddEvent(common.SequencerAddedTx, txData)
-			}
-		}
-	}
-}
-
-// processSecretLogs handles secret request and response logs
-func (r *Repository) processSecretLogs(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	if len(txLogs.secretRequestLogs) > 0 {
-		processed.AddEvent(common.SecretRequestTx, txData)
-	}
-	if len(txLogs.secretResponseLogs) > 0 {
-		processed.AddEvent(common.SecretResponseTx, txData)
+func (r *Repository) processSequencerLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+	if enclaveID, err := getEnclaveIdFromLog(l); err == nil {
+		txData.SequencerEnclaveID = enclaveID
+		println("SEQUENCER ADDED TX")
+		processed.AddEvent(common.SequencerAddedTx, txData)
 	}
 }
 
 // processDecodedTransaction handles decoded transaction types
-func (r *Repository) processDecodedTransaction(tx *types.Transaction, txData *common.L1TxData, processed *common.ProcessedL1Data, block *common.L1Block) {
-	if decodedTx := r.mgmtContractLib.DecodeTx(tx); decodedTx != nil {
+func (r *Repository) processDecodedTransaction(txData *common.L1TxData, processed *common.ProcessedL1Data) {
+	b := processed.BlockHeader
+	if decodedTx := r.mgmtContractLib.DecodeTx(txData.Transaction); decodedTx != nil {
 		switch t := decodedTx.(type) {
 		case *ethadapter.L1InitializeSecretTx:
+			println("INITIALIZE TX ADDED")
 			processed.AddEvent(common.InitialiseSecretTx, txData)
 		case *ethadapter.L1SetImportantContractsTx:
+			println("SET IMPORTANT ADDED")
 			processed.AddEvent(common.SetImportantContractsTx, txData)
 		case *ethadapter.L1RollupHashes:
-			if blobs, err := r.blobResolver.FetchBlobs(context.Background(), block.Header(), t.BlobHashes); err == nil {
+			if blobs, err := r.blobResolver.FetchBlobs(context.Background(), b, t.BlobHashes); err == nil {
 				txData.Blobs = blobs
+				println("ROLLUP ADDED")
 				processed.AddEvent(common.RollupTx, txData)
 			}
 		}

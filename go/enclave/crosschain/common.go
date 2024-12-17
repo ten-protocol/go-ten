@@ -24,20 +24,22 @@ import (
 )
 
 var (
-	MessageBusABI, _                 = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	MgmtContractABI, _               = abi.JSON(strings.NewReader(ManagementContract.ManagementContractMetaData.ABI))
-	CrossChainEventName              = "LogMessagePublished"
-	CrossChainEventID                = MessageBusABI.Events[CrossChainEventName].ID
-	ValueTransferEventName           = "ValueTransfer"
-	ValueTransferEventID             = MessageBusABI.Events["ValueTransfer"].ID
-	SequencerEnclaveGrantedEventName = "SequencerEnclaveGranted"
-	SequencerEnclaveGrantedEventID   = MgmtContractABI.Events["SequencerEnclaveGranted"].ID
-	NetworkSecretRequestedName       = "NetworkSecretRequested"
-	NetworkSecretRequestedID         = MgmtContractABI.Events["NetworkSecretRequested"].ID
-	NetworkSecretRespondedName       = "NetworkSecretResponded"
-	NetworkSecretRespondedID         = MgmtContractABI.Events["NetworkSecretResponded"].ID
-	RollupAddedName                  = "RollupAdded"
-	RollupAddedID                    = MgmtContractABI.Events["RollupAdded"].ID
+	MessageBusABI, _                    = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	MgmtContractABI, _                  = abi.JSON(strings.NewReader(ManagementContract.ManagementContractMetaData.ABI))
+	CrossChainEventName                 = "LogMessagePublished"
+	CrossChainEventID                   = MessageBusABI.Events[CrossChainEventName].ID
+	ValueTransferEventName              = "ValueTransfer"
+	ValueTransferEventID                = MessageBusABI.Events["ValueTransfer"].ID
+	SequencerEnclaveGrantedEventName    = "SequencerEnclaveGranted"
+	SequencerEnclaveGrantedEventID      = MgmtContractABI.Events["SequencerEnclaveGranted"].ID
+	NetworkSecretRequestedName          = "NetworkSecretRequested"
+	NetworkSecretRequestedID            = MgmtContractABI.Events["NetworkSecretRequested"].ID
+	NetworkSecretRespondedName          = "NetworkSecretResponded"
+	NetworkSecretRespondedID            = MgmtContractABI.Events["NetworkSecretResponded"].ID
+	RollupAddedName                     = "RollupAdded"
+	RollupAddedID                       = MgmtContractABI.Events["RollupAdded"].ID
+	ImportantContractAddressUpdatedName = "ImportantContractAddressUpdated"
+	ImportantContractAddressUpdatedID   = MgmtContractABI.Events["ImportantContractAddressUpdated"].ID
 )
 
 func lazilyLogReceiptChecksum(block *types.Header, receipts types.Receipts, logger gethlog.Logger) {
