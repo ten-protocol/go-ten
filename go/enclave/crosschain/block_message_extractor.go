@@ -42,34 +42,57 @@ func (m *blockMessageExtractor) Enabled() bool {
 func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, receipts common.L1Receipts, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader value transfer messages processed", log.BlockHashKey, block.Hash())
 
-	/*areReceiptsValid := common.VerifyReceiptHash(block, receipts)
-
-	if !areReceiptsValid && m.Enabled() {
-		m.logger.Error("Invalid receipts submitted", log.BlockHashKey, block.Hash())
-		return fmt.Errorf("receipts do not match the receipt root for the block")
-	}*/
-
-	if len(receipts) == 0 {
+	transferEvents := processed.GetEvents(common.CrossChainValueTranserTx)
+	if len(transferEvents) == 0 {
 		return nil
 	}
 
-	valueTransfers := processed.GetEvents(common.CrossChainValueTranserTx)
-	transfers, err := m.getValueTransferMessages(receipts)
+	var transfers common.ValueTransferEvents
+	for _, txData := range transferEvents {
+		if txData.ValueTransfers != nil {
+			transfers = append(transfers, txData.ValueTransfers...)
+		}
+	}
+
+	// Get transfers using old method for comparison
+	transfersOld, err := m.getValueTransferMessages(receipts)
 	if err != nil {
-		m.logger.Error("Error encountered while getting inbound value transfers from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
+		m.logger.Error("Error encountered while getting inbound value transfers from block",
+			log.BlockHashKey, block.Hash(),
+			log.ErrKey, err)
 		return err
 	}
+	println("---START COMPARISON ---")
+	// Detailed comparison logging
+	println("Transfer counts comparison",
+		"new_count", len(transfers),
+		"old_count", len(transfersOld),
+		"block_hash", block.Hash().Hex())
 
-	if len(valueTransfers) != len(transfers) {
-		println("TRANSFER MISMATCH BETWEEN RECEIPT AND PROCESSED")
+	// FIXME ordering is incorrec
+	// Log each transfer's details from both methods
+	for i, t := range transfers {
+		println("New method transfer",
+			"index", i,
+			"sender", t.Sender.Hex(),
+			"receiver", t.Receiver.Hex(),
+			"amount", t.Amount.String(),
+			"sequence", t.Sequence,
+			"raw", fmt.Sprintf("%+v", t))
 	}
 
-	hasTransfers := len(transfers) > 0
-	if !hasTransfers {
-		return nil
+	for i, t := range transfersOld {
+		println("Old method transfer",
+			"index", i,
+			"sender", t.Sender.Hex(),
+			"receiver", t.Receiver.Hex(),
+			"amount", t.Amount.String(),
+			"sequence", t.Sequence,
+			"raw", fmt.Sprintf("%+v", t))
 	}
+	println("---END COMPARISON ---")
 
-	m.logger.Trace("Storing value transfers for block", "nr", len(transfers), log.BlockHashKey, block.Hash())
+	// Store using old method for now
 	err = m.storage.StoreValueTransfers(ctx, block.Hash(), transfers)
 	if err != nil {
 		m.logger.Crit("Unable to store the transfers", log.ErrKey, err)
@@ -83,29 +106,28 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 // The messages will be stored in DB storage for later usage.
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
-func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *types.Header, receipts common.L1Receipts, processed *common.ProcessedL1Data) error {
+// FIXME remove receipts arg
+func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *types.Header, _ common.L1Receipts, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader cross chain messages processed", log.BlockHashKey, block.Hash())
 
-	if len(receipts) == 0 {
+	messageEvents := processed.GetEvents(common.CrossChainMessageTx)
+	if len(messageEvents) == 0 {
 		return nil
+	}
+	// collect all messages from the events
+	var messages common.CrossChainMessages
+	var receipts types.Receipts
+	for _, txData := range messageEvents {
+		if txData.CrossChainMessages != nil {
+			messages = append(messages, txData.CrossChainMessages...)
+			receipts = append(receipts, txData.Receipt)
+		}
 	}
 
 	lazilyLogReceiptChecksum(block, receipts, m.logger)
-	messages, err := m.getCrossChainMessages(block, receipts)
-	if err != nil {
-		m.logger.Error("Converting receipts to messages failed.", log.ErrKey, err)
-		return err
-	}
-
-	processedMessages := processed.GetEvents(common.CrossChainMessageTx)
-
-	if len(processedMessages) != len(messages) {
-		println("XCHAIN MISMATCH BETWEEN RECEIPT AND PROCESSED")
-	}
-
 	if len(messages) > 0 {
 		m.logger.Info(fmt.Sprintf("Storing %d messages for block", len(messages)), log.BlockHashKey, block.Hash())
-		err = m.storage.StoreL1Messages(ctx, block.Hash(), messages)
+		err := m.storage.StoreL1Messages(ctx, block.Hash(), messages)
 		if err != nil {
 			m.logger.Crit("Unable to store the messages", log.ErrKey, err)
 			return err

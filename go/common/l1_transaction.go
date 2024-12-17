@@ -36,11 +36,11 @@ type ProcessedL1Data struct {
 type L1TxData struct {
 	Transaction        *types.Transaction
 	Receipt            *types.Receipt
-	Blobs              []*kzg4844.Blob      // Only populated for blob transactions
-	SequencerEnclaveID gethcommon.Address   // Only non-zero when a new enclave is added as a sequencer
-	CrossChainMessages *CrossChainMessages  // Only populated for xchain messages
-	ValueTransfers     *ValueTransferEvents // Only populated for xchain transfers
-	Proof              []byte               // Some merkle proof TBC
+	Blobs              []*kzg4844.Blob     // Only populated for blob transactions
+	SequencerEnclaveID gethcommon.Address  // Only non-zero when a new enclave is added as a sequencer
+	CrossChainMessages CrossChainMessages  // Only populated for xchain messages
+	ValueTransfers     ValueTransferEvents // Only populated for xchain transfers
+	Proof              []byte              // Some merkle proof TBC
 }
 
 // HasSequencerEnclaveID helper method to check if SequencerEnclaveID is set to avoid custom RLP when we send over grpc

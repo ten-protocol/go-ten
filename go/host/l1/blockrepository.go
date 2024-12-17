@@ -193,6 +193,15 @@ func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts
 	return receipts, nil
 }
 
+type logGroup struct {
+	crossChainLogs     []types.Log
+	valueTransferLogs  []types.Log
+	sequencerLogs      []types.Log
+	secretRequestLogs  []types.Log
+	secretResponseLogs []types.Log
+	rollupAddedLogs    []types.Log
+}
+
 // ExtractTenTransactions does all the filtering of txs to find all the transaction types we care about on the L2.
 func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error) {
 	processed := &common.ProcessedL1Data{
@@ -206,7 +215,7 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 	}
 
 	logsByTx := r.groupLogsByTransaction(logs)
-	
+
 	err = r.processTransactionLogs(block, logsByTx, processed)
 	if err != nil {
 		return nil, err
@@ -227,15 +236,6 @@ func (r *Repository) fetchRelevantLogs(block *common.L1Block) ([]types.Log, erro
 		return nil, fmt.Errorf("unable to fetch logs for L1 block - %w", err)
 	}
 	return logs, nil
-}
-
-type logGroup struct {
-	crossChainLogs     []types.Log
-	valueTransferLogs  []types.Log
-	sequencerLogs      []types.Log
-	secretRequestLogs  []types.Log
-	secretResponseLogs []types.Log
-	rollupAddedLogs    []types.Log
 }
 
 // groupLogsByTransaction organizes logs by transaction hash and topic
@@ -298,9 +298,9 @@ func (r *Repository) createTransactionData(txHash gethcommon.Hash) (*common.L1Tx
 
 	return &common.L1TxData{
 		Transaction:        tx,
-		Receipt:           receipt,
-		CrossChainMessages: &common.CrossChainMessages{},
-		ValueTransfers:    &common.ValueTransferEvents{},
+		Receipt:            receipt,
+		CrossChainMessages: common.CrossChainMessages{},
+		ValueTransfers:     common.ValueTransferEvents{},
 	}, nil
 }
 
@@ -317,7 +317,7 @@ func (r *Repository) processLogGroup(txLogs *logGroup, txData *common.L1TxData, 
 func (r *Repository) processCrossChainLogs(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data) {
 	if len(txLogs.crossChainLogs) > 0 {
 		if messages, err := crosschain.ConvertLogsToMessages(txLogs.crossChainLogs, crosschain.CrossChainEventName, crosschain.MessageBusABI); err == nil {
-			txData.CrossChainMessages = &messages
+			txData.CrossChainMessages = messages
 			processed.AddEvent(common.CrossChainMessageTx, txData)
 		}
 	}
@@ -327,7 +327,7 @@ func (r *Repository) processCrossChainLogs(txLogs *logGroup, txData *common.L1Tx
 func (r *Repository) processValueTransferLogs(txLogs *logGroup, txData *common.L1TxData, processed *common.ProcessedL1Data) {
 	if len(txLogs.valueTransferLogs) > 0 {
 		if transfers, err := crosschain.ConvertLogsToValueTransfers(txLogs.valueTransferLogs, crosschain.ValueTransferEventName, crosschain.MessageBusABI); err == nil {
-			txData.ValueTransfers = &transfers
+			txData.ValueTransfers = transfers
 			processed.AddEvent(common.CrossChainValueTranserTx, txData)
 		}
 	}
