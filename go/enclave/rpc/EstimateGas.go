@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/params"
+
 	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
@@ -17,7 +17,6 @@ import (
 	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
-	"github.com/ten-protocol/go-ten/go/common/syserr"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
@@ -99,12 +98,11 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.
 	// The single pass will run once at the highest gas cap and return gas used. Not completely reliable,
 	// but is quick.
-	executionGasEstimate, gasPrice, err := rpc.estimateGasSinglePass(builder.ctx, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
+	executionGasEstimate, revert, gasPrice, err := estimateGasSinglePass(builder.ctx, rpc, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
 	if err != nil {
-		err = fmt.Errorf("unable to estimate transaction - %w", err)
-
-		if errors.Is(err, syserr.InternalError{}) {
-			return err
+		if len(revert) > 0 {
+			builder.Err = newRevertError(revert)
+			return nil
 		}
 
 		// return EVM error
@@ -127,7 +125,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	return nil
 }
 
-func (rpc *EncryptionManager) calculateMaxGasCap(ctx context.Context, gasCap uint64, argsGas *hexutil.Uint64) uint64 {
+func calculateMaxGasCap(ctx context.Context, rpc *EncryptionManager, gasCap uint64, argsGas *hexutil.Uint64) uint64 {
 	// Fetch the current batch header to get the batch gas limit
 	batchHeader, err := rpc.storage.FetchHeadBatchHeader(ctx)
 	if err != nil {
@@ -144,7 +142,7 @@ func (rpc *EncryptionManager) calculateMaxGasCap(ctx context.Context, gasCap uin
 	// If args.Gas is specified, take the minimum of gasCap and args.Gas
 	if argsGas != nil {
 		argsGasUint64 := uint64(*argsGas)
-		if argsGasUint64 < gasCap {
+		if argsGasUint64 < gasCap && argsGasUint64 >= params.TxGas {
 			rpc.logger.Debug("Gas cap adjusted based on args.Gas",
 				"argsGas", argsGasUint64,
 				"previousGasCap", gasCap,
@@ -189,39 +187,33 @@ func calculateProxyOverhead(txArgs *gethapi.TransactionArgs) uint64 {
 // The modifications are an overhead buffer and a 20% increase to account for warm storage slots. This is because the stateDB
 // for the head batch might not be fully clean in terms of the running call. Cold storage slots cost far more than warm ones to
 // read and write.
-func (rpc *EncryptionManager) estimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, gasCap uint64) (hexutil.Uint64, *big.Int, common.SystemError) {
-	maxGasCap := rpc.calculateMaxGasCap(ctx, gasCap, args.Gas)
+func estimateGasSinglePass(ctx context.Context, rpc *EncryptionManager, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, globalGasCap uint64) (hexutil.Uint64, []byte, *big.Int, error) {
+	maxGasCap := calculateMaxGasCap(ctx, rpc, globalGasCap, args.Gas)
 	// allowance will either be the maxGasCap or the balance allowance.
 	// If the users funds are floaty, this might cause issues combined with the l1 pricing.
-	allowance, feeCap, err := rpc.normalizeFeeCapAndAdjustGasLimit(ctx, args, blkNumber, maxGasCap)
+	allowance, feeCap, err := normalizeFeeCapAndAdjustGasLimit(ctx, rpc, args, blkNumber, maxGasCap)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 
-	// Set the gas limit to the provided gasCap
-	args.Gas = (*hexutil.Uint64)(&allowance)
-
 	// Perform a single gas estimation pass using isGasEnough
-	failed, result, err := rpc.isGasEnough(ctx, args, allowance, blkNumber)
+	failed, result, err := isGasEnough(ctx, rpc, args, allowance, blkNumber)
 	if err != nil {
 		// Return zero values and the encountered error if estimation fails
-		return 0, nil, err
+		return 0, nil, nil, err
 	}
 
 	if failed {
-		if result != nil && result.Err != vm.ErrOutOfGas { //nolint: errorlint
-			if len(result.Revert()) > 0 {
-				return 0, gethcommon.Big0, newRevertError(result)
-			}
-			return 0, gethcommon.Big0, result.Err
+		if result != nil && !errors.Is(result.Err, vm.ErrOutOfGas) {
+			return 0, result.Revert(), nil, result.Err
 		}
 		// If the gas cap is insufficient, return an appropriate error
-		return 0, nil, fmt.Errorf("gas required exceeds the provided gas cap (%d)", gasCap)
+		return 0, nil, nil, fmt.Errorf("gas required exceeds allowance (%d)", globalGasCap)
 	}
 
 	if result == nil {
 		// If there's no result, something went wrong
-		return 0, nil, fmt.Errorf("no execution result returned")
+		return 0, nil, nil, fmt.Errorf("no execution result returned")
 	}
 
 	// Extract the gas used from the execution result.
@@ -235,10 +227,10 @@ func (rpc *EncryptionManager) estimateGasSinglePass(ctx context.Context, args *g
 	gasUsedBig.Div(gasUsedBig, big.NewInt(100))
 	gasUsed := hexutil.Uint64(gasUsedBig.Uint64())
 
-	return gasUsed, feeCap, nil
+	return gasUsed, nil, feeCap, nil
 }
 
-func (rpc *EncryptionManager) normalizeFeeCapAndAdjustGasLimit(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, hi uint64) (uint64, *big.Int, error) {
+func normalizeFeeCapAndAdjustGasLimit(ctx context.Context, rpc *EncryptionManager, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, hi uint64) (uint64, *big.Int, error) {
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int
 	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
@@ -289,7 +281,7 @@ func (rpc *EncryptionManager) normalizeFeeCapAndAdjustGasLimit(ctx context.Conte
 
 // Create a helper to check if a gas allowance results in an executable transaction
 // isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
-func (rpc *EncryptionManager) isGasEnough(ctx context.Context, args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
+func isGasEnough(ctx context.Context, rpc *EncryptionManager, args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error) {
 	defer core.LogMethodDuration(rpc.logger, measure.NewStopwatch(), "enclave.go:IsGasEnough")
 	args.Gas = (*hexutil.Uint64)(&gas)
 	result, err := rpc.chain.ObsCallAtBlock(ctx, args, blkNumber)
@@ -300,34 +292,4 @@ func (rpc *EncryptionManager) isGasEnough(ctx context.Context, args *gethapi.Tra
 		return true, nil, err // Bail out
 	}
 	return result.Failed(), result, nil
-}
-
-func newRevertError(result *gethcore.ExecutionResult) *revertError {
-	reason, errUnpack := abi.UnpackRevert(result.Revert())
-	err := errors.New("execution reverted")
-	if errUnpack == nil {
-		err = fmt.Errorf("execution reverted: %v", reason)
-	}
-	return &revertError{
-		error:  err,
-		reason: hexutil.Encode(result.Revert()),
-	}
-}
-
-// revertError is an API error that encompasses an EVM revertal with JSON error
-// code and a binary data blob.
-type revertError struct {
-	error
-	reason string // revert reason hex encoded
-}
-
-// ErrorCode returns the JSON error code for a revertal.
-// See: https://github.com/ethereum/wiki/wiki/JSON-RPC-Error-Codes-Improvement-Proposal
-func (e *revertError) ErrorCode() int {
-	return 3
-}
-
-// ErrorData returns the hex encoded revert reason.
-func (e *revertError) ErrorData() interface{} {
-	return e.reason
 }

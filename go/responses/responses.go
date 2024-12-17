@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ten-protocol/go-ten/go/common/syserr"
@@ -170,9 +172,9 @@ func DecodeResponse[T any](encoded []byte) (*T, error) {
 	return resp.Result, nil
 }
 
-func convertError(err error) *errutil.DataError {
+func convertError(err error) rpc.DataError {
 	// check if it's a serialized error and handle any error wrapping that might have occurred
-	var e *errutil.DataError
+	var e rpc.DataError
 	if ok := errors.As(err, &e); ok {
 		return e
 	}

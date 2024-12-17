@@ -79,12 +79,6 @@ func (oc *tenChain) Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, 
 		return nil, err
 	}
 
-	// the execution might have succeeded (err == nil) but the evm contract logic might have failed (result.Failed() == true)
-	if result.Failed() {
-		oc.logger.Debug(fmt.Sprintf("Obs_Call: Failed to execute contract %s.", apiArgs.To), log.CtrErrKey, result.Err)
-		return nil, result.Err
-	}
-
 	if oc.logger.Enabled(context.Background(), gethlog.LevelTrace) {
 		oc.logger.Trace("Obs_Call successful", "result", hexutils.BytesToHex(result.ReturnData))
 	}
@@ -117,13 +111,7 @@ func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Transac
 			batch.Header.Root.Hex()))
 	}
 
-	result, err := evm.ExecuteCall(ctx, callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.config, oc.logger)
-	if err != nil {
-		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
-		return result, err
-	}
-
-	return result, nil
+	return evm.ExecuteCall(ctx, callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.config, oc.logger)
 }
 
 // GetChainStateAtTransaction Returns the state of the chain at certain block height after executing transactions up to the selected transaction
