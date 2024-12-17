@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/status-im/keycard-go/hexutils"
+
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -101,8 +103,10 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// but is quick.
 	executionGasEstimate, revert, gasPrice, err := estimateGasSinglePass(builder.ctx, rpc, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
 	if err != nil {
+		rpc.logger.Debug("Gas estimation failed", "revert", hexutils.BytesToHex(revert), "error", err)
 		if len(revert) > 0 {
 			builder.Err = newRevertError(revert)
+			rpc.logger.Debug("revert error", "err", builder.Err)
 			return nil
 		}
 
@@ -200,22 +204,27 @@ func estimateGasSinglePass(ctx context.Context, rpc *EncryptionManager, args *ge
 	// Perform a single gas estimation pass using isGasEnough
 	failed, result, err := isGasEnough(ctx, rpc, args, allowance, blkNumber)
 	if err != nil {
+		rpc.logger.Debug("1", "error", err)
 		// Return zero values and the encountered error if estimation fails
 		return 0, nil, nil, err
 	}
 
 	if failed {
 		if result != nil && !errors.Is(result.Err, vm.ErrOutOfGas) {
+			rpc.logger.Debug("2", "error", result.Err)
 			return 0, result.Revert(), nil, result.Err
 		}
+		rpc.logger.Debug("3")
 		// If the gas cap is insufficient, return an appropriate error
 		return 0, nil, nil, fmt.Errorf("gas required exceeds allowance (%d)", globalGasCap)
 	}
 
 	if result == nil {
+		rpc.logger.Debug("4")
 		// If there's no result, something went wrong
 		return 0, nil, nil, fmt.Errorf("no execution result returned")
 	}
+	rpc.logger.Debug("5")
 
 	// Extract the gas used from the execution result.
 	// Add an overhead buffer to account for the fact that the execution might not be able to be completed in the same batch.
