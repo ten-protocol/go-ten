@@ -229,11 +229,11 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 			r.processValueTransferLogs(l, txData, processed)
 		case crosschain.SequencerEnclaveGrantedEventID:
 			r.processSequencerLogs(l, txData, processed)
-			r.processManagementContractTx(txData, processed) // we need to decode the InitialiseSecretTx
+			r.processManagementContractTx(txData, processed, "SequencerEnclaveGrantedEventID") // we need to decode the InitialiseSecretTx
 		case crosschain.ImportantContractAddressUpdatedID:
-			r.processManagementContractTx(txData, processed)
+			r.processManagementContractTx(txData, processed, "ImportantContractAddressUpdatedID")
 		case crosschain.RollupAddedID:
-			r.processManagementContractTx(txData, processed)
+			r.processManagementContractTx(txData, processed, "RollupAddedID")
 		case crosschain.NetworkSecretRequestedID:
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case crosschain.NetworkSecretRespondedID:
@@ -305,20 +305,27 @@ func (r *Repository) processSequencerLogs(l types.Log, txData *common.L1TxData, 
 }
 
 // processDecodedTransaction handles decoded transaction types
-func (r *Repository) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *Repository) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data, tag string) {
 	b := processed.BlockHeader
 	if decodedTx := r.mgmtContractLib.DecodeTx(txData.Transaction); decodedTx != nil {
 		switch t := decodedTx.(type) {
 		case *ethadapter.L1InitializeSecretTx:
+			println("ADDING L1InitializeSecretTx EVENT WITH TAG: ", tag)
 			processed.AddEvent(common.InitialiseSecretTx, txData)
 		case *ethadapter.L1SetImportantContractsTx:
+			println("ADDING SetImportantContractsTx EVENT WITH TAG: ", tag)
 			processed.AddEvent(common.SetImportantContractsTx, txData)
 		case *ethadapter.L1RollupHashes:
 			if blobs, err := r.blobResolver.FetchBlobs(context.Background(), b, t.BlobHashes); err == nil {
 				txData.Blobs = blobs
 				processed.AddEvent(common.RollupTx, txData)
 			}
+		default:
+			r.logger.Warn("Unknown tx type", "txHash", txData.Transaction.Hash().Hex())
 		}
+	}
+	if len(processed.GetEvents(common.RollupTx)) > 1 {
+		println("MORE THAN ONE ROLLUP INSPECT ")
 	}
 }
 

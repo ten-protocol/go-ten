@@ -466,15 +466,21 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
 		return false, nil
 	}
-	receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
+	//receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
+	//if err != nil {
+	//	g.submitDataLock.Unlock() // lock must be released before returning
+	//	return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
+	//}
+	//txsReceiptsAndBlobs, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractRelevantTenTransactions(block, receipts)
+	processedData, err := g.sl.L1Repo().ExtractTenTransactions(block)
 	if err != nil {
 		g.submitDataLock.Unlock() // lock must be released before returning
-		return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
+		return false, fmt.Errorf("could not extract ten transaction for block=%s - %w", block.Hash(), err)
 	}
-	txsReceiptsAndBlobs, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractRelevantTenTransactions(block, receipts)
-	processedData, err := g.sl.L1Repo().ExtractTenTransactions(block)
 
-	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), txsReceiptsAndBlobs, processedData)
+	rollupTxs, syncContracts := g.getRollupsAndContractAddrTxs(*processedData)
+
+	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), processedData)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -494,7 +500,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	}
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block, rollupTxs, contractAddressTxs)
+	g.processL1BlockTransactions(block, rollupTxs, syncContracts)
 
 	if err != nil {
 		return false, fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
@@ -508,7 +514,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx, contractAddressTxs []*ethadapter.L1SetImportantContractsTx) {
+func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx, syncContracts bool) {
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
 	if err != nil {
@@ -536,7 +542,7 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs [
 		}
 	}
 
-	if len(contractAddressTxs) > 0 {
+	if syncContracts {
 		go func() {
 			err := g.sl.L1Publisher().ResyncImportantContracts()
 			if err != nil {
@@ -816,4 +822,29 @@ func (g *Guardian) evictEnclaveFromHAPool() {
 		g.logger.Error("Error while stopping guardian of failed enclave", log.ErrKey, err)
 	}
 	go g.sl.Enclaves().EvictEnclave(g.enclaveID)
+}
+
+func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data) ([]*ethadapter.L1RollupTx, bool) {
+	rollupTxs := make([]*ethadapter.L1RollupTx, 0)
+	var syncContracts bool
+	syncContracts = false
+
+	for _, txData := range processed.GetEvents(common.RollupTx) {
+		encodedRlp, err := ethadapter.DecodeBlobs(txData.Blobs)
+		if err != nil {
+			g.logger.Crit("could not decode blobs.", log.ErrKey, err)
+			continue
+		}
+
+		rlp := &ethadapter.L1RollupTx{
+			Rollup: encodedRlp,
+		}
+		rollupTxs = append(rollupTxs, rlp)
+	}
+
+	// if any contracts have been updated then we need to resync
+	if len(processed.GetEvents(common.SetImportantContractsTx)) > 0 {
+		syncContracts = true
+	}
+	return rollupTxs, syncContracts
 }

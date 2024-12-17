@@ -39,7 +39,7 @@ func (m *blockMessageExtractor) Enabled() bool {
 	return m.GetBusAddress().Big().Cmp(gethcommon.Big0) != 0
 }
 
-func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, receipts common.L1Receipts, processed *common.ProcessedL1Data) error {
+func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader value transfer messages processed", log.BlockHashKey, block.Hash())
 
 	transferEvents := processed.GetEvents(common.CrossChainValueTranserTx)
@@ -68,7 +68,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 // block - the L1 block for which events are extracted.
 // receipts - all of the receipts for the corresponding block. This is validated.
 // FIXME remove receipts arg
-func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *types.Header, _ common.L1Receipts, processed *common.ProcessedL1Data) error {
+func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *types.Header, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader cross chain messages processed", log.BlockHashKey, block.Hash())
 
 	messageEvents := processed.GetEvents(common.CrossChainMessageTx)
