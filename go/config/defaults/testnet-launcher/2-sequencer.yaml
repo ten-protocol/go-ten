@@ -9,9 +9,9 @@ host:
    p2p:
       bindAddress: 0.0.0.0:15000
    enclave:
-      rpcAddresses: [ "sequencer-enclave:11000" ]
+      rpcAddresses: [ "sequencer-enclave-0:11000" ]
 enclave:
    db:
-      edgelessDBHost: sequencer-edgelessdb
+      edgelessDBHost: sequencer-edgelessdb-0
    rpc:
       bindAddress: 0.0.0.0:11000
