@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/core/vm"
+
 	"github.com/ethereum/go-ethereum/params"
 
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
@@ -286,9 +287,7 @@ func isGasEnough(ctx context.Context, rpc *EncryptionManager, args *gethapi.Tran
 	args.Gas = (*hexutil.Uint64)(&gas)
 	result, err := rpc.chain.ObsCallAtBlock(ctx, args, blkNumber)
 	if err != nil {
-		if errors.Is(err, gethcore.ErrIntrinsicGas) {
-			return true, nil, nil // Special case, raise gas limit
-		}
+		// since we estimate gas in a single pass, any error is just returned
 		return true, nil, err // Bail out
 	}
 	return result.Failed(), result, nil
