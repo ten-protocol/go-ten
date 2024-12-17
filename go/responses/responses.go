@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ten-protocol/go-ten/go/common/syserr"
@@ -100,25 +98,6 @@ func AsEncryptedResponse[T any](data *T, encryptHandler Encryptor) *EnclaveRespo
 	return AsPlaintextResponse(encrypted)
 }
 
-// AsEncryptedEmptyResponse - encrypts an empty message
-func AsEncryptedEmptyResponse(encryptHandler Encryptor) *EnclaveResponse {
-	userResp := UserResponse[any]{
-		Result: nil,
-	}
-
-	encoded, err := json.Marshal(userResp)
-	if err != nil {
-		return AsPlaintextError(err)
-	}
-
-	encrypted, err := encryptHandler.Encrypt(encoded)
-	if err != nil {
-		return AsPlaintextError(err)
-	}
-
-	return AsPlaintextResponse(encrypted)
-}
-
 // AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
 func AsEncryptedError(err error, encrypt Encryptor) *EnclaveResponse {
 	userResp := UserResponse[string]{
@@ -163,7 +142,7 @@ func DecodeResponse[T any](encoded []byte) (*T, error) {
 	resp := UserResponse[T]{}
 	err := json.Unmarshal(encoded, &resp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not decode response. Cause: %w", err)
 	}
 	if resp.Err != nil {
 		return nil, resp.Err
@@ -172,9 +151,9 @@ func DecodeResponse[T any](encoded []byte) (*T, error) {
 	return resp.Result, nil
 }
 
-func convertError(err error) rpc.DataError {
+func convertError(err error) *errutil.DataError {
 	// check if it's a serialized error and handle any error wrapping that might have occurred
-	var e rpc.DataError
+	var e *errutil.DataError
 	if ok := errors.As(err, &e); ok {
 		return e
 	}

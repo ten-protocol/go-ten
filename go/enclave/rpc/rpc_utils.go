@@ -3,6 +3,8 @@ package rpc
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -41,35 +43,17 @@ func storeTxEnabled[P any, R any](rpc *EncryptionManager, builder *CallBuilder[P
 	return true
 }
 
-// lifted from go-ethereum
-// revertError is an API error that encompasses an EVM revert with JSON error
-// code and a binary data blob.
-type revertError struct {
-	error
-	reason string // revert reason hex encoded
-}
-
-// ErrorCode returns the JSON error code for a revert.
-// See: https://github.com/ethereum/wiki/wiki/JSON-RPC-Error-Codes-Improvement-Proposal
-func (e *revertError) ErrorCode() int {
-	return 3
-}
-
-// ErrorData returns the hex encoded revert reason.
-func (e *revertError) ErrorData() interface{} {
-	return e.reason
-}
-
 // newRevertError creates a revertError instance with the provided revert data.
-func newRevertError(revert []byte) *revertError {
+func newRevertError(revert []byte) *errutil.DataError {
 	err := vm.ErrExecutionReverted
 
 	reason, errUnpack := abi.UnpackRevert(revert)
 	if errUnpack == nil {
 		err = fmt.Errorf("%w: %v", vm.ErrExecutionReverted, reason)
 	}
-	return &revertError{
-		error:  err,
-		reason: hexutil.Encode(revert),
+	return &errutil.DataError{
+		Err:    err.Error(),
+		Code:   3, // See: https://github.com/ethereum/wiki/wiki/JSON-RPC-Error-Codes-Improvement-Proposal
+		Reason: hexutil.Encode(revert),
 	}
 }

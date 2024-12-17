@@ -4,7 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
 type ViewingKeyEncryptor func([]byte) ([]byte, error)
@@ -13,7 +13,7 @@ type ViewingKeyEncryptor func([]byte) ([]byte, error)
 // which will be decoded only on the client side.
 type UserResponse[T any] struct {
 	Result *T
-	Err    rpc.DataError
+	Err    *errutil.DataError
 }
 
 // Error - converts the encoded string in the response into a normal error and returns it.
