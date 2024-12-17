@@ -153,6 +153,9 @@ func (c *contractLibImpl) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 
+	for i, b := range blobHashes {
+		println("MGMT CONTRACT creating blob with hashes ", b.Hex(), " at index: ", i)
+	}
 	return &types.BlobTx{
 		To:         *c.addr,
 		Data:       data,

@@ -49,14 +49,29 @@ func (tx *L1TxData) HasSequencerEnclaveID() bool {
 }
 
 func (p *ProcessedL1Data) AddEvent(txType L1TxType, tx *L1TxData) {
+	eventType := uint8(txType)
+
+	// Find existing event group
 	for i := range p.Events {
-		if p.Events[i].Type == uint8(txType) {
-			p.Events[i].Txs = append(p.Events[i].Txs, tx)
-			return
+		if p.Events[i].Type != eventType {
+			continue
 		}
+
+		txHash := tx.Transaction.Hash()
+
+		// check for duplicate transaction
+		for _, existingTx := range p.Events[i].Txs {
+			if existingTx.Transaction.Hash() == txHash {
+				return // Skip duplicate transaction
+			}
+		}
+
+		p.Events[i].Txs = append(p.Events[i].Txs, tx)
+		return
 	}
+
 	p.Events = append(p.Events, L1Event{
-		Type: uint8(txType), // Convert to uint8 when storing
+		Type: eventType,
 		Txs:  []*L1TxData{tx},
 	})
 }

@@ -136,12 +136,8 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 	return eas
 }
 
-func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, proof types.Receipt) common.SystemError {
-	e.mainMutex.Lock()
-	defer e.mainMutex.Unlock()
-
+func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, _ types.Receipt) common.SystemError {
 	// todo - use the proof
-
 	err := e.storage.StoreNodeType(context.Background(), id, common.BackupSequencer)
 	if err != nil {
 		return responses.ToInternalError(err)
@@ -494,6 +490,16 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, br *common.Bloc
 		// Unsure what to do here; block has been stored
 	}
 
+	sequencerAddedTxs := processed.GetEvents(common.SequencerAddedTx)
+	for _, tx := range sequencerAddedTxs {
+		if tx.HasSequencerEnclaveID() {
+			err = e.AddSequencer(tx.SequencerEnclaveID, *tx.Receipt)
+			if err != nil {
+				e.logger.Crit("Encountered error while adding sequencer enclaveID", log.ErrKey, err)
+			}
+
+		}
+	}
 	if ingestion.IsFork() {
 		e.registry.OnL1Reorg(ingestion)
 		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)

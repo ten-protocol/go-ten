@@ -209,13 +209,12 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		Events:      []common.L1Event{},
 	}
 
-	// Fetch all relevant logs for the block
 	logs, err := r.fetchRelevantLogs(block)
 	if err != nil {
 		return nil, err
 	}
 
-	// Process each log sequentially, preserving their natural order
+	// we have to loop through to preserve receipt order
 	for _, l := range logs {
 		txData, err := r.createTransactionData(l.TxHash)
 		if err != nil {
@@ -223,24 +222,22 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 			continue
 		}
 
-		// Categorize logs inline based on their topics
 		switch l.Topics[0] {
 		case crosschain.CrossChainEventID:
-
 			r.processCrossChainLogs(l, txData, processed)
 		case crosschain.ValueTransferEventID:
 			r.processValueTransferLogs(l, txData, processed)
 		case crosschain.SequencerEnclaveGrantedEventID:
 			r.processSequencerLogs(l, txData, processed)
-			r.processDecodedTransaction(txData, processed) // we need to decode the InitialiseSecretTx
+			r.processManagementContractTx(txData, processed) // we need to decode the InitialiseSecretTx
 		case crosschain.ImportantContractAddressUpdatedID:
-			r.processDecodedTransaction(txData, processed)
+			r.processManagementContractTx(txData, processed)
+		case crosschain.RollupAddedID:
+			r.processManagementContractTx(txData, processed)
 		case crosschain.NetworkSecretRequestedID:
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case crosschain.NetworkSecretRespondedID:
 			processed.AddEvent(common.SecretResponseTx, txData)
-		case crosschain.RollupAddedID:
-			r.processDecodedTransaction(txData, processed)
 		default:
 			r.logger.Warn("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
 		}
@@ -249,7 +246,7 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 	return processed, nil
 }
 
-// fetchRelevantLogs retrieves all logs from relevant contract addresses
+// fetchRelevantLogs retrieves all logs from management contract and message bus addresses
 func (r *Repository) fetchRelevantLogs(block *common.L1Block) ([]types.Log, error) {
 	blkHash := block.Hash()
 	var allAddresses []gethcommon.Address
@@ -295,7 +292,6 @@ func (r *Repository) processCrossChainLogs(l types.Log, txData *common.L1TxData,
 func (r *Repository) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
 	if transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, crosschain.ValueTransferEventName, crosschain.MessageBusABI); err == nil {
 		txData.ValueTransfers = transfers
-		println("VALUE TRANSFER ADDED")
 		processed.AddEvent(common.CrossChainValueTranserTx, txData)
 	}
 }
@@ -304,26 +300,22 @@ func (r *Repository) processValueTransferLogs(l types.Log, txData *common.L1TxDa
 func (r *Repository) processSequencerLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
 	if enclaveID, err := getEnclaveIdFromLog(l); err == nil {
 		txData.SequencerEnclaveID = enclaveID
-		println("SEQUENCER ADDED TX")
 		processed.AddEvent(common.SequencerAddedTx, txData)
 	}
 }
 
 // processDecodedTransaction handles decoded transaction types
-func (r *Repository) processDecodedTransaction(txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *Repository) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
 	b := processed.BlockHeader
 	if decodedTx := r.mgmtContractLib.DecodeTx(txData.Transaction); decodedTx != nil {
 		switch t := decodedTx.(type) {
 		case *ethadapter.L1InitializeSecretTx:
-			println("INITIALIZE TX ADDED")
 			processed.AddEvent(common.InitialiseSecretTx, txData)
 		case *ethadapter.L1SetImportantContractsTx:
-			println("SET IMPORTANT ADDED")
 			processed.AddEvent(common.SetImportantContractsTx, txData)
 		case *ethadapter.L1RollupHashes:
 			if blobs, err := r.blobResolver.FetchBlobs(context.Background(), b, t.BlobHashes); err == nil {
 				txData.Blobs = blobs
-				println("ROLLUP ADDED")
 				processed.AddEvent(common.RollupTx, txData)
 			}
 		}

@@ -242,7 +242,8 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	// todo - @matt - does it make sense to use a timeout context?
 	err := g.submitL2Batch(context.Background(), batch)
 	if err != nil {
-		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
+		// FIXME change back to Error
+		g.logger.Warn("Error submitting batch to enclave", log.ErrKey, err)
 	}
 }
 

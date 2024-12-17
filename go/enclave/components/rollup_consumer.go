@@ -126,43 +126,54 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 	rollupTxs := processed.GetEvents(common.RollupTx)
 	rollups := make([]*common.ExtRollup, 0, len(rollupTxs))
 
-	blobs, blobHashes, err := rc.extractBlobsAndHashes(rollupTxs)
-	if err != nil {
-		return nil, err
-	}
-
+	//println("---- START OF ROLLUP CHECK -------")
+	//println("length of rollupTxs: ", len(rollupTxs))
 	for i, tx := range rollupTxs {
 		t := rc.MgmtContractLib.DecodeTx(tx.Transaction)
 		if t == nil {
 			continue
 		}
 
+		//println("TX HASH: ", tx.Transaction.Hash().Hex())
 		rollupHashes, ok := t.(*ethadapter.L1RollupHashes)
 		if !ok {
 			continue
 		}
 
-		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
-			rc.logger.Warn(fmt.Sprintf("blob hashes in rollup at index %d do not match the rollup blob hashes. Cause: %s", i, err))
-			continue // Blob hashes don't match, skip this rollup
+		// Only use blobs from this transaction
+		blobs := tx.Blobs
+		_, blobHashes, err := ethadapter.MakeSidecar(blobs)
+		if err != nil {
+			return nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
 		}
+
+		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
+			rc.logger.Warn(fmt.Sprintf("blob hashes in rollup at index %d do not match the rollup blob hashes. Cause: %s", i, err), log.NodeIDKey)
+			continue
+		}
+
+		//println("ROLLUP CONSUMER blobs: ", len(blobs))
+		//for i, h := range blobHashes {
+		//	println("ROLLUP CONSUMER blob hash: ", h.Hex(), " at index: ", i)
+		//}
 
 		r, err := ethadapter.ReconstructRollup(blobs)
 		if err != nil {
-			// This is a critical error because we've already verified the blob hashes
-			// If we can't reconstruct the rollup at this point, something is seriously wrong
 			return nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
 		}
 
+		//println("Adding rollup to list: ", r.Hash().Hex())
 		rollups = append(rollups, r)
 
 		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, processed.BlockHeader.Hash())
 	}
 	if len(rollups) > 1 {
-		println("HERE")
 		if rollups[0].Hash() == rollups[1].Hash() {
-			println("ROLLUPS THE SAME")
+			println("ROLLUPS THE SAME: ", rollups[0].Hash().Hex())
+			return []*common.ExtRollup{rollups[0]}, nil
+			//rc.logger.Crit("DUPLICATE ROLLUP")
 		}
+
 	}
 	return rollups, nil
 }
