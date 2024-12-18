@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	ethclient_ethereum "github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
@@ -302,21 +303,49 @@ func (m *Node) BalanceAt(gethcommon.Address, *big.Int) (*big.Int, error) {
 	panic("not implemented")
 }
 
-// GetLogs is a mock method - we don't really have logs on the mock transactions, so it returns a basic log for every tx
-// so the host recognises them as relevant
+// GetLogs is a mock method - we create logs with topics matching the real contract events
 func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
 	if fq.BlockHash == nil {
 		return logs, nil
 	}
+
 	blk, err := m.BlockByHash(*fq.BlockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 	}
+
 	for _, tx := range blk.Transactions() {
+		if tx.To() == nil {
+			continue
+		}
+
+		// map transaction types to their corresponding event topics
+		var topic gethcommon.Hash
+		switch tx.To().Hex() {
+		case rollupTxAddr.Hex():
+			topic = crosschain.RollupAddedID
+		case messageBusAddr.Hex():
+			topic = crosschain.CrossChainEventID
+		case depositTxAddr.Hex():
+			topic = crosschain.ValueTransferEventID
+		case storeSecretTxAddr.Hex():
+			topic = crosschain.NetworkSecretRespondedID
+		case requestSecretTxAddr.Hex():
+			topic = crosschain.NetworkSecretRequestedID
+		case initializeSecretTxAddr.Hex():
+			topic = crosschain.SequencerEnclaveGrantedEventID
+		default:
+			continue
+		}
+
 		dummyLog := types.Log{
-			BlockHash: blk.Hash(),
-			TxHash:    tx.Hash(),
+			Address:     *tx.To(),
+			BlockHash:   blk.Hash(),
+			TxHash:      tx.Hash(),
+			Topics:      []gethcommon.Hash{topic},
+			BlockNumber: blk.NumberU64(),
+			Index:       uint(len(logs)),
 		}
 		logs = append(logs, dummyLog)
 	}

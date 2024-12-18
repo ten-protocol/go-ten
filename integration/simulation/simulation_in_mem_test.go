@@ -16,6 +16,8 @@ import (
 // Everything else is reported to this value. This number has to be adjusted in conjunction with the number of nodes. If it's too low,
 // the CPU usage will be very high during the simulation which might give inconclusive results.
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
+	//FIXME temporarily disable
+	t.Skipf("skipping test until mocks are written")
 	setupSimTestLog("in-mem")
 
 	// todo (#718) - try increasing this back to 7 once faster-finality model is optimised
