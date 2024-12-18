@@ -12,10 +12,14 @@ import (
 )
 
 func main() {
-	// optionally set edbHost from cli flag, default to obscuronode-edgelessdb-0
-	edbHost := "obscuronode-edgelessdb-0"
+	// get edbHost from first command line arg
+	var edbHost string
 	if len(os.Args) > 1 {
 		edbHost = os.Args[1]
+	} else {
+		fmt.Println("Usage: edbconnect <edb-host>")
+		fmt.Println("Ensure you have the latest copy of the ./edb-connect.sh launch script if you see this error.")
+		os.Exit(1)
 	}
 
 	fmt.Println("Retrieving Edgeless DB credentials...")

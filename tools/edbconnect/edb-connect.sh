@@ -5,11 +5,12 @@ IMAGE_NAME="testnetobscuronet.azurecr.io/obscuronet/edbconnect:latest"
 CONTAINER_BASE_NAME="edb-connect"
 UNIQUE_ID=$(date +%s%3N) # Using milliseconds for uniqueness
 CONTAINER_NAME="${CONTAINER_BASE_NAME}-${UNIQUE_ID}"
-VOLUME_NAME="obscuronode-enclave-volume"
+VOLUME_NAME="obscuronode-enclave-volume-0"
+DB_HOST="obscuronode-edgelessdb-0"
 NETWORK_NAME="node_network"
 SGX_ENCLAVE_DEVICE="/dev/sgx_enclave"
 SGX_PROVISION_DEVICE="/dev/sgx_provision"
-COMMAND="ego run /home/ten/go-ten/tools/edbconnect/main/main"
+COMMAND="ego run /home/ten/go-ten/tools/edbconnect/main/main $DB_HOST"
 
 # Function to destroy exited containers matching the base name
 destroy_exited_containers() {
