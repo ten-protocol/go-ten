@@ -358,7 +358,7 @@ func (g *Guardian) provideSecret() error {
 		}
 		// FIXME use processedData
 		secretRespTxs := g.sl.L1Publisher().FindSecretResponseTx(nextBlock)
-		//secretRespTxs := g.sl.L1Repo().ExtractTenTransactions(nextBlock)
+		// secretRespTxs := g.sl.L1Repo().ExtractTenTransactions(nextBlock)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
 				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)

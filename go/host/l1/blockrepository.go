@@ -162,9 +162,9 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 
 	for _, l := range logs {
 		if len(l.Topics) == 0 {
-            r.logger.Warn("Log has no topics", "txHash", l.TxHash)
-            continue
-        }
+			r.logger.Warn("Log has no topics", "txHash", l.TxHash)
+			continue
+		}
 
 		txData, err := r.createTransactionData(l.TxHash)
 		if err != nil {
