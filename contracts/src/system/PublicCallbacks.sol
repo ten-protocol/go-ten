@@ -126,7 +126,7 @@ contract PublicCallbacks is Initializable {
         // 22k is the max refund gas limit; 21k for a call and a bit for any accounting the contract might have.
         // ordinarily such accounting should be prepared for beforehand in the callback they pay for, but we give them a
         // slight buffer. 
-        (bool success, ) = to.call{value: gasRefund, gas: 35000}(abi.encodeWithSignature("handleRefund(uint256)", callbackId)); 
+        (bool success, ) = to.call{value: gasRefund, gas: 55000}(abi.encodeWithSignature("handleRefund(uint256)", callbackId)); 
         if (!success) {
             // if they dont accept the refund, we gift it to coinbase.
             payForCallback(gasRefund);
