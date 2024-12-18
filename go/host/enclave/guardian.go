@@ -468,12 +468,6 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
 		return false, nil
 	}
-	//receipts, err := g.sl.L1Repo().FetchObscuroReceipts(block)
-	//if err != nil {
-	//	g.submitDataLock.Unlock() // lock must be released before returning
-	//	return false, fmt.Errorf("could not fetch obscuro receipts for block=%s - %w", block.Hash(), err)
-	//}
-	//txsReceiptsAndBlobs, rollupTxs, contractAddressTxs := g.sl.L1Publisher().ExtractRelevantTenTransactions(block, receipts)
 	processedData, err := g.sl.L1Repo().ExtractTenTransactions(block)
 	if err != nil {
 		g.submitDataLock.Unlock() // lock must be released before returning

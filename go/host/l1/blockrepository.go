@@ -161,12 +161,18 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 	}
 
 	for _, l := range logs {
+		if len(l.Topics) == 0 {
+            r.logger.Warn("Log has no topics", "txHash", l.TxHash)
+            continue
+        }
+
 		txData, err := r.createTransactionData(l.TxHash)
 		if err != nil {
 			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 			continue
 		}
 
+		// first topic is always the event signature
 		switch l.Topics[0] {
 		case crosschain.CrossChainEventID:
 			r.processCrossChainLogs(l, txData, processed)
@@ -321,19 +327,6 @@ func (r *Repository) resetLiveStream() (chan *types.Header, ethereum.Subscriptio
 
 func (r *Repository) FetchBlockByHeight(height *big.Int) (*types.Block, error) {
 	return r.ethClient.BlockByNumber(height)
-}
-
-// isObscuroTransaction will look at the 'to' address of the transaction, we are only interested in management contract and bridge transactions
-func (r *Repository) isObscuroTransaction(transaction *types.Transaction) bool {
-	var allAddresses []gethcommon.Address
-	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
-	allAddresses = append(allAddresses, r.contractAddresses[MsgBus]...)
-	for _, address := range allAddresses {
-		if transaction.To() != nil && *transaction.To() == address {
-			return true
-		}
-	}
-	return false
 }
 
 // getEnclaveIdFromLog gets the enclave ID from the log topic

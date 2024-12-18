@@ -20,16 +20,16 @@ const (
 	SetImportantContractsTx
 )
 
+// ProcessedL1Data is submitted to the enclave by the guardian
+type ProcessedL1Data struct {
+	BlockHeader *types.Header
+	Events      []L1Event
+}
+
 // L1Event represents a single event type and its associated transactions
 type L1Event struct {
 	Type uint8
 	Txs  []*L1TxData
-}
-
-// ProcessedL1Data is submitted to the enclave by the guardian
-type ProcessedL1Data struct {
-	BlockHeader *types.Header
-	Events      []L1Event // Changed from map to slice of L1Event
 }
 
 // L1TxData represents an L1 transaction that are relevant to us
@@ -51,7 +51,6 @@ func (tx *L1TxData) HasSequencerEnclaveID() bool {
 func (p *ProcessedL1Data) AddEvent(txType L1TxType, tx *L1TxData) {
 	eventType := uint8(txType)
 
-	// Find existing event group
 	for i := range p.Events {
 		if p.Events[i].Type != eventType {
 			continue
