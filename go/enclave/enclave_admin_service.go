@@ -293,6 +293,8 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
+	println("----ROLLUP PRODUCTION----")
+	println("SEQUENCER CREATING ROLLUP WITH HASH: ", rollup.Hash().Hex())
 	return rollup, nil
 }
 

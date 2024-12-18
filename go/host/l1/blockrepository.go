@@ -214,6 +214,8 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		return nil, err
 	}
 
+	// println("--- LOG LOOP FOR block --- ", block.Hash().Hex())
+	// println("LOGS length ", len(logs))
 	// we have to loop through to preserve receipt order
 	for _, l := range logs {
 		txData, err := r.createTransactionData(l.TxHash)
@@ -221,6 +223,8 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 			continue
 		}
+
+		// println("LOG at index: ", i, " with hash ", l.TxHash.Hex())
 
 		switch l.Topics[0] {
 		case crosschain.CrossChainEventID:

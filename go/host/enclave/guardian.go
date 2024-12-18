@@ -662,12 +662,21 @@ func (g *Guardian) periodicRollupProduction() {
 			// or the size of accumulated batches is > g.maxRollupSize
 			timeExpired := time.Since(lastSuccessfulRollup) > g.rollupInterval
 			sizeExceeded := estimatedRunningRollupSize >= g.maxRollupSize
-			if timeExpired || sizeExceeded {
-				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded)
+			// if rollup retry takes longer than the block time then we need to allow time to publish
+			// todo better name
+			justPublished := time.Since(lastSuccessfulRollup) >= g.blockTime
+			if timeExpired || sizeExceeded && !justPublished {
+				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded, "justPublished", justPublished)
 				producedRollup, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
 				if err != nil {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
+				}
+				println("GUARDIAN produced rollup: ", producedRollup.Hash().Hex(), " fromBatch: ", fromBatch, " toBatch: ", producedRollup.Header.LastBatchSeqNo)
+				println("GUARDIAN timeExpired: ", timeExpired, " sizeExceeded: ", sizeExceeded)
+				println("rollupSize: ", estimatedRunningRollupSize, " availBatchesSumSize: ", availBatchesSumSize)
+				if sizeExceeded {
+					println("HERE")
 				}
 				// this method waits until the receipt is received
 				g.sl.L1Publisher().PublishRollup(producedRollup)
@@ -789,6 +798,10 @@ func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error)
 		bSize := len(batch.EncryptedTxBlob)
 		size += uint64(bSize)
 		currentNo++
+	}
+
+	if size > 131072 {
+		println("HERE")
 	}
 
 	return size, nil

@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -161,7 +162,8 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 	if len(rollups) > 1 {
 		println("HERE")
 		if rollups[0].Hash() == rollups[1].Hash() {
-			println("ROLLUPS THE SAME")
+			println("ROLLUPS THE SAME: ", rollups[0].Hash().Hex())
+			rc.logger.Crit("DUPLICATE ROLLUP")
 		}
 	}
 	return rollups, nil

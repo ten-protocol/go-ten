@@ -100,7 +100,6 @@ func (bp *l1BlockProcessor) HealthCheck() (bool, error) {
 }
 
 func (bp *l1BlockProcessor) tryAndInsertBlock(ctx context.Context, block *types.Header) (*BlockIngestionType, error) {
-
 	// We insert the block into the L1 chain and store it.
 	// in case the block already exists in the database, this will be treated like a fork, because the head changes to
 	// the block that was already saved

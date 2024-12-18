@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
