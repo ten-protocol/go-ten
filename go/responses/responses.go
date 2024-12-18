@@ -98,25 +98,6 @@ func AsEncryptedResponse[T any](data *T, encryptHandler Encryptor) *EnclaveRespo
 	return AsPlaintextResponse(encrypted)
 }
 
-// AsEncryptedEmptyResponse - encrypts an empty message
-func AsEncryptedEmptyResponse(encryptHandler Encryptor) *EnclaveResponse {
-	userResp := UserResponse[any]{
-		Result: nil,
-	}
-
-	encoded, err := json.Marshal(userResp)
-	if err != nil {
-		return AsPlaintextError(err)
-	}
-
-	encrypted, err := encryptHandler.Encrypt(encoded)
-	if err != nil {
-		return AsPlaintextError(err)
-	}
-
-	return AsPlaintextResponse(encrypted)
-}
-
 // AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
 func AsEncryptedError(err error, encrypt Encryptor) *EnclaveResponse {
 	userResp := UserResponse[string]{
@@ -161,7 +142,7 @@ func DecodeResponse[T any](encoded []byte) (*T, error) {
 	resp := UserResponse[T]{}
 	err := json.Unmarshal(encoded, &resp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not decode response. Cause: %w", err)
 	}
 	if resp.Err != nil {
 		return nil, resp.Err

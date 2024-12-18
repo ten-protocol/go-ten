@@ -3,6 +3,12 @@ package rpc
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/vm"
+
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -35,4 +41,19 @@ func storeTxEnabled[P any, R any](rpc *EncryptionManager, builder *CallBuilder[P
 		return false
 	}
 	return true
+}
+
+// newRevertError creates a revertError instance with the provided revert data.
+func newRevertError(revert []byte) *errutil.DataError {
+	err := vm.ErrExecutionReverted
+
+	reason, errUnpack := abi.UnpackRevert(revert)
+	if errUnpack == nil {
+		err = fmt.Errorf("%w: %v", vm.ErrExecutionReverted, reason)
+	}
+	return &errutil.DataError{
+		Err:    err.Error(),
+		Code:   3, // See: https://github.com/ethereum/wiki/wiki/JSON-RPC-Error-Codes-Improvement-Proposal
+		Reason: hexutil.Encode(revert),
+	}
 }
