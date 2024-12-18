@@ -8,7 +8,7 @@ network:
   batch:
     interval: 1s
     maxInterval: 1s # if this is greater than batch.interval then we make batches more slowly when there are no transactions
-    maxSize: 45000 # around 45kb - around 200 transactions / batch
+    maxSize: 61440 # 60kb - around 300 transactions / batch
   rollup:
     interval: 5s
     maxInterval: 10m # rollups will be produced after this time even if the data blob is not full
