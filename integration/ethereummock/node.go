@@ -145,8 +145,35 @@ func (m *Node) TransactionReceipt(_ gethcommon.Hash) (*types.Receipt, error) {
 	}, nil
 }
 
-func (m *Node) TransactionByHash(_ gethcommon.Hash) (*types.Transaction, bool, error) {
-	panic("not yet implemented")
+func (m *Node) TransactionByHash(hash gethcommon.Hash) (*types.Transaction, bool, error) {
+	// First check if the transaction exists in any block
+	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
+	if err != nil {
+		return nil, false, fmt.Errorf("could not retrieve head block. Cause: %w", err)
+	}
+
+	// Traverse the chain looking for the transaction
+	for !bytes.Equal(blk.ParentHash().Bytes(), (common.L1BlockHash{}).Bytes()) {
+		for _, tx := range blk.Transactions() {
+			if tx.Hash() == hash {
+				return tx, true, nil
+			}
+		}
+
+		blk, err = m.BlockResolver.FetchBlock(context.Background(), blk.ParentHash())
+		if err != nil {
+			return nil, false, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
+		}
+	}
+
+	// Check genesis block
+	for _, tx := range MockGenesisBlock.Transactions() {
+		if tx.Hash() == hash {
+			return tx, true, nil
+		}
+	}
+
+	return nil, false, nil
 }
 
 func (m *Node) Nonce(gethcommon.Address) (uint64, error) {

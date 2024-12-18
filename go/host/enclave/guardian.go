@@ -356,7 +356,9 @@ func (g *Guardian) provideSecret() error {
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
+		// FIXME use processedData
 		secretRespTxs := g.sl.L1Publisher().FindSecretResponseTx(nextBlock)
+		//secretRespTxs := g.sl.L1Repo().ExtractTenTransactions(nextBlock)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
 				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)
@@ -663,7 +665,7 @@ func (g *Guardian) periodicRollupProduction() {
 			timeExpired := time.Since(lastSuccessfulRollup) > g.rollupInterval
 			sizeExceeded := estimatedRunningRollupSize >= g.maxRollupSize
 			// if rollup retry takes longer than the block time then we need to allow time to publish
-			// todo better name
+			// FIXME better name
 			justPublished := time.Since(lastSuccessfulRollup) >= g.blockTime
 			if timeExpired || sizeExceeded && !justPublished {
 				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded, "justPublished", justPublished)

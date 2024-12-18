@@ -159,13 +159,6 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 
 		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, processed.BlockHeader.Hash())
 	}
-	if len(rollups) > 1 {
-		println("HERE")
-		if rollups[0].Hash() == rollups[1].Hash() {
-			println("ROLLUPS THE SAME: ", rollups[0].Hash().Hex())
-			rc.logger.Crit("DUPLICATE ROLLUP")
-		}
-	}
 	return rollups, nil
 }
 

@@ -293,8 +293,6 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
-	println("----ROLLUP PRODUCTION----")
-	println("SEQUENCER CREATING ROLLUP WITH HASH: ", rollup.Hash().Hex())
 	return rollup, nil
 }
 
@@ -499,7 +497,6 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 			if err != nil {
 				e.logger.Crit("Encountered error while adding sequencer enclaveID", log.ErrKey, err)
 			}
-
 		}
 	}
 	if ingestion.IsFork() {

@@ -85,8 +85,6 @@ type L1BlockRepository interface {
 	// FetchNextBlock returns the next canonical block after a given block hash
 	// It returns the new block, a bool which is true if the block is the current L1 head and a bool if the block is on a different fork to prevBlock
 	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error)
-	// FetchObscuroReceipts returns the receipts for a given L1 block
-	FetchObscuroReceipts(block *common.L1Block) (types.Receipts, error)
 	// ExtractTenTransactions returns the events and transactions relevant to Ten
 	ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error)
 }
@@ -103,8 +101,7 @@ type L1Publisher interface {
 	InitializeSecret(attestation *common.AttestationReport, encSecret common.EncryptedSharedEnclaveSecret) error
 	// RequestSecret will send a management contract transaction to request a secret from the enclave, returning the L1 head at time of sending
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
-	// ExtractRelevantTenTransactions will return all TEN relevant tx from an L1 block
-	ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx)
+	// FIXME DELETE
 	// FindSecretResponseTx will return the secret response tx from an L1 block
 	FindSecretResponseTx(block *types.Block) []*ethadapter.L1RespondSecretTx
 	// PublishRollup will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt

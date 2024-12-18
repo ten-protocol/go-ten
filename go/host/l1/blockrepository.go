@@ -148,60 +148,6 @@ func (r *Repository) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block,
 	return blk, nil
 }
 
-// FetchObscuroReceipts returns all obscuro-relevant receipts for an L1 block
-func (r *Repository) FetchObscuroReceipts(block *common.L1Block) (types.Receipts, error) {
-	receipts := make([]*types.Receipt, len(block.Transactions()))
-	if len(block.Transactions()) == 0 {
-		return receipts, nil
-	}
-
-	blkHash := block.Hash()
-	// we want to send receipts for any transactions that produced obscuro-relevant log events
-	var allAddresses []gethcommon.Address
-	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
-	allAddresses = append(allAddresses, r.contractAddresses[MsgBus]...)
-	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{BlockHash: &blkHash, Addresses: allAddresses})
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch logs for L1 block - %w", err)
-	}
-	// make a lookup map of the relevant tx hashes which need receipts
-	relevantTx := make(map[gethcommon.Hash]bool)
-	for _, l := range logs {
-		relevantTx[l.TxHash] = true
-	}
-
-	for idx, transaction := range block.Transactions() {
-		if !relevantTx[transaction.Hash()] && !r.isObscuroTransaction(transaction) {
-			// put in a dummy receipt so that the index matches the transaction index
-			// (the receipts list maintains the indexes of the transactions, it is a sparse list)
-			receipts[idx] = &types.Receipt{Status: types.ReceiptStatusFailed}
-			continue
-		}
-		receipt, err := r.ethClient.TransactionReceipt(transaction.Hash())
-
-		if err != nil || receipt == nil {
-			r.logger.Error("Problem with retrieving the receipt on the host!", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
-			continue
-		}
-
-		r.logger.Trace("Adding receipt", "status", receipt.Status, log.TxKey, transaction.Hash(),
-			log.BlockHashKey, blkHash, log.CmpKey, log.CrossChainCmp)
-
-		receipts[idx] = receipt
-	}
-
-	return receipts, nil
-}
-
-type logGroup struct {
-	crossChainLogs     []types.Log
-	valueTransferLogs  []types.Log
-	sequencerLogs      []types.Log
-	secretRequestLogs  []types.Log
-	secretResponseLogs []types.Log
-	rollupAddedLogs    []types.Log
-}
-
 // ExtractTenTransactions processes logs in their natural order without grouping by transaction hash.
 func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error) {
 	processed := &common.ProcessedL1Data{
@@ -214,17 +160,12 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		return nil, err
 	}
 
-	// println("--- LOG LOOP FOR block --- ", block.Hash().Hex())
-	// println("LOGS length ", len(logs))
-	// we have to loop through to preserve receipt order
 	for _, l := range logs {
 		txData, err := r.createTransactionData(l.TxHash)
 		if err != nil {
 			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 			continue
 		}
-
-		// println("LOG at index: ", i, " with hash ", l.TxHash.Hex())
 
 		switch l.Topics[0] {
 		case crosschain.CrossChainEventID:
@@ -314,10 +255,8 @@ func (r *Repository) processManagementContractTx(txData *common.L1TxData, proces
 	if decodedTx := r.mgmtContractLib.DecodeTx(txData.Transaction); decodedTx != nil {
 		switch t := decodedTx.(type) {
 		case *ethadapter.L1InitializeSecretTx:
-			println("ADDING L1InitializeSecretTx EVENT WITH TAG: ", tag)
 			processed.AddEvent(common.InitialiseSecretTx, txData)
 		case *ethadapter.L1SetImportantContractsTx:
-			println("ADDING SetImportantContractsTx EVENT WITH TAG: ", tag)
 			processed.AddEvent(common.SetImportantContractsTx, txData)
 		case *ethadapter.L1RollupHashes:
 			if blobs, err := r.blobResolver.FetchBlobs(context.Background(), b, t.BlobHashes); err == nil {
@@ -327,9 +266,6 @@ func (r *Repository) processManagementContractTx(txData *common.L1TxData, proces
 		default:
 			r.logger.Warn("Unknown tx type", "txHash", txData.Transaction.Hash().Hex())
 		}
-	}
-	if len(processed.GetEvents(common.RollupTx)) > 1 {
-		println("MORE THAN ONE ROLLUP INSPECT ")
 	}
 }
 
