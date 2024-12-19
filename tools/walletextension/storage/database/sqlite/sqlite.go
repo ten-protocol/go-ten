@@ -1,11 +1,19 @@
 package sqlite
 
 /*
-	SQLite database implementation of the Storage interface
+	SQLite database implementation of the Storage interface.
 
-	SQLite is used for local deployments and testing without the need for a cloud database.
-	To make sure to see similar behaviour as in production using CosmosDB we use SQLite database in a similar way as comosDB (as key-value database).
+	This implementation mimics the CosmosDB approach where we store the entire user record (including accounts and session keys)
+	in a single JSON object within the 'users' table. There are no separate tables for accounts or session keys.
+
+	Each user record:
+	{
+		"user_data": <entire GWUserDB JSON>
+	}
+
+	This simplifies the schema and keeps it similar to the CosmosDB container-based storage.
 */
+
 import (
 	"database/sql"
 	"encoding/json"
@@ -15,15 +23,14 @@ import (
 	"path/filepath"
 
 	"github.com/ethereum/go-ethereum/crypto"
+	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 
 	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
 
-	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-
-	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type SqliteDB struct {
@@ -33,7 +40,7 @@ type SqliteDB struct {
 const sqliteCfg = "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal"
 
 func NewSqliteDatabase(dbPath string) (*SqliteDB, error) {
-	// load the db file
+	// load or create the db file
 	dbFilePath, err := createOrLoad(dbPath)
 	if err != nil {
 		return nil, err
@@ -43,17 +50,16 @@ func NewSqliteDatabase(dbPath string) (*SqliteDB, error) {
 	path := fmt.Sprintf("file:%s?%s", dbFilePath, sqliteCfg)
 	db, err := sql.Open("sqlite3", path)
 	if err != nil {
-		fmt.Println("Error opening database: ", err)
-		return nil, err
+		return nil, fmt.Errorf("error opening database: %w", err)
 	}
 
-	// enable foreign keys in sqlite
+	// Enable foreign keys in SQLite (harmless, even though we don't use them now)
 	_, err = db.Exec("PRAGMA foreign_keys = ON;")
 	if err != nil {
 		return nil, err
 	}
 
-	// Modify the users table to store the entire GWUserDB as JSON
+	// Create the users table if it doesn't exist. We store entire user as JSON.
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS users (
 		id TEXT PRIMARY KEY,
 		user_data TEXT
@@ -62,7 +68,9 @@ func NewSqliteDatabase(dbPath string) (*SqliteDB, error) {
 		return nil, err
 	}
 
-	// Remove the accounts table as it will be stored within the user_data JSON
+	// If there was an old 'accounts' table from a previous implementation, drop it.
+	// This ensures no leftover foreign key constraints cause issues.
+	_, _ = db.Exec("DROP TABLE IF EXISTS accounts;")
 
 	return &SqliteDB{db: db}, nil
 }
@@ -73,23 +81,23 @@ func (s *SqliteDB) AddUser(userID []byte, privateKey []byte) error {
 		PrivateKey: privateKey,
 		Accounts:   []dbcommon.GWAccountDB{},
 	}
+
 	userJSON, err := json.Marshal(user)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to marshal user data: %w", err)
 	}
 
 	return s.withTx(func(dbTx *sql.Tx) error {
 		stmt, err := dbTx.Prepare("INSERT OR REPLACE INTO users(id, user_data) VALUES (?, ?)")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to prepare insert statement: %w", err)
 		}
 		defer stmt.Close()
 
 		_, err = stmt.Exec(string(user.UserId), string(userJSON))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to insert user: %w", err)
 		}
-
 		return nil
 	})
 }
@@ -98,7 +106,7 @@ func (s *SqliteDB) DeleteUser(userID []byte) error {
 	return s.withTx(func(dbTx *sql.Tx) error {
 		stmt, err := dbTx.Prepare("DELETE FROM users WHERE id = ?")
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to prepare delete statement: %w", err)
 		}
 		defer stmt.Close()
 
@@ -106,18 +114,24 @@ func (s *SqliteDB) DeleteUser(userID []byte) error {
 		if err != nil {
 			return fmt.Errorf("failed to delete user: %w", err)
 		}
-
 		return nil
 	})
 }
 
-func (s *SqliteDB) ActivateSessionKey(userID []byte, active bool) error {
+func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
 	return s.withTx(func(dbTx *sql.Tx) error {
 		user, err := s.readUser(dbTx, userID)
 		if err != nil {
 			return err
 		}
-		user.ActiveSK = active
+
+		newAccount := dbcommon.GWAccountDB{
+			AccountAddress: accountAddress,
+			Signature:      signature,
+			SignatureType:  int(signatureType),
+		}
+
+		user.Accounts = append(user.Accounts, newAccount)
 		return s.updateUser(dbTx, user)
 	})
 }
@@ -140,6 +154,17 @@ func (s *SqliteDB) AddSessionKey(userID []byte, key common.GWSessionKey) error {
 	})
 }
 
+func (s *SqliteDB) ActivateSessionKey(userID []byte, active bool) error {
+	return s.withTx(func(dbTx *sql.Tx) error {
+		user, err := s.readUser(dbTx, userID)
+		if err != nil {
+			return err
+		}
+		user.ActiveSK = active
+		return s.updateUser(dbTx, user)
+	})
+}
+
 func (s *SqliteDB) RemoveSessionKey(userID []byte) error {
 	return s.withTx(func(dbTx *sql.Tx) error {
 		user, err := s.readUser(dbTx, userID)
@@ -151,34 +176,12 @@ func (s *SqliteDB) RemoveSessionKey(userID []byte) error {
 	})
 }
 
-func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
-	return s.withTx(func(dbTx *sql.Tx) error {
-		user, err := s.readUser(dbTx, userID)
-		if err != nil {
-			return err
-		}
-
-		newAccount := dbcommon.GWAccountDB{
-			AccountAddress: accountAddress,
-			Signature:      signature,
-			SignatureType:  int(signatureType),
-		}
-
-		user.Accounts = append(user.Accounts, newAccount)
-
-		return s.updateUser(dbTx, user)
-	})
-}
-
 func (s *SqliteDB) GetUser(userID []byte) (*common.GWUser, error) {
 	var user dbcommon.GWUserDB
 	var err error
 	err = s.withTx(func(dbTx *sql.Tx) error {
 		user, err = s.readUser(dbTx, userID)
-		if err != nil {
-			return err
-		}
-		return nil
+		return err
 	})
 	if err != nil {
 		return nil, err
@@ -212,41 +215,19 @@ func (s *SqliteDB) updateUser(dbTx *sql.Tx, user dbcommon.GWUserDB) error {
 
 	stmt, err := dbTx.Prepare("UPDATE users SET user_data = ? WHERE id = ?")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to prepare update statement: %w", err)
 	}
 	defer stmt.Close()
 
 	_, err = stmt.Exec(string(updatedUserJSON), string(user.UserId))
 	if err != nil {
-		return fmt.Errorf("failed to update user with new account: %w", err)
+		return fmt.Errorf("failed to update user: %w", err)
 	}
 
 	return nil
 }
 
-func createOrLoad(dbPath string) (string, error) {
-	// If path is empty we create a random throwaway temp file, otherwise we use the path to the database
-	if dbPath == "" {
-		tempDir := filepath.Join("/tmp", "obscuro_gateway", obscurocommon.RandomStr(8))
-		err := os.MkdirAll(tempDir, os.ModePerm)
-		if err != nil {
-			fmt.Println("Error creating directory: ", tempDir, err)
-			return "", err
-		}
-		dbPath = filepath.Join(tempDir, "gateway_databse.db")
-	} else {
-		dir := filepath.Dir(dbPath)
-		err := os.MkdirAll(dir, 0o755)
-		if err != nil {
-			fmt.Println("Error creating directories:", err)
-			return "", err
-		}
-	}
-
-	return dbPath, nil
-}
-
-// GetEncryptionKey returns nil for SQLite as it doesn't use encryption
+// GetEncryptionKey returns nil for SQLite as it doesn't use encryption directly in this implementation.
 func (s *SqliteDB) GetEncryptionKey() []byte {
 	return nil
 }
@@ -254,14 +235,33 @@ func (s *SqliteDB) GetEncryptionKey() []byte {
 func (s *SqliteDB) withTx(fn func(*sql.Tx) error) error {
 	tx, err := s.db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer tx.Rollback()
 
-	err = fn(tx)
-	if err != nil {
+	if err := fn(tx); err != nil {
 		return err
 	}
 
 	return tx.Commit()
+}
+
+func createOrLoad(dbPath string) (string, error) {
+	// If path is empty we create a random temporary file, otherwise we use the provided path
+	if dbPath == "" {
+		tempDir := filepath.Join("/tmp", "obscuro_gateway", obscurocommon.RandomStr(8))
+		err := os.MkdirAll(tempDir, os.ModePerm)
+		if err != nil {
+			return "", fmt.Errorf("error creating directory %s: %w", tempDir, err)
+		}
+		dbPath = filepath.Join(tempDir, "gateway_database.db")
+	} else {
+		dir := filepath.Dir(dbPath)
+		err := os.MkdirAll(dir, 0o755)
+		if err != nil {
+			return "", fmt.Errorf("error creating directories: %w", err)
+		}
+	}
+
+	return dbPath, nil
 }

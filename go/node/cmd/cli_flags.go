@@ -5,6 +5,7 @@ const (
 	nodeNameFlag                = "node_name"
 	nodeTypeFlag                = "node_type"
 	isGenesisFlag               = "is_genesis"
+	numEnclavesFlag             = "num_enclaves"
 	hostIDFlag                  = "host_id"
 	isSGXEnabledFlag            = "is_sgx_enabled"
 	enclaveDockerImageFlag      = "enclave_docker_image"
@@ -43,7 +44,8 @@ func getFlagUsageMap() map[string]string {
 	return map[string]string{
 		nodeNameFlag:                "Specifies the node base name",
 		nodeTypeFlag:                "The node's type (e.g. sequencer, validator)",
-		isGenesisFlag:               "Wether the node is the genesis node of the network",
+		isGenesisFlag:               "Whether the node is the genesis node of the network",
+		numEnclavesFlag:             "The number of enclaves to run as an HA setup (default 1, no HA pool)",
 		hostIDFlag:                  "The 20 bytes of the address of the Obscuro host this enclave serves",
 		isSGXEnabledFlag:            "Whether the it should run on an SGX is enabled CPU",
 		enclaveDockerImageFlag:      "Docker image for the enclave",

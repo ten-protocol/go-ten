@@ -52,10 +52,14 @@ const useGatewayService = () => {
       // SWITCHED_CODE=4902; error 4902 means that the chain does not exist
       if (
         switched === SWITCHED_CODE ||
-        !isValidTokenFormat(await getToken(provider))
+        !isValidTokenFormat(await getToken())
       ) {
         showToast(ToastType.INFO, "Adding TEN Testnet...");
         const user = await joinTestnet();
+
+        // Store the token in localStorage
+        localStorage.setItem("ten_token", "0x" + user);
+
         const rpcUrls = [
           `${tenGatewayAddress}/${tenGatewayVersion}/?token=${user}`,
         ];

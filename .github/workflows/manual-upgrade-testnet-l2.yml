@@ -134,6 +134,13 @@ jobs:
             host_id: 1
           - node_l1_ws_lookup: L1_WS_URL_2
             host_id: 2
+          # sequencer has an HA setup with 2 enclaves
+          - num_enclaves: 1
+            host_id: 0
+          - num_enclaves: 1
+            host_id: 1
+          - num_enclaves: 1
+            host_id: 2
 
     steps:
       - name: 'Extract branch name'
@@ -162,6 +169,7 @@ jobs:
             && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
               -is_genesis=${{ matrix.is_genesis }} \
               -node_type=${{ matrix.node_type }} \
+              -num_enclaves=${{ matrix.num_enclaves }} \
               -is_sgx_enabled=true \
               -host_id=${{ vars[matrix.node_addr_lookup] }} \
               -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \

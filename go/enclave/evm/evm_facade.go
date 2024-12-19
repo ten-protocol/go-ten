@@ -15,14 +15,11 @@ import (
 	"github.com/holiman/uint256"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
@@ -32,7 +29,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
@@ -269,8 +265,8 @@ func receiptToString(r *types.Receipt) string {
 	return fmt.Sprintf("Successfully executed. Receipt: %s", string(receiptJSON))
 }
 */
-// ExecuteObsCall - executes the eth_call call
-func ExecuteObsCall(
+// ExecuteCall - executes the eth_call call
+func ExecuteCall(
 	ctx context.Context,
 	msg *gethcore.Message,
 	s *state.StateDB,
@@ -294,7 +290,7 @@ func ExecuteObsCall(
 
 	snapshot := s.Snapshot()
 	defer s.RevertToSnapshot(snapshot) // Always revert after simulation
-	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:ObsCall()")
+	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
 	gp := gethcore.GasPool(gasEstimationCap)
 	gp.SetGas(gasEstimationCap)
@@ -313,19 +309,14 @@ func ExecuteObsCall(
 	// 3 - error check the ApplyMessage
 
 	// Read the error stored in the database.
-	if dbErr := cleanState.Error(); dbErr != nil {
-		return nil, newErrorWithReasonAndCode(dbErr)
-	}
-
-	// If the result contains a revert reason, try to unpack and return it.
-	if result != nil && len(result.Revert()) > 0 {
-		return nil, newRevertError(result)
+	if vmerr := cleanState.Error(); vmerr != nil {
+		return nil, vmerr
 	}
 
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		logger.Debug(fmt.Sprintf("Error applying msg %v:", msg), log.CtrErrKey, err)
-		return result, err
+		return result, fmt.Errorf("err: %w (supplied gas %d)", err, msg.GasLimit)
 	}
 
 	return result, nil
@@ -342,37 +333,6 @@ func initParams(storage storage.Storage, gethEncodingService gethencoding.Encodi
 		NoBaseFee: noBaseFee,
 	}
 	return NewTenChainContext(storage, gethEncodingService, config, l), vmCfg
-}
-
-func newErrorWithReasonAndCode(err error) error {
-	result := &errutil.DataError{
-		Err: err.Error(),
-	}
-
-	var e gethrpc.Error
-	ok := errors.As(err, &e)
-	if ok {
-		result.Code = e.ErrorCode()
-	}
-	var de gethrpc.DataError
-	ok = errors.As(err, &de)
-	if ok {
-		result.Reason = de.ErrorData()
-	}
-	return result
-}
-
-func newRevertError(result *gethcore.ExecutionResult) error {
-	reason, errUnpack := abi.UnpackRevert(result.Revert())
-	err := errors.New("execution reverted")
-	if errUnpack == nil {
-		err = fmt.Errorf("execution reverted: %v", reason)
-	}
-	return &errutil.DataError{
-		Err:    err.Error(),
-		Reason: hexutil.Encode(result.Revert()),
-		Code:   3, // todo - magic number, really needs thought around the value and made a constant
-	}
 }
 
 // used as a wrapper around the vm.EVM to allow for easier calling of smart contract view functions

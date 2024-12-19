@@ -10,7 +10,6 @@ import (
 	"github.com/holiman/uint256"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
-	"github.com/ten-protocol/go-ten/go/enclave/system"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -79,7 +78,7 @@ func (m *MessageBusManager) GetBusAddress() *common.L2Address {
 }
 
 // DeriveMessageBusAddress - Derives the address of the message bus contract.
-func (m *MessageBusManager) Initialize(systemAddresses system.SystemContractAddresses) error {
+func (m *MessageBusManager) Initialize(systemAddresses common.SystemContractAddresses) error {
 	address, ok := systemAddresses["MessageBus"]
 	if !ok {
 		return fmt.Errorf("message bus contract not found in system addresses")
@@ -94,7 +93,7 @@ func (m *MessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
 	tx := &types.LegacyTx{
 		Nonce:    0, // The first transaction of the owner identity should always be deploying the contract
 		Value:    gethcommon.Big0,
-		Gas:      500_000_000,     // It's quite the expensive contract.
+		Gas:      5_000_000,       // It's quite the expensive contract.
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     gethcommon.FromHex(MessageBus.MessageBusMetaData.Bin),
 		To:       nil, // Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.

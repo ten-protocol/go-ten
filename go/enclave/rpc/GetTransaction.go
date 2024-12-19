@@ -14,7 +14,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
-func GetTransactionValidate(reqParams []any, builder *CallBuilder[gethcommon.Hash, RpcTransaction], _ *EncryptionManager) error {
+func GetTransactionValidate(reqParams []any, builder *CallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
+	if !storeTxEnabled(rpc, builder) {
+		return nil
+	}
 	// Parameters are [Hash]
 	if len(reqParams) != 1 {
 		builder.Err = fmt.Errorf("wrong parameters")

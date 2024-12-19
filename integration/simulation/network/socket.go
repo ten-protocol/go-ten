@@ -147,6 +147,20 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, simParams.Wallets)
 
+	// permission the sequencer enclaveID
+	seqHealth, err := n.tenClients[0].Health()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get sequencer enclaveID: %w", err)
+	}
+	if seqHealth.Enclaves == nil || len(seqHealth.Enclaves) == 0 {
+		return nil, fmt.Errorf("no enclaves found in health response")
+	}
+	seqEnclaveID := seqHealth.Enclaves[0].EnclaveID
+	err = PermissionTenSequencerEnclave(n.wallets.MCOwnerWallet, n.gethClients[0], simParams.L1TenData.MgmtContractAddress, seqEnclaveID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
+	}
+
 	return &RPCHandles{
 		EthClients:     n.gethClients,
 		TenClients:     n.tenClients,
