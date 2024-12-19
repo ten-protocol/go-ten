@@ -59,31 +59,31 @@ func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOr
 	}
 }
 
-func (bp *l1BlockProcessor) Process(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error) {
-	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, br.BlockHeader.Hash())
+func (bp *l1BlockProcessor) Process(ctx context.Context, processed *common.ProcessedL1Data) (*BlockIngestionType, error) {
+	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, processed.BlockHeader.Hash())
 
-	ingestion, err := bp.tryAndInsertBlock(ctx, br)
+	ingestion, err := bp.tryAndInsertBlock(ctx, processed.BlockHeader)
 	if err != nil {
 		return nil, err
 	}
 
 	if !ingestion.PreGenesis {
 		// This requires block to be stored first ... but can permanently fail a block
-		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(ctx, br.BlockHeader, br.Receipts())
+		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(ctx, processed.BlockHeader, processed)
 		if err != nil {
 			return nil, errors.New("failed to process cross chain messages")
 		}
 
-		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(ctx, br.BlockHeader, br.Receipts())
+		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(ctx, processed.BlockHeader, processed)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process cross chain transfers. Cause: %w", err)
 		}
 	}
 
 	// todo @siliev - not sure if this is the best way to update the price, will pick up random stale blocks from forks?
-	bp.gasOracle.ProcessL1Block(br.BlockHeader)
+	bp.gasOracle.ProcessL1Block(processed.BlockHeader)
 
-	h := br.BlockHeader.Hash()
+	h := processed.BlockHeader.Hash()
 	bp.currentL1Head = &h
 	bp.lastIngestedBlock.Mark()
 	return ingestion, nil
@@ -99,9 +99,7 @@ func (bp *l1BlockProcessor) HealthCheck() (bool, error) {
 	return true, nil
 }
 
-func (bp *l1BlockProcessor) tryAndInsertBlock(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error) {
-	block := br.BlockHeader
-
+func (bp *l1BlockProcessor) tryAndInsertBlock(ctx context.Context, block *types.Header) (*BlockIngestionType, error) {
 	// We insert the block into the L1 chain and store it.
 	// in case the block already exists in the database, this will be treated like a fork, because the head changes to
 	// the block that was already saved

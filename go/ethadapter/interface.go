@@ -21,6 +21,7 @@ type EthClient interface {
 	BlockByNumber(n *big.Int) (*types.Block, error)                               // retrieves a block given a number - returns head block if n is nil
 	SendTransaction(signedTx *types.Transaction) error                            // issues an ethereum transaction (expects signed tx)
 	TransactionReceipt(hash gethcommon.Hash) (*types.Receipt, error)              // fetches the ethereum transaction receipt
+	TransactionByHash(hash gethcommon.Hash) (*types.Transaction, bool, error)     // fetches the ethereum tx
 	Nonce(address gethcommon.Address) (uint64, error)                             // fetches the account nonce to use in the next transaction
 	BalanceAt(account gethcommon.Address, blockNumber *big.Int) (*big.Int, error) // fetches the balance of the account
 	GetLogs(q ethereum.FilterQuery) ([]types.Log, error)                          // fetches the logs for a given query
