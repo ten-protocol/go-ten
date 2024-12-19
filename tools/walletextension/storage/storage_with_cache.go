@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -71,19 +73,20 @@ func (s *UserStorageWithCache) RemoveSessionKey(userID []byte) error {
 
 // AddAccount adds an account to a user and invalidates the cache for the userID
 func (s *UserStorageWithCache) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
+	fmt.Println("TESTING: adding account to cosmos db for user", userID, "account", accountAddress)
 	err := s.storage.AddAccount(userID, accountAddress, signature, signatureType)
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("TESTING: account added to cosmos db for user", userID, "account", accountAddress)
 	s.cache.Remove(userID)
 	return nil
 }
 
 // GetUser retrieves a user from the cache or underlying storage
 func (s *UserStorageWithCache) GetUser(userID []byte) (*wecommon.GWUser, error) {
-	return cache.WithCache(s.cache, &cache.Cfg{Type: cache.LongLiving}, userID, func() (*wecommon.GWUser, error) {
-		return s.storage.GetUser(userID)
-	})
+	return s.storage.GetUser(userID)
 }
 
 // GetEncryptionKey delegates to the underlying storage
