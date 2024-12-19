@@ -155,7 +155,7 @@ func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmt
 	if err != nil {
 		t.Error(err)
 	}
-	txData, err := mgmtContractLib.CreateBlobRollup(&ethadapter.L1RollupTx{Rollup: encodedRollup})
+	txData, err := mgmtContractLib.CreateBlobRollup(&common.L1RollupTx{Rollup: encodedRollup})
 	if err != nil {
 		t.Error(err)
 	}
