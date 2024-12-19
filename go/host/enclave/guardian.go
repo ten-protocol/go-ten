@@ -358,6 +358,9 @@ func (g *Guardian) provideSecret() error {
 		}
 
 		processedData, err := g.sl.L1Repo().ExtractTenTransactions(nextBlock)
+		if err != nil {
+			return fmt.Errorf("failed to extract Ten transactions from block=%s", nextBlock.Hash())
+		}
 		secretResponseEvents := processedData.GetEvents(common.SecretResponseTx)
 		secretRespTxs := g.sl.L1Publisher().FindSecretResponseTx(secretResponseEvents)
 		for _, scrt := range secretRespTxs {
