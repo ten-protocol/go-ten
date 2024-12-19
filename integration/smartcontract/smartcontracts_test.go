@@ -170,7 +170,7 @@ func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmt
 func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
 	aggregatorID := datagenerator.RandomAddress()
 	txData := mgmtContractLib.CreateInitializeSecret(
-		&ethadapter.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			EnclaveID: &aggregatorID,
 		},
 	)
@@ -196,7 +196,7 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 	// do the same again
 	aggregatorID = datagenerator.RandomAddress()
 	txData = mgmtContractLib.CreateInitializeSecret(
-		&ethadapter.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			EnclaveID: &aggregatorID,
 		},
 	)
@@ -225,7 +225,7 @@ func attestedNodesCreateRollup(t *testing.T, mgmtContractLib *debugMgmtContractL
 
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
-		&ethadapter.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			EnclaveID: &enclaveID,
 		},
 	)
@@ -256,7 +256,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 
 	// aggregator A starts the network secret
 	txData := mgmtContractLib.CreateInitializeSecret(
-		&ethadapter.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			EnclaveID: &aggAID,
 		},
 	)
@@ -277,7 +277,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 	aggBID := crypto.PubkeyToAddress(aggBPrivateKey.PublicKey)
 
 	txData = mgmtContractLib.CreateRequestSecret(
-		&ethadapter.L1RequestSecretTx{
+		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 	)
@@ -300,7 +300,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 	fakeSecret := []byte{123}
 
 	txData = mgmtContractLib.CreateRespondSecret(
-		(&ethadapter.L1RespondSecretTx{
+		(&common.L1RespondSecretTx{
 			AttesterID:  aggCID,
 			RequesterID: aggBID,
 			Secret:      fakeSecret,
@@ -315,7 +315,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 
 	// agg c responds to the secret AGAIN, but trying to mimick aggregator A
 	txData = mgmtContractLib.CreateRespondSecret(
-		(&ethadapter.L1RespondSecretTx{
+		(&common.L1RespondSecretTx{
 			Secret:      fakeSecret,
 			RequesterID: aggBID,
 			AttesterID:  aggAID,
@@ -341,7 +341,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 
 	// the aggregator starts the network
 	txData := mgmtContractLib.CreateInitializeSecret(
-		&ethadapter.L1InitializeSecretTx{
+		&common.L1InitializeSecretTx{
 			EnclaveID:     &aggAID,
 			InitialSecret: secretBytes,
 		},
@@ -370,7 +370,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	aggBID := crypto.PubkeyToAddress(aggBPrivateKey.PublicKey)
 
 	txData = mgmtContractLib.CreateRequestSecret(
-		&ethadapter.L1RequestSecretTx{
+		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 	)
@@ -390,7 +390,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	aggCID := crypto.PubkeyToAddress(aggCPrivateKey.PublicKey)
 
 	txData = mgmtContractLib.CreateRequestSecret(
-		&ethadapter.L1RequestSecretTx{
+		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 	)
@@ -405,7 +405,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 
 	// Agg A responds to Agg C request
 	txData = mgmtContractLib.CreateRespondSecret(
-		(&ethadapter.L1RespondSecretTx{
+		(&common.L1RespondSecretTx{
 			Secret:      secretBytes,
 			RequesterID: aggCID,
 			AttesterID:  aggAID,
@@ -432,7 +432,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 
 	// agg C attests agg B
 	txData = mgmtContractLib.CreateRespondSecret(
-		(&ethadapter.L1RespondSecretTx{
+		(&common.L1RespondSecretTx{
 			Secret:      secretBytes,
 			RequesterID: aggBID,
 			AttesterID:  aggCID,
