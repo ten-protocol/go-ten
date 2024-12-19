@@ -421,15 +421,6 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 	}, nil
 }
 
-func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Header, error) {
-	block := types.Header{}
-	err := rlp.DecodeBytes(encodedBlock, &block)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode block, bytes=%x, err=%w", encodedBlock, err)
-	}
-	return &block, nil
-}
-
 // decodeProcessedData - converts the rlp encoded bytes to processed if possible.
 func (s *RPCServer) decodeProcessedData(encodedData []byte) (*common.ProcessedL1Data, error) {
 	var processed common.ProcessedL1Data
