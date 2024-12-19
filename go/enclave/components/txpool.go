@@ -274,7 +274,7 @@ func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 
 	chField := v.FieldByName("currentHead")
 	chFieldPtr := unsafe.Pointer(chField.UnsafeAddr())
-	ch, ok := reflect.NewAt(chField.Type(), chFieldPtr).Elem().Interface().(atomic.Pointer[types.Header])
+	ch, ok := reflect.NewAt(chField.Type(), chFieldPtr).Elem().Interface().(atomic.Pointer[types.Header]) //nolint:govet
 	if !ok {
 		t.logger.Crit("invalid mempool. should not happen")
 	}
