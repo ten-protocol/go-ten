@@ -191,7 +191,15 @@ func (c *CosmosDB) GetUser(userID []byte) (*common.GWUser, error) {
 	if err != nil {
 		return nil, err
 	}
-	return user.user.ToGWUser()
+	fmt.Println("TESTING: got user from cosmos db for user", userID)
+	u, err := user.user.ToGWUser()
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("TESTING: user", userID, "has", len(u.Accounts), "accounts")
+	fmt.Println("TESTING: user accounts:", u.GetAllAddresses())
+	return u, err
 }
 
 func (c *CosmosDB) getUserDB(userID []byte) (userWithETag, error) {

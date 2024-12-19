@@ -73,6 +73,7 @@ func main() {
 	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPortHTTP)
 	fmt.Printf("💡 Wallet extension started \n") // Some tests rely on seeing this message. Removed in next PR.
 	fmt.Printf("💡 Obscuro Gateway started - visit http://%s/\n", walletExtensionAddr)
+	fmt.Println("TESTING: This is a test version of the TEN Gateway")
 
 	select {}
 }
