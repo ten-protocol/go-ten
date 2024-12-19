@@ -179,10 +179,10 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		case crosschain.ValueTransferEventID:
 			r.processValueTransferLogs(l, txData, processed)
 		case crosschain.SequencerEnclaveGrantedEventID:
-			r.processSequencerLogs(l, txData, processed)
+			r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
 			r.processManagementContractTx(txData, processed) // we need to decode the InitialiseSecretTx
 		case crosschain.SequencerEnclaveRevokedEventID:
-			r.processSequencerLogs(l, txData, processed)
+			r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
 		case crosschain.ImportantContractAddressUpdatedID:
 			r.processManagementContractTx(txData, processed)
 		case crosschain.RollupAddedID:
@@ -250,10 +250,10 @@ func (r *Repository) processValueTransferLogs(l types.Log, txData *common.L1TxDa
 }
 
 // processSequencerLogs handles sequencer logs
-func (r *Repository) processSequencerLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *Repository) processSequencerLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data, txType common.L1TxType) {
 	if enclaveID, err := getEnclaveIdFromLog(l); err == nil {
 		txData.SequencerEnclaveID = enclaveID
-		processed.AddEvent(common.SequencerAddedTx, txData)
+		processed.AddEvent(txType, txData)
 	}
 }
 
