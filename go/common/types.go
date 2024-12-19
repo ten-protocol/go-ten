@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -195,4 +196,14 @@ func (cf *ChainFork) String() string {
 
 func MaskedSender(address L2Address) L2Address {
 	return common.BigToAddress(big.NewInt(0).Sub(address.Big(), big.NewInt(1)))
+}
+
+type SystemContractAddresses map[string]*gethcommon.Address
+
+func (s *SystemContractAddresses) ToString() string {
+	var str string
+	for name, addr := range *s {
+		str += fmt.Sprintf("%s: %s; ", name, addr.Hex())
+	}
+	return str
 }

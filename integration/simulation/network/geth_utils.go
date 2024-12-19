@@ -149,6 +149,30 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}, nil
 }
 
+func PermissionTenSequencerEnclave(mcOwner wallet.Wallet, client ethadapter.EthClient, mcAddress common.Address, seqEnclaveID common.Address) error {
+	ctr, err := ManagementContract.NewManagementContract(mcAddress, client.EthClient())
+	if err != nil {
+		return err
+	}
+
+	opts, err := bind.NewKeyedTransactorWithChainID(mcOwner.PrivateKey(), mcOwner.ChainID())
+	if err != nil {
+		return err
+	}
+
+	tx, err := ctr.GrantSequencerEnclave(opts, seqEnclaveID)
+	if err != nil {
+		return err
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func StopEth2Network(clients []ethadapter.EthClient, network eth2network.PosEth2Network) {
 	// Stop the clients first
 	for _, c := range clients {

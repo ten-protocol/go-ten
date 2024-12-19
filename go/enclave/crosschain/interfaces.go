@@ -41,7 +41,7 @@ type Manager interface {
 	GetBusAddress() *common.L2Address
 
 	// Initialize - Derives the address of the message bus contract.
-	Initialize(systemAddresses system.SystemContractAddresses) error
+	Initialize(systemAddresses common.SystemContractAddresses) error
 
 	// GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
 	GenerateMessageBusDeployTx() (*common.L2Tx, error)

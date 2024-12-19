@@ -9,7 +9,11 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
 
-func GetPersonalTransactionsValidate(reqParams []any, builder *CallBuilder[common.ListPrivateTransactionsQueryParams, common.PrivateTransactionsQueryResponse], _ *EncryptionManager) error {
+func GetPersonalTransactionsValidate(reqParams []any, builder *CallBuilder[common.ListPrivateTransactionsQueryParams, common.PrivateTransactionsQueryResponse], rpc *EncryptionManager) error {
+	if !storeTxEnabled(rpc, builder) {
+		return nil
+	}
+
 	// Parameters are [PrivateTransactionListParams]
 	if len(reqParams) != 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters (expected %d, got %d)", 1, len(reqParams))

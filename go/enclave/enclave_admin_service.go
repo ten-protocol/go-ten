@@ -35,7 +35,8 @@ import (
 
 type enclaveAdminService struct {
 	config                 *enclaveconfig.EnclaveConfig
-	mainMutex              sync.Mutex // serialises all data ingestion or creation to avoid weird races
+	mainMutex              sync.Mutex   // locks the admin operations
+	dataInMutex            sync.RWMutex // controls access to data ingestion
 	logger                 gethlog.Logger
 	l1BlockProcessor       components.L1BlockProcessor
 	validatorService       nodetype.Validator
@@ -92,6 +93,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 	eas := &enclaveAdminService{
 		config:                 config,
 		mainMutex:              sync.Mutex{},
+		dataInMutex:            sync.RWMutex{},
 		logger:                 logger,
 		l1BlockProcessor:       blockProcessor,
 		service:                validatorService,
@@ -172,16 +174,10 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
 func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
-	e.mainMutex.Lock()
-	defer e.mainMutex.Unlock()
+	e.dataInMutex.Lock()
+	defer e.dataInMutex.Unlock()
 
 	e.logger.Info("SubmitL1Block", log.BlockHeightKey, blockHeader.Number, log.BlockHashKey, blockHeader.Hash())
-
-	//// If the block and receipts do not match, reject the block.
-	//br, err := common.ParseBlockAndReceipts(blockHeader, receipts)
-	//if err != nil {
-	//	return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
-	//}
 
 	// Verify the block header matches the one in processedData
 	if blockHeader.Hash() != processed.BlockHeader.Hash() {
@@ -240,8 +236,8 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 		return err
 	}
 
-	e.mainMutex.Lock()
-	defer e.mainMutex.Unlock()
+	e.dataInMutex.Lock()
+	defer e.dataInMutex.Unlock()
 
 	// if the signature is valid, then store the batch together with the converted hash
 	err = e.storage.StoreBatch(ctx, batch, convertedHeader.Hash())
@@ -264,8 +260,8 @@ func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty 
 
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateBatch call ended")
 
-	e.mainMutex.Lock()
-	defer e.mainMutex.Unlock()
+	e.dataInMutex.RLock()
+	defer e.dataInMutex.RUnlock()
 
 	err := e.sequencer().CreateBatch(ctx, skipBatchIfEmpty)
 	if err != nil {
@@ -281,8 +277,9 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 	}
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateRollup call ended")
 
-	e.mainMutex.Lock()
-	defer e.mainMutex.Unlock()
+	// allow the simultaneous production of rollups and batches
+	e.dataInMutex.RLock()
+	defer e.dataInMutex.RUnlock()
 
 	if e.registry.HeadBatchSeq() == nil {
 		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))

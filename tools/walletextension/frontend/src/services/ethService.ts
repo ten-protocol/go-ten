@@ -127,7 +127,7 @@ const ethService = {
       return;
     }
 
-    const token = await getToken(provider);
+    const token = await getToken();
 
     if (!token || !isValidTokenFormat(token)) {
       return;

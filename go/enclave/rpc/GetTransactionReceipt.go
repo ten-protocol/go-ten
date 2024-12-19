@@ -16,7 +16,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
-func GetTransactionReceiptValidate(reqParams []any, builder *CallBuilder[gethcommon.Hash, map[string]interface{}], _ *EncryptionManager) error {
+func GetTransactionReceiptValidate(reqParams []any, builder *CallBuilder[gethcommon.Hash, map[string]interface{}], rpc *EncryptionManager) error {
+	if !storeTxEnabled(rpc, builder) {
+		return nil
+	}
 	// Parameters are [Hash]
 	if len(reqParams) < 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")

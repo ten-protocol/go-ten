@@ -15,7 +15,7 @@ func GenerateDeploymentTransaction(initCode []byte, logger gethlog.Logger) (*com
 	tx := &types.LegacyTx{
 		Nonce:    0, // The first transaction of the owner identity should always be deploying the contract
 		Value:    gethcommon.Big0,
-		Gas:      500_000_000,     // It's quite the expensive contract.
+		Gas:      10_000_000,      // It's quite the expensive contract.
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     initCode,        // gethcommon.FromHex(SystemDeployer.SystemDeployerMetaData.Bin),
 		To:       nil,             // Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.
@@ -45,7 +45,7 @@ func VerifyLogs(receipt *types.Receipt) error {
 	return nil
 }
 
-func DeriveAddresses(receipt *types.Receipt) (SystemContractAddresses, error) {
+func DeriveAddresses(receipt *types.Receipt) (common.SystemContractAddresses, error) {
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		return nil, fmt.Errorf("cannot derive system contract addresses from failed receipt")
 	}
@@ -75,14 +75,4 @@ func DeriveAddresses(receipt *types.Receipt) (SystemContractAddresses, error) {
 	}
 
 	return addresses, nil
-}
-
-type SystemContractAddresses map[string]*gethcommon.Address
-
-func (s *SystemContractAddresses) ToString() string {
-	var str string
-	for name, addr := range *s {
-		str += fmt.Sprintf("%s: %s; ", name, addr.Hex())
-	}
-	return str
 }
