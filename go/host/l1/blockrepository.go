@@ -39,8 +39,8 @@ const (
 	MsgBus
 )
 
-// Repository is a host service for subscribing to new blocks and looking up L1 data
-type Repository struct {
+// DataService is a host service for subscribing to new blocks and looking up L1 data
+type DataService struct {
 	blockSubscribers *subscription.Manager[host.L1BlockHandler]
 	// this eth client should only be used by the repository, the repository may "reconnect" it at any time and don't want to interfere with other processes
 	ethClient       ethadapter.EthClient
@@ -53,14 +53,14 @@ type Repository struct {
 	contractAddresses map[ContractType][]gethcommon.Address
 }
 
-func NewL1Repository(
+func NewL1DataService(
 	ethClient ethadapter.EthClient,
 	logger gethlog.Logger,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	blobResolver BlobResolver,
 	contractAddresses map[ContractType][]gethcommon.Address,
-) *Repository {
-	return &Repository{
+) *DataService {
+	return &DataService{
 		blockSubscribers:  subscription.NewManager[host.L1BlockHandler](),
 		ethClient:         ethClient,
 		running:           atomic.Bool{},
@@ -71,7 +71,7 @@ func NewL1Repository(
 	}
 }
 
-func (r *Repository) Start() error {
+func (r *DataService) Start() error {
 	r.running.Store(true)
 
 	// Repository constantly streams new blocks and forwards them to subscribers
@@ -79,12 +79,12 @@ func (r *Repository) Start() error {
 	return nil
 }
 
-func (r *Repository) Stop() error {
+func (r *DataService) Stop() error {
 	r.running.Store(false)
 	return nil
 }
 
-func (r *Repository) HealthStatus(context.Context) host.HealthStatus {
+func (r *DataService) HealthStatus(context.Context) host.HealthStatus {
 	// todo (@matt) do proper health status based on last received block or something
 	errMsg := ""
 	if !r.running.Load() {
@@ -94,13 +94,13 @@ func (r *Repository) HealthStatus(context.Context) host.HealthStatus {
 }
 
 // Subscribe will register a new block handler to receive new blocks as they arrive, returns unsubscribe func
-func (r *Repository) Subscribe(handler host.L1BlockHandler) func() {
+func (r *DataService) Subscribe(handler host.L1BlockHandler) func() {
 	return r.blockSubscribers.Subscribe(handler)
 }
 
 // FetchNextBlock calculates the next canonical block that should be sent to requester after a given hash.
 // It returns the block and a bool for whether it is the latest known head
-func (r *Repository) FetchNextBlock(prevBlockHash gethcommon.Hash) (*types.Block, bool, error) {
+func (r *DataService) FetchNextBlock(prevBlockHash gethcommon.Hash) (*types.Block, bool, error) {
 	if prevBlockHash == r.head {
 		// prevBlock is the latest known head
 		return nil, false, ErrNoNextBlock
@@ -133,7 +133,7 @@ func (r *Repository) FetchNextBlock(prevBlockHash gethcommon.Hash) (*types.Block
 	return blk, blk.Hash() == r.head, nil
 }
 
-func (r *Repository) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block, error) {
+func (r *DataService) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block, error) {
 	blk, err := r.ethClient.BlockByHash(blkHash)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch L1 block with hash=%s - %w", blkHash, err)
@@ -148,8 +148,8 @@ func (r *Repository) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Block,
 	return blk, nil
 }
 
-// ExtractTenTransactions processes logs in their natural order without grouping by transaction hash.
-func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error) {
+// GetTenRelevantTransactions processes logs in their natural order without grouping by transaction hash.
+func (r *DataService) GetTenRelevantTransactions(block *common.L1Block) (*common.ProcessedL1Data, error) {
 	processed := &common.ProcessedL1Data{
 		BlockHeader: block.Header(),
 		Events:      []common.L1Event{},
@@ -200,7 +200,7 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 }
 
 // fetchMessageBusMgmtContractLogs retrieves all logs from management contract and message bus addresses
-func (r *Repository) fetchMessageBusMgmtContractLogs(block *common.L1Block) ([]types.Log, error) {
+func (r *DataService) fetchMessageBusMgmtContractLogs(block *common.L1Block) ([]types.Log, error) {
 	blkHash := block.Hash()
 	var allAddresses []gethcommon.Address
 	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
@@ -214,7 +214,7 @@ func (r *Repository) fetchMessageBusMgmtContractLogs(block *common.L1Block) ([]t
 }
 
 // fetchTxAndReceipt creates a new L1TxData instance for a transaction
-func (r *Repository) fetchTxAndReceipt(txHash gethcommon.Hash) (*common.L1TxData, error) {
+func (r *DataService) fetchTxAndReceipt(txHash gethcommon.Hash) (*common.L1TxData, error) {
 	tx, _, err := r.ethClient.TransactionByHash(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching transaction: %w", err)
@@ -234,7 +234,7 @@ func (r *Repository) fetchTxAndReceipt(txHash gethcommon.Hash) (*common.L1TxData
 }
 
 // processCrossChainLogs handles cross-chain message logs
-func (r *Repository) processCrossChainLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
 	if messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, crosschain.CrossChainEventName, crosschain.MessageBusABI); err == nil {
 		txData.CrossChainMessages = messages
 		processed.AddEvent(common.CrossChainMessageTx, txData)
@@ -242,7 +242,7 @@ func (r *Repository) processCrossChainLogs(l types.Log, txData *common.L1TxData,
 }
 
 // processValueTransferLogs handles value transfer logs
-func (r *Repository) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *DataService) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
 	if transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, crosschain.ValueTransferEventName, crosschain.MessageBusABI); err == nil {
 		txData.ValueTransfers = transfers
 		processed.AddEvent(common.CrossChainValueTranserTx, txData)
@@ -250,7 +250,7 @@ func (r *Repository) processValueTransferLogs(l types.Log, txData *common.L1TxDa
 }
 
 // processSequencerLogs handles sequencer logs
-func (r *Repository) processSequencerLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data, txType common.L1TxType) {
+func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data, txType common.L1TenEventType) {
 	if enclaveID, err := getEnclaveIdFromLog(l); err == nil {
 		txData.SequencerEnclaveID = enclaveID
 		processed.AddEvent(txType, txData)
@@ -258,7 +258,7 @@ func (r *Repository) processSequencerLogs(l types.Log, txData *common.L1TxData, 
 }
 
 // processManagementContractTx handles decoded transaction types
-func (r *Repository) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *DataService) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
 	b := processed.BlockHeader
 	if decodedTx := r.mgmtContractLib.DecodeTx(txData.Transaction); decodedTx != nil {
 		switch t := decodedTx.(type) {
@@ -272,15 +272,15 @@ func (r *Repository) processManagementContractTx(txData *common.L1TxData, proces
 				processed.AddEvent(common.RollupTx, txData)
 			}
 		default:
-			// this might want to be an error since we should never see transactions we can't decode
-			r.logger.Warn("Unknown tx type", "txHash", txData.Transaction.Hash().Hex())
+			// this should never happen since the specific events should always decode into one of these types
+			r.logger.Error("Unknown tx type", "txHash", txData.Transaction.Hash().Hex())
 		}
 	}
 }
 
 // stream blocks from L1 as they arrive and forward them to subscribers, no guarantee of perfect ordering or that there won't be gaps.
 // If streaming is interrupted it will carry on from latest, it won't try to replay missed blocks.
-func (r *Repository) streamLiveBlocks() {
+func (r *DataService) streamLiveBlocks() {
 	liveStream, streamSub := r.resetLiveStream()
 	for r.running.Load() {
 		select {
@@ -307,7 +307,7 @@ func (r *Repository) streamLiveBlocks() {
 	}
 }
 
-func (r *Repository) resetLiveStream() (chan *types.Header, ethereum.Subscription) {
+func (r *DataService) resetLiveStream() (chan *types.Header, ethereum.Subscription) {
 	err := retry.Do(func() error {
 		if !r.running.Load() {
 			// break out of the loop if repository has stopped
@@ -328,7 +328,7 @@ func (r *Repository) resetLiveStream() (chan *types.Header, ethereum.Subscriptio
 	return r.ethClient.BlockListener()
 }
 
-func (r *Repository) FetchBlockByHeight(height *big.Int) (*types.Block, error) {
+func (r *DataService) FetchBlockByHeight(height *big.Int) (*types.Block, error) {
 	return r.ethClient.BlockByNumber(height)
 }
 

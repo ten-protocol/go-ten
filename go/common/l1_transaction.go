@@ -6,11 +6,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 )
 
-// L1TxType represents different types of L1 transactions
-type L1TxType uint8 // Change to uint8 for RLP serialization
+// L1TenEventType represents different types of L1 transactions we monitor for
+type L1TenEventType uint8 // Change to uint8 for RLP serialization
 
 const (
-	RollupTx L1TxType = iota
+	RollupTx L1TenEventType = iota
 	InitialiseSecretTx
 	SecretRequestTx
 	SecretResponseTx
@@ -49,8 +49,8 @@ func (tx *L1TxData) HasSequencerEnclaveID() bool {
 	return tx.SequencerEnclaveID != (gethcommon.Address{})
 }
 
-func (p *ProcessedL1Data) AddEvent(txType L1TxType, tx *L1TxData) {
-	eventType := uint8(txType)
+func (p *ProcessedL1Data) AddEvent(tenEventType L1TenEventType, tx *L1TxData) {
+	eventType := uint8(tenEventType)
 
 	for i := range p.Events {
 		if p.Events[i].Type != eventType {
@@ -76,7 +76,7 @@ func (p *ProcessedL1Data) AddEvent(txType L1TxType, tx *L1TxData) {
 	})
 }
 
-func (p *ProcessedL1Data) GetEvents(txType L1TxType) []*L1TxData {
+func (p *ProcessedL1Data) GetEvents(txType L1TenEventType) []*L1TxData {
 	if p == nil || len(p.Events) == 0 {
 		return nil
 	}

@@ -16,7 +16,7 @@ import (
 // service names - these are the keys used to register known services with the host
 const (
 	P2PName                    = "p2p"
-	L1BlockRepositoryName      = "l1-block-repo"
+	L1DataServiceName          = "l1-data-service"
 	L1PublisherName            = "l1-publisher"
 	L2BatchRepositoryName      = "l2-batch-repo"
 	EnclaveServiceName         = "enclaves"
@@ -76,8 +76,8 @@ type P2PBatchRequestHandler interface {
 	HandleBatchRequest(requestID string, fromSeqNo *big.Int)
 }
 
-// L1BlockRepository provides an interface for the host to request L1 block data (live-streaming and historical)
-type L1BlockRepository interface {
+// L1DataService provides an interface for the host to request L1 block data (live-streaming and historical)
+type L1DataService interface {
 	// Subscribe will register a block handler to receive new blocks as they arrive, returns unsubscribe func
 	Subscribe(handler L1BlockHandler) func()
 
@@ -85,8 +85,8 @@ type L1BlockRepository interface {
 	// FetchNextBlock returns the next canonical block after a given block hash
 	// It returns the new block, a bool which is true if the block is the current L1 head and a bool if the block is on a different fork to prevBlock
 	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error)
-	// ExtractTenTransactions returns the events and transactions relevant to Ten
-	ExtractTenTransactions(block *common.L1Block) (*common.ProcessedL1Data, error)
+	// GetTenRelevantTransactions returns the events and transactions relevant to Ten
+	GetTenRelevantTransactions(block *common.L1Block) (*common.ProcessedL1Data, error)
 }
 
 // L1BlockHandler is an interface for receiving new blocks from the repository as they arrive

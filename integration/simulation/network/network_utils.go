@@ -112,7 +112,7 @@ func createInMemTenNode(
 	// create an in memory TEN node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-	l1Repo := l1.NewL1Repository(ethClient, hostLogger, mgmtContractLib, blobResolver, ethereummock.ContractAddresses)
+	l1Repo := l1.NewL1DataService(ethClient, hostLogger, mgmtContractLib, blobResolver, ethereummock.ContractAddresses)
 	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService, blobResolver)
 
 	return currentContainer

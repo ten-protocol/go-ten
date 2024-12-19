@@ -46,7 +46,7 @@ const (
 type guardianServiceLocator interface {
 	P2P() host.P2P
 	L1Publisher() host.L1Publisher
-	L1Repo() host.L1BlockRepository
+	L1Data() host.L1DataService
 	L2Repo() host.L2BatchRepository
 	LogSubs() host.LogSubscriptionManager
 	Enclaves() host.EnclaveService
@@ -142,7 +142,7 @@ func (g *Guardian) Start() error {
 	txUnsub := g.sl.P2P().SubscribeForTx(g)
 
 	// note: not keeping the unsubscribe functions because the lifespan of the guardian is the same as the host
-	l1Unsub := g.sl.L1Repo().Subscribe(g)
+	l1Unsub := g.sl.L1Data().Subscribe(g)
 	batchesUnsub := g.sl.L2Repo().SubscribeNewBatches(g)
 
 	g.cleanupFuncs = []func(){txUnsub, l1Unsub, batchesUnsub}
@@ -242,8 +242,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	// todo - @matt - does it make sense to use a timeout context?
 	err := g.submitL2Batch(context.Background(), batch)
 	if err != nil {
-		// FIXME change back to Error
-		g.logger.Warn("Error submitting batch to enclave", log.ErrKey, err)
+		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
 	}
 }
 
@@ -352,12 +351,12 @@ func (g *Guardian) provideSecret() error {
 
 	// keep checking L1 blocks until we find a secret response for our request or timeout
 	err = retry.Do(func() error {
-		nextBlock, _, err := g.sl.L1Repo().FetchNextBlock(awaitFromBlock)
+		nextBlock, _, err := g.sl.L1Data().FetchNextBlock(awaitFromBlock)
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
 
-		processedData, err := g.sl.L1Repo().ExtractTenTransactions(nextBlock)
+		processedData, err := g.sl.L1Data().GetTenRelevantTransactions(nextBlock)
 		if err != nil {
 			return fmt.Errorf("failed to extract Ten transactions from block=%s", nextBlock.Hash())
 		}
@@ -422,7 +421,7 @@ func (g *Guardian) catchupWithL1() error {
 			enclaveHead = g.l1StartHash
 		}
 
-		l1Block, isLatest, err := g.sl.L1Repo().FetchNextBlock(enclaveHead)
+		l1Block, isLatest, err := g.sl.L1Data().FetchNextBlock(enclaveHead)
 		if err != nil {
 			if errors.Is(err, l1.ErrNoNextBlock) {
 				if g.state.hostL1Head == gethutil.EmptyHash {
@@ -472,7 +471,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
 		return false, nil
 	}
-	processedData, err := g.sl.L1Repo().ExtractTenTransactions(block)
+	processedData, err := g.sl.L1Data().GetTenRelevantTransactions(block)
 	if err != nil {
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not extract ten transaction for block=%s - %w", block.Hash(), err)
@@ -480,7 +479,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 
 	rollupTxs, syncContracts := g.getRollupsAndContractAddrTxs(*processedData)
 
-	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), block.Header(), processedData)
+	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -489,7 +488,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 			// note: logging this because we don't expect it to happen often and would like visibility on that.
 			g.logger.Info("L1 block already processed by enclave, trying the next block", "block", block.Hash())
 			nextHeight := big.NewInt(0).Add(block.Number(), big.NewInt(1))
-			nextCanonicalBlock, err := g.sl.L1Repo().FetchBlockByHeight(nextHeight)
+			nextCanonicalBlock, err := g.sl.L1Data().FetchBlockByHeight(nextHeight)
 			if err != nil {
 				return false, fmt.Errorf("failed to fetch next block after forking block=%s: %w", block.Hash(), err)
 			}

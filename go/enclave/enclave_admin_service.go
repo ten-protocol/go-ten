@@ -173,16 +173,12 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockHeader *types.Header, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
+func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	e.dataInMutex.Lock()
 	defer e.dataInMutex.Unlock()
+	blockHeader := processed.BlockHeader
 
 	e.logger.Info("SubmitL1Block", log.BlockHeightKey, blockHeader.Number, log.BlockHashKey, blockHeader.Hash())
-
-	// Verify the block header matches the one in processedData
-	if blockHeader.Hash() != processed.BlockHeader.Hash() {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("block header mismatch"))
-	}
 
 	// TODO verify proof provided with block processed.Proof
 

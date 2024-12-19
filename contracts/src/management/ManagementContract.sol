@@ -180,7 +180,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // Enclaves can request the Network Secret given an attestation request report
     function RequestNetworkSecret(string calldata requestReport) public {
-        // currently this is a no-op, nodes will monitor for these transactions and respond to them
         emit NetworkSecretRequested(msg.sender, requestReport);
     }
 

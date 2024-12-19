@@ -142,19 +142,13 @@ func (s *RPCServer) RPCEncryptionKey(ctx context.Context, _ *generated.RPCEncryp
 }
 
 func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
-	bl, err := s.decodeBlock(request.EncodedBlock)
-	if err != nil {
-		s.logger.Error("Error decoding block", log.ErrKey, err)
-		return nil, err
-	}
-
 	processedData, err := s.decodeProcessedData(request.EncodedProcessedData)
 	if err != nil {
 		s.logger.Error("Error decoding receipts", log.ErrKey, err)
 		return nil, err
 	}
 
-	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, bl, processedData)
+	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, processedData)
 	if err != nil {
 		var rejErr *errutil.BlockRejectError
 		isReject := errors.As(err, &rejErr)

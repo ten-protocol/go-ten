@@ -185,7 +185,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		l1.MsgBus:       {hostConfig.MessageBusAddress},
 	}
 	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort))))
-	l1Repo := l1.NewL1Repository(n.l1Client, n.logger, mgmtContractLib, blobResolver, contractAddresses)
+	l1Repo := l1.NewL1DataService(n.l1Client, n.logger, mgmtContractLib, blobResolver, contractAddresses)
 	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, l1Repo, enclaveClients, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger), blobResolver)
 }
 

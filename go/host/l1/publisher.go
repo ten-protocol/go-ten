@@ -40,7 +40,7 @@ type Publisher struct {
 	// lock for the important contract addresses map
 	importantAddressesMutex sync.RWMutex
 
-	repository host.L1BlockRepository
+	repository host.L1DataService
 	logger     gethlog.Logger
 
 	hostStopper *stopcontrol.StopControl
@@ -60,7 +60,7 @@ func NewL1Publisher(
 	hostWallet wallet.Wallet,
 	client ethadapter.EthClient,
 	mgmtContract mgmtcontractlib.MgmtContractLib,
-	repository host.L1BlockRepository,
+	repository host.L1DataService,
 	blobResolver BlobResolver,
 	hostStopper *stopcontrol.StopControl,
 	logger gethlog.Logger,
