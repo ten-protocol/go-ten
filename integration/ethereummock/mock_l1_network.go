@@ -15,8 +15,6 @@ import (
 
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 
-	"github.com/ten-protocol/go-ten/go/ethadapter"
-
 	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -92,14 +90,14 @@ func printBlock(b *types.Block, m *Node) string {
 		}
 
 		switch l1Tx := t.(type) {
-		case *ethadapter.L1RollupTx:
+		case *common.L1RollupTx:
 			r, err := common.DecodeRollup(l1Tx.Rollup)
 			if err != nil {
 				testlog.Logger().Crit("failed to decode rollup")
 			}
 			txs = append(txs, fmt.Sprintf("r_%d(nonce=%d)", common.ShortHash(r.Hash()), tx.Nonce()))
 
-		case *ethadapter.L1DepositTx:
+		case *common.L1DepositTx:
 			var to uint64
 			if l1Tx.To != nil {
 				to = common.ShortAddress(*l1Tx.To)

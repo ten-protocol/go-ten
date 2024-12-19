@@ -4,11 +4,11 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/common"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 const methodBytesLen = 4
@@ -17,10 +17,10 @@ const methodBytesLen = 4
 type ERC20ContractLib interface {
 	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
 	// returns nil if the transaction is not convertible
-	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
+	DecodeTx(tx *types.Transaction) common.L1TenTransaction
 
 	// CreateDepositTx receives an common.L1Transaction and converts it to an eth transaction
-	CreateDepositTx(tx *ethadapter.L1DepositTx) types.TxData
+	CreateDepositTx(tx *common.L1DepositTx) types.TxData
 }
 
 // erc20ContractLibImpl takes a mgmtContractAddr and processes multiple erc20ContractAddrs
@@ -44,7 +44,7 @@ func NewERC20ContractLib(mgmtContractAddr *gethcommon.Address, contractAddrs ...
 	}
 }
 
-func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethadapter.L1DepositTx) types.TxData {
+func (c *erc20ContractLibImpl) CreateDepositTx(tx *common.L1DepositTx) types.TxData {
 	data, err := c.contractABI.Pack("transfer", &tx.To, tx.Amount)
 	if err != nil {
 		panic(err)
@@ -56,7 +56,7 @@ func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethadapter.L1DepositTx) types
 	}
 }
 
-func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) common.L1TenTransaction {
 	if !c.isRelevant(tx) {
 		return nil
 	}
@@ -92,7 +92,7 @@ func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Tran
 		panic(err)
 	}
 
-	return &ethadapter.L1DepositTx{
+	return &common.L1DepositTx{
 		Amount:        amount.(*big.Int),
 		To:            &toAddr,
 		TokenContract: tx.To(),

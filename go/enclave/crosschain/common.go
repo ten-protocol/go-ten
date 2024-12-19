@@ -18,16 +18,24 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
 var (
-	MessageBusABI, _       = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	CrossChainEventName    = "LogMessagePublished"
-	CrossChainEventID      = MessageBusABI.Events[CrossChainEventName].ID
-	ValueTransferEventName = "ValueTransfer"
-	ValueTransferEventID   = MessageBusABI.Events["ValueTransfer"].ID
+	MessageBusABI, _                  = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	MgmtContractABI, _                = abi.JSON(strings.NewReader(ManagementContract.ManagementContractMetaData.ABI))
+	CrossChainEventName               = "LogMessagePublished"
+	CrossChainEventID                 = MessageBusABI.Events[CrossChainEventName].ID
+	ValueTransferEventName            = "ValueTransfer"
+	ValueTransferEventID              = MessageBusABI.Events["ValueTransfer"].ID
+	SequencerEnclaveGrantedEventID    = MgmtContractABI.Events["SequencerEnclaveGranted"].ID
+	SequencerEnclaveRevokedEventID    = MgmtContractABI.Events["SequencerEnclaveRevoked"].ID
+	NetworkSecretRequestedID          = MgmtContractABI.Events["NetworkSecretRequested"].ID
+	NetworkSecretRespondedID          = MgmtContractABI.Events["NetworkSecretResponded"].ID
+	RollupAddedID                     = MgmtContractABI.Events["RollupAdded"].ID
+	ImportantContractAddressUpdatedID = MgmtContractABI.Events["ImportantContractAddressUpdated"].ID
 )
 
 func lazilyLogReceiptChecksum(block *types.Header, receipts types.Receipts, logger gethlog.Logger) {
@@ -64,7 +72,7 @@ func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address
 			continue
 		}
 
-		logsForReceipt, err := filterLogsFromReceipt(receipt, address, topic)
+		logsForReceipt, err := FilterLogsFromReceipt(receipt, address, topic)
 		if err != nil {
 			return logs, err
 		}
@@ -75,8 +83,8 @@ func filterLogsFromReceipts(receipts types.Receipts, address *gethcommon.Address
 	return logs, nil
 }
 
-// filterLogsFromReceipt - filters the receipt for logs matching address, if provided and matching any of the provided topics.
-func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
+// FilterLogsFromReceipt - filters the receipt for logs matching address, if provided and matching any of the provided topics.
+func FilterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, topic *gethcommon.Hash) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
 
 	if receipt == nil {
@@ -104,8 +112,8 @@ func filterLogsFromReceipt(receipt *types.Receipt, address *gethcommon.Address, 
 	return logs, nil
 }
 
-// convertLogsToMessages - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
-func convertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.CrossChainMessages, error) {
+// ConvertLogsToMessages - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
+func ConvertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.CrossChainMessages, error) {
 	messages := make(common.CrossChainMessages, 0)
 
 	for _, log := range logs {
@@ -133,7 +141,7 @@ func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) Mes
 	}
 }
 
-// convertLogsToMessages - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
+// ConvertLogsToValueTransfers - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
 func ConvertLogsToValueTransfers(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.ValueTransferEvents, error) {
 	messages := make(common.ValueTransferEvents, 0)
 
@@ -141,11 +149,11 @@ func ConvertLogsToValueTransfers(logs []types.Log, eventName string, messageBusA
 		if len(log.Topics) != 3 {
 			return nil, fmt.Errorf("invalid number of topics in log: %d", len(log.Topics))
 		}
-
 		var event MessageBus.MessageBusValueTransfer
 		err := messageBusABI.UnpackIntoInterface(&event, eventName, log.Data)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to unpack event data: %w\nData length: %d\nEvent: %s",
+				err, len(log.Data), eventName)
 		}
 
 		messages = append(messages, common.ValueTransferEvent{

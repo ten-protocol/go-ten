@@ -142,19 +142,13 @@ func (s *RPCServer) RPCEncryptionKey(ctx context.Context, _ *generated.RPCEncryp
 }
 
 func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
-	bl, err := s.decodeBlock(request.EncodedBlock)
-	if err != nil {
-		s.logger.Error("Error decoding block", log.ErrKey, err)
-		return nil, err
-	}
-
-	txReceiptsAndBlobs, err := s.decodeReceiptsAndBlobs(request.EncodedReceipts)
+	processedData, err := s.decodeProcessedData(request.EncodedProcessedData)
 	if err != nil {
 		s.logger.Error("Error decoding receipts", log.ErrKey, err)
 		return nil, err
 	}
 
-	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, bl, txReceiptsAndBlobs)
+	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, processedData)
 	if err != nil {
 		var rejErr *errutil.BlockRejectError
 		isReject := errors.As(err, &rejErr)
@@ -427,25 +421,16 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 	}, nil
 }
 
-func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Header, error) {
-	block := types.Header{}
-	err := rlp.DecodeBytes(encodedBlock, &block)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode block, bytes=%x, err=%w", encodedBlock, err)
-	}
-	return &block, nil
-}
+// decodeProcessedData - converts the rlp encoded bytes to processed if possible.
+func (s *RPCServer) decodeProcessedData(encodedData []byte) (*common.ProcessedL1Data, error) {
+	var processed common.ProcessedL1Data
 
-// decodeReceiptsAndBlobs - converts the rlp encoded bytes to receipts if possible.
-func (s *RPCServer) decodeReceiptsAndBlobs(encodedReceipts []byte) ([]*common.TxAndReceiptAndBlobs, error) {
-	receipts := make([]*common.TxAndReceiptAndBlobs, 0)
-
-	err := rlp.DecodeBytes(encodedReceipts, &receipts)
+	err := rlp.DecodeBytes(encodedData, &processed)
 	if err != nil {
-		return nil, fmt.Errorf("unable to decode receipts, bytes=%x, err=%w", encodedReceipts, err)
+		return nil, fmt.Errorf("unable to decode receipts, bytes=%x, err=%w", encodedData, err)
 	}
 
-	return receipts, nil
+	return &processed, nil
 }
 
 func toRPCError(err common.SystemError) *generated.SystemError {
