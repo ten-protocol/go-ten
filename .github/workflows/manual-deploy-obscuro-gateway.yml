@@ -406,6 +406,8 @@ jobs:
             docker stop "${{ env.VM_NAME }}" || true
             docker rm "${{ env.VM_NAME }}" || true
             
+            docker pull ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
+
             # Start Ten Gateway Container
             docker run -d -p 80:80 -p 81:81 -p 443:443 --name "${{ env.VM_NAME }}" \
             --device /dev/sgx_enclave --device /dev/sgx_provision \
