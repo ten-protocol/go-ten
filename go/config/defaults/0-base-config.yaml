@@ -8,11 +8,11 @@ network:
   batch:
     interval: 1s
     maxInterval: 1s # if this is greater than batch.interval then we make batches more slowly when there are no transactions
-    maxSize: 45000 # around 45kb - around 200 transactions / batch
+    maxSize: 125952 # (128-5)kb - the size of the rollup minus overhead
   rollup:
     interval: 5s
     maxInterval: 10m # rollups will be produced after this time even if the data blob is not full
-    maxSize: 131072 # 128kb
+    maxSize: 131072 # 128kb - the size of a blob
   gas: # todo: ask stefan about these fields
     baseFee: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
     minGasPrice: 1000000000 # using geth's initial base fee for EIP-1559 blocks.

@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/common/compression"
+
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
@@ -100,7 +102,8 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, logger)
+	dataCompressionService := compression.NewBrotliDataCompressionService()
+	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
 	err = restoreStateDBCache(context.Background(), storage, batchRegistry, batchExecutor, genesis, logger)
