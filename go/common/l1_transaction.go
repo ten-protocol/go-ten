@@ -17,6 +17,7 @@ const (
 	CrossChainMessageTx
 	CrossChainValueTranserTx
 	SequencerAddedTx
+	SequencerRevokedTx
 	SetImportantContractsTx
 )
 

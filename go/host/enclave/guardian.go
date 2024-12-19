@@ -356,9 +356,10 @@ func (g *Guardian) provideSecret() error {
 		if err != nil {
 			return fmt.Errorf("next block after block=%s not found - %w", awaitFromBlock, err)
 		}
-		// FIXME use processedData
-		secretRespTxs := g.sl.L1Publisher().FindSecretResponseTx(nextBlock)
-		// secretRespTxs := g.sl.L1Repo().ExtractTenTransactions(nextBlock)
+
+		processedData, err := g.sl.L1Repo().ExtractTenTransactions(nextBlock)
+		secretResponseEvents := processedData.GetEvents(common.SecretResponseTx)
+		secretRespTxs := g.sl.L1Publisher().FindSecretResponseTx(secretResponseEvents)
 		for _, scrt := range secretRespTxs {
 			if scrt.RequesterID.Hex() == g.enclaveID.Hex() {
 				err = g.enclaveClient.InitEnclave(context.Background(), scrt.Secret)
@@ -659,10 +660,9 @@ func (g *Guardian) periodicRollupProduction() {
 			timeExpired := time.Since(lastSuccessfulRollup) > g.rollupInterval
 			sizeExceeded := estimatedRunningRollupSize >= g.maxRollupSize
 			// if rollup retry takes longer than the block time then we need to allow time to publish
-			// FIXME better name
-			justPublished := time.Since(lastSuccessfulRollup) >= g.blockTime
-			if timeExpired || sizeExceeded && !justPublished {
-				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded, "justPublished", justPublished)
+			rollupJustPublished := time.Since(lastSuccessfulRollup) >= g.blockTime
+			if timeExpired || sizeExceeded && !rollupJustPublished {
+				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded, "rollupJustPublished", rollupJustPublished)
 				producedRollup, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
 				if err != nil {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)

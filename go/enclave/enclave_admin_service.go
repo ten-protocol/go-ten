@@ -490,6 +490,7 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		// Unsure what to do here; block has been stored
 	}
 
+	// todo handle sequencer revoked - could move all of this into a separate processor
 	sequencerAddedTxs := processed.GetEvents(common.SequencerAddedTx)
 	for _, tx := range sequencerAddedTxs {
 		if tx.HasSequencerEnclaveID() {
@@ -499,6 +500,7 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 			}
 		}
 	}
+
 	if ingestion.IsFork() {
 		e.registry.OnL1Reorg(ingestion)
 		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)

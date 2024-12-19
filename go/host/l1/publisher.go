@@ -224,13 +224,12 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	return nil
 }
 
-// FindSecretResponseTx will scan the block for any secret response transactions. This is separate from the above method
-// as we do not require the receipts for these transactions.
-func (p *Publisher) FindSecretResponseTx(block *types.Block) []*ethadapter.L1RespondSecretTx {
+// FindSecretResponseTx will attempt to decode the transactions passed in
+func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*ethadapter.L1RespondSecretTx {
 	secretRespTxs := make([]*ethadapter.L1RespondSecretTx, 0)
 
-	for _, tx := range block.Transactions() {
-		t := p.mgmtContractLib.DecodeTx(tx)
+	for _, tx := range processed {
+		t := p.mgmtContractLib.DecodeTx(tx.Transaction)
 		if t == nil {
 			continue
 		}

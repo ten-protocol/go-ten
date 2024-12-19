@@ -155,7 +155,7 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 		Events:      []common.L1Event{},
 	}
 
-	logs, err := r.fetchRelevantLogs(block)
+	logs, err := r.fetchMessageBusMgmtContractLogs(block)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 			continue
 		}
 
-		txData, err := r.createTransactionData(l.TxHash)
+		txData, err := r.fetchTxAndReceipt(l.TxHash)
 		if err != nil {
 			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 			continue
@@ -180,11 +180,13 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 			r.processValueTransferLogs(l, txData, processed)
 		case crosschain.SequencerEnclaveGrantedEventID:
 			r.processSequencerLogs(l, txData, processed)
-			r.processManagementContractTx(txData, processed, "SequencerEnclaveGrantedEventID") // we need to decode the InitialiseSecretTx
+			r.processManagementContractTx(txData, processed) // we need to decode the InitialiseSecretTx
+		case crosschain.SequencerEnclaveRevokedEventID:
+			r.processSequencerLogs(l, txData, processed)
 		case crosschain.ImportantContractAddressUpdatedID:
-			r.processManagementContractTx(txData, processed, "ImportantContractAddressUpdatedID")
+			r.processManagementContractTx(txData, processed)
 		case crosschain.RollupAddedID:
-			r.processManagementContractTx(txData, processed, "RollupAddedID")
+			r.processManagementContractTx(txData, processed)
 		case crosschain.NetworkSecretRequestedID:
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case crosschain.NetworkSecretRespondedID:
@@ -197,8 +199,8 @@ func (r *Repository) ExtractTenTransactions(block *common.L1Block) (*common.Proc
 	return processed, nil
 }
 
-// fetchRelevantLogs retrieves all logs from management contract and message bus addresses
-func (r *Repository) fetchRelevantLogs(block *common.L1Block) ([]types.Log, error) {
+// fetchMessageBusMgmtContractLogs retrieves all logs from management contract and message bus addresses
+func (r *Repository) fetchMessageBusMgmtContractLogs(block *common.L1Block) ([]types.Log, error) {
 	blkHash := block.Hash()
 	var allAddresses []gethcommon.Address
 	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
@@ -211,8 +213,8 @@ func (r *Repository) fetchRelevantLogs(block *common.L1Block) ([]types.Log, erro
 	return logs, nil
 }
 
-// createTransactionData creates a new L1TxData instance for a transaction
-func (r *Repository) createTransactionData(txHash gethcommon.Hash) (*common.L1TxData, error) {
+// fetchTxAndReceipt creates a new L1TxData instance for a transaction
+func (r *Repository) fetchTxAndReceipt(txHash gethcommon.Hash) (*common.L1TxData, error) {
 	tx, _, err := r.ethClient.TransactionByHash(txHash)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching transaction: %w", err)
@@ -255,8 +257,8 @@ func (r *Repository) processSequencerLogs(l types.Log, txData *common.L1TxData, 
 	}
 }
 
-// processDecodedTransaction handles decoded transaction types
-func (r *Repository) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data, tag string) {
+// processManagementContractTx handles decoded transaction types
+func (r *Repository) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
 	b := processed.BlockHeader
 	if decodedTx := r.mgmtContractLib.DecodeTx(txData.Transaction); decodedTx != nil {
 		switch t := decodedTx.(type) {

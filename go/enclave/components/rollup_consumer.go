@@ -49,7 +49,6 @@ func NewRollupConsumer(
 }
 
 // ProcessBlobsInBlock - processes the blobs in a block, extracts the rollups, verifies the rollups and stores them
-// FIXME remove BlockAndReceipts
 func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.BlockHashKey, processed.BlockHeader.Hash())
 

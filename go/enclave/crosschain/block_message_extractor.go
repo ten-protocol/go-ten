@@ -66,7 +66,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 // StoreCrossChainMessages - extracts the cross chain messages for the corresponding block from the receipts.
 // The messages will be stored in DB storage for later usage.
 // block - the L1 block for which events are extracted.
-// processed - all the txs and events relating to the messagebus identified by the logs. This is validated.
+// processed - all the txs and events relating to the message bus and management contract identified by the logs.
 func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, block *types.Header, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader cross chain messages processed", log.BlockHashKey, block.Hash())
 

@@ -31,6 +31,7 @@ var (
 	ValueTransferEventName            = "ValueTransfer"
 	ValueTransferEventID              = MessageBusABI.Events["ValueTransfer"].ID
 	SequencerEnclaveGrantedEventID    = MgmtContractABI.Events["SequencerEnclaveGranted"].ID
+	SequencerEnclaveRevokedEventID    = MgmtContractABI.Events["SequencerEnclaveRevoked"].ID
 	NetworkSecretRequestedID          = MgmtContractABI.Events["NetworkSecretRequested"].ID
 	NetworkSecretRespondedID          = MgmtContractABI.Events["NetworkSecretResponded"].ID
 	RollupAddedID                     = MgmtContractABI.Events["RollupAdded"].ID
