@@ -270,6 +270,7 @@ func (r *Repository) processManagementContractTx(txData *common.L1TxData, proces
 				processed.AddEvent(common.RollupTx, txData)
 			}
 		default:
+			// this might want to be an error since we should never see transactions we can't decode
 			r.logger.Warn("Unknown tx type", "txHash", txData.Transaction.Hash().Hex())
 		}
 	}

@@ -790,10 +790,6 @@ func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error)
 		currentNo++
 	}
 
-	if size > 131072 {
-		println("HERE")
-	}
-
 	return size, nil
 }
 

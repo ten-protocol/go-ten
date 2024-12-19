@@ -147,7 +147,21 @@ func (m *Node) TransactionReceipt(_ gethcommon.Hash) (*types.Receipt, error) {
 }
 
 func (m *Node) TransactionByHash(hash gethcommon.Hash) (*types.Transaction, bool, error) {
-	// First check if the transaction exists in any block
+	// First check mempool/pending transactions
+	select {
+	case tx := <-m.mempoolCh:
+		if tx.Hash() == hash {
+			// Put the tx back in the channel
+			m.mempoolCh <- tx
+			return tx, false, nil
+		}
+		// Put the tx back in the channel
+		m.mempoolCh <- tx
+	default:
+		// Don't block if mempool channel is empty
+	}
+
+	// Then check if the transaction exists in any block
 	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
 	if err != nil {
 		return nil, false, fmt.Errorf("could not retrieve head block. Cause: %w", err)
@@ -174,7 +188,8 @@ func (m *Node) TransactionByHash(hash gethcommon.Hash) (*types.Transaction, bool
 		}
 	}
 
-	return nil, false, nil
+	// If we get here, the transaction wasn't found
+	return nil, false, ethereum.NotFound
 }
 
 func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
