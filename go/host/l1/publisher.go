@@ -163,7 +163,7 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 	if err != nil {
 		return errors.Wrap(err, "could not encode attestation")
 	}
-	l1tx := &ethadapter.L1InitializeSecretTx{
+	l1tx := &common.L1InitializeSecretTx{
 		EnclaveID:     &attestation.EnclaveID,
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
@@ -178,7 +178,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 	if err != nil {
 		return gethcommon.Hash{}, errors.Wrap(err, "could not encode attestation")
 	}
-	l1tx := &ethadapter.L1RequestSecretTx{
+	l1tx := &common.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
 	// record the L1 head height before we submit the secret request, so we know which block to watch from
@@ -204,7 +204,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 }
 
 func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error {
-	l1tx := &ethadapter.L1RespondSecretTx{
+	l1tx := &common.L1RespondSecretTx{
 		Secret:      secretResponse.Secret,
 		RequesterID: secretResponse.RequesterID,
 		AttesterID:  secretResponse.AttesterID,
@@ -225,15 +225,15 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 }
 
 // FindSecretResponseTx will attempt to decode the transactions passed in
-func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*ethadapter.L1RespondSecretTx {
-	secretRespTxs := make([]*ethadapter.L1RespondSecretTx, 0)
+func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common.L1RespondSecretTx {
+	secretRespTxs := make([]*common.L1RespondSecretTx, 0)
 
 	for _, tx := range processed {
 		t := p.mgmtContractLib.DecodeTx(tx.Transaction)
 		if t == nil {
 			continue
 		}
-		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
+		if scrtTx, ok := t.(*common.L1RespondSecretTx); ok {
 			secretRespTxs = append(secretRespTxs, scrtTx)
 			continue
 		}
@@ -250,7 +250,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	if err != nil {
 		p.logger.Crit("could not encode rollup.", log.ErrKey, err)
 	}
-	tx := &ethadapter.L1RollupTx{
+	tx := &common.L1RollupTx{
 		Rollup: encRollup,
 	}
 	p.logger.Info("Publishing rollup", "size", len(encRollup)/1024, log.RollupHashKey, producedRollup.Hash())

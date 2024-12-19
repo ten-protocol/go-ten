@@ -262,11 +262,11 @@ func (r *DataService) processManagementContractTx(txData *common.L1TxData, proce
 	b := processed.BlockHeader
 	if decodedTx := r.mgmtContractLib.DecodeTx(txData.Transaction); decodedTx != nil {
 		switch t := decodedTx.(type) {
-		case *ethadapter.L1InitializeSecretTx:
+		case *common.L1InitializeSecretTx:
 			processed.AddEvent(common.InitialiseSecretTx, txData)
-		case *ethadapter.L1SetImportantContractsTx:
+		case *common.L1SetImportantContractsTx:
 			processed.AddEvent(common.SetImportantContractsTx, txData)
-		case *ethadapter.L1RollupHashes:
+		case *common.L1RollupHashes:
 			if blobs, err := r.blobResolver.FetchBlobs(context.Background(), b, t.BlobHashes); err == nil {
 				txData.Blobs = blobs
 				processed.AddEvent(common.RollupTx, txData)

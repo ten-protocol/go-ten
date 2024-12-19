@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
@@ -57,7 +58,7 @@ func (m *mockContractLib) GetContractAddr() *gethcommon.Address {
 	return &rollupTxAddr
 }
 
-func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+func (m *mockContractLib) DecodeTx(tx *types.Transaction) common.L1TenTransaction {
 	// Do not decode erc20 transactions, this is the responsibility
 	// of the erc20 contract lib.
 	if tx.To().Hex() == depositTxAddr.Hex() {
@@ -65,14 +66,14 @@ func (m *mockContractLib) DecodeTx(tx *types.Transaction) ethadapter.L1Transacti
 	}
 
 	if tx.To().Hex() == rollupTxAddr.Hex() {
-		return &ethadapter.L1RollupHashes{
+		return &common.L1RollupHashes{
 			BlobHashes: tx.BlobHashes(),
 		}
 	}
 	return decodeTx(tx)
 }
 
-func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxData, error) {
+func (m *mockContractLib) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error) {
 	var err error
 	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
 	if err != nil {
@@ -85,7 +86,7 @@ func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 
-	hashesTx := ethadapter.L1RollupHashes{BlobHashes: blobHashes}
+	hashesTx := common.L1RollupHashes{BlobHashes: blobHashes}
 
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
@@ -102,15 +103,15 @@ func (m *mockContractLib) CreateBlobRollup(t *ethadapter.L1RollupTx) (types.TxDa
 	}, nil
 }
 
-func (m *mockContractLib) CreateRequestSecret(tx *ethadapter.L1RequestSecretTx) types.TxData {
+func (m *mockContractLib) CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData {
 	return encodeTx(tx, requestSecretTxAddr)
 }
 
-func (m *mockContractLib) CreateRespondSecret(tx *ethadapter.L1RespondSecretTx, _ bool) types.TxData {
+func (m *mockContractLib) CreateRespondSecret(tx *common.L1RespondSecretTx, _ bool) types.TxData {
 	return encodeTx(tx, storeSecretTxAddr)
 }
 
-func (m *mockContractLib) CreateInitializeSecret(tx *ethadapter.L1InitializeSecretTx) types.TxData {
+func (m *mockContractLib) CreateInitializeSecret(tx *common.L1InitializeSecretTx) types.TxData {
 	return encodeTx(tx, initializeSecretTxAddr)
 }
 
@@ -142,7 +143,7 @@ func (m *mockContractLib) DecodeImportantAddressResponse([]byte) (gethcommon.Add
 	return gethcommon.Address{}, nil
 }
 
-func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+func decodeTx(tx *types.Transaction) common.L1TenTransaction {
 	if len(tx.Data()) == 0 {
 		panic("Data cannot be 0 in the mock implementation")
 	}
@@ -154,16 +155,16 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	// in the mock implementation we use the To address field to specify the L1 operation (rollup/storesecret/requestsecret)
 	// the mock implementation does not process contracts
 	// so this is a way that we can differentiate different contract calls
-	var t ethadapter.L1Transaction
+	var t common.L1TenTransaction
 	switch tx.To().Hex() {
 	case storeSecretTxAddr.Hex():
-		t = &ethadapter.L1RespondSecretTx{}
+		t = &common.L1RespondSecretTx{}
 	case depositTxAddr.Hex():
-		t = &ethadapter.L1DepositTx{}
+		t = &common.L1DepositTx{}
 	case requestSecretTxAddr.Hex():
-		t = &ethadapter.L1RequestSecretTx{}
+		t = &common.L1RequestSecretTx{}
 	case initializeSecretTxAddr.Hex():
-		t = &ethadapter.L1InitializeSecretTx{}
+		t = &common.L1InitializeSecretTx{}
 	default:
 		panic("unexpected type")
 	}
@@ -176,7 +177,7 @@ func decodeTx(tx *types.Transaction) ethadapter.L1Transaction {
 	return t
 }
 
-func encodeTx(tx ethadapter.L1Transaction, opType gethcommon.Address) types.TxData {
+func encodeTx(tx common.L1TenTransaction, opType gethcommon.Address) types.TxData {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 

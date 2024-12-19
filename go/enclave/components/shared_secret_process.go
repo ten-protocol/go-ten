@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/ethadapter"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -44,7 +42,7 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 	// process initialize secret events
 	for _, txData := range processed.GetEvents(common.InitialiseSecretTx) {
 		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
-		initSecretTx, ok := t.(*ethadapter.L1InitializeSecretTx)
+		initSecretTx, ok := t.(*common.L1InitializeSecretTx)
 		if !ok {
 			continue
 		}
@@ -63,7 +61,7 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 	// process secret requests
 	for _, txData := range processed.GetEvents(common.SecretRequestTx) {
 		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
-		scrtReqTx, ok := t.(*ethadapter.L1RequestSecretTx)
+		scrtReqTx, ok := t.(*common.L1RequestSecretTx)
 		if !ok {
 			continue
 		}
@@ -83,7 +81,7 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 	return responses
 }
 
-func (ssp *SharedSecretProcessor) processSecretRequest(ctx context.Context, req *ethadapter.L1RequestSecretTx) (*common.ProducedSecretResponse, error) {
+func (ssp *SharedSecretProcessor) processSecretRequest(ctx context.Context, req *common.L1RequestSecretTx) (*common.ProducedSecretResponse, error) {
 	att, err := common.DecodeAttestation(req.Attestation)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode attestation - %w", err)

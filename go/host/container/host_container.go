@@ -146,15 +146,15 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)
 	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BeaconUrl)
+	// we can add more fallback clients as they become available
 	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BlobArchiveUrl)
 	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback))
 	contractAddresses := map[l1.ContractType][]gethcommon.Address{
 		l1.MgmtContract: {cfg.ManagementContractAddress},
 		l1.MsgBus:       {cfg.MessageBusAddress},
 	}
-	l1Repo := l1.NewL1DataService(l1Client, logger, mgmtContractLib, blobResolver, contractAddresses)
-	// we can add more fallback clients as they become available
-	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Repo, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService, blobResolver)
+	l1Data := l1.NewL1DataService(l1Client, logger, mgmtContractLib, blobResolver, contractAddresses)
+	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Data, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService, blobResolver)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.

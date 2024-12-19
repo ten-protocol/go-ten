@@ -513,7 +513,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*ethadapter.L1RollupTx, syncContracts bool) {
+func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*common.L1RollupTx, syncContracts bool) {
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
 	if err != nil {
@@ -825,8 +825,8 @@ func (g *Guardian) evictEnclaveFromHAPool() {
 	go g.sl.Enclaves().EvictEnclave(g.enclaveID)
 }
 
-func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data) ([]*ethadapter.L1RollupTx, bool) {
-	rollupTxs := make([]*ethadapter.L1RollupTx, 0)
+func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data) ([]*common.L1RollupTx, bool) {
+	rollupTxs := make([]*common.L1RollupTx, 0)
 	var syncContracts bool
 	syncContracts = false
 
@@ -837,7 +837,7 @@ func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data
 			continue
 		}
 
-		rlp := &ethadapter.L1RollupTx{
+		rlp := &common.L1RollupTx{
 			Rollup: encodedRlp,
 		}
 		rollupTxs = append(rollupTxs, rlp)

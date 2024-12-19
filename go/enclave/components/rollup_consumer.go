@@ -137,7 +137,7 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 			continue
 		}
 
-		rollupHashes, ok := t.(*ethadapter.L1RollupHashes)
+		rollupHashes, ok := t.(*common.L1RollupHashes)
 		if !ok {
 			continue
 		}
@@ -163,7 +163,7 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 
 // there may be many rollups in one block so the blobHashes array, so it is possible that the rollupHashes array is a
 // subset of the blobHashes array
-func verifyBlobHashes(rollupHashes *ethadapter.L1RollupHashes, blobHashes []gethcommon.Hash) error {
+func verifyBlobHashes(rollupHashes *common.L1RollupHashes, blobHashes []gethcommon.Hash) error {
 	// more efficient lookup
 	blobHashSet := make(map[gethcommon.Hash]struct{}, len(blobHashes))
 	for _, h := range blobHashes {
