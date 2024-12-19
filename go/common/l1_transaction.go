@@ -3,11 +3,12 @@ package common
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-	"math/big"
 )
 
 // L1TenTransaction is an abstraction that transforms an Ethereum transaction into a format that can be consumed more
