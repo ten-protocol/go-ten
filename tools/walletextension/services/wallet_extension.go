@@ -115,7 +115,8 @@ func _startCacheEviction(services *Services, logger gethlog.Logger) {
 		select {
 		case batch := <-services.cacheInvalidationCh:
 			// when the batch was delayed the ticker has already fired
-			if batch.Number.Uint64() > lastEvictionHeight {
+			// if the 2 tickers fall out of sync, resync based on the subscription
+			if (batch.Number.Uint64() > lastEvictionHeight) || (lastEvictionHeight > batch.Number.Uint64()+2) {
 				services.RPCResponsesCache.EvictShortLiving()
 				lastEvictionHeight = batch.Number.Uint64()
 				// start a ticker with a slight delay - todo read the batch time from the config once we integrate the new config
@@ -127,7 +128,7 @@ func _startCacheEviction(services *Services, logger gethlog.Logger) {
 			lastEvictionHeight++
 			// we assume this ticker takes over
 			ticker.Reset(1 * time.Second)
-			logger.Info("Evicting cache from ticker. Head Batch was delayed")
+			logger.Warn("Evicting cache from ticker. Head Batch was delayed", "height", lastEvictionHeight)
 
 		case <-services.stopControl.Done():
 			logger.Info("Stopping cache eviction")
