@@ -59,7 +59,7 @@ func (c *ristrettoCache) DisableShortLiving() {
 }
 
 func (c *ristrettoCache) IsEvicted(key any, originalTTL time.Duration) bool {
-	if c.shortLivingEnabled.Load() == false {
+	if !c.shortLivingEnabled.Load() {
 		return true
 	}
 	remainingTTL, notExpired := c.cache.GetTTL(key)
