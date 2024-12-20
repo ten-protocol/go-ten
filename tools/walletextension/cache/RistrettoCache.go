@@ -2,6 +2,7 @@ package cache
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -15,9 +16,10 @@ const (
 )
 
 type ristrettoCache struct {
-	cache        *ristretto.Cache
-	quit         chan struct{}
-	lastEviction time.Time
+	cache              *ristretto.Cache
+	quit               chan struct{}
+	lastEviction       time.Time
+	shortLivingEnabled *atomic.Bool
 }
 
 // NewRistrettoCacheWithEviction returns a new ristrettoCache.
@@ -33,10 +35,12 @@ func NewRistrettoCacheWithEviction(nrElems int, logger log.Logger) (Cache, error
 	}
 
 	c := &ristrettoCache{
-		cache:        cache,
-		quit:         make(chan struct{}),
-		lastEviction: time.Now(),
+		cache:              cache,
+		quit:               make(chan struct{}),
+		lastEviction:       time.Now(),
+		shortLivingEnabled: &atomic.Bool{},
 	}
+	c.shortLivingEnabled.Store(true)
 
 	// Start the metrics logging
 	go c.startMetricsLogging(logger)
@@ -45,10 +49,19 @@ func NewRistrettoCacheWithEviction(nrElems int, logger log.Logger) (Cache, error
 }
 
 func (c *ristrettoCache) EvictShortLiving() {
+	// this event happens when a new batch is received, so the cache can be enabled
+	c.shortLivingEnabled.Store(true)
 	c.lastEviction = time.Now()
 }
 
+func (c *ristrettoCache) DisableShortLiving() {
+	c.shortLivingEnabled.Store(false)
+}
+
 func (c *ristrettoCache) IsEvicted(key any, originalTTL time.Duration) bool {
+	if !c.shortLivingEnabled.Load() {
+		return true
+	}
 	remainingTTL, notExpired := c.cache.GetTTL(key)
 	if !notExpired {
 		return true

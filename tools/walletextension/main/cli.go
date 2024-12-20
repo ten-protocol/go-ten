@@ -88,6 +88,10 @@ const (
 	tlsDomainFlagName    = "tlsDomain"
 	tlsDomainFlagDefault = ""
 	tlsDomainFlagUsage   = "Domain name for TLS certificate"
+
+	encryptingCertificateEnabledFlagName    = "encryptingCertificateEnabled"
+	encryptingCertificateEnabledFlagDefault = false
+	encryptingCertificateEnabledFlagUsage   = "Flag to enable encrypting certificate functionality. Default: false"
 )
 
 func parseCLIArgs() wecommon.Config {
@@ -111,6 +115,7 @@ func parseCLIArgs() wecommon.Config {
 	keyExchangeURL := flag.String(keyExchangeURLFlagName, keyExchangeURLFlagDefault, keyExchangeURLFlagUsage)
 	enableTLSFlag := flag.Bool(enableTLSFlagName, enableTLSFlagDefault, enableTLSFlagUsage)
 	tlsDomainFlag := flag.String(tlsDomainFlagName, tlsDomainFlagDefault, tlsDomainFlagUsage)
+	encryptingCertificateEnabled := flag.Bool(encryptingCertificateEnabledFlagName, encryptingCertificateEnabledFlagDefault, encryptingCertificateEnabledFlagUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -133,5 +138,6 @@ func parseCLIArgs() wecommon.Config {
 		KeyExchangeURL:                 *keyExchangeURL,
 		EnableTLS:                      *enableTLSFlag,
 		TLSDomain:                      *tlsDomainFlag,
+		EncryptingCertificateEnabled:   *encryptingCertificateEnabled,
 	}
 }

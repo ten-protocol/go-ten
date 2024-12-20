@@ -55,5 +55,5 @@ type P2PHostService interface {
 
 type L1RepoService interface {
 	Service
-	L1BlockRepository
+	L1DataService
 }
