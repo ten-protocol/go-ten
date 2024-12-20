@@ -26,36 +26,34 @@ func NewSignatureValidator(storage storage.Storage) (*SignatureValidator, error)
 }
 
 // CheckSequencerSignature - verifies the signature against the registered sequencer
-func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcommon.Hash, sig []byte) error {
+func (sigChecker *SignatureValidator) CheckSequencerSignature(hash gethcommon.Hash, sig []byte) error {
 	if sig == nil {
 		return fmt.Errorf("missing signature on batch")
 	}
 
-	// Get all sequencer enclave IDs
 	sequencerIDs, err := sigChecker.storage.GetSequencerEnclaveIDs(context.Background())
 	if err != nil {
 		return fmt.Errorf("could not fetch sequencer IDs: %w", err)
 	}
 
+	// todo no-op for in-mem test, we can add a mock version of this
 	if len(sequencerIDs) == 0 {
-		println("NO SEQ IDS")
 		return nil
 	}
 
-	// Try to verify the signature against each sequencer's public key
+	// loop through sequencer keys and exit early if one of them matches
 	for _, seqID := range sequencerIDs {
 		attestedEnclave, err := sigChecker.storage.GetEnclavePubKey(context.Background(), seqID)
 		if err != nil {
-			continue // Skip if we can't get the public key for this sequencer
+			continue // skip if we can't get the public key for this sequencer
 		}
 
-		// Verify signature using this sequencer's public key
-		err = signature.VerifySignature(attestedEnclave.PubKey, headerHash.Bytes(), sig)
+		err = signature.VerifySignature(attestedEnclave.PubKey, hash.Bytes(), sig)
 		if err == nil {
-			// Signature verified successfully
+			// signature matches
 			return nil
 		}
 	}
 
-	return fmt.Errorf("invalid sequencer signature")
+	return fmt.Errorf("could not verify the signature against any of the stored sequencer enclave keys")
 }
