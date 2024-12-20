@@ -37,6 +37,7 @@ func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcom
 	}
 
 	if len(sequencerIDs) == 0 {
+		println("NO SEQ IDS")
 		return nil
 	}
 

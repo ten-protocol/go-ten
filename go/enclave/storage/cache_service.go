@@ -79,6 +79,9 @@ type CacheService struct {
 	// store the enclaves from the network
 	attestedEnclavesCache *cache.Cache[*AttestedEnclave]
 
+	// cache for sequencer enclave IDs (using a dummy key since it's a global list)
+	sequencerIDsCache *cache.Cache[*[]common.EnclaveID]
+
 	logger gethlog.Logger
 }
 
@@ -120,6 +123,8 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 
 		// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
 		lastBatchesCache: cache.New[*core.Batch](newCache(logger, nrBatchesWithContent, batchCost)),
+
+		sequencerIDsCache: cache.New[*[]common.EnclaveID](newCache(logger, 1, enclaveCost*20)), // space for ~20 sequencers
 
 		logger: logger,
 	}
@@ -233,6 +238,14 @@ func (cs *CacheService) UpdateEnclaveNodeType(ctx context.Context, enclaveId com
 	}
 	enclave.Type = nodeType
 	cacheValue(ctx, cs.attestedEnclavesCache, cs.logger, enclaveId, enclave, enclaveCost)
+}
+
+func (cs *CacheService) CacheSequencerIDs(ctx context.Context, sequencerIDs []common.EnclaveID) {
+	cacheValue(ctx, cs.sequencerIDsCache, cs.logger, "sequencers", &sequencerIDs, enclaveCost*20)
+}
+
+func (cs *CacheService) ReadSequencerIDs(ctx context.Context, onCacheMiss func(any) (*[]common.EnclaveID, error)) (*[]common.EnclaveID, error) {
+	return getCachedValue(ctx, cs.sequencerIDsCache, cs.logger, "sequencers", enclaveCost*20, onCacheMiss, true)
 }
 
 // getCachedValue - returns the cached value for the provided key. If the key is not found, then invoke the 'onCacheMiss' function
