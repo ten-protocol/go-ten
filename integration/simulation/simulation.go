@@ -21,7 +21,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/erc20contract"
@@ -139,7 +138,7 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 					if t == nil {
 						continue
 					}
-					if _, ok := t.(*ethadapter.L1RollupHashes); ok {
+					if _, ok := t.(*common.L1RollupHashes); ok {
 						// exit at the first TEN rollup we see
 						return
 					}
@@ -324,15 +323,19 @@ func (s *Simulation) deployTenZen() {
 			time.Sleep(2 * time.Second)
 		}
 
-		for {
+		// Wait for balance with retry
+		err = retry.Do(func() error {
 			balance, err := rpcClient.BalanceAt(context.Background(), nil)
 			if err != nil {
-				panic(fmt.Errorf("failed to get balance: %w", err))
+				return fmt.Errorf("failed to get balance: %w", err)
 			}
-			if balance.Cmp(big.NewInt(0)) > 0 {
-				break
+			if balance.Cmp(big.NewInt(0)) <= 0 {
+				return fmt.Errorf("waiting for positive balance")
 			}
-			time.Sleep(2 * time.Second)
+			return nil
+		}, retry.NewTimeoutStrategy(1*time.Minute, 2*time.Second))
+		if err != nil {
+			panic(fmt.Errorf("failed to get positive balance after timeout: %w", err))
 		}
 
 		owner := s.Params.Wallets.L2FaucetWallet
@@ -404,7 +407,7 @@ func (s *Simulation) deployTenERC20s() {
 			rpc := s.RPCHandles.TenWalletClient(owner.Address(), 1)
 			err = rpc.SendTransaction(s.ctx, signedTx)
 			if err != nil {
-				panic(err)
+				panic(fmt.Sprintf("ERC20 deployment transaction unsuccessful. Cause: %s", err))
 			}
 
 			err = testcommon.AwaitReceipt(s.ctx, rpc, signedTx.Hash(), s.Params.ReceiptTimeout)
@@ -425,7 +428,7 @@ func (s *Simulation) prefundL1Accounts() {
 		receiver := w.Address()
 		tokenOwner := s.Params.Wallets.Tokens[testcommon.HOC].L1Owner
 		ownerAddr := tokenOwner.Address()
-		txData := &ethadapter.L1DepositTx{
+		txData := &common.L1DepositTx{
 			Amount:        initialBalance,
 			To:            &receiver,
 			TokenContract: s.Params.Wallets.Tokens[testcommon.HOC].L1ContractAddress,

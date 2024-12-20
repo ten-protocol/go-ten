@@ -8,10 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
-	"github.com/ethereum/go-ethereum"
-
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -44,7 +40,7 @@ type Publisher struct {
 	// lock for the important contract addresses map
 	importantAddressesMutex sync.RWMutex
 
-	repository host.L1BlockRepository
+	repository host.L1DataService
 	logger     gethlog.Logger
 
 	hostStopper *stopcontrol.StopControl
@@ -64,7 +60,7 @@ func NewL1Publisher(
 	hostWallet wallet.Wallet,
 	client ethadapter.EthClient,
 	mgmtContract mgmtcontractlib.MgmtContractLib,
-	repository host.L1BlockRepository,
+	repository host.L1DataService,
 	blobResolver BlobResolver,
 	hostStopper *stopcontrol.StopControl,
 	logger gethlog.Logger,
@@ -167,7 +163,7 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 	if err != nil {
 		return errors.Wrap(err, "could not encode attestation")
 	}
-	l1tx := &ethadapter.L1InitializeSecretTx{
+	l1tx := &common.L1InitializeSecretTx{
 		EnclaveID:     &attestation.EnclaveID,
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
@@ -182,7 +178,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 	if err != nil {
 		return gethcommon.Hash{}, errors.Wrap(err, "could not encode attestation")
 	}
-	l1tx := &ethadapter.L1RequestSecretTx{
+	l1tx := &common.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
 	// record the L1 head height before we submit the secret request, so we know which block to watch from
@@ -208,7 +204,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 }
 
 func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error {
-	l1tx := &ethadapter.L1RespondSecretTx{
+	l1tx := &common.L1RespondSecretTx{
 		Secret:      secretResponse.Secret,
 		RequesterID: secretResponse.RequesterID,
 		AttesterID:  secretResponse.AttesterID,
@@ -228,76 +224,16 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	return nil
 }
 
-// ExtractRelevantTenTransactions will extract any transactions from the block that are relevant to TEN
-// todo (#2495) we should monitor for relevant L1 events instead of scanning every transaction in the block
-func (p *Publisher) ExtractRelevantTenTransactions(block *types.Block, receipts types.Receipts) ([]*common.TxAndReceiptAndBlobs, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
-	// temporarily add this host stopping check to prevent sim test failures until a more robust solution is implemented
-	for !p.hostStopper.IsStopping() {
-		txWithReceiptsAndBlobs := make([]*common.TxAndReceiptAndBlobs, 0)
-		rollupTxs := make([]*ethadapter.L1RollupTx, 0)
-		contractAddressTxs := make([]*ethadapter.L1SetImportantContractsTx, 0)
+// FindSecretResponseTx will attempt to decode the transactions passed in
+func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common.L1RespondSecretTx {
+	secretRespTxs := make([]*common.L1RespondSecretTx, 0)
 
-		txs := block.Transactions()
-		for i, rec := range receipts {
-			if rec.BlockNumber == nil {
-				continue // Skip non-relevant transactions
-			}
-
-			decodedTx := p.mgmtContractLib.DecodeTx(txs[i])
-			var blobs []*kzg4844.Blob
-			var err error
-
-			switch typedTx := decodedTx.(type) {
-			case *ethadapter.L1SetImportantContractsTx:
-				contractAddressTxs = append(contractAddressTxs, typedTx)
-			case *ethadapter.L1RollupHashes:
-				blobs, err = p.blobResolver.FetchBlobs(p.sendingContext, block.Header(), typedTx.BlobHashes)
-				// temporarily add this host stopping check to prevent sim test failures until a more robust solution is implemented
-				if err != nil {
-					if errors.Is(err, ethereum.NotFound) {
-						p.logger.Crit("Blobs were not found on beacon chain or archive service", "block", block.Hash(), "error", err)
-					} else {
-						p.logger.Crit("could not fetch blobs", log.ErrKey, err)
-					}
-					continue
-				}
-
-				encodedRlp, err := ethadapter.DecodeBlobs(blobs)
-				if err != nil {
-					p.logger.Crit("could not decode blobs.", log.ErrKey, err)
-					continue
-				}
-
-				rlp := &ethadapter.L1RollupTx{
-					Rollup: encodedRlp,
-				}
-				rollupTxs = append(rollupTxs, rlp)
-			}
-
-			// compile the tx, receipt and blobs into a single struct for submission to the enclave
-			txWithReceiptsAndBlobs = append(txWithReceiptsAndBlobs, &common.TxAndReceiptAndBlobs{
-				Tx:      txs[i],
-				Receipt: rec,
-				Blobs:   blobs,
-			})
-		}
-
-		return txWithReceiptsAndBlobs, rollupTxs, contractAddressTxs
-	}
-	return nil, nil, nil
-}
-
-// FindSecretResponseTx will scan the block for any secret response transactions. This is separate from the above method
-// as we do not require the receipts for these transactions.
-func (p *Publisher) FindSecretResponseTx(block *types.Block) []*ethadapter.L1RespondSecretTx {
-	secretRespTxs := make([]*ethadapter.L1RespondSecretTx, 0)
-
-	for _, tx := range block.Transactions() {
-		t := p.mgmtContractLib.DecodeTx(tx)
+	for _, tx := range processed {
+		t := p.mgmtContractLib.DecodeTx(tx.Transaction)
 		if t == nil {
 			continue
 		}
-		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
+		if scrtTx, ok := t.(*common.L1RespondSecretTx); ok {
 			secretRespTxs = append(secretRespTxs, scrtTx)
 			continue
 		}
@@ -314,7 +250,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	if err != nil {
 		p.logger.Crit("could not encode rollup.", log.ErrKey, err)
 	}
-	tx := &ethadapter.L1RollupTx{
+	tx := &common.L1RollupTx{
 		Rollup: encRollup,
 	}
 	p.logger.Info("Publishing rollup", "size", len(encRollup)/1024, log.RollupHashKey, producedRollup.Hash())
