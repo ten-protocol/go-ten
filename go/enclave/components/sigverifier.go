@@ -1,13 +1,14 @@
 package components
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
+
 	"github.com/ten-protocol/go-ten/go/common/signature"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
-	"context"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
