@@ -25,9 +25,9 @@ type Config struct {
 	RateLimitWindow                time.Duration
 	RateLimitMaxConcurrentRequests int
 
-	InsideEnclave                  bool // Indicates if the program is running inside an enclave
-	KeyExchangeURL                 string
-	EnableTLS                      bool
-	TLSDomain                      string
-	EncryptingCertificateEnabled   bool
+	InsideEnclave                bool // Indicates if the program is running inside an enclave
+	KeyExchangeURL               string
+	EnableTLS                    bool
+	TLSDomain                    string
+	EncryptingCertificateEnabled bool
 }
