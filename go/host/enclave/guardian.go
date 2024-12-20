@@ -275,6 +275,7 @@ func (g *Guardian) mainLoop() {
 		g.logger.Trace("mainLoop - enclave status", "status", g.state.GetStatus())
 		switch g.state.GetStatus() {
 		case Disconnected, Unavailable:
+			// todo make this eviction trigger configurable once we've settled on how it should work
 			if unavailableCounter > 10 {
 				// enclave has been unavailable for a while, evict it from the HA pool
 				g.evictEnclaveFromHAPool()
