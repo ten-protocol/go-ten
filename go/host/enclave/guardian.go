@@ -275,9 +275,9 @@ func (g *Guardian) mainLoop() {
 		g.logger.Trace("mainLoop - enclave status", "status", g.state.GetStatus())
 		switch g.state.GetStatus() {
 		case Disconnected, Unavailable:
-			if unavailableCounter > 3 {
+			// todo make this eviction trigger configurable once we've settled on how it should work
+			if unavailableCounter > 10 {
 				// enclave has been unavailable for a while, evict it from the HA pool
-				// todo - @matt - we need to consider more carefully when to evict an enclave
 				g.evictEnclaveFromHAPool()
 			}
 			// nothing to do, we are waiting for the enclave to be available
@@ -609,7 +609,6 @@ func (g *Guardian) periodicBatchProduction() {
 			skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
 			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
-				// todo: is this too low a bar for failover? Retry first?
 				g.logger.Error("Unable to produce batch", log.ErrKey, err)
 				g.evictEnclaveFromHAPool()
 			}
@@ -813,16 +812,12 @@ func (g *Guardian) startSequencerProcesses() {
 	go g.periodicBundleSubmission()
 }
 
-// evictEnclaveFromHAPool evicts a failing enclave from the HA pool and shuts down the guardian.
+// evictEnclaveFromHAPool evicts a failing enclave from the HA pool if appropriate
 // This is called when the enclave is unrecoverable and we want to notify the host that it should failover if an
 // alternative enclave is available.
 func (g *Guardian) evictEnclaveFromHAPool() {
-	g.logger.Error("Enclave is unrecoverable - requesting to evict it from HA pool")
-	err := g.Stop()
-	if err != nil {
-		g.logger.Error("Error while stopping guardian of failed enclave", log.ErrKey, err)
-	}
-	go g.sl.Enclaves().EvictEnclave(g.enclaveID)
+	g.logger.Warn("Enclave is unavailable - notifying enclave service to evict it from HA pool if necessary")
+	go g.sl.Enclaves().NotifyUnavailable(g.enclaveID)
 }
 
 func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data) ([]*common.L1RollupTx, bool) {
