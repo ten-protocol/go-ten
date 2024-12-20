@@ -916,3 +916,9 @@ func (s *storageImpl) GetSystemContractAddresses(ctx context.Context) (common.Sy
 	}
 	return addresses, nil
 }
+
+func (s *storageImpl) GetSequencerEnclaveIDs(ctx context.Context) ([]common.EnclaveID, error) {
+	defer s.logDuration("GetSequencerEnclaveIDs", measure.NewStopwatch())
+	//todo cache these values
+	return enclavedb.FetchSequencerEnclaveIDs(ctx, s.db.GetSQLDB())
+}

@@ -3,9 +3,11 @@ package components
 import (
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common/signature"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
+	"context"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -23,23 +25,31 @@ func NewSignatureValidator(storage storage.Storage) (*SignatureValidator, error)
 }
 
 // CheckSequencerSignature - verifies the signature against the registered sequencer
-func (sigChecker *SignatureValidator) CheckSequencerSignature(_ gethcommon.Hash, sig []byte) error {
+func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcommon.Hash, sig []byte) error {
 	if sig == nil {
 		return fmt.Errorf("missing signature on batch")
 	}
 
-	// todo (@matt) disabling sequencer signature verification for now while we transition to EnclaveIDs
-	// This must be re-enabled once sequencer enclaveIDs are available from the management contract
+	// Get all sequencer enclave IDs
+	sequencerIDs, err := sigChecker.storage.GetSequencerEnclaveIDs(context.Background())
+	if err != nil {
+		return fmt.Errorf("could not fetch sequencer IDs: %w", err)
+	}
 
-	//if sigChecker.attestedKey == nil {
-	//	attestedKey, err := sigChecker.storage.GetEnclavePubKey(sigChecker.SequencerID)
-	//	if err != nil {
-	//		return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", sigChecker.SequencerID, err)
-	//	}
-	//	sigChecker.attestedKey = attestedKey
-	//}
-	//
-	// return signature.VerifySignature(sigChecker.attestedKey, headerHash.Bytes(), sig)
+	// Try to verify the signature against each sequencer's public key
+	for _, seqID := range sequencerIDs {
+		attestedEnclave, err := sigChecker.storage.GetEnclavePubKey(context.Background(), seqID)
+		if err != nil {
+			continue // Skip if we can't get the public key for this sequencer
+		}
 
-	return nil
+		// Verify signature using this sequencer's public key
+		err = signature.VerifySignature(attestedEnclave.PubKey, headerHash.Bytes(), sig)
+		if err == nil {
+			// Signature verified successfully
+			return nil
+		}
+	}
+
+	return fmt.Errorf("invalid sequencer signature")
 }

@@ -143,7 +143,7 @@ func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, proof types.Rece
 	defer e.mainMutex.Unlock()
 
 	// todo - use the proof
-
+	// todo - this will currently store all enclaves
 	err := e.storage.StoreNodeType(context.Background(), id, common.BackupSequencer)
 	if err != nil {
 		return responses.ToInternalError(err)
