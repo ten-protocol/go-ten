@@ -36,18 +36,19 @@ import (
 
 // Services handles the various business logic for the api endpoints
 type Services struct {
-	HostAddrHTTP      string // The HTTP address on which the TEN host can be reached
-	HostAddrWS        string // The WS address on which the TEN host can be reached
-	Storage           storage.UserStorage
-	logger            gethlog.Logger
-	stopControl       *stopcontrol.StopControl
-	version           string
-	RPCResponsesCache cache.Cache
-	BackendRPC        *BackendRPC
-	RateLimiter       *ratelimiter.RateLimiter
-	SKManager         SKManager
-	Config            *common.Config
-	NewHeadsService   *subscriptioncommon.NewHeadsService
+	HostAddrHTTP        string // The HTTP address on which the TEN host can be reached
+	HostAddrWS          string // The WS address on which the TEN host can be reached
+	Storage             storage.UserStorage
+	logger              gethlog.Logger
+	stopControl         *stopcontrol.StopControl
+	version             string
+	RPCResponsesCache   cache.Cache
+	BackendRPC          *BackendRPC
+	RateLimiter         *ratelimiter.RateLimiter
+	SKManager           SKManager
+	Config              *common.Config
+	NewHeadsService     *subscriptioncommon.NewHeadsService
+	cacheInvalidationCh chan *tencommon.BatchHeader
 }
 
 type NewHeadNotifier interface {
@@ -67,17 +68,18 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 	rateLimiter := ratelimiter.NewRateLimiter(config.RateLimitUserComputeTime, config.RateLimitWindow, uint32(config.RateLimitMaxConcurrentRequests), logger)
 
 	services := Services{
-		HostAddrHTTP:      hostAddrHTTP,
-		HostAddrWS:        hostAddrWS,
-		Storage:           storage,
-		logger:            logger,
-		stopControl:       stopControl,
-		version:           version,
-		RPCResponsesCache: newGatewayCache,
-		BackendRPC:        NewBackendRPC(hostAddrHTTP, hostAddrWS, logger),
-		SKManager:         NewSKManager(storage, config, logger),
-		RateLimiter:       rateLimiter,
-		Config:            config,
+		HostAddrHTTP:        hostAddrHTTP,
+		HostAddrWS:          hostAddrWS,
+		Storage:             storage,
+		logger:              logger,
+		stopControl:         stopControl,
+		version:             version,
+		RPCResponsesCache:   newGatewayCache,
+		BackendRPC:          NewBackendRPC(hostAddrHTTP, hostAddrWS, logger),
+		SKManager:           NewSKManager(storage, config, logger),
+		RateLimiter:         rateLimiter,
+		Config:              config,
+		cacheInvalidationCh: make(chan *tencommon.BatchHeader),
 	}
 
 	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(
@@ -86,21 +88,50 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 			// clear the cache to avoid returning stale data during reconnecting.
 			services.RPCResponsesCache.EvictShortLiving()
 			ch := make(chan *tencommon.BatchHeader)
-			errCh, err := subscribeToNewHeadsWithRetry(ch, services, logger)
+			errCh, err := subscribeToNewHeadsWithRetry(ch, &services, logger)
 			logger.Info("Connected to new heads service.", log.ErrKey, err)
 			return ch, errCh, err
 		},
 		true,
 		logger,
 		func(newHead *tencommon.BatchHeader) error {
-			services.RPCResponsesCache.EvictShortLiving()
+			services.cacheInvalidationCh <- newHead
 			return nil
 		})
 
+	go _startCacheEviction(&services, logger)
 	return &services
 }
 
-func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services Services, logger gethlog.Logger) (<-chan error, error) {
+// this is a more robust cache eviction that handles delays in the new heads subscription by disabling caching of short living elements
+// until a batch is received.
+func _startCacheEviction(services *Services, logger gethlog.Logger) {
+	//- todo read the batch time from the config once we integrate the new config
+	// if we don't receive a new head after this interval we assume the connection is lost, and we disable caching
+	disableCacheDelay := 5 * time.Second
+	timer := time.NewTimer(disableCacheDelay)
+
+	for {
+		select {
+		case <-services.cacheInvalidationCh:
+			services.RPCResponsesCache.EvictShortLiving()
+
+			timer.Stop()
+			timer = time.NewTimer(disableCacheDelay)
+
+		case <-timer.C: // should only be fired when the normal subscription hasn't fired
+			logger.Warn("Disabling short living cache because NewHeads subscription is delayed")
+			services.RPCResponsesCache.DisableShortLiving()
+
+		case <-services.stopControl.Done():
+			logger.Info("Stopping cache eviction")
+			timer.Stop()
+			return
+		}
+	}
+}
+
+func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services *Services, logger gethlog.Logger) (<-chan error, error) {
 	var sub *gethrpc.ClientSubscription
 	err := retry.Do(
 		func() error {
@@ -238,6 +269,9 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 		res, err := obsclient.NewObsClient(client).Health()
 		return &res.OverallHealth, err
 	})
+	if res == nil {
+		return false, err
+	}
 	return *res, err
 }
 
@@ -271,4 +305,5 @@ func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlic
 
 func (w *Services) Stop() {
 	w.BackendRPC.Stop()
+	close(w.cacheInvalidationCh)
 }
