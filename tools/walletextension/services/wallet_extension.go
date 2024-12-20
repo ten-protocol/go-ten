@@ -103,35 +103,29 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 	return &services
 }
 
-// this is a more cache eviction that handles delays in the new heads subscription
-// if the delay was temporary, the subscription will catch up
+// this is a more robust cache eviction that handles delays in the new heads subscription by disabling caching of short living elements
+// until a batch is received.
 func _startCacheEviction(services *Services, logger gethlog.Logger) {
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-
-	lastEvictionHeight := uint64(0)
+	//- todo read the batch time from the config once we integrate the new config
+	// if we don't receive a new head after this interval we assume the connection is lost, and we disable caching
+	disableCacheDelay := 5 * time.Second
+	timer := time.NewTimer(disableCacheDelay)
 
 	for {
 		select {
-		case batch := <-services.cacheInvalidationCh:
-			// when the batch was delayed the ticker has already fired
-			// if the 2 tickers fall out of sync, resync based on the subscription
-			if (batch.Number.Uint64() > lastEvictionHeight) || (lastEvictionHeight > batch.Number.Uint64()+2) {
-				services.RPCResponsesCache.EvictShortLiving()
-				lastEvictionHeight = batch.Number.Uint64()
-				// start a ticker with a slight delay - todo read the batch time from the config once we integrate the new config
-				ticker.Reset(1100 * time.Millisecond)
-			}
-
-		case <-ticker.C: // should only be fired when the normal subscription hasn't fired
+		case <-services.cacheInvalidationCh:
 			services.RPCResponsesCache.EvictShortLiving()
-			lastEvictionHeight++
-			// we assume this ticker takes over
-			ticker.Reset(1 * time.Second)
-			logger.Warn("Evicting cache from ticker. Head Batch was delayed", "height", lastEvictionHeight)
+
+			timer.Stop()
+			timer = time.NewTimer(disableCacheDelay)
+
+		case <-timer.C: // should only be fired when the normal subscription hasn't fired
+			logger.Warn("Disabling short living cache because NewHeads subscription is delayed")
+			services.RPCResponsesCache.DisableShortLiving()
 
 		case <-services.stopControl.Done():
 			logger.Info("Stopping cache eviction")
+			timer.Stop()
 			return
 		}
 	}
