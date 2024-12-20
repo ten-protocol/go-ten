@@ -99,6 +99,7 @@ jobs:
             "GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER"
             "GATEWAY_KEY_EXCHANGE_URL"
             "GATEWAY_TLS_DOMAIN"
+            "GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED"
           )
 
           for VAR_NAME in "${VAR_NAMES[@]}"; do
@@ -129,6 +130,7 @@ jobs:
           echo "GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER: $GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER"
           echo "GATEWAY_KEY_EXCHANGE_URL: $GATEWAY_KEY_EXCHANGE_URL"
           echo "GATEWAY_TLS_DOMAIN: $GATEWAY_TLS_DOMAIN"
+          echo "GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED: $GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED"
 
       - name: "Print GitHub variables"
         run: |
@@ -424,7 +426,8 @@ jobs:
             -keyExchangeURL="${{ env.GATEWAY_KEY_EXCHANGE_URL }}" \
             -insideEnclave=true \
             -enableTLS=true \
-            -tlsDomain="${{ env.GATEWAY_TLS_DOMAIN }}"
+            -tlsDomain="${{ env.GATEWAY_TLS_DOMAIN }}" \
+            -encryptingCertificateEnabled="${{ env.GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED }}"
             
             docker exec "${{ env.VM_NAME }}" sh -c "
                 echo \"Checking volume mount...\";

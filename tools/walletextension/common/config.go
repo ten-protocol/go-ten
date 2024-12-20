@@ -23,4 +23,5 @@ type Config struct {
 	KeyExchangeURL                 string
 	EnableTLS                      bool
 	TLSDomain                      string
+	EncryptingCertificateEnabled   bool
 }
