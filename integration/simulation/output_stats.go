@@ -97,7 +97,7 @@ func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient)
 		}
 
 		switch l1Tx := t.(type) {
-		case *ethadapter.L1RollupTx:
+		case *common.L1RollupTx:
 			_, err := common.DecodeRollup(l1Tx.Rollup)
 			if err != nil {
 				testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
@@ -109,7 +109,7 @@ func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient)
 			//	}
 			//}
 
-		case *ethadapter.L1DepositTx:
+		case *common.L1DepositTx:
 			o.canonicalERC20DepositCount++
 		}
 	}
