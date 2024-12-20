@@ -16,9 +16,10 @@ const (
 )
 
 const (
-	attInsert = "insert into attestation (enclave_id, pub_key, node_type)  values (?,?,?)"
-	attSelect = "select pub_key, node_type from attestation where enclave_id=?"
-	attUpdate = "update attestation set node_type=? where enclave_id=?"
+	attInsert           = "insert into attestation (enclave_id, pub_key, node_type)  values (?,?,?)"
+	attSelect           = "select pub_key, node_type from attestation where enclave_id=?"
+	attUpdate           = "update attestation set node_type=? where enclave_id=?"
+	attSelectSequencers = "select enclave_id from attestation where node_type = ? or node_type = ?"
 )
 
 func WriteConfigToTx(ctx context.Context, dbtx *sql.Tx, key string, value any) (sql.Result, error) {
@@ -68,4 +69,30 @@ func readSingleRow(ctx context.Context, db *sql.DB, query string, v any) ([]byte
 		return nil, err
 	}
 	return res, nil
+}
+
+// FetchSequencerEnclaveIDs returns all enclave IDs that are registered as sequencers
+func FetchSequencerEnclaveIDs(ctx context.Context, db *sql.DB) ([]common.EnclaveID, error) {
+	rows, err := db.QueryContext(ctx, attSelectSequencers, 0, 2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var enclaveIDs []common.EnclaveID
+	for rows.Next() {
+		var idBytes []byte
+		if err := rows.Scan(&idBytes); err != nil {
+			return nil, err
+		}
+		enclaveID := common.EnclaveID{}
+		enclaveID.SetBytes(idBytes)
+		enclaveIDs = append(enclaveIDs, enclaveID)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return enclaveIDs, nil
 }

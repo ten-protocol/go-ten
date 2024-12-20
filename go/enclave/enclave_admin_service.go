@@ -140,6 +140,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 
 func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, _ types.Receipt) common.SystemError {
 	// todo - use the proof
+	// todo - this will currently store all enclaves
 	err := e.storage.StoreNodeType(context.Background(), id, common.BackupSequencer)
 	if err != nil {
 		return responses.ToInternalError(err)
