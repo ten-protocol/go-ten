@@ -1,13 +1,10 @@
 package common
 
 import (
-	"crypto/ecdsa"
-	"fmt"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 )
 
@@ -40,31 +37,6 @@ type L1RespondSecretTx struct {
 type L1SetImportantContractsTx struct {
 	Key        string
 	NewAddress gethcommon.Address
-}
-
-// Sign signs the payload with a given private key
-func (l *L1RespondSecretTx) Sign(privateKey *ecdsa.PrivateKey) *L1RespondSecretTx {
-	var data []byte
-	data = append(data, l.AttesterID.Bytes()...)
-	data = append(data, l.RequesterID.Bytes()...)
-	data = append(data, string(l.Secret)...)
-
-	ethereumMessageHash := func(data []byte) []byte {
-		prefix := fmt.Sprintf("\x19Ethereum Signed Message:\n%d", len(data))
-		return crypto.Keccak256([]byte(prefix), data)
-	}
-
-	hashedData := ethereumMessageHash(data)
-	// sign the hash
-	signedHash, err := crypto.Sign(hashedData, privateKey)
-	if err != nil {
-		return nil
-	}
-
-	// set recovery id to 27; prevent malleable signatures
-	signedHash[64] += 27
-	l.AttesterSig = signedHash
-	return l
 }
 
 type L1RequestSecretTx struct {
