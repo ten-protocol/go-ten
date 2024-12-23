@@ -191,6 +191,7 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 				} else {
 					we.Logger().Info("user is nil in second case statement else\n")
 				}
+				we.Logger().Info(fmt.Sprintf("account: %s not registered to current user. Please register first", suggestedAddress.Hex()))
 				return nil, fmt.Errorf("account: %s not registered to current user. Please register first", suggestedAddress.Hex())
 			}
 		}
