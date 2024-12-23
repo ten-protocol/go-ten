@@ -192,6 +192,16 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 					we.Logger().Info("user is nil in second case statement else\n")
 				}
 				we.Logger().Info(fmt.Sprintf("account: %s not registered to current user. Please register first", suggestedAddress.Hex()))
+
+				we.Logger().Info(fmt.Sprintf("user.ID: %s\n", hexutils.BytesToHex(user.ID)))
+
+				u, err := we.Storage.GetUser(user.ID)
+				if err != nil {
+					we.Logger().Info(fmt.Sprintf("error getting user: %s\n", err))
+				}
+				we.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE user: %v\n", u))
+				we.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE user.AllAccounts(): %v\n", u.AllAccounts()))
+
 				return nil, fmt.Errorf("account: %s not registered to current user. Please register first", suggestedAddress.Hex())
 			}
 		}
