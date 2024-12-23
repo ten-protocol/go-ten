@@ -153,8 +153,8 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 	// for users with multiple accounts try to determine a candidate account based on the available information
 	switch {
 	case cfg.account != nil:
-		fmt.Printf("cfg.account: %v\n", cfg.account)
-		fmt.Printf("Available accounts in first case statement: %v\n", user.AllAccounts())
+		we.Logger().Info("cfg.account: %v\n", cfg.account)
+		we.Logger().Info("Available accounts in first case statement: %v\n", user.AllAccounts())
 		acc := user.AllAccounts()[*cfg.account]
 		if acc != nil {
 			candidateAccts = append(candidateAccts, acc)
@@ -163,8 +163,8 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 
 	case cfg.computeFromCallback != nil:
 		suggestedAddress := cfg.computeFromCallback(user)
-		fmt.Printf("suggestedAddress: %v\n", suggestedAddress.Hex())
-		fmt.Printf("Available accounts in second case statement	: %v\n", user.AllAccounts())
+		we.Logger().Info("suggestedAddress: %v\n", suggestedAddress.Hex())
+		we.Logger().Info("Available accounts in second case statement	: %v\n", user.AllAccounts())
 		if suggestedAddress != nil {
 			acc := user.AllAccounts()[*suggestedAddress]
 			if acc != nil {
@@ -172,7 +172,7 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 				return candidateAccts, nil
 			} else {
 				// this can only happen when the "from" is not one of the registered accounts.
-				fmt.Printf("Available accounts in second case statement	: %v\n", user.AllAccounts())
+				we.Logger().Info("Available accounts in second case statement	: %v\n", user.AllAccounts())
 				return nil, fmt.Errorf("account: %s not registered to current user. Please register first", suggestedAddress.Hex())
 			}
 		}
