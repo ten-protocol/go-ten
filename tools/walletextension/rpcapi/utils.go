@@ -153,9 +153,10 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 	// for users with multiple accounts try to determine a candidate account based on the available information
 	switch {
 	case cfg.account != nil:
-		we.Logger().Info("cfg.account: %v\n", cfg.account)
+		we.Logger().Info("cfg.account is not nil in first case statement\n")
+		we.Logger().Info(fmt.Sprintf("cfg.account: %v\n", cfg.account))
 		if user != nil {
-			we.Logger().Info("Available accounts in first case statement: %v\n", user.AllAccounts())
+			we.Logger().Info(fmt.Sprintf("Available accounts in first case statement: %v\n", user.AllAccounts()))
 		} else {
 			we.Logger().Info("user is nil in first case statement\n")
 		}
@@ -166,14 +167,15 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 		}
 
 	case cfg.computeFromCallback != nil:
+		we.Logger().Info("cfg.computeFromCallback is not nil in second case statement\n")
 		suggestedAddress := cfg.computeFromCallback(user)
 		if suggestedAddress != nil {
-			we.Logger().Info("suggestedAddress: %v\n", suggestedAddress.Hex())
+			we.Logger().Info(fmt.Sprintf("suggestedAddress: %v\n", suggestedAddress.Hex()))
 		} else {
 			we.Logger().Info("suggestedAddress is nil in second case statement\n")
 		}
 		if user != nil {
-			we.Logger().Info("Available accounts in second case statement	: %v\n", user.AllAccounts())
+			we.Logger().Info(fmt.Sprintf("Available accounts in second case statement	: %v\n", user.AllAccounts()))
 		} else {
 			we.Logger().Info("user is nil in second case statement\n")
 		}
@@ -185,7 +187,7 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 			} else {
 				// this can only happen when the "from" is not one of the registered accounts.
 				if user != nil {
-					we.Logger().Info("Available accounts in second case statement	: %v\n", user.AllAccounts())
+					we.Logger().Info(fmt.Sprintf("Available accounts in second case statement	: %v\n", user.AllAccounts()))
 				} else {
 					we.Logger().Info("user is nil in second case statement else\n")
 				}
