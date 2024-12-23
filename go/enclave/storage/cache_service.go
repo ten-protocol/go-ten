@@ -20,18 +20,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
-// approximate cost in bytes of the cached values
 const (
-	blockHeaderCost = 1024
-	batchHeaderCost = 1024
-	hashCost        = 32
-	idCost          = 8
-	batchCost       = 1024 * 1024
-	receiptCost     = 1024 * 50
-	contractCost    = 60
-	eventTypeCost   = 120
-	eventTopicCost  = 16
-	enclaveCost     = 100
+	cacheCost = 1
 )
 
 type CacheService struct {
@@ -90,34 +80,34 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 	nrContractAddresses := 10_000 // ~1M
 
 	nrBatchesWithContent := 50 // ~100M
-	nrReceipts := 10_000       // ~1G
 
 	nrEnclaves := 20
 
+	nrReceipts := 15_000 // ~100M
 	if testMode {
-		nrReceipts = 500 //~50M
+		nrReceipts = 500
 	}
 
 	return &CacheService{
-		blockCache: newCache[[]byte, *types.Header](logger, nrL1Blocks, blockHeaderCost),
+		blockCache: newCache[[]byte, *types.Header](logger, nrL1Blocks),
 
-		batchCacheBySeqNo: newCache[uint64, *common.BatchHeader](logger, nrBatches, batchHeaderCost),
-		seqCacheByHash:    newCache[[]byte, *big.Int](logger, nrBatches, idCost),
-		seqCacheByHeight:  newCache[uint64, *big.Int](logger, nrBatches, idCost),
+		batchCacheBySeqNo: newCache[uint64, *common.BatchHeader](logger, nrBatches),
+		seqCacheByHash:    newCache[[]byte, *big.Int](logger, nrBatches),
+		seqCacheByHeight:  newCache[uint64, *big.Int](logger, nrBatches),
 
-		convertedGethHeaderCache: newCache[[]byte, *types.Header](logger, nrConvertedEth, batchHeaderCost),
-		convertedHashCache:       newCache[[]byte, *gethcommon.Hash](logger, nrConvertedEth, hashCost),
+		convertedGethHeaderCache: newCache[[]byte, *types.Header](logger, nrConvertedEth),
+		convertedHashCache:       newCache[[]byte, *gethcommon.Hash](logger, nrConvertedEth),
 
-		eoaCache:             newCache[[]byte, *uint64](logger, nrEOA, idCost),
-		contractAddressCache: newCache[[]byte, *enclavedb.Contract](logger, nrContractAddresses, contractCost),
-		eventTypeCache:       newCache[[]byte, *enclavedb.EventType](logger, nrEventTypes, eventTypeCost),
-		eventTopicCache:      newCache[[]byte, *enclavedb.EventTopic](logger, nrEventTypes, eventTopicCost),
+		eoaCache:             newCache[[]byte, *uint64](logger, nrEOA),
+		contractAddressCache: newCache[[]byte, *enclavedb.Contract](logger, nrContractAddresses),
+		eventTypeCache:       newCache[[]byte, *enclavedb.EventType](logger, nrEventTypes),
+		eventTopicCache:      newCache[[]byte, *enclavedb.EventTopic](logger, nrEventTypes),
 
-		receiptCache:          newCache[[]byte, *CachedReceipt](logger, nrReceipts, receiptCost),
-		attestedEnclavesCache: newCache[[]byte, *AttestedEnclave](logger, nrEnclaves, enclaveCost),
+		receiptCache:          newCache[[]byte, *CachedReceipt](logger, nrReceipts),
+		attestedEnclavesCache: newCache[[]byte, *AttestedEnclave](logger, nrEnclaves),
 
 		// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
-		lastBatchesCache: newCache[uint64, *core.Batch](logger, nrBatchesWithContent, batchCost),
+		lastBatchesCache: newCache[uint64, *core.Batch](logger, nrBatchesWithContent),
 
 		sequencerIDsCache: make([]common.EnclaveID, 0),
 
@@ -125,11 +115,11 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 	}
 }
 
-func newCache[K ristretto.Key, V any](logger gethlog.Logger, nrElem, capacityPerElem int) *ristretto.Cache[K, V] {
+func newCache[K ristretto.Key, V any](logger gethlog.Logger, nrElem int) *ristretto.Cache[K, V] {
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config[K, V]{
-		NumCounters: int64(10 * nrElem),                  // 10 times the expected elements
-		MaxCost:     int64(capacityPerElem * nrElem * 2), // calculate the max cost
-		BufferItems: 64,                                  // number of keys per Get buffer.
+		NumCounters: int64(10 * nrElem), // 10 times the expected elements
+		MaxCost:     int64(nrElem),      // calculate the max cost
+		BufferItems: 64,                 // number of keys per Get buffer.
 		Metrics:     true,
 	})
 	if err != nil {
@@ -139,66 +129,66 @@ func newCache[K ristretto.Key, V any](logger gethlog.Logger, nrElem, capacityPer
 }
 
 func (cs *CacheService) CacheConvertedHash(ctx context.Context, batchHash, convertedHash gethcommon.Hash) {
-	cacheValue(ctx, cs.convertedHashCache, cs.logger, batchHash.Bytes(), &convertedHash, hashCost)
+	cacheValue(ctx, cs.convertedHashCache, cs.logger, batchHash.Bytes(), &convertedHash)
 }
 
 func (cs *CacheService) CacheBlock(ctx context.Context, b *types.Header) {
-	cacheValue(ctx, cs.blockCache, cs.logger, b.Hash().Bytes(), b, blockHeaderCost)
+	cacheValue(ctx, cs.blockCache, cs.logger, b.Hash().Bytes(), b)
 }
 
 func (cs *CacheService) CacheReceipt(_ context.Context, r *CachedReceipt) {
-	// keep the receipts in cache for 1 minute
-	cs.receiptCache.SetWithTTL(r.Receipt.TxHash.Bytes(), r, receiptCost, 1*time.Minute)
+	// keep the receipts in cache for 100 seconds - 100 batches
+	cs.receiptCache.SetWithTTL(r.Receipt.TxHash.Bytes(), r, cacheCost, 100*time.Second)
 }
 
 func (cs *CacheService) CacheBatch(ctx context.Context, batch *core.Batch) {
-	cacheValue(ctx, cs.batchCacheBySeqNo, cs.logger, batch.SeqNo().Uint64(), batch.Header, batchHeaderCost)
-	cacheValue(ctx, cs.seqCacheByHash, cs.logger, batch.Hash().Bytes(), batch.SeqNo(), idCost)
+	cacheValue(ctx, cs.batchCacheBySeqNo, cs.logger, batch.SeqNo().Uint64(), batch.Header)
+	cacheValue(ctx, cs.seqCacheByHash, cs.logger, batch.Hash().Bytes(), batch.SeqNo())
 	// note: the key is (height+1), because for some reason it doesn't like a key of 0
 	// should always contain the canonical batch because the cache is overwritten by each new batch after a reorg
-	cacheValue(ctx, cs.seqCacheByHeight, cs.logger, batch.NumberU64()+1, batch.SeqNo(), idCost)
+	cacheValue(ctx, cs.seqCacheByHeight, cs.logger, batch.NumberU64()+1, batch.SeqNo())
 
-	cacheValue(ctx, cs.lastBatchesCache, cs.logger, batch.SeqNo().Uint64(), batch, batchCost)
+	cacheValue(ctx, cs.lastBatchesCache, cs.logger, batch.SeqNo().Uint64(), batch)
 }
 
 func (cs *CacheService) ReadBlock(ctx context.Context, key gethcommon.Hash, onCacheMiss func() (*types.Header, error)) (*types.Header, error) {
-	return getCachedValue(ctx, cs.blockCache, cs.logger, key.Bytes(), blockHeaderCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.blockCache, cs.logger, key.Bytes(), onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadBatchSeqByHash(ctx context.Context, hash common.L2BatchHash, onCacheMiss func() (*big.Int, error)) (*big.Int, error) {
-	return getCachedValue(ctx, cs.seqCacheByHash, cs.logger, hash.Bytes(), idCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.seqCacheByHash, cs.logger, hash.Bytes(), onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadBatchSeqByHeight(ctx context.Context, height uint64, onCacheMiss func() (*big.Int, error)) (*big.Int, error) {
 	// the key is (height+1), because for some reason it doesn't like a key of 0
-	return getCachedValue(ctx, cs.seqCacheByHeight, cs.logger, height+1, idCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.seqCacheByHeight, cs.logger, height+1, onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadConvertedHash(ctx context.Context, hash common.L2BatchHash, onCacheMiss func() (*gethcommon.Hash, error)) (*gethcommon.Hash, error) {
-	return getCachedValue(ctx, cs.convertedHashCache, cs.logger, hash.Bytes(), hashCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.convertedHashCache, cs.logger, hash.Bytes(), onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadBatchHeader(ctx context.Context, seqNum uint64, onCacheMiss func() (*common.BatchHeader, error)) (*common.BatchHeader, error) {
-	return getCachedValue(ctx, cs.batchCacheBySeqNo, cs.logger, seqNum, batchHeaderCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.batchCacheBySeqNo, cs.logger, seqNum, onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadBatch(ctx context.Context, seqNum uint64, onCacheMiss func() (*core.Batch, error)) (*core.Batch, error) {
-	return getCachedValue(ctx, cs.lastBatchesCache, cs.logger, seqNum, batchCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.lastBatchesCache, cs.logger, seqNum, onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadEOA(ctx context.Context, addr gethcommon.Address, onCacheMiss func() (*uint64, error)) (*uint64, error) {
-	return getCachedValue(ctx, cs.eoaCache, cs.logger, addr.Bytes(), idCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.eoaCache, cs.logger, addr.Bytes(), onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadContractAddr(ctx context.Context, addr gethcommon.Address, onCacheMiss func() (*enclavedb.Contract, error)) (*enclavedb.Contract, error) {
-	return getCachedValue(ctx, cs.contractAddressCache, cs.logger, addr.Bytes(), contractCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.contractAddressCache, cs.logger, addr.Bytes(), onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadEventTopic(ctx context.Context, topic []byte, eventTypeId uint64, onCacheMiss func() (*enclavedb.EventTopic, error)) (*enclavedb.EventTopic, error) {
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, eventTypeId)
 	key := append(topic, b...)
-	return getCachedValue(ctx, cs.eventTopicCache, cs.logger, key, eventTopicCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.eventTopicCache, cs.logger, key, onCacheMiss, true)
 }
 
 type CachedReceipt struct {
@@ -208,7 +198,7 @@ type CachedReceipt struct {
 }
 
 func (cs *CacheService) ReadReceipt(ctx context.Context, txHash gethcommon.Hash) (*CachedReceipt, error) {
-	return getCachedValue(ctx, cs.receiptCache, cs.logger, txHash.Bytes(), receiptCost, nil, false)
+	return getCachedValue(ctx, cs.receiptCache, cs.logger, txHash.Bytes(), nil, false)
 }
 
 func (cs *CacheService) DelReceipt(_ context.Context, txHash gethcommon.Hash) error {
@@ -220,15 +210,15 @@ func (cs *CacheService) ReadEventType(ctx context.Context, contractAddress gethc
 	key := make([]byte, 0)
 	key = append(key, contractAddress.Bytes()...)
 	key = append(key, eventSignature.Bytes()...)
-	return getCachedValue(ctx, cs.eventTypeCache, cs.logger, key, eventTypeCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.eventTypeCache, cs.logger, key, onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadConvertedHeader(ctx context.Context, batchHash common.L2BatchHash, onCacheMiss func() (*types.Header, error)) (*types.Header, error) {
-	return getCachedValue(ctx, cs.convertedGethHeaderCache, cs.logger, batchHash.Bytes(), blockHeaderCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.convertedGethHeaderCache, cs.logger, batchHash.Bytes(), onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID, onCacheMiss func() (*AttestedEnclave, error)) (*AttestedEnclave, error) {
-	return getCachedValue(ctx, cs.attestedEnclavesCache, cs.logger, enclaveId.Bytes(), enclaveCost, onCacheMiss, true)
+	return getCachedValue(ctx, cs.attestedEnclavesCache, cs.logger, enclaveId.Bytes(), onCacheMiss, true)
 }
 
 func (cs *CacheService) UpdateEnclaveNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) {
@@ -238,7 +228,7 @@ func (cs *CacheService) UpdateEnclaveNodeType(ctx context.Context, enclaveId com
 		return
 	}
 	enclave.Type = nodeType
-	cacheValue(ctx, cs.attestedEnclavesCache, cs.logger, enclaveId.Bytes(), enclave, enclaveCost)
+	cacheValue(ctx, cs.attestedEnclavesCache, cs.logger, enclaveId.Bytes(), enclave)
 }
 
 func (cs *CacheService) CacheSequencerIDs(_ context.Context, sequencerIDs []common.EnclaveID) {
@@ -258,7 +248,7 @@ func (cs *CacheService) ReadSequencerIDs(_ context.Context, onCacheMiss func() (
 
 // getCachedValue - returns the cached value for the provided key. If the key is not found, then invoke the 'onCacheMiss' function
 // which returns the value, and cache it
-func getCachedValue[K ristretto.Key, V any](ctx context.Context, cache *ristretto.Cache[K, V], logger gethlog.Logger, key K, cost int64, onCacheMiss func() (V, error), cacheIfMissing bool) (V, error) {
+func getCachedValue[K ristretto.Key, V any](ctx context.Context, cache *ristretto.Cache[K, V], logger gethlog.Logger, key K, onCacheMiss func() (V, error), cacheIfMissing bool) (V, error) {
 	value, found := cache.Get(key)
 	if found {
 		return value, nil
@@ -272,13 +262,13 @@ func getCachedValue[K ristretto.Key, V any](ctx context.Context, cache *ristrett
 		return v, err
 	}
 	if cacheIfMissing {
-		cacheValue(ctx, cache, logger, key, v, cost)
+		cacheValue(ctx, cache, logger, key, v)
 	}
 	return v, nil
 }
 
-func cacheValue[K ristretto.Key, V any](_ context.Context, cache *ristretto.Cache[K, V], logger gethlog.Logger, key K, v V, cost int64) {
-	added := cache.Set(key, v, cost)
+func cacheValue[K ristretto.Key, V any](_ context.Context, cache *ristretto.Cache[K, V], logger gethlog.Logger, key K, v V) {
+	added := cache.Set(key, v, cacheCost)
 	if !added {
 		logger.Debug("Did not store value in cache")
 	}

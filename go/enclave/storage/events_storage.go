@@ -53,11 +53,6 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql
 		}
 	}
 
-	es.cachingService.CacheReceipt(ctx, &CachedReceipt{
-		Receipt: txExecResult.Receipt,
-		From:    txExecResult.TxWithSender.Sender,
-		To:      txExecResult.TxWithSender.Tx.To(),
-	})
 	return nil
 }
 

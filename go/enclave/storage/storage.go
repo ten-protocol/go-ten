@@ -693,6 +693,17 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 
+	// after a successful db commit, cache the receipts
+	if s.config.StoreExecutedTransactions {
+		for _, txExecResult := range results {
+			s.cachingService.CacheReceipt(ctx, &CachedReceipt{
+				Receipt: txExecResult.Receipt,
+				From:    txExecResult.TxWithSender.Sender,
+				To:      txExecResult.TxWithSender.Tx.To(),
+			})
+		}
+	}
+
 	return nil
 }
 
