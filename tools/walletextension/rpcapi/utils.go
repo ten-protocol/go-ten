@@ -154,7 +154,11 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 	switch {
 	case cfg.account != nil:
 		we.Logger().Info("cfg.account: %v\n", cfg.account)
-		we.Logger().Info("Available accounts in first case statement: %v\n", user.AllAccounts())
+		if user != nil {
+			we.Logger().Info("Available accounts in first case statement: %v\n", user.AllAccounts())
+		} else {
+			we.Logger().Info("user is nil in first case statement\n")
+		}
 		acc := user.AllAccounts()[*cfg.account]
 		if acc != nil {
 			candidateAccts = append(candidateAccts, acc)
@@ -163,8 +167,16 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 
 	case cfg.computeFromCallback != nil:
 		suggestedAddress := cfg.computeFromCallback(user)
-		we.Logger().Info("suggestedAddress: %v\n", suggestedAddress.Hex())
-		we.Logger().Info("Available accounts in second case statement	: %v\n", user.AllAccounts())
+		if suggestedAddress != nil {
+			we.Logger().Info("suggestedAddress: %v\n", suggestedAddress.Hex())
+		} else {
+			we.Logger().Info("suggestedAddress is nil in second case statement\n")
+		}
+		if user != nil {
+			we.Logger().Info("Available accounts in second case statement	: %v\n", user.AllAccounts())
+		} else {
+			we.Logger().Info("user is nil in second case statement\n")
+		}
 		if suggestedAddress != nil {
 			acc := user.AllAccounts()[*suggestedAddress]
 			if acc != nil {
@@ -172,7 +184,11 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 				return candidateAccts, nil
 			} else {
 				// this can only happen when the "from" is not one of the registered accounts.
-				we.Logger().Info("Available accounts in second case statement	: %v\n", user.AllAccounts())
+				if user != nil {
+					we.Logger().Info("Available accounts in second case statement	: %v\n", user.AllAccounts())
+				} else {
+					we.Logger().Info("user is nil in second case statement else\n")
+				}
 				return nil, fmt.Errorf("account: %s not registered to current user. Please register first", suggestedAddress.Hex())
 			}
 		}
