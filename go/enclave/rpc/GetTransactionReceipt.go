@@ -114,6 +114,12 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 		}
 	}
 	r := marshalReceipt(rec.Receipt, logs, rec.From, rec.To)
+
+	// after the receipt was requested by a user remove it from the cache
+	err := cacheService.DelReceipt(ctx, txHash)
+	if err != nil {
+		return nil, err
+	}
 	return r, nil
 }
 

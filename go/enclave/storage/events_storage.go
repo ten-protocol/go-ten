@@ -308,7 +308,7 @@ func (es *eventsStorage) determineRelevantAddressForTopic(ctx context.Context, d
 func (es *eventsStorage) readEventType(ctx context.Context, dbTX *sql.Tx, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
 	defer es.logDuration("ReadEventType", measure.NewStopwatch())
 
-	return es.cachingService.ReadEventType(ctx, contractAddress, eventSignature, func(v any) (*enclavedb.EventType, error) {
+	return es.cachingService.ReadEventType(ctx, contractAddress, eventSignature, func() (*enclavedb.EventType, error) {
 		contract, err := es.readContract(ctx, dbTX, contractAddress)
 		if err != nil {
 			return nil, err
@@ -319,14 +319,14 @@ func (es *eventsStorage) readEventType(ctx context.Context, dbTX *sql.Tx, contra
 
 func (es *eventsStorage) readContract(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (*enclavedb.Contract, error) {
 	defer es.logDuration("readContract", measure.NewStopwatch())
-	return es.cachingService.ReadContractAddr(ctx, addr, func(v any) (*enclavedb.Contract, error) {
+	return es.cachingService.ReadContractAddr(ctx, addr, func() (*enclavedb.Contract, error) {
 		return enclavedb.ReadContractByAddress(ctx, dbTX, addr)
 	})
 }
 
 func (es *eventsStorage) ReadContract(ctx context.Context, addr gethcommon.Address) (*enclavedb.Contract, error) {
 	defer es.logDuration("readContract", measure.NewStopwatch())
-	return es.cachingService.ReadContractAddr(ctx, addr, func(v any) (*enclavedb.Contract, error) {
+	return es.cachingService.ReadContractAddr(ctx, addr, func() (*enclavedb.Contract, error) {
 		dbtx, err := es.db.GetSQLDB().BeginTx(ctx, nil)
 		if err != nil {
 			return nil, err
@@ -338,14 +338,14 @@ func (es *eventsStorage) ReadContract(ctx context.Context, addr gethcommon.Addre
 
 func (es *eventsStorage) findTopic(ctx context.Context, dbTX *sql.Tx, topic []byte, eventTypeId uint64) (*enclavedb.EventTopic, error) {
 	defer es.logDuration("findTopic", measure.NewStopwatch())
-	return es.cachingService.ReadEventTopic(ctx, topic, eventTypeId, func(v any) (*enclavedb.EventTopic, error) {
+	return es.cachingService.ReadEventTopic(ctx, topic, eventTypeId, func() (*enclavedb.EventTopic, error) {
 		return enclavedb.ReadEventTopic(ctx, dbTX, topic, eventTypeId)
 	})
 }
 
 func (es *eventsStorage) readEOA(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (*uint64, error) {
 	defer es.logDuration("ReadEOA", measure.NewStopwatch())
-	return es.cachingService.ReadEOA(ctx, addr, func(v any) (*uint64, error) {
+	return es.cachingService.ReadEOA(ctx, addr, func() (*uint64, error) {
 		id, err := enclavedb.ReadEoa(ctx, dbTX, addr)
 		if err != nil {
 			return nil, err

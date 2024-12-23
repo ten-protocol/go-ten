@@ -7,7 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/dgraph-io/ristretto"
+	"github.com/dgraph-io/ristretto/v2"
 )
 
 const (
@@ -16,7 +16,7 @@ const (
 )
 
 type ristrettoCache struct {
-	cache              *ristretto.Cache
+	cache              *ristretto.Cache[[]byte, any]
 	quit               chan struct{}
 	lastEviction       time.Time
 	shortLivingEnabled *atomic.Bool
@@ -24,7 +24,7 @@ type ristrettoCache struct {
 
 // NewRistrettoCacheWithEviction returns a new ristrettoCache.
 func NewRistrettoCacheWithEviction(nrElems int, logger log.Logger) (Cache, error) {
-	cache, err := ristretto.NewCache(&ristretto.Config{
+	cache, err := ristretto.NewCache[[]byte, any](&ristretto.Config[[]byte, any]{
 		NumCounters: int64(nrElems * 10),
 		MaxCost:     int64(nrElems),
 		BufferItems: bufferItems,
@@ -58,7 +58,7 @@ func (c *ristrettoCache) DisableShortLiving() {
 	c.shortLivingEnabled.Store(false)
 }
 
-func (c *ristrettoCache) IsEvicted(key any, originalTTL time.Duration) bool {
+func (c *ristrettoCache) IsEvicted(key []byte, originalTTL time.Duration) bool {
 	if !c.shortLivingEnabled.Load() {
 		return true
 	}
