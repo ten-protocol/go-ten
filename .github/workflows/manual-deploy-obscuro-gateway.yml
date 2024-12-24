@@ -35,6 +35,14 @@ on:
         options:
           - "primary"
           - "DEXYNTH"
+      recreate_vm:
+        description: "Delete and recreate VM"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 jobs:
   validate-inputs:
@@ -59,8 +67,7 @@ jobs:
           INSTANCE_PREFIX=""
 
           if [[ "${{ github.event.inputs.instance_type }}" != "primary" ]]; then
-            INSTANCE_SUFFIX="_${{ github.event.inputs.instance_type }}"
-            INSTANCE_SUFFIX2="-${{ github.event.inputs.instance_type }}"
+            INSTANCE_SUFFIX="-${{ github.event.inputs.instance_type }}"
             INSTANCE_PREFIX="${{ github.event.inputs.instance_type }}_"
           fi
 
@@ -68,10 +75,10 @@ jobs:
           echo "INSTANCE_PREFIX=$INSTANCE_PREFIX" >> $GITHUB_ENV
 
           # Set infrastructure variables
-          PUBLIC_IP="${{ github.event.inputs.testnet_type }}-OG-static${INSTANCE_SUFFIX2,,}"
-          DNS_NAME="obscurogateway-${{ github.event.inputs.testnet_type }}${INSTANCE_SUFFIX2,,}"
-          VM_NAME="${{ github.event.inputs.testnet_type }}-OG-${{ github.run_number }}${INSTANCE_SUFFIX}"
-          DEPLOY_GROUP="ObscuroGateway-${{ github.event.inputs.testnet_type }}-${{ github.run_number }}${INSTANCE_SUFFIX}"
+          PUBLIC_IP="${{ github.event.inputs.testnet_type }}-OG-static${INSTANCE_SUFFIX,,}"
+          DNS_NAME="obscurogateway-${{ github.event.inputs.testnet_type }}${INSTANCE_SUFFIX,,}"
+          VM_NAME="${{ github.event.inputs.testnet_type }}-OG${INSTANCE_SUFFIX}"
+          DEPLOY_GROUP="ObscuroGateway-${{ github.event.inputs.testnet_type }}${INSTANCE_SUFFIX}"
           VNET_NAME="ObscuroGateway-${{ github.event.inputs.testnet_type }}-01VNET${INSTANCE_SUFFIX}"
           SUBNET_NAME="ObscuroGateway-${{ github.event.inputs.testnet_type }}-01Subnet${INSTANCE_SUFFIX}"
 
@@ -92,6 +99,7 @@ jobs:
             "GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER"
             "GATEWAY_KEY_EXCHANGE_URL"
             "GATEWAY_TLS_DOMAIN"
+            "GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED"
           )
 
           for VAR_NAME in "${VAR_NAMES[@]}"; do
@@ -105,7 +113,6 @@ jobs:
           done
 
       - name: "Print environment variables"
-        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
         run: |
           echo "INSTANCE_SUFFIX: $INSTANCE_SUFFIX"
           echo "INSTANCE_PREFIX: $INSTANCE_PREFIX"
@@ -123,9 +130,9 @@ jobs:
           echo "GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER: $GATEWAY_MAX_CONCURRENT_REQUESTS_PER_USER"
           echo "GATEWAY_KEY_EXCHANGE_URL: $GATEWAY_KEY_EXCHANGE_URL"
           echo "GATEWAY_TLS_DOMAIN: $GATEWAY_TLS_DOMAIN"
+          echo "GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED: $GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED"
 
       - name: "Print GitHub variables"
-        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
         run: |
           echo "GitHub Variables = ${{ toJSON(vars) }}"
 
@@ -157,57 +164,79 @@ jobs:
           DOCKER_BUILDKIT=1 docker build --build-arg TESTNET_TYPE=${{ github.event.inputs.testnet_type }} -t ${{ env.DOCKER_BUILD_TAG_GATEWAY }} -f ./tools/walletextension/enclave.Dockerfile .
           docker push ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
 
-      # This will fail some deletions due to resource dependencies ( ie. you must first delete the vm before deleting the disk)
+      # If recreate_vm = true, delete VMs and their dependencies
       - name: "Delete deployed VMs"
+        if: ${{ github.event.inputs.recreate_vm == 'true' }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
             $(az resource list --tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
-      # This will clean up any lingering dependencies - might fail if there are no resources to cleanup
       - name: "Delete VMs dependencies"
+        if: ${{ github.event.inputs.recreate_vm == 'true' }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
             $(az resource list --tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
 
-      - name: "Ensure VM Static Public IP Exists"
+      # If recreate_vm = false, check if VM exists
+      - name: "Check if VM exists"
+        if: ${{ github.event.inputs.recreate_vm == 'false' }}
+        id: check_vm
+        shell: bash
+        run: |
+          if ! az vm show -g Testnet -n "${{ env.VM_NAME }}" &> /dev/null; then
+            echo "vm_exists=false" >> $GITHUB_ENV
+          else
+            echo "vm_exists=true" >> $GITHUB_ENV
+          fi
+
+      - name: "Ensure VM Static Public IP and DNS if needed"
+        if: ${{ github.event.inputs.recreate_vm == 'true' || env.vm_exists == 'false' }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az network public-ip show -g Testnet -n "${{ env.PUBLIC_IP }}" || az network public-ip create -g Testnet -n "${{ env.PUBLIC_IP }}" --allocation-method Static --sku Standard
-
-      - name: "Assign/Update DNS Name for Public IP"
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
             existing_dns_name=$(az network public-ip show -g Testnet -n "${{ env.PUBLIC_IP }}" --query dnsSettings.domainNameLabel -o tsv)
             if [ -z "$existing_dns_name" ]; then
               az network public-ip update -g Testnet -n "${{ env.PUBLIC_IP }}" --dns-name "${{ env.DNS_NAME }}"
             fi
 
-      - name: "Create VM for Gateway node on Azure"
+      - name: "Create VM if it doesn't exist (recreate_vm=false)"
+        if: ${{ github.event.inputs.recreate_vm == 'false' && env.vm_exists == 'false' }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az vm create -g Testnet -n "${{ env.VM_NAME }}" \
-            --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address "${{ env.PUBLIC_IP }}" \
-            --tags deploygroup="${{ env.DEPLOY_GROUP }}"  ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true \
-            --vnet-name "${{ env.VNET_NAME }}" --subnet "${{ env.SUBNET_NAME }}" \
-            --size Standard_DC2s_v3 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
-            --authentication-type password
+              --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
+              --public-ip-address "${{ env.PUBLIC_IP }}" \
+              --tags deploygroup="${{ env.DEPLOY_GROUP }}"  ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true \
+              --vnet-name "${{ env.VNET_NAME }}" --subnet "${{ env.SUBNET_NAME }}" \
+              --size Standard_DC2s_v3 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
+              --authentication-type password
+              
+            az vm open-port -g Testnet -n "${{ env.VM_NAME }}" --port 80,81,443
+            
+            # Allow time for VM initialization
+            sleep 30
 
-      - name: "Open TEN node-${{ matrix.host_id }} ports on Azure"
+      - name: "Create VM if recreate_vm = true"
+        if: ${{ github.event.inputs.recreate_vm == 'true' }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm open-port -g Testnet -n "${{ env.VM_NAME }}"  --port 80,81,443
-
-        # To overcome issues with critical VM resources being unavailable, we need to wait for the VM to be ready
-      - name: "Allow time for VM initialization"
-        shell: bash
-        run: sleep 30
+            az vm create -g Testnet -n "${{ env.VM_NAME }}" \
+              --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
+              --public-ip-address "${{ env.PUBLIC_IP }}" \
+              --tags deploygroup="${{ env.DEPLOY_GROUP }}"  ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true \
+              --vnet-name "${{ env.VNET_NAME }}" --subnet "${{ env.SUBNET_NAME }}" \
+              --size Standard_DC2s_v3 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
+              --authentication-type password
+              
+            az vm open-port -g Testnet -n "${{ env.VM_NAME }}" --port 80,81,443
+            
+            # Allow time for VM initialization
+            sleep 30
 
       - name: "Start TEN Gateway on Azure"
         uses: azure/CLI@v1
@@ -238,8 +267,11 @@ jobs:
             done
 
             curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh
+            rm -rf /home/obscuro/go-obscuro
             git clone --depth 1 -b "${{ env.BRANCH_NAME }}" https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro
-            docker network create --driver bridge node_network || true
+            if ! docker network inspect node_network >/dev/null 2>&1; then
+              docker network create --driver bridge node_network
+            fi
             cd /home/obscuro/go-obscuro/
 
             # Promtail Integration Start
@@ -280,6 +312,9 @@ jobs:
                 - replacement: "${{ env.VM_NAME }}"
                   target_label: "node_name"
             EOF
+
+            docker stop promtail || true
+            docker rm promtail || true
             
             docker run -d --name promtail \
             --network node_network \
@@ -304,29 +339,33 @@ jobs:
                   password: "${{ secrets.LOKI_PASSWORD }}"
             scrape_configs:
               # Node metrics
-              - job_name:  node-${{ env.VM_NAME }}
-                scrape_interval: 5s  # Frequent scrapes for node metrics
-                static_configs:
-                  - targets:
-                      - node_exporter:9100  # Node Exporter instance
-                relabel_configs:
-                  - source_labels: [job]
-                    target_label: 'node'
-                    replacement:  node-${{ env.VM_NAME }}
-
-              # Container metrics
-              - job_name:  container-${{ env.VM_NAME }}
+              - job_name: node-${{ env.VM_NAME }}
                 scrape_interval: 5s
                 static_configs:
                   - targets:
-                      - cadvisor:8080  # cAdvisor instance for container metrics
+                      - node_exporter:9100
                 relabel_configs:
                   - source_labels: [job]
-                    target_label: 'node'
-                    replacement:  container-${{ env.VM_NAME }}
+                    target_label: "node"
+                    replacement: node-${{ env.VM_NAME }}
+
+              # Container metrics
+              - job_name: container-${{ env.VM_NAME }}
+                scrape_interval: 5s
+                static_configs:
+                  - targets:
+                      - cadvisor:8080
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: "node"
+                    replacement: container-${{ env.VM_NAME }}
             EOF
 
-            docker volume create prometheus-data
+
+            docker stop prometheus || true
+            docker rm prometheus || true
+
+            docker volume create prometheus-data || true
             docker run -d --name prometheus \
             --network node_network \
             -p 9090:9090 \
@@ -335,6 +374,10 @@ jobs:
             prom/prometheus:latest \
             --config.file=/etc/prometheus/prometheus.yml
 
+
+            docker stop node_exporter || true
+            docker rm node_exporter || true
+
             docker run -d --name node_exporter \
             --network node_network \
             -p 9100:9100 \
@@ -342,6 +385,10 @@ jobs:
             -v /:/host:ro \
             quay.io/prometheus/node-exporter:latest \
             --path.rootfs=/host
+
+
+            docker stop cadvisor || true
+            docker rm cadvisor || true
 
             docker run -d --name cadvisor \
             --network node_network \
@@ -355,13 +402,18 @@ jobs:
             gcr.io/cadvisor/cadvisor:latest
             # Promtail Integration End
             
-            # Create a named volume for persistence
-            docker volume create "${{ env.VM_NAME }}-data"
+            docker volume create "TENGateway-${{ github.event.inputs.testnet_type }}-data" || true
+
+            # Stop and remove existing container if it exists
+            docker stop "${{ env.VM_NAME }}" || true
+            docker rm "${{ env.VM_NAME }}" || true
             
+            docker pull ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
+
             # Start Ten Gateway Container
             docker run -d -p 80:80 -p 81:81 -p 443:443 --name "${{ env.VM_NAME }}" \
             --device /dev/sgx_enclave --device /dev/sgx_provision \
-            -v "${{ env.VM_NAME }}-data:/data" \
+            -v "TENGateway-${{ github.event.inputs.testnet_type }}-data:/data" \
             -e OBSCURO_GATEWAY_VERSION="${{ github.run_number }}-${{ github.sha }}" \
             -e OE_SIMULATION=0 \
             "${{ env.DOCKER_BUILD_TAG_GATEWAY }}" \
@@ -374,10 +426,9 @@ jobs:
             -keyExchangeURL="${{ env.GATEWAY_KEY_EXCHANGE_URL }}" \
             -insideEnclave=true \
             -enableTLS=true \
-            -tlsDomain="${{ env.GATEWAY_TLS_DOMAIN }}"
+            -tlsDomain="${{ env.GATEWAY_TLS_DOMAIN }}" \
+            -encryptingCertificateEnabled="${{ env.GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED }}"
             
-
-            # After starting the container, verify the volume mount
             docker exec "${{ env.VM_NAME }}" sh -c "
                 echo \"Checking volume mount...\";
                 df -h | grep /data;
@@ -391,5 +442,3 @@ jobs:
                 ps aux;
             "
             '
-            
-

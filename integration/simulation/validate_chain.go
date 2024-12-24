@@ -280,12 +280,12 @@ func ExtractDataFromEthereumChain(
 			}
 
 			switch l1tx := t.(type) {
-			case *ethadapter.L1DepositTx:
+			case *common.L1DepositTx:
 				// todo (@stefan) - remove this hack once the old integrated bridge is removed.
 				deposits = append(deposits, tx.Hash())
 				totalDeposited.Add(totalDeposited, l1tx.Amount)
 				successfulDeposits++
-			case *ethadapter.L1RollupHashes:
+			case *common.L1RollupHashes:
 				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, l1tx.BlobHashes)
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
@@ -453,7 +453,7 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 
 	injectorDepositedAmt := big.NewInt(0)
 	for _, tx := range s.TxInjector.TxTracker.GetL1Transactions() {
-		if depTx, ok := tx.(*ethadapter.L1DepositTx); ok {
+		if depTx, ok := tx.(*common.L1DepositTx); ok {
 			injectorDepositedAmt.Add(injectorDepositedAmt, depTx.Amount)
 		}
 	}

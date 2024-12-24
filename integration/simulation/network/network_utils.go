@@ -101,7 +101,7 @@ func createInMemTenNode(
 		MaxRollupSize:             1024 * 128,
 		BaseFee:                   big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
 		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
-		GasBatchExecutionLimit:    params.MaxGasLimit / 2,
+		GasBatchExecutionLimit:    30_000_000,
 		RPCTimeout:                5 * time.Second,
 		StoreExecutedTransactions: true,
 	}
@@ -112,8 +112,8 @@ func createInMemTenNode(
 	// create an in memory TEN node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-	l1Repo := l1.NewL1Repository(ethClient, ethereummock.MgmtContractAddresses, hostLogger)
-	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Repo, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService, blobResolver)
+	l1Data := l1.NewL1DataService(ethClient, hostLogger, mgmtContractLib, blobResolver, ethereummock.ContractAddresses)
+	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Data, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService, blobResolver)
 
 	return currentContainer
 }

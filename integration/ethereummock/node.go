@@ -30,6 +30,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	ethclient_ethereum "github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
@@ -145,6 +146,52 @@ func (m *Node) TransactionReceipt(_ gethcommon.Hash) (*types.Receipt, error) {
 	}, nil
 }
 
+func (m *Node) TransactionByHash(hash gethcommon.Hash) (*types.Transaction, bool, error) {
+	// First check mempool/pending transactions
+	select {
+	case tx := <-m.mempoolCh:
+		if tx.Hash() == hash {
+			// Put the tx back in the channel
+			m.mempoolCh <- tx
+			return tx, false, nil
+		}
+		// Put the tx back in the channel
+		m.mempoolCh <- tx
+	default:
+		// Don't block if mempool channel is empty
+	}
+
+	// Then check if the transaction exists in any block
+	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
+	if err != nil {
+		return nil, false, fmt.Errorf("could not retrieve head block. Cause: %w", err)
+	}
+
+	// Traverse the chain looking for the transaction
+	for !bytes.Equal(blk.ParentHash().Bytes(), (common.L1BlockHash{}).Bytes()) {
+		for _, tx := range blk.Transactions() {
+			if tx.Hash() == hash {
+				return tx, true, nil
+			}
+		}
+
+		blk, err = m.BlockResolver.FetchBlock(context.Background(), blk.ParentHash())
+		if err != nil {
+			return nil, false, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
+		}
+	}
+
+	// Check genesis block
+	for _, tx := range MockGenesisBlock.Transactions() {
+		if tx.Hash() == hash {
+			return tx, true, nil
+		}
+	}
+
+	// If we get here, the transaction wasn't found
+	return nil, false, ethereum.NotFound
+}
+
 func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 	return 0, nil
 }
@@ -156,7 +203,7 @@ func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 			continue
 		}
 		switch l1tx := decodedTx.(type) {
-		case *ethadapter.L1RollupHashes:
+		case *common.L1RollupHashes:
 			ctx := context.TODO()
 			blobs, _ := m.BlobResolver.FetchBlobs(ctx, block.Header(), l1tx.BlobHashes)
 			r, err := ethadapter.ReconstructRollup(blobs)
@@ -271,21 +318,49 @@ func (m *Node) BalanceAt(gethcommon.Address, *big.Int) (*big.Int, error) {
 	panic("not implemented")
 }
 
-// GetLogs is a mock method - we don't really have logs on the mock transactions, so it returns a basic log for every tx
-// so the host recognises them as relevant
+// GetLogs is a mock method - we create logs with topics matching the real contract events
 func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 	logs := make([]types.Log, 0)
 	if fq.BlockHash == nil {
 		return logs, nil
 	}
+
 	blk, err := m.BlockByHash(*fq.BlockHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 	}
+
 	for _, tx := range blk.Transactions() {
+		if tx.To() == nil {
+			continue
+		}
+
+		// map transaction types to their corresponding event topics
+		var topic gethcommon.Hash
+		switch tx.To().Hex() {
+		case rollupTxAddr.Hex():
+			topic = crosschain.RollupAddedID
+		case messageBusAddr.Hex():
+			topic = crosschain.CrossChainEventID
+		case depositTxAddr.Hex():
+			topic = crosschain.ValueTransferEventID
+		case storeSecretTxAddr.Hex():
+			topic = crosschain.NetworkSecretRespondedID
+		case requestSecretTxAddr.Hex():
+			topic = crosschain.NetworkSecretRequestedID
+		case initializeSecretTxAddr.Hex():
+			topic = crosschain.SequencerEnclaveGrantedEventID
+		default:
+			continue
+		}
+
 		dummyLog := types.Log{
-			BlockHash: blk.Hash(),
-			TxHash:    tx.Hash(),
+			Address:     *tx.To(),
+			BlockHash:   blk.Hash(),
+			TxHash:      tx.Hash(),
+			Topics:      []gethcommon.Hash{topic},
+			BlockNumber: blk.NumberU64(),
+			Index:       uint(len(logs)),
 		}
 		logs = append(logs, dummyLog)
 	}

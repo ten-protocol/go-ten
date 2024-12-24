@@ -11,6 +11,9 @@ type Cache interface {
 	// EvictShortLiving - notify the cache that all short living elements cached before the events should be considered as evicted.
 	EvictShortLiving()
 
+	// DisableShortLiving disables the caching of short-living elements.
+	DisableShortLiving()
+
 	// IsEvicted - based on the eviction event and the time of caching, calculates whether the key was evicted
 	IsEvicted(key any, originalTTL time.Duration) bool
 

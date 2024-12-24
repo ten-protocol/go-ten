@@ -26,6 +26,8 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     event SequencerEnclaveGranted(address enclaveID);
     event SequencerEnclaveRevoked(address enclaveID);
     event RollupAdded(bytes32 rollupHash);
+    event NetworkSecretRequested(address indexed requester, string requestReport);
+    event NetworkSecretResponded(address indexed attester, address indexed requester);
 
     // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
@@ -178,7 +180,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // Enclaves can request the Network Secret given an attestation request report
     function RequestNetworkSecret(string calldata requestReport) public {
-        // currently this is a no-op, nodes will monitor for these transactions and respond to them
+        emit NetworkSecretRequested(msg.sender, requestReport);
     }
 
     function ExtractNativeValue(MessageStructs.Structs.ValueTransferMessage calldata _msg, bytes32[] calldata proof, bytes32 root) external {
@@ -200,7 +202,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(isEnclAttested, "responding attester is not attested");
 
         if (verifyAttester) {
-            
+
             // the data must be signed with by the correct private key
             // signature = f(PubKey, PrivateKey, message)
             // address = f(signature, message)
@@ -213,6 +215,8 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         // mark the requesterID enclave as an attested enclave and store its host address
         attested[requesterID] = true;
+
+        emit NetworkSecretResponded(attesterID, requesterID);
     }
 
 

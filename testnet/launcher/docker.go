@@ -62,13 +62,7 @@ func (t *Testnet) Start() error {
 	sequencerCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkConfig.ManagementContractAddress)
 	sequencerCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
 
-	sequencerNode := node.NewDockerNode(sequencerCfg,
-		"testnetobscuronet.azurecr.io/obscuronet/host:latest",
-		"testnetobscuronet.azurecr.io/obscuronet/enclave:latest",
-		edgelessDBImage,
-		false,
-		"", // no PCCS override
-	)
+	sequencerNode := node.NewDockerNode(sequencerCfg, "testnetobscuronet.azurecr.io/obscuronet/host:latest", "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", edgelessDBImage, false, "", 1)
 
 	err = sequencerNode.Start()
 	if err != nil {
@@ -93,13 +87,7 @@ func (t *Testnet) Start() error {
 	validatorNodeCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkConfig.ManagementContractAddress)
 	validatorNodeCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
 
-	validatorNode := node.NewDockerNode(validatorNodeCfg,
-		"testnetobscuronet.azurecr.io/obscuronet/host:latest",
-		"testnetobscuronet.azurecr.io/obscuronet/enclave:latest",
-		edgelessDBImage,
-		false,
-		"", // no PCCS override
-	)
+	validatorNode := node.NewDockerNode(validatorNodeCfg, "testnetobscuronet.azurecr.io/obscuronet/host:latest", "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", edgelessDBImage, false, "", 1)
 	err = validatorNode.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start the obscuro node - %w", err)

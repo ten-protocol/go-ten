@@ -188,7 +188,7 @@ message StartResponse {
 
 message SubmitBlockRequest {
   bytes encodedBlock = 1;
-  bytes encodedReceipts = 2;
+  bytes encodedProcessedData = 2;
 }
 
 message SubmitBlockResponse {

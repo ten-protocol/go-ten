@@ -10,7 +10,6 @@ import (
 	"github.com/holiman/uint256"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
-	"github.com/ten-protocol/go-ten/go/enclave/system"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -79,7 +78,7 @@ func (m *MessageBusManager) GetBusAddress() *common.L2Address {
 }
 
 // DeriveMessageBusAddress - Derives the address of the message bus contract.
-func (m *MessageBusManager) Initialize(systemAddresses system.SystemContractAddresses) error {
+func (m *MessageBusManager) Initialize(systemAddresses common.SystemContractAddresses) error {
 	address, ok := systemAddresses["MessageBus"]
 	if !ok {
 		return fmt.Errorf("message bus contract not found in system addresses")
@@ -111,7 +110,7 @@ func (m *MessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
 	return stx, nil
 }
 
-// ExtractLocalMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
+// ExtractOutboundMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
 func (m *MessageBusManager) ExtractOutboundMessages(ctx context.Context, receipts common.L2Receipts) (common.CrossChainMessages, error) {
 	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventID)
 	if err != nil {
@@ -119,7 +118,7 @@ func (m *MessageBusManager) ExtractOutboundMessages(ctx context.Context, receipt
 		return make(common.CrossChainMessages, 0), err
 	}
 
-	messages, err := convertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
+	messages, err := ConvertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
 	if err != nil {
 		m.logger.Error("Error converting messages from L2 message bus!", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err

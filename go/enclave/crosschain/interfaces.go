@@ -19,9 +19,9 @@ type (
 
 type BlockMessageExtractor interface {
 	// StoreCrossChainMessages - Verifies receipts belong to block and saves the relevant cross chain messages from the receipts
-	StoreCrossChainMessages(ctx context.Context, block *types.Header, receipts common.L1Receipts) error
+	StoreCrossChainMessages(ctx context.Context, block *types.Header, processed *common.ProcessedL1Data) error
 
-	StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, receipts common.L1Receipts) error
+	StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, processed *common.ProcessedL1Data) error
 
 	// GetBusAddress - Returns the L1 message bus address.
 	GetBusAddress() *common.L1Address
@@ -41,7 +41,7 @@ type Manager interface {
 	GetBusAddress() *common.L2Address
 
 	// Initialize - Derives the address of the message bus contract.
-	Initialize(systemAddresses system.SystemContractAddresses) error
+	Initialize(systemAddresses common.SystemContractAddresses) error
 
 	// GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
 	GenerateMessageBusDeployTx() (*common.L2Tx, error)
