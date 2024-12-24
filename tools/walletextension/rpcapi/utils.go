@@ -199,8 +199,11 @@ func getCandidateAccounts(user *common.GWUser, we *services.Services, cfg *AuthE
 				if err != nil {
 					we.Logger().Info(fmt.Sprintf("error getting user: %s\n", err))
 				}
-				we.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE user: %v\n", u))
-				we.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE user.AllAccounts(): %v\n", u.AllAccounts()))
+				we.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE user: %x\n", u.ID))
+				we.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE user.AllAccounts(): %v\n", u.GetAllAddresses()))
+
+				we.Logger().Info(fmt.Sprintf("THIS USER FROM THE FUNCTION CALL user: %x\n", user.ID))
+				we.Logger().Info(fmt.Sprintf("THIS USER FROM THE FUNCTION CALL user.AllAccounts(): %v\n", user.GetAllAddresses()))
 
 				return nil, fmt.Errorf("account: %s not registered to current user. Please register first", suggestedAddress.Hex())
 			}

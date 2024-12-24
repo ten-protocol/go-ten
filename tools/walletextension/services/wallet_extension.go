@@ -220,8 +220,8 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 		w.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", userID, err).Error())
 		return err
 	}
-	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE user: %v\n", user))
-	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE user.AllAccounts(): %v\n", user.AllAccounts()))
+	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE  AFTER STORING user: %x\n", user.ID))
+	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE AFTER STORING user.AddAddresses(): %v\n", user.GetAllAddresses()))
 
 	return nil
 }
