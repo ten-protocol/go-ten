@@ -206,6 +206,13 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 	if recoveredAddress.Hex() != addressFromMessage.Hex() {
 		return fmt.Errorf("invalid request. Signature doesn't match address")
 	}
+	user, err := w.Storage.GetUser(userID)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", userID, err).Error())
+		return err
+	}
+	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE  BEFORE STORING user: %x\n", userID))
+	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE BEFORE STORING user.AddAddresses(): %v\n", user.GetAllAddresses()))
 
 	// register the account for that viewing key
 	err = w.Storage.AddAccount(userID, addressFromMessage.Bytes(), signature, signatureType)
@@ -215,13 +222,13 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 	}
 
 	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, time.Since(requestStartTime).Milliseconds())
-	user, err := w.Storage.GetUser(userID)
+	user2, err := w.Storage.GetUser(userID)
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", userID, err).Error())
 		return err
 	}
-	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE  AFTER STORING user: %x\n", user.ID))
-	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE AFTER STORING user.AddAddresses(): %v\n", user.GetAllAddresses()))
+	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE  AFTER STORING user: %x\n", user2.ID))
+	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE AFTER STORING user.AddAddresses(): %v\n", user2.GetAllAddresses()))
 
 	return nil
 }
