@@ -9,8 +9,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
+
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
@@ -61,9 +62,6 @@ type userWithETag struct {
 	user dbcommon.GWUserDB
 	etag azcore.ETag
 }
-
-// maxRetries defines how many times we'll retry in case of ETag conflicts
-const maxRetries = 5
 
 func NewCosmosDB(connectionString string, encryptionKey []byte) (*CosmosDB, error) {
 	// Create encryptor
@@ -200,6 +198,7 @@ func (c *CosmosDB) getUserDB(userID []byte) (userWithETag, error) {
 	keyString, partitionKey := c.dbKey(userID)
 
 	ctx := context.Background()
+
 	itemResponse, err := c.usersContainer.ReadItem(ctx, partitionKey, keyString, nil)
 	if err != nil {
 		return userWithETag{}, err
@@ -224,45 +223,32 @@ func (c *CosmosDB) getUserDB(userID []byte) (userWithETag, error) {
 	return userWithETag{user: user, etag: itemResponse.ETag}, nil
 }
 
-// updateUser updates the user's data in Cosmos DB using optimistic concurrency (ETag). If another
-// process updates the document concurrently, the ETag check fails and this function retries until
-// it either succeeds or the maximum number of retries is reached.
-func (c *CosmosDB) updateUser(ctx context.Context, newUser dbcommon.GWUserDB) error {
-	// Retry loop for handling concurrency conflicts
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		// Retrieves the latest version of the user from the database, including its current ETag
-		currentUser, err := c.getUserDB(newUser.UserId)
-		if err != nil {
-			return fmt.Errorf("failed to get current user state: %w", err)
-		}
-
-		// Creates an encrypted document using the new user data
-		keyString, partitionKey := c.dbKey(newUser.UserId)
-		encryptedDoc, err := c.createEncryptedDoc(newUser, keyString)
-		if err != nil {
-			return fmt.Errorf("failed to marshal updated document: %w", err)
-		}
-
-		// Attempts to replace the document in Cosmos DB, enforcing the ETag check to detect concurrent modifications
-		options := &azcosmos.ItemOptions{
-			IfMatchEtag: &currentUser.etag,
-		}
-		_, err = c.usersContainer.ReplaceItem(ctx, partitionKey, keyString, encryptedDoc, options)
-		if err != nil {
-			// If a concurrent update has changed the ETag, retry by reading the updated document again
-			if strings.Contains(err.Error(), "Precondition Failed") {
-				continue
-			}
-			// Any other error is returned directly
-			return fmt.Errorf("failed to update user: %w", err)
-		}
-
-		// Update succeeded without any concurrency conflict
-		return nil
+func (c *CosmosDB) updateUser(ctx context.Context, user dbcommon.GWUserDB) error {
+	// Attempt to update without retries
+	currentUser, err := c.getUserDB(user.UserId)
+	if err != nil {
+		return fmt.Errorf("failed to get current user state: %w", err)
 	}
 
-	// If all attempts fail due to repeated concurrency conflicts, return an error
-	return fmt.Errorf("updateUser failed due to concurrency conflicts after %d retries", maxRetries)
+	keyString, partitionKey := c.dbKey(user.UserId)
+	encryptedDoc, err := c.createEncryptedDoc(user, keyString)
+	if err != nil {
+		return fmt.Errorf("failed to marshal updated document: %w", err)
+	}
+
+	options := &azcosmos.ItemOptions{
+		IfMatchEtag: &currentUser.etag,
+	}
+
+	_, err = c.usersContainer.ReplaceItem(ctx, partitionKey, keyString, encryptedDoc, options)
+	if err != nil {
+		if strings.Contains(err.Error(), "Precondition Failed") {
+			return fmt.Errorf("ETag mismatch: the user document was modified by another process")
+		}
+		return fmt.Errorf("failed to update user: %w", err)
+	}
+
+	return nil
 }
 
 func (c *CosmosDB) createEncryptedDoc(user dbcommon.GWUserDB, keyString string) ([]byte, error) {
