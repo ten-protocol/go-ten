@@ -94,7 +94,7 @@ func (s *systemContractCallbacks) Load(msgBusManager SystemContractsInitializabl
 
 	addresses, err := s.storage.GetSystemContractAddresses(context.Background())
 	if err != nil {
-		s.logger.Error("Load: Failed fetching system contract addresses", "error", err)
+		s.logger.Warn("Load: Failed fetching system contract addresses", "error", err)
 		return fmt.Errorf("failed fetching system contract addresses %w", err)
 	}
 	s.logger.Info("Load: Fetched system contract addresses", "addresses", addresses)
@@ -129,6 +129,11 @@ func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipt types.Re
 	if err != nil {
 		s.logger.Error("Initialize: Failed verifying and deriving addresses", "error", err)
 		return fmt.Errorf("failed verifying and deriving addresses %w", err)
+	}
+
+	if err := s.StoreSystemContractAddresses(addresses); err != nil {
+		s.logger.Error("Initialize: Failed storing system contract addresses", "error", err)
+		return fmt.Errorf("failed storing system contract addresses %w", err)
 	}
 
 	s.logger.Info("Initialize: Initializing required addresses", "addresses", addresses)
