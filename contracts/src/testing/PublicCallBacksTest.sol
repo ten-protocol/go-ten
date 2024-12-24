@@ -35,6 +35,11 @@ contract PublicCallbacksTest {
         allCallbacksRan = true;
     }
 
+    function handleRefund(uint256 callbackId) external {
+        // do nothing
+        refundCalled++;
+    }
+
     // Test function that registers a callback
     function testRegisterCallback() internal {
         // Encode the callback data - calling handleCallback()
@@ -51,8 +56,8 @@ contract PublicCallbacksTest {
         callbacks.register{value: msg.value/3}(callbackDataAllCallbacksRan);
     }
 
+    uint256 refundCalled = 0;
     function isLastCallSuccess() external view returns (bool) {
-//        return allCallbacksRan && lastCallSuccess;
-        return allCallbacksRan;
+        return allCallbacksRan && refundCalled == 3;
     }
 }
