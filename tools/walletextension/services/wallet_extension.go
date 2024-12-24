@@ -215,6 +215,14 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 	}
 
 	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, time.Since(requestStartTime).Milliseconds())
+	user, err := w.Storage.GetUser(userID)
+	if err != nil {
+		w.Logger().Error(fmt.Errorf("error getting accounts for user (%s), %w", userID, err).Error())
+		return err
+	}
+	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE user: %v\n", user))
+	w.Logger().Info(fmt.Sprintf("THIS USER FROM THE DATABASE user.AllAccounts(): %v\n", user.AllAccounts()))
+
 	return nil
 }
 
