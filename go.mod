@@ -9,6 +9,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos v1.1.0
 	github.com/FantasyJony/openzeppelin-merkle-tree-go v1.1.3
 	github.com/Microsoft/go-winio v0.6.2
+	github.com/TwiN/gocache/v2 v2.2.2
 	github.com/andybalholm/brotli v1.1.1
 	github.com/codeclysm/extract/v3 v3.1.1
 	github.com/deckarep/golang-set/v2 v2.6.0

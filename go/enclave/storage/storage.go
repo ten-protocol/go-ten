@@ -116,6 +116,7 @@ func (s *storageImpl) StateDB() state.Database {
 }
 
 func (s *storageImpl) Close() error {
+	s.cachingService.Stop()
 	return s.db.GetSQLDB().Close()
 }
 
@@ -695,13 +696,7 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 
 	// after a successful db commit, cache the receipts
 	if s.config.StoreExecutedTransactions {
-		for _, txExecResult := range results {
-			s.cachingService.CacheReceipt(ctx, &CachedReceipt{
-				Receipt: txExecResult.Receipt,
-				From:    txExecResult.TxWithSender.Sender,
-				To:      txExecResult.TxWithSender.Tx.To(),
-			})
-		}
+		s.cachingService.CacheReceipts(results)
 	}
 
 	return nil

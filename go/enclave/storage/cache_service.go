@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/binary"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
+	"github.com/TwiN/gocache/v2"
 	"github.com/dgraph-io/ristretto/v2"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -54,12 +56,12 @@ type CacheService struct {
 	eventTypeCache *ristretto.Cache[[]byte, *enclavedb.EventType]
 
 	// store the last few batches together with the content
-	lastBatchesCache *ristretto.Cache[uint64, *core.Batch]
+	lastBatchesCache *gocache.Cache
 
 	// store all recent receipts in a cache
 	// together with the sender - and for each log whether it is visible by the sender
 	// only sender can view configured
-	receiptCache *ristretto.Cache[[]byte, *CachedReceipt]
+	receiptCache *gocache.Cache
 
 	// store the enclaves from the network
 	attestedEnclavesCache *ristretto.Cache[[]byte, *AttestedEnclave]
@@ -89,25 +91,25 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 	}
 
 	return &CacheService{
-		blockCache: newCache[[]byte, *types.Header](logger, nrL1Blocks),
+		blockCache: newLFUCache[[]byte, *types.Header](logger, nrL1Blocks),
 
-		batchCacheBySeqNo: newCache[uint64, *common.BatchHeader](logger, nrBatches),
-		seqCacheByHash:    newCache[[]byte, *big.Int](logger, nrBatches),
-		seqCacheByHeight:  newCache[uint64, *big.Int](logger, nrBatches),
+		batchCacheBySeqNo: newLFUCache[uint64, *common.BatchHeader](logger, nrBatches),
+		seqCacheByHash:    newLFUCache[[]byte, *big.Int](logger, nrBatches),
+		seqCacheByHeight:  newLFUCache[uint64, *big.Int](logger, nrBatches),
 
-		convertedGethHeaderCache: newCache[[]byte, *types.Header](logger, nrConvertedEth),
-		convertedHashCache:       newCache[[]byte, *gethcommon.Hash](logger, nrConvertedEth),
+		convertedGethHeaderCache: newLFUCache[[]byte, *types.Header](logger, nrConvertedEth),
+		convertedHashCache:       newLFUCache[[]byte, *gethcommon.Hash](logger, nrConvertedEth),
 
-		eoaCache:             newCache[[]byte, *uint64](logger, nrEOA),
-		contractAddressCache: newCache[[]byte, *enclavedb.Contract](logger, nrContractAddresses),
-		eventTypeCache:       newCache[[]byte, *enclavedb.EventType](logger, nrEventTypes),
-		eventTopicCache:      newCache[[]byte, *enclavedb.EventTopic](logger, nrEventTypes),
+		eoaCache:             newLFUCache[[]byte, *uint64](logger, nrEOA),
+		contractAddressCache: newLFUCache[[]byte, *enclavedb.Contract](logger, nrContractAddresses),
+		eventTypeCache:       newLFUCache[[]byte, *enclavedb.EventType](logger, nrEventTypes),
+		eventTopicCache:      newLFUCache[[]byte, *enclavedb.EventTopic](logger, nrEventTypes),
 
-		receiptCache:          newCache[[]byte, *CachedReceipt](logger, nrReceipts),
-		attestedEnclavesCache: newCache[[]byte, *AttestedEnclave](logger, nrEnclaves),
+		receiptCache:          newFifoCache(nrReceipts, 100*time.Second),
+		attestedEnclavesCache: newLFUCache[[]byte, *AttestedEnclave](logger, nrEnclaves),
 
 		// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
-		lastBatchesCache: newCache[uint64, *core.Batch](logger, nrBatchesWithContent),
+		lastBatchesCache: newFifoCache(nrBatchesWithContent, time.Duration(nrBatchesWithContent)*time.Second),
 
 		sequencerIDsCache: make([]common.EnclaveID, 0),
 
@@ -115,7 +117,12 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 	}
 }
 
-func newCache[K ristretto.Key, V any](logger gethlog.Logger, nrElem int) *ristretto.Cache[K, V] {
+func (cs *CacheService) Stop() {
+	cs.receiptCache.StopJanitor()
+	cs.lastBatchesCache.StopJanitor()
+}
+
+func newLFUCache[K ristretto.Key, V any](logger gethlog.Logger, nrElem int) *ristretto.Cache[K, V] {
 	ristrettoCache, err := ristretto.NewCache(&ristretto.Config[K, V]{
 		NumCounters: int64(10 * nrElem), // 10 times the expected elements
 		MaxCost:     int64(nrElem),      // calculate the max cost
@@ -128,6 +135,15 @@ func newCache[K ristretto.Key, V any](logger gethlog.Logger, nrElem int) *ristre
 	return ristrettoCache
 }
 
+func newFifoCache(nrElem int, ttl time.Duration) *gocache.Cache {
+	cache := gocache.NewCache().WithMaxSize(nrElem).WithEvictionPolicy(gocache.FirstInFirstOut).WithDefaultTTL(ttl)
+	err := cache.StartJanitor()
+	if err != nil {
+		panic("failed to start cache.")
+	}
+	return cache
+}
+
 func (cs *CacheService) CacheConvertedHash(ctx context.Context, batchHash, convertedHash gethcommon.Hash) {
 	cacheValue(ctx, cs.convertedHashCache, cs.logger, batchHash.Bytes(), &convertedHash)
 }
@@ -136,9 +152,16 @@ func (cs *CacheService) CacheBlock(ctx context.Context, b *types.Header) {
 	cacheValue(ctx, cs.blockCache, cs.logger, b.Hash().Bytes(), b)
 }
 
-func (cs *CacheService) CacheReceipt(_ context.Context, r *CachedReceipt) {
-	// keep the receipts in cache for 100 seconds - 100 batches
-	cs.receiptCache.SetWithTTL(r.Receipt.TxHash.Bytes(), r, cacheCost, 100*time.Second)
+func (cs *CacheService) CacheReceipts(results core.TxExecResults) {
+	receipts := make(map[string]any)
+	for _, txExecResult := range results {
+		receipts[txExecResult.TxWithSender.Tx.Hash().String()] = &CachedReceipt{
+			Receipt: txExecResult.Receipt,
+			From:    txExecResult.TxWithSender.Sender,
+			To:      txExecResult.TxWithSender.Tx.To(),
+		}
+	}
+	cs.receiptCache.SetAll(receipts)
 }
 
 func (cs *CacheService) CacheBatch(ctx context.Context, batch *core.Batch) {
@@ -148,7 +171,7 @@ func (cs *CacheService) CacheBatch(ctx context.Context, batch *core.Batch) {
 	// should always contain the canonical batch because the cache is overwritten by each new batch after a reorg
 	cacheValue(ctx, cs.seqCacheByHeight, cs.logger, batch.NumberU64()+1, batch.SeqNo())
 
-	cacheValue(ctx, cs.lastBatchesCache, cs.logger, batch.SeqNo().Uint64(), batch)
+	cs.lastBatchesCache.Set(batch.SeqNo().String(), batch)
 }
 
 func (cs *CacheService) ReadBlock(ctx context.Context, key gethcommon.Hash, onCacheMiss func() (*types.Header, error)) (*types.Header, error) {
@@ -173,7 +196,15 @@ func (cs *CacheService) ReadBatchHeader(ctx context.Context, seqNum uint64, onCa
 }
 
 func (cs *CacheService) ReadBatch(ctx context.Context, seqNum uint64, onCacheMiss func() (*core.Batch, error)) (*core.Batch, error) {
-	return getCachedValue(ctx, cs.lastBatchesCache, cs.logger, seqNum, onCacheMiss, true)
+	b, found := cs.lastBatchesCache.Get(fmt.Sprintf("%d", seqNum))
+	if !found {
+		return nil, errutil.ErrNotFound
+	}
+	cb, ok := b.(*core.Batch)
+	if !ok {
+		return nil, fmt.Errorf("should not happen. invalid cached batch")
+	}
+	return cb, nil
 }
 
 func (cs *CacheService) ReadEOA(ctx context.Context, addr gethcommon.Address, onCacheMiss func() (*uint64, error)) (*uint64, error) {
@@ -197,12 +228,20 @@ type CachedReceipt struct {
 	To      *gethcommon.Address
 }
 
-func (cs *CacheService) ReadReceipt(ctx context.Context, txHash gethcommon.Hash) (*CachedReceipt, error) {
-	return getCachedValue(ctx, cs.receiptCache, cs.logger, txHash.Bytes(), nil, false)
+func (cs *CacheService) ReadReceipt(_ context.Context, txHash gethcommon.Hash) (*CachedReceipt, error) {
+	r, found := cs.receiptCache.Get(txHash.String())
+	if !found {
+		return nil, errutil.ErrNotFound
+	}
+	cr, ok := r.(*CachedReceipt)
+	if !ok {
+		return nil, fmt.Errorf("should not happen. invalid cached receipt")
+	}
+	return cr, nil
 }
 
 func (cs *CacheService) DelReceipt(_ context.Context, txHash gethcommon.Hash) error {
-	cs.receiptCache.Del(txHash.Bytes())
+	cs.receiptCache.Delete(txHash.String())
 	return nil
 }
 
