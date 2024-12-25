@@ -41,7 +41,8 @@ contract PublicCallbacksTest {
     // This is called by the system to refund the callbac
     function handleRefund(uint256 callbackId) external payable {
         // do nothing
-        pendingRefunds[msg.sender] += msg.value;
+        pendingRefunds[callbackRefundees[callbackId]] += msg.value;
+        refundCalled++;
     }
 
     // Test function that registers a callback
@@ -65,6 +66,6 @@ contract PublicCallbacksTest {
 
     uint256 refundCalled = 0;
     function isLastCallSuccess() external view returns (bool) {
-        return allCallbacksRan && refundCalled > 0;
+        return allCallbacksRan && refundCalled == 3;
     }
 }
