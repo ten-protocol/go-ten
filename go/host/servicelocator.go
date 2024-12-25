@@ -41,8 +41,8 @@ func (s *ServicesRegistry) P2P() hostcommon.P2P {
 	return s.getService(hostcommon.P2PName).(hostcommon.P2P)
 }
 
-func (s *ServicesRegistry) L1Repo() hostcommon.L1BlockRepository {
-	return s.getService(hostcommon.L1BlockRepositoryName).(hostcommon.L1BlockRepository)
+func (s *ServicesRegistry) L1Data() hostcommon.L1DataService {
+	return s.getService(hostcommon.L1DataServiceName).(hostcommon.L1DataService)
 }
 
 func (s *ServicesRegistry) L1Publisher() hostcommon.L1Publisher {

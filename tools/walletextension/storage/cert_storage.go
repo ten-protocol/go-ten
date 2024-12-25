@@ -12,10 +12,10 @@ type CertStorage interface {
 }
 
 // NewCertStorage creates a new certificate storage instance based on the database type
-func NewCertStorage(dbType, dbConnectionURL string, randomKey []byte, logger gethlog.Logger) (CertStorage, error) {
+func NewCertStorage(dbType, dbConnectionURL string, randomKey []byte, encryptionEnabled bool, logger gethlog.Logger) (CertStorage, error) {
 	switch dbType {
 	case "cosmosDB":
-		return cosmosdb.NewCertStorageCosmosDB(dbConnectionURL, randomKey)
+		return cosmosdb.NewCertStorageCosmosDB(dbConnectionURL, randomKey, encryptionEnabled)
 	default:
 		return autocert.DirCache("/data/certs"), nil
 	}

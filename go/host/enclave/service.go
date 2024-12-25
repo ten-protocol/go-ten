@@ -122,7 +122,15 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 	return clients
 }
 
-func (e *Service) EvictEnclave(enclaveID *common.EnclaveID) {
+func (e *Service) NotifyUnavailable(enclaveID *common.EnclaveID) {
+	if len(e.enclaveGuardians) <= 1 {
+		e.logger.Info("not running in HA mode, no need to evict enclave", log.EnclaveIDKey, enclaveID)
+		return
+	}
+	if *e.activeSequencerID != *enclaveID {
+		e.logger.Info("Enclave is not the active sequencer, no need to evict yet.", log.EnclaveIDKey, enclaveID)
+		return
+	}
 	failedEnclaveIdx := -1
 	e.haLock.Lock()
 	defer e.haLock.Unlock()

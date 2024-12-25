@@ -1,17 +1,17 @@
 package components
 
-// unsafe package imported in order to link to a private function in go-ethereum.
-// This allows us to validate transactions against the tx pool rules.
 import (
 	"fmt"
 	"math/big"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
-	_ "unsafe"
+	"unsafe"
 
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -24,12 +24,30 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
+const (
+	// txSlotSize is used to calculate how many data slots a single transaction
+	// takes up based on its size. The slots are used as DoS protection, ensuring
+	// that validating a new transaction remains a constant operation (in reality
+	// O(maxslots), where max slots are 4 currently).
+	txSlotSize = 32 * 1024
+
+	// we assume that at the limit, a single "uncompressable" tx is in a batch which gets rolled-up, and must fit in a 128kb blob
+	rollupOverhead = 5 * 1024
+
+	// txMaxSize is the maximum size a single transaction can have. This field has
+	// non-trivial consequences: larger transactions are significantly harder and
+	// more expensive to propagate; larger transactions also take more resources
+	// to validate whether they fit into the pool or not.
+	txMaxSize = 4*txSlotSize - rollupOverhead // 128KB - overhead
+)
+
 // this is how long the node waits to receive the second batch
 var startMempoolTimeout = 90 * time.Second
 
 // TxPool is an obscuro wrapper around geths transaction pool
 type TxPool struct {
 	txPoolConfig legacypool.Config
+	chainconfig  *params.ChainConfig
 	legacyPool   *legacypool.LegacyPool
 	pool         *gethtxpool.TxPool
 	Chain        *EthChainAdapter
@@ -59,6 +77,7 @@ func NewTxPool(blockchain *EthChainAdapter, gasTip *big.Int, validateOnly bool, 
 
 	txp := &TxPool{
 		Chain:        blockchain,
+		chainconfig:  blockchain.Config(),
 		txPoolConfig: txPoolConfig,
 		legacyPool:   legacyPool,
 		gasTip:       gasTip,
@@ -195,6 +214,12 @@ func (t *TxPool) Close() error {
 
 // Add adds a new transactions to the pool
 func (t *TxPool) add(transaction *common.L2Tx) error {
+	// validate against the consensus rules
+	err := t.validateTxBasics(transaction, false)
+	if err != nil {
+		return err
+	}
+
 	var strErrors []string
 	for _, err := range t.pool.Add([]*types.Transaction{transaction}, false, false) {
 		if err != nil {
@@ -208,16 +233,13 @@ func (t *TxPool) add(transaction *common.L2Tx) error {
 	return nil
 }
 
-//go:linkname validateTxBasics github.com/ethereum/go-ethereum/core/txpool/legacypool.(*LegacyPool).validateTxBasics
-func validateTxBasics(_ *legacypool.LegacyPool, _ *types.Transaction, _ bool) error
-
 //go:linkname validateTx github.com/ethereum/go-ethereum/core/txpool/legacypool.(*LegacyPool).validateTx
 func validateTx(_ *legacypool.LegacyPool, _ *types.Transaction, _ bool) error
 
 // Validate - run the underlying tx pool validation logic
 func (t *TxPool) validate(tx *common.L2Tx) error {
 	// validate against the consensus rules
-	err := validateTxBasics(t.legacyPool, tx, false)
+	err := t.validateTxBasics(tx, false)
 	if err != nil {
 		return err
 	}
@@ -230,4 +252,42 @@ func (t *TxPool) validate(tx *common.L2Tx) error {
 
 func (t *TxPool) Stats() (int, int) {
 	return t.legacyPool.Stats()
+}
+
+// validateTxBasics checks whether a transaction is valid according to the consensus
+// rules, but does not check state-dependent validation such as sufficient balance.
+// This check is meant as an early check which only needs to be performed once,
+// and does not require the pool mutex to be held.
+func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
+	opts := &gethtxpool.ValidationOptions{
+		Config: t.chainconfig,
+		Accept: 0 |
+			1<<types.LegacyTxType |
+			1<<types.AccessListTxType |
+			1<<types.DynamicFeeTxType,
+		MaxSize: txMaxSize,
+		MinTip:  t.gasTip,
+	}
+
+	// we need to access some private variables from the legacy pool to run validation with our own consensus options
+	v := reflect.ValueOf(t.legacyPool).Elem()
+
+	chField := v.FieldByName("currentHead")
+	chFieldPtr := unsafe.Pointer(chField.UnsafeAddr())
+	ch, ok := reflect.NewAt(chField.Type(), chFieldPtr).Elem().Interface().(atomic.Pointer[types.Header]) //nolint:govet
+	if !ok {
+		t.logger.Crit("invalid mempool. should not happen")
+	}
+
+	sigField := v.FieldByName("signer")
+	sigFieldPtr := unsafe.Pointer(sigField.UnsafeAddr())
+	sig, ok1 := reflect.NewAt(sigField.Type(), sigFieldPtr).Elem().Interface().(types.Signer)
+	if !ok1 {
+		t.logger.Crit("invalid mempool. should not happen")
+	}
+
+	if err := gethtxpool.ValidateTransaction(tx, ch.Load(), sig, opts); err != nil {
+		return err
+	}
+	return nil
 }

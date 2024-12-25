@@ -3,6 +3,7 @@ package limiters
 import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ten-protocol/go-ten/go/common/compression"
 )
 
 // BatchSizeLimiter - Acts as a limiter for batches based
@@ -10,20 +11,22 @@ import (
 // Acts as a calldata reservation system that accounts for both
 // transactions and cross chain messages.
 type batchSizeLimiter struct {
-	remainingSize uint64 // the available size in the limiter
+	compressionService compression.DataCompressionService
+	remainingSize      uint64 // the available size in the limiter
 }
 
 // NewBatchSizeLimiter - Size is the total space available per batch for calldata in a rollup.
-func NewBatchSizeLimiter(size uint64) BatchSizeLimiter {
+func NewBatchSizeLimiter(size uint64, compressionService compression.DataCompressionService) BatchSizeLimiter {
 	return &batchSizeLimiter{
-		remainingSize: size,
+		compressionService: compressionService,
+		remainingSize:      size,
 	}
 }
 
 // AcceptTransaction - transaction is rlp encoded as it normally would be when publishing a rollup and
 // its size is deducted from the remaining limit.
 func (l *batchSizeLimiter) AcceptTransaction(tx *types.Transaction) error {
-	rlpSize, err := getRlpSize(tx)
+	rlpSize, err := l.getCompressedSize(tx)
 	if err != nil {
 		return err
 	}
@@ -37,14 +40,20 @@ func (l *batchSizeLimiter) AcceptTransaction(tx *types.Transaction) error {
 }
 
 // todo (@stefan) figure out how to optimize the serialization out of the limiter
-func getRlpSize(val interface{}) (int, error) {
-	// todo (@stefan) - this should have a coefficient for compression
+func (l *batchSizeLimiter) getCompressedSize(val interface{}) (int, error) {
 	enc, err := rlp.EncodeToBytes(val)
 	if err != nil {
 		return 0, err
 	}
 
-	return len(enc), nil
+	// compress the transaction. This is useless for small transactions, but might be useful for larger transactions such as deploying contracts
+	// todo - keep a running compression of the current batch
+	compr, err := l.compressionService.CompressBatch(enc)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(compr), nil
 }
 
 type unlimitedBatchSize struct{}

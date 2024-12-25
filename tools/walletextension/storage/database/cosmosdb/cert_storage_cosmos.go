@@ -17,9 +17,10 @@ const (
 
 // CertStorageCosmosDB implements autocert.Cache interface using CosmosDB
 type CertStorageCosmosDB struct {
-	client         *azcosmos.Client
-	certsContainer *azcosmos.ContainerClient
-	encryptor      encryption.Encryptor
+	client            *azcosmos.Client
+	certsContainer    *azcosmos.ContainerClient
+	encryptor         *encryption.Encryptor
+	encryptionEnabled bool
 }
 
 // EncryptedCertDocument represents the structure of a certificate document in CosmosDB
@@ -29,10 +30,15 @@ type EncryptedCertDocument struct {
 }
 
 // NewCertStorageCosmosDB creates a new CosmosDB-based certificate storage
-func NewCertStorageCosmosDB(connectionString string, encryptionKey []byte) (*CertStorageCosmosDB, error) {
-	encryptor, err := encryption.NewEncryptor(encryptionKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create encryptor: %w", err)
+func NewCertStorageCosmosDB(connectionString string, encryptionKey []byte, encryptionEnabled bool) (*CertStorageCosmosDB, error) {
+	var encryptor *encryption.Encryptor
+	var err error
+
+	if encryptionEnabled {
+		encryptor, err = encryption.NewEncryptor(encryptionKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create encryptor: %w", err)
+		}
 	}
 
 	client, err := azcosmos.NewClientFromConnectionString(connectionString, nil)
@@ -54,9 +60,10 @@ func NewCertStorageCosmosDB(connectionString string, encryptionKey []byte) (*Cer
 	}
 
 	return &CertStorageCosmosDB{
-		client:         client,
-		certsContainer: certsContainer,
-		encryptor:      *encryptor,
+		client:            client,
+		certsContainer:    certsContainer,
+		encryptor:         encryptor,
+		encryptionEnabled: encryptionEnabled,
 	}, nil
 }
 
@@ -78,21 +85,31 @@ func (c *CertStorageCosmosDB) Get(ctx context.Context, key string) ([]byte, erro
 		return nil, fmt.Errorf("failed to unmarshal document: %w", err)
 	}
 
-	return c.encryptor.Decrypt(doc.Data)
+	if c.encryptionEnabled {
+		return c.encryptor.Decrypt(doc.Data)
+	}
+	return doc.Data, nil
 }
 
 // Put stores certificate data with the given key
 func (c *CertStorageCosmosDB) Put(ctx context.Context, key string, data []byte) error {
 	keyString, partitionKey := c.dbKey([]byte(key))
 
-	encryptedData, err := c.encryptor.Encrypt(data)
-	if err != nil {
-		return fmt.Errorf("failed to encrypt certificate data: %w", err)
+	var storageData []byte
+	var err error
+
+	if c.encryptionEnabled {
+		storageData, err = c.encryptor.Encrypt(data)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt certificate data: %w", err)
+		}
+	} else {
+		storageData = data
 	}
 
 	doc := EncryptedCertDocument{
 		ID:   keyString,
-		Data: encryptedData,
+		Data: storageData,
 	}
 
 	docJSON, err := json.Marshal(doc)
