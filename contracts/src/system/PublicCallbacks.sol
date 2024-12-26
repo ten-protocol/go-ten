@@ -127,7 +127,7 @@ contract PublicCallbacks is Initializable {
         // ordinarily such accounting should be prepared for beforehand in the callback they pay for, but we give them a
         // slight buffer. 
         bytes memory data = abi.encodeWithSignature("handleRefund(uint256)", callbackId);
-        (bool success, ) = to.call{value: gasRefund, gas: 550000}(data); 
+        (bool success, ) = to.call{value: gasRefund, gas: 45000}(data); 
         if (!success) {
             // if they dont accept the refund, we gift it to coinbase.
             payForCallback(gasRefund);
