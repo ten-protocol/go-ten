@@ -87,6 +87,7 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 	nrEnclaves := 20
 
 	nrReceipts := 15_000 // ~100M
+	receiptsTimeout := 4 * time.Minute
 	if testMode {
 		nrReceipts = 2500
 	}
@@ -106,7 +107,7 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 		eventTypeCache:       newLFUCache[[]byte, *enclavedb.EventType](logger, nrEventTypes),
 		eventTopicCache:      newLFUCache[[]byte, *enclavedb.EventTopic](logger, nrEventTypes),
 
-		receiptCache:          newFifoCache(nrReceipts, 180*time.Second),
+		receiptCache:          newFifoCache(nrReceipts, receiptsTimeout),
 		attestedEnclavesCache: newLFUCache[[]byte, *AttestedEnclave](logger, nrEnclaves),
 
 		// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
@@ -235,7 +236,7 @@ func (cs *CacheService) CacheReceipts(results core.TxExecResults) {
 			From:    txExecResult.TxWithSender.Sender,
 			To:      txExecResult.TxWithSender.Tx.To(),
 		}
-		cs.logger.Info("Cache receipt", "tx", txExecResult.TxWithSender.Tx.Hash().String())
+		cs.logger.Debug("Cache receipt", "tx", txExecResult.TxWithSender.Tx.Hash().String())
 	}
 	cs.receiptCache.SetAll(receipts)
 }

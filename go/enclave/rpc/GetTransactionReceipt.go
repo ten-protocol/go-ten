@@ -60,12 +60,12 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	}
 
 	if result != nil {
-		rpc.logger.Info("Cache hit for receipt", log.TxKey, txHash)
+		rpc.logger.Debug("Cache hit for receipt", log.TxKey, txHash)
 		builder.ReturnValue = &result
 		return nil
 	}
 
-	rpc.logger.Info("Cache miss for receipt", log.TxKey, txHash.String())
+	rpc.logger.Debug("Cache miss for receipt", log.TxKey, txHash.String())
 	exists, err := rpc.storage.ExistsTransactionReceipt(builder.ctx, txHash)
 	if err != nil {
 		return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
@@ -79,7 +79,7 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	// We retrieve the transaction receipt.
 	receipt, err := rpc.storage.GetFilteredInternalReceipt(builder.ctx, txHash, requester, false)
 	if err != nil {
-		rpc.logger.Trace("error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
+		rpc.logger.Trace("Error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
 			builder.Status = NotAuthorised
 			return nil
@@ -127,13 +127,8 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 			}
 		}
 	}
-	r := marshalReceipt(rec.Receipt, logs, rec.From, rec.To)
 
-	// after the receipt was requested by a user remove it from the cache
-	//err = cacheService.DelReceipt(ctx, txHash)
-	//if err != nil {
-	//	return nil, err
-	//}
+	r := marshalReceipt(rec.Receipt, logs, rec.From, rec.To)
 	return r, nil
 }
 

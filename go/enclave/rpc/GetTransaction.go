@@ -50,7 +50,7 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 	}
 
 	if rec != nil {
-		rpc.logger.Info("Cache hit for tx", log.TxKey, txHash)
+		rpc.logger.Debug("Cache hit for tx", log.TxKey, txHash)
 		// authorise - only the signer can request the transaction
 		if rec.From.Hex() != requester.Hex() {
 			builder.Status = NotAuthorised
@@ -60,7 +60,7 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 		return nil
 	}
 
-	rpc.logger.Info("Cache miss for tx", log.TxKey, txHash)
+	rpc.logger.Debug("Cache miss for tx", log.TxKey, txHash)
 
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
 	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(builder.ctx, *builder.Param)
