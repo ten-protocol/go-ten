@@ -105,7 +105,7 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 		eventTypeCache:       newLFUCache[[]byte, *enclavedb.EventType](logger, nrEventTypes),
 		eventTopicCache:      newLFUCache[[]byte, *enclavedb.EventTopic](logger, nrEventTypes),
 
-		//receiptCache:          newFifoCache(nrReceipts, 150*time.Second),
+		// receiptCache:          newFifoCache(nrReceipts, 150*time.Second),
 		receiptCache:          newFifoCache(nrReceipts, gocache.NoExpiration),
 		attestedEnclavesCache: newLFUCache[[]byte, *AttestedEnclave](logger, nrEnclaves),
 

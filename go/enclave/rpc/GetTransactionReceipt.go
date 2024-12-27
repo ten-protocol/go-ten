@@ -63,6 +63,18 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 		return nil
 	}
 
+	// try the cache again in case the tx was commited in the meantime
+	result, err = fetchFromCache(builder.ctx, rpc.storage, rpc.cacheService, txHash, requester)
+	if err != nil {
+		return err
+	}
+
+	if result != nil {
+		rpc.logger.Info("Cache hit for receipt", log.TxKey, txHash)
+		builder.ReturnValue = &result
+		return nil
+	}
+
 	// We retrieve the transaction receipt.
 	receipt, err := rpc.storage.GetFilteredInternalReceipt(builder.ctx, txHash, requester, false)
 	if err != nil {
