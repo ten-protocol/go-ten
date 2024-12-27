@@ -43,7 +43,13 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 
 	// first try the cache for recent transactions
 	result, err := fetchFromCache(builder.ctx, rpc.storage, rpc.cacheService, txHash, requester)
-	if err != nil {
+	// there is an explicit entry in the cache that the tx was not found
+	if err != nil && errors.Is(err, storage.ReceiptDoesNotExist) {
+		builder.Status = NotFound
+		return nil
+	}
+	// unexpected error
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return err
 	}
 
@@ -59,18 +65,25 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 		return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 	if !exists {
+		rpc.cacheService.ReceiptDoesNotExist(txHash)
 		builder.Status = NotFound
 		return nil
 	}
 
-	// try the cache again in case the tx was commited in the meantime
+	// try the cache again in case the tx was committed in the meantime
 	result, err = fetchFromCache(builder.ctx, rpc.storage, rpc.cacheService, txHash, requester)
-	if err != nil {
+	// there is an explicit entry in the cache that the tx was not found
+	if err != nil && errors.Is(err, storage.ReceiptDoesNotExist) {
+		builder.Status = NotFound
+		return nil
+	}
+	// unexpected error
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return err
 	}
 
 	if result != nil {
-		rpc.logger.Info("Cache hit for receipt", log.TxKey, txHash)
+		rpc.logger.Info("Cache hit for receipt after", log.TxKey, txHash)
 		builder.ReturnValue = &result
 		return nil
 	}
@@ -94,9 +107,9 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 }
 
 func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *storage.CacheService, txHash gethcommon.Hash, requester *gethcommon.Address) (map[string]interface{}, error) {
-	rec, _ := cacheService.ReadReceipt(ctx, txHash)
-	if rec == nil {
-		return nil, nil
+	rec, err := cacheService.ReadReceipt(ctx, txHash)
+	if err != nil {
+		return nil, err
 	}
 
 	// receipt found in cache
@@ -129,7 +142,7 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 	r := marshalReceipt(rec.Receipt, logs, rec.From, rec.To)
 
 	// after the receipt was requested by a user remove it from the cache
-	err := cacheService.DelReceipt(ctx, txHash)
+	err = cacheService.DelReceipt(ctx, txHash)
 	if err != nil {
 		return nil, err
 	}

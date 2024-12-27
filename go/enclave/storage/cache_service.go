@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -153,18 +154,6 @@ func (cs *CacheService) CacheBlock(ctx context.Context, b *types.Header) {
 	cacheValue(ctx, cs.blockCache, cs.logger, b.Hash().Bytes(), b)
 }
 
-func (cs *CacheService) CacheReceipts(results core.TxExecResults) {
-	receipts := make(map[string]any)
-	for _, txExecResult := range results {
-		receipts[txExecResult.TxWithSender.Tx.Hash().String()] = &CachedReceipt{
-			Receipt: txExecResult.Receipt,
-			From:    txExecResult.TxWithSender.Sender,
-			To:      txExecResult.TxWithSender.Tx.To(),
-		}
-	}
-	cs.receiptCache.SetAll(receipts)
-}
-
 func (cs *CacheService) CacheBatch(ctx context.Context, batch *core.Batch) {
 	cacheValue(ctx, cs.batchCacheBySeqNo, cs.logger, batch.SeqNo().Uint64(), batch.Header)
 	cacheValue(ctx, cs.seqCacheByHash, cs.logger, batch.Hash().Bytes(), batch.SeqNo())
@@ -228,10 +217,32 @@ func (cs *CacheService) ReadEventTopic(ctx context.Context, topic []byte, eventT
 	return getCachedValue(ctx, cs.eventTopicCache, cs.logger, key, onCacheMiss, true)
 }
 
+// CachedReceipt - when all values are nil, it means there is no receipt
 type CachedReceipt struct {
 	Receipt *types.Receipt
+	Tx      *types.Transaction
 	From    *gethcommon.Address
 	To      *gethcommon.Address
+}
+
+var ReceiptDoesNotExist = errors.New("receipt does not exist")
+
+func (cs *CacheService) CacheReceipts(results core.TxExecResults) {
+	receipts := make(map[string]any)
+	for _, txExecResult := range results {
+		receipts[txExecResult.TxWithSender.Tx.Hash().String()] = &CachedReceipt{
+			Receipt: txExecResult.Receipt,
+			Tx:      txExecResult.TxWithSender.Tx,
+			From:    txExecResult.TxWithSender.Sender,
+			To:      txExecResult.TxWithSender.Tx.To(),
+		}
+		cs.logger.Info("Cache receipt", "tx", txExecResult.TxWithSender.Tx.Hash().String())
+	}
+	cs.receiptCache.SetAll(receipts)
+}
+
+func (cs *CacheService) ReceiptDoesNotExist(txHash gethcommon.Hash) {
+	cs.receiptCache.Set(txHash.String(), &CachedReceipt{})
 }
 
 func (cs *CacheService) ReadReceipt(_ context.Context, txHash gethcommon.Hash) (*CachedReceipt, error) {
@@ -242,6 +253,9 @@ func (cs *CacheService) ReadReceipt(_ context.Context, txHash gethcommon.Hash) (
 	cr, ok := r.(*CachedReceipt)
 	if !ok {
 		return nil, fmt.Errorf("should not happen. invalid cached receipt")
+	}
+	if cr.Receipt == nil {
+		return nil, ReceiptDoesNotExist
 	}
 	return cr, nil
 }
