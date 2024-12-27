@@ -48,11 +48,12 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	}
 
 	if result != nil {
-		rpc.logger.Trace("Successfully retrieved receipt from cache for ", log.TxKey, txHash, "rec", result)
+		rpc.logger.Info("Cache hit for receipt", log.TxKey, txHash)
 		builder.ReturnValue = &result
 		return nil
 	}
 
+	rpc.logger.Info("Cache miss for receipt", log.TxKey, txHash.String())
 	exists, err := rpc.storage.ExistsTransactionReceipt(builder.ctx, txHash)
 	if err != nil {
 		return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
