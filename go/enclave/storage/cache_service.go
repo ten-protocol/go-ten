@@ -87,7 +87,7 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 
 	nrReceipts := 15_000 // ~100M
 	if testMode {
-		nrReceipts = 500
+		nrReceipts = 2500
 	}
 
 	return &CacheService{
@@ -105,11 +105,11 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 		eventTypeCache:       newLFUCache[[]byte, *enclavedb.EventType](logger, nrEventTypes),
 		eventTopicCache:      newLFUCache[[]byte, *enclavedb.EventTopic](logger, nrEventTypes),
 
-		receiptCache:          newFifoCache(nrReceipts, 100*time.Second),
+		receiptCache:          newFifoCache(nrReceipts, 150*time.Second),
 		attestedEnclavesCache: newLFUCache[[]byte, *AttestedEnclave](logger, nrEnclaves),
 
 		// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
-		lastBatchesCache: newFifoCache(nrBatchesWithContent, time.Duration(nrBatchesWithContent)*time.Second),
+		lastBatchesCache: newFifoCache(nrBatchesWithContent, gocache.NoExpiration),
 
 		sequencerIDsCache: make([]common.EnclaveID, 0),
 
@@ -171,7 +171,7 @@ func (cs *CacheService) CacheBatch(ctx context.Context, batch *core.Batch) {
 	// should always contain the canonical batch because the cache is overwritten by each new batch after a reorg
 	cacheValue(ctx, cs.seqCacheByHeight, cs.logger, batch.NumberU64()+1, batch.SeqNo())
 
-	cs.lastBatchesCache.Set(batch.SeqNo().String(), batch)
+	cs.lastBatchesCache.Set(fmt.Sprintf("%d", batch.SeqNo().Uint64()), batch)
 }
 
 func (cs *CacheService) ReadBlock(ctx context.Context, key gethcommon.Hash, onCacheMiss func() (*types.Header, error)) (*types.Header, error) {
@@ -198,7 +198,12 @@ func (cs *CacheService) ReadBatchHeader(ctx context.Context, seqNum uint64, onCa
 func (cs *CacheService) ReadBatch(ctx context.Context, seqNum uint64, onCacheMiss func() (*core.Batch, error)) (*core.Batch, error) {
 	b, found := cs.lastBatchesCache.Get(fmt.Sprintf("%d", seqNum))
 	if !found {
-		return nil, errutil.ErrNotFound
+		b1, err := onCacheMiss()
+		if err != nil {
+			return nil, err
+		}
+		cs.CacheBatch(ctx, b1)
+		b = b1
 	}
 	cb, ok := b.(*core.Batch)
 	if !ok {
