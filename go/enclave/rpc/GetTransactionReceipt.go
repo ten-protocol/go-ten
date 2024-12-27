@@ -36,6 +36,8 @@ func GetTransactionReceiptValidate(reqParams []any, builder *CallBuilder[gethcom
 	return nil
 }
 
+var NotAuthorisedErr = errors.New("not authorised")
+
 func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[string]interface{}], rpc *EncryptionManager) error {
 	txHash := *builder.Param
 	requester := builder.VK.AccountAddress
@@ -46,6 +48,10 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	// there is an explicit entry in the cache that the tx was not found
 	if err != nil && errors.Is(err, storage.ReceiptDoesNotExist) {
 		builder.Status = NotFound
+		return nil
+	}
+	if err != nil && errors.Is(err, NotAuthorisedErr) {
+		builder.Status = NotAuthorised
 		return nil
 	}
 	// unexpected error
@@ -80,6 +86,10 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	// unexpected error
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return err
+	}
+	if err != nil && errors.Is(err, NotAuthorisedErr) {
+		builder.Status = NotAuthorised
+		return nil
 	}
 
 	if result != nil {
@@ -116,7 +126,7 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 	// for simplicity only the tx sender will access the cache
 	// check whether the requester is the sender
 	if *rec.From != *requester {
-		return nil, nil
+		return nil, NotAuthorisedErr
 	}
 
 	logs := rec.Receipt.Logs
