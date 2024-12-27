@@ -114,20 +114,20 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return isBundleSaved[bundleHash];
     }
 
-    function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 blockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature, uint256 rollupNumber, bytes32 forkID) external {
-        if (block.number > blockNum + 255) {
-            revert("Block binding too old");
-        }
+    function blockBinding(uint256 blockNum) public view returns(bytes32) {
+        return blockhash(blockNum);
+    }
 
-        if ((blockhash(blockNum) != blockHash)) {
-            revert("Block binding mismatch");
-        }
+    function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 providedBlockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature, uint256 rollupNumber, bytes32 forkID) external {
+        require(block.number < (blockNum + 255), "Block binding too old");
+        require(block.number != blockNum, "Cannot bind to the block that is being currently mined");
 
-        if (rollups.toUniqueForkID[rollupNumber] != forkID) {
-            revert("Invalid forkID");
-        }
+        bytes32 knownBlockHash = blockhash(blockNum); 
+        require(knownBlockHash != 0x0, "Unknown block hash");
+        require(knownBlockHash == providedBlockHash, "Block binding mismatch");
+        require(rollups.toUniqueForkID[rollupNumber] == forkID, "Invalid forkID");
 
-        address enclaveID = ECDSA.recover(keccak256(abi.encode(_lastBatchHash, blockHash, blockNum, crossChainHashes)), signature);
+        address enclaveID = ECDSA.recover(keccak256(abi.encode(_lastBatchHash, providedBlockHash, blockNum, crossChainHashes)), signature);
         require(attested[enclaveID], "enclaveID not attested"); //todo: only sequencer, rather than everyone who has attested.
 
         lastBatchHash = _lastBatchHash;
