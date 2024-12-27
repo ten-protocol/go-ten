@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"strings"
 	"sync"
 	"time"
 
@@ -13,7 +12,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/host/storage"
-	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -334,16 +332,6 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, 
 		if errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
 			p.logger.Info("Cross chain bundle already published. Proceeding without publishing", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)
 			return nil
-		}
-
-		rpcErr, ok := err.(rpc.Error)
-		if ok && strings.Contains(rpcErr.Error(), errutil.ErrBlockBindingMismatch.Error()) {
-			p.logger.Info("Block binding mismatch. Republishing bundle", log.ErrKey, rpcErr.Error(), log.BundleHashKey, bundle.LastBatchHash)
-			blockBinding, _ := managementCtr.BlockBinding(&bind.CallOpts{}, bundle.L1BlockNum)
-			if blockBinding == bundle.L1BlockHash {
-				p.logger.Info("Block binding matches current block", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)
-				return err
-			}
 		}
 
 		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
