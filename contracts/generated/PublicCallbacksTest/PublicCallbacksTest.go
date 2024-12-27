@@ -31,8 +31,8 @@ var (
 
 // PublicCallbacksTestMetaData contains all meta data concerning the PublicCallbacksTest contract.
 var PublicCallbacksTestMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_callbacks\",\"type\":\"address\"}],\"stateMutability\":\"payable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"callbacks\",\"outputs\":[{\"internalType\":\"contractIPublicCallbacks\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"handleAllCallbacksRan\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"expectedGas\",\"type\":\"uint256\"}],\"name\":\"handleCallback\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"handleCallbackFail\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"isLastCallSuccess\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
-	Bin: "0x608060408190526000805461ffff60a01b1916905561068838819003908190833981016040819052610030916102b5565b600080546001600160b01b0319166001600160a01b038316179055610053610059565b506103a8565b6000486100676003346102f1565b61007191906102f1565b9050600063a072d7b060e01b8260405160240161008e9190610305565b60408051601f19818403018152918152602080830180516001600160e01b039081166001600160e01b031990961695909517905281516004808252602480830185528284018051881663a4c016fb60e01b179052845191825281019093529082018051909416629e79db60e81b17909352600054919350906001600160a01b03166382fbdc9c61011f6003346102f1565b856040518363ffffffff1660e01b815260040161013c9190610367565b60206040518083038185885af115801561015a573d6000803e3d6000fd5b50505050506040513d601f19601f8201168201806040525081019061017f9190610389565b506000546001600160a01b03166382fbdc9c61019c6003346102f1565b846040518363ffffffff1660e01b81526004016101b99190610367565b60206040518083038185885af11580156101d7573d6000803e3d6000fd5b50505050506040513d601f19601f820116820180604052508101906101fc9190610389565b506000546001600160a01b03166382fbdc9c6102196003346102f1565b836040518363ffffffff1660e01b81526004016102369190610367565b60206040518083038185885af1158015610254573d6000803e3d6000fd5b50505050506040513d601f19601f820116820180604052508101906102799190610389565b5050505050565b60006001600160a01b0382165b92915050565b61029c81610280565b81146102a757600080fd5b50565b805161028d81610293565b6000602082840312156102ca576102ca600080fd5b6102d483836102aa565b9392505050565b634e487b7160e01b600052601260045260246000fd5b600082610300576103006102db565b500490565b8181526020810161028d565b60005b8381101561032c578181015183820152602001610314565b50506000910152565b600061033f825190565b808452602084019350610356818560208601610311565b601f01601f19169290920192915050565b602080825281016102d48184610335565b8061029c565b805161028d81610378565b60006020828403121561039e5761039e600080fd5b6102d4838361037e565b6102d1806103b76000396000f3fe608060405234801561001057600080fd5b50600436106100665760003560e01c8063a072d7b011610050578063a072d7b0146100d6578063a4c016fb146100e9578063ee1d5872146100f157600080fd5b8062b127831461006b5780639e79db00146100a1575b600080fd5b60005461008b9073ffffffffffffffffffffffffffffffffffffffff1681565b60405161009891906101cd565b60405180910390f35b6100d4600080547fffffffffffffffffffff00ffffffffffffffffffffffffffffffffffffffffff16600160a81b179055565b005b6100d46100e43660046101e2565b61010b565b6100d461013a565b600054600160a81b900460ff166040516100989190610210565b60005a905061011c6108348361024d565b8110610136576000805460ff60a01b1916600160a01b1790555b5050565b6000805460ff60a01b1916600160a01b1790556040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161017f90610260565b60405180910390fd5b600073ffffffffffffffffffffffffffffffffffffffff82165b92915050565b60006101a282610188565b60006101a2826101a8565b6101c7816101b3565b82525050565b602081016101a282846101be565b80356101a2565b6000602082840312156101f7576101f7600080fd5b61020183836101db565b9392505050565b8015156101c7565b602081016101a28284610208565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b818103818111156101a2576101a261021e565b602080825281016101a281601681527f5468697320697320612074657374206661696c7572650000000000000000000060208201526040019056fea264697066735822122034157dc839226d5d21d57d82e72a5696aa65217d03e1d0b1b1457fd4d75d977964736f6c634300081c0033",
+	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_callbacks\",\"type\":\"address\"}],\"stateMutability\":\"payable\",\"type\":\"constructor\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"callbackRefundees\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"callbacks\",\"outputs\":[{\"internalType\":\"contractIPublicCallbacks\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"handleAllCallbacksRan\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"expectedGas\",\"type\":\"uint256\"}],\"name\":\"handleCallback\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"handleCallbackFail\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"callbackId\",\"type\":\"uint256\"}],\"name\":\"handleRefund\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"isLastCallSuccess\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"pendingRefunds\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}]",
+	Bin: "0x608060408190526000805461ffff60a01b191681556003556108ce3881900390819083398101604081905261003391610314565b600080546001600160b01b0319166001600160a01b03831617905561005661005c565b50610407565b60004861006a600334610350565b6100749190610350565b9050600063a072d7b060e01b826040516024016100919190610364565b60408051601f19818403018152918152602080830180516001600160e01b039081166001600160e01b031990961695909517905281516004808252602480830185528284018051881663a4c016fb60e01b179052845191825281019093529082018051909416629e79db60e81b179093526000805492945090916001600160a01b03166382fbdc9c610124600334610350565b866040518363ffffffff1660e01b815260040161014191906103c6565b60206040518083038185885af115801561015f573d6000803e3d6000fd5b50505050506040513d601f19601f8201168201806040525081019061018491906103e8565b600081815260016020526040812080546001600160a01b03191633179055549091506001600160a01b03166382fbdc9c6101bf600334610350565b856040518363ffffffff1660e01b81526004016101dc91906103c6565b60206040518083038185885af11580156101fa573d6000803e3d6000fd5b50505050506040513d601f19601f8201168201806040525081019061021f91906103e8565b600081815260016020526040812080546001600160a01b03191633179055549091506001600160a01b03166382fbdc9c61025a600334610350565b846040518363ffffffff1660e01b815260040161027791906103c6565b60206040518083038185885af1158015610295573d6000803e3d6000fd5b50505050506040513d601f19601f820116820180604052508101906102ba91906103e8565b600090815260016020526040902080546001600160a01b031916331790555050505050565b60006001600160a01b0382165b92915050565b6102fb816102df565b811461030657600080fd5b50565b80516102ec816102f2565b60006020828403121561032957610329600080fd5b6103338383610309565b9392505050565b634e487b7160e01b600052601260045260246000fd5b60008261035f5761035f61033a565b500490565b818152602081016102ec565b60005b8381101561038b578181015183820152602001610373565b50506000910152565b600061039e825190565b8084526020840193506103b5818560208601610370565b601f01601f19169290920192915050565b602080825281016103338184610394565b806102fb565b80516102ec816103d7565b6000602082840312156103fd576103fd600080fd5b61033383836103dd565b6104b8806104166000396000f3fe60806040526004361061007a5760003560e01c8063a072d7b01161004e578063a072d7b01461014d578063a4c016fb1461016d578063b613b11414610182578063ee1d5872146101bc57600080fd5b8062b127831461007f5780635ea39558146100b55780638103ab13146100ca5780639e79db001461010d575b600080fd5b34801561008b57600080fd5b5060005461009f906001600160a01b031681565b6040516100ac9190610305565b60405180910390f35b6100c86100c336600461032e565b6101de565b005b3480156100d657600080fd5b506101006100e536600461032e565b6001602052600090815260409020546001600160a01b031681565b6040516100ac919061036e565b34801561011957600080fd5b506100c8600080547fffffffffffffffffffff00ffffffffffffffffffffffffffffffffffffffffff16600160a81b179055565b34801561015957600080fd5b506100c861016836600461032e565b61022f565b34801561017957600080fd5b506100c861025e565b34801561018e57600080fd5b506101af61019d366004610390565b60026020526000908152604090205481565b6040516100ac91906103b5565b3480156101c857600080fd5b506101d16102ac565b6040516100ac91906103cb565b6000818152600160209081526040808320546001600160a01b03168352600290915281208054349290610212908490610408565b9091555050600380549060006102278361041b565b919050555050565b60005a905061024061083483610434565b811061025a576000805460ff60a01b1916600160a01b1790555b5050565b6000805460ff60a01b1916600160a01b1790556040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016102a390610447565b60405180910390fd5b60008054600160a81b900460ff1680156102c857506003546003145b905090565b60006001600160a01b0382165b92915050565b60006102da826102cd565b60006102da826102e0565b6102ff816102eb565b82525050565b602081016102da82846102f6565b805b811461032057600080fd5b50565b80356102da81610313565b60006020828403121561034357610343600080fd5b61034d8383610323565b9392505050565b60006001600160a01b0382166102da565b6102ff81610354565b602081016102da8284610365565b61031581610354565b80356102da8161037c565b6000602082840312156103a5576103a5600080fd5b61034d8383610385565b806102ff565b602081016102da82846103af565b8015156102ff565b602081016102da82846103c3565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b808201808211156102da576102da6103d9565b60006001820161042d5761042d6103d9565b5060010190565b818103818111156102da576102da6103d9565b602080825281016102da81601681527f5468697320697320612074657374206661696c7572650000000000000000000060208201526040019056fea26469706673582212206c554a332d55c15b4e8ad15fdc46d773c8e6a927c14f4ea4ed1d983d7b5d5fda64736f6c634300081c0033",
 }
 
 // PublicCallbacksTestABI is the input ABI used to generate the binding from.
@@ -202,6 +202,37 @@ func (_PublicCallbacksTest *PublicCallbacksTestTransactorRaw) Transact(opts *bin
 	return _PublicCallbacksTest.Contract.contract.Transact(opts, method, params...)
 }
 
+// CallbackRefundees is a free data retrieval call binding the contract method 0x8103ab13.
+//
+// Solidity: function callbackRefundees(uint256 ) view returns(address)
+func (_PublicCallbacksTest *PublicCallbacksTestCaller) CallbackRefundees(opts *bind.CallOpts, arg0 *big.Int) (common.Address, error) {
+	var out []interface{}
+	err := _PublicCallbacksTest.contract.Call(opts, &out, "callbackRefundees", arg0)
+
+	if err != nil {
+		return *new(common.Address), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(common.Address)).(*common.Address)
+
+	return out0, err
+
+}
+
+// CallbackRefundees is a free data retrieval call binding the contract method 0x8103ab13.
+//
+// Solidity: function callbackRefundees(uint256 ) view returns(address)
+func (_PublicCallbacksTest *PublicCallbacksTestSession) CallbackRefundees(arg0 *big.Int) (common.Address, error) {
+	return _PublicCallbacksTest.Contract.CallbackRefundees(&_PublicCallbacksTest.CallOpts, arg0)
+}
+
+// CallbackRefundees is a free data retrieval call binding the contract method 0x8103ab13.
+//
+// Solidity: function callbackRefundees(uint256 ) view returns(address)
+func (_PublicCallbacksTest *PublicCallbacksTestCallerSession) CallbackRefundees(arg0 *big.Int) (common.Address, error) {
+	return _PublicCallbacksTest.Contract.CallbackRefundees(&_PublicCallbacksTest.CallOpts, arg0)
+}
+
 // Callbacks is a free data retrieval call binding the contract method 0x00b12783.
 //
 // Solidity: function callbacks() view returns(address)
@@ -262,6 +293,37 @@ func (_PublicCallbacksTest *PublicCallbacksTestSession) IsLastCallSuccess() (boo
 // Solidity: function isLastCallSuccess() view returns(bool)
 func (_PublicCallbacksTest *PublicCallbacksTestCallerSession) IsLastCallSuccess() (bool, error) {
 	return _PublicCallbacksTest.Contract.IsLastCallSuccess(&_PublicCallbacksTest.CallOpts)
+}
+
+// PendingRefunds is a free data retrieval call binding the contract method 0xb613b114.
+//
+// Solidity: function pendingRefunds(address ) view returns(uint256)
+func (_PublicCallbacksTest *PublicCallbacksTestCaller) PendingRefunds(opts *bind.CallOpts, arg0 common.Address) (*big.Int, error) {
+	var out []interface{}
+	err := _PublicCallbacksTest.contract.Call(opts, &out, "pendingRefunds", arg0)
+
+	if err != nil {
+		return *new(*big.Int), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
+
+	return out0, err
+
+}
+
+// PendingRefunds is a free data retrieval call binding the contract method 0xb613b114.
+//
+// Solidity: function pendingRefunds(address ) view returns(uint256)
+func (_PublicCallbacksTest *PublicCallbacksTestSession) PendingRefunds(arg0 common.Address) (*big.Int, error) {
+	return _PublicCallbacksTest.Contract.PendingRefunds(&_PublicCallbacksTest.CallOpts, arg0)
+}
+
+// PendingRefunds is a free data retrieval call binding the contract method 0xb613b114.
+//
+// Solidity: function pendingRefunds(address ) view returns(uint256)
+func (_PublicCallbacksTest *PublicCallbacksTestCallerSession) PendingRefunds(arg0 common.Address) (*big.Int, error) {
+	return _PublicCallbacksTest.Contract.PendingRefunds(&_PublicCallbacksTest.CallOpts, arg0)
 }
 
 // HandleAllCallbacksRan is a paid mutator transaction binding the contract method 0x9e79db00.
@@ -325,4 +387,25 @@ func (_PublicCallbacksTest *PublicCallbacksTestSession) HandleCallbackFail() (*t
 // Solidity: function handleCallbackFail() returns()
 func (_PublicCallbacksTest *PublicCallbacksTestTransactorSession) HandleCallbackFail() (*types.Transaction, error) {
 	return _PublicCallbacksTest.Contract.HandleCallbackFail(&_PublicCallbacksTest.TransactOpts)
+}
+
+// HandleRefund is a paid mutator transaction binding the contract method 0x5ea39558.
+//
+// Solidity: function handleRefund(uint256 callbackId) payable returns()
+func (_PublicCallbacksTest *PublicCallbacksTestTransactor) HandleRefund(opts *bind.TransactOpts, callbackId *big.Int) (*types.Transaction, error) {
+	return _PublicCallbacksTest.contract.Transact(opts, "handleRefund", callbackId)
+}
+
+// HandleRefund is a paid mutator transaction binding the contract method 0x5ea39558.
+//
+// Solidity: function handleRefund(uint256 callbackId) payable returns()
+func (_PublicCallbacksTest *PublicCallbacksTestSession) HandleRefund(callbackId *big.Int) (*types.Transaction, error) {
+	return _PublicCallbacksTest.Contract.HandleRefund(&_PublicCallbacksTest.TransactOpts, callbackId)
+}
+
+// HandleRefund is a paid mutator transaction binding the contract method 0x5ea39558.
+//
+// Solidity: function handleRefund(uint256 callbackId) payable returns()
+func (_PublicCallbacksTest *PublicCallbacksTestTransactorSession) HandleRefund(callbackId *big.Int) (*types.Transaction, error) {
+	return _PublicCallbacksTest.Contract.HandleRefund(&_PublicCallbacksTest.TransactOpts, callbackId)
 }
