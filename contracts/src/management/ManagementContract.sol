@@ -114,10 +114,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return isBundleSaved[bundleHash];
     }
 
-    function blockBinding(uint256 blockNum) public view returns(bytes32) {
-        return blockhash(blockNum);
-    }
-
     function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 providedBlockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature, uint256 rollupNumber, bytes32 forkID) external {
         require(block.number < (blockNum + 255), "Block binding too old");
         require(block.number != blockNum, "Cannot bind to the block that is being currently mined");
