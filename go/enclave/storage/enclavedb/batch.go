@@ -281,9 +281,14 @@ func ExistsReceipt(ctx context.Context, db *sql.DB, txHash common.L2TxHash) (boo
 	return cnt > 0, nil
 }
 
-func ReadTransaction(ctx context.Context, db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error) {
+func ReadTransaction(ctx context.Context, db *sql.DB, txHash gethcommon.Hash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error) {
 	row := db.QueryRowContext(ctx,
-		"select tx.content, batch.hash, batch.height, tx.idx from receipt join tx on tx.id=receipt.tx join batch on batch.sequence=receipt.batch where batch.is_canonical=true and tx.hash=?",
+		"select tx.content, batch.hash, batch.height, tx.idx, eoa.address "+
+			"from receipt "+
+			"join tx on tx.id=receipt.tx "+
+			"join batch on batch.sequence=receipt.batch "+
+			"join externally_owned_account eoa on eoa.id = tx.sender_address "+
+			"where batch.is_canonical=true and tx.hash=?",
 		txHash.Bytes())
 
 	// tx, batch, height, idx
@@ -291,21 +296,23 @@ func ReadTransaction(ctx context.Context, db *sql.DB, txHash gethcommon.Hash) (*
 	var batchHash []byte
 	var height uint64
 	var idx uint64
-	err := row.Scan(&txData, &batchHash, &height, &idx)
+	var sender []byte
+	err := row.Scan(&txData, &batchHash, &height, &idx, &sender)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
-			return nil, gethcommon.Hash{}, 0, 0, errutil.ErrNotFound
+			return nil, gethcommon.Hash{}, 0, 0, gethcommon.Address{}, errutil.ErrNotFound
 		}
-		return nil, gethcommon.Hash{}, 0, 0, err
+		return nil, gethcommon.Hash{}, 0, 0, gethcommon.Address{}, err
 	}
 	tx := new(common.L2Tx)
 	if err := rlp.DecodeBytes(txData, tx); err != nil {
-		return nil, gethcommon.Hash{}, 0, 0, fmt.Errorf("could not decode L2 transaction. Cause: %w", err)
+		return nil, gethcommon.Hash{}, 0, 0, gethcommon.Address{}, fmt.Errorf("could not decode L2 transaction. Cause: %w", err)
 	}
 	batch := gethcommon.Hash{}
 	batch.SetBytes(batchHash)
-	return tx, batch, height, idx, nil
+	senderAddress := gethcommon.BytesToAddress(sender)
+	return tx, batch, height, idx, senderAddress, nil
 }
 
 func ReadBatchTransactions(ctx context.Context, db *sql.DB, height uint64) ([]*common.L2Tx, error) {

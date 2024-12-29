@@ -100,13 +100,6 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 		return nil, err
 	}
 
-	// receipt found in cache
-	// for simplicity only the tx sender will access the cache
-	// check whether the requester is the sender
-	if *rec.From != *requester {
-		return nil, NotAuthorisedErr
-	}
-
 	logs := rec.Receipt.Logs
 	// filter out the logs that the sender can't read
 	// doesn't apply to contract creation (when to=nil)
@@ -126,6 +119,11 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 				return nil, nil
 			}
 		}
+	}
+
+	// check whether the requester is the sender or the requester can see any logs
+	if (*rec.From != *requester) && (len(logs) == 0) {
+		return nil, NotAuthorisedErr
 	}
 
 	r := marshalReceipt(rec.Receipt, logs, rec.From, rec.To)

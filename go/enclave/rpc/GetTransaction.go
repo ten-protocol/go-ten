@@ -9,8 +9,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/ten-protocol/go-ten/go/enclave/core"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/common/math"
@@ -52,7 +50,7 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 	if rec != nil {
 		rpc.logger.Debug("Cache hit for tx", log.TxKey, txHash)
 		// authorise - only the signer can request the transaction
-		if rec.From.Hex() != requester.Hex() {
+		if *rec.From != *requester {
 			builder.Status = NotAuthorised
 			return nil
 		}
@@ -63,23 +61,18 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 	rpc.logger.Debug("Cache miss for tx", log.TxKey, txHash)
 
 	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
-	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(builder.ctx, *builder.Param)
+	tx, blockHash, blockNumber, index, sender, err := rpc.storage.GetTransaction(builder.ctx, *builder.Param)
+	if err != nil && errors.Is(err, errutil.ErrNotFound) {
+		builder.Status = NotFound
+		rpc.cacheService.ReceiptDoesNotExist(txHash)
+		return nil
+	}
 	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			builder.Status = NotFound
-			rpc.cacheService.ReceiptDoesNotExist(txHash)
-			return nil
-		}
 		return err
 	}
 
-	sender, err := core.GetExternalTxSigner(tx)
-	if err != nil {
-		return fmt.Errorf("could not recover the tx %s sender. Cause: %w", tx.Hash(), err)
-	}
-
 	// authorise - only the signer can request the transaction
-	if sender.Hex() != requester.Hex() {
+	if sender != *requester {
 		builder.Status = NotAuthorised
 		return nil
 	}
