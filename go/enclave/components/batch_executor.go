@@ -699,9 +699,6 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 	executor.logger.Debug(fmt.Sprintf("Added %d cross chain messages to batch.",
 		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
 
-	batch.Header.LatestInboundCrossChainHash = block.Hash()
-	batch.Header.LatestInboundCrossChainHeight = block.Number
-
 	return nil
 }
 

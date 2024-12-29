@@ -39,13 +39,11 @@ type BatchHeader struct {
 	Coinbase         common.Address `json:"coinbase"`
 
 	// The custom TEN fields.
-	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
-	Signature                     []byte                                `json:"signature"`
-	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
-	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
-	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
-	CrossChainRoot                common.Hash                           `json:"crossChainTreeHash"`      // This is the root hash of a merkle tree, built from all the cross chain messages and transfers that need to go on MainNet.
-	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`          // Those are the leafs of the merkle tree hashed for privacy. Necessary for clients to be able to build proofs as they have no access to all transactions in a batch or their receipts.
+	L1Proof            L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
+	Signature          []byte                                `json:"signature"`
+	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
+	CrossChainRoot     common.Hash                           `json:"crossChainTreeHash"` // This is the root hash of a merkle tree, built from all the cross chain messages and transfers that need to go on MainNet.
+	CrossChainTree     SerializedCrossChainTree              `json:"crossChainTree"`     // Those are the leafs of the merkle tree hashed for privacy. Necessary for clients to be able to build proofs as they have no access to all transactions in a batch or their receipts.
 }
 
 // TODO - use exposed headers once #3987 is completed.
@@ -107,13 +105,11 @@ type batchHeaderEncoding struct {
 	Coinbase         *common.Address `json:"miner"`
 
 	// The custom Obscuro fields.
-	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
-	Signature                     []byte                                `json:"signature"`
-	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
-	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
-	LatestInboundCrossChainHeight *hexutil.Big                          `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
-	CrossChainRootHash            common.Hash                           `json:"crossChainTreeHash"`
-	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`
+	L1Proof            L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
+	Signature          []byte                                `json:"signature"`
+	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
+	CrossChainRootHash common.Hash                           `json:"crossChainTreeHash"`
+	CrossChainTree     SerializedCrossChainTree              `json:"crossChainTree"`
 }
 
 // MarshalJSON custom marshals the BatchHeader into a json
@@ -135,8 +131,6 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 		b.L1Proof,
 		b.Signature,
 		b.CrossChainMessages,
-		b.LatestInboundCrossChainHash,
-		(*hexutil.Big)(b.LatestInboundCrossChainHeight),
 		b.CrossChainRoot,
 		b.CrossChainTree,
 	})
@@ -164,8 +158,6 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 	b.L1Proof = dec.L1Proof
 	b.Signature = dec.Signature
 	b.CrossChainMessages = dec.CrossChainMessages
-	b.LatestInboundCrossChainHash = dec.LatestInboundCrossChainHash
-	b.LatestInboundCrossChainHeight = (*big.Int)(dec.LatestInboundCrossChainHeight)
 	b.CrossChainRoot = dec.CrossChainRootHash
 	b.CrossChainTree = dec.CrossChainTree
 	return nil

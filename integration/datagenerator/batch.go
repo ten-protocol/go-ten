@@ -24,10 +24,5 @@ func RandomBatch(block *types.Block) common.ExtBatch {
 		EncryptedTxBlob: RandomBytes(10),
 	}
 
-	if block != nil {
-		extBatch.Header.LatestInboundCrossChainHeight = block.Number()
-		extBatch.Header.LatestInboundCrossChainHash = block.Hash()
-	}
-
 	return extBatch
 }
