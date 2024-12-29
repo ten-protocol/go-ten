@@ -128,14 +128,9 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
 	}
 
-	crossChain := ManagementContract.StructsHeaderCrossChainData{
-		Messages: convertCrossChainMessages(decodedRollup.Header.CrossChainMessages),
-	}
-
 	data, err := c.contractABI.Pack(
 		AddRollupMethod,
 		metaRollup,
-		crossChain,
 	)
 	if err != nil {
 		panic(err)
