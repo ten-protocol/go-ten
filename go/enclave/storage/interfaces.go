@@ -106,6 +106,7 @@ type AttestationStorage interface {
 	GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*AttestedEnclave, error)
 	StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error
 	StoreNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) error
+	GetSequencerEnclaveIDs(ctx context.Context) ([]common.EnclaveID, error)
 }
 
 type CrossChainMessagesStorage interface {

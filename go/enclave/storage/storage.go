@@ -48,8 +48,9 @@ const (
 )
 
 type AttestedEnclave struct {
-	PubKey *ecdsa.PublicKey
-	Type   common.NodeType
+	PubKey    *ecdsa.PublicKey
+	EnclaveID *common.EnclaveID
+	Type      common.NodeType
 }
 
 // todo - this file needs splitting up based on concerns
@@ -463,7 +464,7 @@ func (s *storageImpl) GetEnclavePubKey(ctx context.Context, enclaveId common.Enc
 			return nil, fmt.Errorf("could not parse key from db. Cause: %w", err)
 		}
 
-		return &AttestedEnclave{PubKey: publicKey, Type: nodeType}, nil
+		return &AttestedEnclave{PubKey: publicKey, Type: nodeType, EnclaveID: &enclaveId}, nil
 	})
 }
 
@@ -484,6 +485,13 @@ func (s *storageImpl) StoreNodeType(ctx context.Context, enclaveId common.Enclav
 	}
 	// set value in cache to ensure it is up to date
 	s.cachingService.UpdateEnclaveNodeType(ctx, enclaveId, nodeType)
+	// Fetch and update sequencer IDs cache
+	sequencerIDs, err := enclavedb.FetchSequencerEnclaveIDs(ctx, s.db.GetSQLDB())
+	if err != nil {
+		return fmt.Errorf("could not fetch updated sequencer IDs - %w", err)
+	}
+	s.cachingService.CacheSequencerIDs(ctx, sequencerIDs)
+
 	return nil
 }
 
@@ -915,4 +923,20 @@ func (s *storageImpl) GetSystemContractAddresses(ctx context.Context) (common.Sy
 		return nil, fmt.Errorf("could not unmarshal system contract addresses - %w", err)
 	}
 	return addresses, nil
+}
+
+func (s *storageImpl) GetSequencerEnclaveIDs(ctx context.Context) ([]common.EnclaveID, error) {
+	defer s.logDuration("GetSequencerEnclaveIDs", measure.NewStopwatch())
+
+	ids, err := s.cachingService.ReadSequencerIDs(ctx, func(any) (*[]common.EnclaveID, error) {
+		sequencerIDs, err := enclavedb.FetchSequencerEnclaveIDs(ctx, s.db.GetSQLDB())
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch sequencer IDs from database. Cause: %w", err)
+		}
+		return &sequencerIDs, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to read sequencer IDs from cache. Cause: %w", err)
+	}
+	return *ids, nil
 }

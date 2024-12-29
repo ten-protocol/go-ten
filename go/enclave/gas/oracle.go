@@ -3,6 +3,7 @@ package gas
 import (
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -44,13 +45,15 @@ func (o *oracle) EstimateL1StorageGasCost(tx *types.Transaction, block *types.He
 		return nil, err
 	}
 
-	blockBaseFee := block.BaseFee
-	if blockBaseFee == nil {
+	// If the block does not have excess blob gas, we can't estimate the cost
+	if block.ExcessBlobGas == nil {
 		return big.NewInt(0), nil
 	}
 
+	blobFee := eip4844.CalcBlobFee(*block.ExcessBlobGas)
+
 	l1Gas := CalculateL1GasUsed(encodedTx, big.NewInt(0))
-	return big.NewInt(0).Mul(l1Gas, block.BaseFee), nil
+	return big.NewInt(0).Mul(l1Gas, blobFee), nil
 }
 
 func (o *oracle) EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *types.Header) (*big.Int, error) {

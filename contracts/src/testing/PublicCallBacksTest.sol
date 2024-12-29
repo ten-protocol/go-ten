@@ -35,6 +35,16 @@ contract PublicCallbacksTest {
         allCallbacksRan = true;
     }
 
+    mapping(uint256 => address) public callbackRefundees;
+    mapping(address=>uint256) public pendingRefunds;
+
+    // This is called by the system to refund the callbac
+    function handleRefund(uint256 callbackId) external payable {
+        // do nothing
+        pendingRefunds[callbackRefundees[callbackId]] += msg.value;
+        refundCalled++;
+    }
+
     // Test function that registers a callback
     function testRegisterCallback() internal {
         // Encode the callback data - calling handleCallback()
@@ -46,13 +56,16 @@ contract PublicCallbacksTest {
         bytes memory callbackDataAllCallbacksRan = abi.encodeWithSelector(this.handleAllCallbacksRan.selector);
 
         // Register the callback, forwarding any value sent to this call
-        callbacks.register{value: msg.value/3}(callbackData);
-        callbacks.register{value: msg.value/3}(callbackDataFail);
-        callbacks.register{value: msg.value/3}(callbackDataAllCallbacksRan);
+        uint256 id = callbacks.register{value: msg.value/3}(callbackData);
+        callbackRefundees[id] = msg.sender;
+        id = callbacks.register{value: msg.value/3}(callbackDataFail);
+        callbackRefundees[id] = msg.sender;
+        id = callbacks.register{value: msg.value/3}(callbackDataAllCallbacksRan);
+        callbackRefundees[id] = msg.sender;
     }
 
+    uint256 refundCalled = 0;
     function isLastCallSuccess() external view returns (bool) {
-//        return allCallbacksRan && lastCallSuccess;
-        return allCallbacksRan;
+        return allCallbacksRan && refundCalled == 3;
     }
 }
