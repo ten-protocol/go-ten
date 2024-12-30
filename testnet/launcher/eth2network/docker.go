@@ -3,6 +3,7 @@ package eth2network
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -59,7 +60,13 @@ func (n *Eth2Network) IsReady() error {
 
 	// retry the connection
 	err = retry.Do(func() error {
-		dial, err = ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.cfg.gethHTTPPort))
+		host := os.Getenv("LOCALHOST_URL")
+		if host == "" {
+			host = "http://127.0.0.1"
+		}
+		url := fmt.Sprintf("%s:%d", host, n.cfg.gethHTTPPort)
+
+		dial, err = ethclient.Dial(url)
 		if err != nil {
 			return err
 		}
