@@ -16,6 +16,12 @@ brew tap ethereum/ethereum
 brew install ethereum
 ```
 
+Notice that for generating the go bindings, you need to have the `abigen` executable installed, which comes from the ethereum package, but can be independently installed using (recommended for the devcontainer):
+
+```shell
+go install github.com/ethereum/go-ethereum/cmd/abigen@latest
+```
+
 Running the following command will pull all of the relevant dependencies for node and solidity.
 
 ```shell

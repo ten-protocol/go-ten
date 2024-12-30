@@ -96,7 +96,7 @@ type SharedSecretStorage interface {
 
 type TransactionStorage interface {
 	// GetTransaction - returns the positional metadata of the tx by hash
-	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
+	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error)
 	// GetFilteredInternalReceipt - returns the receipt of a tx with event logs visible to the requester
 	GetFilteredInternalReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error)
 	ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error)

@@ -116,6 +116,7 @@ func (s *storageImpl) StateDB() state.Database {
 }
 
 func (s *storageImpl) Close() error {
+	s.cachingService.Stop()
 	return s.db.GetSQLDB().Close()
 }
 
@@ -143,8 +144,8 @@ func (s *storageImpl) FetchBatch(ctx context.Context, hash common.L2BatchHash) (
 }
 
 func (s *storageImpl) fetchSeqNoByHash(ctx context.Context, hash common.L2BatchHash) (*big.Int, error) {
-	seqNo, err := s.cachingService.ReadBatchSeqByHash(ctx, hash, func(v any) (*big.Int, error) {
-		batch, err := enclavedb.ReadBatchHeaderByHash(ctx, s.db.GetSQLDB(), v.(common.L2BatchHash))
+	seqNo, err := s.cachingService.ReadBatchSeqByHash(ctx, hash, func() (*big.Int, error) {
+		batch, err := enclavedb.ReadBatchHeaderByHash(ctx, s.db.GetSQLDB(), hash)
 		if err != nil {
 			return nil, err
 		}
@@ -160,7 +161,7 @@ func (s *storageImpl) FetchConvertedHash(ctx context.Context, hash common.L2Batc
 		return gethcommon.Hash{}, err
 	}
 
-	convertedHash, err := s.cachingService.ReadConvertedHash(ctx, hash, func(v any) (*gethcommon.Hash, error) {
+	convertedHash, err := s.cachingService.ReadConvertedHash(ctx, hash, func() (*gethcommon.Hash, error) {
 		ch, err := enclavedb.FetchConvertedBatchHash(ctx, s.db.GetSQLDB(), batch.SequencerOrderNo.Uint64())
 		if err != nil {
 			return nil, err
@@ -185,7 +186,7 @@ func (s *storageImpl) FetchBatchHeader(ctx context.Context, hash common.L2BatchH
 
 func (s *storageImpl) FetchBatchTransactionsBySeq(ctx context.Context, seqNo uint64) ([]*common.L2Tx, error) {
 	defer s.logDuration("FetchBatchTransactionsBySeq", measure.NewStopwatch())
-	batch, err := s.cachingService.ReadBatch(ctx, seqNo, func(_ any) (*core.Batch, error) {
+	batch, err := s.cachingService.ReadBatch(ctx, seqNo, func() (*core.Batch, error) {
 		batchHeader, err := s.FetchBatchHeaderBySeqNo(ctx, seqNo)
 		if err != nil {
 			return nil, err
@@ -204,7 +205,7 @@ func (s *storageImpl) FetchBatchTransactionsBySeq(ctx context.Context, seqNo uin
 
 func (s *storageImpl) FetchBatchByHeight(ctx context.Context, height uint64) (*core.Batch, error) {
 	defer s.logDuration("FetchBatchByHeight", measure.NewStopwatch())
-	seqNo, err := s.cachingService.ReadBatchSeqByHeight(ctx, height, func(h any) (*big.Int, error) {
+	seqNo, err := s.cachingService.ReadBatchSeqByHeight(ctx, height, func() (*big.Int, error) {
 		batch, err := enclavedb.ReadCanonicalBatchHeaderByHeight(ctx, s.db.GetSQLDB(), height)
 		if err != nil {
 			return nil, err
@@ -304,8 +305,8 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Header, chain
 
 func (s *storageImpl) FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Header, error) {
 	defer s.logDuration("FetchBlockHeader", measure.NewStopwatch())
-	return s.cachingService.ReadBlock(ctx, blockHash, func(hash any) (*types.Header, error) {
-		return enclavedb.FetchBlockHeader(ctx, s.db.GetSQLDB(), hash.(common.L1BlockHash))
+	return s.cachingService.ReadBlock(ctx, blockHash, func() (*types.Header, error) {
+		return enclavedb.FetchBlockHeader(ctx, s.db.GetSQLDB(), blockHash)
 	})
 }
 
@@ -433,7 +434,7 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	return statedb, nil
 }
 
-func (s *storageImpl) GetTransaction(ctx context.Context, txHash gethcommon.Hash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error) {
+func (s *storageImpl) GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error) {
 	defer s.logDuration("GetTransaction", measure.NewStopwatch())
 	return enclavedb.ReadTransaction(ctx, s.db.GetSQLDB(), txHash)
 }
@@ -453,7 +454,7 @@ func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash commo
 
 func (s *storageImpl) GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*AttestedEnclave, error) {
 	defer s.logDuration("GetEnclavePubKey", measure.NewStopwatch())
-	return s.cachingService.ReadEnclavePubKey(ctx, enclaveId, func(a any) (*AttestedEnclave, error) {
+	return s.cachingService.ReadEnclavePubKey(ctx, enclaveId, func() (*AttestedEnclave, error) {
 		key, nodeType, err := enclavedb.FetchAttestation(ctx, s.db.GetSQLDB(), enclaveId)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", enclaveId, err)
@@ -527,7 +528,7 @@ func (s *storageImpl) FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*co
 
 func (s *storageImpl) FetchBatchHeaderBySeqNo(ctx context.Context, seqNum uint64) (*common.BatchHeader, error) {
 	defer s.logDuration("FetchBatchHeaderBySeqNo", measure.NewStopwatch())
-	return s.cachingService.ReadBatchHeader(ctx, seqNum, func(seq any) (*common.BatchHeader, error) {
+	return s.cachingService.ReadBatchHeader(ctx, seqNum, func() (*common.BatchHeader, error) {
 		return enclavedb.ReadBatchHeaderBySeqNo(ctx, s.db.GetSQLDB(), seqNum)
 	})
 }
@@ -693,6 +694,11 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 		return fmt.Errorf("could not commit batch %w", err)
 	}
 
+	// after a successful db commit, cache the receipts
+	if s.config.StoreExecutedTransactions {
+		s.cachingService.CacheReceipts(results)
+	}
+
 	return nil
 }
 
@@ -855,7 +861,7 @@ func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *
 
 func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (*uint64, error) {
 	defer s.logDuration("readOrWriteEOA", measure.NewStopwatch())
-	return s.cachingService.ReadEOA(ctx, addr, func(v any) (*uint64, error) {
+	return s.cachingService.ReadEOA(ctx, addr, func() (*uint64, error) {
 		id, err := enclavedb.ReadEoa(ctx, dbTX, addr)
 		if err != nil {
 			if errors.Is(err, errutil.ErrNotFound) {
@@ -928,15 +934,15 @@ func (s *storageImpl) GetSystemContractAddresses(ctx context.Context) (common.Sy
 func (s *storageImpl) GetSequencerEnclaveIDs(ctx context.Context) ([]common.EnclaveID, error) {
 	defer s.logDuration("GetSequencerEnclaveIDs", measure.NewStopwatch())
 
-	ids, err := s.cachingService.ReadSequencerIDs(ctx, func(any) (*[]common.EnclaveID, error) {
+	ids, err := s.cachingService.ReadSequencerIDs(ctx, func() ([]common.EnclaveID, error) {
 		sequencerIDs, err := enclavedb.FetchSequencerEnclaveIDs(ctx, s.db.GetSQLDB())
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch sequencer IDs from database. Cause: %w", err)
 		}
-		return &sequencerIDs, nil
+		return sequencerIDs, nil
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to read sequencer IDs from cache. Cause: %w", err)
 	}
-	return *ids, nil
+	return ids, nil
 }

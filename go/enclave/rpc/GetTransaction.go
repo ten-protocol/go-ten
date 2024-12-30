@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
+
+	"github.com/ten-protocol/go-ten/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -34,25 +36,44 @@ func GetTransactionValidate(reqParams []any, builder *CallBuilder[gethcommon.Has
 }
 
 func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
-	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
-	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(builder.ctx, *builder.Param)
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			builder.Status = NotFound
+	txHash := *builder.Param
+	requester := builder.VK.AccountAddress
+
+	// first try the cache for recent transactions
+	rec, err := rpc.cacheService.ReadReceipt(builder.ctx, txHash)
+	// there is an explicit entry in the cache that the tx was not found
+	if err != nil && errors.Is(err, storage.ReceiptDoesNotExist) {
+		builder.Status = NotFound
+		return nil
+	}
+
+	if rec != nil {
+		rpc.logger.Debug("Cache hit for tx", log.TxKey, txHash)
+		// authorise - only the signer can request the transaction
+		if *rec.From != *requester {
+			builder.Status = NotAuthorised
 			return nil
 		}
+		builder.ReturnValue = newRPCTransaction(rec.Tx, rec.Receipt.BlockHash, rec.Receipt.BlockNumber.Uint64(), uint64(rec.Receipt.TransactionIndex), rpc.config.BaseFee, *rec.From)
+		return nil
+	}
+
+	rpc.logger.Debug("Cache miss for tx", log.TxKey, txHash)
+
+	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
+	tx, blockHash, blockNumber, index, sender, err := rpc.storage.GetTransaction(builder.ctx, *builder.Param)
+	if err != nil && errors.Is(err, errutil.ErrNotFound) {
+		builder.Status = NotFound
+		rpc.cacheService.ReceiptDoesNotExist(txHash)
+		return nil
+	}
+	if err != nil {
 		return err
 	}
 
-	sender, err := core.GetExternalTxSigner(tx)
-	if err != nil {
-		return fmt.Errorf("could not recover the tx %s sender. Cause: %w", tx.Hash(), err)
-	}
-
 	// authorise - only the signer can request the transaction
-	if sender.Hex() != builder.VK.AccountAddress.Hex() {
+	if sender != *requester {
 		builder.Status = NotAuthorised
-		// builder.ReturnValue= []byte{}
 		return nil
 	}
 
