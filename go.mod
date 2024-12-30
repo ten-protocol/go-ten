@@ -9,15 +9,14 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos v1.1.0
 	github.com/FantasyJony/openzeppelin-merkle-tree-go v1.1.3
 	github.com/Microsoft/go-winio v0.6.2
+	github.com/TwiN/gocache/v2 v2.2.2
 	github.com/andybalholm/brotli v1.1.1
 	github.com/codeclysm/extract/v3 v3.1.1
 	github.com/deckarep/golang-set/v2 v2.6.0
-	github.com/dgraph-io/ristretto v0.2.0
+	github.com/dgraph-io/ristretto/v2 v2.0.1
 	github.com/docker/docker v25.0.4+incompatible
 	github.com/docker/go-connections v0.5.0
 	github.com/edgelesssys/ego v1.6.0
-	github.com/eko/gocache/lib/v4 v4.1.6
-	github.com/eko/gocache/store/ristretto/v4 v4.2.1
 	github.com/ethereum/go-ethereum v1.14.6
 	github.com/gin-contrib/cors v1.7.2
 	github.com/gin-gonic/gin v1.10.0
@@ -43,7 +42,7 @@ require (
 	github.com/sanity-io/litter v1.5.5
 	github.com/spf13/viper v1.19.0
 	github.com/status-im/keycard-go v0.3.2
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/urfave/cli/v2 v2.27.5
 	github.com/valyala/fasthttp v1.57.0
@@ -108,7 +107,6 @@ require (
 	github.com/go-playground/validator/v10 v10.22.1 // indirect
 	github.com/goccy/go-json v0.10.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
@@ -172,7 +170,7 @@ require (
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/arch v0.11.0 // indirect
 	golang.org/x/net v0.30.0 // indirect
-	golang.org/x/sys v0.27.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.20.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

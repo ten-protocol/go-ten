@@ -15,7 +15,7 @@ type Cache interface {
 	DisableShortLiving()
 
 	// IsEvicted - based on the eviction event and the time of caching, calculates whether the key was evicted
-	IsEvicted(key any, originalTTL time.Duration) bool
+	IsEvicted(key []byte, originalTTL time.Duration) bool
 
 	Set(key []byte, value any, ttl time.Duration) bool
 	Get(key []byte) (value any, ok bool)
