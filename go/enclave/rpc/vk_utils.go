@@ -147,7 +147,6 @@ func withVKEncryption[P any, R any](
 	}
 	if builder.Status == NotAuthorised {
 		// if the requested resource was not found, return an empty response
-		// todo - this must be encrypted - but we have some logic that expects it unencrypted, which is a bug
 		return responses.AsEncryptedError(errors.New("not authorised"), vk), nil
 	}
 

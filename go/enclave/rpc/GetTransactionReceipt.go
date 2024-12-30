@@ -36,6 +36,8 @@ func GetTransactionReceiptValidate(reqParams []any, builder *CallBuilder[gethcom
 	return nil
 }
 
+var NotAuthorisedErr = errors.New("not authorised")
+
 func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[string]interface{}], rpc *EncryptionManager) error {
 	txHash := *builder.Param
 	requester := builder.VK.AccountAddress
@@ -43,21 +45,33 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 
 	// first try the cache for recent transactions
 	result, err := fetchFromCache(builder.ctx, rpc.storage, rpc.cacheService, txHash, requester)
-	if err != nil {
+	// there is an explicit entry in the cache that the tx was not found
+	if err != nil && errors.Is(err, storage.ReceiptDoesNotExist) {
+		builder.Status = NotFound
+		return nil
+	}
+	if err != nil && errors.Is(err, NotAuthorisedErr) {
+		builder.Status = NotAuthorised
+		return nil
+	}
+	// unexpected error
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return err
 	}
 
 	if result != nil {
-		rpc.logger.Trace("Successfully retrieved receipt from cache for ", log.TxKey, txHash, "rec", result)
+		rpc.logger.Debug("Cache hit for receipt", log.TxKey, txHash)
 		builder.ReturnValue = &result
 		return nil
 	}
 
+	rpc.logger.Debug("Cache miss for receipt", log.TxKey, txHash.String())
 	exists, err := rpc.storage.ExistsTransactionReceipt(builder.ctx, txHash)
 	if err != nil {
 		return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
 	}
 	if !exists {
+		rpc.cacheService.ReceiptDoesNotExist(txHash)
 		builder.Status = NotFound
 		return nil
 	}
@@ -65,7 +79,7 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 	// We retrieve the transaction receipt.
 	receipt, err := rpc.storage.GetFilteredInternalReceipt(builder.ctx, txHash, requester, false)
 	if err != nil {
-		rpc.logger.Trace("error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
+		rpc.logger.Trace("Error getting tx receipt", log.TxKey, txHash, log.ErrKey, err)
 		if errors.Is(err, errutil.ErrNotFound) {
 			builder.Status = NotAuthorised
 			return nil
@@ -81,16 +95,9 @@ func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[stri
 }
 
 func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *storage.CacheService, txHash gethcommon.Hash, requester *gethcommon.Address) (map[string]interface{}, error) {
-	rec, _ := cacheService.ReadReceipt(ctx, txHash)
-	if rec == nil {
-		return nil, nil
-	}
-
-	// receipt found in cache
-	// for simplicity only the tx sender will access the cache
-	// check whether the requester is the sender
-	if *rec.From != *requester {
-		return nil, nil
+	rec, err := cacheService.ReadReceipt(ctx, txHash)
+	if err != nil {
+		return nil, err
 	}
 
 	logs := rec.Receipt.Logs
@@ -113,6 +120,12 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 			}
 		}
 	}
+
+	// check whether the requester is the sender or the requester can see any logs
+	if (*rec.From != *requester) && (len(logs) == 0) {
+		return nil, NotAuthorisedErr
+	}
+
 	r := marshalReceipt(rec.Receipt, logs, rec.From, rec.To)
 	return r, nil
 }

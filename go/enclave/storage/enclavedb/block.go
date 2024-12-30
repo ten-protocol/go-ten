@@ -80,7 +80,7 @@ func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx, blockId int64) er
 	return nil
 }
 
-// HandleBlockArrivedAfterBatches- handle the corner case where the block wasn't available when the batch was received
+// HandleBlockArrivedAfterBatches - handle the corner case where the block wasn't available when the batch was received
 func HandleBlockArrivedAfterBatches(ctx context.Context, dbtx *sql.Tx, blockId int64, blockHash common.L1BlockHash) error {
 	_, err := dbtx.ExecContext(ctx, "update batch set l1_proof=?, is_canonical=true where l1_proof_hash=?", blockId, blockHash.Bytes())
 	return err
