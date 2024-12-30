@@ -41,7 +41,7 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 	if err != nil {
 		return err
 	}
-	txData, err := d.CreateBlobRollup(&ethadapter.L1RollupTx{Rollup: encodedRollup})
+	txData, err := d.CreateBlobRollup(&common.L1RollupTx{Rollup: encodedRollup})
 	if err != nil {
 		return fmt.Errorf("failed to create blob rollup: %w", err)
 	}

@@ -127,6 +127,21 @@ func (e *enclaveRPCService) GetTotalContractCount(ctx context.Context) (*big.Int
 }
 
 func (e *enclaveRPCService) EnclavePublicConfig(context.Context) (*common.EnclavePublicConfig, common.SystemError) {
+	if e.crossChainProcessors == nil {
+		e.logger.Error("cross chain processors not initialized")
+		return nil, responses.ToInternalError(fmt.Errorf("cross chain processors not initialized"))
+	}
+
+	if e.scb == nil {
+		e.logger.Error("system contract callbacks not initialized")
+		return nil, responses.ToInternalError(fmt.Errorf("system contract callbacks not initialized"))
+	}
+
+	if e.scb.PublicSystemContracts() == nil {
+		e.logger.Error("public system contracts not initialized")
+		return nil, responses.ToInternalError(fmt.Errorf("public system contracts not initialized"))
+	}
+
 	address, systemError := e.crossChainProcessors.GetL2MessageBusAddress()
 	if systemError != nil {
 		return nil, systemError

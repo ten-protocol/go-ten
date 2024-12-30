@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/ten-protocol/go-ten/go/common/compression"
+
 	gethcore "github.com/ethereum/go-ethereum/core"
 
 	"github.com/ethereum/go-ethereum/core/vm"
@@ -48,18 +50,19 @@ var ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")
 
 // batchExecutor - the component responsible for executing batches
 type batchExecutor struct {
-	storage              storage.Storage
-	batchRegistry        BatchRegistry
-	config               enclaveconfig.EnclaveConfig
-	gethEncodingService  gethencoding.EncodingService
-	crossChainProcessors *crosschain.Processors
-	genesis              *genesis.Genesis
-	logger               gethlog.Logger
-	gasOracle            gas.Oracle
-	chainConfig          *params.ChainConfig
-	systemContracts      system.SystemContractCallbacks
-	entropyService       *crypto.EvmEntropyService
-	mempool              *TxPool
+	storage                storage.Storage
+	batchRegistry          BatchRegistry
+	config                 enclaveconfig.EnclaveConfig
+	gethEncodingService    gethencoding.EncodingService
+	crossChainProcessors   *crosschain.Processors
+	dataCompressionService compression.DataCompressionService
+	genesis                *genesis.Genesis
+	logger                 gethlog.Logger
+	gasOracle              gas.Oracle
+	chainConfig            *params.ChainConfig
+	systemContracts        system.SystemContractCallbacks
+	entropyService         *crypto.EvmEntropyService
+	mempool                *TxPool
 	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
 	stateDBMutex sync.Mutex
 
@@ -79,24 +82,26 @@ func NewBatchExecutor(
 	systemContracts system.SystemContractCallbacks,
 	entropyService *crypto.EvmEntropyService,
 	mempool *TxPool,
+	dataCompressionService compression.DataCompressionService,
 	logger gethlog.Logger,
 ) BatchExecutor {
 	return &batchExecutor{
-		storage:              storage,
-		batchRegistry:        batchRegistry,
-		config:               config,
-		gethEncodingService:  gethEncodingService,
-		crossChainProcessors: cc,
-		genesis:              genesis,
-		chainConfig:          chainConfig,
-		logger:               logger,
-		gasOracle:            gasOracle,
-		stateDBMutex:         sync.Mutex{},
-		batchGasLimit:        config.GasBatchExecutionLimit,
-		systemContracts:      systemContracts,
-		entropyService:       entropyService,
-		mempool:              mempool,
-		chainContext:         evm.NewTenChainContext(storage, gethEncodingService, config, logger),
+		storage:                storage,
+		batchRegistry:          batchRegistry,
+		config:                 config,
+		gethEncodingService:    gethEncodingService,
+		crossChainProcessors:   cc,
+		genesis:                genesis,
+		chainConfig:            chainConfig,
+		logger:                 logger,
+		gasOracle:              gasOracle,
+		stateDBMutex:           sync.Mutex{},
+		batchGasLimit:          config.GasBatchExecutionLimit,
+		systemContracts:        systemContracts,
+		entropyService:         entropyService,
+		mempool:                mempool,
+		dataCompressionService: dataCompressionService,
+		chainContext:           evm.NewTenChainContext(storage, gethEncodingService, config, logger),
 	}
 }
 
@@ -286,7 +291,7 @@ func (executor *batchExecutor) execBatchTransactions(ec *BatchExecutionContext) 
 }
 
 func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext) error {
-	sizeLimiter := limiters.NewBatchSizeLimiter(executor.config.MaxBatchSize)
+	sizeLimiter := limiters.NewBatchSizeLimiter(executor.config.MaxBatchSize, executor.dataCompressionService)
 	pendingTransactions := executor.mempool.PendingTransactions()
 
 	nrPending, nrQueued := executor.mempool.Stats()
@@ -319,10 +324,12 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		// check the size limiter
 		err := sizeLimiter.AcceptTransaction(tx)
 		if err != nil {
-			executor.logger.Info("Unable to accept transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
 			if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
-				break
+				executor.logger.Trace("Unable to accept transaction", log.TxKey, tx.Hash())
+				mempoolTxs.Pop()
+				continue
 			}
+			return fmt.Errorf("failed to apply the batch limiter. Cause: %w", err)
 		}
 
 		pTx, err := executor.toPricedTx(ec, tx)
