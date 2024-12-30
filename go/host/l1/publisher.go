@@ -308,14 +308,32 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, 
 		return fmt.Errorf("unable to get nonce for management contract. Cause: %w", err)
 	}
 
+	// When the host is publishing a bundle, we have to run gas estimation.
+	// If there is no new block it might run with the previous block as current which
+	// would be the same as the binding, leading to a edge case where the signature cannot
+	// be verified.
+	for {
+		block, err := p.ethClient.EthClient().BlockByNumber(context.Background(), nil)
+		if err != nil {
+			p.logger.Error("Unable to get latest block", log.ErrKey, err)
+			return fmt.Errorf("unable to get latest block. Cause: %w", err)
+		}
+		if block.NumberU64() == bundle.L1BlockNum.Uint64() {
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		break
+	}
+
 	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
 
 	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature, rollupNum, forkID)
 	if err != nil {
-		if !errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
+		if errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
 			p.logger.Info("Cross chain bundle already published. Proceeding without publishing", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)
 			return nil
 		}
+
 		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
 		return fmt.Errorf("unable to submit cross chain bundle transaction. Cause: %w", err)
 	}
