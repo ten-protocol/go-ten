@@ -297,9 +297,6 @@ message BatchHeaderMsg {
   uint64 GasUsed = 11;
   uint64 Time = 12;
   uint64 BaseFee = 13;
-  bytes LatestInboundCrossChainHeight = 14;
-  bytes LatestInboundCrossChainHash = 15;
-  repeated CrossChainMsg CrossChainMessages = 16;
   bytes TransferTree = 17;
   bytes Coinbase = 18;
   bytes CrossChainTree = 19;

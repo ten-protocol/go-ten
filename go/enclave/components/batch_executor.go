@@ -693,14 +693,10 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 		xchainHash = gethcommon.BytesToHash(tree.GetRoot())
 		executor.logger.Debug("[CrossChain] adding messages to batch", "encodedTree", encodedTree)
 	}
-	batch.Header.CrossChainMessages = crossChainMessages
 	batch.Header.CrossChainRoot = xchainHash
 
 	executor.logger.Debug(fmt.Sprintf("Added %d cross chain messages to batch.",
-		len(batch.Header.CrossChainMessages)), log.CmpKey, log.CrossChainCmp)
-
-	batch.Header.LatestInboundCrossChainHash = block.Hash()
-	batch.Header.LatestInboundCrossChainHeight = block.Number
+		len(batch.Header.CrossChainTree)), log.CmpKey, log.CrossChainCmp)
 
 	return nil
 }

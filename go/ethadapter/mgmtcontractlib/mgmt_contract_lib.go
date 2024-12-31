@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
-	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
@@ -128,14 +127,9 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
 	}
 
-	crossChain := ManagementContract.StructsHeaderCrossChainData{
-		Messages: convertCrossChainMessages(decodedRollup.Header.CrossChainMessages),
-	}
-
 	data, err := c.contractABI.Pack(
 		AddRollupMethod,
 		metaRollup,
-		crossChain,
 	)
 	if err != nil {
 		panic(err)
@@ -441,20 +435,4 @@ func Base64DecodeFromString(in string) []byte {
 		panic(err)
 	}
 	return bytesStr
-}
-
-func convertCrossChainMessages(messages []MessageBus.StructsCrossChainMessage) []ManagementContract.StructsCrossChainMessage {
-	msgs := make([]ManagementContract.StructsCrossChainMessage, 0)
-
-	for _, message := range messages {
-		msgs = append(msgs, ManagementContract.StructsCrossChainMessage{
-			Sender:   message.Sender,
-			Sequence: message.Sequence,
-			Nonce:    message.Nonce,
-			Topic:    message.Topic,
-			Payload:  message.Payload,
-		})
-	}
-
-	return msgs
 }
