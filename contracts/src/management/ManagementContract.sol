@@ -124,7 +124,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(rollups.toUniqueForkID[rollupNumber] == forkID, "Invalid forkID");
 
         address enclaveID = ECDSA.recover(keccak256(abi.encode(_lastBatchHash, providedBlockHash, blockNum, crossChainHashes)), signature);
-        require(attested[enclaveID], "enclaveID not attested"); //todo: only sequencer, rather than everyone who has attested.
+        require(sequencerEnclave[enclaveID], "address not a sequencer");
 
         lastBatchHash = _lastBatchHash;
 
