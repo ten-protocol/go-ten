@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"net"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -81,15 +80,6 @@ func (s *RPCServer) Status(ctx context.Context, _ *generated.StatusRequest) (*ge
 		EnclaveID:   status.EnclaveID.Bytes(),
 		SystemError: toRPCError(sysError),
 	}, nil
-}
-
-func (s *RPCServer) AddSequencer(ctx context.Context, in *generated.AddSequencerRequest) (*generated.AddSequencerResponse, error) {
-	rec := types.Receipt{}
-	err := rec.UnmarshalBinary(in.Proof)
-	if err != nil {
-		return &generated.AddSequencerResponse{SystemError: toRPCError(err)}, nil
-	}
-	return &generated.AddSequencerResponse{SystemError: toRPCError(s.enclave.AddSequencer(gethcommon.BytesToAddress(in.EnclaveId), rec))}, nil
 }
 
 func (s *RPCServer) MakeActive(ctx context.Context, in *generated.MakeActiveRequest) (*generated.MakeActiveResponse, error) {

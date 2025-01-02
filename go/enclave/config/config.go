@@ -5,7 +5,6 @@ import (
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/config"
 )
 
@@ -19,8 +18,6 @@ type EnclaveConfig struct {
 	HostAddress string
 	// The address on which to serve requests
 	Address string
-	// The type of the node.
-	NodeType common.NodeType
 	// The ID of the L1 chain
 	L1ChainID int64
 	// The ID of the Obscuro chain
@@ -83,7 +80,6 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 	return &EnclaveConfig{
 		HostID:                    tenCfg.Node.ID,
 		HostAddress:               tenCfg.Node.HostAddress,
-		NodeType:                  tenCfg.Node.NodeType,
 		WillAttest:                tenCfg.Enclave.EnableAttestation,
 		StoreExecutedTransactions: tenCfg.Enclave.StoreExecutedTransactions,
 
