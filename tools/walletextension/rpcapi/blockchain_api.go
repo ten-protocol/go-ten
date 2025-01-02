@@ -428,9 +428,6 @@ func RPCMarshalHeader(head *types.Header) map[string]interface{} {
 func addExtraTenFields(fields map[string]interface{}, header *common.BatchHeader) {
 	fields["l1Proof"] = header.L1Proof
 	fields["signature"] = header.Signature
-	fields["crossChainMessages"] = header.CrossChainMessages
-	fields["inboundCrossChainHash"] = header.LatestInboundCrossChainHash
-	fields["inboundCrossChainHeight"] = header.LatestInboundCrossChainHeight
 	fields["crossChainTreeHash"] = header.CrossChainRoot
 	fields["crossChainTree"] = header.CrossChainTree
 }

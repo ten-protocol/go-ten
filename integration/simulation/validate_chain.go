@@ -37,8 +37,6 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
-
-	erc20 "github.com/ten-protocol/go-ten/integration/erc20contract/generated/EthERC20"
 )
 
 const (
@@ -446,10 +444,10 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
 	totalSuccessfullyWithdrawn := extractWithdrawals(t, tenClient, nodeIdx)
 
-	totalAmountLogged := getLoggedWithdrawals(minTenHeight, tenClient, headBatchHeader)
-	if totalAmountLogged.Cmp(totalSuccessfullyWithdrawn) != 0 {
-		t.Errorf("Node %d: Logged withdrawals do not match!", nodeIdx)
-	}
+	// todo: @siliev check that the total amount deposited is the same as the total amount withdraw
+	// the previous check is no longer possible due to header removal of xchain messages; and we cannot
+	// take the preimages of the crossChainTree as we dont really know them so they must be saved somewhere
+	// We can rely on the e2e tests for now.
 
 	injectorDepositedAmt := big.NewInt(0)
 	for _, tx := range s.TxInjector.TxTracker.GetL1Transactions() {
@@ -500,33 +498,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	if parentHeader.Hash() != headBatchHeader.ParentHash {
 		t.Errorf("mismatch in hash of retrieved header. Parent: %+v\nCurrent: %+v", parentHeader, headBatchHeader)
 	}
-}
-
-func getLoggedWithdrawals(minTenHeight uint64, tenClient *obsclient.ObsClient, currentHeader *common.BatchHeader) *big.Int {
-	totalAmountLogged := big.NewInt(0)
-	for i := minTenHeight; i < currentHeader.Number.Uint64(); i++ {
-		header, err := tenClient.GetBatchHeaderByNumber(big.NewInt(int64(i)))
-		if err != nil {
-			panic(err)
-		}
-
-		for _, msg := range header.CrossChainMessages {
-			contractAbi, err := abi.JSON(strings.NewReader(erc20.EthERC20MetaData.ABI))
-			if err != nil {
-				panic(err)
-			}
-
-			transfer := map[string]interface{}{}
-			err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, msg.Payload) // can't figure out how to unpack it without cheating, geth is kinda clunky
-			if err != nil {
-				panic(err)
-			}
-
-			amount := transfer["amount"].(*big.Int)
-			totalAmountLogged = totalAmountLogged.Add(totalAmountLogged, amount)
-		}
-	}
-	return totalAmountLogged
 }
 
 // FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.

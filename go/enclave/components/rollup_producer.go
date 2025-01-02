@@ -11,8 +11,6 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
-
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 
@@ -55,11 +53,6 @@ func (re *rollupProducerImpl) CreateInternalRollup(ctx context.Context, fromBatc
 
 	rh := common.RollupHeader{}
 	rh.CompressionL1Head = block.Hash()
-
-	rh.CrossChainMessages = make([]MessageBus.StructsCrossChainMessage, 0)
-	for _, b := range batches {
-		rh.CrossChainMessages = append(rh.CrossChainMessages, b.Header.CrossChainMessages...)
-	}
 
 	lastBatch := batches[len(batches)-1]
 	rh.LastBatchSeqNo = lastBatch.SeqNo().Uint64()

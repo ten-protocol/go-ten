@@ -11,22 +11,21 @@ import (
 
 func TestBatchHeader_MarshalJSON(t *testing.T) {
 	batchHeader := &BatchHeader{
-		ParentHash:                    randomHash(),
-		Root:                          randomHash(),
-		TxHash:                        randomHash(),
-		ReceiptHash:                   randomHash(),
-		Number:                        gethcommon.Big1,
-		SequencerOrderNo:              gethcommon.Big1,
-		GasLimit:                      100,
-		GasUsed:                       200,
-		Time:                          300,
-		Extra:                         []byte("123"),
-		BaseFee:                       gethcommon.Big2,
-		L1Proof:                       randomHash(),
-		Signature:                     gethcommon.Big3.Bytes(),
-		CrossChainMessages:            nil,
-		LatestInboundCrossChainHash:   gethcommon.Hash{},
-		LatestInboundCrossChainHeight: nil,
+		ParentHash:       randomHash(),
+		Root:             randomHash(),
+		TxHash:           randomHash(),
+		ReceiptHash:      randomHash(),
+		Number:           gethcommon.Big1,
+		SequencerOrderNo: gethcommon.Big1,
+		GasLimit:         100,
+		GasUsed:          200,
+		Time:             300,
+		Extra:            []byte("123"),
+		BaseFee:          gethcommon.Big2,
+		L1Proof:          randomHash(),
+		Signature:        gethcommon.Big3.Bytes(),
+		CrossChainRoot:   randomHash(),
+		CrossChainTree:   nil,
 	}
 
 	jsonMarshalled, err := json.Marshal(batchHeader)
@@ -49,9 +48,8 @@ func TestBatchHeader_MarshalJSON(t *testing.T) {
 	require.Equal(t, batchHeader.BaseFee, batchUnmarshalled.BaseFee)
 	require.Equal(t, batchHeader.L1Proof, batchUnmarshalled.L1Proof)
 	require.Equal(t, batchHeader.Signature, batchUnmarshalled.Signature)
-	require.Equal(t, batchHeader.CrossChainMessages, batchUnmarshalled.CrossChainMessages)
-	require.Equal(t, batchHeader.LatestInboundCrossChainHash, batchUnmarshalled.LatestInboundCrossChainHash)
-	require.Equal(t, batchHeader.LatestInboundCrossChainHeight, batchUnmarshalled.LatestInboundCrossChainHeight)
+	require.Equal(t, batchHeader.CrossChainRoot, batchUnmarshalled.CrossChainRoot)
+	require.Equal(t, batchHeader.CrossChainTree, batchUnmarshalled.CrossChainTree)
 	require.Equal(t, batchHeader.Hash(), batchUnmarshalled.Hash())
 }
 

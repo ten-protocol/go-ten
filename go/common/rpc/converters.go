@@ -76,22 +76,6 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 	}, nil
 }
 
-func ToCrossChainMsgs(messages []MessageBus.StructsCrossChainMessage) []*generated.CrossChainMsg {
-	generatedMessages := make([]*generated.CrossChainMsg, 0)
-
-	for _, message := range messages {
-		generatedMessages = append(generatedMessages, &generated.CrossChainMsg{
-			Sender:   message.Sender.Bytes(),
-			Sequence: message.Sequence,
-			Nonce:    message.Nonce,
-			Topic:    message.Topic,
-			Payload:  message.Payload,
-		})
-	}
-
-	return generatedMessages
-}
-
 func FromCrossChainMsgs(messages []*generated.CrossChainMsg) []MessageBus.StructsCrossChainMessage {
 	outMessages := make([]MessageBus.StructsCrossChainMessage, 0)
 
@@ -132,28 +116,22 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 		baseFee = header.BaseFee.Uint64()
 	}
 	headerMsg = generated.BatchHeaderMsg{
-		ParentHash:                  header.ParentHash.Bytes(),
-		Proof:                       header.L1Proof.Bytes(),
-		Root:                        header.Root.Bytes(),
-		TxHash:                      header.TxHash.Bytes(),
-		Number:                      header.Number.Uint64(),
-		SequencerOrderNo:            header.SequencerOrderNo.Uint64(),
-		ReceiptHash:                 header.ReceiptHash.Bytes(),
-		Extra:                       header.Extra,
-		Signature:                   header.Signature,
-		GasLimit:                    header.GasLimit,
-		GasUsed:                     header.GasUsed,
-		Time:                        header.Time,
-		BaseFee:                     baseFee,
-		TransferTree:                header.CrossChainRoot.Bytes(),
-		Coinbase:                    header.Coinbase.Bytes(),
-		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
-		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
-		CrossChainTree:              header.CrossChainTree,
-	}
-
-	if header.LatestInboundCrossChainHeight != nil {
-		headerMsg.LatestInboundCrossChainHeight = header.LatestInboundCrossChainHeight.Bytes()
+		ParentHash:       header.ParentHash.Bytes(),
+		Proof:            header.L1Proof.Bytes(),
+		Root:             header.Root.Bytes(),
+		TxHash:           header.TxHash.Bytes(),
+		Number:           header.Number.Uint64(),
+		SequencerOrderNo: header.SequencerOrderNo.Uint64(),
+		ReceiptHash:      header.ReceiptHash.Bytes(),
+		Extra:            header.Extra,
+		Signature:        header.Signature,
+		GasLimit:         header.GasLimit,
+		GasUsed:          header.GasUsed,
+		Time:             header.Time,
+		BaseFee:          baseFee,
+		TransferTree:     header.CrossChainRoot.Bytes(),
+		Coinbase:         header.Coinbase.Bytes(),
+		CrossChainTree:   header.CrossChainTree,
 	}
 
 	return &headerMsg
@@ -185,25 +163,22 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 	}
 
 	return &common.BatchHeader{
-		ParentHash:                    gethcommon.BytesToHash(header.ParentHash),
-		L1Proof:                       gethcommon.BytesToHash(header.Proof),
-		Root:                          gethcommon.BytesToHash(header.Root),
-		TxHash:                        gethcommon.BytesToHash(header.TxHash),
-		Number:                        big.NewInt(int64(header.Number)),
-		SequencerOrderNo:              big.NewInt(int64(header.SequencerOrderNo)),
-		ReceiptHash:                   gethcommon.BytesToHash(header.ReceiptHash),
-		Extra:                         header.Extra,
-		Signature:                     header.Signature,
-		GasLimit:                      header.GasLimit,
-		GasUsed:                       header.GasUsed,
-		Time:                          header.Time,
-		CrossChainRoot:                gethcommon.BytesToHash(header.TransferTree),
-		BaseFee:                       big.NewInt(0).SetUint64(header.BaseFee),
-		Coinbase:                      gethcommon.BytesToAddress(header.Coinbase),
-		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
-		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
-		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),
-		CrossChainTree:                header.CrossChainTree,
+		ParentHash:       gethcommon.BytesToHash(header.ParentHash),
+		L1Proof:          gethcommon.BytesToHash(header.Proof),
+		Root:             gethcommon.BytesToHash(header.Root),
+		TxHash:           gethcommon.BytesToHash(header.TxHash),
+		Number:           big.NewInt(int64(header.Number)),
+		SequencerOrderNo: big.NewInt(int64(header.SequencerOrderNo)),
+		ReceiptHash:      gethcommon.BytesToHash(header.ReceiptHash),
+		Extra:            header.Extra,
+		Signature:        header.Signature,
+		GasLimit:         header.GasLimit,
+		GasUsed:          header.GasUsed,
+		Time:             header.Time,
+		CrossChainRoot:   gethcommon.BytesToHash(header.TransferTree),
+		BaseFee:          big.NewInt(0).SetUint64(header.BaseFee),
+		Coinbase:         gethcommon.BytesToAddress(header.Coinbase),
+		CrossChainTree:   header.CrossChainTree,
 	}
 }
 
@@ -220,10 +195,9 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		return nil
 	}
 	headerMsg := generated.RollupHeaderMsg{
-		CompressionL1Head:  header.CompressionL1Head.Bytes(),
-		Signature:          header.Signature,
-		CrossChainMessages: ToCrossChainMsgs(header.CrossChainMessages),
-		LastBatchSeqNo:     header.LastBatchSeqNo,
+		CompressionL1Head: header.CompressionL1Head.Bytes(),
+		Signature:         header.Signature,
+		LastBatchSeqNo:    header.LastBatchSeqNo,
 	}
 
 	return &headerMsg
@@ -249,10 +223,9 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 	}
 
 	return &common.RollupHeader{
-		CompressionL1Head:  gethcommon.BytesToHash(header.CompressionL1Head),
-		Signature:          header.Signature,
-		CrossChainMessages: FromCrossChainMsgs(header.CrossChainMessages),
-		LastBatchSeqNo:     header.LastBatchSeqNo,
+		CompressionL1Head: gethcommon.BytesToHash(header.CompressionL1Head),
+		Signature:         header.Signature,
+		LastBatchSeqNo:    header.LastBatchSeqNo,
 	}
 }
 
