@@ -2,12 +2,17 @@ package network
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
 	"time"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	tengenesis "github.com/ten-protocol/go-ten/go/enclave/genesis"
 
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/config"
@@ -90,7 +95,24 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 
 		genesis := "{}"
 		if simParams.WithPrefunding {
-			genesis = ""
+			accts := make([]tengenesis.Account, 1)
+			amount, success := big.NewInt(0).SetString("7500000000000000000000000000000", 10)
+			if !success {
+				panic("failed to set big.Int from string")
+			}
+			accts[0] = tengenesis.Account{
+				Address: gethcommon.HexToAddress("A58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
+				Amount:  amount,
+			}
+			gen := &tengenesis.Genesis{
+				Accounts: accts,
+			}
+
+			genesisBytes, err := json.Marshal(gen)
+			if err != nil {
+				panic(err)
+			}
+			genesis = string(genesisBytes)
 		}
 		nodeType, err := common.ToNodeType(nodeTypeStr)
 		if err != nil {
@@ -152,7 +174,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	if err != nil {
 		return nil, fmt.Errorf("unable to get sequencer enclaveID: %w", err)
 	}
-	if seqHealth.Enclaves == nil || len(seqHealth.Enclaves) == 0 {
+	if len(seqHealth.Enclaves) == 0 {
 		return nil, fmt.Errorf("no enclaves found in health response")
 	}
 	seqEnclaveID := seqHealth.Enclaves[0].EnclaveID

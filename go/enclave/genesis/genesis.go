@@ -30,6 +30,9 @@ type Genesis struct {
 // if the string is empty it defaults to the testnet genesis
 func New(genesisJSON string) (*Genesis, error) {
 	genesis := &Genesis{}
+	if len(genesisJSON) == 0 {
+		return genesis, nil
+	}
 	err := json.Unmarshal([]byte(genesisJSON), genesis)
 	if err != nil {
 		return nil, err
