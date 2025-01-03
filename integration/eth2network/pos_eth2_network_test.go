@@ -16,7 +16,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/assert"
-	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
@@ -122,7 +121,7 @@ func numberOfNodes(t *testing.T, startPort int) {
 func txsAreMinted(t *testing.T, startPort int, w wallet.Wallet) {
 	var err error
 
-	ethClient, err := ethadapter.NewEthClient("127.0.0.1", uint(startPort+integration.DefaultGethWSPortOffset), 30*time.Second, common.L2Address{}, gethlog.New())
+	ethClient, err := ethadapter.NewEthClient("127.0.0.1", uint(startPort+integration.DefaultGethWSPortOffset), 30*time.Second, gethlog.New())
 	assert.Nil(t, err)
 
 	toAddr := datagenerator.RandomAddress()

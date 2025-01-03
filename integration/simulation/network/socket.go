@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/host/l1"
@@ -68,7 +70,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	// get the sequencer Address
 	seqPrivateKey := n.wallets.NodeWallets[0].PrivateKey()
 	seqPrivKey := fmt.Sprintf("%x", crypto.FromECDSA(seqPrivateKey))
-	seqHostAddress := crypto.PubkeyToAddress(seqPrivateKey.PublicKey)
+	seqHostAddress := "0"
 
 	// create the nodes
 	nodes := make([]node.Node, simParams.NumberOfNodes)
@@ -83,14 +85,14 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		if i != 0 {
 			nodeTypeStr = "validator"
 			privateKey = fmt.Sprintf("%x", crypto.FromECDSA(n.wallets.NodeWallets[i].PrivateKey()))
-			hostAddress = crypto.PubkeyToAddress(n.wallets.NodeWallets[i].PrivateKey().PublicKey)
+			hostAddress = fmt.Sprintf("%d", i)
 			// only the validators can have the incoming p2p disabled
 			isInboundP2PDisabled = i == simParams.NodeWithInboundP2PDisabled
 		}
 
 		genesis := "{}"
 		if simParams.WithPrefunding {
-			genesis = ""
+			genesis = testcommon.TestnetGenesisJSON()
 		}
 		nodeType, err := common.ToNodeType(nodeTypeStr)
 		if err != nil {
@@ -152,7 +154,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	if err != nil {
 		return nil, fmt.Errorf("unable to get sequencer enclaveID: %w", err)
 	}
-	if seqHealth.Enclaves == nil || len(seqHealth.Enclaves) == 0 {
+	if len(seqHealth.Enclaves) == 0 {
 		return nil, fmt.Errorf("no enclaves found in health response")
 	}
 	seqEnclaveID := seqHealth.Enclaves[0].EnclaveID

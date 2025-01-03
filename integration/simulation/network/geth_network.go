@@ -41,7 +41,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RP
 		&params.L1TenData.ObxErc20Address, &params.L1TenData.EthErc20Address)
 
 	// Start the TEN nodes and return the handles
-	n.l2Clients = startInMemoryTenNodes(params, n.eth2Network.GenesisBytes(), n.gethClients)
+	n.l2Clients = startInMemoryTenNodes(params, n.gethClients)
 
 	tenClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
 	for idx, l2Client := range n.l2Clients {

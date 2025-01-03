@@ -31,7 +31,7 @@ const (
 	networkTCP        = "tcp"
 )
 
-func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
+func startInMemoryTenNodes(params *params.SimParams, l1Clients []ethadapter.EthClient) []rpc.Client {
 	// Create the in memory TEN nodes, each connect each to a geth node
 	tenNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
 	tenHosts := make([]host.Host, params.NumberOfNodes)
@@ -45,8 +45,6 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 			isGenesis,
 			GetNodeType(i),
 			params.MgmtContractLib,
-			true,
-			genesisJSON,
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
 			mockP2PNetw.NewNode(i),

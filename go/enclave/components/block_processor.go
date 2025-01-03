@@ -60,14 +60,20 @@ func NewBlockProcessor(storage storage.Storage, cc *crosschain.Processors, gasOr
 }
 
 func (bp *l1BlockProcessor) Process(ctx context.Context, processed *common.ProcessedL1Data) (*BlockIngestionType, error) {
-	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, processed.BlockHeader.Hash())
+	defer core.LogMethodDuration(bp.logger, measure.NewStopwatch(), "L1 block processed", log.BlockHashKey, processed.BlockHeader.Hash(), log.BlockHeightKey, processed.BlockHeader.Number)
 
 	ingestion, err := bp.tryAndInsertBlock(ctx, processed.BlockHeader)
 	if err != nil {
 		return nil, err
 	}
 
-	if !ingestion.PreGenesis {
+	if ingestion.FirstL1Block {
+		_, err := bp.storage.FetchBatchBySeqNo(ctx, common.L2GenesisSeqNo)
+		if err == nil {
+			// the genesis batch was processed already
+			return nil, fmt.Errorf("invalid state. The ten enclave must start by having access to L1 blocks before it can process batches")
+		}
+	} else {
 		// This requires block to be stored first ... but can permanently fail a block
 		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(ctx, processed.BlockHeader, processed)
 		if err != nil {
@@ -125,12 +131,10 @@ func (bp *l1BlockProcessor) tryAndInsertBlock(ctx context.Context, block *types.
 }
 
 func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *types.Header) (*BlockIngestionType, error) {
-	// todo (#1056) - this is minimal L1 tracking/validation, and should be removed when we are using geth's blockchain or lightchain structures for validation
 	prevL1Head, err := bp.GetHead(ctx)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
-			// todo (@matt) - we should enforce that this block is a configured hash (e.g. the L1 management contract deployment block)
-			return &BlockIngestionType{PreGenesis: true}, nil
+			return &BlockIngestionType{FirstL1Block: true}, nil
 		}
 		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
@@ -139,7 +143,7 @@ func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *types.Header
 		return &BlockIngestionType{OldCanonicalBlock: true}, nil
 	}
 
-	// we do a basic sanity check, comparing the received block to the head block on the chain
+	// we do a basic security check, comparing the received block to the head block on the chain
 	if block.ParentHash != prevL1Head.Hash() {
 		isCanon, err := bp.storage.IsBlockCanonical(ctx, block.Hash())
 		if err != nil {
@@ -164,10 +168,10 @@ func (bp *l1BlockProcessor) ingestBlock(ctx context.Context, block *types.Header
 		} else {
 			bp.logger.Error("Should not happen. Weird Fork detected in the l1 chain", "fork", chainFork)
 		}
-		return &BlockIngestionType{ChainFork: chainFork, PreGenesis: false}, nil
+		return &BlockIngestionType{ChainFork: chainFork, FirstL1Block: false}, nil
 	}
 
-	return &BlockIngestionType{ChainFork: nil, PreGenesis: false}, nil
+	return &BlockIngestionType{ChainFork: nil, FirstL1Block: false}, nil
 }
 
 func (bp *l1BlockProcessor) GetHead(ctx context.Context) (*types.Header, error) {

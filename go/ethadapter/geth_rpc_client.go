@@ -41,16 +41,15 @@ var minBlobTxFee = big.NewInt(params.GWei)
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
-	client     *ethclient.Client  // the underlying eth rpc client
-	l2ID       gethcommon.Address // the address of the Obscuro node this client is dedicated to
-	timeout    time.Duration      // the timeout for connecting to, or communicating with, the L1 node
+	client     *ethclient.Client // the underlying eth rpc client
+	timeout    time.Duration     // the timeout for connecting to, or communicating with, the L1 node
 	logger     gethlog.Logger
 	rpcURL     string
 	blockCache *lru.Cache[gethcommon.Hash, *types.Block]
 }
 
 // NewEthClientFromURL instantiates a new ethadapter.EthClient that connects to an ethereum node
-func NewEthClientFromURL(rpcURL string, timeout time.Duration, l2ID gethcommon.Address, logger gethlog.Logger) (EthClient, error) {
+func NewEthClientFromURL(rpcURL string, timeout time.Duration, logger gethlog.Logger) (EthClient, error) {
 	client, err := connect(rpcURL, timeout)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node (%s) - %w", rpcURL, err)
@@ -66,7 +65,6 @@ func NewEthClientFromURL(rpcURL string, timeout time.Duration, l2ID gethcommon.A
 
 	return &gethRPCClient{
 		client:     client,
-		l2ID:       l2ID,
 		timeout:    timeout,
 		logger:     logger,
 		rpcURL:     rpcURL,
@@ -75,8 +73,8 @@ func NewEthClientFromURL(rpcURL string, timeout time.Duration, l2ID gethcommon.A
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
-func NewEthClient(ipaddress string, port uint, timeout time.Duration, l2ID gethcommon.Address, logger gethlog.Logger) (EthClient, error) {
-	return NewEthClientFromURL(fmt.Sprintf("ws://%s:%d", ipaddress, port), timeout, l2ID, logger)
+func NewEthClient(ipaddress string, port uint, timeout time.Duration, logger gethlog.Logger) (EthClient, error) {
+	return NewEthClientFromURL(fmt.Sprintf("ws://%s:%d", ipaddress, port), timeout, logger)
 }
 
 func (e *gethRPCClient) FetchHeadBlock() (*types.Block, error) {
@@ -87,9 +85,7 @@ func (e *gethRPCClient) FetchHeadBlock() (*types.Block, error) {
 }
 
 func (e *gethRPCClient) Info() Info {
-	return Info{
-		L2ID: e.l2ID,
-	}
+	return Info{}
 }
 
 func (e *gethRPCClient) BlocksBetween(startingBlock *types.Header, lastBlock *types.Block) []*types.Block {

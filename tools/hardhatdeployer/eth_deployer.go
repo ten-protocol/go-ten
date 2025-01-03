@@ -11,7 +11,7 @@ import (
 )
 
 func prepareEthDeployer(cfg *Config, logger gethlog.Logger) (contractDeployerClient, error) {
-	client, err := ethadapter.NewEthClient(cfg.NodeHost, cfg.NodePort, 30*time.Second, common.HexToAddress("0x0"), logger)
+	client, err := ethadapter.NewEthClient(cfg.NodeHost, cfg.NodePort, 30*time.Second, logger)
 	if err != nil {
 		return nil, err
 	}

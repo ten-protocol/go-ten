@@ -98,7 +98,7 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 	if err != nil {
 		panic("unable to retrieve the Node ID")
 	}
-	cfg.ID = *addr
+	cfg.ID = addr.String()
 
 	// create the logger if not set - used when the testlogger is injected
 	if logger == nil {
@@ -111,7 +111,7 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 	ethWallet := wallet.NewInMemoryWalletFromConfig(cfg.PrivateKeyString, cfg.L1ChainID, log.New("wallet", cfg.LogLevel, cfg.LogPath))
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := ethadapter.NewEthClientFromURL(cfg.L1WebsocketURL, cfg.L1RPCTimeout, cfg.ID, logger)
+	l1Client, err := ethadapter.NewEthClientFromURL(cfg.L1WebsocketURL, cfg.L1RPCTimeout, logger)
 	if err != nil {
 		logger.Crit("could not create Ethereum client.", log.ErrKey, err)
 	}
@@ -122,9 +122,6 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 		logger.Crit("could not retrieve Ethereum account nonce.", log.ErrKey, err)
 	}
 	ethWallet.SetNonce(nonce)
-
-	// set the Host ID as the Public Key Address
-	cfg.ID = ethWallet.Address()
 
 	fmt.Println("Connecting to the enclave...")
 	services := host.NewServicesRegistry(logger)

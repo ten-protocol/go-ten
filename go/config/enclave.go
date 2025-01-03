@@ -12,7 +12,6 @@ type EnclaveConfig struct {
 
 	DB    *EnclaveDB    `mapstructure:"db"`
 	Debug *EnclaveDebug `mapstructure:"debug"`
-	L1    *EnclaveL1    `mapstructure:"l1"`
 	Log   *EnclaveLog   `mapstructure:"log"`
 	RPC   *EnclaveRPC   `mapstructure:"rpc"`
 }
@@ -36,15 +35,6 @@ type EnclaveDB struct {
 type EnclaveDebug struct {
 	EnableDebugNamespace bool `mapstructure:"enableDebugNamespace"`
 	EnableProfiler       bool `mapstructure:"enableProfiler"`
-}
-
-// EnclaveL1 contains the configuration related to the L1 chain.
-//
-//	yaml: `enclave.l1`
-type EnclaveL1 struct {
-	EnableBlockValidation bool `mapstructure:"enableBlockValidation"`
-	// GenesisJSON is the genesis config for the L1 chain.
-	GenesisJSON []byte `mapstructure:"genesisJSON"`
 }
 
 // EnclaveLog contains the configuration for the enclave logger.

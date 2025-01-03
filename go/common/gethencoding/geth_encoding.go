@@ -267,7 +267,7 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context,
 	// wrap in a caching layer
 	return enc.cachingService.ReadConvertedHeader(ctx, h.Hash(), func() (*types.Header, error) {
 		// deterministically calculate the private randomness that will be exposed to the EVM
-		perBatchRandomness := enc.entropyService.BatchEntropy(h.Number)
+		perBatchRandomness := enc.entropyService.BatchEntropy(h)
 
 		// calculate the converted hash of the parent, for a correct converted chain
 		// default to the genesis

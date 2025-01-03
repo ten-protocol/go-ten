@@ -60,7 +60,7 @@ func NewBatchRegistry(storage storage.Storage, config *enclaveconfig.EnclaveConf
 		lastExecutedBatch: async.NewAsyncTimestamp(time.Now().Add(-time.Minute)),
 	}
 
-	br.ethChainAdapter = NewEthChainAdapter(big.NewInt(config.ObscuroChainID), br, storage, gethEncodingService, *config, logger)
+	br.ethChainAdapter = NewEthChainAdapter(big.NewInt(config.TenChainID), br, storage, gethEncodingService, *config, logger)
 	return br
 }
 

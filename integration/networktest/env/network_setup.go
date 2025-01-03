@@ -3,8 +3,9 @@ package env
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/integration/common"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/networktest"
@@ -59,7 +60,7 @@ func LongRunningLocalNetwork(l1WSURL string) networktest.Environment {
 	connector := newTestnetConnectorWithFaucetAccount(
 		"ws://127.0.0.1:17900",
 		[]string{"ws://127.0.0.1:17901"},
-		genesis.TestnetPrefundedPK,
+		common.TestnetPrefundedPK,
 		l1WSURL,
 		"",
 	)

@@ -1,7 +1,6 @@
 package config
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
@@ -12,9 +11,8 @@ type NodeConfig struct {
 	NodeType common.NodeType `mapstructure:"nodeType"`
 	// Name of the node, used by orchestrator to name the containers etc., mostly useful for local testnets
 	Name string `mapstructure:"name"`
-	// The host's identity derived from the L1 Private Key
-	// todo: does node ID still need to exist? Look to remove in favour of enclave IDs
-	ID gethcommon.Address `mapstructure:"id"`
+	// Arbitrary identification of the node. Useful for debugging.
+	ID string `mapstructure:"id"`
 	// The public peer-to-peer IP address of the host
 	// todo: does host address still need to exist for the enclave to sign over or does the enclave ID cover the usages?
 	HostAddress string `mapstructure:"hostAddress"`

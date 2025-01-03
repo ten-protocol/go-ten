@@ -6,10 +6,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethcore "github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
-	"github.com/ten-protocol/go-ten/go/enclave/core"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
@@ -24,7 +21,4 @@ type ObscuroChain interface {
 
 	// ObsCallAtBlock - Execute eth_call RPC against obscuro for a specific block (batch) number.
 	ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error)
-
-	// GetChainStateAtTransaction - returns the stateDB after applying all the transactions in the batch leading to the desired transaction.
-	GetChainStateAtTransaction(ctx context.Context, batch *core.Batch, txIndex int, reexec uint64) (*gethcore.Message, vm.BlockContext, *state.StateDB, error)
 }

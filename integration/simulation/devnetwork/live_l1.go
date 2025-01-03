@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -59,7 +58,7 @@ func (l *liveL1Network) GetBlockTime() time.Duration {
 func (l *liveL1Network) prepareClients() {
 	l.clients = make([]ethadapter.EthClient, len(l.rpcURLs))
 	for i, addr := range l.rpcURLs {
-		client, err := ethadapter.NewEthClientFromURL(addr, 20*time.Second, common.HexToAddress("0x0"), testlog.Logger())
+		client, err := ethadapter.NewEthClientFromURL(addr, 20*time.Second, testlog.Logger())
 		if err != nil {
 			panic(fmt.Sprintf("unable to create live L1 eth client, addr=%s err=%s", addr, err))
 		}

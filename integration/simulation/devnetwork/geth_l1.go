@@ -33,7 +33,7 @@ func (g *gethDockerNetwork) Prepare() {
 	}
 	g.l1Clients = make([]ethadapter.EthClient, g.l1Config.NumNodes)
 	for i := 0; i < g.l1Config.NumNodes; i++ {
-		g.l1Clients[i] = network.CreateEthClientConnection(int64(i), uint(g.l1Config.PortStart+integration.DefaultGethWSPortOffset))
+		g.l1Clients[i] = network.CreateEthClientConnection(uint(g.l1Config.PortStart + integration.DefaultGethWSPortOffset))
 	}
 	g.ethNetwork = gethNetwork
 }
