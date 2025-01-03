@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/common"
+
+	g
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -23,16 +26,16 @@ func NewEvmEntropyService(sc *SharedSecretService, logger gethlog.Logger) *EvmEn
 }
 
 // BatchEntropy - calculates entropy per batch
-// In Obscuro, we use a root entropy per batch, which is then used to calculate randomness exposed to individual transactions
-// The RootBatchEntropy is calculated based on the shared secret and the batch height
+// In Ten, we use a root entropy per batch, which is then used to calculate randomness exposed to individual transactions
+// The RootBatchEntropy is calculated based on the shared secret, the batch height and the timestamp
 // This ensures that sibling batches will naturally use the same root entropy so that transactions will have the same results
-// Note that this formula is vulnerable to the unlikely event of a secret leak.
-// todo (crypto) - find a way to hash in timestamp or something else then it would make it harder for attacker, such that sibling batches naturally have the same entropy.
-func (ees *EvmEntropyService) BatchEntropy(batchHeight *big.Int) gethcommon.Hash {
+func (ees *EvmEntropyService) BatchEntropy(batch *common.BatchHeader) gethcommon.Hash {
 	if !ees.sharedSecretService.IsInitialised() {
 		ees.logger.Crit("shared secret service is not initialised")
 	}
-	return gethcommon.BytesToHash(ees.sharedSecretService.ExtendEntropy(batchHeight.Bytes()))
+	extra := batch.Number.Bytes()
+	extra = append(extra, big.NewInt(int64(batch.Time)).Bytes()...)
+	return gethcommon.BytesToHash(ees.sharedSecretService.ExtendEntropy(extra))
 }
 
 // TxEntropy - calculates the randomness exposed to individual transactions

@@ -54,8 +54,6 @@ func createInMemTenNode(
 	isGenesis bool,
 	nodeType common.NodeType,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	validateBlocks bool,
-	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	mockP2P hostcommon.P2PHostService,
@@ -69,7 +67,7 @@ func createInMemTenNode(
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
 	hostConfig := &hostconfig.HostConfig{
-		ID:                        gethcommon.BigToAddress(big.NewInt(id)),
+		ID:                        fmt.Sprintf("%d", id),
 		IsGenesis:                 isGenesis,
 		NodeType:                  nodeType,
 		HasClientRPCHTTP:          false,
@@ -85,13 +83,11 @@ func createInMemTenNode(
 	}
 
 	enclaveConfig := &enclaveconfig.EnclaveConfig{
-		HostID:                    hostConfig.ID,
+		NodeID:                    hostConfig.ID,
 		NodeType:                  nodeType,
 		L1ChainID:                 integration.EthereumChainID,
-		ObscuroChainID:            integration.TenChainID,
+		TenChainID:                integration.TenChainID,
 		WillAttest:                false,
-		ValidateL1Blocks:          validateBlocks,
-		GenesisJSON:               genesisJSON,
 		UseInMemoryDB:             true,
 		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         l1BusAddress,

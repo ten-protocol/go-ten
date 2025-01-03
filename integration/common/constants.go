@@ -61,15 +61,13 @@ type ERC20Mapping struct {
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
 func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
 	return &enclaveconfig.EnclaveConfig{
-		HostID:                    gethcommon.BytesToAddress([]byte("")),
+		NodeID:                    "",
 		HostAddress:               "127.0.0.1:10000",
-		Address:                   "127.0.0.1:11000",
+		RPCAddress:                "127.0.0.1:11000",
 		NodeType:                  common.ActiveSequencer,
 		L1ChainID:                 1337,
-		ObscuroChainID:            443,
+		TenChainID:                443,
 		WillAttest:                false, // todo (config) - attestation should be on by default before production release
-		ValidateL1Blocks:          false,
-		GenesisJSON:               nil,
 		ManagementContractAddress: gethcommon.BytesToAddress([]byte("")),
 		LogLevel:                  int(gethlog.LvlInfo),
 		LogPath:                   log.SysOut,

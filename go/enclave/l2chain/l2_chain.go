@@ -2,9 +2,7 @@ package l2chain
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"math/big"
 
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -12,9 +10,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethcore "github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/status-im/keycard-go/hexutils"
@@ -22,7 +17,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/components"
-	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -112,62 +106,4 @@ func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Transac
 	}
 
 	return evm.ExecuteCall(ctx, callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.config, oc.logger)
-}
-
-// GetChainStateAtTransaction Returns the state of the chain at certain block height after executing transactions up to the selected transaction
-// TODO make this cacheable - why isn't this in the evm_facade?
-func (oc *tenChain) GetChainStateAtTransaction(ctx context.Context, batch *core.Batch, txIndex int, _ uint64) (*gethcore.Message, vm.BlockContext, *state.StateDB, error) {
-	// Short circuit if it's genesis batch.
-	if batch.NumberU64() == 0 {
-		return nil, vm.BlockContext{}, nil, errors.New("no transaction in genesis")
-	}
-	// Create the parent state database
-	parent, err := oc.Registry.GetBatchAtHeight(ctx, gethrpc.BlockNumber(batch.NumberU64()-1))
-	if err != nil {
-		return nil, vm.BlockContext{}, nil, fmt.Errorf("unable to fetch parent batch - %w", err)
-	}
-	parentBlockNumber := gethrpc.BlockNumber(parent.NumberU64())
-
-	// Lookup the statedb of parent batch from the live database,
-	// otherwise regenerate it on the flight.
-	statedb, err := oc.Registry.GetBatchStateAtHeight(ctx, &parentBlockNumber)
-	if err != nil {
-		return nil, vm.BlockContext{}, nil, err
-	}
-	if txIndex == 0 && len(batch.Transactions) == 0 {
-		return nil, vm.BlockContext{}, statedb, nil
-	}
-	// Recompute transactions up to the target index.
-	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
-	rules := oc.chainConfig.Rules(big.NewInt(0), true, 0)
-	signer := types.LatestSigner(oc.chainConfig)
-	for idx, tx := range batch.Transactions {
-		// Assemble the transaction call message and return if the requested offset
-		msg, err := gethcore.TransactionToMessage(tx, signer, big.NewInt(0))
-		if err != nil {
-			return nil, vm.BlockContext{}, nil, fmt.Errorf("unable to convert tx to message - %w", err)
-		}
-		txContext := gethcore.NewEVMTxContext(msg)
-
-		chain := evm.NewTenChainContext(oc.storage, oc.gethEncodingService, oc.config, oc.logger)
-
-		blockHeader, err := oc.gethEncodingService.CreateEthHeaderForBatch(ctx, batch.Header)
-		if err != nil {
-			return nil, vm.BlockContext{}, nil, fmt.Errorf("unable to convert batch header to eth header - %w", err)
-		}
-		context := gethcore.NewEVMBlockContext(blockHeader, chain, nil)
-		if idx == txIndex {
-			return msg, context, statedb, nil
-		}
-		// Not yet the searched for transaction, execute on top of the current state
-		vmenv := vm.NewEVM(context, txContext, statedb, oc.chainConfig, vm.Config{})
-		statedb.Prepare(rules, msg.From, gethcommon.Address{}, tx.To(), nil, nil)
-		if _, err := gethcore.ApplyMessage(vmenv, msg, new(gethcore.GasPool).AddGas(tx.Gas())); err != nil {
-			return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction %#x failed: %w", tx.Hash(), err)
-		}
-		// Ensure any modifications are committed to the state
-		// Only delete empty objects if EIP158/161 (a.k.a Spurious Dragon) is in effect
-		statedb.Finalise(vmenv.ChainConfig().IsEIP158(batch.Number()))
-	}
-	return nil, vm.BlockContext{}, nil, fmt.Errorf("transaction index %d out of range for batch %#x", txIndex, batch.Hash())
 }

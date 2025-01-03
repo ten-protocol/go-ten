@@ -78,8 +78,10 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	}
 	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), l2FaucetPrivKey, testlog.Logger())
 
-	gasWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(ethereumChainID), genesis.GasBridgingKeys, testlog.Logger())
-	withdrawalWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(ethereumChainID), genesis.GasWithdrawalKeys, testlog.Logger())
+	GasBridgingKeys, _ := crypto.GenerateKey()
+	GasWithdrawalKeys, _ := crypto.GenerateKey()
+	gasWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(ethereumChainID), GasBridgingKeys, testlog.Logger())
+	withdrawalWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(ethereumChainID), GasWithdrawalKeys, testlog.Logger())
 
 	sequencerGasKeys, _ := crypto.GenerateKey()
 	sequencerFeeWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), sequencerGasKeys, testlog.Logger())
