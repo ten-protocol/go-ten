@@ -86,7 +86,6 @@ func createInMemTenNode(
 
 	enclaveConfig := &enclaveconfig.EnclaveConfig{
 		HostID:                    hostConfig.ID,
-		NodeType:                  nodeType,
 		L1ChainID:                 integration.EthereumChainID,
 		ObscuroChainID:            integration.TenChainID,
 		WillAttest:                false,

@@ -30,7 +30,6 @@ service EnclaveProto {
   rpc GetTotalContractCount(GetTotalContractCountRequest) returns (GetTotalContractCountResponse) {}
   rpc EnclavePublicConfig(EnclavePublicConfigRequest) returns (EnclavePublicConfigResponse) {}
   rpc MakeActive(MakeActiveRequest) returns (MakeActiveResponse) {}
-  rpc AddSequencer(AddSequencerRequest) returns (AddSequencerResponse) {}
 }
 
 message EnclavePublicConfigRequest {}
@@ -138,14 +137,6 @@ message StatusResponse {
 message MakeActiveRequest {}
 message MakeActiveResponse {
   SystemError systemError = 1;
-}
-
-message AddSequencerRequest {
-  bytes enclaveId = 1;
-  bytes proof = 2;
-}
-message AddSequencerResponse {
-  SystemError systemError = 2;
 }
 
 message AttestationRequest {}

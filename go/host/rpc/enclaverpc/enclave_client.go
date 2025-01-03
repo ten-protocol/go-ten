@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -506,26 +504,6 @@ func (c *Client) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublic
 
 func (c *Client) MakeActive() common.SystemError {
 	response, err := c.protoClient.MakeActive(context.Background(), &generated.MakeActiveRequest{})
-	if err != nil {
-		return syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-	return nil
-}
-
-func (c *Client) AddSequencer(id common.EnclaveID, proof types.Receipt) common.SystemError {
-	blob, err := proof.MarshalBinary()
-	if err != nil {
-		return syserr.NewRPCError(err)
-	}
-	response, err := c.protoClient.AddSequencer(
-		context.Background(),
-		&generated.AddSequencerRequest{
-			EnclaveId: id.Bytes(),
-			Proof:     blob,
-		})
 	if err != nil {
 		return syserr.NewRPCError(err)
 	}

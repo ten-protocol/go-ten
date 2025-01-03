@@ -399,16 +399,17 @@ func (s *storageImpl) IsBlockAncestor(ctx context.Context, block *types.Header, 
 
 func (s *storageImpl) HealthCheck(ctx context.Context) (bool, error) {
 	defer s.logDuration("HealthCheck", measure.NewStopwatch())
-	seqNo, err := s.FetchCurrentSequencerNo(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	if seqNo == nil {
-		return false, fmt.Errorf("no batches are stored")
-	}
-
-	return true, nil
+	return s.db != nil, nil
+	//seqNo, err := s.FetchCurrentSequencerNo(ctx)
+	//if err != nil {
+	//	return false, err
+	//}
+	//
+	//if seqNo == nil {
+	//	return false, fmt.Errorf("no batches are stored")
+	//}
+	//
+	//return true, nil
 }
 
 func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2BatchHash) (*state.StateDB, error) {

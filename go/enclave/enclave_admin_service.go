@@ -122,25 +122,12 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 		eas.service = sequencerService
 	}
 
-	// Todo - this is temporary - until the host calls `AddSequencer` instead of relying on the config - which can be removed
-	if config.NodeType == common.ActiveSequencer {
-		err := storage.StoreNewEnclave(context.Background(), enclaveKeyService.EnclaveID(), enclaveKeyService.PublicKey())
-		if err != nil {
-			logger.Crit("Failed to store enclave key", log.ErrKey, err)
-			return nil
-		}
-		err = eas.MakeActive()
-		if err != nil {
-			logger.Crit("Failed to create sequencer", log.ErrKey, err)
-		}
-	}
-
 	return eas
 }
 
-func (e *enclaveAdminService) AddSequencer(id common.EnclaveID, _ types.Receipt) common.SystemError {
-	// todo - use the proof
-	// todo - this will currently store all enclaves
+// addSequencer is used internally to add a sequencer enclaveID to the pool of attested enclaves.
+// If it is the current enclave it will change the behaviour of this enclave to be a backup sequencer (ready to become active).
+func (e *enclaveAdminService) addSequencer(id common.EnclaveID, _ types.Receipt) common.SystemError {
 	err := e.storage.StoreNodeType(context.Background(), id, common.BackupSequencer)
 	if err != nil {
 		return responses.ToInternalError(err)
@@ -157,18 +144,16 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	// todo - uncomment once AddSequencer is called by the host
-	//if !e.isBackupSequencer(context.Background()) {
-	//	return fmt.Errorf("only backup sequencer can become active")
-	//}
-
-	// todo - remove because this enclave should already be a backup sequencer
-	e.mempool.SetValidateMode(false)
+	if !e.isBackupSequencer(context.Background()) {
+		// host may see this if it tries to promote its enclave before its ID has been added to the permission pool
+		return fmt.Errorf("only backup sequencer can become active")
+	}
 
 	err := e.storage.StoreNodeType(context.Background(), e.enclaveKeyService.EnclaveID(), common.ActiveSequencer)
 	if err != nil {
 		return err
 	}
+
 	e.service = e.sequencerService
 	return nil
 }
@@ -369,10 +354,22 @@ func (e *enclaveAdminService) HealthCheck(ctx context.Context) (bool, common.Sys
 		return false, responses.ToInternalError(fmt.Errorf("requested HealthCheck with the enclave stopping"))
 	}
 
+	// if we have seen no sequencer permissioned on the L1 yet then we are in an unusual bootstrapping network state
+	// and can return healthy
+	enclaveIDs, err := e.storage.GetSequencerEnclaveIDs(ctx)
+	if err != nil {
+		return false, fmt.Errorf("could not get sequencer enclaveIDs. Cause: %w", err)
+	}
+	if len(enclaveIDs) == 0 {
+		e.logger.Debug("No sequencer enclaveIDs found permissioned from L1, network is bootstrapping")
+		return true, nil
+	}
+
 	// check the storage health
 	storageHealthy, err := e.storage.HealthCheck(ctx)
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
+		fmt.Println("HealthCheck failed for the enclave storage", log.ErrKey, err)
 		e.logger.Info("HealthCheck failed for the enclave storage", log.ErrKey, err)
 		return false, nil
 	}
@@ -381,6 +378,7 @@ func (e *enclaveAdminService) HealthCheck(ctx context.Context) (bool, common.Sys
 	l1blockHealthy, err := e.l1BlockProcessor.HealthCheck()
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
+		fmt.Println("HealthCheck failed for the l1 block processor", log.ErrKey, err)
 		e.logger.Info("HealthCheck failed for the l1 block processor", log.ErrKey, err)
 		return false, nil
 	}
@@ -388,10 +386,12 @@ func (e *enclaveAdminService) HealthCheck(ctx context.Context) (bool, common.Sys
 	l2batchHealthy, err := e.registry.HealthCheck()
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
+		fmt.Println("HealthCheck failed for the l2 batch registry", log.ErrKey, err)
 		e.logger.Info("HealthCheck failed for the l2 batch registry", log.ErrKey, err)
 		return false, nil
 	}
 
+	fmt.Println("HealthCheck succeeded for the enclave", "storage", storageHealthy, "l1block", l1blockHealthy, "l2batch", l2batchHealthy)
 	return storageHealthy && l1blockHealthy && l2batchHealthy, nil
 }
 
@@ -488,7 +488,7 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	sequencerAddedTxs := processed.GetEvents(common.SequencerAddedTx)
 	for _, tx := range sequencerAddedTxs {
 		if tx.HasSequencerEnclaveID() {
-			err = e.AddSequencer(tx.SequencerEnclaveID, *tx.Receipt)
+			err = e.addSequencer(tx.SequencerEnclaveID, *tx.Receipt)
 			if err != nil {
 				e.logger.Crit("Encountered error while adding sequencer enclaveID", log.ErrKey, err)
 			}
