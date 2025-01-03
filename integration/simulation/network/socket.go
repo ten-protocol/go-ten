@@ -11,7 +11,6 @@ import (
 
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 
-	"github.com/ten-proto
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/host/l1"
