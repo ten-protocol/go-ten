@@ -29,11 +29,6 @@ type Genesis struct {
 // New creates a new Genesis given a json string
 // if the string is empty it defaults to the testnet genesis
 func New(genesisJSON string) (*Genesis, error) {
-	// defaults to the testnet genesis
-	if genesisJSON == "" {
-		return &TestnetGenesis, nil
-	}
-
 	genesis := &Genesis{}
 	err := json.Unmarshal([]byte(genesisJSON), genesis)
 	if err != nil {

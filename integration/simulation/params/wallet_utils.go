@@ -3,8 +3,6 @@ package params
 import (
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
-
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -72,7 +70,7 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	mcOwnerWallet := datagenerator.RandomWallet(ethereumChainID)
 
 	// create the L2 faucet wallet
-	l2FaucetPrivKey, err := crypto.HexToECDSA(genesis.TestnetPrefundedPK)
+	l2FaucetPrivKey, err := crypto.HexToECDSA(testcommon.TestnetPrefundedPK)
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}

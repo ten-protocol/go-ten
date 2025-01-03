@@ -8,7 +8,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common"
 
-	g
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
