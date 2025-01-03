@@ -226,6 +226,7 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		RPCTimeout:                5 * time.Second,
 		SystemContractOwner:       gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
 		StoreExecutedTransactions: true,
+		TenGenesis:                integrationCommon.TestnetGenesisJSON(),
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }

@@ -1,8 +1,11 @@
 package common
 
 import (
+	"encoding/json"
 	"math/big"
 	"time"
+
+	tengenesis "github.com/ten-protocol/go-ten/go/enclave/genesis"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
@@ -92,4 +95,25 @@ func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
 		RPCTimeout:                5 * time.Second,
 		StoreExecutedTransactions: true,
 	}
+}
+
+func TestnetGenesisJSON() string {
+	accts := make([]tengenesis.Account, 1)
+	amount, success := big.NewInt(0).SetString("7500000000000000000000000000000", 10)
+	if !success {
+		panic("failed to set big.Int from string")
+	}
+	accts[0] = tengenesis.Account{
+		Address: gethcommon.HexToAddress("A58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
+		Amount:  amount,
+	}
+	gen := &tengenesis.Genesis{
+		Accounts: accts,
+	}
+
+	genesisBytes, err := json.Marshal(gen)
+	if err != nil {
+		panic(err)
+	}
+	return string(genesisBytes)
 }
