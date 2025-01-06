@@ -1,7 +1,6 @@
 package crosschain
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -37,8 +36,5 @@ func (c *Processors) Enabled() bool {
 
 func (c *Processors) GetL2MessageBusAddress() (gethcommon.Address, common.SystemError) {
 	address := c.Local.GetBusAddress()
-	if address == nil {
-		return gethcommon.Address{}, fmt.Errorf("message bus address not initialised")
-	}
 	return *address, nil
 }
