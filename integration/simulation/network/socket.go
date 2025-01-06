@@ -163,7 +163,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		}
 	}
 
-	time.Sleep(10 * simParams.AvgBlockDuration)
+	time.Sleep(15 * simParams.AvgBlockDuration)
 	// permission the sequencer enclaveID (also requires retries as the enclaveID may not be attested yet)
 	err = PermissionTenSequencerEnclave(n.wallets.MCOwnerWallet, n.gethClients[0], simParams.L1TenData.MgmtContractAddress, *seqEnclaveID)
 	if err != nil {
