@@ -33,7 +33,6 @@ import (
 // Implementation of host.Host.
 type host struct {
 	config   *hostconfig.HostConfig
-	shortID  uint64
 	services *ServicesRegistry // registry of services that the host manages and makes available
 
 	// ignore incoming requests
@@ -64,8 +63,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
 		// config
-		config:  config,
-		shortID: common.ShortAddress(config.ID),
+		config: config,
 
 		// services
 		services: hostServices,

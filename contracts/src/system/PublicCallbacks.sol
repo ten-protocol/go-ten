@@ -38,9 +38,9 @@ contract PublicCallbacks is Initializable {
         lastUnusedCallbackId = 0;
     }
 
-    function addCallback(address callback, bytes calldata data, uint256 value) internal returns (uint256) {
+    function addCallback(address callback, bytes calldata data, uint256 value) internal returns (uint256 callbackId) {
+        callbackId = nextCallbackId;
         callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value, baseFee: block.basefee});
-        return nextCallbackId;
     }
 
     function getCurrentCallbackToExecute() internal view returns (Callback memory, uint256) {

@@ -103,7 +103,7 @@ func (t *testnetConnector) NumValidators() int {
 }
 
 func (t *testnetConnector) GetL1Client() (ethadapter.EthClient, error) {
-	client, err := ethadapter.NewEthClientFromURL(t.l1RPCURL, time.Minute, gethcommon.Address{}, testlog.Logger())
+	client, err := ethadapter.NewEthClientFromURL(t.l1RPCURL, time.Minute, testlog.Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func (t *testnetConnector) GetGatewayClient() (ethadapter.EthClient, error) {
 	if t.tenGatewayURL == "" {
 		return nil, errors.New("gateway client not set for this environment")
 	}
-	return ethadapter.NewEthClientFromURL(t.tenGatewayURL, time.Minute, gethcommon.Address{}, testlog.Logger())
+	return ethadapter.NewEthClientFromURL(t.tenGatewayURL, time.Minute, testlog.Logger())
 }
 
 func (t *testnetConnector) GetGatewayURL() (string, error) {

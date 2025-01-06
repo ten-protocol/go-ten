@@ -22,8 +22,6 @@ import (
 	"github.com/ten-protocol/go-ten/integration/datagenerator"
 	"github.com/ten-protocol/go-ten/integration/eth2network"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 // netInfo is a bag holder struct for output data from the execution/run of a network
@@ -75,7 +73,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 	}
 
 	// create a client that is connected to node 0 of the network
-	client, err := ethadapter.NewEthClient("127.0.0.1", uint(startPort+100), 60*time.Second, gethcommon.HexToAddress("0x0"), testlog.Logger())
+	client, err := ethadapter.NewEthClient("127.0.0.1", uint(startPort+100), 60*time.Second, testlog.Logger())
 	if err != nil {
 		t.Fatal(err)
 	}

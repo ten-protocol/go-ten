@@ -49,7 +49,8 @@ func (sss *SharedSecretService) SetSharedSecret(ss *SharedEnclaveSecret) {
 
 // ExtendEntropy derives more entropy from the shared secret
 func (sss *SharedSecretService) ExtendEntropy(extra []byte) []byte {
-	return crypto.Keccak256(sss.secret[:], extra)
+	secretHash := crypto.Keccak256(sss.secret[:])
+	return crypto.Keccak256(secretHash, extra)
 }
 
 func (sss *SharedSecretService) EncryptSecretWithKey(pubKey []byte) (common.EncryptedSharedEnclaveSecret, error) {

@@ -6,9 +6,10 @@ import (
 	"math/big"
 	"time"
 
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/obsclient/clientutil"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -34,7 +35,7 @@ func prepareObscuroDeployer(cfg *Config, wal wallet.Wallet, logger gethlog.Logge
 
 func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient, logger gethlog.Logger) error {
 	// Create the L2 faucet wallet and client.
-	faucetPrivKey, err := crypto.HexToECDSA(genesis.TestnetPrefundedPK)
+	faucetPrivKey, err := crypto.HexToECDSA(testcommon.TestnetPrefundedPK)
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}

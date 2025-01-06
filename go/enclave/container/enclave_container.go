@@ -15,9 +15,6 @@ import (
 	obscuroGenesis "github.com/ten-protocol/go-ten/go/enclave/genesis"
 )
 
-// todo (#1056) - replace with the genesis.json of Obscuro's L1 network.
-const hardcodedGenesisJSON = "TODO - REPLACE ME"
-
 type EnclaveContainer struct {
 	Enclave   common.Enclave
 	RPCServer *enclave.RPCServer
@@ -44,7 +41,7 @@ func (e *EnclaveContainer) Stop() error {
 
 // NewEnclaveContainerFromConfig wires up the components of the Enclave and its RPC server. Manages their lifecycle/monitors their status
 func NewEnclaveContainerFromConfig(config *enclaveconfig.EnclaveConfig) *EnclaveContainer {
-	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.HostID)
+	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.NodeID)
 
 	logger.Info(fmt.Sprintf("Building enclave container with config: %+v", config))
 
@@ -56,17 +53,13 @@ func NewEnclaveContainerWithLogger(config *enclaveconfig.EnclaveConfig, logger g
 	contractAddr := config.ManagementContractAddress
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)
 
-	if config.ValidateL1Blocks {
-		config.GenesisJSON = []byte(hardcodedGenesisJSON)
-	}
-
 	genesis, err := obscuroGenesis.New(config.TenGenesis)
 	if err != nil {
 		logger.Crit("unable to parse obscuro genesis", log.ErrKey, err)
 	}
 
 	encl := enclave.NewEnclave(config, genesis, mgmtContractLib, logger)
-	rpcServer := enclave.NewEnclaveRPCServer(config.Address, encl, logger)
+	rpcServer := enclave.NewEnclaveRPCServer(config.RPCAddress, encl, logger)
 
 	return &EnclaveContainer{
 		Enclave:   encl,
