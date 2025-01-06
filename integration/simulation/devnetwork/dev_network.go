@@ -163,7 +163,7 @@ func (s *InMemDevNetwork) Start() {
 	if err != nil {
 		panic(err)
 	}
-	h, err := seqClient.Health()
+	h, _ := seqClient.Health()
 	if len(h.Enclaves) == 0 {
 		panic("no enclaves available to promote on sequencer")
 	}
