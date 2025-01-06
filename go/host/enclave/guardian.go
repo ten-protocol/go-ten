@@ -50,7 +50,6 @@ type guardianServiceLocator interface {
 	L2Repo() host.L2BatchRepository
 	LogSubs() host.LogSubscriptionManager
 	Enclaves() host.EnclaveService
-	CrossChainMachine() l1.CrossChainStateMachine
 }
 
 // Guardian is a host service which monitors an enclave, it's responsibilities include:
@@ -682,39 +681,6 @@ func (g *Guardian) periodicRollupProduction() {
 	}
 }
 
-func (g *Guardian) periodicBundleSubmission() {
-	defer g.logger.Info("Stopping bundle submission")
-
-	interval := g.crossChainInterval
-	g.logger.Info("Starting cross chain bundle submission", "interval", interval)
-
-	bundleSubmissionTicker := time.NewTicker(interval)
-
-	for {
-		select {
-		case <-bundleSubmissionTicker.C:
-			err := g.sl.CrossChainMachine().Synchronize()
-			if err != nil {
-				g.logger.Error("Failed to synchronize cross chain state machine", log.ErrKey, err)
-				continue
-			}
-
-			err = g.sl.CrossChainMachine().PublishNextBundle()
-			if err != nil {
-				if errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
-					g.logger.Debug("No batches to publish")
-				} else {
-					g.logger.Error("Failed to publish next bundle", log.ErrKey, err)
-				}
-				continue
-			}
-		case <-g.hostInterrupter.Done():
-			bundleSubmissionTicker.Stop()
-			return
-		}
-	}
-}
-
 func (g *Guardian) streamEnclaveData() {
 	defer g.logger.Info("Stopping enclave data stream")
 	g.logger.Info("Starting L2 update stream from enclave")
@@ -809,7 +775,6 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 func (g *Guardian) startSequencerProcesses() {
 	go g.periodicBatchProduction()
 	go g.periodicRollupProduction()
-	go g.periodicBundleSubmission()
 }
 
 // evictEnclaveFromHAPool evicts a failing enclave from the HA pool if appropriate
