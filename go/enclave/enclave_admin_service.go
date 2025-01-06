@@ -369,7 +369,6 @@ func (e *enclaveAdminService) HealthCheck(ctx context.Context) (bool, common.Sys
 	storageHealthy, err := e.storage.HealthCheck(ctx)
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
-		fmt.Println("HealthCheck failed for the enclave storage", log.ErrKey, err)
 		e.logger.Info("HealthCheck failed for the enclave storage", log.ErrKey, err)
 		return false, nil
 	}
@@ -378,7 +377,6 @@ func (e *enclaveAdminService) HealthCheck(ctx context.Context) (bool, common.Sys
 	l1blockHealthy, err := e.l1BlockProcessor.HealthCheck()
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
-		fmt.Println("HealthCheck failed for the l1 block processor", log.ErrKey, err)
 		e.logger.Info("HealthCheck failed for the l1 block processor", log.ErrKey, err)
 		return false, nil
 	}
@@ -386,12 +384,10 @@ func (e *enclaveAdminService) HealthCheck(ctx context.Context) (bool, common.Sys
 	l2batchHealthy, err := e.registry.HealthCheck()
 	if err != nil {
 		// simplest iteration, log the error and just return that it's not healthy
-		fmt.Println("HealthCheck failed for the l2 batch registry", log.ErrKey, err)
 		e.logger.Info("HealthCheck failed for the l2 batch registry", log.ErrKey, err)
 		return false, nil
 	}
 
-	fmt.Println("HealthCheck succeeded for the enclave", "storage", storageHealthy, "l1block", l1blockHealthy, "l2batch", l2batchHealthy)
 	return storageHealthy && l1blockHealthy && l2batchHealthy, nil
 }
 

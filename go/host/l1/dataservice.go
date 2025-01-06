@@ -188,10 +188,8 @@ func (r *DataService) GetTenRelevantTransactions(block *common.L1Block) (*common
 		case crosschain.RollupAddedID:
 			r.processManagementContractTx(txData, processed)
 		case crosschain.NetworkSecretRequestedID:
-			fmt.Println("secret requested by:", l.Topics[1])
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case crosschain.NetworkSecretRespondedID:
-			fmt.Println("secret responded by:", l.Topics[1], "requester:", l.Topics[2])
 			processed.AddEvent(common.SecretResponseTx, txData)
 		default:
 			r.logger.Warn("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)

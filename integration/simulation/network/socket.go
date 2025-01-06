@@ -147,7 +147,8 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, simParams.Wallets)
 
-	fmt.Println("getting sequencer enclaveID")
+	time.Sleep(15 * simParams.AvgBlockDuration)
+
 	// permission the sequencer enclaveID
 	// we retry fetching the seqHealth until it comes back with the enclaveID as the nodes are still starting up
 	startTime := time.Now()
@@ -163,14 +164,11 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		}
 	}
 
-	time.Sleep(15 * simParams.AvgBlockDuration)
 	// permission the sequencer enclaveID (also requires retries as the enclaveID may not be attested yet)
 	err = PermissionTenSequencerEnclave(n.wallets.MCOwnerWallet, n.gethClients[0], simParams.L1TenData.MgmtContractAddress, *seqEnclaveID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
 	}
-
-	fmt.Println("successfully permissioned sequencer enclaveID")
 
 	// wait for nodes to be healthy now we've permissioned
 	// make sure the nodes are healthy
