@@ -11,7 +11,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -87,7 +86,7 @@ func TestFaucetSendsFundsOnlyIfNeeded(t *testing.T) {
 	hostWSPort := startPort + integration.DefaultHostRPCWSOffset
 	creatTenNetwork(t, startPort)
 
-	faucetWallet := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
+	faucetWallet := wallet.NewInMemoryWalletFromConfig(testcommon.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
 	faucetClient := getClient(hostWSPort, faucetWallet)
 
 	contractDeployerWallet := wallet.NewInMemoryWalletFromConfig(contractDeployerPrivateKeyHex, integration.TenChainID, testlog.Logger())

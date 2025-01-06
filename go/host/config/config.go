@@ -18,8 +18,8 @@ type HostConfig struct {
 
 	// The ID of the L1 chain
 	L1ChainID int64
-	// The ID of the Obscuro chain
-	ObscuroChainID int64
+	// The ID of the Ten chain
+	TenChainID int64
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
 	// The address of the sequencer node's P2P server
@@ -46,8 +46,8 @@ type HostConfig struct {
 	// NODE CONFIG
 	/////
 
-	// The host's identity derived from the L1 Private Key
-	ID gethcommon.Address
+	// Arbitrary identity used for logging.
+	ID string
 	// The stringified private key for the host's L1 wallet
 	PrivateKeyString string
 	// Whether the host is the genesis Obscuro node
@@ -117,8 +117,8 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		IsGenesis:        tenCfg.Node.IsGenesis,
 		NodeType:         tenCfg.Node.NodeType,
 
-		L1ChainID:      tenCfg.Network.L1.ChainID,
-		ObscuroChainID: tenCfg.Network.ChainID,
+		L1ChainID:  tenCfg.Network.L1.ChainID,
+		TenChainID: tenCfg.Network.ChainID,
 
 		L1StartHash:               tenCfg.Network.L1.StartHash,
 		L1BlockTime:               tenCfg.Network.L1.BlockTime,

@@ -82,9 +82,6 @@ enclave:
   debug:
     enableDebugNamespace: false
     enableProfiler: false
-  l1:
-    enableBlockValidation: false
-    #genesisJSON:  # json string of L1 genesis block, used for expectation todo: still needed?
   log:
     level: 1
     path: sys_out

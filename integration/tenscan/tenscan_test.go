@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+
 	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ten-protocol/go-ten/tools/tenscan/backend/config"
@@ -19,7 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -75,7 +76,7 @@ func TestTenscan(t *testing.T) {
 	issueTransactions(
 		t,
 		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
-		wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
+		wallet.NewInMemoryWalletFromConfig(testcommon.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
 		5,
 	)
 
