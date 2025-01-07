@@ -16,11 +16,11 @@ const (
 	MetricsPersistInterval = 5 * time.Second
 
 	// Cleanup intervals
-	InactiveUserCleanupInterval = 24 * time.Minute
+	InactiveUserCleanupInterval = 1 * time.Minute
 
 	// Activity thresholds
-	UserInactivityThreshold = 30 * 24 * time.Minute // 30 days
-	MonthlyActiveUserWindow = 30 * 24 * time.Minute // 30 days
+	UserInactivityThreshold = 10 * time.Minute // 30 days
+	MonthlyActiveUserWindow = 10 * time.Minute // 30 days
 )
 
 // Metrics interface defines the metrics operations
