@@ -24,11 +24,6 @@ func SubmitTxValidate(reqParams []any, builder *CallBuilder[common.L2Tx, gethcom
 }
 
 func SubmitTxExecute(builder *CallBuilder[common.L2Tx, gethcommon.Hash], rpc *EncryptionManager) error {
-	if rpc.processors.Local.IsSyntheticTransaction(builder.Param) {
-		builder.Err = fmt.Errorf("synthetic transaction coming from external rpc")
-		return nil
-	}
-
 	if err := rpc.mempool.SubmitTx(builder.Param); err != nil {
 		rpc.logger.Debug("Could not submit transaction", log.TxKey, builder.Param.Hash(), log.ErrKey, err)
 		builder.Err = err

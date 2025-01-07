@@ -82,7 +82,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	daEncryptionService := crypto.NewDAEncryptionService(sharedSecretService, logger)
 	rpcKeyService := crypto.NewRPCKeyService(sharedSecretService, logger)
 
-	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.TenChainID), logger)
+	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, logger)
 
 	// initialise system contracts
 	scb := system.NewSystemContractCallbacks(storage, &config.SystemContractOwner, logger)
