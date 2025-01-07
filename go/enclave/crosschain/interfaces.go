@@ -31,7 +31,6 @@ type BlockMessageExtractor interface {
 }
 
 type Manager interface {
-
 	// GetBusAddress - Returns the L2 address of the message bus contract.
 	GetBusAddress() *common.L2Address
 
