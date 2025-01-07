@@ -2,7 +2,6 @@ package crosschain
 
 import (
 	"fmt"
-	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -22,11 +21,10 @@ type Processors struct {
 func New(
 	l1BusAddress *gethcommon.Address,
 	storage storage.Storage,
-	chainID *big.Int,
 	logger gethlog.Logger,
 ) *Processors {
 	processors := Processors{}
-	processors.Local = NewObscuroMessageBusManager(storage, chainID, logger)
+	processors.Local = NewTenMessageBusManager(storage, logger)
 	processors.Remote = NewBlockMessageExtractor(l1BusAddress, storage, logger)
 	return &processors
 }
