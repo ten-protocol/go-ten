@@ -11,6 +11,17 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/cosmosdb"
 )
 
+// Metrics interface defines the metrics operations
+type Metrics interface {
+	RecordNewUser()
+	RecordAccountRegistered()
+	RecordUserActivity(anonymousID string)
+	GetTotalUsers() uint64
+	GetTotalAccountsRegistered() uint64
+	GetMonthlyActiveUsers() int
+	Stop()
+}
+
 type MetricsTracker struct {
 	totalUsers         atomic.Uint64
 	accountsRegistered atomic.Uint64
@@ -20,7 +31,7 @@ type MetricsTracker struct {
 	persistTicker      *time.Ticker
 }
 
-func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) *MetricsTracker {
+func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) Metrics {
 	mt := &MetricsTracker{
 		activeUsers:   make(map[string]time.Time),
 		storage:       storage,
@@ -149,3 +160,18 @@ func (mt *MetricsTracker) Stop() {
 	mt.persistTicker.Stop()
 	mt.saveMetrics() // Final save before stopping
 }
+
+// NoOpMetricsTracker implements Metrics interface but does nothing
+type NoOpMetricsTracker struct{}
+
+func NewNoOpMetricsTracker() Metrics {
+	return &NoOpMetricsTracker{}
+}
+
+func (mt *NoOpMetricsTracker) RecordNewUser()                     {}
+func (mt *NoOpMetricsTracker) RecordAccountRegistered()           {}
+func (mt *NoOpMetricsTracker) RecordUserActivity(string)          {}
+func (mt *NoOpMetricsTracker) GetTotalUsers() uint64              { return 0 }
+func (mt *NoOpMetricsTracker) GetTotalAccountsRegistered() uint64 { return 0 }
+func (mt *NoOpMetricsTracker) GetMonthlyActiveUsers() int         { return 0 }
+func (mt *NoOpMetricsTracker) Stop()                              {}

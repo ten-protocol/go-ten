@@ -41,10 +41,10 @@ func New(dbType, dbConnectionURL, dbPath string, randomKey []byte, logger gethlo
 	return NewUserStorageWithCache(underlyingStorage, logger)
 }
 
-// Add this new function
+// NewMetricsStorage is a factory function to create a MetricsStorage instance
 func NewMetricsStorage(dbType, dbConnectionURL string) (*cosmosdb.MetricsStorageCosmosDB, error) {
-	if dbType != "cosmosDB" {
-		return nil, fmt.Errorf("metrics storage only supports cosmosDB")
+	if dbType == "cosmosDB" {
+		return cosmosdb.NewMetricsStorage(dbConnectionURL)
 	}
-	return cosmosdb.NewMetricsStorage(dbConnectionURL)
+	return nil, nil // Return nil for other database types
 }

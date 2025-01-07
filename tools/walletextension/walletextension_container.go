@@ -47,15 +47,18 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		os.Exit(1)
 	}
 
-	// Create metrics storage
-	metricsStorage, err := storage.NewMetricsStorage(config.DBType, config.DBConnectionURL)
-	if err != nil {
-		logger.Crit("unable to create metrics storage", log.ErrKey, err)
-		os.Exit(1)
+	// Create metrics tracker
+	var metricsTracker metrics.Metrics
+	if config.DBType == "cosmosDB" {
+		metricsStorage, err := storage.NewMetricsStorage(config.DBType, config.DBConnectionURL)
+		if err != nil {
+			logger.Crit("unable to create metrics storage", log.ErrKey, err)
+			os.Exit(1)
+		}
+		metricsTracker = metrics.NewMetricsTracker(metricsStorage)
+	} else {
+		metricsTracker = metrics.NewNoOpMetricsTracker()
 	}
-
-	// Create metrics tracker with encryptor for hashing
-	metricsTracker := metrics.NewMetricsTracker(metricsStorage)
 
 	// start the database with the encryption key
 	userStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride, encryptionKey, logger)

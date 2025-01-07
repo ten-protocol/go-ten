@@ -50,7 +50,7 @@ type Services struct {
 	Config              *common.Config
 	NewHeadsService     *subscriptioncommon.NewHeadsService
 	cacheInvalidationCh chan *tencommon.BatchHeader
-	MetricsTracker      *metrics.MetricsTracker
+	MetricsTracker      metrics.Metrics
 }
 
 type NewHeadNotifier interface {
@@ -60,7 +60,7 @@ type NewHeadNotifier interface {
 // number of rpc responses to cache
 const rpcResponseCacheSize = 1_000_000
 
-func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserStorage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, metricsTracker *metrics.MetricsTracker, config *common.Config) *Services {
+func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserStorage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, metricsTracker metrics.Metrics, config *common.Config) *Services {
 	newGatewayCache, err := cache.NewCache(rpcResponseCacheSize, logger)
 	if err != nil {
 		logger.Error(fmt.Errorf("could not create cache. Cause: %w", err).Error())
