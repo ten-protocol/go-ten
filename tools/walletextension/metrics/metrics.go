@@ -11,6 +11,18 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/cosmosdb"
 )
 
+const (
+	// Persistence intervals
+	MetricsPersistInterval = 5 * time.Minute
+
+	// Cleanup intervals
+	InactiveUserCleanupInterval = 24 * time.Hour
+
+	// Activity thresholds
+	UserInactivityThreshold = 30 * 24 * time.Hour // 30 days
+	MonthlyActiveUserWindow = 30 * 24 * time.Hour // 30 days
+)
+
 // Metrics interface defines the metrics operations
 type Metrics interface {
 	RecordNewUser()
@@ -35,7 +47,7 @@ func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) Metrics {
 	mt := &MetricsTracker{
 		activeUsers:   make(map[string]time.Time),
 		storage:       storage,
-		persistTicker: time.NewTicker(5 * time.Minute),
+		persistTicker: time.NewTicker(MetricsPersistInterval),
 	}
 
 	// Load existing metrics
@@ -102,10 +114,10 @@ func (mt *MetricsTracker) GetMonthlyActiveUsers() int {
 	defer mt.activeUserLock.RUnlock()
 
 	count := 0
-	thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+	activeThreshold := time.Now().Add(-MonthlyActiveUserWindow)
 
 	for _, lastActive := range mt.activeUsers {
-		if lastActive.After(thirtyDaysAgo) {
+		if lastActive.After(activeThreshold) {
 			count++
 		}
 	}
@@ -141,13 +153,13 @@ func (mt *MetricsTracker) saveMetrics() {
 }
 
 func (mt *MetricsTracker) cleanupInactiveUsers() {
-	ticker := time.NewTicker(24 * time.Hour)
+	ticker := time.NewTicker(InactiveUserCleanupInterval)
 	for range ticker.C {
 		mt.activeUserLock.Lock()
-		thirtyDaysAgo := time.Now().AddDate(0, 0, -30)
+		inactiveThreshold := time.Now().Add(-UserInactivityThreshold)
 
 		for userID, lastActive := range mt.activeUsers {
-			if lastActive.Before(thirtyDaysAgo) {
+			if lastActive.Before(inactiveThreshold) {
 				delete(mt.activeUsers, userID)
 			}
 		}
