@@ -47,7 +47,15 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		os.Exit(1)
 	}
 
-	metricsTracker := metrics.NewMetricsTracker()
+	// Create metrics storage
+	metricsStorage, err := storage.NewMetricsStorage(config.DBType, config.DBConnectionURL)
+	if err != nil {
+		logger.Crit("unable to create metrics storage", log.ErrKey, err)
+		os.Exit(1)
+	}
+
+	// Create metrics tracker with encryptor for hashing
+	metricsTracker := metrics.NewMetricsTracker(metricsStorage)
 
 	// start the database with the encryption key
 	userStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride, encryptionKey, logger)
@@ -146,6 +154,11 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 			Namespace: "web3",
 			Service:   rpcapi.NewWeb3API(walletExt),
 		},
+	})
+
+	// Add metrics tracker to stop sequence
+	stopControl.OnStop(func() {
+		metricsTracker.Stop()
 	})
 
 	return &Container{
