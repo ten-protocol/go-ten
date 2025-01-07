@@ -20,6 +20,7 @@ type MetricsDocument struct {
 	TotalUsers         uint64            `json:"totalUsers"`
 	AccountsRegistered uint64            `json:"accountsRegistered"`
 	ActiveUsers        map[string]string `json:"activeUsers"` // double-hashed userID -> ISO timestamp
+	ActiveUsersCount   int               `json:"activeUsersCount"`
 	LastUpdated        string            `json:"lastUpdated"`
 }
 
@@ -81,7 +82,24 @@ func (m *MetricsStorageCosmosDB) SaveMetrics(metrics *MetricsDocument) error {
 	ctx := context.Background()
 	partitionKey := azcosmos.NewPartitionKeyString(METRICS_DOC_ID)
 
+	// Calculate active users count and clean up inactive users
+	activeThreshold := time.Now().Add(-30 * 24 * time.Hour) // 30 days
+	activeCount := 0
+	activeUsersMap := make(map[string]string)
+
+	for userID, timestampStr := range metrics.ActiveUsers {
+		if timestamp, err := time.Parse(time.RFC3339, timestampStr); err == nil {
+			if timestamp.After(activeThreshold) {
+				activeCount++
+				activeUsersMap[userID] = timestampStr
+			}
+		}
+	}
+
+	metrics.ActiveUsers = activeUsersMap // Only keep active users
+	metrics.ActiveUsersCount = activeCount
 	metrics.LastUpdated = time.Now().UTC().Format(time.RFC3339)
+
 	docJSON, err := json.Marshal(metrics)
 	if err != nil {
 		return err
