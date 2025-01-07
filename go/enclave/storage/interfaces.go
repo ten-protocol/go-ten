@@ -32,10 +32,6 @@ type BlockResolver interface {
 	StoreBlock(ctx context.Context, block *types.Header, fork *common.ChainFork) error
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
 	IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool
-	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
-	// Takes into consideration that the BlockHeader to verify might be on a branch we haven't received yet
-	// todo (low priority) - this is super confusing, analyze the usage
-	IsBlockAncestor(ctx context.Context, block *types.Header, maybeAncestor common.L1BlockHash) bool
 }
 
 type BatchResolver interface {
