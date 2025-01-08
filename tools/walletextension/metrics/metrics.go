@@ -12,15 +12,15 @@ import (
 )
 
 const (
-	// Persistence intervals
-	MetricsPersistInterval = 5 * time.Second
+	// Persistence intervals (how often metrics are saved to CosmosDB)
+	MetricsPersistInterval = 10 * time.Minute
 
-	// Cleanup intervals
-	InactiveUserCleanupInterval = 1 * time.Minute
+	// Cleanup intervals (how often inactive users are cleaned up)
+	InactiveUserCleanupInterval = 1 * time.Hour
 
 	// Activity thresholds
-	UserInactivityThreshold = 10 * time.Minute // 30 days
-	MonthlyActiveUserWindow = 10 * time.Minute // 30 days
+	UserInactivityThreshold = 30 * 24 * time.Hour // 30 days
+	MonthlyActiveUserWindow = 30 * 24 * time.Hour // 30 days
 )
 
 // Metrics interface defines the metrics operations
