@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/host/container"
@@ -109,6 +110,31 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		tenClients[idx] = obsclient.NewObsClient(l2Client)
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
+
+	time.Sleep(params.AvgBlockDuration * 3)
+
+	// permission the sequencer enclave on the L1
+	health, err := tenClients[0].Health()
+	if err != nil {
+		panic(err)
+	}
+	if len(health.Enclaves) == 0 {
+		panic("no enclaves available to promote on sequencer")
+	}
+
+	// mock implementation of the permissioning, tell the mock L1 the seq address
+	for _, node := range n.ethNodes {
+		node.PromoteEnclave(health.Enclaves[0].EnclaveID)
+	}
+	permMockAddr := ethereummock.MockGrantSeqTxAddress()
+	mockTx := types.NewTx(&types.LegacyTx{
+		To:   &permMockAddr,
+		Data: []byte{0x1},
+	})
+	err = n.ethNodes[0].SendTransaction(mockTx)
+	if err != nil {
+		return nil, err
+	}
 
 	return &RPCHandles{
 		EthClients:     l1Clients,

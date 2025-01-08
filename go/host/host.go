@@ -84,8 +84,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		// clone the hostIdentity data for each enclave
 		enclHostID := hostIdentity
 		if i > 0 {
-			// only the first enclave can be the sequencer for now, others behave as read-only validators
-			enclHostID.IsSequencer = false
+			// we only let the first enclave be the genesis node to avoid initialization issues
 			enclHostID.IsGenesis = false
 		}
 		enclGuardian := enclave.NewGuardian(config, enclHostID, hostServices, enclClient, hostStorage, host.stopControl, logger)

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/tools/walletextension"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 
@@ -156,7 +157,22 @@ func (s *InMemDevNetwork) Start() {
 	s.startNodes()
 
 	// sleep to allow the nodes to start
-	time.Sleep(10 * time.Second)
+	time.Sleep(15 * time.Second)
+
+	seqClient, err := obsclient.Dial(s.SequencerRPCAddress())
+	if err != nil {
+		panic(err)
+	}
+	h, _ := seqClient.Health()
+	if len(h.Enclaves) == 0 {
+		panic("no enclaves available to promote on sequencer")
+	}
+	for _, e := range h.Enclaves {
+		err = network.PermissionTenSequencerEnclave(s.networkWallets.MCOwnerWallet, s.l1Network.GetClient(0), s.l1SetupData.MgmtContractAddress, e.EnclaveID)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	if s.tenConfig.TenGatewayEnabled {
 		s.startTenGateway()

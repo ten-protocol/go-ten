@@ -334,11 +334,11 @@ func (r *DataService) FetchBlockByHeight(height *big.Int) (*types.Block, error) 
 
 // getEnclaveIdFromLog gets the enclave ID from the log topic
 func getEnclaveIdFromLog(log types.Log) (gethcommon.Address, error) {
-	if len(log.Topics) != 1 {
-		return gethcommon.Address{}, fmt.Errorf("invalid number of topics in log: %d", len(log.Topics))
+	// the enclaveID field is not indexed, we read it from the data field
+	if len(log.Data) < 32 {
+		return gethcommon.Address{}, errors.New("log data too short, expected enclaveID address")
 	}
-
-	return gethcommon.BytesToAddress(log.Topics[0].Bytes()), nil
+	return gethcommon.BytesToAddress(log.Data[:32]), nil
 }
 
 func increment(i *big.Int) *big.Int {

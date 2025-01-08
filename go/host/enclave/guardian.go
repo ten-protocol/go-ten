@@ -58,9 +58,10 @@ type guardianServiceLocator interface {
 // - if it is an active sequencer then the guardian will trigger batch/rollup creation
 // - guardian provides access to the enclave data and reports the enclave status for other services - acting as a gatekeeper
 type Guardian struct {
-	hostData      host.Identity
-	state         *StateTracker // state machine that tracks our view of the enclave's state
-	enclaveClient common.Enclave
+	hostData          host.Identity
+	isActiveSequencer bool
+	state             *StateTracker // state machine that tracks our view of the enclave's state
+	enclaveClient     common.Enclave
 
 	sl      guardianServiceLocator
 	storage storage.Storage
@@ -134,9 +135,6 @@ func (g *Guardian) Start() error {
 	}
 
 	go g.mainLoop()
-	if g.hostData.IsSequencer {
-		g.startSequencerProcesses()
-	}
 
 	// subscribe for L1 and P2P data
 	txUnsub := g.sl.P2P().SubscribeForTx(g)
@@ -197,7 +195,7 @@ func (g *Guardian) GetEnclaveID() *common.EnclaveID {
 }
 
 func (g *Guardian) PromoteToActiveSequencer() error {
-	if g.hostData.IsSequencer {
+	if g.isActiveSequencer {
 		// this shouldn't happen and shouldn't be an issue if it does, but good to have visibility on it
 		g.logger.Error("Unable to promote to active sequencer, already active")
 		return nil
@@ -206,7 +204,7 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 	if err != nil {
 		return errors.Wrap(err, "could not promote enclave to active sequencer")
 	}
-	g.hostData.IsSequencer = true
+	g.isActiveSequencer = true
 	g.startSequencerProcesses()
 	return nil
 }
@@ -236,7 +234,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
 	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
-	if g.hostData.IsSequencer || !g.state.IsUpToDate() {
+	if g.isActiveSequencer || !g.state.IsUpToDate() {
 		return // ignore batches until we're up-to-date
 	}
 	// todo - @matt - does it make sense to use a timeout context?
@@ -555,7 +553,7 @@ func (g *Guardian) publishSharedSecretResponses(scrtResponses []*common.Produced
 	for _, scrtResponse := range scrtResponses {
 		// todo (#1624) - implement proper protocol so only one host responds to this secret requests initially
 		// 	for now we just have the genesis host respond until protocol implemented
-		if !g.hostData.IsGenesis {
+		if !g.hostData.IsSequencer {
 			g.logger.Trace("Not genesis node, not publishing response to secret request.",
 				"requester", scrtResponse.RequesterID)
 			return nil

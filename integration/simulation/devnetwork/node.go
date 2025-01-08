@@ -198,16 +198,10 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 	hostAddr := fmt.Sprintf("%s:%d", network.Localhost, hostPort)
 
 	defaultCfg := integrationCommon.DefaultEnclaveConfig()
-	enclaveType := n.nodeType
-	if n.nodeType == common.ActiveSequencer && idx > 0 {
-		// we only want one sequencer enclave for now
-		enclaveType = common.Validator
-	}
 	enclaveConfig := &config.EnclaveConfig{
 		NodeID:                    fmt.Sprintf("%d", idx),
 		HostAddress:               hostAddr,
 		RPCAddress:                enclaveAddr,
-		NodeType:                  enclaveType,
 		L1ChainID:                 integration.EthereumChainID,
 		TenChainID:                integration.TenChainID,
 		WillAttest:                false,

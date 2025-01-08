@@ -21,12 +21,16 @@ import (
 )
 
 var (
+	// addresses used to simulate different methods on the mgmt contract
 	depositTxAddr          = datagenerator.RandomAddress()
 	rollupTxAddr           = datagenerator.RandomAddress()
 	storeSecretTxAddr      = datagenerator.RandomAddress()
 	requestSecretTxAddr    = datagenerator.RandomAddress()
 	initializeSecretTxAddr = datagenerator.RandomAddress()
-	messageBusAddr         = datagenerator.RandomAddress()
+	grantSeqTxAddr         = datagenerator.RandomAddress()
+
+	messageBusAddr = datagenerator.RandomAddress()
+
 	// ContractAddresses maps contract types to their addresses
 	ContractAddresses = map[l1.ContractType][]gethcommon.Address{
 		l1.MgmtContract: {
@@ -35,6 +39,7 @@ var (
 			storeSecretTxAddr,
 			requestSecretTxAddr,
 			initializeSecretTxAddr,
+			grantSeqTxAddr,
 		},
 		l1.MsgBus: {
 			messageBusAddr,
@@ -144,6 +149,10 @@ func (m *mockContractLib) DecodeImportantAddressResponse([]byte) (gethcommon.Add
 	return gethcommon.Address{}, nil
 }
 
+func MockGrantSeqTxAddress() gethcommon.Address {
+	return grantSeqTxAddr
+}
+
 func decodeTx(tx *types.Transaction) common.L1TenTransaction {
 	if len(tx.Data()) == 0 {
 		panic("Data cannot be 0 in the mock implementation")
@@ -166,6 +175,9 @@ func decodeTx(tx *types.Transaction) common.L1TenTransaction {
 		t = &common.L1RequestSecretTx{}
 	case initializeSecretTxAddr.Hex():
 		t = &common.L1InitializeSecretTx{}
+	case grantSeqTxAddr.Hex():
+		// this tx is empty and entirely mocked, no need to decode
+		return &common.L1PermissionSeqTx{}
 	default:
 		panic("unexpected type")
 	}

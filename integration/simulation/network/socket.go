@@ -149,18 +149,44 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, simParams.Wallets)
 
+	time.Sleep(15 * simParams.AvgBlockDuration)
+
 	// permission the sequencer enclaveID
-	seqHealth, err := n.tenClients[0].Health()
-	if err != nil {
-		return nil, fmt.Errorf("unable to get sequencer enclaveID: %w", err)
+	// we retry fetching the seqHealth until it comes back with the enclaveID as the nodes are still starting up
+	startTime := time.Now()
+	var seqEnclaveID *common.EnclaveID
+	for ; seqEnclaveID == nil; time.Sleep(100 * time.Millisecond) {
+		seqHealth, _ := n.tenClients[0].Health()
+		if seqHealth.Enclaves == nil || len(seqHealth.Enclaves) == 0 {
+			continue
+		}
+		seqEnclaveID = &seqHealth.Enclaves[0].EnclaveID
+		if time.Now().After(startTime.Add(2 * time.Minute)) {
+			return nil, fmt.Errorf("unable to get sequencer enclaveID after 2 minutes")
+		}
 	}
-	if len(seqHealth.Enclaves) == 0 {
-		return nil, fmt.Errorf("no enclaves found in health response")
-	}
-	seqEnclaveID := seqHealth.Enclaves[0].EnclaveID
-	err = PermissionTenSequencerEnclave(n.wallets.MCOwnerWallet, n.gethClients[0], simParams.L1TenData.MgmtContractAddress, seqEnclaveID)
+
+	// permission the sequencer enclaveID (also requires retries as the enclaveID may not be attested yet)
+	err = PermissionTenSequencerEnclave(n.wallets.MCOwnerWallet, n.gethClients[0], simParams.L1TenData.MgmtContractAddress, *seqEnclaveID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
+	}
+
+	// wait for nodes to be healthy now we've permissioned
+	// make sure the nodes are healthy
+	for _, client := range n.tenClients {
+		startTime := time.Now()
+		healthy := false
+		for ; !healthy; time.Sleep(500 * time.Millisecond) {
+			h, _ := client.Health()
+			healthy = h.OverallHealth
+			if !healthy {
+				fmt.Println(h.Errors)
+			}
+			if time.Now().After(startTime.Add(3 * time.Minute)) {
+				return nil, fmt.Errorf("nodes not healthy after 3 minutes")
+			}
+		}
 	}
 
 	return &RPCHandles{
@@ -209,18 +235,6 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 		n.tenClients[idx] = obsclient.NewObsClient(l2Client)
 	}
 
-	// make sure the nodes are healthy
-	for _, client := range n.tenClients {
-		startTime := time.Now()
-		healthy := false
-		for ; !healthy; time.Sleep(500 * time.Millisecond) {
-			h, _ := client.Health()
-			healthy = h.OverallHealth
-			if time.Now().After(startTime.Add(3 * time.Minute)) {
-				return fmt.Errorf("nodes not healthy after 3 minutes")
-			}
-		}
-	}
 	return nil
 }
 
