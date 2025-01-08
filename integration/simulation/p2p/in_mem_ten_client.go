@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	hostcommon "github.com/ten-protocol/go-ten/go/common/host"
 	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -20,7 +21,6 @@ import (
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	hostcommon "github.com/ten-protocol/go-ten/go/common/host"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
@@ -243,11 +243,18 @@ func (c *inMemTenClient) RegisterViewingKey(_ gethcommon.Address, _ []byte) erro
 }
 
 func (c *inMemTenClient) health(result interface{}) error {
-	if resPtr, ok := result.(*hostcommon.HealthCheck); ok {
-		*resPtr = hostcommon.HealthCheck{OverallHealth: true}
-		return nil
+	resPtr, ok := result.(*hostcommon.HealthCheck)
+	if !ok {
+		return fmt.Errorf("invalid type for result: expected *hostcommon.HealthCheck")
 	}
-	return fmt.Errorf("invalid type for result: expected *hostcommon.HealthCheck")
+
+	healthPtr, err := c.tenAPI.Health(context.Background())
+	if err != nil {
+		return err
+	}
+
+	*resPtr = *healthPtr // Dereference the pointer to assign the value
+	return nil
 }
 
 func (c *inMemTenClient) getTotalTransactions(result interface{}) error {

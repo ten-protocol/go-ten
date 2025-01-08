@@ -94,6 +94,9 @@ type Node struct {
 	mgmtContractLib  mgmtcontractlib.MgmtContractLib
 
 	logger gethlog.Logger
+
+	// this mock state is to simulate the permissioning of the sequencer enclave, the L1 now 'knows the seq enclave ID'
+	tenSeqEnclaveID common.EnclaveID
 }
 
 func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, _ gethcommon.Address) (types.TxData, error) {
@@ -337,6 +340,7 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 
 		// map transaction types to their corresponding event topics
 		var topic gethcommon.Hash
+		var data []byte
 		switch tx.To().Hex() {
 		case rollupTxAddr.Hex():
 			topic = crosschain.RollupAddedID
@@ -350,6 +354,9 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 			topic = crosschain.NetworkSecretRequestedID
 		case initializeSecretTxAddr.Hex():
 			topic = crosschain.SequencerEnclaveGrantedEventID
+		case grantSeqTxAddr.Hex():
+			topic = crosschain.SequencerEnclaveGrantedEventID
+			data = m.tenSeqEnclaveID.Bytes()
 		default:
 			continue
 		}
@@ -361,6 +368,7 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 			Topics:      []gethcommon.Hash{topic},
 			BlockNumber: blk.NumberU64(),
 			Index:       uint(len(logs)),
+			Data:        data,
 		}
 		logs = append(logs, dummyLog)
 	}
@@ -649,6 +657,10 @@ func (m *Node) ProcessBlobs(b *types.Block) error {
 		}
 	}
 	return nil
+}
+
+func (m *Node) PromoteEnclave(id common.EnclaveID) {
+	m.tenSeqEnclaveID = id
 }
 
 func NewMiner(
