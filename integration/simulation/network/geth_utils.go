@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -29,7 +28,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*
 	}
 
 	// connect to the first host to deploy
-	tmpEthClient, err := ethadapter.NewEthClient(Localhost, uint(startPort+100), DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
+	tmpEthClient, err := ethadapter.NewEthClient(Localhost, uint(startPort+100), DefaultL1RPCTimeout, testlog.Logger())
 	if err != nil {
 		panic(fmt.Errorf("error connecting to te first host %w", err))
 	}
@@ -41,7 +40,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*
 
 	ethClients := make([]ethadapter.EthClient, nrNodes)
 	for i := 0; i < nrNodes; i++ {
-		ethClients[i] = CreateEthClientConnection(int64(i), uint(startPort+100))
+		ethClients[i] = CreateEthClientConnection(uint(startPort + 100))
 	}
 
 	return l1Data, ethClients, eth2Network
@@ -264,8 +263,8 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 	return nil, fmt.Errorf("failed to mine contract deploy tx (%s) into a block after %s. Aborting", signedTx.Hash(), time.Since(start))
 }
 
-func CreateEthClientConnection(id int64, port uint) ethadapter.EthClient {
-	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1RPCTimeout, common.BigToAddress(big.NewInt(id)), testlog.Logger())
+func CreateEthClientConnection(port uint) ethadapter.EthClient {
+	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1RPCTimeout, testlog.Logger())
 	if err != nil {
 		panic(err)
 	}

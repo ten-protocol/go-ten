@@ -21,10 +21,8 @@ import (
 var ErrDuplicateRollup = errors.New("duplicate rollup received")
 
 type BlockIngestionType struct {
-	// PreGenesis is true if there is no stored L1 head block.
-	// (L1 head is only stored when there is an L2 state to associate it with. Soon we will start consuming from the
-	// genesis block and then, we should only see one block ingested in a 'PreGenesis' state)
-	PreGenesis bool
+	// FirstL1Block is true if there is no stored L1 head block.
+	FirstL1Block bool
 
 	// ChainFork contains information about the status of the new block in the chain
 	ChainFork *common.ChainFork

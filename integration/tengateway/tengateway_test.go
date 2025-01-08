@@ -36,7 +36,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/httputil"
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
 	integrationCommon "github.com/ten-protocol/go-ten/integration/common"
@@ -102,7 +101,7 @@ func TestTenGateway(t *testing.T) {
 	require.NoError(t, err)
 
 	// prefunded wallet
-	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
+	w := wallet.NewInMemoryWalletFromConfig(integrationCommon.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
 
 	// run the tests against the exis
 	for name, test := range map[string]func(*testing.T, int, string, string, wallet.Wallet){

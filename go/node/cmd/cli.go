@@ -197,7 +197,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	tenCfg.Network.Sequencer.P2PAddress = cliCfg.sequencerP2PAddr
 	tenCfg.Network.Sequencer.SystemContractsUpgrader = gethcommon.HexToAddress(cliCfg.sequencerUpgraderAddr)
 
-	tenCfg.Node.ID = gethcommon.HexToAddress(cliCfg.hostID)
+	tenCfg.Node.ID = cliCfg.hostID
 	tenCfg.Node.Name = cliCfg.nodeName
 	tenCfg.Node.NodeType = nodeType
 	tenCfg.Node.IsGenesis = cliCfg.isGenesis

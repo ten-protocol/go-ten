@@ -388,15 +388,6 @@ func (s *storageImpl) IsAncestor(ctx context.Context, block *types.Header, maybe
 	return s.IsAncestor(ctx, p, maybeAncestor)
 }
 
-func (s *storageImpl) IsBlockAncestor(ctx context.Context, block *types.Header, maybeAncestor common.L1BlockHash) bool {
-	defer s.logDuration("IsBlockAncestor", measure.NewStopwatch())
-	resolvedBlock, err := s.FetchBlock(ctx, maybeAncestor)
-	if err != nil {
-		return false
-	}
-	return s.IsAncestor(ctx, block, resolvedBlock)
-}
-
 func (s *storageImpl) HealthCheck(ctx context.Context) (bool, error) {
 	defer s.logDuration("HealthCheck", measure.NewStopwatch())
 	return s.db != nil, nil

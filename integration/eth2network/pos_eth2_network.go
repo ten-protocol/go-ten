@@ -69,7 +69,6 @@ type PosImpl struct {
 type PosEth2Network interface {
 	Start() error
 	Stop() error
-	GenesisBytes() []byte
 }
 
 func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, beaconGatewayPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
@@ -259,10 +258,6 @@ func (n *PosImpl) prefundedBalanceActive(client *ethclient.Client) error {
 		fmt.Printf("Account %s prefunded with %s\n", addr, balance.String())
 	}
 	return nil
-}
-
-func (n *PosImpl) GenesisBytes() []byte {
-	return n.gethGenesisBytes
 }
 
 func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPort, gethWSPort, beaconRPCPort, beaconGatewayPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile, testLogFile,

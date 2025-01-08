@@ -19,7 +19,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/metrics"
 	"github.com/ten-protocol/go-ten/go/enclave"
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -54,8 +53,6 @@ func createInMemTenNode(
 	isGenesis bool,
 	nodeType common.NodeType,
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
-	validateBlocks bool,
-	genesisJSON []byte,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	mockP2P hostcommon.P2PHostService,
@@ -69,7 +66,7 @@ func createInMemTenNode(
 	mgtContractAddress := mgmtContractLib.GetContractAddr()
 
 	hostConfig := &hostconfig.HostConfig{
-		ID:                        gethcommon.BigToAddress(big.NewInt(id)),
+		ID:                        fmt.Sprintf("%d", id),
 		IsGenesis:                 isGenesis,
 		NodeType:                  nodeType,
 		HasClientRPCHTTP:          false,
@@ -85,12 +82,10 @@ func createInMemTenNode(
 	}
 
 	enclaveConfig := &enclaveconfig.EnclaveConfig{
-		HostID:                    hostConfig.ID,
+		NodeID:                    hostConfig.ID,
 		L1ChainID:                 integration.EthereumChainID,
-		ObscuroChainID:            integration.TenChainID,
+		TenChainID:                integration.TenChainID,
 		WillAttest:                false,
-		ValidateL1Blocks:          validateBlocks,
-		GenesisJSON:               genesisJSON,
 		UseInMemoryDB:             true,
 		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         l1BusAddress,
@@ -106,7 +101,7 @@ func createInMemTenNode(
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
-	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &genesis.TestnetGenesis, mgmtContractLib, enclaveLogger)}
+	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &TestnetGenesis, mgmtContractLib, enclaveLogger)}
 
 	// create an in memory TEN node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)

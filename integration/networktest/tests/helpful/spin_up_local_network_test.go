@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -80,7 +79,7 @@ func TestRunLocalNetworkAgainstSepolia(t *testing.T) {
 }
 
 func checkBalance(walDesc string, wal wallet.Wallet, rpcAddress string) {
-	client, err := ethadapter.NewEthClientFromURL(rpcAddress, 20*time.Second, common.HexToAddress("0x0"), testlog.Logger())
+	client, err := ethadapter.NewEthClientFromURL(rpcAddress, 20*time.Second, testlog.Logger())
 	if err != nil {
 		panic("unable to create live L1 eth client, err=" + err.Error())
 	}

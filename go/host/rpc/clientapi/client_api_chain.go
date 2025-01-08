@@ -32,7 +32,7 @@ func NewChainAPI(host host.Host, logger gethlog.Logger) *ChainAPI {
 
 // ChainId returns the Obscuro chain ID.
 func (api *ChainAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,revive
-	return (*hexutil.Big)(big.NewInt(api.host.Config().ObscuroChainID)), nil
+	return (*hexutil.Big)(big.NewInt(api.host.Config().TenChainID)), nil
 }
 
 // BatchNumber returns the height of the current head batch.

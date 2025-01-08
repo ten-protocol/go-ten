@@ -57,7 +57,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Creating enclave service with following config", log.CfgKey, string(jsonConfig))
 
-	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.ObscuroChainID))
+	chainConfig := ethchainadapter.ChainParams(big.NewInt(config.TenChainID))
 
 	// Initialise the database
 	cachingService := storage.NewCacheService(logger, config.UseInMemoryDB)
@@ -81,7 +81,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	daEncryptionService := crypto.NewDAEncryptionService(sharedSecretService, logger)
 	rpcKeyService := crypto.NewRPCKeyService(sharedSecretService, logger)
 
-	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.ObscuroChainID), logger)
+	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, logger)
 
 	// initialise system contracts
 	scb := system.NewSystemContractCallbacks(storage, &config.SystemContractOwner, logger)
@@ -110,7 +110,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
 
-	subscriptionManager := events.NewSubscriptionManager(storage, batchRegistry, config.ObscuroChainID, logger)
+	subscriptionManager := events.NewSubscriptionManager(storage, batchRegistry, config.TenChainID, logger)
 
 	// todo (#1474) - make sure the enclave cannot be started in production with WillAttest=false
 	attestationProvider := components.NewAttestationProvider(enclaveKeyService, config.WillAttest, logger)

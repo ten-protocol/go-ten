@@ -128,7 +128,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	seqP2PAddr := fmt.Sprintf("%s:%d", network.Localhost, n.config.PortStart+integration.DefaultHostP2pOffset)
 
 	hostConfig := &hostconfig.HostConfig{
-		ID:                        n.l1Wallet.Address(),
+		ID:                        fmt.Sprintf("%d", n.operatorIdx),
 		IsGenesis:                 n.nodeType == common.ActiveSequencer,
 		NodeType:                  n.nodeType,
 		HasClientRPCHTTP:          true,
@@ -144,7 +144,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		ManagementContractAddress: n.l1Data.MgmtContractAddress,
 		MessageBusAddress:         n.l1Data.MessageBusAddr,
 		L1ChainID:                 integration.EthereumChainID,
-		ObscuroChainID:            integration.TenChainID,
+		TenChainID:                integration.TenChainID,
 		L1StartHash:               n.l1Data.TenStartBlock,
 		SequencerP2PAddress:       seqP2PAddr,
 		// Can provide the postgres db host if testing against a local DB instance
@@ -199,14 +199,12 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 
 	defaultCfg := integrationCommon.DefaultEnclaveConfig()
 	enclaveConfig := &config.EnclaveConfig{
-		HostID:                    n.l1Wallet.Address(),
+		NodeID:                    fmt.Sprintf("%d", idx),
 		HostAddress:               hostAddr,
-		Address:                   enclaveAddr,
+		RPCAddress:                enclaveAddr,
 		L1ChainID:                 integration.EthereumChainID,
-		ObscuroChainID:            integration.TenChainID,
-		ValidateL1Blocks:          false,
+		TenChainID:                integration.TenChainID,
 		WillAttest:                false,
-		GenesisJSON:               nil,
 		UseInMemoryDB:             false,
 		ManagementContractAddress: n.l1Data.MgmtContractAddress,
 		MinGasPrice:               gethcommon.Big1,
@@ -222,6 +220,7 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		RPCTimeout:                5 * time.Second,
 		SystemContractOwner:       gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
 		StoreExecutedTransactions: true,
+		TenGenesis:                integrationCommon.TestnetGenesisJSON(),
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }

@@ -1,8 +1,11 @@
 package common
 
 import (
+	"encoding/json"
 	"math/big"
 	"time"
+
+	tengenesis "github.com/ten-protocol/go-ten/go/enclave/genesis"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
@@ -24,13 +27,14 @@ import (
 type ERC20 string
 
 const (
-	HOC            ERC20 = "HOC"
-	POC            ERC20 = "POC"
-	HOCAddr              = "f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
-	pocAddr              = "9802F661d17c65527D7ABB59DAAD5439cb125a67"
-	bridgeAddr           = "deB34A740ECa1eC42C8b8204CBEC0bA34FDD27f3"
-	hocOwnerKeyHex       = "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682" // Used only in sim tests. Fine
-	pocOwnerKeyHex       = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8" // Used only in sim tests. Fine
+	HOC                ERC20 = "HOC"
+	POC                ERC20 = "POC"
+	HOCAddr                  = "f3a8bd422097bFdd9B3519Eaeb533393a1c561aC"
+	pocAddr                  = "9802F661d17c65527D7ABB59DAAD5439cb125a67"
+	bridgeAddr               = "deB34A740ECa1eC42C8b8204CBEC0bA34FDD27f3"
+	hocOwnerKeyHex           = "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682" // Used only in sim tests. Fine
+	pocOwnerKeyHex           = "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8" // Used only in sim tests. Fine
+	TestnetPrefundedPK       = "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b" // The genesis main account private key.
 )
 
 var HOCOwner, _ = crypto.HexToECDSA(hocOwnerKeyHex)
@@ -60,14 +64,12 @@ type ERC20Mapping struct {
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
 func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
 	return &enclaveconfig.EnclaveConfig{
-		HostID:                    gethcommon.BytesToAddress([]byte("")),
+		NodeID:                    "",
 		HostAddress:               "127.0.0.1:10000",
-		Address:                   "127.0.0.1:11000",
+		RPCAddress:                "127.0.0.1:11000",
 		L1ChainID:                 1337,
-		ObscuroChainID:            443,
+		TenChainID:                443,
 		WillAttest:                false, // todo (config) - attestation should be on by default before production release
-		ValidateL1Blocks:          false,
-		GenesisJSON:               nil,
 		ManagementContractAddress: gethcommon.BytesToAddress([]byte("")),
 		LogLevel:                  int(gethlog.LvlInfo),
 		LogPath:                   log.SysOut,
@@ -91,4 +93,25 @@ func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
 		RPCTimeout:                5 * time.Second,
 		StoreExecutedTransactions: true,
 	}
+}
+
+func TestnetGenesisJSON() string {
+	accts := make([]tengenesis.Account, 1)
+	amount, success := big.NewInt(0).SetString("7500000000000000000000000000000", 10)
+	if !success {
+		panic("failed to set big.Int from string")
+	}
+	accts[0] = tengenesis.Account{
+		Address: gethcommon.HexToAddress("A58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
+		Amount:  amount,
+	}
+	gen := &tengenesis.Genesis{
+		Accounts: accts,
+	}
+
+	genesisBytes, err := json.Marshal(gen)
+	if err != nil {
+		panic(err)
+	}
+	return string(genesisBytes)
 }

@@ -1,7 +1,7 @@
 package crosschain
 
 import (
-	"math/big"
+	"fmt"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -21,11 +21,10 @@ type Processors struct {
 func New(
 	l1BusAddress *gethcommon.Address,
 	storage storage.Storage,
-	chainID *big.Int,
 	logger gethlog.Logger,
 ) *Processors {
 	processors := Processors{}
-	processors.Local = NewObscuroMessageBusManager(storage, chainID, logger)
+	processors.Local = NewTenMessageBusManager(storage, logger)
 	processors.Remote = NewBlockMessageExtractor(l1BusAddress, storage, logger)
 	return &processors
 }
@@ -36,5 +35,8 @@ func (c *Processors) Enabled() bool {
 
 func (c *Processors) GetL2MessageBusAddress() (gethcommon.Address, common.SystemError) {
 	address := c.Local.GetBusAddress()
+	if address == nil {
+		return gethcommon.Address{}, fmt.Errorf("message bus address not initialised")
+	}
 	return *address, nil
 }

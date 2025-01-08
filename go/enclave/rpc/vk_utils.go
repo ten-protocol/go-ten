@@ -68,7 +68,7 @@ func HandleEncryptedRPC(ctx context.Context,
 	if decodedRequest.VK == nil {
 		return responses.AsPlaintextError(fmt.Errorf("invalid request. viewing key is missing")), nil
 	}
-	vk, err := vkhandler.VerifyViewingKey(decodedRequest.VK, encManager.config.ObscuroChainID)
+	vk, err := vkhandler.VerifyViewingKey(decodedRequest.VK, encManager.config.TenChainID)
 	if err != nil {
 		return responses.AsPlaintextError(fmt.Errorf("invalid viewing key - %w", err)), nil
 	}

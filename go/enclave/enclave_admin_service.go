@@ -159,16 +159,20 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 }
 
 // SubmitL1Block is used to update the enclave with an additional L1 block.
-func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
+// Security considerations:
+// - In phase 1 we assume the Sequencer node is benevolent.
+// - Each batch (created and signed by the sequencer) refers to an L1 Block, which must be available for the batch to be processed
+// - If the (validator) node operator is malicious and feeds the enclave with invalid L1 blocks, then batch processing will stop
+func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	e.dataInMutex.Lock()
 	defer e.dataInMutex.Unlock()
-	blockHeader := processed.BlockHeader
+	blockHeader := blockData.BlockHeader
 
 	e.logger.Info("SubmitL1Block", log.BlockHeightKey, blockHeader.Number, log.BlockHashKey, blockHeader.Hash())
 
-	// TODO verify proof provided with block processed.Proof
+	// TODO verify proof provided with block blockData.Proof
 
-	result, err := e.ingestL1Block(ctx, processed)
+	result, err := e.ingestL1Block(ctx, blockData)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
@@ -182,7 +186,7 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, processed *comm
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, processed)}
+	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData)}
 	return bsr, nil
 }
 

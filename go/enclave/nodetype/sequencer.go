@@ -414,16 +414,8 @@ func (s *sequencer) OnL1Fork(ctx context.Context, fork *common.ChainFork) error 
 		return fmt.Errorf("could not duplicate batches. Cause %w", err)
 	}
 
-	rollup, err := s.storage.FetchReorgedRollup(ctx, fork.NonCanonicalPath)
-	if err == nil {
-		s.logger.Error("Reissue rollup", log.RollupHashKey, rollup)
-		// todo - tudor - finalise the logic to reissue a rollup when the block used for compression was reorged
-		return nil
-	}
-	if !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not call FetchReorgedRollup. Cause: %w", err)
-	}
-
+	// note: there is no need to do anything about Rollups that were published against re-orged blocks
+	// because the state machine in the host will detect that case
 	return nil
 }
 
