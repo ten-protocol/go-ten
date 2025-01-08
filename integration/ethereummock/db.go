@@ -79,16 +79,16 @@ func (n *blockResolverInMem) FetchHeadBlock(_ context.Context) (*types.Block, er
 	return max, nil
 }
 
-func (n *blockResolverInMem) ParentBlock(ctx context.Context, b *types.Block) (*types.Block, error) {
-	return n.FetchBlock(ctx, b.Header().ParentHash)
+func (n *blockResolverInMem) ParentBlock(ctx context.Context, b *types.Header) (*types.Block, error) {
+	return n.FetchBlock(ctx, b.ParentHash)
 }
 
-func (n *blockResolverInMem) IsAncestor(ctx context.Context, block *types.Block, maybeAncestor *types.Block) bool {
+func (n *blockResolverInMem) IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool {
 	if bytes.Equal(maybeAncestor.Hash().Bytes(), block.Hash().Bytes()) {
 		return true
 	}
 
-	if maybeAncestor.NumberU64() >= block.NumberU64() {
+	if maybeAncestor.Number.Uint64() >= block.Number.Uint64() {
 		return false
 	}
 
@@ -97,10 +97,10 @@ func (n *blockResolverInMem) IsAncestor(ctx context.Context, block *types.Block,
 		return false
 	}
 
-	return n.IsAncestor(ctx, p, maybeAncestor)
+	return n.IsAncestor(ctx, p.Header(), maybeAncestor)
 }
 
-func (n *blockResolverInMem) IsBlockAncestor(ctx context.Context, block *types.Block, maybeAncestor common.L1BlockHash) bool {
+func (n *blockResolverInMem) IsBlockAncestor(ctx context.Context, block *types.Header, maybeAncestor common.L1BlockHash) bool {
 	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) {
 		return true
 	}
@@ -109,13 +109,13 @@ func (n *blockResolverInMem) IsBlockAncestor(ctx context.Context, block *types.B
 		return true
 	}
 
-	if block.NumberU64() == common.L1GenesisHeight {
+	if block.Number.Uint64() == common.L1GenesisHeight {
 		return false
 	}
 
 	resolvedBlock, err := n.FetchBlock(ctx, maybeAncestor)
 	if err == nil {
-		if resolvedBlock.NumberU64() >= block.NumberU64() {
+		if resolvedBlock.NumberU64() >= block.Number.Uint64() {
 			return false
 		}
 	}
@@ -126,7 +126,7 @@ func (n *blockResolverInMem) IsBlockAncestor(ctx context.Context, block *types.B
 		return false
 	}
 
-	return n.IsBlockAncestor(ctx, p, maybeAncestor)
+	return n.IsBlockAncestor(ctx, p.Header(), maybeAncestor)
 }
 
 // The cache of included transactions
