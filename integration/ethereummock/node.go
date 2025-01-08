@@ -356,7 +356,9 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 			topic = crosschain.SequencerEnclaveGrantedEventID
 		case grantSeqTxAddr.Hex():
 			topic = crosschain.SequencerEnclaveGrantedEventID
-			data = m.tenSeqEnclaveID.Bytes()
+			// enclave ID address, padded out to 32 bytes to match standard eth fields
+			data = make([]byte, 32)
+			copy(data[12:], m.tenSeqEnclaveID[:])
 		default:
 			continue
 		}
