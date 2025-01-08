@@ -74,8 +74,6 @@ type EnclaveConfig struct {
 	DebugNamespaceEnabled    bool
 	GasLocalExecutionCapFlag uint64
 
-	// The type of the node. - todo - remove
-	NodeType common.NodeType
 	// The public peer-to-peer IP address of the host the enclave service is tied to
 	// This is required to advertise for node discovery, and we include it in the attestation
 	// todo - should we really bind the physical address to the attestation.

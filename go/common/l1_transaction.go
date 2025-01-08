@@ -49,8 +49,7 @@ type L1InitializeSecretTx struct {
 	Attestation   EncodedAttestationReport
 }
 
-type L1PermissionSeqTx struct {
-}
+type L1PermissionSeqTx struct{}
 
 // The following types and structs are used for processing the l1 blocks and categorising the transactions to be processed
 // by the enclave.
