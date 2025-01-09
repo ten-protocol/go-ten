@@ -90,7 +90,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 			ch := make(chan *tencommon.BatchHeader)
 			errCh, err := subscribeToNewHeadsWithRetry(ch, &services, logger)
 			logger.Info("Connected to new heads service.", log.ErrKey, err)
-			return ch, errCh, err
+			return ch, errCh, nil
 		},
 		true,
 		logger,
@@ -133,6 +133,18 @@ func _startCacheEviction(services *Services, logger gethlog.Logger) {
 
 func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services *Services, logger gethlog.Logger) (<-chan error, error) {
 	var sub *gethrpc.ClientSubscription
+
+	// We'll try once per second for 10 retries, then forever every 15 seconds
+	backoffIntervals := make([]time.Duration, 10)
+	for i := range backoffIntervals {
+		backoffIntervals[i] = 1 * time.Second
+	}
+
+	strategy := retry.NewBackoffAndRetryForeverStrategy(
+		backoffIntervals, // first 10 retries: 1s each
+		15*time.Second,   // after that: 15s indefinitely
+	)
+
 	err := retry.Do(
 		func() error {
 			connectionObj, err := services.BackendRPC.PlainConnectWs(context.Background())
@@ -146,13 +158,15 @@ func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services *Serv
 			}
 			return err
 		},
-		retry.NewTimeoutStrategy(20*time.Minute, 1*time.Second),
+		strategy,
 	)
 	if err != nil {
-		logger.Error("could not subscribe for new head blocks.", log.ErrKey, err)
-		return nil, fmt.Errorf("cannot subscribe to new heads to the backend %w", err)
+		logger.Error("could not subscribe for new head blocks. continuing without subscription", log.ErrKey, err)
+		return nil, nil // Don’t return fatal error; just log and continue
 	}
 
+	// If we reach here, subscription worked. We return sub.Err() so that
+	// subscriptioncommon.NewNewHeadsService can re-init on subscription error.
 	return sub.Err(), nil
 }
 
