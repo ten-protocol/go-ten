@@ -64,7 +64,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 
 	res, err := cache.WithCache(w.RPCResponsesCache, cfg, generateCacheKey(cacheArgs), func() (*R, error) {
 		return services.WithPlainRPCConnection(ctx, w.BackendRPC, func(client *rpc.Client) (*R, error) {
-			var resp R
+			var resp *R = new(R)
 			var err error
 
 			// wrap the context with a timeout to prevent long executions
@@ -72,7 +72,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 			defer cancelCtx()
 
 			err = client.CallContext(timeoutContext, &resp, method, args...)
-			return &resp, err
+			return resp, err
 		})
 	})
 
