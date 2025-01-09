@@ -45,6 +45,7 @@ func (n *ContractDeployer) Start() error {
 		"PREFUND_FAUCET_AMOUNT": n.cfg.faucetPrefundAmount,
 		"MGMT_CONTRACT_ADDRESS": n.cfg.managementContractAddress,
 		"MESSAGE_BUS_ADDRESS":   n.cfg.messageBusAddress,
+		"CHALLENGE_PERIOD":      strconv.Itoa(n.cfg.challengePeriod),
 		"NETWORK_JSON": fmt.Sprintf(`
 {
         "layer1" : {
