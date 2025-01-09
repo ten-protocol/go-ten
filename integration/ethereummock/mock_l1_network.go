@@ -97,7 +97,7 @@ func printBlock(b *types.Block, m *Node) string {
 			if err != nil {
 				testlog.Logger().Crit("failed to decode rollup")
 			}
-			txs = append(txs, fmt.Sprintf("r_%s(nonce=%s)", r.Hash(), tx.Nonce()))
+			txs = append(txs, fmt.Sprintf("r_%s(nonce=%d)", r.Hash(), tx.Nonce()))
 
 		case *common.L1DepositTx:
 			var to gethcommon.Address
