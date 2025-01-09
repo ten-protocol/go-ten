@@ -445,7 +445,7 @@ jobs:
           -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
           -faucet_funds=${{ vars.FAUCET_INITIAL_FUNDS }}
-          -challenge_period=${{ vars.CHALLENGE_PERIOD }} 
+          -l1_challenge_period=${{ vars.L1_CHALLENGE_PERIOD }} 
 
       - name: 'Save L2 deployer container logs'
         run: |

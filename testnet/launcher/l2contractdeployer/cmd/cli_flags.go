@@ -12,8 +12,8 @@ const (
 	l2privateKeyFlag           = "l2_private_key"
 	l2HOCPrivateKeyFlag        = "l2_hoc_private_key"
 	l2POCPrivateKeyFlag        = "l2_poc_private_key"
+	challengePeriodFlag        = "l1_challenge_period"
 	faucetFundingFlag          = "faucet_funds"
-	challengePeriodFlag        = "challenge_period"
 )
 
 // Returns a map of the flag usages.
@@ -31,6 +31,6 @@ func getFlagUsageMap() map[string]string {
 		l2HOCPrivateKeyFlag:        "Layer 2 HOC contract private key",
 		l2POCPrivateKeyFlag:        "Layer 2 POC contract private key",
 		faucetFundingFlag:          "How much funds should the faucet account receive",
-		challengePeriodFlag:        "Delay when adding message bus root",
+		challengePeriodFlag:        "L1 delay when adding message bus root",
 	}
 }

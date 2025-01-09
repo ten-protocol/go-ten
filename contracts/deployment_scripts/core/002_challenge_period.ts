@@ -6,8 +6,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const {execute} = deployments;
     const {deployer} = await getNamedAccounts();
 
-    const challengePeriod = process.env.CHALLENGE_PERIOD ?
-        parseInt(process.env.CHALLENGE_PERIOD) : 0;
+    const challengePeriod = process.env.L1_CHALLENGE_PERIOD ?
+        parseInt(process.env.L1_CHALLENGE_PERIOD) : 0;
 
     console.log(`Setting challenge period to ${challengePeriod}`);
 
