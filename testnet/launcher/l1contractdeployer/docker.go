@@ -106,7 +106,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 
 	// Get the last lines
 	output := buf.String()
-	fmt.Printf("L2 Deployer output %s\n", output)
+	fmt.Printf("L1 Deployer output %s\n", output)
 
 	lines := strings.Split(output, "\n")
 
