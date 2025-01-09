@@ -42,7 +42,6 @@ func (n *ContractDeployer) Start() error {
 	envs := map[string]string{
 		"L2_HOST":               n.cfg.l2Host,
 		"L2_PORT":               strconv.Itoa(n.cfg.l2Port),
-		"L1_CHALLENGE_PERIOD":   strconv.Itoa(n.cfg.challengePeriod),
 		"PREFUND_FAUCET_AMOUNT": n.cfg.faucetPrefundAmount,
 		"MGMT_CONTRACT_ADDRESS": n.cfg.managementContractAddress,
 		"MESSAGE_BUS_ADDRESS":   n.cfg.messageBusAddress,

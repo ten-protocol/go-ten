@@ -23,7 +23,6 @@ func main() {
 			l2cd.WithPocPKString(cliConfig.l2POCPrivateKey),                      // "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"),
 			l2cd.WithDockerImage(cliConfig.dockerImage),
 			l2cd.WithFaucetFunds(cliConfig.faucetFunding),
-			l2cd.WithChallengePeriod(cliConfig.challengePeriod),
 		),
 	)
 	if err != nil {

@@ -15,6 +15,7 @@ func main() {
 			l1cd.WithL1HTTPURL(cliConfig.l1HTTPURL),     // "http://eth2network:8025"
 			l1cd.WithPrivateKey(cliConfig.privateKey),   //"f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1cd.WithDockerImage(cliConfig.dockerImage), //"testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
+			l1cd.WithChallengePeriod(cliConfig.challengePeriod),
 		),
 	)
 	if err != nil {
