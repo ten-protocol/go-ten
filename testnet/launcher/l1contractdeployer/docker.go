@@ -52,7 +52,6 @@ func (n *ContractDeployer) Start() error {
             "saveDeployments" : true,
             "deploy": [ 
                 "deployment_scripts/core/001_deploy_management_contract",
-                "deployment_scripts/core/002_challenge_period"
             ],
             "accounts": [ "%s" ]
         }
