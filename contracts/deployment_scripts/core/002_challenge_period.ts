@@ -11,6 +11,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     console.log(`Setting challenge period to ${challengePeriod}`);
 
+    console.log("Starting challenge period setup...");
+
     await execute(
         'ManagementContract',
         {from: deployer, log: true},

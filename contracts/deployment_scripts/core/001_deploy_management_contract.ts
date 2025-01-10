@@ -12,6 +12,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         getNamedAccounts
     } = hre;
 
+    console.log("Starting management contract deployment...");
+
     // The deployer prefunded address to be used to deploy the management contract
     const {deployer} = await getNamedAccounts();
     // The compiled contract artifact.
