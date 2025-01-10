@@ -43,24 +43,24 @@ func (n *ContractDeployer) Start() error {
 		ports = append(ports, 9229)
 	}
 
-	cmds = append(cmds, "hardhat", "deploy", "--network", "layer1")
+	cmds = append(cmds, "hardhat", "deploy", "--verbose", "--network", "layer1")
 
 	envs := map[string]string{
 		"L1_CHALLENGE_PERIOD": strconv.Itoa(n.cfg.challengePeriod),
 		"NETWORK_JSON": fmt.Sprintf(`
-		{ 
-        	"layer1" : {
-            	"url" : "%s",
-            	"live" : false,
-            	"saveDeployments" : true,
-            	"deploy": [ 
-            	    "deployment_scripts/core/",
-            	    "deployment_scripts/test/"
-            	],
-            	"accounts": [ "%s" ]
-        	}
-    	}
-	`, n.cfg.l1HTTPURL, n.cfg.privateKey),
+{ 
+        "layer1" : {
+            "url" : "%s",
+            "live" : false,
+            "saveDeployments" : true,
+            "deploy": [ 
+                "deployment_scripts/core/",
+                "deployment_scripts/test/"
+            ],
+            "accounts": [ "%s" ]
+        }
+    }
+`, n.cfg.l1HTTPURL, n.cfg.privateKey),
 	}
 
 	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, ports, envs, nil, nil, false)
