@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/sanity-io/litter"
 	"io"
 	"regexp"
 	"strconv"
@@ -29,10 +30,7 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 }
 
 func (n *ContractDeployer) Start() error {
-	//fmt.Printf("Starting L1 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
-	//fmt.Printf("Starting L1 contract deployer with l1HTTPURL: %s", n.cfg.l1HTTPURL)
-	//fmt.Printf("Starting L1 contract deployer with privateKey: %s", n.cfg.privateKey)
-	//fmt.Printf("Starting L1 contract deployer with challengePeriod: %d", n.cfg.challengePeriod)
+	fmt.Printf("Starting L1 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
 	cmds := []string{"npx"}
 	var ports []int
@@ -55,7 +53,6 @@ func (n *ContractDeployer) Start() error {
             "saveDeployments" : true,
             "deploy": [ 
                 "deployment_scripts/core/",
-                "deployment_scripts/test/"
             ],
             "accounts": [ "%s" ]
         }

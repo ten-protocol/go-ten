@@ -8,12 +8,13 @@ type Config struct {
 	l1HTTPURL           string
 	privateKey          string
 	mgmtContractAddress string
-	enclaveIDs          string
 	dockerImage         string
-	sequencerURL        string
+	challengePeriod     int
+
+	// debugEnabled        bool
 }
 
-func NewGrantSequencerConfig(opts ...Option) *Config {
+func NewChallengePeriodConfig(opts ...Option) *Config {
 	defaultConfig := &Config{}
 
 	for _, opt := range opts {
@@ -41,20 +42,14 @@ func WithMgmtContractAddress(s string) Option {
 	}
 }
 
-func WithEnclaveIDs(s string) Option {
-	return func(c *Config) {
-		c.enclaveIDs = s
-	}
-}
-
 func WithDockerImage(s string) Option {
 	return func(c *Config) {
 		c.dockerImage = s
 	}
 }
 
-func WithSequencerURL(s string) Option {
+func WithChallengePeriod(i int) Option {
 	return func(c *Config) {
-		c.sequencerURL = s
+		c.challengePeriod = i
 	}
 }
