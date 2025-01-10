@@ -8,6 +8,9 @@ interface Structs {
         bytes32 Hash;
         bytes Signature;
         uint256 LastSequenceNumber;
+        bytes32 BlockHash; // hash from blobhash opcode
+        bytes32 MessageRoot; // root of cross chain messages
+        uint256 BlockNumber; // block binding
     }
 
     struct RollupStorage {

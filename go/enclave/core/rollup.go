@@ -3,6 +3,7 @@ package core
 import (
 	"sync/atomic"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -14,6 +15,13 @@ type Rollup struct {
 	Batches []*Batch
 	Blocks  map[common.L1BlockHash]*types.Header // these are the blocks required during compression. The key is the hash
 	hash    atomic.Value
+}
+
+type BlobRollup struct {
+	Rollup
+	Blob        []byte          // The actual blob data
+	BlobHash    gethcommon.Hash // Hash from blobhash opcode
+	MessageRoot gethcommon.Hash // Root of cross-chain messages
 }
 
 // Hash returns the keccak256 hash of b's header.

@@ -148,7 +148,30 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // solc-ignore-next-line unused-param
     function AddRollup(Structs.MetaRollup calldata r) public {
-        address enclaveID = ECDSA.recover(r.Hash, r.Signature);
+        // Verify blob hash using the opcode
+        bytes32 computedBlobHash = blobhash(0); // TODO: Ziga - is rollup data always stored in the first blob? 
+        require(computedBlobHash == r.BlobHash, "Invalid blob hash");
+
+        // Verify block binding (blockhash returns 0 if the block is older than 256 blocks)
+        bytes32 blockHash = blockhash(r.BlockNumber);
+        require(blockHash != 0, "Block too old");
+        require(block.number > r.BlockNumber, "Cannot bind to future block");
+        require(block.number != r.BlockNumber, "Cannot bind to current block");
+
+
+        // Create composite hash that the enclave would have signed
+        bytes32 compositeHash = keccak256(abi.encode(
+            r.BlobHash,          // Hash from blob
+            r.MessageRoot,       // Cross-chain message root
+            blockHash,             // Block binding
+            r.BlockNumber,       // Block number
+            r.LastSequenceNumber // Include sequence for ordering
+        ));
+
+
+
+        // Verify the sequencer signature
+        address enclaveID = ECDSA.recover(compositeHash, r.Signature);
         // revert if the EnclaveID is not attested
         require(attested[enclaveID], "enclaveID not attested");
         // revert if the EnclaveID is not permissioned as a sequencer
