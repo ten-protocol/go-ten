@@ -268,7 +268,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return importantContractKeys;
     }
 
-    //
+    // Return the challenge period delay for message bus root
     function getChallengePeriod() public view returns (uint256) {
         return challengePeriod;
     }
