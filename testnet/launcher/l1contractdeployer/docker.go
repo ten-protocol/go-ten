@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -116,42 +117,36 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		lines = lines[:len(lines)-2]
 	}
 
-	// Find the relevant lines containing our addresses
-	var mgmtContractLine, msgBusLine, l1StartLine string
-	for _, line := range lines {
-		if strings.Contains(line, "ManagementContractAddress=") {
-			mgmtContractLine = line
-		} else if strings.Contains(line, "MessageBusAddress=") {
-			msgBusLine = line
-		} else if strings.Contains(line, "L1Start=") {
-			l1StartLine = line
-		}
+	managementAddr, err := findAddress(lines[0])
+	if err != nil {
+		return nil, err
 	}
-
-	if mgmtContractLine == "" || msgBusLine == "" || l1StartLine == "" {
-		return nil, fmt.Errorf("could not find required contract addresses in output")
+	messageBusAddr, err := findAddress(lines[1])
+	if err != nil {
+		return nil, err
 	}
+	l1BlockHash := readValue("L1Start", lines[2])
 
 	return &node.NetworkConfig{
-		ManagementContractAddress: mgmtContractLine,
-		MessageBusAddress:         msgBusLine,
-		L1StartHash:               l1StartLine,
+		ManagementContractAddress: managementAddr,
+		MessageBusAddress:         messageBusAddr,
+		L1StartHash:               l1BlockHash,
 	}, nil
 }
 
-//func findAddress(line string) (string, error) {
-//	// Regular expression to match Ethereum addresses
-//	re := regexp.MustCompile("(0x[a-fA-F0-9]{40})")
-//
-//	// Find all Ethereum addresses in the text
-//	matches := re.FindAllString(line, -1)
-//
-//	if len(matches) == 0 {
-//		return "", fmt.Errorf("no address found in: %s", line)
-//	}
-//	// Print the last
-//	return matches[len(matches)-1], nil
-//}
+func findAddress(line string) (string, error) {
+	// Regular expression to match Ethereum addresses
+	re := regexp.MustCompile("(0x[a-fA-F0-9]{40})")
+
+	// Find all Ethereum addresses in the text
+	matches := re.FindAllString(line, -1)
+
+	if len(matches) == 0 {
+		return "", fmt.Errorf("no address found in: %s", line)
+	}
+	// Print the last
+	return matches[len(matches)-1], nil
+}
 
 func readValue(name string, line string) string {
 	parts := strings.Split(line, fmt.Sprintf("%s=", name))
