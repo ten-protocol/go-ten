@@ -134,8 +134,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         for(uint256 i = 0; i < crossChainHashes.length; i++) {
             merkleMessageBus.addStateRoot(
-                bytes32(crossChainHashes[i]), 
-                block.timestamp + challengePeriod
+                bytes32(crossChainHashes[i]), block.timestamp //block.timestamp + challengePeriod
             );
             bundleHash = keccak256(abi.encode(bundleHash, bytes32(crossChainHashes[i])));
         }

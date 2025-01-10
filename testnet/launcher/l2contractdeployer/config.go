@@ -16,7 +16,6 @@ type Config struct {
 	messageBusAddress         string
 	dockerImage               string
 	faucetPrefundAmount       string
-	challengePeriod           int
 	debugEnabled              bool
 }
 
@@ -95,12 +94,6 @@ func WithPocPKString(s string) Option {
 func WithFaucetFunds(f string) Option {
 	return func(c *Config) {
 		c.faucetPrefundAmount = f
-	}
-}
-
-func WithChallengePeriod(i int) Option {
-	return func(c *Config) {
-		c.challengePeriod = i
 	}
 }
 

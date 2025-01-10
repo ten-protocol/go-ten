@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/node"
 
 	"github.com/docker/docker/api/types"
@@ -30,7 +29,10 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 }
 
 func (n *ContractDeployer) Start() error {
-	fmt.Printf("Starting L1 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
+	//fmt.Printf("Starting L1 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
+	fmt.Printf("Starting L1 contract deployer with l1HTTPURL: %s", n.cfg.l1HTTPURL)
+	fmt.Printf("Starting L1 contract deployer with privateKey: %s", n.cfg.privateKey)
+	fmt.Printf("Starting L1 contract deployer with challengePeriod: %d", n.cfg.challengePeriod)
 
 	cmds := []string{"npx"}
 	var ports []int
@@ -52,7 +54,7 @@ func (n *ContractDeployer) Start() error {
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
-                "deployment_scripts/core/001_deploy_management_contract",
+                "deployment_scripts/core/001_deploy_management_contract"
             ],
             "accounts": [ "%s" ]
         }
