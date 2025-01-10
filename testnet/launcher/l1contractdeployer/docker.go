@@ -52,7 +52,8 @@ func (n *ContractDeployer) Start() error {
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
-                "deployment_scripts/core"
+                "deployment_scripts/core/001_deploy_management_contract",
+                "deployment_scripts/core/002_challenge_period"
             ],
             "accounts": [ "%s" ]
         }
