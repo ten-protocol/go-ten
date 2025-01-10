@@ -432,7 +432,7 @@ jobs:
       -  uses: actions/checkout@v4
 
       -  name: 'Set challenge period on management contract'
-         id: grantSequencerPermission
+         id: setChallengePeriod
          shell: bash
          run: |
            go run ./testnet/launcher/l1challengeperiod/cmd \
