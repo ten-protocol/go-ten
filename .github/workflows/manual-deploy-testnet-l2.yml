@@ -78,6 +78,7 @@ jobs:
         id: deployContracts
         shell: bash
         run: |
+          echo "L1_CHALLENGE_PERIOD value: ${{ vars.L1_CHALLENGE_PERIOD }}"
           go run ./testnet/launcher/l1contractdeployer/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
@@ -92,9 +93,6 @@ jobs:
           echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
           echo "L1_START_HASH=$L1START" >> $GITHUB_ENV
           echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
-          echo "L1_CHALLENGE_PERIOD=$L1CHALLENGEPERIOD" >> $GITHUB_ENV
-          echo "L1_CHALLENGE_PERIOD=$L1CHALLENGEPERIOD" >> $GITHUB_OUTPUT
-          echo "L1 challenge period set to $L1CHALLENGEPERIOD"
 
       - name: 'Save L1 deployer container logs'
         # Wait to make sure the logs are available in the container

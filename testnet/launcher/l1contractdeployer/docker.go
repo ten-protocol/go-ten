@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,6 +44,7 @@ func (n *ContractDeployer) Start() error {
 	cmds = append(cmds, "hardhat", "deploy", "--network", "layer1")
 
 	envs := map[string]string{
+		"L1_CHALLENGE_PERIOD": strconv.Itoa(n.cfg.challengePeriod),
 		"NETWORK_JSON": fmt.Sprintf(`
 { 
         "layer1" : {
