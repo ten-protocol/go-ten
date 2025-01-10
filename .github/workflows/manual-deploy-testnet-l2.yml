@@ -78,12 +78,12 @@ jobs:
         id: deployContracts
         shell: bash
         run: |
-          echo "L1_CHALLENGE_PERIOD value: ${{ vars.L1_CHALLENGE_PERIOD }}"
+#          echo "L1_CHALLENGE_PERIOD value: ${{ vars.L1_CHALLENGE_PERIOD }}"
           go run ./testnet/launcher/l1contractdeployer/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
-          -l1_challenge_period=${{ vars.L1_CHALLENGE_PERIOD }} \
+#          -l1_challenge_period=${{ vars.L1_CHALLENGE_PERIOD }} \
           -contracts_env_file=./testnet/.env
           source ./testnet/.env
           echo "Contracts deployed to $MGMTCONTRACTADDR"

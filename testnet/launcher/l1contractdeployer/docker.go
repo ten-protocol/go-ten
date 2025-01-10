@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -30,9 +29,9 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 
 func (n *ContractDeployer) Start() error {
 	//fmt.Printf("Starting L1 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
-	fmt.Printf("Starting L1 contract deployer with l1HTTPURL: %s", n.cfg.l1HTTPURL)
-	fmt.Printf("Starting L1 contract deployer with privateKey: %s", n.cfg.privateKey)
-	fmt.Printf("Starting L1 contract deployer with challengePeriod: %d", n.cfg.challengePeriod)
+	//fmt.Printf("Starting L1 contract deployer with l1HTTPURL: %s", n.cfg.l1HTTPURL)
+	//fmt.Printf("Starting L1 contract deployer with privateKey: %s", n.cfg.privateKey)
+	//fmt.Printf("Starting L1 contract deployer with challengePeriod: %d", n.cfg.challengePeriod)
 
 	cmds := []string{"npx"}
 	var ports []int
@@ -46,7 +45,7 @@ func (n *ContractDeployer) Start() error {
 	cmds = append(cmds, "hardhat", "deploy", "--network", "layer1")
 
 	envs := map[string]string{
-		"L1_CHALLENGE_PERIOD": strconv.Itoa(n.cfg.challengePeriod),
+		//"L1_CHALLENGE_PERIOD": strconv.Itoa(n.cfg.challengePeriod),
 		"NETWORK_JSON": fmt.Sprintf(`
 { 
         "layer1" : {
@@ -54,7 +53,7 @@ func (n *ContractDeployer) Start() error {
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
-                "deployment_scripts/core/001_deploy_management_contract"
+                "deployment_scripts/core/"
             ],
             "accounts": [ "%s" ]
         }
