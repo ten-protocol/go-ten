@@ -4,8 +4,8 @@ import (
 	"flag"
 )
 
-// L1GrantSequencersConfigCLI represents the configurations needed to grant enclaves sequencer roles over CLI
-type L1GrantSequencersConfigCLI struct {
+// L1ChallengePeriodConfigCLI represents the configurations needed to grant enclaves sequencer roles over CLI
+type L1ChallengePeriodConfigCLI struct {
 	l1HTTPURL           string
 	privateKey          string
 	mgmtContractAddress string
@@ -14,8 +14,8 @@ type L1GrantSequencersConfigCLI struct {
 }
 
 // ParseConfigCLI returns a NodeConfigCLI based the cli params and defaults.
-func ParseConfigCLI() *L1GrantSequencersConfigCLI {
-	cfg := &L1GrantSequencersConfigCLI{}
+func ParseConfigCLI() *L1ChallengePeriodConfigCLI {
+	cfg := &L1ChallengePeriodConfigCLI{}
 	flagUsageMap := getFlagUsageMap()
 
 	l1HTTPURL := flag.String(l1HTTPURLFlag, "http://eth2network:8025", flagUsageMap[l1HTTPURLFlag])

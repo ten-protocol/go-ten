@@ -25,7 +25,7 @@ func NewSetChallengePeriod(cfg *Config) (*SetChallengePeriod, error) {
 }
 
 func (s *SetChallengePeriod) Start() error {
-	fmt.Printf("Starting grant sequencers with config: %s\n", s.cfg)
+	fmt.Printf("Starting set challenge period with config: %s\n", s.cfg)
 	var err error
 	cmds := []string{
 		"npx",
