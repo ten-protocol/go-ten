@@ -728,7 +728,9 @@ func (sub *mockSubscription) Unsubscribe() {
 }
 
 func (sub *mockSubscription) publish(b *types.Header) {
-	sub.headCh <- b
+	if sub.headCh != nil {
+		sub.headCh <- b
+	}
 }
 
 func (sub *mockSubscription) publishAll(blocks []*types.Header) {
