@@ -6,10 +6,10 @@ import (
 
 // L1ContractDeployerConfigCLI represents the configurations passed into the deployer over CLI
 type L1ContractDeployerConfigCLI struct {
-	l1HTTPURL        string
-	privateKey       string
-	dockerImage      string
-	challengePeriod  int
+	l1HTTPURL   string
+	privateKey  string
+	dockerImage string
+	//challengePeriod  int
 	contractsEnvFile string
 }
 
@@ -22,13 +22,13 @@ func ParseConfigCLI() *L1ContractDeployerConfigCLI {
 	privateKey := flag.String(privateKeyFlag, "", flagUsageMap[privateKeyFlag])
 	dockerImage := flag.String(dockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", flagUsageMap[dockerImageFlag])
 	contractsEnvFile := flag.String(contractsEnvFileFlag, "", flagUsageMap[contractsEnvFileFlag])
-	challengePeriod := flag.Int(challengePeriodFlag, 0, flagUsageMap[challengePeriodFlag])
+	//challengePeriod := flag.Int(challengePeriodFlag, 0, flagUsageMap[challengePeriodFlag])
 	flag.Parse()
 
 	cfg.l1HTTPURL = *l1HTTPURL
 	cfg.privateKey = *privateKey
 	cfg.dockerImage = *dockerImage
-	cfg.challengePeriod = *challengePeriod
+	//cfg.challengePeriod = *challengePeriod
 	cfg.contractsEnvFile = *contractsEnvFile
 
 	return cfg
