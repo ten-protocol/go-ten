@@ -309,6 +309,10 @@ message RollupHeaderMsg {
   repeated CrossChainMsg CrossChainMessages = 7;
   bytes Signature = 8;
   uint64 LastBatchSeqNo = 9;
+  bytes BlobHash = 10;
+  bytes MessageRoot = 11;
+  bytes BlockHash = 12;
+  uint64 BlockNumber = 13;
 }
 
 message SecretResponseMsg {
