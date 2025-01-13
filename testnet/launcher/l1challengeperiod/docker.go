@@ -33,7 +33,7 @@ func (s *SetChallengePeriod) Start() error {
 		"run",
 		"--network",
 		"layer1",
-		"scripts/delay/001_challenge_period.ts",
+		"scripts/delay/001_set_challenge_period.ts",
 	}
 
 	envs := map[string]string{
