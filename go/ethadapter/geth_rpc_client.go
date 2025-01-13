@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/TwiN/gocache/v2"
+
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
@@ -18,8 +20,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethlog "github.com/ethereum/go-ethereum/log"
-
-	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -45,7 +45,7 @@ type gethRPCClient struct {
 	timeout    time.Duration     // the timeout for connecting to, or communicating with, the L1 node
 	logger     gethlog.Logger
 	rpcURL     string
-	blockCache *lru.Cache[gethcommon.Hash, *types.Header]
+	blockCache *gocache.Cache
 }
 
 // NewEthClientFromURL instantiates a new ethadapter.EthClient that connects to an ethereum node
@@ -57,19 +57,22 @@ func NewEthClientFromURL(rpcURL string, timeout time.Duration, logger gethlog.Lo
 
 	logger.Trace(fmt.Sprintf("Initialized eth node connection - addr: %s", rpcURL))
 
-	// cache recent blocks to avoid re-fetching them (they are often re-used for checking for forks etc.)
-	blkCache, err := lru.New[gethcommon.Hash, *types.Header](_defaultBlockCacheSize)
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize block cache - %w", err)
-	}
-
 	return &gethRPCClient{
 		client:     client,
 		timeout:    timeout,
 		logger:     logger,
 		rpcURL:     rpcURL,
-		blockCache: blkCache,
+		blockCache: newFifoCache(_defaultBlockCacheSize, 5*time.Minute),
 	}, nil
+}
+
+func newFifoCache(nrElem int, ttl time.Duration) *gocache.Cache {
+	cache := gocache.NewCache().WithMaxSize(nrElem).WithEvictionPolicy(gocache.FirstInFirstOut).WithDefaultTTL(ttl)
+	err := cache.StartJanitor()
+	if err != nil {
+		panic("failed to start cache.")
+	}
+	return cache
 }
 
 // NewEthClient instantiates a new ethadapter.EthClient that connects to an ethereum node
@@ -195,27 +198,33 @@ func (e *gethRPCClient) HeaderByNumber(n *big.Int) (*types.Header, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	return e.client.HeaderByNumber(ctx, n)
+	b, err := e.client.BlockByNumber(ctx, n)
+	if err != nil {
+		return nil, err
+	}
+	return b.Header(), nil
 }
 
 func (e *gethRPCClient) HeaderByHash(hash gethcommon.Hash) (*types.Header, error) {
-	block, found := e.blockCache.Get(hash)
+	cachedBlock, found := e.blockCache.Get(hash.Hex())
 	if found {
-		cp := *block
-		return &cp, nil
+		h, ok := cachedBlock.(types.Header)
+		if !ok {
+			return nil, fmt.Errorf("should not happen. could not cast cached block to header")
+		}
+		return &h, nil
 	}
 
 	// not in cache, fetch from RPC
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	block, err := e.client.HeaderByHash(ctx, hash)
+	block, err := e.client.BlockByHash(ctx, hash)
 	if err != nil {
 		return nil, err
 	}
-	e.blockCache.Add(hash, block)
-	cp := *block
-	return &cp, nil
+	e.blockCache.Set(hash.Hex(), *block.Header())
+	return block.Header(), nil
 }
 
 func (e *gethRPCClient) BlockByHash(hash gethcommon.Hash) (*types.Block, error) {
@@ -251,6 +260,7 @@ func (e *gethRPCClient) GetLogs(q ethereum.FilterQuery) ([]types.Log, error) {
 }
 
 func (e *gethRPCClient) Stop() {
+	e.blockCache.StopJanitor()
 	e.client.Close()
 }
 

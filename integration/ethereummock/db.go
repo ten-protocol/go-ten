@@ -52,7 +52,7 @@ func (n *blockResolverInMem) StoreBlock(_ context.Context, block *types.Block, _
 	return nil
 }
 
-func (n *blockResolverInMem) FetchBlock(_ context.Context, hash common.L1BlockHash) (*types.Block, error) {
+func (n *blockResolverInMem) FetchFullBlock(_ context.Context, hash common.L1BlockHash) (*types.Block, error) {
 	n.m.RLock()
 	defer n.m.RUnlock()
 	block, f := n.blockCache[hash]
@@ -61,6 +61,17 @@ func (n *blockResolverInMem) FetchBlock(_ context.Context, hash common.L1BlockHa
 		return nil, errutil.ErrNotFound
 	}
 	return block, nil
+}
+
+func (n *blockResolverInMem) FetchBlock(_ context.Context, hash common.L1BlockHash) (*types.Header, error) {
+	n.m.RLock()
+	defer n.m.RUnlock()
+	block, f := n.blockCache[hash]
+
+	if !f {
+		return nil, errutil.ErrNotFound
+	}
+	return block.Header(), nil
 }
 
 func (n *blockResolverInMem) FetchHeadBlock(_ context.Context) (*types.Block, error) {
@@ -80,7 +91,7 @@ func (n *blockResolverInMem) FetchHeadBlock(_ context.Context) (*types.Block, er
 }
 
 func (n *blockResolverInMem) ParentBlock(ctx context.Context, b *types.Header) (*types.Block, error) {
-	return n.FetchBlock(ctx, b.ParentHash)
+	return n.FetchFullBlock(ctx, b.ParentHash)
 }
 
 func (n *blockResolverInMem) IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool {
@@ -113,7 +124,7 @@ func (n *blockResolverInMem) IsBlockAncestor(ctx context.Context, block *types.H
 		return false
 	}
 
-	resolvedBlock, err := n.FetchBlock(ctx, maybeAncestor)
+	resolvedBlock, err := n.FetchFullBlock(ctx, maybeAncestor)
 	if err == nil {
 		if resolvedBlock.NumberU64() >= block.Number.Uint64() {
 			return false
@@ -177,7 +188,7 @@ func (m *Node) removeCommittedTransactions(
 			break
 		}
 
-		p, err := resolver.FetchBlock(ctx, b.ParentHash())
+		p, err := resolver.FetchFullBlock(ctx, b.ParentHash())
 		if err != nil {
 			m.logger.Crit("Could not retrieve parent block.", log.ErrKey, err)
 		}

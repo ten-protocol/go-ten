@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/gethutil"
+
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -178,7 +180,7 @@ func (m *Node) TransactionByHash(hash gethcommon.Hash) (*types.Transaction, bool
 			}
 		}
 
-		blk, err = m.BlockResolver.FetchBlock(context.Background(), blk.ParentHash())
+		blk, err = m.BlockResolver.FetchFullBlock(context.Background(), blk.ParentHash())
 		if err != nil {
 			return nil, false, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 		}
@@ -268,10 +270,12 @@ func (m *Node) BlockNumber() (uint64, error) {
 }
 
 func (m *Node) HeaderByNumber(n *big.Int) (*types.Header, error) {
+	if n == nil {
+		return m.FetchHeadBlock()
+	}
 	if n.Int64() == 0 {
 		return MockGenesisBlock.Header(), nil
 	}
-	// TODO this should be a method in the resolver
 	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -284,7 +288,7 @@ func (m *Node) HeaderByNumber(n *big.Int) (*types.Header, error) {
 			return blk.Header(), nil
 		}
 
-		blk, err = m.BlockResolver.FetchBlock(context.Background(), blk.ParentHash())
+		blk, err = m.BlockResolver.FetchFullBlock(context.Background(), blk.ParentHash())
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve parent for block in chain. Cause: %w", err)
 		}
@@ -293,7 +297,7 @@ func (m *Node) HeaderByNumber(n *big.Int) (*types.Header, error) {
 }
 
 func (m *Node) HeaderByHash(id gethcommon.Hash) (*types.Header, error) {
-	blk, err := m.BlockResolver.FetchBlock(context.Background(), id)
+	blk, err := m.BlockResolver.FetchFullBlock(context.Background(), id)
 	if err != nil {
 		return nil, fmt.Errorf("block could not be retrieved. Cause: %w", err)
 	}
@@ -301,7 +305,7 @@ func (m *Node) HeaderByHash(id gethcommon.Hash) (*types.Header, error) {
 }
 
 func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
-	blk, err := m.BlockResolver.FetchBlock(context.Background(), id)
+	blk, err := m.BlockResolver.FetchFullBlock(context.Background(), id)
 	if err != nil {
 		return nil, fmt.Errorf("block could not be retrieved. Cause: %w", err)
 	}
@@ -401,7 +405,7 @@ func (m *Node) Start() {
 	for {
 		select {
 		case p2pb := <-m.p2pCh: // Received from peers
-			_, err := m.BlockResolver.FetchBlock(context.Background(), p2pb.Hash())
+			_, err := m.BlockResolver.FetchFullBlock(context.Background(), p2pb.Hash())
 			// only process blocks if they haven't been processed before
 			if err != nil {
 				if errors.Is(err, errutil.ErrNotFound) {
@@ -414,7 +418,7 @@ func (m *Node) Start() {
 		case mb := <-m.miningCh: // Received from the local mining
 			head = m.processBlock(mb, head)
 			if bytes.Equal(head.Hash().Bytes(), mb.Hash().Bytes()) { // Only broadcast if it's the new head
-				p, err := m.BlockResolver.FetchBlock(context.Background(), mb.ParentHash())
+				p, err := m.BlockResolver.FetchFullBlock(context.Background(), mb.ParentHash())
 				if err != nil {
 					panic(fmt.Errorf("could not retrieve parent. Cause: %w", err))
 				}
@@ -440,7 +444,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Header) *types.Header {
 		m.logger.Crit("Failed to store block. Cause: %w", err)
 	}
 
-	_, err = m.BlockResolver.FetchBlock(context.Background(), b.Header().ParentHash)
+	_, err = m.BlockResolver.FetchFullBlock(context.Background(), b.Header().ParentHash)
 	// only proceed if the parent is available
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -458,7 +462,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Header) *types.Header {
 	// Check for Reorgs
 	if !m.BlockResolver.IsAncestor(context.Background(), b.Header(), head) {
 		m.stats.L1Reorg(m.l2ID)
-		fork, err := LCA(context.Background(), head, b.Header(), m.BlockResolver)
+		fork, err := gethutil.LCA(context.Background(), head, b.Header(), m.BlockResolver)
 		if err != nil {
 			m.logger.Error("Should not happen.", log.ErrKey, err)
 			return head
@@ -546,7 +550,7 @@ func (m *Node) startMining() {
 
 		case canonicalBlockHeader := <-m.canonicalCh:
 			// A new canonical block was found. Start a new round based on that block.
-			canonicalBlock, err := m.BlockResolver.FetchBlock(context.Background(), canonicalBlockHeader.Hash())
+			canonicalBlock, err := m.BlockResolver.FetchFullBlock(context.Background(), canonicalBlockHeader.Hash())
 			if err != nil {
 				panic(fmt.Errorf("could not fetch block. Cause: %w", err))
 			}
@@ -612,7 +616,7 @@ func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) []*type
 		if bytes.Equal(tempBlock.Hash().Bytes(), blockA.Hash().Bytes()) {
 			break
 		}
-		tb, err := m.BlockResolver.FetchBlock(context.Background(), tempBlock.ParentHash)
+		tb, err := m.BlockResolver.FetchFullBlock(context.Background(), tempBlock.ParentHash)
 		if err != nil {
 			panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
 		}

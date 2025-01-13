@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/gethutil"
+
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
@@ -100,14 +102,14 @@ func (r *DataService) Subscribe(handler host.L1BlockHandler) func() {
 
 // FetchNextBlock calculates the next canonical block that should be sent to requester after a given hash.
 // It returns the block and a bool for whether it is the latest known head
-func (r *DataService) FetchNextBlock(prevBlockHash gethcommon.Hash) (*types.Header, bool, error) {
-	if prevBlockHash == r.head {
-		// prevBlock is the latest known head
+func (r *DataService) FetchNextBlock(remoteHead gethcommon.Hash) (*types.Header, bool, error) {
+	if remoteHead == r.head {
+		// remoteHead is the latest known head
 		return nil, false, ErrNoNextBlock
 	}
 
-	if prevBlockHash == (gethcommon.Hash{}) {
-		// prevBlock is empty, so we are starting from genesis
+	if remoteHead == gethutil.EmptyHash {
+		// remoteHead is empty, so we are starting from genesis
 		blk, err := r.ethClient.HeaderByNumber(big.NewInt(0))
 		if err != nil {
 			return nil, false, fmt.Errorf("could not find genesis block - %w", err)
@@ -115,41 +117,45 @@ func (r *DataService) FetchNextBlock(prevBlockHash gethcommon.Hash) (*types.Head
 		return blk, false, nil
 	}
 
-	// the latestCanonAncestor will usually return the prevBlock itself but this step is necessary to walk back if there was a fork
-	lca, err := r.latestCanonAncestor(prevBlockHash)
+	// the latestCanonAncestor will usually return the remoteHead itself but this step is necessary to walk back if there was a fork
+	fork, err := r.latestCanonAncestor(remoteHead)
 	if err != nil {
 		return nil, false, err
 	}
+
 	// and send the canonical block at the height after that
 	// (which may be a fork, or it may just be the next on the same branch if we are catching-up)
-	blk, err := r.ethClient.HeaderByNumber(increment(lca.Number))
+	blk, err := r.ethClient.HeaderByNumber(increment(fork.CommonAncestor.Number))
 	if err != nil {
 		if errors.Is(err, ethereum.NotFound) {
 			return nil, false, ErrNoNextBlock
 		}
-		return nil, false, fmt.Errorf("could not find block after latest canon ancestor, height=%s - %w", increment(lca.Number), err)
+		return nil, false, fmt.Errorf("could not find block after latest canon ancestor, height=%s - %w", increment(fork.CommonAncestor.Number), err)
 	}
 
 	return blk, blk.Hash() == r.head, nil
 }
 
-func (r *DataService) latestCanonAncestor(blkHash gethcommon.Hash) (*types.Header, error) {
+func (r *DataService) FetchBlock(_ context.Context, blockHash common.L1BlockHash) (*types.Header, error) {
+	return r.ethClient.HeaderByHash(blockHash)
+}
+
+func (r *DataService) latestCanonAncestor(blkHash gethcommon.Hash) (*common.ChainFork, error) {
+	ctx := context.Background()
+	currentHead, err := r.ethClient.HeaderByNumber(nil)
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch L1 head- %w", err)
+	}
 	blk, err := r.ethClient.HeaderByHash(blkHash)
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch L1 block with hash=%s - %w", blkHash, err)
 	}
-	canonAtSameHeight, err := r.ethClient.HeaderByNumber(blk.Number)
+
+	fork, err := gethutil.LCA(ctx, currentHead, blk, r)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch L1 block at height=%d - %w", blk.Number, err)
+		return nil, fmt.Errorf("unable to calculate LCA - %w", err)
 	}
-	if blk.Hash() != canonAtSameHeight.Hash() {
-		empty := gethcommon.Hash{}
-		if blk.ParentHash == empty {
-			return blk, nil
-		}
-		return r.latestCanonAncestor(blk.ParentHash)
-	}
-	return blk, nil
+	return fork, nil
 }
 
 // GetTenRelevantTransactions processes logs in their natural order without grouping by transaction hash.
