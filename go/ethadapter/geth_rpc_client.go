@@ -164,14 +164,13 @@ func (e *gethRPCClient) Nonce(account gethcommon.Address) (uint64, error) {
 }
 
 func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscription) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
 	// we do not buffer here, we expect the consumer to always be ready to receive new blocks and not fall behind
 	ch := make(chan *types.Header)
 	var sub ethereum.Subscription
 	var err error
 	err = retry.Do(func() error {
+		ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
+		defer cancel()
 		sub, err = e.client.SubscribeNewHead(ctx, ch)
 		if err != nil {
 			e.logger.Warn("could not subscribe for new head blocks", log.ErrKey, err)

@@ -322,6 +322,7 @@ func (r *DataService) streamLiveBlocks() {
 }
 
 func (r *DataService) resetLiveStream() (chan *types.Header, ethereum.Subscription) {
+	r.logger.Info("reconnecting to L1 new Heads")
 	err := retry.Do(func() error {
 		if !r.running.Load() {
 			// break out of the loop if repository has stopped
@@ -339,7 +340,10 @@ func (r *DataService) resetLiveStream() (chan *types.Header, ethereum.Subscripti
 		r.logger.Warn("unable to reconnect to L1", log.ErrKey, err)
 		return nil, nil
 	}
-	return r.ethClient.BlockListener()
+
+	ch, s := r.ethClient.BlockListener()
+	r.logger.Info("successfully reconnected to L1 new Heads")
+	return ch, s
 }
 
 func (r *DataService) FetchBlockByHeight(height *big.Int) (*types.Header, error) {
