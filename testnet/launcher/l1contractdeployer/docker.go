@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/sanity-io/litter"
 	"io"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/node"
 
 	"github.com/docker/docker/api/types"
@@ -40,7 +40,7 @@ func (n *ContractDeployer) Start() error {
 		ports = append(ports, 9229)
 	}
 
-	cmds = append(cmds, "hardhat", "deploy", "--verbose", "--network", "layer1")
+	cmds = append(cmds, "hardhat", "deploy", "--network", "layer1")
 
 	envs := map[string]string{
 		"NETWORK_JSON": fmt.Sprintf(`
@@ -50,7 +50,7 @@ func (n *ContractDeployer) Start() error {
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
-                "deployment_scripts/core/",
+                "deployment_scripts/core/001_deploy_management_contract"
             ],
             "accounts": [ "%s" ]
         }

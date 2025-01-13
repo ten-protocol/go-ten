@@ -268,12 +268,12 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     }
 
     // Return the challenge period delay for message bus root
-    function getChallengePeriod() public view returns (uint256) {
+    function GetChallengePeriod() public view returns (uint256) {
         return challengePeriod;
     }
     
     // Sets the challenge period for message bus root (owner only)
-    function setChallengePeriod(uint256 _delay) public onlyOwner {
+    function SetChallengePeriod(uint256 _delay) public onlyOwner {
         challengePeriod = _delay;
     }
 }
