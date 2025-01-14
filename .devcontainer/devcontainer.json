@@ -25,7 +25,8 @@
 	},
 	"postCreateCommand": "bash -i ./.devcontainer/install-deps.sh",
 	"containerEnv": {
-		"LOCALHOST_URL": "http://host.docker.internal"
+		"LOCALHOST_URL": "http://host.docker.internal",
+		"IDE": "true"
 	}
 	
 	// Features to add to the dev container. More info: https://containers.dev/features.

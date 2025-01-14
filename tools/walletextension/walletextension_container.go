@@ -142,6 +142,9 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		}, {
 			Namespace: "web3",
 			Service:   rpcapi.NewWeb3API(walletExt),
+		}, {
+			Namespace: "ten",
+			Service:   rpcapi.NewTenAPI(walletExt),
 		},
 	})
 
