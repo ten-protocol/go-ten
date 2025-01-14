@@ -2,13 +2,16 @@ package components
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
@@ -49,23 +52,23 @@ func NewRollupConsumer(
 }
 
 // ProcessBlobsInBlock - processes the blobs in a block, extracts the rollups, verifies the rollups and stores them
-func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed *common.ProcessedL1Data) error {
+func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed *common.ProcessedL1Data) ([]common.ExtRollupMetadata, error) {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.BlockHashKey, processed.BlockHeader.Hash())
 
 	block := processed.BlockHeader
 	rollups, err := rc.extractAndVerifyRollups(processed)
 	if err != nil {
 		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
-		return err
+		return nil, err
 	}
 	if len(rollups) == 0 {
 		rc.logger.Trace("No rollups found in block", log.BlockHashKey, block.Hash())
-		return nil
+		return nil, nil
 	}
 
 	rollups, err = rc.getSignedRollup(rollups)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if len(rollups) > 1 {
@@ -73,7 +76,8 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed
 		rc.logger.Warn(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
 	}
 
-	for _, rollup := range rollups {
+	rollupMetadata := make([]common.ExtRollupMetadata, len(rollups))
+	for idx, rollup := range rollups {
 		l1CompressionBlock, err := rc.storage.FetchBlock(ctx, rollup.Header.CompressionL1Head)
 		if err != nil {
 			rc.logger.Warn("Can't process rollup because the l1 block used for compression is not available", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
@@ -81,10 +85,10 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed
 		}
 		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(ctx, l1CompressionBlock.Number)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if canonicalBlockByHeight.Hash() != l1CompressionBlock.Hash() {
-			rc.logger.Warn("Skipping rollup because it was compressed on top of a non-canonical rollup", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			rc.logger.Warn("Skipping rollup because it was compressed on top of a non-canonical block", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			continue
 		}
 		// read batch data from rollup, verify and store it
@@ -92,15 +96,83 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed
 		if err != nil {
 			rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			// todo - issue challenge as a validator
-			return err
+			return nil, err
 		}
 		if err := rc.storage.StoreRollup(ctx, rollup, internalHeader); err != nil {
 			rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
-			return err
+			return nil, err
+		}
+
+		batches, err := rc.storage.FetchCanonicalBatchesBetween(ctx, internalHeader.FirstBatchSequence.Uint64(), rollup.Header.LastBatchSeqNo)
+		if err != nil {
+			return nil, err
+		}
+
+		crossChainRoot, serializedTree, err := ComputeCrossChainRootFromBatches(batches)
+		if err != nil {
+			return nil, err
+		}
+
+		if rollup.Header.CrossChainRoot != crossChainRoot {
+			rc.logger.Error("Rollup cross chain root does not match computed cross chain root", "rollup_hash", rollup.Hash(), "computed_root", crossChainRoot, "stored_root", rollup.Header.CrossChainRoot, "batches", batches)
+			return nil, fmt.Errorf("rollup cross chain root does not match computed cross chain root")
+		}
+
+		rollupMetadata[idx] = common.ExtRollupMetadata{
+			CrossChainTree: serializedTree,
 		}
 	}
 
-	return nil
+	if len(rollupMetadata) < len(rollups) {
+		panic("some rollups were not processed")
+	}
+
+	return rollupMetadata, nil
+}
+
+func UnmarshalCrossChainTree(serializedTree common.SerializedCrossChainTree) ([][]interface{}, error) {
+	xchainTree := make([][]interface{}, 0) // ["v", "0xblablablabla"]
+	err := json.Unmarshal(serializedTree, &xchainTree)
+	if err != nil {
+		return nil, err
+	}
+
+	for k, value := range xchainTree {
+		xchainTree[k][1] = gethcommon.HexToHash(value[1].(string))
+	}
+	return xchainTree, nil
+}
+
+// todo - move this to a more appropriate place
+func ComputeCrossChainRootFromBatches(batches []*common.BatchHeader) (gethcommon.Hash, common.SerializedCrossChainTree, error) {
+	xchainTrees := make([][]interface{}, 0)
+	for _, batch := range batches {
+		if len(batch.CrossChainTree) == 0 {
+			// Batch with no outbound messages; nothing to do.
+			continue
+		}
+		xchainTree, err := UnmarshalCrossChainTree(batch.CrossChainTree)
+		if err != nil {
+			return gethcommon.MaxHash, nil, err
+		}
+		xchainTrees = append(xchainTrees, xchainTree...)
+	}
+
+	if len(xchainTrees) == 0 {
+		return gethcommon.MaxHash, nil, nil
+	}
+
+	tree, err := smt.Of(xchainTrees, crosschain.CrossChainEncodings)
+	if err != nil {
+		panic(err)
+	}
+
+	serializedTree, err := json.Marshal(xchainTrees)
+	if err != nil {
+		return gethcommon.MaxHash, nil, err
+	}
+
+	return gethcommon.Hash(tree.GetRoot()), serializedTree, nil
 }
 
 func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*common.ExtRollup, error) {

@@ -27,18 +27,6 @@ func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.Attes
 	}
 }
 
-func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (*generated.BlockSubmissionResponseMsg, error) {
-	if response == nil {
-		return nil, fmt.Errorf("no response that could be converted to a message")
-	}
-
-	msg := &generated.BlockSubmissionResponseMsg{
-		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
-	}
-
-	return msg, nil
-}
-
 func ToSecretRespMsg(responses []*common.ProducedSecretResponse) []*generated.SecretResponseMsg {
 	respMsgs := make([]*generated.SecretResponseMsg, len(responses))
 
@@ -70,9 +58,33 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 	return respList
 }
 
+func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (*generated.BlockSubmissionResponseMsg, error) {
+	if response == nil {
+		return nil, fmt.Errorf("no response that could be converted to a message")
+	}
+
+	msg := &generated.BlockSubmissionResponseMsg{
+		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
+	}
+	for _, metadata := range response.RollupMetadata {
+		msg.RollupMetadata = append(msg.RollupMetadata, &generated.ExtRollupMetadataResponseMsg{
+			CrossChainTree: metadata.CrossChainTree,
+		})
+	}
+
+	return msg, nil
+}
+
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (*common.BlockSubmissionResponse, error) {
+	rollupMetadata := make([]common.ExtRollupMetadata, len(msg.RollupMetadata))
+	for i, metadata := range msg.RollupMetadata {
+		rollupMetadata[i] = common.ExtRollupMetadata{
+			CrossChainTree: metadata.CrossChainTree,
+		}
+	}
 	return &common.BlockSubmissionResponse{
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
+		RollupMetadata:          rollupMetadata,
 	}, nil
 }
 
@@ -129,7 +141,7 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 		GasUsed:          header.GasUsed,
 		Time:             header.Time,
 		BaseFee:          baseFee,
-		TransferTree:     header.CrossChainRoot.Bytes(),
+		CrossChainRoot:   header.CrossChainRoot.Bytes(),
 		Coinbase:         header.Coinbase.Bytes(),
 		CrossChainTree:   header.CrossChainTree,
 	}
@@ -175,7 +187,7 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 		GasLimit:         header.GasLimit,
 		GasUsed:          header.GasUsed,
 		Time:             header.Time,
-		CrossChainRoot:   gethcommon.BytesToHash(header.TransferTree),
+		CrossChainRoot:   gethcommon.BytesToHash(header.CrossChainRoot),
 		BaseFee:          big.NewInt(0).SetUint64(header.BaseFee),
 		Coinbase:         gethcommon.BytesToAddress(header.Coinbase),
 		CrossChainTree:   header.CrossChainTree,
@@ -195,9 +207,11 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		return nil
 	}
 	headerMsg := generated.RollupHeaderMsg{
-		CompressionL1Head: header.CompressionL1Head.Bytes(),
-		Signature:         header.Signature,
-		LastBatchSeqNo:    header.LastBatchSeqNo,
+		CompressionL1Head:   header.CompressionL1Head.Bytes(),
+		Signature:           header.Signature,
+		LastBatchSeqNo:      header.LastBatchSeqNo,
+		CrossChainRoot:      header.CrossChainRoot.Bytes(),
+		CompressionL1Number: header.CompressionL1Number.Bytes(),
 	}
 
 	return &headerMsg
@@ -223,9 +237,11 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 	}
 
 	return &common.RollupHeader{
-		CompressionL1Head: gethcommon.BytesToHash(header.CompressionL1Head),
-		Signature:         header.Signature,
-		LastBatchSeqNo:    header.LastBatchSeqNo,
+		CompressionL1Head:   gethcommon.BytesToHash(header.CompressionL1Head),
+		CompressionL1Number: big.NewInt(0).SetBytes(header.CompressionL1Number),
+		CrossChainRoot:      gethcommon.BytesToHash(header.CrossChainRoot),
+		LastBatchSeqNo:      header.LastBatchSeqNo,
+		Signature:           header.Signature,
 	}
 }
 

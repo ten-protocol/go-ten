@@ -498,7 +498,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	}
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block, rollupTxs, syncContracts)
+	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, syncContracts)
 
 	if err != nil {
 		return false, fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
@@ -512,14 +512,14 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs []*common.L1RollupTx, syncContracts bool) {
+func (g *Guardian) processL1BlockTransactions(block *common.L1Block, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, syncContracts bool) {
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block.Header())
 	if err != nil {
 		g.logger.Error("Could not add block to host db.", log.ErrKey, err)
 	}
 
-	for _, rollup := range rollupTxs {
+	for idx, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
 			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
@@ -529,7 +529,12 @@ func (g *Guardian) processL1BlockTransactions(block *common.L1Block, rollupTxs [
 		if err != nil {
 			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
 		} else {
-			err = g.storage.AddRollup(r, metaData, block)
+			// TODO - This is a temporary fix, arrays should always match in practice...
+			extMetadata := common.ExtRollupMetadata{}
+			if len(metadatas) > idx {
+				extMetadata = metadatas[idx]
+			}
+			err = g.storage.AddRollup(r, &extMetadata, metaData, block)
 		}
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
@@ -663,7 +668,7 @@ func (g *Guardian) periodicRollupProduction() {
 			rollupJustPublished := time.Since(lastSuccessfulRollup) >= g.blockTime
 			if timeExpired || sizeExceeded && !rollupJustPublished {
 				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded, "rollupJustPublished", rollupJustPublished)
-				producedRollup, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
+				producedRollup, _, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
 				if err != nil {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue

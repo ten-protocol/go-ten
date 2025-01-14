@@ -15,7 +15,8 @@
 		"vscode": {
 			"extensions": [
 				"766b.go-outliner",
-				"golang.go"
+				"golang.go",
+				"zxh404.vscode-proto3"
 			],
 			"settings": {
 				"go.testTimeout": "10m"

@@ -96,6 +96,15 @@ func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.
 	return result.tx, result.BlockNumber == nil, nil
 }
 
+func (ac *AuthObsClient) GetCrossChainProof(ctx context.Context, messageType string, crossChainMessage gethcommon.Hash) (hexutil.Bytes, error) {
+	var result hexutil.Bytes
+	err := ac.rpcClient.CallContext(ctx, &result, "ten_getCrossChainProof", messageType, crossChainMessage)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // senderFromServer is a types.Signer that remembers the sender address returned by the RPC
 // server. It is stored in the transaction's sender address cache to avoid an additional
 // request in TransactionSender.

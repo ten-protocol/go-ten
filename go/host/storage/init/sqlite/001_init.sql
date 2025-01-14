@@ -18,6 +18,18 @@ create table if not exists rollup_host
     compression_block int NOT NULL references block_host
 );
 
+create table if not exists cross_chain_message_host
+(
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    message_hash      binary(32) NOT NULL UNIQUE,
+    rollup_id         int NOT NULL references rollup_host,
+    message_type      char(1) NOT NULL CHECK (message_type IN ('m', 'v'))
+);
+
+create index IDX_CCM_HASH_HOST on cross_chain_message_host (message_hash);
+create index IDX_CCM_ROLLUP_HOST on cross_chain_message_host (rollup_id);
+
+
 create index IDX_ROLLUP_HASH_HOST on rollup_host (hash);
 create index IDX_ROLLUP_PROOF_HOST on rollup_host (compression_block);
 create index IDX_ROLLUP_SEQ_HOST on rollup_host (start_seq, end_seq);

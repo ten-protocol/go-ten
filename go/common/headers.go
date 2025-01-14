@@ -166,12 +166,10 @@ type RollupHeader struct {
 	CompressionL1Head   L1BlockHash
 	CompressionL1Number *big.Int
 
-	PayloadHash common.Hash // The hash of the compressed batches. TODO
-	Signature   []byte      // The signature of the sequencer enclave on the payload hash
-
 	CrossChainRoot common.Hash // The root hash of the cross chain tree.
-
 	LastBatchSeqNo uint64
+
+	Signature []byte // The signature of the sequencer enclave on the payload hash
 }
 
 // CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.

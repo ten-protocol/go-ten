@@ -99,7 +99,7 @@ type EnclaveAdmin interface {
 
 	// CreateRollup - will create a new rollup by going through the sequencer if the node is a sequencer
 	// or panic otherwise.
-	CreateRollup(ctx context.Context, fromSeqNo uint64) (*ExtRollup, SystemError)
+	CreateRollup(ctx context.Context, fromSeqNo uint64) (*ExtRollup, *ExtRollupMetadata, SystemError)
 
 	// StreamL2Updates - will stream any new batches as they are created/detected
 	// All will be queued in the channel that has been returned.
@@ -149,6 +149,7 @@ type Enclave interface {
 type BlockSubmissionResponse struct {
 	ProducedSecretResponses []*ProducedSecretResponse // The responses to any secret requests in the ingested L1 block.
 	RejectError             *errutil.BlockRejectError // If block was rejected, contains information about what block to submit next.
+	RollupMetadata          []ExtRollupMetadata       // Metadata for each rollup that the host needs to prepare APIs
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block

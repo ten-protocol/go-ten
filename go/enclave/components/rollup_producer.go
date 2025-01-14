@@ -7,7 +7,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -15,7 +14,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 
-	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
@@ -89,23 +87,10 @@ func exportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqN
 		return nil, err
 	}
 
-	if len(canonicalBatches) == 0 {
-		return nil, errutil.ErrCrossChainBundleNoBatches
-	}
-
-	crossChainHashes := make([][]interface{}, 0)
-	for _, batch := range canonicalBatches {
-		if batch.CrossChainRoot != gethcommon.BigToHash(gethcommon.Big0) {
-			crossChainHashes = append(crossChainHashes, []interface{}{batch.CrossChainRoot})
-		}
-	}
-
-	rollupXchainTree, err := smt.Of(crossChainHashes, []string{smt.SOL_BYTES32})
+	root, _, err := ComputeCrossChainRootFromBatches(canonicalBatches)
 	if err != nil {
 		return nil, err
 	}
 
-	rollupXchainRoot := gethcommon.BytesToHash(rollupXchainTree.GetRoot())
-
-	return &rollupXchainRoot, nil
+	return &root, nil
 }

@@ -187,7 +187,7 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 
 	// TODO verify proof provided with block blockData.Proof
 
-	result, err := e.ingestL1Block(ctx, blockData)
+	result, rollupMetadata, err := e.ingestL1Block(ctx, blockData)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
@@ -201,7 +201,10 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData)}
+	bsr := &common.BlockSubmissionResponse{
+		ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData),
+		RollupMetadata:          rollupMetadata,
+	}
 	return bsr, nil
 }
 
@@ -272,7 +275,7 @@ func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty 
 	return nil
 }
 
-func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
+func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, *common.ExtRollupMetadata, common.SystemError) {
 	if !e.isActiveSequencer(ctx) {
 		e.logger.Crit("Only the active sequencer can create rollups")
 	}
@@ -283,15 +286,15 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 	defer e.dataInMutex.RUnlock()
 
 	if e.registry.HeadBatchSeq() == nil {
-		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
+		return nil, nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
 	}
 
-	rollup, err := e.sequencer().CreateRollup(ctx, fromSeqNo)
+	rollup, metadata, err := e.sequencer().CreateRollup(ctx, fromSeqNo)
 	// TODO do we need to store the blob hashes here so we can check them against our records?
 	if err != nil {
-		return nil, responses.ToInternalError(err)
+		return nil, nil, responses.ToInternalError(err)
 	}
-	return rollup, nil
+	return rollup, metadata, nil
 }
 
 func (e *enclaveAdminService) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
@@ -469,7 +472,7 @@ func (e *enclaveAdminService) streamEventsForNewHeadBatch(ctx context.Context, b
 	}
 }
 
-func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*components.BlockIngestionType, error) {
+func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*components.BlockIngestionType, []common.ExtRollupMetadata, error) {
 	e.logger.Info("Start ingesting block", log.BlockHashKey, processed.BlockHeader.Hash())
 	ingestion, err := e.l1BlockProcessor.Process(ctx, processed)
 	if err != nil {
@@ -479,10 +482,10 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		} else {
 			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
 		}
-		return nil, err
+		return nil, nil, err
 	}
 
-	err = e.rollupConsumer.ProcessBlobsInBlock(ctx, processed)
+	rollupMetadata, err := e.rollupConsumer.ProcessBlobsInBlock(ctx, processed)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block rollups", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
@@ -503,10 +506,10 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		e.registry.OnL1Reorg(ingestion)
 		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return ingestion, nil
+	return ingestion, rollupMetadata, nil
 }
 
 func (e *enclaveAdminService) rejectBlockErr(ctx context.Context, cause error) *errutil.BlockRejectError {

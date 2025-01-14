@@ -113,7 +113,10 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // solc-ignore-next-line unused-param
     function AddRollup(Structs.MetaRollup calldata r) public signedBySequencerEnclave(r) {
         AppendRollup(r);
-        merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
+
+        if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
+            merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
+        }
         emit RollupAdded(r.Hash);
     }
 

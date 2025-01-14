@@ -8,12 +8,13 @@ import (
 
 // these are public RPC methods exposed by a TEN node
 const (
-	BatchNumber      = "ten_batchNumber"
-	ChainID          = "ten_chainId"
-	GetBatchByHash   = "ten_getBatchByHash"
-	GetBatchByNumber = "ten_getBatchByNumber"
-	GetCode          = "ten_getCode"
-	GasPrice         = "ten_gasPrice"
+	BatchNumber        = "ten_batchNumber"
+	ChainID            = "ten_chainId"
+	GetBatchByHash     = "ten_getBatchByHash"
+	GetBatchByNumber   = "ten_getBatchByNumber"
+	GetCode            = "ten_getCode"
+	GasPrice           = "ten_gasPrice"
+	GetCrossChainProof = "ten_getCrossChainProof"
 
 	Health = "ten_health"
 	Config = "ten_config"

@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/responses"
 
@@ -56,6 +58,18 @@ func (api *TenAPI) RpcKey() ([]byte, error) {
 		return nil, err
 	}
 	return api.rpcKey, nil
+}
+
+func (api *TenAPI) GetCrossChainProof(ctx context.Context, messageType string, crossChainMessage gethcommon.Hash) (hexutil.Bytes, error) {
+	proof, err := api.host.Storage().FetchCrossChainProof(messageType, crossChainMessage)
+	if err != nil {
+		return nil, err
+	}
+	encodedProof, err := rlp.EncodeToBytes(proof)
+	if err != nil {
+		return nil, err
+	}
+	return encodedProof, nil
 }
 
 func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.EncryptedRPCRequest) (responses.EnclaveResponse, error) {

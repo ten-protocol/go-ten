@@ -71,7 +71,7 @@ func NewClient(enclaveRPCAddress string, enclaveRPCTimeout time.Duration, logger
 		protoClient:       generated.NewEnclaveProtoClient(connection),
 		connection:        connection,
 		enclaveRPCAddress: enclaveRPCAddress,
-		enclaveRPCTimeout: enclaveRPCTimeout,
+		enclaveRPCTimeout: 5 * time.Minute,
 		logger:            logger,
 	}
 }
@@ -346,20 +346,20 @@ func (c *Client) CreateBatch(ctx context.Context, skipIfEmpty bool) common.Syste
 	return err
 }
 
-func (c *Client) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
+func (c *Client) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, *common.ExtRollupMetadata, common.SystemError) {
 	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "CreateRollup rpc call")
 
 	response, err := c.protoClient.CreateRollup(ctx, &generated.CreateRollupRequest{
 		FromSequenceNumber: &fromSeqNo,
 	})
 	if err != nil {
-		return nil, syserr.NewRPCError(err)
+		return nil, nil, syserr.NewRPCError(err)
 	}
 	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+		return nil, nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	return rpc.FromExtRollupMsg(response.Msg), nil
+	return rpc.FromExtRollupMsg(response.Msg), &common.ExtRollupMetadata{CrossChainTree: response.Metadata.CrossChainTree}, nil
 }
 
 func (c *Client) DebugTraceTransaction(ctx context.Context, hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
