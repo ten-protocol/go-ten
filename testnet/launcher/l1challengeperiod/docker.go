@@ -25,7 +25,6 @@ func NewSetChallengePeriod(cfg *Config) (*SetChallengePeriod, error) {
 }
 
 func (s *SetChallengePeriod) Start() error {
-	fmt.Printf("Starting set challenge period with config: %s\n", s.cfg)
 	var err error
 	cmds := []string{
 		"npx",
@@ -48,8 +47,6 @@ func (s *SetChallengePeriod) Start() error {
 		"MGMT_CONTRACT_ADDRESS": s.cfg.mgmtContractAddress,
 		"L1_CHALLENGE_PERIOD":   strconv.Itoa(s.cfg.challengePeriod),
 	}
-
-	fmt.Printf("Starting set challenge period script. MgntContractAddress: %s, ChallengePeriod: %d\n", s.cfg.mgmtContractAddress, s.cfg.challengePeriod)
 
 	containerID, err := docker.StartNewContainer(
 		"set-challenge-period",
