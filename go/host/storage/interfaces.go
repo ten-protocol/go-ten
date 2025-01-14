@@ -53,7 +53,7 @@ type BatchResolver interface {
 	// FetchTransactionListing returns a paginated list of public transaction data
 	FetchTransactionListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error)
 	// FetchCrossChainProof returns the proof for a cross chain message
-	FetchCrossChainProof(messageType string, crossChainMessage gethcommon.Hash) ([][]byte, error)
+	FetchCrossChainProof(messageType string, crossChainMessage gethcommon.Hash) ([][]byte, gethcommon.Hash, error)
 }
 
 type BlockResolver interface {

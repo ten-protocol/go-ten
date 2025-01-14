@@ -132,7 +132,7 @@ func (c *inMemTenClient) getCrossChainProof(result interface{}, args []interface
 	if err != nil {
 		return fmt.Errorf("failed to get cross chain proof: %w", err)
 	}
-	*result.(*hexutil.Bytes) = proof
+	*result.(*clientapi.CrossChainProof) = proof
 	return nil
 }
 

@@ -60,16 +60,24 @@ func (api *TenAPI) RpcKey() ([]byte, error) {
 	return api.rpcKey, nil
 }
 
-func (api *TenAPI) GetCrossChainProof(ctx context.Context, messageType string, crossChainMessage gethcommon.Hash) (hexutil.Bytes, error) {
-	proof, err := api.host.Storage().FetchCrossChainProof(messageType, crossChainMessage)
+type CrossChainProof struct {
+	Proof hexutil.Bytes
+	Root  gethcommon.Hash
+}
+
+func (api *TenAPI) GetCrossChainProof(ctx context.Context, messageType string, crossChainMessage gethcommon.Hash) (CrossChainProof, error) {
+	proof, root, err := api.host.Storage().FetchCrossChainProof(messageType, crossChainMessage)
 	if err != nil {
-		return nil, err
+		return CrossChainProof{}, err
 	}
 	encodedProof, err := rlp.EncodeToBytes(proof)
 	if err != nil {
-		return nil, err
+		return CrossChainProof{}, err
 	}
-	return encodedProof, nil
+	return CrossChainProof{
+		Proof: encodedProof,
+		Root:  root,
+	}, nil
 }
 
 func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.EncryptedRPCRequest) (responses.EnclaveResponse, error) {

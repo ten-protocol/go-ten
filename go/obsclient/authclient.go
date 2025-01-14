@@ -8,6 +8,7 @@ import (
 	"math/big"
 
 	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
+	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -96,11 +97,11 @@ func (ac *AuthObsClient) TransactionByHash(ctx context.Context, hash gethcommon.
 	return result.tx, result.BlockNumber == nil, nil
 }
 
-func (ac *AuthObsClient) GetCrossChainProof(ctx context.Context, messageType string, crossChainMessage gethcommon.Hash) (hexutil.Bytes, error) {
-	var result hexutil.Bytes
+func (ac *AuthObsClient) GetCrossChainProof(ctx context.Context, messageType string, crossChainMessage gethcommon.Hash) (clientapi.CrossChainProof, error) {
+	var result clientapi.CrossChainProof
 	err := ac.rpcClient.CallContext(ctx, &result, "ten_getCrossChainProof", messageType, crossChainMessage)
 	if err != nil {
-		return nil, err
+		return clientapi.CrossChainProof{}, err
 	}
 	return result, nil
 }

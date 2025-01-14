@@ -111,10 +111,10 @@ func (s *storageImpl) AddBlock(b *types.Header) error {
 	return nil
 }
 
-func (s *storageImpl) FetchCrossChainProof(messageType string, crossChainMessage gethcommon.Hash) ([][]byte, error) {
+func (s *storageImpl) FetchCrossChainProof(messageType string, crossChainMessage gethcommon.Hash) ([][]byte, gethcommon.Hash, error) {
 	tree, err := hostdb.GetCrossChainMessagesTree(s.db, crossChainMessage)
 	if err != nil {
-		return nil, err
+		return nil, gethcommon.Hash{}, err
 	}
 
 	for k, value := range tree {
@@ -123,13 +123,13 @@ func (s *storageImpl) FetchCrossChainProof(messageType string, crossChainMessage
 
 	merkleTree, err := smt.Of(tree, []string{smt.SOL_STRING, smt.SOL_BYTES32})
 	if err != nil {
-		return nil, err
+		return nil, gethcommon.Hash{}, err
 	}
 	proof, err := merkleTree.GetProof([]interface{}{messageType, crossChainMessage})
 	if err != nil {
-		return nil, err
+		return nil, gethcommon.Hash{}, err
 	}
-	return proof, nil
+	return proof, gethcommon.Hash(merkleTree.GetRoot()), nil
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*common.ExtBatch, error) {

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
@@ -19,6 +18,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -318,11 +318,6 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		ti.logger.Error("Failed to retrieve receipt for withdrawal transaction", log.ErrKey, err)
 		return
 	}
-	header, err := ti.rpcHandles.TenWalletRndClient(fromWallet).GetBatchHeaderByHash(receipt.BlockHash)
-	if err != nil {
-		ti.logger.Error("Failed to retrieve batch header for withdrawal transaction", log.ErrKey, err)
-		return
-	}
 
 	logs := make([]types.Log, len(receipt.Logs))
 	for i, log := range receipt.Logs {
@@ -336,7 +331,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 
 	vTransfers := crosschain.ValueTransfers(transfers)
 
-	var proof hexutil.Bytes
+	var proof clientapi.CrossChainProof
 	for {
 		proof, err = ti.rpcHandles.TenWalletRndClient(fromWallet).GetCrossChainProof(ti.ctx, "v", vTransfers.ForMerkleTree()[0][1].(gethcommon.Hash))
 		if err != nil {
@@ -350,12 +345,12 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		break
 	}
 
-	if len(proof) == 0 {
+	if len(proof.Proof) == 0 {
 		return
 	}
 
 	proofBytes := [][]byte{}
-	if err := rlp.DecodeBytes(proof, &proofBytes); err != nil {
+	if err := rlp.DecodeBytes(proof.Proof, &proofBytes); err != nil {
 		panic("unable to decode proof")
 	}
 
@@ -391,7 +386,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		opts,
 		ManagementContract.StructsValueTransferMessage(vTransfers[0]),
 		proof32,
-		header.CrossChainRoot,
+		proof.Root,
 	)
 	if err != nil {
 		ti.logger.Error("Failed to extract value transfer from L2", log.ErrKey, err)
