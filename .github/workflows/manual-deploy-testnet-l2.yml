@@ -438,7 +438,7 @@ jobs:
            -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
            -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
            -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
-           -l1_challenge_period={{ vars.L1_CHALLENGE_PERIOD }}
+           -l1_challenge_period=${{ vars.L1_CHALLENGE_PERIOD }} \
            echo "Setting challenge period to ${{ vars.L1_CHALLENGE_PERIOD }}"
 
       -  name: 'Save challenge period container logs'
