@@ -102,9 +102,9 @@ func (rc *rollupConsumerImpl) GetRollupsFromL1Data(processed *common.ProcessedL1
 		return nil, err
 	}
 
-	if len(rollups) > 1 {
-		return nil, fmt.Errorf(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
-	}
+	//if len(rollups) > 1 && !rc.MgmtContractLib.IsMock() {
+	//	return nil, fmt.Errorf(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
+	//}
 	return rollups, nil
 }
 
@@ -136,6 +136,8 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 		return nil, err
 	}
 
+	txsSeen := make(map[gethcommon.Hash]bool)
+
 	for i, tx := range rollupTxs {
 		t := rc.MgmtContractLib.DecodeTx(tx.Transaction)
 		if t == nil {
@@ -145,6 +147,12 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 		rollupHashes, ok := t.(*common.L1RollupHashes)
 		if !ok {
 			continue
+		}
+
+		// prevent the case where someone pushes a blob to the same slot. multiple rollups can be found in a block,
+		// but they must come from unique transactions
+		if txsSeen[tx.Transaction.Hash()] {
+			return nil, fmt.Errorf("multiple rollups from same transaction: %s", tx.Transaction.Hash())
 		}
 
 		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
@@ -160,6 +168,7 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 		}
 
 		rollups = append(rollups, r)
+		txsSeen[tx.Transaction.Hash()] = true
 
 		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, processed.BlockHeader.Hash())
 	}
