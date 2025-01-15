@@ -34,6 +34,7 @@ async function buildMerkleProof(tree: any, message: any) {
 }
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+    return;
     const l2Network = hre; 
     const l1Network = hre.companionNetworks.layer1!;
     const { deployer } = await hre.getNamedAccounts();

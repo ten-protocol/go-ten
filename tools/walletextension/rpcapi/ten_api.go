@@ -21,10 +21,10 @@ type CrossChainProof struct {
 	Root  gethcommon.Hash
 }
 
-func (api *TenAPI) GetCrossChainProof(ctx context.Context, messageType string, crossChainMessage gethcommon.Hash) (CrossChainProof, error) {
+func (api *TenAPI) GetCrossChainProof(ctx context.Context, messageType string, crossChainMessage gethcommon.Hash) (*CrossChainProof, error) {
 	proof, err := UnauthenticatedTenRPCCall[CrossChainProof](ctx, api.we, &cache.Cfg{Type: cache.LatestBatch}, "ten_getCrossChainProof", messageType, crossChainMessage)
 	if err != nil {
-		return CrossChainProof{}, err
+		return nil, err
 	}
-	return *proof, nil
+	return proof, nil
 }
