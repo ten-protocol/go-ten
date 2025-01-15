@@ -82,7 +82,7 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 	return nil
 }
 
-// GetRollupsFromL1Data - extracts the rollups from the processed L1 data
+// GetRollupsFromL1Data - extracts the rollups from the processed L1 data and checks sequencer signature on them
 func (rc *rollupConsumerImpl) GetRollupsFromL1Data(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error) {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer get rollups from L1 data", log.BlockHashKey, processed.BlockHeader.Hash())
 
@@ -90,7 +90,7 @@ func (rc *rollupConsumerImpl) GetRollupsFromL1Data(processed *common.ProcessedL1
 	rollups, err := rc.extractAndVerifyRollups(processed)
 	if err != nil {
 		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
-		return nil, err
+		return nil, err // if multiple rollups are found with the same tx hash we will return here
 	}
 	if len(rollups) == 0 {
 		rc.logger.Trace("No rollups found in block", log.BlockHashKey, block.Hash())
@@ -102,9 +102,10 @@ func (rc *rollupConsumerImpl) GetRollupsFromL1Data(processed *common.ProcessedL1
 		return nil, err
 	}
 
-	//if len(rollups) > 1 && !rc.MgmtContractLib.IsMock() {
-	//	return nil, fmt.Errorf(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
-	//}
+	if len(rollups) > 0 {
+		// this is allowed as long as they come from unique transactions
+		rc.logger.Trace(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
+	}
 	return rollups, nil
 }
 
@@ -122,11 +123,9 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 	return signedRollup, nil
 }
 
-// todo - when processing the rollup, instead of looking up batches one by one, compare the last sequence number from the db with the ones in the rollup
-// extractAndVerifyRollups returns a list of the rollups published in this block
-// It processes each transaction, attempting to extract and verify rollups
-// If a transaction is not a rollup or fails verification, it's skipped
-// The function only returns an error if there's a critical failure in rollup reconstruction
+// extractAndVerifyRollups extracts rollups from L1 transactions in the processed block.
+// It verifies blob hashes match the rollup hashes and ensures each transaction only contains one rollup.
+// Returns an error if multiple rollups are found in the same transaction or if rollup reconstruction fails.
 func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error) {
 	rollupTxs := processed.GetEvents(common.RollupTx)
 	rollups := make([]*common.ExtRollup, 0, len(rollupTxs))
