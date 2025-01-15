@@ -13,6 +13,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
@@ -294,7 +295,7 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 	return nil
 }
 
-func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, error) {
+func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.BlobRollup, error) {
 	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
 
 	currentL1Head, err := s.blockProcessor.GetHead(ctx)
@@ -317,7 +318,18 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 		return nil, fmt.Errorf("failed to sign created rollup: %w", err)
 	}
 
-	return extRollup, nil
+	// create blobs
+	encodedRollup, err := common.EncodeRollup(extRollup)
+	if err != nil {
+		panic(err)
+	}
+
+	blobs, err := ethadapter.EncodeBlobs(encodedRollup)
+	if err != nil {
+		panic(err)
+	}
+
+	return &common.BlobRollup{Rollup: extRollup, Blobs: blobs}, nil
 }
 
 func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Header, nonCanonicalL1Path []common.L1BlockHash, canonicalL1Path []common.L1BlockHash) error {

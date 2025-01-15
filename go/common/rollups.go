@@ -2,6 +2,8 @@ package common
 
 import (
 	"sync/atomic"
+
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 )
 
 // ExtRollup is an encrypted form of rollup used when passing the rollup around outside an enclave.
@@ -10,6 +12,12 @@ type ExtRollup struct {
 	CalldataRollupHeader []byte        // encrypted header useful for recreating the batches
 	BatchPayloads        []byte        // The transactions included in the rollup, in external/encrypted form.
 	hash                 atomic.Value
+}
+
+// BlobRollup is a rollup with ExtRollup and blobs
+type BlobRollup struct {
+	Rollup *ExtRollup
+	Blobs  []*kzg4844.Blob
 }
 
 // Hash returns the keccak256 hash of the rollup's header.

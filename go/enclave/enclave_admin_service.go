@@ -271,12 +271,15 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
 	}
 
-	rollup, err := e.sequencer().CreateRollup(ctx, fromSeqNo)
+	rollupWithBlobs, err := e.sequencer().CreateRollup(ctx, fromSeqNo)
 	// TODO do we need to store the blob hashes here so we can check them against our records?
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
-	return rollup, nil
+
+	// TODO: Use blobs here?
+
+	return rollupWithBlobs.Rollup, nil
 }
 
 func (e *enclaveAdminService) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
