@@ -125,10 +125,10 @@ func txsAreMinted(t *testing.T, startPort int, w wallet.Wallet) {
 	assert.Nil(t, err)
 
 	toAddr := datagenerator.RandomAddress()
-	estimatedTx, err := ethClient.PrepareTransactionToSend(context.Background(), &types.LegacyTx{
+	estimatedTx, err := ethadapter.SetTxGasPrice(context.Background(), ethClient, &types.LegacyTx{
 		To:    &toAddr,
 		Value: big.NewInt(100),
-	}, w.Address())
+	}, w.Address(), w.GetNonceAndIncrement(), 0)
 	assert.Nil(t, err)
 
 	signedTx, err := w.SignTransaction(estimatedTx)
