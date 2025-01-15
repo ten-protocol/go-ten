@@ -101,43 +101,6 @@ type Node struct {
 	tenSeqEnclaveID common.EnclaveID
 }
 
-func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, _ gethcommon.Address) (types.TxData, error) {
-	switch tx := txData.(type) {
-	case *types.LegacyTx:
-		return createLegacyTx(txData)
-	case *types.BlobTx:
-		return createBlobTx(txData)
-	default:
-		return nil, fmt.Errorf("unsupported transaction type: %T", tx)
-	}
-}
-
-func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ uint64, _ int) (types.TxData, error) {
-	return m.PrepareTransactionToSend(ctx, txData, from)
-}
-
-func createLegacyTx(txData types.TxData) (types.TxData, error) {
-	tx := types.NewTx(txData)
-	return &types.LegacyTx{
-		Nonce:    123,
-		GasPrice: tx.GasPrice(),
-		Gas:      tx.Gas(),
-		To:       tx.To(),
-		Value:    tx.Value(),
-		Data:     tx.Data(),
-	}, nil
-}
-
-func createBlobTx(txData types.TxData) (types.TxData, error) {
-	tx := types.NewTx(txData)
-	return &types.BlobTx{
-		To:         *tx.To(),
-		Data:       tx.Data(),
-		BlobHashes: tx.BlobHashes(),
-		Sidecar:    tx.BlobTxSidecar(),
-	}, nil
-}
-
 func (m *Node) SendTransaction(tx *types.Transaction) error {
 	m.Network.BroadcastTx(tx)
 	return nil
@@ -632,6 +595,14 @@ func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) []*type
 
 func (m *Node) CallContract(ethereum.CallMsg) ([]byte, error) {
 	return nil, nil
+}
+
+func (m *Node) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	return big.NewInt(1), nil
+}
+
+func (m *Node) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
+	return 100_0000_000, nil
 }
 
 func (m *Node) EthClient() *ethclient_ethereum.Client {
