@@ -16,7 +16,8 @@
 			"extensions": [
 				"766b.go-outliner",
 				"golang.go",
-				"zxh404.vscode-proto3"
+				"zxh404.vscode-proto3",
+				"NomicFoundation.hardhat-solidity"
 			],
 			"settings": {
 				"go.testTimeout": "10m"

@@ -33,6 +33,8 @@ async function waitForRootPublished(management, msg, proof, root, provider: Ethe
     var gas_estimate = null
     const l1Ethers = new HardhatEthersProvider(provider, "layer1")    
 
+    console.log(`balance of management contract = ${await l1Ethers.getBalance(management.getAddress())}`)
+
     const startTime = Date.now();
     while (gas_estimate === null) {
         try {
@@ -103,7 +105,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`Proof = ${JSON.stringify(proof, null, 2)}`)
 
     var managementContract = await hre.ethers.getContractAt("ManagementContract", mgmtContractAddress);
-    const estimation = await waitForRootPublished(managementContract, msg, proof.proof, proof.root, hre.companionNetworks.layer1.provider)
+
+    const decoded_proof = hre.ethers.decodeRlp(proof.Proof)
+
+    const estimation = await waitForRootPublished(managementContract, msg, decoded_proof, proof.Root, hre.companionNetworks.layer1.provider)
     console.log(`Estimation for native value extraction = ${estimation}`)
 };
 
