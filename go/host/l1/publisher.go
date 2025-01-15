@@ -304,7 +304,7 @@ func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, 
 	p.sendingLock.Lock()
 	defer p.sendingLock.Unlock()
 
-	nonce, err := p.ethClient.EthClient().PendingNonceAt(context.Background(), p.hostWallet.Address())
+	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
 	if err != nil {
 		p.logger.Error("Unable to get nonce for management contract", log.ErrKey, err)
 		return fmt.Errorf("unable to get nonce for management contract. Cause: %w", err)
@@ -422,7 +422,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		retries++ // count each attempt so we can increase gas price
 
 		// update the tx gas price before each attempt
-		tx, err := p.ethClient.PrepareTransactionToRetry(p.sendingContext, tx, p.hostWallet.Address(), nonce, retries)
+		tx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retries)
 		if err != nil {
 			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 		}

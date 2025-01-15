@@ -2,10 +2,10 @@ package ethereummock
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/rlp"
-
+	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -60,20 +60,31 @@ func makeMap(txs types.Transactions) map[common.TxHash]*types.Transaction {
 }
 
 // EncodedL1Block the encoded version of an L1 block.
-type EncodedL1Block []byte
+type (
+	EncodedL1Block []byte
+	extblock       struct {
+		Header      *types.Header
+		Txs         []*types.Transaction
+		Uncles      []*types.Header
+		Withdrawals []*types.Withdrawal `rlp:"optional"`
+	}
+)
 
 func EncodeBlock(b *types.Block) (EncodedL1Block, error) {
-	encoded, err := rlp.EncodeToBytes(b)
-	if err != nil {
-		return nil, fmt.Errorf("could not encode block to bytes. Cause: %w", err)
-	}
-	return encoded, nil
+	return json.Marshal(&extblock{
+		Header: b.Header(),
+		Txs:    b.Transactions(),
+	})
 }
 
 func (eb EncodedL1Block) DecodeBlock() (*types.Block, error) {
-	b := types.Block{}
-	if err := rlp.DecodeBytes(eb, &b); err != nil {
+	var b extblock
+	if err := json.Unmarshal(eb, &b); err != nil {
 		return nil, fmt.Errorf("could not decode block from bytes. Cause: %w", err)
 	}
-	return &b, nil
+	return types.NewBlock(b.Header, &types.Body{
+		Transactions: b.Txs,
+		Uncles:       nil,
+		Withdrawals:  nil,
+	}, nil, trie.NewStackTrie(nil)), nil
 }

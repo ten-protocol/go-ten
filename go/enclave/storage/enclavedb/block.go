@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -17,7 +18,7 @@ import (
 )
 
 func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
-	header, err := rlp.EncodeToBytes(b)
+	header, err := encodeHeader(b)
 	if err != nil {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
@@ -236,14 +237,22 @@ func fetchBlockHeader(ctx context.Context, db *sql.DB, whereQuery string, args .
 		}
 		return nil, err
 	}
-	h := new(types.Header)
-	if err := rlp.Decode(bytes.NewReader([]byte(header)), h); err != nil {
-		return nil, fmt.Errorf("could not decode l1 block header. Cause: %w", err)
-	}
-
-	return h, nil
+	return decodeHeader([]byte(header))
 }
 
 func fetchBlock(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*types.Header, error) {
 	return fetchBlockHeader(ctx, db, whereQuery, args...)
+}
+
+func encodeHeader(h *types.Header) ([]byte, error) {
+	return json.Marshal(h)
+}
+
+func decodeHeader(b []byte) (*types.Header, error) {
+	h := new(types.Header)
+	err := json.Unmarshal(b, h)
+	if err != nil {
+		return nil, fmt.Errorf("could not decode l1 block header. Cause: %w", err)
+	}
+	return h, nil
 }
