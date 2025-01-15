@@ -48,30 +48,9 @@ func NewRollupConsumer(
 	}
 }
 
-// ProcessBlobsInBlock - processes the blobs in a block, extracts the rollups, verifies the rollups and stores them
-func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed *common.ProcessedL1Data) error {
-	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.BlockHashKey, processed.BlockHeader.Hash())
-
-	block := processed.BlockHeader
-	rollups, err := rc.extractAndVerifyRollups(processed)
-	if err != nil {
-		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
-		return err
-	}
-	if len(rollups) == 0 {
-		rc.logger.Trace("No rollups found in block", log.BlockHashKey, block.Hash())
-		return nil
-	}
-
-	rollups, err = rc.getSignedRollup(rollups)
-	if err != nil {
-		return err
-	}
-
-	if len(rollups) > 1 {
-		// todo - we need to sort this out
-		rc.logger.Warn(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
-	}
+// ProcessRollups - processes the rollups found in the block, verifies the rollups and stores them
+func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*common.ExtRollup) error {
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", log.RollupHashKey, rollups[0].Hash())
 
 	for _, rollup := range rollups {
 		l1CompressionBlock, err := rc.storage.FetchBlock(ctx, rollup.Header.CompressionL1Head)
@@ -101,6 +80,32 @@ func (rc *rollupConsumerImpl) ProcessBlobsInBlock(ctx context.Context, processed
 	}
 
 	return nil
+}
+
+// GetRollupsFromL1Data - extracts the rollups from the processed L1 data
+func (rc *rollupConsumerImpl) GetRollupsFromL1Data(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error) {
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer get rollups from L1 data", log.BlockHashKey, processed.BlockHeader.Hash())
+
+	block := processed.BlockHeader
+	rollups, err := rc.extractAndVerifyRollups(processed)
+	if err != nil {
+		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
+		return nil, err
+	}
+	if len(rollups) == 0 {
+		rc.logger.Trace("No rollups found in block", log.BlockHashKey, block.Hash())
+		return nil, nil
+	}
+
+	rollups, err = rc.getSignedRollup(rollups)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(rollups) > 1 {
+		return nil, fmt.Errorf(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
+	}
+	return rollups, nil
 }
 
 func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*common.ExtRollup, error) {
