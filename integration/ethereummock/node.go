@@ -99,6 +99,7 @@ type Node struct {
 
 	// this mock state is to simulate the permissioning of the sequencer enclave, the L1 now 'knows the seq enclave ID'
 	tenSeqEnclaveID common.EnclaveID
+	head            *types.Header
 }
 
 func (m *Node) SendTransaction(tx *types.Transaction) error {
@@ -276,11 +277,7 @@ func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 }
 
 func (m *Node) FetchHeadBlock() (*types.Header, error) {
-	block, err := m.BlockResolver.FetchHeadBlock(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
-	}
-	return block.Header(), nil
+	return m.head, nil
 }
 
 func (m *Node) Info() ethadapter.Info {
@@ -453,6 +450,7 @@ func (m *Node) setHead(b *types.Header) *types.Header {
 
 	// notify the client subscriptions
 	m.subMu.Lock()
+	m.head = b
 	for _, s := range m.subs {
 		sub := s
 		go sub.publish(b)
