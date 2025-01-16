@@ -44,7 +44,6 @@ const (
 	EnclaveProto_GetTotalContractCount_FullMethodName = "/generated.EnclaveProto/GetTotalContractCount"
 	EnclaveProto_EnclavePublicConfig_FullMethodName   = "/generated.EnclaveProto/EnclavePublicConfig"
 	EnclaveProto_MakeActive_FullMethodName            = "/generated.EnclaveProto/MakeActive"
-	EnclaveProto_AddSequencer_FullMethodName          = "/generated.EnclaveProto/AddSequencer"
 )
 
 // EnclaveProtoClient is the client API for EnclaveProto service.
@@ -76,7 +75,6 @@ type EnclaveProtoClient interface {
 	GetTotalContractCount(ctx context.Context, in *GetTotalContractCountRequest, opts ...grpc.CallOption) (*GetTotalContractCountResponse, error)
 	EnclavePublicConfig(ctx context.Context, in *EnclavePublicConfigRequest, opts ...grpc.CallOption) (*EnclavePublicConfigResponse, error)
 	MakeActive(ctx context.Context, in *MakeActiveRequest, opts ...grpc.CallOption) (*MakeActiveResponse, error)
-	AddSequencer(ctx context.Context, in *AddSequencerRequest, opts ...grpc.CallOption) (*AddSequencerResponse, error)
 }
 
 type enclaveProtoClient struct {
@@ -346,16 +344,6 @@ func (c *enclaveProtoClient) MakeActive(ctx context.Context, in *MakeActiveReque
 	return out, nil
 }
 
-func (c *enclaveProtoClient) AddSequencer(ctx context.Context, in *AddSequencerRequest, opts ...grpc.CallOption) (*AddSequencerResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AddSequencerResponse)
-	err := c.cc.Invoke(ctx, EnclaveProto_AddSequencer_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // EnclaveProtoServer is the server API for EnclaveProto service.
 // All implementations must embed UnimplementedEnclaveProtoServer
 // for forward compatibility.
@@ -385,7 +373,6 @@ type EnclaveProtoServer interface {
 	GetTotalContractCount(context.Context, *GetTotalContractCountRequest) (*GetTotalContractCountResponse, error)
 	EnclavePublicConfig(context.Context, *EnclavePublicConfigRequest) (*EnclavePublicConfigResponse, error)
 	MakeActive(context.Context, *MakeActiveRequest) (*MakeActiveResponse, error)
-	AddSequencer(context.Context, *AddSequencerRequest) (*AddSequencerResponse, error)
 	mustEmbedUnimplementedEnclaveProtoServer()
 }
 
@@ -470,9 +457,6 @@ func (UnimplementedEnclaveProtoServer) EnclavePublicConfig(context.Context, *Enc
 }
 func (UnimplementedEnclaveProtoServer) MakeActive(context.Context, *MakeActiveRequest) (*MakeActiveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method MakeActive not implemented")
-}
-func (UnimplementedEnclaveProtoServer) AddSequencer(context.Context, *AddSequencerRequest) (*AddSequencerResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddSequencer not implemented")
 }
 func (UnimplementedEnclaveProtoServer) mustEmbedUnimplementedEnclaveProtoServer() {}
 func (UnimplementedEnclaveProtoServer) testEmbeddedByValue()                      {}
@@ -938,24 +922,6 @@ func _EnclaveProto_MakeActive_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EnclaveProto_AddSequencer_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddSequencerRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EnclaveProtoServer).AddSequencer(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: EnclaveProto_AddSequencer_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EnclaveProtoServer).AddSequencer(ctx, req.(*AddSequencerRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 // EnclaveProto_ServiceDesc is the grpc.ServiceDesc for EnclaveProto service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1058,10 +1024,6 @@ var EnclaveProto_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MakeActive",
 			Handler:    _EnclaveProto_MakeActive_Handler,
-		},
-		{
-			MethodName: "AddSequencer",
-			Handler:    _EnclaveProto_AddSequencer_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

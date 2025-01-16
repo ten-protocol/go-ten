@@ -388,27 +388,19 @@ func (s *storageImpl) IsAncestor(ctx context.Context, block *types.Header, maybe
 	return s.IsAncestor(ctx, p, maybeAncestor)
 }
 
-func (s *storageImpl) IsBlockAncestor(ctx context.Context, block *types.Header, maybeAncestor common.L1BlockHash) bool {
-	defer s.logDuration("IsBlockAncestor", measure.NewStopwatch())
-	resolvedBlock, err := s.FetchBlock(ctx, maybeAncestor)
-	if err != nil {
-		return false
-	}
-	return s.IsAncestor(ctx, block, resolvedBlock)
-}
-
 func (s *storageImpl) HealthCheck(ctx context.Context) (bool, error) {
 	defer s.logDuration("HealthCheck", measure.NewStopwatch())
-	seqNo, err := s.FetchCurrentSequencerNo(ctx)
-	if err != nil {
-		return false, err
-	}
-
-	if seqNo == nil {
-		return false, fmt.Errorf("no batches are stored")
-	}
-
-	return true, nil
+	return s.db != nil, nil
+	//seqNo, err := s.FetchCurrentSequencerNo(ctx)
+	//if err != nil {
+	//	return false, err
+	//}
+	//
+	//if seqNo == nil {
+	//	return false, fmt.Errorf("no batches are stored")
+	//}
+	//
+	//return true, nil
 }
 
 func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2BatchHash) (*state.StateDB, error) {
@@ -457,7 +449,7 @@ func (s *storageImpl) GetEnclavePubKey(ctx context.Context, enclaveId common.Enc
 	return s.cachingService.ReadEnclavePubKey(ctx, enclaveId, func() (*AttestedEnclave, error) {
 		key, nodeType, err := enclavedb.FetchAttestation(ctx, s.db.GetSQLDB(), enclaveId)
 		if err != nil {
-			return nil, fmt.Errorf("could not retrieve attestation key for address %s. Cause: %w", enclaveId, err)
+			return nil, fmt.Errorf("could not retrieve attestation key for enclave %s. Cause: %w", enclaveId, err)
 		}
 
 		publicKey, err := gethcrypto.DecompressPubkey(key)

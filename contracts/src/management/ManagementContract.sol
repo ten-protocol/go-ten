@@ -60,6 +60,8 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     bytes32 public lastBatchHash;
 
+    uint256 private challengePeriod;
+
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         lastBatchSeqNo = 0;
@@ -92,7 +94,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return isBundleSaved[bundleHash];
     }
 
-// TODO: ensure challenge period is added on top of block timestamp.
     function pushCrossChainMessages(Structs.HeaderCrossChainData calldata crossChainData) internal {
         uint256 messagesLength = crossChainData.messages.length;
         for (uint256 i = 0; i < messagesLength; ++i) {
@@ -224,5 +225,15 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     function GetImportantContractKeys() public view returns(string[] memory) {
         return importantContractKeys;
+    }
+
+    // Return the challenge period delay for message bus root
+    function GetChallengePeriod() public view returns (uint256) {
+        return challengePeriod;
+    }
+
+    // Sets the challenge period for message bus root (owner only)
+    function SetChallengePeriod(uint256 _delay) public onlyOwner {
+        challengePeriod = _delay;
     }
 }

@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -68,7 +67,6 @@ func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
 		NodeID:                    "",
 		HostAddress:               "127.0.0.1:10000",
 		RPCAddress:                "127.0.0.1:11000",
-		NodeType:                  common.ActiveSequencer,
 		L1ChainID:                 1337,
 		TenChainID:                443,
 		WillAttest:                false, // todo (config) - attestation should be on by default before production release

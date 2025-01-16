@@ -9,66 +9,34 @@ import (
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
 
-	"github.com/ten-protocol/go-ten/go/enclave/core"
-
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/wallet"
-)
-
-// todo (#1549) - implement with cryptography epic
-const ( // DO NOT USE OR CHANGE THIS KEY IN THE REST OF THE CODEBASE
-	ownerKeyHex = "6e384a07a01263518a18a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"
 )
 
 type MessageBusManager struct {
 	messageBusAddress *gethcommon.Address
 	storage           storage.Storage
 	logger            gethlog.Logger
-	wallet            wallet.Wallet
 }
 
-func NewObscuroMessageBusManager(
-	storage storage.Storage, /*key *ecdsa.PrivateKey,*/
-	chainID *big.Int,
+func NewTenMessageBusManager(
+	storage storage.Storage,
 	logger gethlog.Logger,
 ) Manager {
 	// todo (#1549) - implement with cryptography epic, remove this key and use the DeriveKey
-	key, _ := crypto.HexToECDSA(ownerKeyHex)
 	logger = logger.New(log.CmpKey, log.CrossChainCmp)
-	wallet := wallet.NewInMemoryWalletFromPK(chainID, key, logger)
-
-	logger.Info(fmt.Sprintf("L2 Cross Chain Owner Address: %s", wallet.Address().Hex()))
 
 	return &MessageBusManager{
 		messageBusAddress: nil,
 		storage:           storage,
 		logger:            logger,
-		wallet:            wallet,
 	}
-}
-
-func (m *MessageBusManager) IsSyntheticTransaction(transaction *common.L2Tx) bool {
-	sender, err := core.GetExternalTxSigner(transaction)
-	if err != nil {
-		return false
-	}
-	// The message bus manager considers the transaction synthetic only if the sender is
-	// the owner identity which should be available only to enclaves.
-	return bytes.Equal(sender.Bytes(), m.GetOwner().Bytes())
-}
-
-// GetOwner - Returns the address of the identity owning the message bus.
-func (m *MessageBusManager) GetOwner() common.L2Address {
-	return m.wallet.Address()
 }
 
 // GetBusAddress - Returns the L2 address of the message bus contract.
@@ -77,7 +45,7 @@ func (m *MessageBusManager) GetBusAddress() *common.L2Address {
 	return m.messageBusAddress
 }
 
-// DeriveMessageBusAddress - Derives the address of the message bus contract.
+// Initialize - Derives the address of the message bus contract.
 func (m *MessageBusManager) Initialize(systemAddresses common.SystemContractAddresses) error {
 	address, ok := systemAddresses["MessageBus"]
 	if !ok {
@@ -86,28 +54,6 @@ func (m *MessageBusManager) Initialize(systemAddresses common.SystemContractAddr
 
 	m.messageBusAddress = address
 	return nil
-}
-
-// GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
-func (m *MessageBusManager) GenerateMessageBusDeployTx() (*common.L2Tx, error) {
-	tx := &types.LegacyTx{
-		Nonce:    0, // The first transaction of the owner identity should always be deploying the contract
-		Value:    gethcommon.Big0,
-		Gas:      5_000_000,       // It's quite the expensive contract.
-		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
-		Data:     gethcommon.FromHex(MessageBus.MessageBusMetaData.Bin),
-		To:       nil, // Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.
-	}
-
-	stx, err := m.wallet.SignTransaction(tx)
-	if err != nil {
-		return nil, err
-	}
-
-	m.logger.Trace(fmt.Sprintf("Generated synthetic deployment transaction for the MessageBus contract %s - TX HASH: %s", m.messageBusAddress.Hex(), stx.Hash().Hex()),
-		log.CmpKey, log.CrossChainCmp)
-
-	return stx, nil
 }
 
 // ExtractOutboundMessages - Finds relevant logs in the receipts and converts them to cross chain messages.

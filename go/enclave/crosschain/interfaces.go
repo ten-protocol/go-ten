@@ -31,20 +31,11 @@ type BlockMessageExtractor interface {
 }
 
 type Manager interface {
-	// IsSyntheticTransaction - Determines if a given L2 transaction is coming from the synthetic owner address.
-	IsSyntheticTransaction(transaction *common.L2Tx) bool
-
-	// GetOwner - Returns the address of the identity owning the message bus.
-	GetOwner() common.L2Address
-
 	// GetBusAddress - Returns the L2 address of the message bus contract.
 	GetBusAddress() *common.L2Address
 
 	// Initialize - Derives the address of the message bus contract.
 	Initialize(systemAddresses common.SystemContractAddresses) error
-
-	// GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
-	GenerateMessageBusDeployTx() (*common.L2Tx, error)
 
 	// ExtractOutboundMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
 	ExtractOutboundMessages(ctx context.Context, receipts common.L2Receipts) (common.CrossChainMessages, error)

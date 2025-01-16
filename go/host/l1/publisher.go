@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/gethutil"
+
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
@@ -131,7 +133,7 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethcommon.Hash, error) {
 	encodedAttestation, err := common.EncodeAttestation(attestation)
 	if err != nil {
-		return gethcommon.Hash{}, errors.Wrap(err, "could not encode attestation")
+		return gethutil.EmptyHash, errors.Wrap(err, "could not encode attestation")
 	}
 	l1tx := &common.L1RequestSecretTx{
 		Attestation: encodedAttestation,
@@ -152,7 +154,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 	// we wait until the secret req transaction has succeeded before we start polling for the secret
 	err = p.publishTransaction(requestSecretTx)
 	if err != nil {
-		return gethcommon.Hash{}, err
+		return gethutil.EmptyHash, err
 	}
 
 	return l1Head.Hash(), nil

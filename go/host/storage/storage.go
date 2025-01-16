@@ -53,7 +53,7 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 	return nil
 }
 
-func (s *storageImpl) AddRollup(rollup *common.ExtRollup, extMetadata *common.ExtRollupMetadata, metadata *common.PublicRollupMetadata, block *common.L1Block) error {
+func (s *storageImpl) AddRollup(rollup *common.ExtRollup, extMetadata *common.ExtRollupMetadata, metadata *common.PublicRollupMetadata, block *types.Header) error {
 	// Check if the Header is already stored
 	_, err := hostdb.GetRollupHeader(s.db, rollup.Header.Hash())
 	if err == nil {

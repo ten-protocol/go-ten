@@ -5,7 +5,6 @@ import (
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/config"
 )
 
@@ -75,8 +74,6 @@ type EnclaveConfig struct {
 	DebugNamespaceEnabled    bool
 	GasLocalExecutionCapFlag uint64
 
-	// The type of the node. - todo - remove
-	NodeType common.NodeType
 	// The public peer-to-peer IP address of the host the enclave service is tied to
 	// This is required to advertise for node discovery, and we include it in the attestation
 	// todo - should we really bind the physical address to the attestation.
@@ -87,7 +84,6 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 	return &EnclaveConfig{
 		NodeID:                    tenCfg.Node.ID,
 		HostAddress:               tenCfg.Node.HostAddress,
-		NodeType:                  tenCfg.Node.NodeType,
 		WillAttest:                tenCfg.Enclave.EnableAttestation,
 		StoreExecutedTransactions: tenCfg.Enclave.StoreExecutedTransactions,
 

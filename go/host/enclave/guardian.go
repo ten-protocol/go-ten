@@ -57,9 +57,10 @@ type guardianServiceLocator interface {
 // - if it is an active sequencer then the guardian will trigger batch/rollup creation
 // - guardian provides access to the enclave data and reports the enclave status for other services - acting as a gatekeeper
 type Guardian struct {
-	hostData      host.Identity
-	state         *StateTracker // state machine that tracks our view of the enclave's state
-	enclaveClient common.Enclave
+	hostData          host.Identity
+	isActiveSequencer bool
+	state             *StateTracker // state machine that tracks our view of the enclave's state
+	enclaveClient     common.Enclave
 
 	sl      guardianServiceLocator
 	storage storage.Storage
@@ -133,9 +134,6 @@ func (g *Guardian) Start() error {
 	}
 
 	go g.mainLoop()
-	if g.hostData.IsSequencer {
-		g.startSequencerProcesses()
-	}
 
 	// subscribe for L1 and P2P data
 	txUnsub := g.sl.P2P().SubscribeForTx(g)
@@ -196,7 +194,7 @@ func (g *Guardian) GetEnclaveID() *common.EnclaveID {
 }
 
 func (g *Guardian) PromoteToActiveSequencer() error {
-	if g.hostData.IsSequencer {
+	if g.isActiveSequencer {
 		// this shouldn't happen and shouldn't be an issue if it does, but good to have visibility on it
 		g.logger.Error("Unable to promote to active sequencer, already active")
 		return nil
@@ -205,7 +203,7 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 	if err != nil {
 		return errors.Wrap(err, "could not promote enclave to active sequencer")
 	}
-	g.hostData.IsSequencer = true
+	g.isActiveSequencer = true
 	g.startSequencerProcesses()
 	return nil
 }
@@ -214,8 +212,8 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 // Note: The L1 processing behaviour has two modes based on the state, either
 // - enclave is behind: lookup blocks to feed it 1-by-1 (see `catchupWithL1()`), ignore new live blocks that arrive here
 // - enclave is up-to-date: feed it these live blocks as they arrive, no need to lookup blocks
-func (g *Guardian) HandleBlock(block *types.Block) {
-	g.logger.Debug("Received L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
+func (g *Guardian) HandleBlock(block *types.Header) {
+	g.logger.Debug("Received L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
 	// record the newest block we've seen
 	g.state.OnReceivedBlock(block.Hash())
 	if !g.state.InSyncWithL1() {
@@ -235,7 +233,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
 	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
-	if g.hostData.IsSequencer || !g.state.IsUpToDate() {
+	if g.isActiveSequencer || !g.state.IsUpToDate() {
 		return // ignore batches until we're up-to-date
 	}
 	// todo - @matt - does it make sense to use a timeout context?
@@ -441,8 +439,8 @@ func (g *Guardian) catchupWithL1() error {
 func (g *Guardian) catchupWithL2() error {
 	// while we are behind the L2 head and still running:
 	for g.running.Load() && g.state.GetStatus() == L2Catchup {
-		if g.hostData.IsSequencer {
-			return errors.New("l2 catchup is not supported for sequencer")
+		if g.hostData.IsSequencer && g.isActiveSequencer {
+			return errors.New("l2 catchup is not supported for active sequencer")
 		}
 		// request the next batch by sequence number (based on what the enclave has been fed so far)
 		prevHead := g.state.GetEnclaveL2Head()
@@ -464,8 +462,8 @@ func (g *Guardian) catchupWithL2() error {
 
 // returns false if the block was not processed
 // todo - @matt - think about removing the TryLock
-func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, error) {
-	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number())
+func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, error) {
+	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
 	if !g.submitDataLock.TryLock() {
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
 		return false, nil
@@ -486,7 +484,7 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 			// this is most common when we are returning to a previous fork and the enclave has already seen some of the blocks on it
 			// note: logging this because we don't expect it to happen often and would like visibility on that.
 			g.logger.Info("L1 block already processed by enclave, trying the next block", "block", block.Hash())
-			nextHeight := big.NewInt(0).Add(block.Number(), big.NewInt(1))
+			nextHeight := big.NewInt(0).Add(block.Number, big.NewInt(1))
 			nextCanonicalBlock, err := g.sl.L1Data().FetchBlockByHeight(nextHeight)
 			if err != nil {
 				return false, fmt.Errorf("failed to fetch next block after forking block=%s: %w", block.Hash(), err)
@@ -500,10 +498,6 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	g.state.OnProcessedBlock(block.Hash())
 	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, syncContracts)
 
-	if err != nil {
-		return false, fmt.Errorf("submitted block to enclave but could not store the block processing result. Cause: %w", err)
-	}
-
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
 	err = g.publishSharedSecretResponses(resp.ProducedSecretResponses)
 	if err != nil {
@@ -512,9 +506,9 @@ func (g *Guardian) submitL1Block(block *common.L1Block, isLatest bool) (bool, er
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *common.L1Block, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, syncContracts bool) {
+func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, syncContracts bool) {
 	// TODO (@will) this should be removed and pulled from the L1
-	err := g.storage.AddBlock(block.Header())
+	err := g.storage.AddBlock(block)
 	if err != nil {
 		g.logger.Error("Could not add block to host db.", log.ErrKey, err)
 	}
@@ -559,7 +553,7 @@ func (g *Guardian) publishSharedSecretResponses(scrtResponses []*common.Produced
 	for _, scrtResponse := range scrtResponses {
 		// todo (#1624) - implement proper protocol so only one host responds to this secret requests initially
 		// 	for now we just have the genesis host respond until protocol implemented
-		if !g.hostData.IsGenesis {
+		if !g.hostData.IsSequencer {
 			g.logger.Trace("Not genesis node, not publishing response to secret request.",
 				"requester", scrtResponse.RequesterID)
 			return nil

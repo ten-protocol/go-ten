@@ -24,7 +24,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -82,7 +81,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	daEncryptionService := crypto.NewDAEncryptionService(sharedSecretService, logger)
 	rpcKeyService := crypto.NewRPCKeyService(sharedSecretService, logger)
 
-	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, big.NewInt(config.TenChainID), logger)
+	crossChainProcessors := crosschain.New(&config.MessageBusAddress, storage, logger)
 
 	// initialise system contracts
 	scb := system.NewSystemContractCallbacks(storage, &config.SystemContractOwner, logger)
@@ -213,13 +212,6 @@ func (e *enclaveImpl) Unsubscribe(id gethrpc.ID) common.SystemError {
 		return systemError
 	}
 	return e.rpcAPI.Unsubscribe(id)
-}
-
-func (e *enclaveImpl) AddSequencer(id common.EnclaveID, proof types.Receipt) common.SystemError {
-	if systemError := checkStopping(e.stopControl); systemError != nil {
-		return systemError
-	}
-	return e.adminAPI.AddSequencer(id, proof)
 }
 
 func (e *enclaveImpl) MakeActive() common.SystemError {
