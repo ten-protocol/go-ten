@@ -432,36 +432,36 @@ func (m *Node) processBlock(b *types.Block, head *types.Header) *types.Header {
 
 // Notifies the Miner to start mining on the new block and the aggregator to produce rollups
 func (m *Node) setHead(b *types.Header) *types.Header {
+	m.subMu.Lock()
+	defer m.subMu.Unlock()
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return b
 	}
 
 	// notify the client subscriptions
-	m.subMu.Lock()
 	m.head = b
 	for _, s := range m.subs {
 		sub := s
 		go sub.publish(b)
 	}
-	m.subMu.Unlock()
 	m.canonicalCh <- b
 
 	return b
 }
 
 func (m *Node) setFork(blocks []*types.Header) *types.Header {
+	m.subMu.Lock()
+	defer m.subMu.Unlock()
 	head := blocks[len(blocks)-1]
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return head
 	}
 
 	// notify the client subs
-	m.subMu.Lock()
 	for _, s := range m.subs {
 		sub := s
 		go sub.publishAll(blocks)
 	}
-	m.subMu.Unlock()
 
 	m.canonicalCh <- head
 
@@ -676,6 +676,7 @@ func NewMiner(
 // implements the ethereum.Subscription
 type mockSubscription struct {
 	id     uuid.UUID
+	closed atomic.Bool
 	headCh chan *types.Header
 	node   *Node // we hold a reference to the node to unsubscribe ourselves - not ideal but this is just a mock
 }
@@ -685,12 +686,13 @@ func (sub *mockSubscription) Err() <-chan error {
 }
 
 func (sub *mockSubscription) Unsubscribe() {
+	sub.closed.Store(true)
 	sub.headCh = nil
 	sub.node.RemoveSubscription(sub.id)
 }
 
 func (sub *mockSubscription) publish(b *types.Header) {
-	if atomic.LoadInt32(sub.node.interrupt) == 1 {
+	if sub.closed.Load() {
 		return
 	}
 
@@ -700,7 +702,7 @@ func (sub *mockSubscription) publish(b *types.Header) {
 }
 
 func (sub *mockSubscription) publishAll(blocks []*types.Header) {
-	if atomic.LoadInt32(sub.node.interrupt) == 1 {
+	if sub.closed.Load() {
 		return
 	}
 
