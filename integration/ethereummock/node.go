@@ -567,7 +567,7 @@ func (m *Node) BroadcastTx(tx types.TxData) {
 func (m *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(m.interrupt, 1)
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 300)
 	m.exitMiningCh <- true
 	m.exitCh <- true
 }
