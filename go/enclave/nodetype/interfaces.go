@@ -28,7 +28,7 @@ type ActiveSequencer interface {
 
 	// CreateRollup - creates a new rollup from the latest recorded rollup in the head l1 chain
 	// and adds as many batches to it as possible.
-	CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, *common.ExtRollupMetadata, error)
+	CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, error)
 
 	NodeType
 }

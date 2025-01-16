@@ -114,8 +114,7 @@ message CreateRollupRequest{
 
 message CreateRollupResponse{
   ExtRollupMsg msg = 1;
-  ExtRollupMetadataResponseMsg metadata = 2;
-  SystemError systemError = 3;
+  SystemError systemError = 2;
 }
 
 message ExportCrossChainDataRequest {

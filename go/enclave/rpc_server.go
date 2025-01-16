@@ -236,23 +236,15 @@ func (s *RPCServer) CreateRollup(ctx context.Context, req *generated.CreateRollu
 		fromSeqNo = *req.FromSequenceNumber
 	}
 
-	rollup, metadata, sysError := s.enclave.CreateRollup(ctx, fromSeqNo)
+	rollup, sysError := s.enclave.CreateRollup(ctx, fromSeqNo)
 	if sysError != nil {
 		s.logger.Error("Error creating rollup", log.ErrKey, sysError)
 	}
 
 	msg := rpc.ToExtRollupMsg(rollup)
 
-	genMetadata := &generated.ExtRollupMetadataResponseMsg{
-		CrossChainTree: []byte{},
-	}
-	if metadata != nil {
-		genMetadata.CrossChainTree = metadata.CrossChainTree
-	}
-
 	return &generated.CreateRollupResponse{
 		Msg:         &msg,
-		Metadata:    genMetadata,
 		SystemError: toRPCError(sysError),
 	}, nil
 }

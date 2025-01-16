@@ -275,7 +275,7 @@ func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty 
 	return nil
 }
 
-func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, *common.ExtRollupMetadata, common.SystemError) {
+func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
 	if !e.isActiveSequencer(ctx) {
 		e.logger.Crit("Only the active sequencer can create rollups")
 	}
@@ -286,15 +286,15 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 	defer e.dataInMutex.RUnlock()
 
 	if e.registry.HeadBatchSeq() == nil {
-		return nil, nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
+		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
 	}
 
-	rollup, metadata, err := e.sequencer().CreateRollup(ctx, fromSeqNo)
+	rollup, err := e.sequencer().CreateRollup(ctx, fromSeqNo)
 	// TODO do we need to store the blob hashes here so we can check them against our records?
 	if err != nil {
-		return nil, nil, responses.ToInternalError(err)
+		return nil, responses.ToInternalError(err)
 	}
-	return rollup, metadata, nil
+	return rollup, nil
 }
 
 func (e *enclaveAdminService) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
