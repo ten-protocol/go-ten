@@ -360,27 +360,3 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 	}
 	return nil
 }
-
-func (p *Publisher) awaitTransaction(tx *types.Transaction) error {
-	var receipt *types.Receipt
-	var err error
-	err = retry.Do(
-		func() error {
-			receipt, err = p.ethClient.TransactionReceipt(tx.Hash())
-			if err != nil {
-				return fmt.Errorf("could not get receipt for xchain L1 tx=%s: %w", tx.Hash(), err)
-			}
-			return err
-		},
-		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
-	)
-	if err != nil {
-		p.logger.Info("Receipt not found for transaction, we will re-attempt", log.ErrKey, err)
-		return err
-	}
-
-	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
-		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
-	}
-	return nil
-}
