@@ -131,7 +131,7 @@ func (m *Node) TransactionByHash(hash gethcommon.Hash) (*types.Transaction, bool
 	}
 
 	// Then check if the transaction exists in any block
-	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
+	blk, err := m.BlockResolver.FetchFullBlock(context.Background(), m.head.Hash())
 	if err != nil {
 		return nil, false, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
@@ -223,14 +223,7 @@ func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
 }
 
 func (m *Node) BlockNumber() (uint64, error) {
-	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			return 0, ethereum.NotFound
-		}
-		return 0, fmt.Errorf("could not retrieve head block. Cause: %w", err)
-	}
-	return blk.NumberU64(), nil
+	return m.head.Number.Uint64(), nil
 }
 
 func (m *Node) HeaderByNumber(n *big.Int) (*types.Header, error) {
@@ -240,19 +233,14 @@ func (m *Node) HeaderByNumber(n *big.Int) (*types.Header, error) {
 	if n.Int64() == 0 {
 		return MockGenesisBlock.Header(), nil
 	}
-	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			return nil, ethereum.NotFound
-		}
-		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
-	}
-	for !bytes.Equal(blk.ParentHash().Bytes(), (common.L1BlockHash{}).Bytes()) {
-		if blk.NumberU64() == n.Uint64() {
-			return blk.Header(), nil
+	blk := m.head
+	var err error
+	for !bytes.Equal(blk.ParentHash.Bytes(), (common.L1BlockHash{}).Bytes()) {
+		if blk.Number.Uint64() == n.Uint64() {
+			return blk, nil
 		}
 
-		blk, err = m.BlockResolver.FetchFullBlock(context.Background(), blk.ParentHash())
+		blk, err = m.BlockResolver.FetchBlock(context.Background(), blk.ParentHash)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve parent for block in chain. Cause: %w", err)
 		}
@@ -697,6 +685,7 @@ func (sub *mockSubscription) Err() <-chan error {
 }
 
 func (sub *mockSubscription) Unsubscribe() {
+	sub.headCh = nil
 	sub.node.RemoveSubscription(sub.id)
 }
 
