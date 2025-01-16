@@ -432,7 +432,11 @@ func (m *Node) processBlock(b *types.Block, head *types.Header) *types.Header {
 		}
 		m.logger.Info(
 			fmt.Sprintf("L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", b.Hash(), b.NumberU64(), head.Hash(), head.Number.Uint64(), fork.CommonAncestor.Hash(), fork.CommonAncestor.Number.Uint64()))
-		return m.setFork(m.BlocksBetween(fork.CommonAncestor, b.Header()))
+		f, err := m.BlocksBetween(fork.CommonAncestor, b.Header())
+		if err != nil {
+			m.logger.Crit("Failed to fetch blocks between fork and new block. Cause: %w", err)
+		}
+		return m.setFork(f)
 	}
 	if b.NumberU64() > (head.Number.Uint64() + 1) {
 		m.logger.Error("Should not happen. Blocks are skewed")
@@ -568,9 +572,9 @@ func (m *Node) Stop() {
 	m.exitCh <- true
 }
 
-func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) []*types.Header {
+func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) ([]*types.Header, error) {
 	if bytes.Equal(blockA.Hash().Bytes(), blockB.Hash().Bytes()) {
-		return []*types.Header{blockB}
+		return []*types.Header{blockB}, nil
 	}
 	blocks := make([]*types.Header, 0)
 	tempBlock := blockB
@@ -581,7 +585,7 @@ func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) []*type
 		}
 		tb, err := m.BlockResolver.FetchFullBlock(context.Background(), tempBlock.ParentHash)
 		if err != nil {
-			panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
+			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 		}
 		tempBlock = tb.Header()
 	}
@@ -590,7 +594,7 @@ func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) []*type
 	for i, block := range blocks {
 		result[n-i-1] = block
 	}
-	return result
+	return result, nil
 }
 
 func (m *Node) CallContract(ethereum.CallMsg) ([]byte, error) {
@@ -695,16 +699,27 @@ func (sub *mockSubscription) Err() <-chan error {
 }
 
 func (sub *mockSubscription) Unsubscribe() {
+	if atomic.LoadInt32(sub.node.interrupt) == 1 {
+		return
+	}
 	sub.node.RemoveSubscription(sub.id)
 }
 
 func (sub *mockSubscription) publish(b *types.Header) {
+	if atomic.LoadInt32(sub.node.interrupt) == 1 {
+		return
+	}
+
 	if sub.headCh != nil {
 		sub.headCh <- b
 	}
 }
 
 func (sub *mockSubscription) publishAll(blocks []*types.Header) {
+	if atomic.LoadInt32(sub.node.interrupt) == 1 {
+		return
+	}
+
 	for _, b := range blocks {
 		sub.publish(b)
 	}

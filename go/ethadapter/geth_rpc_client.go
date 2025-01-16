@@ -81,7 +81,7 @@ func (e *gethRPCClient) Info() Info {
 	return Info{}
 }
 
-func (e *gethRPCClient) BlocksBetween(startingBlock *types.Header, lastBlock *types.Header) []*types.Header {
+func (e *gethRPCClient) BlocksBetween(startingBlock *types.Header, lastBlock *types.Header) ([]*types.Header, error) {
 	var blocksBetween []*types.Header
 	var err error
 
@@ -89,12 +89,13 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Header, lastBlock *ty
 		c := currentBlk.ParentHash
 		currentBlk, err = e.HeaderByHash(currentBlk.ParentHash)
 		if err != nil {
-			e.logger.Crit(fmt.Sprintf("could not fetch parent block with hash %s.", c.String()), log.ErrKey, err)
+			e.logger.Error(fmt.Sprintf("could not fetch parent block with hash %s.", c.String()), log.ErrKey, err)
+			return nil, fmt.Errorf("could not fetch parent block with hash %s. cause: %w", c.String(), err)
 		}
 		blocksBetween = append(blocksBetween, currentBlk)
 	}
 
-	return blocksBetween
+	return blocksBetween, nil
 }
 
 func (e *gethRPCClient) IsBlockAncestor(block *types.Header, maybeAncestor common.L1BlockHash) bool {

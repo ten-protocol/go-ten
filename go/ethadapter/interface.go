@@ -39,8 +39,8 @@ type EthClient interface {
 	Stop()                                                                        // tries to cleanly stop the client and release any resources
 
 	// todo - all the below should be removed from the interface
-	BlocksBetween(block *types.Header, head *types.Header) []*types.Header      // returns the blocks between two blocks
-	IsBlockAncestor(block *types.Header, maybeAncestor common.L1BlockHash) bool // returns if the node considers a block the ancestor
+	BlocksBetween(block *types.Header, head *types.Header) ([]*types.Header, error) // returns the blocks between two blocks
+	IsBlockAncestor(block *types.Header, maybeAncestor common.L1BlockHash) bool     // returns if the node considers a block the ancestor
 	FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error)
 }
 

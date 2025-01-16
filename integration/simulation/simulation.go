@@ -134,7 +134,11 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 			panic(fmt.Errorf("could not fetch head block. Cause: %w", err))
 		}
 		if err == nil {
-			for _, h := range client.BlocksBetween(ethereummock.MockGenesisBlock.Header(), head) {
+			blocks, err := client.BlocksBetween(ethereummock.MockGenesisBlock.Header(), head)
+			if err != nil {
+				continue
+			}
+			for _, h := range blocks {
 				b, err := client.BlockByHash(h.Hash())
 				if err != nil {
 					panic(err)

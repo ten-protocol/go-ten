@@ -253,7 +253,10 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
-	blockchain := node.BlocksBetween(startBlock, endBlock)
+	blockchain, err := node.BlocksBetween(startBlock, endBlock)
+	if err != nil {
+		panic(err)
+	}
 	successfulDeposits := uint64(0)
 	for _, header := range blockchain {
 		block, err := node.BlockByHash(header.Hash())
