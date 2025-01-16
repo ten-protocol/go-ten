@@ -699,9 +699,6 @@ func (sub *mockSubscription) Err() <-chan error {
 }
 
 func (sub *mockSubscription) Unsubscribe() {
-	if atomic.LoadInt32(sub.node.interrupt) == 1 {
-		return
-	}
 	sub.node.RemoveSubscription(sub.id)
 }
 
