@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/host/storage"
+
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -77,6 +79,7 @@ type P2PBatchRequestHandler interface {
 
 // L1DataService provides an interface for the host to request L1 block data (live-streaming and historical)
 type L1DataService interface {
+	SetBlockResolver(br storage.BlockResolver)
 	// Subscribe will register a block handler to receive new blocks as they arrive, returns unsubscribe func
 	Subscribe(handler L1BlockHandler) func()
 

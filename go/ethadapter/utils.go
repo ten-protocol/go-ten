@@ -9,7 +9,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 )
 
@@ -92,6 +91,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	}, nil
 }
 
+/*
 // geth enforces a 1 gwei minimum for blob tx fee
 var minBlobTxFee = big.NewInt(params.GWei)
 
@@ -99,7 +99,7 @@ var minBlobTxFee = big.NewInt(params.GWei)
 // value, with a minimum value of minBlobTxFee. It also doubles the blob fee cap based on the retry number.
 func calcBlobFeeCap(blobBaseFee *big.Int, retryNumber int) *big.Int {
 	// Base calculation: twice the current blob base fee
-	// todo - why?
+	// todo - why twice?
 	blobFeeCap := new(big.Int).Mul(blobBaseFee, big.NewInt(2))
 
 	// Ensure the blob fee cap is at least the minimum value
@@ -115,3 +115,4 @@ func calcBlobFeeCap(blobBaseFee *big.Int, retryNumber int) *big.Int {
 
 	return blobFeeCap
 }
+*/

@@ -421,6 +421,9 @@ func (g *Guardian) catchupWithL1() error {
 
 		l1Block, isLatest, err := g.sl.L1Data().FetchNextBlock(enclaveHead)
 		if err != nil {
+			if errors.Is(err, gethutil.ErrAncestorNotFound) {
+				g.logger.Error("should not happen. Chain fork cannot be calculated because there are missing blocks")
+			}
 			if errors.Is(err, l1.ErrNoNextBlock) {
 				if g.state.hostL1Head == gethutil.EmptyHash {
 					return fmt.Errorf("no L1 blocks found in repository")
@@ -508,12 +511,6 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 }
 
 func (g *Guardian) processL1BlockTransactions(block *types.Header, rollupTxs []*common.L1RollupTx, syncContracts bool) {
-	// TODO (@will) this should be removed and pulled from the L1
-	err := g.storage.AddBlock(block)
-	if err != nil {
-		g.logger.Error("Could not add block to host db.", log.ErrKey, err)
-	}
-
 	for _, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
