@@ -45,7 +45,7 @@ const (
 	// type, for example.
 	txThreshold = 5
 	// The maximum number of blocks an TEN node can fall behind
-	maxBlockDelay = 5
+	maxBlockDelay = 10
 	// The leading zero bytes in a hash indicating that it is possibly an address, since it only has 20 bytes of data.
 	zeroBytesHex = "000000000000000000000000"
 )
