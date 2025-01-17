@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
+	"github.com/ten-protocol/go-ten/go/common/merkle"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -87,7 +88,7 @@ func exportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqN
 		return nil, err
 	}
 
-	root, _, err := ComputeCrossChainRootFromBatches(canonicalBatches)
+	root, _, err := merkle.ComputeCrossChainRootFromBatches(canonicalBatches)
 	if err != nil {
 		return nil, err
 	}

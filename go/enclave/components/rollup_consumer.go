@@ -2,16 +2,14 @@ package components
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
-	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/common/merkle"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
-	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
@@ -87,7 +85,7 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 			return nil, err
 		}
 
-		crossChainRoot, serializedTree, err := ComputeCrossChainRootFromBatches(batches)
+		crossChainRoot, serializedTree, err := merkle.ComputeCrossChainRootFromBatches(batches)
 		if err != nil {
 			return nil, err
 		}
@@ -103,55 +101,10 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 	}
 
 	if len(rollupMetadata) < len(rollups) {
-		panic("some rollups were not processed")
+		return nil, fmt.Errorf("missing metadata for some rollups")
 	}
 
 	return rollupMetadata, nil
-}
-
-func UnmarshalCrossChainTree(serializedTree common.SerializedCrossChainTree) ([][]interface{}, error) {
-	xchainTree := make([][]interface{}, 0) // ["v", "0xblablablabla"]
-	err := json.Unmarshal(serializedTree, &xchainTree)
-	if err != nil {
-		return nil, err
-	}
-
-	for k, value := range xchainTree {
-		xchainTree[k][1] = gethcommon.HexToHash(value[1].(string))
-	}
-	return xchainTree, nil
-}
-
-// todo - move this to a more appropriate place
-func ComputeCrossChainRootFromBatches(batches []*common.BatchHeader) (gethcommon.Hash, common.SerializedCrossChainTree, error) {
-	xchainTrees := make([][]interface{}, 0)
-	for _, batch := range batches {
-		if len(batch.CrossChainTree) == 0 {
-			// Batch with no outbound messages; nothing to do.
-			continue
-		}
-		xchainTree, err := UnmarshalCrossChainTree(batch.CrossChainTree)
-		if err != nil {
-			return gethcommon.MaxHash, nil, err
-		}
-		xchainTrees = append(xchainTrees, xchainTree...)
-	}
-
-	if len(xchainTrees) == 0 {
-		return gethcommon.MaxHash, nil, nil
-	}
-
-	tree, err := smt.Of(xchainTrees, crosschain.CrossChainEncodings)
-	if err != nil {
-		panic(err)
-	}
-
-	serializedTree, err := json.Marshal(xchainTrees)
-	if err != nil {
-		return gethcommon.MaxHash, nil, err
-	}
-
-	return gethcommon.Hash(tree.GetRoot()), serializedTree, nil
 }
 
 // GetRollupsFromL1Data - extracts the rollups from the processed L1 data and checks sequencer signature on them
