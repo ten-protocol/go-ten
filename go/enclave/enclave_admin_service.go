@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/integration/ethereummock"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
 
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
