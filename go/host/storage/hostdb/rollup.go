@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-	"github.com/ten-protocol/go-ten/go/enclave/components"
+	"github.com/ten-protocol/go-ten/go/common/merkle"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -58,7 +58,7 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 		return nil
 	}
 
-	tree, err := components.UnmarshalCrossChainTree(extMetadata.CrossChainTree)
+	tree, err := merkle.UnmarshalCrossChainTree(extMetadata.CrossChainTree)
 	if err != nil {
 		return err
 	}
