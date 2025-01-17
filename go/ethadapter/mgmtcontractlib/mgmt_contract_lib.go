@@ -123,9 +123,33 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.L1TenTransactio
 func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to decode rollup: %w", err)
 	}
 
+	// Create the blobs here when needed for L1 tx
+	rollupData, err := common.EncodeRollup(decodedRollup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode rollup: %w", err)
+	}
+
+	blobs, err := ethadapter.EncodeBlobs(rollupData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
+	}
+
+	// Verify the blob hash matches what was signed
+	commitment, err := kzg4844.BlobToCommitment(blobs[0])
+	if err != nil {
+		return nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
+	}
+	computedBlobHash := ethadapter.KZGToVersionedHash(commitment)
+
+	// Verify hash matches what was signed
+	if computedBlobHash != decodedRollup.Header.BlobHash {
+		return nil, fmt.Errorf("computed blob hash doesn't match signed hash")
+	}
+
+	// Use the pre-computed values from the enclave
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
 		Signature:          decodedRollup.Header.Signature,
@@ -140,18 +164,14 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		metaRollup,
 	)
 	if err != nil {
-		panic(err)
-	}
-
-	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
+		return nil, err
 	}
 
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
 
-	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, c.BlobHasher()); err != nil {
+	// Use se blobs created here (they are verified that the hash matches with the blobs from the enclave)
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 

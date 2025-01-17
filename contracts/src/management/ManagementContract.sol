@@ -62,6 +62,37 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     uint256 private challengePeriod;
 
+    modifier validRollupSubmission(Structs.MetaRollup calldata r) {
+        // Verify block binding
+        require(block.number > r.BlockNumber, "Cannot bind to future block");
+        require(block.number < (r.BlockNumber + 255), "Block binding too old");
+        bytes32 knownBlockHash = blockhash(r.BlockNumber);
+        require(knownBlockHash != 0x0, "Unknown block hash");
+        require(knownBlockHash == r.BlockHash, "Block binding mismatch");
+
+        // Verify blob hash
+        bytes32 computedBlobHash;
+        assembly {
+            let blobIndex := 0
+            computedBlobHash := blobhash(blobIndex)
+        }
+        require(computedBlobHash == r.BlobHash, "Invalid blob hash");
+
+        // Verify sequencer signature
+        bytes32 compositeHash = keccak256(abi.encode(
+            r.LastSequenceNumber,
+            r.BlockBindingHash,
+            r.BlockBindingNumber,
+            r.crossChainRoot,
+            r.BlobHash
+        ));
+
+        address enclaveID = ECDSA.recover(compositeHash, r.Signature);
+        require(attested[enclaveID], "enclaveID not attested");
+        require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
+        _;
+    }
+
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         lastBatchSeqNo = 0;
@@ -78,7 +109,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
-       
+
         if (_r.LastSequenceNumber > lastBatchSeqNo) {
             lastBatchSeqNo = _r.LastSequenceNumber;
         }
@@ -101,18 +132,11 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         }
     }
 
-    modifier signedBySequencerEnclave(Structs.MetaRollup calldata r) {
-        //todo - handle the cross chain root in the signature
-        address enclaveID = ECDSA.recover(r.Hash, r.Signature);
-        // revert if the EnclaveID is not attested
-        require(attested[enclaveID], "enclaveID not attested");
-        // revert if the EnclaveID is not permissioned as a sequencer
-        require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
-        _;
-    }
+
+
 
     // solc-ignore-next-line unused-param
-    function AddRollup(Structs.MetaRollup calldata r) public signedBySequencerEnclave(r) {
+    function AddRollup(Structs.MetaRollup calldata r) public validRollupSubmission(r) {
         AppendRollup(r);
 
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
