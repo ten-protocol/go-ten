@@ -675,10 +675,11 @@ func NewMiner(
 
 // implements the ethereum.Subscription
 type mockSubscription struct {
-	id     uuid.UUID
-	closed atomic.Bool
-	headCh chan *types.Header
-	node   *Node // we hold a reference to the node to unsubscribe ourselves - not ideal but this is just a mock
+	id         uuid.UUID
+	closed     atomic.Bool
+	unsubMutex sync.RWMutex
+	headCh     chan *types.Header
+	node       *Node // we hold a reference to the node to unsubscribe ourselves - not ideal but this is just a mock
 }
 
 func (sub *mockSubscription) Err() <-chan error {
@@ -686,12 +687,16 @@ func (sub *mockSubscription) Err() <-chan error {
 }
 
 func (sub *mockSubscription) Unsubscribe() {
+	sub.unsubMutex.Lock()
+	defer sub.unsubMutex.Unlock()
 	sub.closed.Store(true)
 	sub.headCh = nil
 	sub.node.RemoveSubscription(sub.id)
 }
 
 func (sub *mockSubscription) publish(b *types.Header) {
+	sub.unsubMutex.RLock()
+	defer sub.unsubMutex.RUnlock()
 	if sub.closed.Load() {
 		return
 	}
