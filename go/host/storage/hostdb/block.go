@@ -8,7 +8,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
@@ -83,7 +82,7 @@ func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.Blo
 		}
 
 		blockHeader := new(types.Header)
-		if err := rlp.DecodeBytes(header, blockHeader); err != nil {
+		if err := json.Unmarshal(header, blockHeader); err != nil {
 			return nil, fmt.Errorf("could not decode block header. Cause: %w", err)
 		}
 		r := new(common.L2RollupHash)

@@ -111,7 +111,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
-	time.Sleep(params.AvgBlockDuration * 3)
+	time.Sleep(params.AvgBlockDuration * 10)
 
 	// permission the sequencer enclave on the L1
 	health, err := tenClients[0].Health()
