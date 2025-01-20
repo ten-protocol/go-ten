@@ -60,6 +60,10 @@ func (m *mockContractLib) IsMock() bool {
 	return true
 }
 
+func (m *mockContractLib) BlobHasher() ethadapter.BlobHasher {
+	return MockBlobHasher{}
+}
+
 func (m *mockContractLib) GetContractAddr() *gethcommon.Address {
 	return &rollupTxAddr
 }
@@ -88,7 +92,7 @@ func (m *mockContractLib) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
-	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, MockBlobHasher{}); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 

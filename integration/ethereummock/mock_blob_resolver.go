@@ -5,12 +5,23 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ethereum/go-ethereum/crypto"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 )
+
+type MockBlobHasher struct{}
+
+func (MockBlobHasher) BlobHash(blob *kzg4844.Blob) (gethcommon.Hash, kzg4844.Commitment, kzg4844.Proof, error) {
+	h := crypto.Keccak256Hash(blob[:])
+	commitment := kzg4844.Commitment{}
+	copy(commitment[:], h.Bytes())
+	return ethadapter.KZGToVersionedHash(commitment), kzg4844.Commitment{}, kzg4844.Proof{}, nil
+}
 
 type BlobResolverInMem struct {
 	// map of versioned hash to blob for efficient lookup
@@ -27,12 +38,10 @@ func NewMockBlobResolver() l1.BlobResolver {
 
 func (b *BlobResolverInMem) StoreBlobs(_ uint64, blobs []*kzg4844.Blob) error {
 	for _, blob := range blobs {
-		commitment, err := kzg4844.BlobToCommitment(blob)
+		versionedHash, _, _, err := MockBlobHasher{}.BlobHash(blob)
 		if err != nil {
-			return fmt.Errorf("failed to compute commitment: %w", err)
+			return err
 		}
-
-		versionedHash := ethadapter.KZGToVersionedHash(commitment)
 		b.versionedHashToBlob.Store(versionedHash, blob)
 	}
 	return nil
