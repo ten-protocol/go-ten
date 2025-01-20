@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS cross_chain_message_host
     id                SERIAL PRIMARY KEY,
     message_hash      BYTEA       NOT NULL UNIQUE,
     rollup_id         INT         NOT NULL,
+    message_type      CHAR(1)     NOT NULL CHECK (message_type IN ('m', 'v')),
     FOREIGN KEY (rollup_id) REFERENCES rollup_host(id)
 );
 

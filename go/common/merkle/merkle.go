@@ -2,6 +2,7 @@ package merkle
 
 import (
 	"encoding/json"
+	"fmt"
 
 	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -31,7 +32,7 @@ func ComputeCrossChainRootFromBatches(batches []*common.BatchHeader) (gethcommon
 		}
 		xchainTree, err := UnmarshalCrossChainTree(batch.CrossChainTree)
 		if err != nil {
-			return gethcommon.MaxHash, nil, err
+			return gethcommon.MaxHash, nil, fmt.Errorf("failed to unmarshal cross chain tree: %w", err)
 		}
 		xchainTrees = append(xchainTrees, xchainTree...)
 	}
@@ -42,7 +43,7 @@ func ComputeCrossChainRootFromBatches(batches []*common.BatchHeader) (gethcommon
 
 	tree, err := smt.Of(xchainTrees, crosschain.CrossChainEncodings)
 	if err != nil {
-		panic(err)
+		return gethcommon.MaxHash, nil, fmt.Errorf("failed to create tree: %w", err)
 	}
 
 	serializedTree, err := json.Marshal(xchainTrees)

@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/common/merkle"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -80,19 +81,10 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 			return nil, err
 		}
 
-		batches, err := rc.storage.FetchCanonicalBatchesBetween(ctx, internalHeader.FirstBatchSequence.Uint64(), rollup.Header.LastBatchSeqNo)
+		serializedTree, err := rc.ExportAndVerifyCrossChainData(ctx, internalHeader.FirstBatchSequence.Uint64(), rollup.Header.LastBatchSeqNo, rollup.Header.CrossChainRoot)
 		if err != nil {
+			rc.logger.Error("Failed exporting and verifying cross chain data", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			return nil, err
-		}
-
-		crossChainRoot, serializedTree, err := merkle.ComputeCrossChainRootFromBatches(batches)
-		if err != nil {
-			return nil, err
-		}
-
-		if rollup.Header.CrossChainRoot != crossChainRoot {
-			rc.logger.Error("Rollup cross chain root does not match computed cross chain root", "rollup_hash", rollup.Hash(), "computed_root", crossChainRoot, "stored_root", rollup.Header.CrossChainRoot, "batches", batches)
-			return nil, fmt.Errorf("rollup cross chain root does not match computed cross chain root")
 		}
 
 		rollupMetadata[idx] = common.ExtRollupMetadata{
@@ -105,6 +97,24 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 	}
 
 	return rollupMetadata, nil
+}
+
+func (rc *rollupConsumerImpl) ExportAndVerifyCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64, publishedCrossChainRoot gethcommon.Hash) (common.SerializedCrossChainTree, error) {
+	batches, err := rc.storage.FetchCanonicalBatchesBetween(ctx, fromSeqNo, toSeqNo)
+	if err != nil {
+		return nil, err
+	}
+
+	localCrossChainRoot, serializedTree, err := merkle.ComputeCrossChainRootFromBatches(batches)
+	if err != nil {
+		return nil, err
+	}
+
+	if localCrossChainRoot != publishedCrossChainRoot {
+		return nil, errutil.ErrCrossChainRootMismatch
+	}
+
+	return serializedTree, nil
 }
 
 // GetRollupsFromL1Data - extracts the rollups from the processed L1 data and checks sequencer signature on them

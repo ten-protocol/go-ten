@@ -69,7 +69,7 @@ func NewClient(enclaveRPCAddress string, enclaveRPCTimeout time.Duration, logger
 		protoClient:       generated.NewEnclaveProtoClient(connection),
 		connection:        connection,
 		enclaveRPCAddress: enclaveRPCAddress,
-		enclaveRPCTimeout: 5 * time.Minute,
+		enclaveRPCTimeout: enclaveRPCTimeout,
 		logger:            logger,
 	}
 }
