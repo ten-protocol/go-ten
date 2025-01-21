@@ -250,9 +250,15 @@ message AttestationReportMsg {
   SystemError systemError = 5;
 }
 
+
+message ExtRollupMetadataResponseMsg {
+  bytes CrossChainTree = 1;
+}
+
 message BlockSubmissionResponseMsg {
   repeated SecretResponseMsg producedSecretResponses = 1;
   BlockSubmissionErrorMsg error = 2; // todo (@matt) - remove this BlockSubmissionError field once we are using the Status() to update host view of enclave state
+  repeated ExtRollupMetadataResponseMsg rollupMetadata = 3;
 }
 
 message BlockSubmissionErrorMsg {
@@ -288,7 +294,7 @@ message BatchHeaderMsg {
   uint64 GasUsed = 11;
   uint64 Time = 12;
   uint64 BaseFee = 13;
-  bytes TransferTree = 17;
+  bytes CrossChainRoot = 17;
   bytes Coinbase = 18;
   bytes CrossChainTree = 19;
 }
@@ -302,13 +308,14 @@ message ExtRollupMsg {
 message RollupHeaderMsg {
   bytes ParentHash = 1;
   bytes CompressionL1Head = 2;
-  uint64 ProofNumber = 3;
-  uint64 Number = 4;
-  uint64 Time = 5;
-  bytes EnclaveID = 6;
-  repeated CrossChainMsg CrossChainMessages = 7;
+  bytes CompressionL1Number = 3;
+  uint64 ProofNumber = 4;
+  uint64 Number = 5;
+  uint64 Time = 6;
+  bytes EnclaveID = 7;
   bytes Signature = 8;
   uint64 LastBatchSeqNo = 9;
+  bytes CrossChainRoot = 10;
 }
 
 message SecretResponseMsg {

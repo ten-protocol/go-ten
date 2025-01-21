@@ -60,10 +60,11 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     bytes32 public lastBatchHash;
 
+    uint256 private challengePeriod;
+
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         lastBatchSeqNo = 0;
-        rollups.nextFreeSequenceNumber = 1; // rollup 0 == nil hash
         merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus();
         messageBus = MessageBus.IMessageBus(address(merkleMessageBus));
 
@@ -75,30 +76,9 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return (rol.Hash == rollupHash , rol);
     }
 
-    function GetRollupByNumber(uint256 number) view public returns(bool, Structs.MetaRollup memory) {
-        bytes32 hash = rollups.byOrder[number];
-        if (hash == 0x0) { // ensure we don't try to get rollup for hash zero as that would not pull anything, but the hash would match and return true
-            return (false, Structs.MetaRollup(0x0, "", 0));
-        }
-
-        return GetRollupByHash(hash);
-    }
-
-    function GetUniqueForkID(uint256 number) view public returns(bytes32, Structs.MetaRollup memory) {
-        (bool success, Structs.MetaRollup memory rollup) = GetRollupByNumber(number);
-        if (!success) {
-            return (0x0, rollup);
-        }
-
-        return (rollups.toUniqueForkID[number], rollup);
-    }
-
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
-        rollups.byOrder[rollups.nextFreeSequenceNumber] = _r.Hash;
-        rollups.toUniqueForkID[rollups.nextFreeSequenceNumber] = keccak256(abi.encode(_r.Hash, blockhash(block.number-1)));
-        rollups.nextFreeSequenceNumber++;
-
+       
         if (_r.LastSequenceNumber > lastBatchSeqNo) {
             lastBatchSeqNo = _r.LastSequenceNumber;
         }
@@ -114,31 +94,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return isBundleSaved[bundleHash];
     }
 
-    function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 providedBlockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature, uint256 rollupNumber, bytes32 forkID) external {
-        require(block.number < (blockNum + 255), "Block binding too old");
-        require(block.number != blockNum, "Cannot bind to the block that is being currently mined");
-
-        bytes32 knownBlockHash = blockhash(blockNum); 
-        require(knownBlockHash != 0x0, "Unknown block hash");
-        require(knownBlockHash == providedBlockHash, "Block binding mismatch");
-        require(rollups.toUniqueForkID[rollupNumber] == forkID, "Invalid forkID");
-
-        address enclaveID = ECDSA.recover(keccak256(abi.encode(_lastBatchHash, providedBlockHash, blockNum, crossChainHashes)), signature);
-        require(sequencerEnclave[enclaveID], "address not a sequencer");
-
-        lastBatchHash = _lastBatchHash;
-
-        bytes32 bundleHash = bytes32(0);
-
-        for(uint256 i = 0; i < crossChainHashes.length; i++) {
-            merkleMessageBus.addStateRoot(bytes32(crossChainHashes[i]), block.timestamp); //todo: change the activation time.
-            bundleHash = keccak256(abi.encode(bundleHash, bytes32(crossChainHashes[i])));
-        }
-
-        isBundleSaved[bundleHash] = true;
-    }
-
-// TODO: ensure challenge period is added on top of block timestamp.
     function pushCrossChainMessages(Structs.HeaderCrossChainData calldata crossChainData) internal {
         uint256 messagesLength = crossChainData.messages.length;
         for (uint256 i = 0; i < messagesLength; ++i) {
@@ -146,15 +101,23 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         }
     }
 
-    // solc-ignore-next-line unused-param
-    function AddRollup(Structs.MetaRollup calldata r) public {
+    modifier signedBySequencerEnclave(Structs.MetaRollup calldata r) {
+        //todo - handle the cross chain root in the signature
         address enclaveID = ECDSA.recover(r.Hash, r.Signature);
         // revert if the EnclaveID is not attested
         require(attested[enclaveID], "enclaveID not attested");
         // revert if the EnclaveID is not permissioned as a sequencer
         require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
+        _;
+    }
 
+    // solc-ignore-next-line unused-param
+    function AddRollup(Structs.MetaRollup calldata r) public signedBySequencerEnclave(r) {
         AppendRollup(r);
+
+        if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
+            merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
+        }
         emit RollupAdded(r.Hash);
     }
 
@@ -262,5 +225,15 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     function GetImportantContractKeys() public view returns(string[] memory) {
         return importantContractKeys;
+    }
+
+    // Return the challenge period delay for message bus root
+    function GetChallengePeriod() public view returns (uint256) {
+        return challengePeriod;
+    }
+
+    // Sets the challenge period for message bus root (owner only)
+    function SetChallengePeriod(uint256 _delay) public onlyOwner {
+        challengePeriod = _delay;
     }
 }

@@ -151,6 +151,10 @@ func (e *Service) NotifyUnavailable(enclaveID *common.EnclaveID) {
 		e.logger.Warn("Could not find enclave to evict.", log.EnclaveIDKey, enclaveID)
 		return
 	}
+	err := e.enclaveGuardians[failedEnclaveIdx].Stop()
+	if err != nil {
+		e.logger.Info("Failed to stop enclave guardian.", log.EnclaveIDKey, enclaveID, log.ErrKey, err)
+	}
 
 	// remove the failed enclave from the list of enclaves
 	e.enclaveGuardians = append(e.enclaveGuardians[:failedEnclaveIdx], e.enclaveGuardians[failedEnclaveIdx+1:]...)

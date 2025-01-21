@@ -71,6 +71,7 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         address receiver,
         uint256 amount
     ) external onlyOwner {
+        require(address(this).balance >= amount, "Insufficient funds to send value");
         (bool ok, ) = receiver.call{value: amount}("");
         require(ok, "failed sending value");
     }

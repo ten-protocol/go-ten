@@ -120,9 +120,6 @@ type L1Publisher interface {
 	GetImportantContracts() map[string]gethcommon.Address
 	// ResyncImportantContracts will fetch the latest important contracts from the management contract, update the cache
 	ResyncImportantContracts() error
-
-	// GetBundleRangeFromManagementContract returns the range of batches for which to build a bundle
-	GetBundleRangeFromManagementContract(lastRollupNumber *big.Int, lastRollupUID gethcommon.Hash) (*gethcommon.Hash, *big.Int, *big.Int, error)
 }
 
 // L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)

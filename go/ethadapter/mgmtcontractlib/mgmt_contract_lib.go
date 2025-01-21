@@ -130,6 +130,9 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		Hash:               decodedRollup.Hash(),
 		Signature:          decodedRollup.Header.Signature,
 		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
+		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,
+		BlockBindingNumber: decodedRollup.Header.CompressionL1Number,
+		CrossChainRoot:     decodedRollup.Header.CrossChainRoot,
 	}
 
 	data, err := c.contractABI.Pack(

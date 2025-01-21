@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/merkle"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -24,7 +25,7 @@ const (
 )
 
 // AddRollup adds a rollup to the DB
-func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *types.Header) error {
+func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.ExtRollup, extMetadata *common.ExtRollupMetadata, metadata *common.PublicRollupMetadata, block *types.Header) error {
 	extRollup, err := rlp.EncodeToBytes(rollup)
 	if err != nil {
 		return fmt.Errorf("could not encode rollup: %w", err)
@@ -36,7 +37,7 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 		return fmt.Errorf("could not read block id: %w", err)
 	}
 
-	_, err = dbtx.Tx.Exec(statements.InsertRollup,
+	result, err := dbtx.Tx.Exec(statements.InsertRollup,
 		rollup.Header.Hash().Bytes(),         //  hash
 		metadata.FirstBatchSequence.Uint64(), // first batch sequence
 		rollup.Header.LastBatchSeqNo,         // last batch sequence
@@ -47,6 +48,33 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 	if err != nil {
 		return fmt.Errorf("could not insert rollup. Cause: %w", err)
 	}
+
+	rollupId, err := result.LastInsertId()
+	if err != nil {
+		return fmt.Errorf("could not get rollup insertion id: %w", err)
+	}
+
+	if len(extMetadata.CrossChainTree) == 0 {
+		return nil
+	}
+
+	tree, err := merkle.UnmarshalCrossChainTree(extMetadata.CrossChainTree)
+	if err != nil {
+		return err
+	}
+
+	for _, message := range tree {
+		_, err = dbtx.Tx.Exec(statements.InsertCrossChainMessage,
+			message[1].(gethcommon.Hash).Bytes(),
+			message[0],
+			rollupId,
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -139,6 +167,42 @@ func GetRollupByHash(db HostDB, rollupHash gethcommon.Hash) (*common.PublicRollu
 func GetRollupBySeqNo(db HostDB, seqNo uint64) (*common.PublicRollup, error) {
 	whereQuery := " WHERE " + db.GetSQLStatement().Placeholder + " BETWEEN start_seq AND end_seq"
 	return fetchPublicRollup(db.GetSQLDB(), whereQuery, seqNo)
+}
+
+func GetCrossChainMessagesTree(db HostDB, messageHash gethcommon.Hash) ([][]interface{}, error) {
+	// First get the rollupID for this message hash
+	var rollupID int64
+	messageQuery := "SELECT rollup_id FROM cross_chain_message_host WHERE message_hash = " + db.GetSQLStatement().Placeholder
+	err := db.GetSQLDB().QueryRow(messageQuery, messageHash.Bytes()).Scan(&rollupID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
+		return nil, fmt.Errorf("failed to fetch rollup ID for message: %w", err)
+	}
+
+	// Get all messages with the same rollupID
+	messagesQuery := "SELECT message_hash, message_type FROM cross_chain_message_host WHERE rollup_id = " + db.GetSQLStatement().Placeholder
+	rows, err := db.GetSQLDB().Query(messagesQuery, rollupID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch cross chain messages: %w", err)
+	}
+	defer rows.Close()
+
+	var messages [][]interface{}
+	for rows.Next() {
+		var messageHash []byte
+		var messageType string
+		if err := rows.Scan(&messageHash, &messageType); err != nil {
+			return nil, fmt.Errorf("failed to scan cross chain message row: %w", err)
+		}
+		messages = append(messages, []interface{}{messageType, messageHash})
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return messages, nil
 }
 
 func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {

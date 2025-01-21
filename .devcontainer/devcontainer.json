@@ -15,7 +15,9 @@
 		"vscode": {
 			"extensions": [
 				"766b.go-outliner",
-				"golang.go"
+				"golang.go",
+				"zxh404.vscode-proto3",
+				"NomicFoundation.hardhat-solidity"
 			],
 			"settings": {
 				"go.testTimeout": "10m"
@@ -24,7 +26,8 @@
 	},
 	"postCreateCommand": "bash -i ./.devcontainer/install-deps.sh",
 	"containerEnv": {
-		"LOCALHOST_URL": "http://host.docker.internal"
+		"LOCALHOST_URL": "http://host.docker.internal",
+		"IDE": "true"
 	}
 	
 	// Features to add to the dev container. More info: https://containers.dev/features.

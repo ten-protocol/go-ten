@@ -111,9 +111,29 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 	case rpc.GetCode:
 		return c.getCode(result, args)
 
+	case rpc.GetCrossChainProof:
+		return c.getCrossChainProof(result, args)
+
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
+}
+
+func (c *inMemTenClient) getCrossChainProof(result interface{}, args []interface{}) error {
+	messageType, ok := args[0].(string)
+	if !ok {
+		return fmt.Errorf("invalid argument type: expected string")
+	}
+	crossChainMessage, ok := args[1].(gethcommon.Hash)
+	if !ok {
+		return fmt.Errorf("invalid argument type: expected gethcommon.Hash")
+	}
+	proof, err := c.tenAPI.GetCrossChainProof(context.Background(), messageType, crossChainMessage)
+	if err != nil {
+		return fmt.Errorf("failed to get cross chain proof: %w", err)
+	}
+	*result.(*clientapi.CrossChainProof) = proof
+	return nil
 }
 
 func (c *inMemTenClient) getCode(result interface{}, args []interface{}) error {
