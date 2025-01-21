@@ -2,6 +2,7 @@ package compression
 
 import (
 	"bytes"
+	"errors"
 	"io"
 
 	"github.com/andybalholm/brotli"
@@ -31,7 +32,18 @@ func (cs *brotliDataCompressionService) CompressBatch(blob []byte) ([]byte, erro
 
 func (cs *brotliDataCompressionService) Decompress(in []byte) ([]byte, error) {
 	r := brotli.NewReader(bytes.NewReader(in))
-	return io.ReadAll(r)
+	limitedReader := io.LimitReader(r, 1024*1024) // 1MB limit
+	data, err := io.ReadAll(limitedReader)
+	if err != nil {
+		return nil, err
+	}
+
+	buf := make([]byte, 1)
+	if n, _ := r.Read(buf); n > 0 {
+		return nil, errors.New("decompressed size exceeded. Sequencer does not produce more than 1MB of data")
+	}
+
+	return data, nil
 }
 
 func (cs *brotliDataCompressionService) compress(in []byte, level int) ([]byte, error) {
