@@ -161,12 +161,15 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 // RollupHeader is a public / plaintext struct that holds common properties of rollups.
 // All these fields are processed by the Management contract
 type RollupHeader struct {
-	CompressionL1Head L1BlockHash // the l1 block that the sequencer considers canonical at the time when this rollup is created
+	// CompressionL1Head is the reference L1 block. If a rollup is published in a fork where it does not exist, the rollup will not be decomperssible
+	// by validators who only use the L1 as a DA, thus upon submission if this block is not found the rollup should be invalid.
+	CompressionL1Head   L1BlockHash
+	CompressionL1Number *big.Int
 
-	PayloadHash common.Hash // The hash of the compressed batches. TODO
-	Signature   []byte      // The signature of the sequencer enclave on the payload hash
-
+	CrossChainRoot common.Hash // The root hash of the cross chain tree.
 	LastBatchSeqNo uint64
+
+	Signature []byte // The signature of the sequencer enclave on the payload hash
 }
 
 // CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.

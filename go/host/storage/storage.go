@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"strings"
 
+	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -52,7 +53,7 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 	return nil
 }
 
-func (s *storageImpl) AddRollup(rollup *common.ExtRollup, metadata *common.PublicRollupMetadata, block *types.Header) error {
+func (s *storageImpl) AddRollup(rollup *common.ExtRollup, extMetadata *common.ExtRollupMetadata, metadata *common.PublicRollupMetadata, block *types.Header) error {
 	// Check if the Header is already stored
 	_, err := hostdb.GetRollupHeader(s.db, rollup.Header.Hash())
 	if err == nil {
@@ -64,7 +65,7 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, metadata *common.Publi
 		return err
 	}
 
-	if err := hostdb.AddRollup(dbtx, s.db.GetSQLStatement(), rollup, metadata, block); err != nil {
+	if err := hostdb.AddRollup(dbtx, s.db.GetSQLStatement(), rollup, extMetadata, metadata, block); err != nil {
 		if err := dbtx.Rollback(); err != nil {
 			return err
 		}
@@ -108,6 +109,27 @@ func (s *storageImpl) AddBlock(b *types.Header) error {
 		return fmt.Errorf("could not commit block tx. Cause %w", err)
 	}
 	return nil
+}
+
+func (s *storageImpl) FetchCrossChainProof(messageType string, crossChainMessage gethcommon.Hash) ([][]byte, gethcommon.Hash, error) {
+	tree, err := hostdb.GetCrossChainMessagesTree(s.db, crossChainMessage)
+	if err != nil {
+		return nil, gethcommon.Hash{}, err
+	}
+
+	for k, value := range tree {
+		tree[k][1] = gethcommon.BytesToHash(value[1].([]byte))
+	}
+
+	merkleTree, err := smt.Of(tree, []string{smt.SOL_STRING, smt.SOL_BYTES32})
+	if err != nil {
+		return nil, gethcommon.Hash{}, err
+	}
+	proof, err := merkleTree.GetProof([]interface{}{messageType, crossChainMessage})
+	if err != nil {
+		return nil, gethcommon.Hash{}, err
+	}
+	return proof, gethcommon.Hash(merkleTree.GetRoot()), nil
 }
 
 func (s *storageImpl) FetchBatchBySeqNo(seqNum uint64) (*common.ExtBatch, error) {

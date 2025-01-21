@@ -7,7 +7,9 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/common/merkle"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
@@ -49,10 +51,11 @@ func NewRollupConsumer(
 }
 
 // ProcessRollups - processes the rollups found in the block, verifies the rollups and stores them
-func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*common.ExtRollup) error {
+func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*common.ExtRollup) ([]common.ExtRollupMetadata, error) {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs")
 
-	for _, rollup := range rollups {
+	rollupMetadata := make([]common.ExtRollupMetadata, len(rollups))
+	for idx, rollup := range rollups {
 		l1CompressionBlock, err := rc.storage.FetchBlock(ctx, rollup.Header.CompressionL1Head)
 		if err != nil {
 			rc.logger.Warn("Can't process rollup because the l1 block used for compression is not available", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
@@ -60,10 +63,10 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 		}
 		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(ctx, l1CompressionBlock.Number)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		if canonicalBlockByHeight.Hash() != l1CompressionBlock.Hash() {
-			rc.logger.Warn("Skipping rollup because it was compressed on top of a non-canonical rollup", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			rc.logger.Warn("Skipping rollup because it was compressed on top of a non-canonical block", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			continue
 		}
 		// read batch data from rollup, verify and store it
@@ -71,15 +74,47 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 		if err != nil {
 			rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			// todo - issue challenge as a validator
-			return err
+			return nil, err
 		}
 		if err := rc.storage.StoreRollup(ctx, rollup, internalHeader); err != nil {
 			rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
-			return err
+			return nil, err
+		}
+
+		serializedTree, err := rc.ExportAndVerifyCrossChainData(ctx, internalHeader.FirstBatchSequence.Uint64(), rollup.Header.LastBatchSeqNo, rollup.Header.CrossChainRoot)
+		if err != nil {
+			rc.logger.Error("Failed exporting and verifying cross chain data", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			return nil, err
+		}
+
+		rollupMetadata[idx] = common.ExtRollupMetadata{
+			CrossChainTree: serializedTree,
 		}
 	}
 
-	return nil
+	if len(rollupMetadata) < len(rollups) {
+		return nil, fmt.Errorf("missing metadata for some rollups")
+	}
+
+	return rollupMetadata, nil
+}
+
+func (rc *rollupConsumerImpl) ExportAndVerifyCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64, publishedCrossChainRoot gethcommon.Hash) (common.SerializedCrossChainTree, error) {
+	batches, err := rc.storage.FetchCanonicalBatchesBetween(ctx, fromSeqNo, toSeqNo)
+	if err != nil {
+		return nil, err
+	}
+
+	localCrossChainRoot, serializedTree, err := merkle.ComputeCrossChainRootFromBatches(batches)
+	if err != nil {
+		return nil, err
+	}
+
+	if localCrossChainRoot != publishedCrossChainRoot {
+		return nil, errutil.ErrCrossChainRootMismatch
+	}
+
+	return serializedTree, nil
 }
 
 // GetRollupsFromL1Data - extracts the rollups from the processed L1 data and checks sequencer signature on them

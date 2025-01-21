@@ -10,12 +10,9 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -102,48 +99,6 @@ func (p *Publisher) Start() error {
 		}
 	}()
 	return nil
-}
-
-func (p *Publisher) GetBundleRangeFromManagementContract(lastRollupNumber *big.Int, lastRollupUID gethcommon.Hash) (*gethcommon.Hash, *big.Int, *big.Int, error) {
-	if p.mgmtContractLib.IsMock() {
-		return nil, nil, nil, fmt.Errorf("bundle publishing unavailable for mocked environments")
-	}
-
-	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
-	if err != nil {
-		p.logger.Error("Unable to instantiate management contract client")
-		return nil, nil, nil, err
-	}
-
-	hashBytes, rollup, err := managementCtr.GetUniqueForkID(&bind.CallOpts{}, lastRollupNumber)
-	if err != nil {
-		p.logger.Error("Unable to get unique fork ID from management contract")
-		return nil, nil, nil, err
-	}
-
-	rollupUid := gethcommon.BytesToHash(hashBytes[:])
-	if rollupUid != lastRollupUID {
-		return nil, nil, nil, errutil.ErrRollupForkMismatch
-	}
-
-	fromSeqNo := big.NewInt(0)
-	if lastRollupNumber.Cmp(big.NewInt(0)) != 0 {
-		fromSeqNo = big.NewInt(0).SetUint64(rollup.LastSequenceNumber.Uint64() + 1)
-	}
-
-	nextRollupNumber := big.NewInt(0).SetUint64(lastRollupNumber.Uint64() + 1)
-	nextHashBytes, nextRollup, err := managementCtr.GetUniqueForkID(&bind.CallOpts{}, nextRollupNumber)
-	if err != nil {
-		p.logger.Error("Unable to get unique fork ID from management contract")
-		return nil, nil, nil, err
-	}
-
-	nextRollupUID := gethcommon.BytesToHash(nextHashBytes[:])
-	if nextRollupUID.Big().Cmp(gethcommon.Big0) == 0 {
-		return nil, nil, nil, errutil.ErrNoNextRollup
-	}
-
-	return &nextRollupUID, fromSeqNo, nextRollup.LastSequenceNumber, nil
 }
 
 func (p *Publisher) Stop() error {
@@ -284,69 +239,6 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 }
 
 func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, rollupNum *big.Int, forkID gethcommon.Hash) error {
-	if p.mgmtContractLib.IsMock() {
-		return nil
-	}
-
-	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
-	if err != nil {
-		p.logger.Error("Unable to instantiate management contract client")
-		return fmt.Errorf("unable to init")
-	}
-
-	transactor, err := bind.NewKeyedTransactorWithChainID(p.hostWallet.PrivateKey(), p.hostWallet.ChainID())
-	if err != nil {
-		p.logger.Error("Unable to create transactor for management contract")
-		return fmt.Errorf("unable to init")
-	}
-
-	p.logger.Info("Host preparing to send cross chain bundle transaction")
-	p.sendingLock.Lock()
-	defer p.sendingLock.Unlock()
-
-	nonce, err := p.ethClient.EthClient().PendingNonceAt(context.Background(), p.hostWallet.Address())
-	if err != nil {
-		p.logger.Error("Unable to get nonce for management contract", log.ErrKey, err)
-		return fmt.Errorf("unable to get nonce for management contract. Cause: %w", err)
-	}
-
-	// When the host is publishing a bundle, we have to run gas estimation.
-	// If there is no new block it might run with the previous block as current which
-	// would be the same as the binding, leading to a edge case where the signature cannot
-	// be verified.
-	for {
-		block, err := p.ethClient.EthClient().BlockByNumber(context.Background(), nil)
-		if err != nil {
-			p.logger.Error("Unable to get latest block", log.ErrKey, err)
-			return fmt.Errorf("unable to get latest block. Cause: %w", err)
-		}
-		if block.NumberU64() == bundle.L1BlockNum.Uint64() {
-			time.Sleep(1 * time.Second)
-			continue
-		}
-		break
-	}
-
-	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
-
-	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature, rollupNum, forkID)
-	if err != nil {
-		if errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
-			p.logger.Info("Cross chain bundle already published. Proceeding without publishing", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)
-			return nil
-		}
-
-		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
-		return fmt.Errorf("unable to submit cross chain bundle transaction. Cause: %w", err)
-	}
-
-	err = p.awaitTransaction(tx)
-	if err != nil {
-		p.logger.Error("Error with receipt of cross chain publish transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
-		return fmt.Errorf("unable to get receipt for cross chain bundle transaction. Cause: %w", err)
-	}
-
-	p.logger.Info("Successfully submitted bundle", log.BundleHashKey, bundle.LastBatchHash, "bundleRoots", bundle.CrossChainRootHashes.ToHexString(), "managementContract", *p.mgmtContractLib.GetContractAddr())
 	return nil
 }
 
@@ -465,30 +357,6 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),
 			log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
 		break
-	}
-	return nil
-}
-
-func (p *Publisher) awaitTransaction(tx *types.Transaction) error {
-	var receipt *types.Receipt
-	var err error
-	err = retry.Do(
-		func() error {
-			receipt, err = p.ethClient.TransactionReceipt(tx.Hash())
-			if err != nil {
-				return fmt.Errorf("could not get receipt for xchain L1 tx=%s: %w", tx.Hash(), err)
-			}
-			return err
-		},
-		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
-	)
-	if err != nil {
-		p.logger.Info("Receipt not found for transaction, we will re-attempt", log.ErrKey, err)
-		return err
-	}
-
-	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
-		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
 	}
 	return nil
 }

@@ -33,6 +33,8 @@ async function waitForRootPublished(management, msg, proof, root, provider: Ethe
     var gas_estimate = null
     const l1Ethers = new HardhatEthersProvider(provider, "layer1")    
 
+    console.log(`balance of management contract = ${await l1Ethers.getBalance(management.getAddress())}`)
+
     const startTime = Date.now();
     while (gas_estimate === null) {
         try {
@@ -51,10 +53,24 @@ async function waitForRootPublished(management, msg, proof, root, provider: Ethe
     console.log(`Estimation took ${Date.now() - startTime} ms`)
     return gas_estimate
 }
+
+async function retryLoop(callback: ()=>Promise<boolean>, interval = 20000, timeout = 12000000) {
+    const startTime = Date.now();
+    while (true) {
+      try {
+        const result = await callback();
+        if (result) {
+          return result;
+        }
+      } catch (error) {
+        console.log(`Error in retry loop: ${error}`);
+      }
+      await sleep(interval);
+    }
+}
     
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  return;
     const l2Network = hre; 
     const {deployer} = await hre.getNamedAccounts();
 
@@ -81,41 +97,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const msgHash = _processed_value_transfer[1]
     const decoded = decode_base64(block.crossChainTree)
 
-    console.log(`  Sender:        ${value_transfer['args'].sender}`)
-    console.log(`  Receiver:      ${value_transfer['args'].receiver}`)
-    console.log(`  Amount:        ${value_transfer['args'].amount}`)
-    console.log(`  Sequence:      ${value_transfer['args'].sequence}`)
-    console.log(`  VTrans Hash:   ${msgHash}`)
-    console.log(`  XChain tree:   ${decoded}`)
-    
-    if (decoded[0][1] != msgHash) {
-        console.error('Value transfer hash is not in the xchain tree!');
-        return;
-    }
+    console.log(`Decoded = ${JSON.stringify(decoded, null, 2)}`)
+    console.log(`Getting cross chain proof for 'v' and msgHash = ${msgHash}`)
 
-    const tree = StandardMerkleTree.of(decoded, ["string", "bytes32"]);
-    const proof = tree.getProof(['v',msgHash])
-    console.log(`  Merkle root:   ${tree.root}`)
-    console.log(`  Merkle proof:  ${JSON.stringify(proof, null,2)}`)
-  
-    if (block.crossChainTreeHash != tree.root) {
-      console.error('Constructed merkle root matches block crossChainTreeHash');
-      return
-    }
+    const proof : any = await retryLoop(() => hre.ethers.provider.send('ten_getCrossChainProof', ['v', msgHash]))
 
-    const l1Accounts = await hre.companionNetworks.layer1.getNamedAccounts()
-    const fundTx = await hre.companionNetworks.layer1.deployments.rawTx({
-        from: l1Accounts.deployer,
-        to: messageBusAddress,
-        value: "1000",
-    })
-    console.log(`Message bus funding status = ${fundTx.status}`)
-
-    const code = await hre.companionNetworks.layer1.provider.request({method: 'eth_getCode', params: [mgmtContractAddress, 'latest']});
-    console.log(`Management contract code = ${(code as string).length}`);
+    console.log(`Proof = ${JSON.stringify(proof, null, 2)}`)
 
     var managementContract = await hre.ethers.getContractAt("ManagementContract", mgmtContractAddress);
-    const estimation = await waitForRootPublished(managementContract, msg, proof, tree.root, hre.companionNetworks.layer1.provider)
+
+    const decoded_proof = hre.ethers.decodeRlp(proof.Proof)
+
+    const estimation = await waitForRootPublished(managementContract, msg, decoded_proof, proof.Root, hre.companionNetworks.layer1.provider)
     console.log(`Estimation for native value extraction = ${estimation}`)
 };
 

@@ -173,7 +173,7 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 
 	// TODO verify proof provided with block blockData.Proof
 
-	result, err := e.ingestL1Block(ctx, blockData)
+	result, rollupMetadata, err := e.ingestL1Block(ctx, blockData)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
@@ -187,7 +187,10 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
-	bsr := &common.BlockSubmissionResponse{ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData)}
+	bsr := &common.BlockSubmissionResponse{
+		ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData),
+		RollupMetadata:          rollupMetadata,
+	}
 	return bsr, nil
 }
 
@@ -466,12 +469,12 @@ func (e *enclaveAdminService) streamEventsForNewHeadBatch(ctx context.Context, b
 	}
 }
 
-func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*components.BlockIngestionType, error) {
+func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*components.BlockIngestionType, []common.ExtRollupMetadata, error) {
 	e.logger.Info("Start ingesting block", log.BlockHashKey, processed.BlockHeader.Hash())
 	rollups, err := e.rollupConsumer.GetRollupsFromL1Data(processed)
 	if err != nil {
 		// early return before storing block if multiple rollups are found in the block
-		return nil, err
+		return nil, nil, err
 	}
 	ingestion, err := e.l1BlockProcessor.Process(ctx, processed)
 	if err != nil {
@@ -481,10 +484,10 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		} else {
 			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
 		}
-		return nil, err
+		return nil, nil, err
 	}
 
-	err = e.rollupConsumer.ProcessRollups(ctx, rollups)
+	rollupMetadata, err := e.rollupConsumer.ProcessRollups(ctx, rollups)
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block rollups", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
@@ -505,10 +508,10 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		e.registry.OnL1Reorg(ingestion)
 		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return ingestion, nil
+	return ingestion, rollupMetadata, nil
 }
 
 func (e *enclaveAdminService) rejectBlockErr(ctx context.Context, cause error) *errutil.BlockRejectError {

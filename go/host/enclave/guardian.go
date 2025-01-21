@@ -50,7 +50,6 @@ type guardianServiceLocator interface {
 	L2Repo() host.L2BatchRepository
 	LogSubs() host.LogSubscriptionManager
 	Enclaves() host.EnclaveService
-	CrossChainMachine() l1.CrossChainStateMachine
 }
 
 // Guardian is a host service which monitors an enclave, it's responsibilities include:
@@ -497,7 +496,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	}
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block, rollupTxs, syncContracts)
+	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, syncContracts)
 
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
 	err = g.publishSharedSecretResponses(resp.ProducedSecretResponses)
@@ -507,14 +506,14 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *types.Header, rollupTxs []*common.L1RollupTx, syncContracts bool) {
+func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, syncContracts bool) {
 	// TODO (@will) this should be removed and pulled from the L1
 	err := g.storage.AddBlock(block)
 	if err != nil {
 		g.logger.Error("Could not add block to host db.", log.ErrKey, err)
 	}
 
-	for _, rollup := range rollupTxs {
+	for idx, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
 			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
@@ -524,7 +523,12 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, rollupTxs []*
 		if err != nil {
 			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
 		} else {
-			err = g.storage.AddRollup(r, metaData, block)
+			// TODO - This is a temporary fix, arrays should always match in practice...
+			extMetadata := common.ExtRollupMetadata{}
+			if len(metadatas) > idx {
+				extMetadata = metadatas[idx]
+			}
+			err = g.storage.AddRollup(r, &extMetadata, metaData, block)
 		}
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
@@ -676,39 +680,6 @@ func (g *Guardian) periodicRollupProduction() {
 	}
 }
 
-func (g *Guardian) periodicBundleSubmission() {
-	defer g.logger.Info("Stopping bundle submission")
-
-	interval := g.crossChainInterval
-	g.logger.Info("Starting cross chain bundle submission", "interval", interval)
-
-	bundleSubmissionTicker := time.NewTicker(interval)
-
-	for {
-		select {
-		case <-bundleSubmissionTicker.C:
-			err := g.sl.CrossChainMachine().Synchronize()
-			if err != nil {
-				g.logger.Error("Failed to synchronize cross chain state machine", log.ErrKey, err)
-				continue
-			}
-
-			err = g.sl.CrossChainMachine().PublishNextBundle()
-			if err != nil {
-				if errors.Is(err, errutil.ErrCrossChainBundleNoBatches) {
-					g.logger.Debug("No batches to publish")
-				} else {
-					g.logger.Error("Failed to publish next bundle", log.ErrKey, err)
-				}
-				continue
-			}
-		case <-g.hostInterrupter.Done():
-			bundleSubmissionTicker.Stop()
-			return
-		}
-	}
-}
-
 func (g *Guardian) streamEnclaveData() {
 	defer g.logger.Info("Stopping enclave data stream")
 	g.logger.Info("Starting L2 update stream from enclave")
@@ -803,7 +774,6 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 func (g *Guardian) startSequencerProcesses() {
 	go g.periodicBatchProduction()
 	go g.periodicRollupProduction()
-	go g.periodicBundleSubmission()
 }
 
 // evictEnclaveFromHAPool evicts a failing enclave from the HA pool if appropriate

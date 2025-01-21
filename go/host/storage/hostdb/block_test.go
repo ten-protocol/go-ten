@@ -9,6 +9,7 @@ import (
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 )
@@ -77,7 +78,7 @@ func TestAddBlockWithForeignKeyConstraint(t *testing.T) {
 	dbtx, _ = db.NewDBTransaction()
 
 	// add rollup referencing block
-	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup, &metadata, block.Header())
+	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup, &common.ExtRollupMetadata{}, &metadata, block.Header())
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}

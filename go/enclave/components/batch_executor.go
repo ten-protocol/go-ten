@@ -678,7 +678,7 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 		hasMessages = true
 	}
 
-	xchainHash := gethcommon.BigToHash(gethcommon.Big0)
+	xchainHash := gethcommon.MaxHash
 	if hasMessages {
 		tree, err := smt.Of(xchainTree, crosschain.CrossChainEncodings)
 		if err != nil {

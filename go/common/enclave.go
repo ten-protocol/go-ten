@@ -146,6 +146,7 @@ type Enclave interface {
 type BlockSubmissionResponse struct {
 	ProducedSecretResponses []*ProducedSecretResponse // The responses to any secret requests in the ingested L1 block.
 	RejectError             *errutil.BlockRejectError // If block was rejected, contains information about what block to submit next.
+	RollupMetadata          []ExtRollupMetadata       // Metadata for each rollup that the host needs to prepare APIs
 }
 
 // ProducedSecretResponse contains the data to publish to L1 in response to a secret request discovered while processing an L1 block

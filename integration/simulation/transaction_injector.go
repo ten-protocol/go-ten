@@ -2,15 +2,15 @@ package simulation
 
 import (
 	"context"
-	"encoding/json"
 	"math/big"
 	"math/rand"
+	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -18,6 +18,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -306,10 +307,6 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 }
 
 func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction, fromWallet wallet.Wallet) {
-	if ti.mgmtContractLib.IsMock() {
-		return
-	}
-
 	err := testcommon.AwaitReceipt(ti.ctx, ti.rpcHandles.TenWalletRndClient(fromWallet), tx.Hash(), 45*time.Second)
 	if err != nil {
 		ti.logger.Error("Failed to await receipt for withdrawal transaction", log.ErrKey, err)
@@ -320,37 +317,6 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	if err != nil {
 		ti.logger.Error("Failed to retrieve receipt for withdrawal transaction", log.ErrKey, err)
 		return
-	}
-	header, err := ti.rpcHandles.TenWalletRndClient(fromWallet).GetBatchHeaderByHash(receipt.BlockHash)
-	if err != nil {
-		ti.logger.Error("Failed to retrieve batch header for withdrawal transaction", log.ErrKey, err)
-		return
-	}
-
-	xchainTree := make([][]interface{}, 0) // ["v", "0xblablablabla"]
-	err = json.Unmarshal(header.CrossChainTree, &xchainTree)
-	if err != nil {
-		ti.logger.Error("Failed to unmarshal cross chain tree for withdrawal transaction", log.ErrKey, err)
-		return
-	}
-
-	for k, value := range xchainTree {
-		xchainTree[k][1] = gethcommon.HexToHash(value[1].(string))
-	}
-
-	tree, err := standard_merkle_tree.Of(xchainTree, crosschain.CrossChainEncodings)
-	if err != nil {
-		ti.logger.Error("Failed to load cross chain tree for withdrawal transaction", log.ErrKey, err)
-		return
-	}
-
-	if gethcommon.BytesToHash(tree.GetRoot()) != header.CrossChainRoot {
-		ti.logger.Error("Root of cross chain tree does not match header", "expected", header.CrossChainRoot, "actual", gethcommon.BytesToHash(tree.GetRoot()))
-		return
-	}
-
-	if len(receipt.Logs) != 1 {
-		panic("unexpected number of logs in receipt")
 	}
 
 	logs := make([]types.Log, len(receipt.Logs))
@@ -364,12 +330,32 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	vTransfers := crosschain.ValueTransfers(transfers)
-	proof, err := tree.GetProof(vTransfers.ForMerkleTree()[0])
-	if err != nil {
-		panic("unable to get proof for value transfer")
+
+	var proof clientapi.CrossChainProof
+	for {
+		proof, err = ti.rpcHandles.TenWalletRndClient(fromWallet).GetCrossChainProof(ti.ctx, "v", vTransfers.ForMerkleTree()[0][1].(gethcommon.Hash))
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				ti.logger.Info("Proof not found, retrying...", log.ErrKey, err)
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			panic("unable to get proof for value transfer")
+		}
+		break
 	}
 
-	if len(proof) == 0 {
+	if len(proof.Proof) == 0 {
+		return
+	}
+
+	proofBytes := [][]byte{}
+	if err := rlp.DecodeBytes(proof.Proof, &proofBytes); err != nil {
+		panic("unable to decode proof")
+	}
+
+	// In mem sim does not support the l1 interaction required for the rest of the function.
+	if ti.mgmtContractLib.IsMock() {
 		return
 	}
 
@@ -384,8 +370,8 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	proof32 := make([][32]byte, 0)
-	for i := 0; i < len(proof); i++ {
-		proof32 = append(proof32, [32]byte(proof[i][0:32]))
+	for i := 0; i < len(proofBytes); i++ {
+		proof32 = append(proof32, [32]byte(proofBytes[i][0:32]))
 	}
 
 	time.Sleep(20 * time.Second)
@@ -396,7 +382,12 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	withdrawalTx, err := mCtr.ExtractNativeValue(opts, ManagementContract.StructsValueTransferMessage(vTransfers[0]), proof32, header.CrossChainRoot)
+	withdrawalTx, err := mCtr.ExtractNativeValue(
+		opts,
+		ManagementContract.StructsValueTransferMessage(vTransfers[0]),
+		proof32,
+		proof.Root,
+	)
 	if err != nil {
 		ti.logger.Error("Failed to extract value transfer from L2", log.ErrKey, err)
 		return
