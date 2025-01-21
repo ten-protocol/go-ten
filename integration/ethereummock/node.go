@@ -450,11 +450,22 @@ func (m *Node) setHead(b *types.Header) *types.Header {
 }
 
 func (m *Node) setFork(blocks []*types.Header) *types.Header {
+	m.subMu.Lock()
+	defer m.subMu.Unlock()
 	head := blocks[len(blocks)-1]
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return head
 	}
-	return m.setHead(head)
+
+	m.head = head
+	// notify the client subs
+	for _, s := range m.subs {
+		sub := s
+		go sub.publishAll(blocks)
+	}
+	m.canonicalCh <- head
+
+	return head
 }
 
 // P2PReceiveBlock is called by counterparties when there is a block to broadcast
