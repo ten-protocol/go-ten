@@ -63,7 +63,7 @@ func (s *Simulation) Start() {
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	// and for all l2 nodes to receive the genesis l2 batch
 	// todo - instead of sleeping, it would be better to poll
-	time.Sleep(10 * time.Second)
+	time.Sleep(time.Duration(10 * s.AvgBlockDuration))
 
 	cfg, err := s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet).GetConfig()
 	if err != nil {
