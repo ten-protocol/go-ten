@@ -41,6 +41,10 @@ on:
         description: "Deploy"
         required: false
         default: "true"
+      tag:
+        description: 'Tag to build and push (leave empty for latest)'
+        required: true
+        default: ''
         
 jobs:
   validate-inputs:
@@ -108,6 +112,18 @@ jobs:
           echo "GATEWAY_URL: $GATEWAY_URL"
           echo "NETWORK_NAME: $NETWORK_NAME"
           echo "TENSCAN_URL: $TENSCAN_URL"
+          - name: 'Get version'
+          id: get_version
+          run: |
+            if [ "${{ github.event_name }}" = "release" ]; then
+              echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+            elif [ -n "${{ github.event.inputs.tag }}" ]; then
+              echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+            else
+              # Fetch the latest tag from the repository
+              LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+              echo "VERSION=${LATEST_TAG}" >> $GITHUB_OUTPUT
+            fi
 
       - uses: actions/checkout@v4
 
@@ -138,9 +154,9 @@ jobs:
             --build-arg NEXT_PUBLIC_NETWORK_NAME=${{ env.NETWORK_NAME }} \
             --build-arg NEXT_PUBLIC_TENSCAN_URL=${{ env.TENSCAN_URL }} \
             --build-arg NEXT_PUBLIC_GATEWAY_URL=${{ env.GATEWAY_URL }} \
-            -t ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }} \
+            -t ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}:${VERSION} \
             -f ./tools/walletextension/frontend/Dockerfile .
-          docker push ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}
+          docker push ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}:${VERSION}
 
 
       - name: 'Deploy Gateway FE to Azure Container Instances'
@@ -149,7 +165,7 @@ jobs:
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
           dns-name-label: ${{ env.DNS_NAME_LABEL_GATEWAY_FE }}
-          image: ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}
+          image: ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}:${VERSION}
           name: ${{ env.IMAGE_NAME_GATEWAY_FE }}
           location: "uksouth"
           restart-policy: "Never"
