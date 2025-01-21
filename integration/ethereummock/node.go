@@ -457,12 +457,12 @@ func (m *Node) setFork(blocks []*types.Header) *types.Header {
 		return head
 	}
 
+	m.head = head
 	// notify the client subs
 	for _, s := range m.subs {
 		sub := s
 		go sub.publishAll(blocks)
 	}
-
 	m.canonicalCh <- head
 
 	return head
