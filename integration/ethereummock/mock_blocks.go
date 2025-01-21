@@ -18,24 +18,29 @@ func NewBlock(parent *types.Block, nodeID common.Address, txs []*types.Transacti
 		height = parent.NumberU64() + 1
 	}
 
+	blobGasUsed := uint64(0)
+	excessBlobGas := uint64(0)
 	header := types.Header{
-		ParentHash:  parentHash,
-		UncleHash:   common.Hash{},
-		Coinbase:    nodeID,
-		Root:        common.Hash{},
-		TxHash:      common.Hash{},
-		ReceiptHash: common.Hash{},
-		Bloom:       types.Bloom{},
-		Difficulty:  big.NewInt(0),
-		Number:      big.NewInt(int64(height)),
-		GasLimit:    0,
-		GasUsed:     0,
-		Time:        blockTime, // Set the block time here
-		Extra:       nil,
-		MixDigest:   common.Hash{},
-		Nonce:       types.BlockNonce{},
-		BaseFee:     nil,
+		ParentHash:       parentHash,
+		UncleHash:        common.Hash{},
+		Coinbase:         nodeID,
+		Root:             common.Hash{},
+		TxHash:           common.Hash{},
+		ReceiptHash:      common.Hash{},
+		Bloom:            types.Bloom{},
+		Difficulty:       big.NewInt(0),
+		Number:           big.NewInt(int64(height)),
+		GasLimit:         100,
+		GasUsed:          100,
+		Time:             blockTime, // Set the block time here
+		Extra:            make([]byte, 0),
+		MixDigest:        common.Hash{},
+		Nonce:            types.BlockNonce{},
+		BaseFee:          big.NewInt(1),
+		WithdrawalsHash:  &common.Hash{},
+		BlobGasUsed:      &blobGasUsed,
+		ExcessBlobGas:    &excessBlobGas,
+		ParentBeaconRoot: &common.Hash{},
 	}
-
 	return types.NewBlock(&header, &types.Body{Transactions: txs}, nil, trie.NewStackTrie(nil))
 }

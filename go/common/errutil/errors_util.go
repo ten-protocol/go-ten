@@ -27,8 +27,6 @@ var (
 	ErrCrossChainBundleNoBatches   = errors.New("no batches for cross chain bundle")
 	ErrNoNextRollup                = errors.New("no next rollup")
 	ErrRollupForkMismatch          = errors.New("rollup fork mismatch")
-	ErrNoBundleToPublish           = errors.New("no bundle to publish")
-	ErrBlockBindingMismatch        = errors.New("Block binding mismatch")
 	ErrCrossChainRootMismatch      = errors.New("cross chain root mismatch")
 )
 

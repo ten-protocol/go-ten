@@ -74,22 +74,6 @@ func (n *blockResolverInMem) FetchBlock(_ context.Context, hash common.L1BlockHa
 	return block.Header(), nil
 }
 
-func (n *blockResolverInMem) FetchHeadBlock(_ context.Context) (*types.Block, error) {
-	n.m.RLock()
-	defer n.m.RUnlock()
-	var max *types.Block
-	for k := range n.blockCache {
-		bh := n.blockCache[k]
-		if max == nil || max.NumberU64() < bh.NumberU64() {
-			max = bh
-		}
-	}
-	if max == nil {
-		return nil, errutil.ErrNotFound
-	}
-	return max, nil
-}
-
 func (n *blockResolverInMem) ParentBlock(ctx context.Context, b *types.Header) (*types.Block, error) {
 	return n.FetchFullBlock(ctx, b.ParentHash)
 }

@@ -78,6 +78,10 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, extMetadata *common.Ex
 	return nil
 }
 
+func (s *storageImpl) ReadBlock(blockHash *gethcommon.Hash) (*types.Header, error) {
+	return hostdb.GetBlock(s.db, s.db.GetSQLStatement(), blockHash)
+}
+
 func (s *storageImpl) AddBlock(b *types.Header) error {
 	dbtx, err := s.db.NewDBTransaction()
 	if err != nil {

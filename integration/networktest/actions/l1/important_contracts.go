@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+
 	"github.com/ten-protocol/go-ten/integration/networktest/actions"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -63,7 +65,11 @@ func (s *setImportantContract) Run(ctx context.Context, network networktest.Netw
 	// !! Important note !!
 	// The ownerOnly check in the contract doesn't like the gas estimate in here, to test you may need to hardcode a
 	// the gas value when the estimate errors
-	tx, err := l1Client.PrepareTransactionToSend(ctx, txData, networkCfg.ManagementContractAddress)
+	nonce, err := l1Client.Nonce(networkCfg.ManagementContractAddress)
+	if err != nil {
+		return nil, err
+	}
+	tx, err := ethadapter.SetTxGasPrice(ctx, l1Client, txData, networkCfg.ManagementContractAddress, nonce, 0)
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to prepare tx")
 	}

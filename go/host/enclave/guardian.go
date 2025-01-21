@@ -213,6 +213,10 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 // - enclave is behind: lookup blocks to feed it 1-by-1 (see `catchupWithL1()`), ignore new live blocks that arrive here
 // - enclave is up-to-date: feed it these live blocks as they arrive, no need to lookup blocks
 func (g *Guardian) HandleBlock(block *types.Header) {
+	if !g.running.Load() {
+		return
+	}
+
 	g.logger.Debug("Received L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
 	// record the newest block we've seen
 	g.state.OnReceivedBlock(block.Hash())
@@ -229,6 +233,10 @@ func (g *Guardian) HandleBlock(block *types.Header) {
 // HandleBatch is called by the L2 repository when a new batch arrives
 // Note: this should only be called for validators, sequencers produce their own batches
 func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
+	if !g.running.Load() {
+		return
+	}
+
 	g.logger.Debug("Host received L2 batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
@@ -244,6 +252,10 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 }
 
 func (g *Guardian) HandleTransaction(tx common.EncryptedTx) {
+	if !g.running.Load() {
+		return
+	}
+
 	if g.GetEnclaveState().status == Disconnected ||
 		g.GetEnclaveState().status == Unavailable ||
 		g.GetEnclaveState().status == AwaitingSecret {
@@ -420,6 +432,9 @@ func (g *Guardian) catchupWithL1() error {
 
 		l1Block, isLatest, err := g.sl.L1Data().FetchNextBlock(enclaveHead)
 		if err != nil {
+			if errors.Is(err, gethutil.ErrAncestorNotFound) {
+				g.logger.Error("should not happen. Chain fork cannot be calculated because there are missing blocks")
+			}
 			if errors.Is(err, l1.ErrNoNextBlock) {
 				if g.state.hostL1Head == gethutil.EmptyHash {
 					return fmt.Errorf("no L1 blocks found in repository")
@@ -507,12 +522,6 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 }
 
 func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, syncContracts bool) {
-	// TODO (@will) this should be removed and pulled from the L1
-	err := g.storage.AddBlock(block)
-	if err != nil {
-		g.logger.Error("Could not add block to host db.", log.ErrKey, err)
-	}
-
 	for idx, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {

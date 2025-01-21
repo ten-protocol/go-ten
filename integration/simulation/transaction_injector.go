@@ -2,6 +2,7 @@ package simulation
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"strings"
@@ -340,7 +341,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 				time.Sleep(1 * time.Second)
 				continue
 			}
-			panic("unable to get proof for value transfer")
+			panic(fmt.Errorf("unable to get proof for value transfer. cause: %w", err))
 		}
 		break
 	}

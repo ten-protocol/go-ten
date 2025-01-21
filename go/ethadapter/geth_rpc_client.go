@@ -4,15 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"math"
 	"math/big"
 	"time"
 
 	"github.com/TwiN/gocache/v2"
-
-	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/holiman/uint256"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -28,16 +23,11 @@ import (
 )
 
 const (
-	connRetryMaxWait        = 10 * time.Minute // after this duration, we will stop retrying to connect and return the failure
-	connRetryInterval       = 500 * time.Millisecond
-	_maxRetryPriceIncreases = 5
-	_retryPriceMultiplier   = 2  // geth now wants 100% increase or for you to wait
-	_defaultBlockCacheSize  = 51 // enough for 50 request batch size and one for previous block
+	connRetryMaxWait       = 10 * time.Minute // after this duration, we will stop retrying to connect and return the failure
+	connRetryInterval      = 500 * time.Millisecond
+	_defaultBlockCacheSize = 51 // enough for 50 request batch size and one for previous block
 
 )
-
-// geth enforces a 1 gwei minimum for blob tx fee
-var minBlobTxFee = big.NewInt(params.GWei)
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
@@ -91,7 +81,7 @@ func (e *gethRPCClient) Info() Info {
 	return Info{}
 }
 
-func (e *gethRPCClient) BlocksBetween(startingBlock *types.Header, lastBlock *types.Header) []*types.Header {
+func (e *gethRPCClient) BlocksBetween(startingBlock *types.Header, lastBlock *types.Header) ([]*types.Header, error) {
 	var blocksBetween []*types.Header
 	var err error
 
@@ -99,12 +89,13 @@ func (e *gethRPCClient) BlocksBetween(startingBlock *types.Header, lastBlock *ty
 		c := currentBlk.ParentHash
 		currentBlk, err = e.HeaderByHash(currentBlk.ParentHash)
 		if err != nil {
-			e.logger.Crit(fmt.Sprintf("could not fetch parent block with hash %s.", c.String()), log.ErrKey, err)
+			e.logger.Error(fmt.Sprintf("could not fetch parent block with hash %s.", c.String()), log.ErrKey, err)
+			return nil, fmt.Errorf("could not fetch parent block with hash %s. cause: %w", c.String(), err)
 		}
 		blocksBetween = append(blocksBetween, currentBlk)
 	}
 
-	return blocksBetween
+	return blocksBetween, nil
 }
 
 func (e *gethRPCClient) IsBlockAncestor(block *types.Header, maybeAncestor common.L1BlockHash) bool {
@@ -233,6 +224,14 @@ func (e *gethRPCClient) BlockByHash(hash gethcommon.Hash) (*types.Block, error) 
 	return e.client.BlockByHash(ctx, hash)
 }
 
+func (e *gethRPCClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	return e.client.SuggestGasTipCap(ctx)
+}
+
+func (e *gethRPCClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
+	return e.client.EstimateGas(ctx, msg)
+}
+
 func (e *gethRPCClient) CallContract(msg ethereum.CallMsg) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
@@ -272,131 +271,6 @@ func (e *gethRPCClient) FetchLastBatchSeqNo(address gethcommon.Address) (*big.In
 	return contract.LastBatchSeqNo(&bind.CallOpts{})
 }
 
-// PrepareTransactionToSend takes a txData type and overrides the From, Gas and Gas Price field with current values
-func (e *gethRPCClient) PrepareTransactionToSend(ctx context.Context, txData types.TxData, from gethcommon.Address) (types.TxData, error) {
-	nonce, err := e.EthClient().PendingNonceAt(ctx, from)
-	if err != nil {
-		return nil, fmt.Errorf("could not get nonce - %w", err)
-	}
-	return e.PrepareTransactionToRetry(ctx, txData, from, nonce, 0)
-}
-
-// PrepareTransactionToRetry takes a txData type and overrides the From, Gas and Gas Price field with current values
-// it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
-func (e *gethRPCClient) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int) (types.TxData, error) {
-	switch tx := txData.(type) {
-	case *types.LegacyTx:
-		return e.prepareLegacyTxToRetry(ctx, tx, from, nonce, retryNumber)
-	case *types.BlobTx:
-		return e.prepareBlobTxToRetry(ctx, tx, from, nonce, retryNumber)
-	default:
-		return nil, fmt.Errorf("unsupported transaction type: %T", tx)
-	}
-}
-
-func (e *gethRPCClient) prepareLegacyTxToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int) (types.TxData, error) {
-	unEstimatedTx := types.NewTx(txData)
-	gasPrice, err := e.EthClient().SuggestGasPrice(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not suggest gas price - %w", err)
-	}
-
-	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
-	retryFloat := math.Min(_maxRetryPriceIncreases, float64(retryNumber))
-	// we apply a 20% gas price increase for each retry (retrying with similar price gets rejected by mempool)
-	// Retry '0' is the first attempt, gives multiplier of 1.0
-	multiplier := math.Pow(_retryPriceMultiplier, retryFloat)
-
-	gasPriceFloat := new(big.Float).SetInt(gasPrice)
-	retryPriceFloat := big.NewFloat(0).Mul(gasPriceFloat, big.NewFloat(multiplier))
-	// prices aren't big enough for float error to matter
-	retryPrice, _ := retryPriceFloat.Int(nil)
-
-	gasLimit, err := e.EthClient().EstimateGas(ctx, ethereum.CallMsg{
-		From:  from,
-		To:    unEstimatedTx.To(),
-		Value: unEstimatedTx.Value(),
-		Data:  unEstimatedTx.Data(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("could not estimate gas - %w", err)
-	}
-
-	return &types.LegacyTx{
-		Nonce:    nonce,
-		GasPrice: retryPrice,
-		Gas:      gasLimit,
-		To:       unEstimatedTx.To(),
-		Value:    unEstimatedTx.Value(),
-		Data:     unEstimatedTx.Data(),
-	}, nil
-}
-
-// PrepareBlobTransactionToRetry takes a txData type and overrides the From, Gas and Gas Price field with current values
-// it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
-func (e *gethRPCClient) prepareBlobTxToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int) (types.TxData, error) {
-	unEstimatedTx := types.NewTx(txData)
-	to := unEstimatedTx.To()
-	value := unEstimatedTx.Value()
-	data := unEstimatedTx.Data()
-	gasPrice, err := e.EthClient().SuggestGasTipCap(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not suggest gas price - %w", err)
-	}
-
-	// TODO move all this into common function
-	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
-	retryFloat := math.Min(_maxRetryPriceIncreases, float64(retryNumber))
-	// we apply a 20% gas price increase for each retry (retrying with similar price gets rejected by mempool)
-	// Retry '0' is the first attempt, gives multiplier of 1.0
-	multiplier := math.Pow(_retryPriceMultiplier, retryFloat)
-
-	gasPriceFloat := new(big.Float).SetInt(gasPrice)
-	retryPriceFloat := big.NewFloat(0).Mul(gasPriceFloat, big.NewFloat(multiplier))
-	// prices aren't big enough for float error to matter
-	retryPrice, _ := retryPriceFloat.Int(nil)
-
-	gasLimit, err := e.EthClient().EstimateGas(ctx, ethereum.CallMsg{
-		From:  from,
-		To:    to,
-		Value: value,
-		Data:  data,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("could not estimate gas - %w", err)
-	}
-
-	// The base blob fee is calculated from the parent header
-	head, err := e.EthClient().HeaderByNumber(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch the suggested base fee: %w", err)
-	} else if head.BaseFee == nil {
-		return nil, fmt.Errorf("txmgr does not support pre-london blocks that do not have a base fee")
-	}
-	var blobBaseFee *big.Int
-	if head.ExcessBlobGas != nil {
-		blobBaseFee = eip4844.CalcBlobFee(*head.ExcessBlobGas)
-	}
-	blobFeeCap := calcBlobFeeCap(blobBaseFee, retryNumber)
-
-	baseFee := head.BaseFee
-	gasFeeCap := new(big.Int).Mul(baseFee, big.NewInt(2))
-	gasFeeCap.Add(gasFeeCap, retryPrice)
-
-	return &types.BlobTx{
-		Nonce:      nonce,
-		GasTipCap:  uint256.MustFromBig(retryPrice), // maxPriorityFeePerGas
-		GasFeeCap:  uint256.MustFromBig(gasFeeCap),  // maxFeePerGas = (baseFee * 2) + maxPriorityFeePerGas
-		Gas:        gasLimit,
-		To:         *unEstimatedTx.To(),
-		Value:      uint256.MustFromBig(value),
-		Data:       unEstimatedTx.Data(),
-		BlobFeeCap: uint256.MustFromBig(blobFeeCap),
-		BlobHashes: unEstimatedTx.BlobHashes(),
-		Sidecar:    unEstimatedTx.BlobTxSidecar(),
-	}, nil
-}
-
 // ReconnectIfClosed closes the existing client connection and creates a new connection to the same address:port
 func (e *gethRPCClient) ReconnectIfClosed() error {
 	if e.Alive() {
@@ -422,7 +296,7 @@ func (e *gethRPCClient) Alive() bool {
 		e.logger.Error("Unable to fetch BlockNumber rpc endpoint - client connection is in error state")
 		return false
 	}
-	return err == nil
+	return true
 }
 
 func connect(rpcURL string, connectionTimeout time.Duration) (*ethclient.Client, error) {
@@ -436,24 +310,4 @@ func connect(rpcURL string, connectionTimeout time.Duration) (*ethclient.Client,
 	}
 
 	return c, err
-}
-
-// calcBlobFeeCap computes a suggested blob fee cap that is twice the current header's blob base fee
-// value, with a minimum value of minBlobTxFee. It also doubles the blob fee cap based on the retry number.
-func calcBlobFeeCap(blobBaseFee *big.Int, retryNumber int) *big.Int {
-	// Base calculation: twice the current blob base fee
-	blobFeeCap := new(big.Int).Mul(blobBaseFee, big.NewInt(2))
-
-	// Ensure the blob fee cap is at least the minimum value
-	if blobFeeCap.Cmp(minBlobTxFee) < 0 {
-		blobFeeCap.Set(minBlobTxFee)
-	}
-
-	// Double the blob fee cap for each retry attempt
-	if retryNumber > 0 {
-		multiplier := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(retryNumber)), nil)
-		blobFeeCap.Mul(blobFeeCap, multiplier)
-	}
-
-	return blobFeeCap
 }
