@@ -31,6 +31,17 @@ on:
         options:
           - "primary"
           - "dexynth"
+      gateway_url:
+        description: "Gateway URL"
+        required: false
+      build_tag:
+        description: "Docker Build Tag"
+        required: false
+      deploy:
+        description: "Deploy"
+        required: false
+        default: "true"
+        
 jobs:
   validate-inputs:
     runs-on: ubuntu-latest
@@ -56,6 +67,8 @@ jobs:
             INSTANCE_SUFFIX="-${{ github.event.inputs.instance_type }}"
             INSTANCE_PREFIX="${{ github.event.inputs.instance_type }}-"
           fi
+
+          GATEWAY_URL="${{ github.event.inputs.GATEWAY_URL || env.GATEWAY_URL }}"
 
           echo "INSTANCE_SUFFIX=$INSTANCE_SUFFIX" >> $GITHUB_ENV
           echo "INSTANCE_PREFIX=$INSTANCE_PREFIX" >> $GITHUB_ENV
@@ -129,7 +142,9 @@ jobs:
             -f ./tools/walletextension/frontend/Dockerfile .
           docker push ${{ env.DOCKER_BUILD_TAG_GATEWAY_FE }}
 
+
       - name: 'Deploy Gateway FE to Azure Container Instances'
+        if: ${{ github.event.inputs.deploy == 'true' }}
         uses: "azure/aci-deploy@v1"
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
