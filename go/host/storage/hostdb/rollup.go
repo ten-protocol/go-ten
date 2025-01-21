@@ -69,7 +69,6 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 			message[0],
 			rollupId,
 		)
-
 		if err != nil {
 			return err
 		}
