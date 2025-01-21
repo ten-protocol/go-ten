@@ -60,6 +60,7 @@ func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
 
 func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
 	hostStorage := storage.NewHostStorageFromConfig(config, logger)
+	l1Repo.SetBlockResolver(hostStorage)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
 		// config

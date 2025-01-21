@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/host/storage"
+
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
@@ -49,6 +51,7 @@ type DataService struct {
 	logger          gethlog.Logger
 	mgmtContractLib mgmtcontractlib.MgmtContractLib
 	blobResolver    BlobResolver
+	blockResolver   storage.BlockResolver
 
 	running           atomic.Bool
 	head              gethcommon.Hash
@@ -71,6 +74,10 @@ func NewL1DataService(
 		blobResolver:      blobResolver,
 		contractAddresses: contractAddresses,
 	}
+}
+
+func (r *DataService) SetBlockResolver(br storage.BlockResolver) {
+	r.blockResolver = br
 }
 
 func (r *DataService) Start() error {
@@ -136,22 +143,29 @@ func (r *DataService) FetchNextBlock(remoteHead gethcommon.Hash) (*types.Header,
 	return blk, blk.Hash() == r.head, nil
 }
 
+// FetchBlock - BlockResolver interface
 func (r *DataService) FetchBlock(_ context.Context, blockHash common.L1BlockHash) (*types.Header, error) {
-	return r.ethClient.HeaderByHash(blockHash)
+	h, err := r.blockResolver.ReadBlock(&blockHash)
+	if err != nil {
+		return r.ethClient.HeaderByHash(blockHash)
+	}
+	return h, nil
 }
 
-func (r *DataService) latestCanonAncestor(blkHash gethcommon.Hash) (*common.ChainFork, error) {
+func (r *DataService) latestCanonAncestor(remote gethcommon.Hash) (*common.ChainFork, error) {
 	ctx := context.Background()
-	currentHead, err := r.ethClient.HeaderByNumber(nil)
+
+	remoteHead, err := r.FetchBlock(ctx, remote)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch L1 head- %w", err)
-	}
-	blk, err := r.ethClient.HeaderByHash(blkHash)
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch L1 block with hash=%s - %w", blkHash, err)
+		return nil, fmt.Errorf("unable to fetch L1 block with hash=%s - %w", remote, err)
 	}
 
-	fork, err := gethutil.LCA(ctx, currentHead, blk, r)
+	currentHead, err := r.FetchBlock(ctx, r.head)
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch current L1 head- %w", err)
+	}
+
+	fork, err := gethutil.LCA(ctx, currentHead, remoteHead, r)
 	if err != nil {
 		return nil, fmt.Errorf("unable to calculate LCA - %w", err)
 	}
@@ -296,6 +310,15 @@ func (r *DataService) streamLiveBlocks() {
 	for r.running.Load() {
 		select {
 		case blockHeader := <-liveStream:
+			block, err := r.ethClient.HeaderByHash(blockHeader.Hash())
+			if err != nil {
+				r.logger.Error("Could not read block head.", log.ErrKey, err)
+			}
+			err = r.blockResolver.AddBlock(block)
+			if err != nil {
+				r.logger.Error("Could not add block to host db.", log.ErrKey, err)
+			}
+
 			r.head = blockHeader.Hash()
 			for _, handler := range r.blockSubscribers.Subscribers() {
 				go handler.HandleBlock(blockHeader)

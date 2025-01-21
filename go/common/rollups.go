@@ -15,8 +15,8 @@ type ExtRollup struct {
 // ExtRollupMetadata metadata that should not be in the rollup, but rather is derived from one.
 // This should all be public information as it is passed back to the host!
 type ExtRollupMetadata struct {
-	CrossChainTree []byte //All the elements of the cross chain tree when building the rollup; Host uses this for serving cross chain proofs;
-	//todo: Move signature here maybe?
+	CrossChainTree []byte // All the elements of the cross chain tree when building the rollup; Host uses this for serving cross chain proofs;
+	// todo: Move signature here maybe?
 }
 
 // Hash returns the keccak256 hash of the rollup's header.

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
@@ -30,7 +31,7 @@ import (
 type batchRegistry struct {
 	storage      storage.Storage
 	logger       gethlog.Logger
-	headBatchSeq *big.Int // keep track of the last executed batch to optimise db access
+	headBatchSeq atomic.Pointer[big.Int] // keep track of the last executed batch to optimise db access
 
 	batchesCallback   func(*core.Batch, types.Receipts)
 	callbackMutex     sync.RWMutex
@@ -54,11 +55,11 @@ func NewBatchRegistry(storage storage.Storage, config *enclaveconfig.EnclaveConf
 	}
 	br := &batchRegistry{
 		storage:           storage,
-		headBatchSeq:      headBatchSeq,
 		logger:            logger,
 		healthTimeout:     time.Minute,
 		lastExecutedBatch: async.NewAsyncTimestamp(time.Now().Add(-time.Minute)),
 	}
+	br.headBatchSeq.Store(headBatchSeq)
 
 	br.ethChainAdapter = NewEthChainAdapter(big.NewInt(config.TenChainID), br, storage, gethEncodingService, *config, logger)
 	return br
@@ -69,7 +70,7 @@ func (br *batchRegistry) EthChain() *EthChainAdapter {
 }
 
 func (br *batchRegistry) HeadBatchSeq() *big.Int {
-	return br.headBatchSeq
+	return br.headBatchSeq.Load()
 }
 
 func (br *batchRegistry) SubscribeForExecutedBatches(callback func(*core.Batch, types.Receipts)) {
@@ -92,7 +93,7 @@ func (br *batchRegistry) OnL1Reorg(_ *BlockIngestionType) {
 		br.logger.Error("Could not fetch head batch", log.ErrKey, err)
 		return
 	}
-	br.headBatchSeq = headBatch.SequencerOrderNo
+	br.headBatchSeq.Store(headBatch.SequencerOrderNo)
 }
 
 func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExecResults []*core.TxExecResult) error {
@@ -114,7 +115,7 @@ func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExec
 		return fmt.Errorf("failed to feed batch into the virtual eth chain. cause %w", err)
 	}
 
-	br.headBatchSeq = batchHeader.SequencerOrderNo
+	br.headBatchSeq.Store(batchHeader.SequencerOrderNo)
 	if br.batchesCallback != nil {
 		txReceipts := make([]*types.Receipt, len(txExecResults))
 		for i, txExecResult := range txExecResults {

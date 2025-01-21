@@ -314,7 +314,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		retries++ // count each attempt so we can increase gas price
 
 		// update the tx gas price before each attempt
-		tx, err := p.ethClient.PrepareTransactionToRetry(p.sendingContext, tx, p.hostWallet.Address(), nonce, retries)
+		tx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retries)
 		if err != nil {
 			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 		}

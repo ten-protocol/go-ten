@@ -99,43 +99,7 @@ type Node struct {
 
 	// this mock state is to simulate the permissioning of the sequencer enclave, the L1 now 'knows the seq enclave ID'
 	tenSeqEnclaveID common.EnclaveID
-}
-
-func (m *Node) PrepareTransactionToSend(_ context.Context, txData types.TxData, _ gethcommon.Address) (types.TxData, error) {
-	switch tx := txData.(type) {
-	case *types.LegacyTx:
-		return createLegacyTx(txData)
-	case *types.BlobTx:
-		return createBlobTx(txData)
-	default:
-		return nil, fmt.Errorf("unsupported transaction type: %T", tx)
-	}
-}
-
-func (m *Node) PrepareTransactionToRetry(ctx context.Context, txData types.TxData, from gethcommon.Address, _ uint64, _ int) (types.TxData, error) {
-	return m.PrepareTransactionToSend(ctx, txData, from)
-}
-
-func createLegacyTx(txData types.TxData) (types.TxData, error) {
-	tx := types.NewTx(txData)
-	return &types.LegacyTx{
-		Nonce:    123,
-		GasPrice: tx.GasPrice(),
-		Gas:      tx.Gas(),
-		To:       tx.To(),
-		Value:    tx.Value(),
-		Data:     tx.Data(),
-	}, nil
-}
-
-func createBlobTx(txData types.TxData) (types.TxData, error) {
-	tx := types.NewTx(txData)
-	return &types.BlobTx{
-		To:         *tx.To(),
-		Data:       tx.Data(),
-		BlobHashes: tx.BlobHashes(),
-		Sidecar:    tx.BlobTxSidecar(),
-	}, nil
+	head            *types.Header
 }
 
 func (m *Node) SendTransaction(tx *types.Transaction) error {
@@ -167,7 +131,7 @@ func (m *Node) TransactionByHash(hash gethcommon.Hash) (*types.Transaction, bool
 	}
 
 	// Then check if the transaction exists in any block
-	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
+	blk, err := m.BlockResolver.FetchFullBlock(context.Background(), m.head.Hash())
 	if err != nil {
 		return nil, false, fmt.Errorf("could not retrieve head block. Cause: %w", err)
 	}
@@ -259,14 +223,7 @@ func (m *Node) BlockListener() (chan *types.Header, ethereum.Subscription) {
 }
 
 func (m *Node) BlockNumber() (uint64, error) {
-	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			return 0, ethereum.NotFound
-		}
-		return 0, fmt.Errorf("could not retrieve head block. Cause: %w", err)
-	}
-	return blk.NumberU64(), nil
+	return m.head.Number.Uint64(), nil
 }
 
 func (m *Node) HeaderByNumber(n *big.Int) (*types.Header, error) {
@@ -276,19 +233,14 @@ func (m *Node) HeaderByNumber(n *big.Int) (*types.Header, error) {
 	if n.Int64() == 0 {
 		return MockGenesisBlock.Header(), nil
 	}
-	blk, err := m.BlockResolver.FetchHeadBlock(context.Background())
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			return nil, ethereum.NotFound
-		}
-		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
-	}
-	for !bytes.Equal(blk.ParentHash().Bytes(), (common.L1BlockHash{}).Bytes()) {
-		if blk.NumberU64() == n.Uint64() {
-			return blk.Header(), nil
+	blk := m.head
+	var err error
+	for !bytes.Equal(blk.ParentHash.Bytes(), (common.L1BlockHash{}).Bytes()) {
+		if blk.Number.Uint64() == n.Uint64() {
+			return blk, nil
 		}
 
-		blk, err = m.BlockResolver.FetchFullBlock(context.Background(), blk.ParentHash())
+		blk, err = m.BlockResolver.FetchBlock(context.Background(), blk.ParentHash)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve parent for block in chain. Cause: %w", err)
 		}
@@ -313,11 +265,7 @@ func (m *Node) BlockByHash(id gethcommon.Hash) (*types.Block, error) {
 }
 
 func (m *Node) FetchHeadBlock() (*types.Header, error) {
-	block, err := m.BlockResolver.FetchHeadBlock(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve head block. Cause: %w", err)
-	}
-	return block.Header(), nil
+	return m.head, nil
 }
 
 func (m *Node) Info() ethadapter.Info {
@@ -469,7 +417,11 @@ func (m *Node) processBlock(b *types.Block, head *types.Header) *types.Header {
 		}
 		m.logger.Info(
 			fmt.Sprintf("L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", b.Hash(), b.NumberU64(), head.Hash(), head.Number.Uint64(), fork.CommonAncestor.Hash(), fork.CommonAncestor.Number.Uint64()))
-		return m.setFork(m.BlocksBetween(fork.CommonAncestor, b.Header()))
+		f, err := m.BlocksBetween(fork.CommonAncestor, b.Header())
+		if err != nil {
+			m.logger.Crit("Failed to fetch blocks between fork and new block. Cause: %w", err)
+		}
+		return m.setFork(f)
 	}
 	if b.NumberU64() > (head.Number.Uint64() + 1) {
 		m.logger.Error("Should not happen. Blocks are skewed")
@@ -480,35 +432,36 @@ func (m *Node) processBlock(b *types.Block, head *types.Header) *types.Header {
 
 // Notifies the Miner to start mining on the new block and the aggregator to produce rollups
 func (m *Node) setHead(b *types.Header) *types.Header {
+	m.subMu.Lock()
+	defer m.subMu.Unlock()
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return b
 	}
 
 	// notify the client subscriptions
-	m.subMu.Lock()
+	m.head = b
 	for _, s := range m.subs {
 		sub := s
 		go sub.publish(b)
 	}
-	m.subMu.Unlock()
 	m.canonicalCh <- b
 
 	return b
 }
 
 func (m *Node) setFork(blocks []*types.Header) *types.Header {
+	m.subMu.Lock()
+	defer m.subMu.Unlock()
 	head := blocks[len(blocks)-1]
 	if atomic.LoadInt32(m.interrupt) == 1 {
 		return head
 	}
 
 	// notify the client subs
-	m.subMu.Lock()
 	for _, s := range m.subs {
 		sub := s
 		go sub.publishAll(blocks)
 	}
-	m.subMu.Unlock()
 
 	m.canonicalCh <- head
 
@@ -600,14 +553,14 @@ func (m *Node) BroadcastTx(tx types.TxData) {
 func (m *Node) Stop() {
 	// block all requests
 	atomic.StoreInt32(m.interrupt, 1)
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 500)
 	m.exitMiningCh <- true
 	m.exitCh <- true
 }
 
-func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) []*types.Header {
+func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) ([]*types.Header, error) {
 	if bytes.Equal(blockA.Hash().Bytes(), blockB.Hash().Bytes()) {
-		return []*types.Header{blockB}
+		return []*types.Header{blockB}, nil
 	}
 	blocks := make([]*types.Header, 0)
 	tempBlock := blockB
@@ -618,7 +571,7 @@ func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) []*type
 		}
 		tb, err := m.BlockResolver.FetchFullBlock(context.Background(), tempBlock.ParentHash)
 		if err != nil {
-			panic(fmt.Errorf("could not retrieve parent block. Cause: %w", err))
+			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 		}
 		tempBlock = tb.Header()
 	}
@@ -627,11 +580,19 @@ func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) []*type
 	for i, block := range blocks {
 		result[n-i-1] = block
 	}
-	return result
+	return result, nil
 }
 
 func (m *Node) CallContract(ethereum.CallMsg) ([]byte, error) {
 	return nil, nil
+}
+
+func (m *Node) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	return big.NewInt(1), nil
+}
+
+func (m *Node) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
+	return 100_0000_000, nil
 }
 
 func (m *Node) EthClient() *ethclient_ethereum.Client {
@@ -714,9 +675,11 @@ func NewMiner(
 
 // implements the ethereum.Subscription
 type mockSubscription struct {
-	id     uuid.UUID
-	headCh chan *types.Header
-	node   *Node // we hold a reference to the node to unsubscribe ourselves - not ideal but this is just a mock
+	id         uuid.UUID
+	closed     atomic.Bool
+	unsubMutex sync.RWMutex
+	headCh     chan *types.Header
+	node       *Node // we hold a reference to the node to unsubscribe ourselves - not ideal but this is just a mock
 }
 
 func (sub *mockSubscription) Err() <-chan error {
@@ -724,16 +687,30 @@ func (sub *mockSubscription) Err() <-chan error {
 }
 
 func (sub *mockSubscription) Unsubscribe() {
+	sub.unsubMutex.Lock()
+	defer sub.unsubMutex.Unlock()
+	sub.closed.Store(true)
+	sub.headCh = nil
 	sub.node.RemoveSubscription(sub.id)
 }
 
 func (sub *mockSubscription) publish(b *types.Header) {
+	sub.unsubMutex.RLock()
+	defer sub.unsubMutex.RUnlock()
+	if sub.closed.Load() {
+		return
+	}
+
 	if sub.headCh != nil {
 		sub.headCh <- b
 	}
 }
 
 func (sub *mockSubscription) publishAll(blocks []*types.Header) {
+	if sub.closed.Load() {
+		return
+	}
+
 	for _, b := range blocks {
 		sub.publish(b)
 	}

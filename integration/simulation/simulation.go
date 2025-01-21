@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -61,7 +63,7 @@ func (s *Simulation) Start() {
 	// Arbitrary sleep to wait for RPC clients to get up and running
 	// and for all l2 nodes to receive the genesis l2 batch
 	// todo - instead of sleeping, it would be better to poll
-	time.Sleep(10 * time.Second)
+	time.Sleep(time.Duration(10 * s.AvgBlockDuration))
 
 	cfg, err := s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet).GetConfig()
 	if err != nil {
@@ -132,7 +134,11 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 			panic(fmt.Errorf("could not fetch head block. Cause: %w", err))
 		}
 		if err == nil {
-			for _, h := range client.BlocksBetween(ethereummock.MockGenesisBlock.Header(), head) {
+			blocks, err := client.BlocksBetween(ethereummock.MockGenesisBlock.Header(), head)
+			if err != nil {
+				continue
+			}
+			for _, h := range blocks {
 				b, err := client.BlockByHash(h.Hash())
 				if err != nil {
 					panic(err)
@@ -439,7 +445,7 @@ func (s *Simulation) prefundL1Accounts() {
 			Sender:        &ownerAddr,
 		}
 		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData)
-		estimatedTx, err := ethClient.PrepareTransactionToSend(s.ctx, tx, tokenOwner.Address())
+		estimatedTx, err := ethadapter.SetTxGasPrice(s.ctx, ethClient, tx, tokenOwner.Address(), tokenOwner.GetNonceAndIncrement(), 0)
 		if err != nil {
 			// ignore txs that are not able to be estimated/execute
 			testlog.Logger().Error("unable to estimate tx", log.ErrKey, err)

@@ -24,6 +24,7 @@ const methodBytesLen = 4
 // messages for call requests, and converting ethereum transactions into L1Transactions.
 type MgmtContractLib interface {
 	IsMock() bool
+	BlobHasher() ethadapter.BlobHasher
 	CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error)
 	CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData
 	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) types.TxData
@@ -68,6 +69,10 @@ func NewMgmtContractLib(addr *gethcommon.Address, logger gethlog.Logger) MgmtCon
 
 func (c *contractLibImpl) IsMock() bool {
 	return false
+}
+
+func (c *contractLibImpl) BlobHasher() ethadapter.BlobHasher {
+	return ethadapter.KZGToVersionedHasher{}
 }
 
 func (c *contractLibImpl) GetContractAddr() *gethcommon.Address {
@@ -146,7 +151,7 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
 
-	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, c.BlobHasher()); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 

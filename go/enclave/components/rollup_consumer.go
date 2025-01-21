@@ -236,7 +236,7 @@ func (rc *rollupConsumerImpl) extractBlobsAndHashes(rollupTxs []*common.L1TxData
 		blobs = append(blobs, tx.Blobs...)
 	}
 
-	_, blobHashes, err := ethadapter.MakeSidecar(blobs)
+	_, blobHashes, err := ethadapter.MakeSidecar(blobs, rc.MgmtContractLib.BlobHasher())
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
 	}

@@ -225,10 +225,13 @@ func InitializeContract(workerClient ethadapter.EthClient, w wallet.Wallet, cont
 // DeployContract returns receipt of deployment
 // todo (@matt) - this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
-	deployContractTx, err := workerClient.PrepareTransactionToSend(
+	deployContractTx, err := ethadapter.SetTxGasPrice(
 		context.Background(),
+		workerClient,
 		&types.LegacyTx{Data: contractBytes},
 		w.Address(),
+		w.GetNonceAndIncrement(),
+		0,
 	)
 	if err != nil {
 		return nil, err
