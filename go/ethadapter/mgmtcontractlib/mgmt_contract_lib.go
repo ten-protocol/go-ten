@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -171,7 +172,7 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 	var sidecar *types.BlobTxSidecar
 
 	// Use se blobs created here (they are verified that the hash matches with the blobs from the enclave)
-	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs); err != nil {
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, c.BlobHasher()); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 

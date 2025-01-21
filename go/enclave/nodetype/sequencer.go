@@ -343,14 +343,15 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 
 	// Store blob data and required fields
 	extRollup.Header.BlobHash = blobHash
-	extRollup.Header.MessageRoot = gethcommon.Hash{} // Zero for now, will be implemented later
-	extRollup.Header.BlockNumber = currentL1Head.Number.Uint64()
-	extRollup.Header.BlockHash = currentL1Head.Hash()
+	extRollup.Header.CrossChainRoot = gethcommon.Hash{} // TODO: Zero for now, will be implemented later
+	extRollup.Header.CompressionL1Number = currentL1Head.Number
+	extRollup.Header.CompressionL1Head = currentL1Head.Hash()
 
 	// Create composite hash matching the contract's expectations
+	// TODO: Check if the order is the same as in Management contract
 	compositeHash := gethcrypto.Keccak256Hash(
 		blobHash.Bytes(),
-		extRollup.Header.MessageRoot.Bytes(),
+		extRollup.Header.CrossChainRoot.Bytes(),
 		currentL1Head.Hash().Bytes(),
 		big.NewInt(int64(currentL1Head.Number.Uint64())).Bytes(),
 		big.NewInt(int64(extRollup.Header.LastBatchSeqNo)).Bytes(),
@@ -364,8 +365,8 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	extRollup.Header.Signature = signature
 
 	s.logger.Info("Rollup block binding",
-		"BlockNumber", extRollup.Header.BlockNumber,
-		"BlockHash", extRollup.Header.BlockHash)
+		"BlockNumber", extRollup.Header.CompressionL1Number,
+		"BlockHash", extRollup.Header.CompressionL1Head)
 
 	return extRollup, nil
 }
