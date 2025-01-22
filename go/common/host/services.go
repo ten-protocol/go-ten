@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/responses"
@@ -107,7 +109,7 @@ type L1Publisher interface {
 	FindSecretResponseTx(responseTxs []*common.L1TxData) []*common.L1RespondSecretTx
 	// PublishRollup will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
 	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
-	PublishRollup(producedRollup *common.ExtRollup)
+	PublishRollup(producedRollup *common.ExtRollup, blobs []*kzg4844.Blob)
 	// PublishSecretResponse will create and publish a secret response tx to the management contract - fire and forget we don't wait for receipt
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error
 

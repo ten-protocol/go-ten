@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -155,7 +156,7 @@ func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmt
 	if err != nil {
 		t.Error(err)
 	}
-	txData, err := mgmtContractLib.CreateBlobRollup(&common.L1RollupTx{Rollup: encodedRollup})
+	txData, err := mgmtContractLib.CreateBlobRollup(&common.L1RollupTx{Rollup: encodedRollup}, []*kzg4844.Blob{})
 	if err != nil {
 		t.Error(err)
 	}

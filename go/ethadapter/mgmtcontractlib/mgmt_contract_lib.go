@@ -26,7 +26,7 @@ const methodBytesLen = 4
 type MgmtContractLib interface {
 	IsMock() bool
 	BlobHasher() ethadapter.BlobHasher
-	CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error)
+	CreateBlobRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error)
 	CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData
 	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) types.TxData
 	CreateInitializeSecret(tx *common.L1InitializeSecretTx) types.TxData
@@ -121,54 +121,37 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.L1TenTransactio
 }
 
 // CreateBlobRollup creates a BlobTx, encoding the rollup data into blobs.
-func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error) {
+func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		panic(err)
 	}
 
-	// Re-encode the rollup to match the enclave's flow
-	rollupData, err := common.EncodeRollup(decodedRollup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to re-encode rollup: %w", err)
-	}
-
-	c.logger.Warn("Creating blobs for rollup",
-		"rollupHash", decodedRollup.Hash(),
-		"headerBlobHash", decodedRollup.Header.BlobHash)
-
-	blobs, err := ethadapter.EncodeBlobs(rollupData)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
-	}
-
 	c.logger.Warn("Computed blobs", "blobCount", len(blobs))
 
+	var computedBlobHash gethcommon.Hash
+
 	// Verify the blob hash matches what was signed
+	if len(blobs) > 0 {
+		commitment, err := kzg4844.BlobToCommitment(blobs[0])
+		if err != nil {
+			return nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
+		}
 
-	commitment, err := kzg4844.BlobToCommitment(blobs[0])
-	if err != nil {
-		return nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
+		computedBlobHash = ethadapter.KZGToVersionedHash(commitment)
 	}
-	computedBlobHash := ethadapter.KZGToVersionedHash(commitment)
-
 	c.logger.Warn("Blob hash verification",
 		"computedBlobHash", computedBlobHash,
 		"signedBlobHash", decodedRollup.Header.BlobHash,
 		"match", computedBlobHash == decodedRollup.Header.BlobHash)
 
 	// Verify hash matches what was signed
-	fmt.Printf("blob[0] - CreateBlobRollup length: %d, first 100 bytes: %x\n", len(blobs[0]), blobs[0][:100])
+	if len(blobs) > 0 {
+		fmt.Printf("blob[0] - CreateBlobRollup length: %d, first 100 bytes: %x\n", len(blobs[0]), blobs[0][:100])
+	}
 	fmt.Println("CrossChainRoot", decodedRollup.Header.CrossChainRoot)
 	fmt.Println("computedBlobHash", computedBlobHash)
 	fmt.Println("signedBlobHash", decodedRollup.Header.BlobHash)
-
-	// if computedBlobHash != decodedRollup.Header.BlobHash {
-	// 	c.logger.Error("Blob hash mismatch",
-	// 		"computed", computedBlobHash,
-	// 		"signed", decodedRollup.Header.BlobHash)
-	// 	return nil, fmt.Errorf("computed blob hash doesn't match signed hash")
-	// }
 
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),

@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -202,7 +204,7 @@ func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 
-func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
+func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup, blobs []*kzg4844.Blob) {
 	encRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
 		p.logger.Crit("could not encode rollup.", log.ErrKey, err)
@@ -224,7 +226,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 	}
 
-	rollupBlobTx, err := p.mgmtContractLib.CreateBlobRollup(tx)
+	rollupBlobTx, err := p.mgmtContractLib.CreateBlobRollup(tx, blobs)
 	if err != nil {
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	}

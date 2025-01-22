@@ -671,13 +671,13 @@ func (g *Guardian) periodicRollupProduction() {
 			rollupJustPublished := time.Since(lastSuccessfulRollup) >= g.blockTime
 			if timeExpired || sizeExceeded && !rollupJustPublished {
 				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded, "rollupJustPublished", rollupJustPublished)
-				producedRollup, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
+				producedRollup, blobs, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
 				if err != nil {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
 				}
 				// this method waits until the receipt is received
-				g.sl.L1Publisher().PublishRollup(producedRollup)
+				g.sl.L1Publisher().PublishRollup(producedRollup, blobs)
 				lastSuccessfulRollup = time.Now()
 			}
 

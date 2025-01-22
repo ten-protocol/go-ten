@@ -297,41 +297,41 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 	return nil
 }
 
-func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, error) {
+func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, []*kzg4844.Blob, error) {
 	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
 
 	currentL1Head, err := s.blockProcessor.GetHead(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	upToL1Height := currentL1Head.Number.Uint64() - RollupDelay
 	rollup, err := s.rollupProducer.CreateInternalRollup(ctx, lastBatchNo, upToL1Height, rollupLimiter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	extRollup, err := s.rollupCompression.CreateExtRollup(ctx, rollup)
 	if err != nil {
-		return nil, fmt.Errorf("failed to compress rollup: %w", err)
+		return nil, nil, fmt.Errorf("failed to compress rollup: %w", err)
 	}
 
 	// Create the blob data inside enclave
 	rollupData, err := common.EncodeRollup(extRollup)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode rollup: %w", err)
+		return nil, nil, fmt.Errorf("failed to encode rollup: %w", err)
 	}
 
 	// Create the blobs inside enclave
 	blobs, err := ethadapter.EncodeBlobs(rollupData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
+		return nil, nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
 	}
 
 	fmt.Printf("blob[0] - sequencer(CreateRollup) length: %d, first 100 bytes: %x\n", len(blobs[0]), blobs[0][:100])
 	// Calculate blob hash from first blob (TODO: Change this when we use multiple blobs)
 	commitment, err := kzg4844.BlobToCommitment(blobs[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
+		return nil, nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
 	}
 	blobHash := ethadapter.KZGToVersionedHash(commitment)
 
@@ -347,7 +347,7 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	// Sign the composite hash
 	signature, err := s.enclaveKeyService.Sign(compositeHash)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign rollup: %w", err)
+		return nil, nil, fmt.Errorf("failed to sign rollup: %w", err)
 	}
 
 	// Store blob data and required fields
@@ -357,8 +357,7 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	extRollup.Header.BlobHash = blobHash
 	extRollup.Header.Signature = signature
 
-	// TODO @Ziga - should we return blob data as well here next to the extRollup?
-	return extRollup, nil
+	return extRollup, blobs, nil
 }
 
 func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Header, nonCanonicalL1Path []common.L1BlockHash, canonicalL1Path []common.L1BlockHash) error {
