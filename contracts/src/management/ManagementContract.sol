@@ -119,7 +119,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(computedBlobHash == r.BlobHash, "Invalid blob hash");
 
         // Create composite hash following MetaRollup struct field order
-        bytes32 compositeHash = keccak256(abi.encode(
+        bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
             r.BlockBindingHash,
             r.BlockBindingNumber,
