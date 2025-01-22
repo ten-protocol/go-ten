@@ -101,18 +101,45 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         }
     }
 
-    modifier signedBySequencerEnclave(Structs.MetaRollup calldata r) {
-        //todo - handle the cross chain root in the signature
-        address enclaveID = ECDSA.recover(r.Hash, r.Signature);
-        // revert if the EnclaveID is not attested
+    modifier verifyRollupIntegrity(Structs.MetaRollup calldata r) {
+        // Block binding checks
+        require(block.number > r.BlockBindingNumber, "Cannot bind to future block");
+        require(block.number < (r.BlockBindingNumber + 255), "Block binding too old");
+        
+        bytes32 knownBlockHash = blockhash(r.BlockBindingNumber);
+        require(knownBlockHash != 0x0, "Unknown block hash");
+        require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
+
+        // Verify blob hash using the opcode
+        bytes32 computedBlobHash;
+        assembly {
+            let blobIndex := 0  // Assumes first blob index is 0
+            computedBlobHash := blobhash(blobIndex)
+        }
+        require(computedBlobHash == r.BlobHash, "Invalid blob hash");
+
+        // Create composite hash following MetaRollup struct field order
+        bytes32 compositeHash = keccak256(abi.encode(
+            r.LastSequenceNumber,
+            r.BlockBindingHash,
+            r.BlockBindingNumber,
+            r.crossChainRoot,
+            r.BlobHash
+        ));
+
+        // Verify the hash matches the one in the rollup
+        require(compositeHash == r.Hash, "Hash mismatch");
+
+        // Verify the enclave signature
+        address enclaveID = ECDSA.recover(compositeHash, r.Signature);
         require(attested[enclaveID], "enclaveID not attested");
-        // revert if the EnclaveID is not permissioned as a sequencer
         require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
+
         _;
     }
 
     // solc-ignore-next-line unused-param
-    function AddRollup(Structs.MetaRollup calldata r) public signedBySequencerEnclave(r) {
+    function AddRollup(Structs.MetaRollup calldata r) public verifyRollupIntegrity(r) {
         AppendRollup(r);
 
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
