@@ -265,5 +265,9 @@ func (br *batchRegistry) HealthCheck() (bool, error) {
 		return false, fmt.Errorf("last executed batch was %s ago", time.Since(lastExecutedBatchTime))
 	}
 
+	if br.HeadBatchSeq() == nil {
+		return false, fmt.Errorf("head batch seq is nil")
+	}
+
 	return true, nil
 }

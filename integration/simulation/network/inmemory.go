@@ -1,7 +1,10 @@
 package network
 
 import (
+	"fmt"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/common/retry"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -111,20 +114,28 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
-	time.Sleep(params.AvgBlockDuration * 10)
+	var sequencerHealth host.HealthCheck
+	// wait for the sequencer to be healthy
+	err := retry.Do(func() error {
+		var err error
+		sequencerHealth, err = tenClients[0].Health()
+		if err != nil {
+			return err
+		}
+		if len(sequencerHealth.Enclaves) == 0 {
+			return fmt.Errorf("no enclaves available to promote on sequencer")
+		}
 
-	// permission the sequencer enclave on the L1
-	health, err := tenClients[0].Health()
+		// the nodes are healthy, we can continue
+		return nil
+	}, retry.NewTimeoutStrategy(30*params.AvgBlockDuration, params.AvgBlockDuration))
 	if err != nil {
 		panic(err)
-	}
-	if len(health.Enclaves) == 0 {
-		panic("no enclaves available to promote on sequencer")
 	}
 
 	// mock implementation of the permissioning, tell the mock L1 the seq address
 	for _, node := range n.ethNodes {
-		node.PromoteEnclave(health.Enclaves[0].EnclaveID)
+		node.PromoteEnclave(sequencerHealth.Enclaves[0].EnclaveID)
 	}
 	permMockAddr := ethereummock.MockGrantSeqTxAddress()
 	mockTx := types.NewTx(&types.LegacyTx{
