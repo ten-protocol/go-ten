@@ -1,14 +1,3 @@
-# Deploys TEN Gateway Frontend on Azure for Testnet
-# Builds the TEN Gateway image, pushes the image to dockerhub and starts the TEN Gateway on Azure VM
-# This action requires the following environment variables to be set:
-# - DOCKER_BUILD_TAG_GATEWAY_FE
-# - GATEWAY_URL
-# - NETWORK_NAME
-# - TENSCAN_URL
-
-# If we are deploying to a non primary instance all those variables should be prefixed with the instance name
-# example: dexynth-GATEWAY_URL
-
 name: '[M] Build and Release Ten Gateway Frontend'
 run-name: '[M] Build and Release Frontend (${{ github.event.inputs.testnet_type }})'
 on:
@@ -86,6 +75,6 @@ jobs:
             --build-arg NEXT_PUBLIC_NETWORK_NAME=${{ env.NETWORK_NAME }} \
             --build-arg NEXT_PUBLIC_TENSCAN_URL=${{ env.TENSCAN_URL }} \
             --build-arg NEXT_PUBLIC_GATEWAY_URL=${{ env.GATEWAY_URL }} \
-            -t ${{ env.IMAGE_NAME_GATEWAY_FE }}:${VERSION} \
+            -t testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_dev_testnet_fe:${VERSION} \
             -f ./tools/walletextension/frontend/Dockerfile .
-          docker push ${{ env.IMAGE_NAME_GATEWAY_FE }}:${VERSION}
+          docker push testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_dev_testnet_fe:${VERSION}
