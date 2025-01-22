@@ -190,9 +190,10 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 	bsr := &common.BlockSubmissionResponse{RollupMetadata: rollupMetadata}
 
 	// in phase 1, only if the enclave is a sequencer, it can respond to shared secret requests
-	if e.isBackupSequencer(ctx) || e.isActiveSequencer(ctx) || e.sharedSecretService.IsGenesis() {
-		bsr.ProducedSecretResponses = e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData)
-	}
+	// todo - add back once the network test issue is fixed
+	// if e.isBackupSequencer(ctx) || e.isActiveSequencer(ctx) || e.sharedSecretService.IsGenesis() {
+	bsr.ProducedSecretResponses = e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData)
+	//}
 
 	return bsr, nil
 }
