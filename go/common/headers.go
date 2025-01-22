@@ -168,6 +168,7 @@ type RollupHeader struct {
 
 	CrossChainRoot common.Hash // The root hash of the cross chain tree.
 	LastBatchSeqNo uint64
+	BlobHash       common.Hash
 
 	Signature []byte // The signature of the sequencer enclave on the payload hash
 }

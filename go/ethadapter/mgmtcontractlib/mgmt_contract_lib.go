@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -126,6 +127,23 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		panic(err)
 	}
 
+	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
+	}
+
+	// Verify the blob hash matches what was signed
+	commitment, err := kzg4844.BlobToCommitment(blobs[0])
+	if err != nil {
+		return nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
+	}
+	computedBlobHash := ethadapter.KZGToVersionedHash(commitment)
+
+	// Verify hash matches what was signed
+	if computedBlobHash != decodedRollup.Header.BlobHash {
+		return nil, fmt.Errorf("computed blob hash doesn't match signed hash")
+	}
+
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
 		Signature:          decodedRollup.Header.Signature,
@@ -133,6 +151,7 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,
 		BlockBindingNumber: decodedRollup.Header.CompressionL1Number,
 		CrossChainRoot:     decodedRollup.Header.CrossChainRoot,
+		BlobHash:           computedBlobHash,
 	}
 
 	data, err := c.contractABI.Pack(
@@ -143,14 +162,10 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		panic(err)
 	}
 
-	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
-	}
-
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
 
+	// Use se blobs created here (they are verified that the hash matches with the blobs from the enclave)
 	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, c.BlobHasher()); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}

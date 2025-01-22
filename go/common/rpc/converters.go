@@ -212,6 +212,7 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		LastBatchSeqNo:      header.LastBatchSeqNo,
 		CrossChainRoot:      header.CrossChainRoot.Bytes(),
 		CompressionL1Number: header.CompressionL1Number.Bytes(),
+		BlobHash:            header.BlobHash.Bytes(),
 	}
 
 	return &headerMsg
@@ -242,6 +243,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		CrossChainRoot:      gethcommon.BytesToHash(header.CrossChainRoot),
 		LastBatchSeqNo:      header.LastBatchSeqNo,
 		Signature:           header.Signature,
+		BlobHash:            gethcommon.BytesToHash(header.BlobHash),
 	}
 }
 

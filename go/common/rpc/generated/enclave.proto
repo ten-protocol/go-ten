@@ -316,6 +316,7 @@ message RollupHeaderMsg {
   bytes Signature = 8;
   uint64 LastBatchSeqNo = 9;
   bytes CrossChainRoot = 10;
+  bytes BlobHash = 11;
 }
 
 message SecretResponseMsg {
