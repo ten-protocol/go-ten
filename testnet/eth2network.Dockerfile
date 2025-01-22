@@ -23,6 +23,9 @@ RUN go mod download
 # Build stage for building the eth2 network runners. Will run in parallel and block on COPY if the build-geth-binary stage has not completed.
 FROM get-dependencies as build-geth-network
 
+# Create logs directory
+RUN mkdir -p /home/obscuro/logs
+
 COPY . /home/obscuro/go-obscuro
 
 # build the eth2network exec
@@ -30,8 +33,8 @@ WORKDIR /home/obscuro/go-obscuro/integration/eth2network/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
     go build
 
-# Download the eth2network required artifacts  <- There is a chance the build is done on a different arch then the running vm
-# RUN ./main --onlyDownload=true
+# Create volume for logs
+VOLUME /home/obscuro/logs
 
 # expose the http and the ws ports to the host
 EXPOSE 12000 12100 12200 12300 12400 12500 12600

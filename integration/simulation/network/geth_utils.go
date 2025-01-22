@@ -61,6 +61,7 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 
 	network := eth2network.NewPosEth2Network(
 		binDir,
+		false,
 		startPort+integration.DefaultGethNetworkPortOffset,
 		startPort+integration.DefaultPrysmP2PPortOffset,
 		startPort+integration.DefaultGethAUTHPortOffset,
