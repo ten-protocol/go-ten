@@ -327,6 +327,7 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
 	}
 
+	fmt.Printf("blob[0] - sequencer(CreateRollup) length: %d, first 100 bytes: %x\n", len(blobs[0]), blobs[0][:100])
 	// Calculate blob hash from first blob (TODO: Change this when we use multiple blobs)
 	commitment, err := kzg4844.BlobToCommitment(blobs[0])
 	if err != nil {

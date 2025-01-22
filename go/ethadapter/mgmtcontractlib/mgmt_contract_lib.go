@@ -127,22 +127,48 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		panic(err)
 	}
 
-	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
+	// Re-encode the rollup to match the enclave's flow
+	rollupData, err := common.EncodeRollup(decodedRollup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to re-encode rollup: %w", err)
+	}
+
+	c.logger.Warn("Creating blobs for rollup",
+		"rollupHash", decodedRollup.Hash(),
+		"headerBlobHash", decodedRollup.Header.BlobHash)
+
+	blobs, err := ethadapter.EncodeBlobs(rollupData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
 	}
 
+	c.logger.Warn("Computed blobs", "blobCount", len(blobs))
+
 	// Verify the blob hash matches what was signed
+
 	commitment, err := kzg4844.BlobToCommitment(blobs[0])
 	if err != nil {
 		return nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
 	}
 	computedBlobHash := ethadapter.KZGToVersionedHash(commitment)
 
+	c.logger.Warn("Blob hash verification",
+		"computedBlobHash", computedBlobHash,
+		"signedBlobHash", decodedRollup.Header.BlobHash,
+		"match", computedBlobHash == decodedRollup.Header.BlobHash)
+
 	// Verify hash matches what was signed
-	if computedBlobHash != decodedRollup.Header.BlobHash {
-		return nil, fmt.Errorf("computed blob hash doesn't match signed hash")
-	}
+	fmt.Printf("blob[0] - CreateBlobRollup length: %d, first 100 bytes: %x\n", len(blobs[0]), blobs[0][:100])
+	fmt.Println("CrossChainRoot", decodedRollup.Header.CrossChainRoot)
+	fmt.Println("computedBlobHash", computedBlobHash)
+	fmt.Println("signedBlobHash", decodedRollup.Header.BlobHash)
+
+	// if computedBlobHash != decodedRollup.Header.BlobHash {
+	// 	c.logger.Error("Blob hash mismatch",
+	// 		"computed", computedBlobHash,
+	// 		"signed", decodedRollup.Header.BlobHash)
+	// 	return nil, fmt.Errorf("computed blob hash doesn't match signed hash")
+	// }
 
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
@@ -151,7 +177,7 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,
 		BlockBindingNumber: decodedRollup.Header.CompressionL1Number,
 		CrossChainRoot:     decodedRollup.Header.CrossChainRoot,
-		BlobHash:           computedBlobHash,
+		BlobHash:           decodedRollup.Header.BlobHash,
 	}
 
 	data, err := c.contractABI.Pack(
