@@ -88,17 +88,17 @@ jobs:
           echo "NETWORK_NAME: $NETWORK_NAME"
           echo "TENSCAN_URL: $TENSCAN_URL"
       - name: 'Get version'
-          id: get_version
-          run: |
-            if [ "${{ github.event_name }}" = "release" ]; then
-              echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-            elif [ -n "${{ github.event.inputs.tag }}" ]; then
-              echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-            else
-              # Fetch the latest tag from the repository
-              LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
-              echo "VERSION=${LATEST_TAG}" >> $GITHUB_OUTPUT
-            fi
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            # Fetch the latest tag from the repository
+            LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
+            echo "VERSION=${LATEST_TAG}" >> $GITHUB_OUTPUT
+          fi
 
       - uses: actions/checkout@v4
 
