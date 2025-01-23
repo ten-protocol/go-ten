@@ -341,33 +341,6 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 					return retry.FailFast(errors.New("host is stopping or context canceled"))
 				}
 				receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
-				// Print the events from the receipt for debugging
-				//if receipt != nil {
-				//	if len(receipt.Logs) > 0 {
-				//		for _, l := range receipt.Logs {
-				//			switch l.Topics[0].Hex() {
-				//			case crypto.Keccak256Hash([]byte("DebugBlockNumbers(uint256,uint256)")).Hex():
-				//				println(fmt.Sprintf("DebugBlockNumbers - Current: %d, Binding: %d",
-				//					new(big.Int).SetBytes(l.Data[:32]),
-				//					new(big.Int).SetBytes(l.Data[32:])))
-				//			case crypto.Keccak256Hash([]byte("DebugBlockHashes(bytes32,bytes32)")).Hex():
-				//				println(fmt.Sprintf("DebugBlockHashes - Known: %s, Provided: %s",
-				//					hexutil.Encode(l.Data[:32]),
-				//					hexutil.Encode(l.Data[32:])))
-				//			case crypto.Keccak256Hash([]byte("DebugCompositeHash(bytes32,bytes32)")).Hex():
-				//				println(fmt.Sprintf("DebugCompositeHash - Calculated: %s, Provided: %s",
-				//					hexutil.Encode(l.Data[:32]),
-				//					hexutil.Encode(l.Data[32:])))
-				//			case crypto.Keccak256Hash([]byte("DebugRollupData(uint256,bytes32,uint256,bytes32,bytes32)")).Hex():
-				//				println(fmt.Sprintf("DebugRollupData - SeqNo: %d, BlockHash: %s, BlockNum: %d, CrossChainRoot: %s, BlobHash: %s",
-				//					new(big.Int).SetBytes(l.Data[:32]),
-				//					hexutil.Encode(l.Data[32:64]),
-				//					new(big.Int).SetBytes(l.Data[64:96]),
-				//					hexutil.Encode(l.Data[96:128]),
-				//					hexutil.Encode(l.Data[128:])))
-				//			}
-				//		}
-				//	}
 				if err != nil {
 					return fmt.Errorf("could not get receipt publishing tx for L1 tx=%s: %w", signedTx.Hash(), err)
 				}

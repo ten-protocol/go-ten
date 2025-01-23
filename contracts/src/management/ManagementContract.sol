@@ -113,31 +113,16 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     }
 
     modifier verifyRollupIntegrity(Structs.MetaRollup calldata r) {
-        // Debug block numbers
-        emit DebugBlockNumbers(block.number, r.BlockBindingNumber);
-        
         // Block binding checks
         require(block.number >= r.BlockBindingNumber, "Cannot bind to future block");
         require(block.number < (r.BlockBindingNumber + 255), "Block binding too old");
 
         bytes32 knownBlockHash = blockhash(r.BlockBindingNumber);
-        // Debug block hashes
-        emit DebugBlockHashes(knownBlockHash, r.BlockBindingHash);
-        
+
         require(knownBlockHash != 0x0, "Unknown block hash");
         require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
 
-        // Debug rollup data
-        emit DebugRollupData(
-            r.LastSequenceNumber,
-            r.BlockBindingHash,
-            r.BlockBindingNumber,
-            r.crossChainRoot,
-            r.BlobHash
-        );
-
         // Add debug logging
-        emit Debug("Composite Hash Components (Solidity):");
         emit Debug(string.concat("LastSequenceNumber: ", toString(r.LastSequenceNumber)));
         emit Debug(string.concat("BlockBindingHash: ", toHexString(r.BlockBindingHash)));
         emit Debug(string.concat("BlockBindingNumber: ", toString(r.BlockBindingNumber)));
@@ -161,7 +146,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         address enclaveID = ECDSA.recover(compositeHash, r.Signature);
         require(attested[enclaveID], "enclaveID not attested");
         require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
-
         _;
     }
 

@@ -8,6 +8,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
@@ -215,10 +218,30 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case crosschain.NetworkSecretRespondedID:
 			processed.AddEvent(common.SecretResponseTx, txData)
-
 		case crosschain.DebugID:
-			//println("DEBUG ID EVENT", txData)
-			println("DEBUG LOG", l.Data)
+			switch l.Topics[0].Hex() {
+			case crypto.Keccak256Hash([]byte("Debug(string)")).Hex():
+				println(fmt.Sprintf("Debug - Message: %s", string(l.Data)))
+			case crypto.Keccak256Hash([]byte("DebugBlockNumbers(uint256,uint256)")).Hex():
+				println(fmt.Sprintf("DebugBlockNumbers - Current: %d, Binding: %d",
+					new(big.Int).SetBytes(l.Data[:32]),
+					new(big.Int).SetBytes(l.Data[32:])))
+			case crypto.Keccak256Hash([]byte("DebugBlockHashes(bytes32,bytes32)")).Hex():
+				println(fmt.Sprintf("DebugBlockHashes - Known: %s, Provided: %s",
+					hexutil.Encode(l.Data[:32]),
+					hexutil.Encode(l.Data[32:])))
+			case crypto.Keccak256Hash([]byte("DebugCompositeHash(bytes32,bytes32)")).Hex():
+				println(fmt.Sprintf("DebugCompositeHash - Calculated: %s, Provided: %s",
+					hexutil.Encode(l.Data[:32]),
+					hexutil.Encode(l.Data[32:])))
+			case crypto.Keccak256Hash([]byte("DebugRollupData(uint256,bytes32,uint256,bytes32,bytes32)")).Hex():
+				println(fmt.Sprintf("DebugRollupData - SeqNo: %d, BlockHash: %s, BlockNum: %d, CrossChainRoot: %s, BlobHash: %s",
+					new(big.Int).SetBytes(l.Data[:32]),
+					hexutil.Encode(l.Data[32:64]),
+					new(big.Int).SetBytes(l.Data[64:96]),
+					hexutil.Encode(l.Data[96:128]),
+					hexutil.Encode(l.Data[128:])))
+			}
 		default:
 			// there are known events that we don't care about here
 			r.logger.Debug("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
