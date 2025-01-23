@@ -35,7 +35,7 @@ func NewTenChainContext(storage storage.Storage, gethEncodingService gethencodin
 }
 
 func (occ *TenChainContext) Engine() consensus.Engine {
-	return &ObscuroNoOpConsensusEngine{logger: occ.logger}
+	return &NoOpConsensusEngine{logger: occ.logger}
 }
 
 func (occ *TenChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header {

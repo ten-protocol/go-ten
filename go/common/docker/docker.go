@@ -7,8 +7,10 @@ import (
 	"os"
 	"time"
 
+	image2 "github.com/docker/docker/api/types/image"
+
 	"github.com/docker/docker/api/types/mount"
-	volumetypes "github.com/docker/docker/api/types/volume"
+	"github.com/docker/docker/api/types/volume"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -130,11 +132,11 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 		return "", err
 	}
 
-	if err := cli.ContainerStart(ctx, resp.ID, types.ContainerStartOptions{}); err != nil {
+	if err := cli.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
 		return "", err
 	}
 
-	out, err := cli.ContainerLogs(ctx, resp.ID, types.ContainerLogsOptions{ShowStderr: true, ShowStdout: true})
+	out, err := cli.ContainerLogs(ctx, resp.ID, container.LogsOptions{ShowStderr: true, ShowStdout: true})
 	if err != nil {
 		return "", err
 	}
@@ -151,17 +153,17 @@ func StopAndRemove(containerName string) error {
 	}
 	defer cli.Close()
 
-	err = cli.ContainerStop(ctx, containerName, nil)
+	err = cli.ContainerStop(ctx, containerName, container.StopOptions{})
 	if err != nil {
 		return err
 	}
 
-	return cli.ContainerRemove(ctx, containerName, types.ContainerRemoveOptions{Force: true})
+	return cli.ContainerRemove(ctx, containerName, container.RemoveOptions{Force: true})
 }
 
-func ensureVolumeExists(cli *client.Client, volumeName string) (*types.Volume, error) {
+func ensureVolumeExists(cli *client.Client, volumeName string) (*volume.Volume, error) {
 	ctx := context.Background()
-	allVolumes, err := cli.VolumeList(ctx, filters.NewArgs())
+	allVolumes, err := cli.VolumeList(ctx, volume.ListOptions{Filters: filters.NewArgs()})
 	if err != nil {
 		return nil, fmt.Errorf("unable to list volumes - %w", err)
 	}
@@ -172,7 +174,7 @@ func ensureVolumeExists(cli *client.Client, volumeName string) (*types.Volume, e
 		}
 	}
 	// volume doesn't exist, so create it
-	vol, err := cli.VolumeCreate(ctx, volumetypes.VolumeCreateBody{
+	vol, err := cli.VolumeCreate(ctx, volume.CreateOptions{
 		Driver: "local",
 		Name:   volumeName,
 	})
@@ -210,7 +212,7 @@ func createNetwork(networkName string, cli *client.Client) error {
 func waitAndPullRemoteImage(image string, cli *client.Client) error {
 	// Pull the image from remote
 	fmt.Printf("Image %s not found locally. Pulling from remote...\n", image)
-	pullReader, err := cli.ImagePull(context.Background(), image, types.ImagePullOptions{})
+	pullReader, err := cli.ImagePull(context.Background(), image, image2.PullOptions{})
 	if err != nil {
 		return err
 	}
@@ -225,7 +227,7 @@ func waitAndPullRemoteImage(image string, cli *client.Client) error {
 	// Wait until the image is available in the local Docker image cache
 	imageFilter := filters.NewArgs()
 	imageFilter.Add("reference", image)
-	imageListOptions := types.ImageListOptions{Filters: imageFilter}
+	imageListOptions := image2.ListOptions{Filters: imageFilter}
 	for {
 		imageSummaries, err := cli.ImageList(context.Background(), imageListOptions)
 		if err != nil {
