@@ -204,7 +204,7 @@ func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 
-func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup, blobs []*kzg4844.Blob) {
+func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg4844.Blob) {
 	encRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
 		p.logger.Crit("could not encode rollup.", log.ErrKey, err)
@@ -226,7 +226,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup, blobs []*kzg
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 	}
 
-	rollupBlobTx, err := p.mgmtContractLib.CreateBlobRollup(tx, blobs)
+	rollupBlobTx, err := p.mgmtContractLib.PopulateAddRollup(tx, blobs)
 	if err != nil {
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	}

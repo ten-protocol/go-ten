@@ -351,7 +351,6 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	}
 
 	// Store blob data and required fields
-	extRollup.Header.CrossChainRoot = gethcommon.Hash{} // TODO: ASK STEFAN ABOUT THIS
 	extRollup.Header.CompressionL1Number = currentL1Head.Number
 	extRollup.Header.CompressionL1Head = currentL1Head.Hash()
 	extRollup.Header.BlobHash = blobHash

@@ -26,7 +26,7 @@ const methodBytesLen = 4
 type MgmtContractLib interface {
 	IsMock() bool
 	BlobHasher() ethadapter.BlobHasher
-	CreateBlobRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error)
+	PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error)
 	CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData
 	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) types.TxData
 	CreateInitializeSecret(tx *common.L1InitializeSecretTx) types.TxData
@@ -121,7 +121,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.L1TenTransactio
 }
 
 // CreateBlobRollup creates a BlobTx, encoding the rollup data into blobs.
-func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error) {
+func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		panic(err)
@@ -147,7 +147,7 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx, blobs []*kzg484
 
 	// Verify hash matches what was signed
 	if len(blobs) > 0 {
-		fmt.Printf("blob[0] - CreateBlobRollup length: %d, first 100 bytes: %x\n", len(blobs[0]), blobs[0][:100])
+		fmt.Printf("blob[0] - PopulateAddRollup length: %d, first 100 bytes: %x\n", len(blobs[0]), blobs[0][:100])
 	}
 	fmt.Println("CrossChainRoot", decodedRollup.Header.CrossChainRoot)
 	fmt.Println("computedBlobHash", computedBlobHash)
