@@ -28,17 +28,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     event RollupAdded(bytes32 rollupHash);
     event NetworkSecretRequested(address indexed requester, string requestReport);
     event NetworkSecretResponded(address indexed attester, address indexed requester);
-    event DebugBlockNumbers(uint256 currentBlock, uint256 bindingBlock);
-    event DebugBlockHashes(bytes32 knownBlockHash, bytes32 providedHash);
-    event DebugCompositeHash(bytes32 calculatedHash, bytes32 providedHash);
-    event DebugRollupData(
-        uint256 lastSequenceNumber,
-        bytes32 blockBindingHash,
-        uint256 blockBindingNumber,
-        bytes32 crossChainRoot,
-        bytes32 blobHash
-    );
-    event Debug(string data);
 
     // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
@@ -122,13 +111,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(knownBlockHash != 0x0, "Unknown block hash");
         require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
 
-        // Add debug logging
-        emit Debug(string.concat("Solidity bytes - SeqNo: ", toString(r.LastSequenceNumber)));
-        emit Debug(string.concat("Solidity bytes - BlockHash: ", toHexString(r.BlockBindingHash)));
-        emit Debug(string.concat("Solidity bytes - BlockNum: ", toString(r.BlockBindingNumber)));
-        emit Debug(string.concat("Solidity bytes - CrossChain: ", toHexString(r.crossChainRoot)));
-        emit Debug(string.concat("Solidity bytes - BlobHash: ", toHexString(r.BlobHash)));
-
         bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
             r.BlockBindingHash,
@@ -136,10 +118,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             r.crossChainRoot,
             r.BlobHash
         ));
-
-        emit Debug(string.concat("R.Hash (Solidity): ", toHexString(r.Hash)));
-        emit Debug(string.concat("Composite Hash (Solidity): ", toHexString(compositeHash)));
-        emit Debug(string.concat("R.CompositeHash (Solidity): ", toHexString(r.CompositeHash)));
 
         // Verify the hash matches the one in the rollup
         require(compositeHash == r.CompositeHash, "Composite hash mismatch");
@@ -275,37 +253,5 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // Sets the challenge period for message bus root (owner only)
     function SetChallengePeriod(uint256 _delay) public onlyOwner {
         challengePeriod = _delay;
-    }
-
-    // Helper functions
-    function toString(uint256 value) internal pure returns (string memory) {
-        if (value == 0) {
-            return "0";
-        }
-        uint256 temp = value;
-        uint256 digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
-        }
-        bytes memory buffer = new bytes(digits);
-        while (value != 0) {
-            digits -= 1;
-            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
-            value /= 10;
-        }
-        return string(buffer);
-    }
-
-    function toHexString(bytes32 value) internal pure returns (string memory) {
-        bytes memory alphabet = "0123456789abcdef";
-        bytes memory str = new bytes(2 + 64);
-        str[0] = "0";
-        str[1] = "x";
-        for (uint256 i = 0; i < 32; i++) {
-            str[2+i*2] = alphabet[uint8(value[i] >> 4)];
-            str[2+i*2+1] = alphabet[uint8(value[i] & 0x0f)];
-        }
-        return string(str);
     }
 }
