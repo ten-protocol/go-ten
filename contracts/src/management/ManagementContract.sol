@@ -38,6 +38,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         bytes32 crossChainRoot,
         bytes32 blobHash
     );
+    event Debug(string data);
 
     // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
@@ -135,7 +136,14 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             r.BlobHash
         );
 
-        // Create composite hash following MetaRollup struct field order
+        // Add debug logging
+        emit Debug("Composite Hash Components (Solidity):");
+        emit Debug(string.concat("LastSequenceNumber: ", toString(r.LastSequenceNumber)));
+        emit Debug(string.concat("BlockBindingHash: ", toHexString(r.BlockBindingHash)));
+        emit Debug(string.concat("BlockBindingNumber: ", toString(r.BlockBindingNumber)));
+        emit Debug(string.concat("CrossChainRoot: ", toHexString(r.crossChainRoot)));
+        emit Debug(string.concat("BlobHash: ", toHexString(r.BlobHash)));
+
         bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
             r.BlockBindingHash,
@@ -144,8 +152,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             r.BlobHash
         ));
 
-        // Debug composite hash
-        emit DebugCompositeHash(compositeHash, r.Hash);
+        emit Debug(string.concat("Final Hash (Solidity): ", toHexString(compositeHash)));
 
         // Verify the hash matches the one in the rollup
         require(compositeHash == r.Hash, "Hash mismatch");
@@ -282,5 +289,37 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // Sets the challenge period for message bus root (owner only)
     function SetChallengePeriod(uint256 _delay) public onlyOwner {
         challengePeriod = _delay;
+    }
+
+    // Helper functions
+    function toString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
+    }
+
+    function toHexString(bytes32 value) internal pure returns (string memory) {
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory str = new bytes(2 + 64);
+        str[0] = "0";
+        str[1] = "x";
+        for (uint256 i = 0; i < 32; i++) {
+            str[2+i*2] = alphabet[uint8(value[i] >> 4)];
+            str[2+i*2+1] = alphabet[uint8(value[i] & 0x0f)];
+        }
+        return string(str);
     }
 }

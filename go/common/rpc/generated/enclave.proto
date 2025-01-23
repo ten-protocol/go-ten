@@ -113,7 +113,8 @@ message CreateRollupRequest{
 
 message CreateRollupResponse{
   ExtRollupMsg msg = 1;
-  SystemError systemError = 2;
+  repeated BlobMsg blobs = 2;
+  SystemError systemError = 3;
 }
 
 message ExportCrossChainDataRequest {
@@ -331,4 +332,8 @@ message WithdrawalMsg {
   bytes amount = 1;
   bytes recipient = 2;
   bytes contract = 3;
+}
+
+message BlobMsg {
+  bytes blob = 1;
 }

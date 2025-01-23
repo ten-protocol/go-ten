@@ -215,6 +215,10 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case crosschain.NetworkSecretRespondedID:
 			processed.AddEvent(common.SecretResponseTx, txData)
+
+		case crosschain.DebugID:
+			//println("DEBUG ID EVENT", txData)
+			println("DEBUG LOG", l.Data)
 		default:
 			// there are known events that we don't care about here
 			r.logger.Debug("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)

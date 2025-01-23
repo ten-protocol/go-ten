@@ -120,7 +120,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.L1TenTransactio
 	return nil
 }
 
-// CreateBlobRollup creates a BlobTx, encoding the rollup data into blobs.
+// PopulateAddRollup creates a BlobTx, encoding the rollup data into blobs.
 func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {

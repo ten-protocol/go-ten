@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
@@ -271,4 +272,17 @@ func FromRollupDataMsg(msg *generated.PublicRollupDataMsg) (*common.PublicRollup
 		FirstBatchSequence: big.NewInt(int64(msg.StartSeq)),
 		StartTime:          msg.Timestamp,
 	}, nil
+}
+
+func ToBlobMsgs(blobs []*kzg4844.Blob) []*generated.BlobMsg {
+	if blobs == nil {
+		return nil
+	}
+	msgs := make([]*generated.BlobMsg, len(blobs))
+	for i, blob := range blobs {
+		msgs[i] = &generated.BlobMsg{
+			Blob: blob[:],
+		}
+	}
+	return msgs
 }

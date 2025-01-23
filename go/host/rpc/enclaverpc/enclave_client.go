@@ -359,7 +359,14 @@ func (c *Client) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.Ex
 		return nil, nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	return rpc.FromExtRollupMsg(response.Msg), nil, nil
+	blobs := make([]*kzg4844.Blob, len(response.Blobs))
+	for i, blobMsg := range response.Blobs {
+		var blob kzg4844.Blob
+		copy(blob[:], blobMsg.Blob)
+		blobs[i] = &blob
+	}
+
+	return rpc.FromExtRollupMsg(response.Msg), blobs, nil
 }
 
 func (c *Client) DebugTraceTransaction(ctx context.Context, hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
