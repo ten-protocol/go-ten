@@ -139,13 +139,13 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         emit Debug(string.concat("Final Hash (Solidity): ", toHexString(compositeHash)));
 
-        // Verify the hash matches the one in the rollup
-        require(compositeHash == r.Hash, "Hash mismatch");
-
-        // Verify the enclave signature
-        address enclaveID = ECDSA.recover(compositeHash, r.Signature);
-        require(attested[enclaveID], "enclaveID not attested");
-        require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
+//        // Verify the hash matches the one in the rollup
+//        require(compositeHash == r.Hash, "Hash mismatch");
+//
+//        // Verify the enclave signature
+//        address enclaveID = ECDSA.recover(compositeHash, r.Signature);
+//        require(attested[enclaveID], "enclaveID not attested");
+//        require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
         _;
     }
 

@@ -336,9 +336,9 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 
 	// Create composite hash matching the contract's expectations
 	compositeHash := gethcrypto.Keccak256Hash(
-		gethcommon.LeftPadBytes(big.NewInt(int64(extRollup.Header.LastBatchSeqNo)).Bytes(), 32),
+		gethcommon.LeftPadBytes(new(big.Int).SetUint64(extRollup.Header.LastBatchSeqNo).Bytes(), 32),
 		currentL1Head.Hash().Bytes(),
-		gethcommon.LeftPadBytes(big.NewInt(int64(currentL1Head.Number.Uint64())).Bytes(), 32),
+		gethcommon.LeftPadBytes(currentL1Head.Number.Bytes(), 32),
 		extRollup.Header.CrossChainRoot.Bytes(),
 		blobHash.Bytes(),
 	)
