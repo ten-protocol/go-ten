@@ -61,6 +61,10 @@ jobs:
           echo "DNS_NAME_LABEL_GATEWAY_FE=$DNS_NAME_LABEL_GATEWAY_FE" >> $GITHUB_ENV
           echo "IMAGE_NAME_GATEWAY_FE=$IMAGE_NAME_GATEWAY_FE" >> $GITHUB_ENV
 
+          SANITIZED_TESTNET_TYPE=$(echo "${{ github.event.inputs.testnet_type }}" | tr '-' '_')
+          IMAGE_NAME_GATEWAY_FE="obscuro_gateway_${SANITIZED_TESTNET_TYPE}_fe"
+          echo "IMAGE_NAME_GATEWAY_FE=$IMAGE_NAME_GATEWAY_FE" >> $GITHUB_ENV
+
       - name: "Print GitHub variables"
         run: |
           echo "Selected Testnet Type: ${{ github.event.inputs.testnet_type }}"
@@ -107,6 +111,6 @@ jobs:
             --build-arg NEXT_PUBLIC_NETWORK_NAME=${{ env.NETWORK_NAME }} \
             --build-arg NEXT_PUBLIC_TENSCAN_URL=${{ env.TENSCAN_URL }} \
             --build-arg NEXT_PUBLIC_GATEWAY_URL=${{ env.GATEWAY_URL }} \
-            -t testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_dev_testnet_fe:${VERSION} \
+            -t testnetobscuronet.azurecr.io/obscuronet/${{ env.IMAGE_NAME_GATEWAY_FE }}:${VERSION} \
             -f ./tools/walletextension/frontend/Dockerfile .
-          docker push testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway_dev_testnet_fe:${VERSION}
+          docker push testnetobscuronet.azurecr.io/obscuronet/${{ env.IMAGE_NAME_GATEWAY_FE }}:${VERSION}
