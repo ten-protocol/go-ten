@@ -88,7 +88,6 @@ jobs:
           echo "Selected Instance Type: ${{ github.event.inputs.instance_type }}"
           echo "DNS_NAME_LABEL_GATEWAY_FE: $DNS_NAME_LABEL_GATEWAY_FE"
           echo "IMAGE_NAME_GATEWAY_FE: $IMAGE_NAME_GATEWAY_FE"
-          echo "DOCKER_BUILD_TAG_GATEWAY_FE: $DOCKER_BUILD_TAG_GATEWAY_FE"
           echo "GATEWAY_URL: $GATEWAY_URL"
           echo "NETWORK_NAME: $NETWORK_NAME"
           echo "TENSCAN_URL: $TENSCAN_URL"
