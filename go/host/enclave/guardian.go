@@ -492,6 +492,10 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	rollupTxs, syncContracts := g.getRollupsAndContractAddrTxs(*processedData)
 
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
+	//println("------")
+	//println("L1 BLOCK HASH: ", processedData.BlockHeader.Hash().Hex())
+	//println("L1 BLOCK NUM: ", processedData.BlockHeader.Number.Uint64())
+
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {

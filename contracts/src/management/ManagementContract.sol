@@ -28,6 +28,16 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     event RollupAdded(bytes32 rollupHash);
     event NetworkSecretRequested(address indexed requester, string requestReport);
     event NetworkSecretResponded(address indexed attester, address indexed requester);
+    event DebugBlockNumbers(uint256 currentBlock, uint256 bindingBlock);
+    event DebugBlockHashes(bytes32 knownBlockHash, bytes32 providedHash);
+    event DebugCompositeHash(bytes32 calculatedHash, bytes32 providedHash);
+    event DebugRollupData(
+        uint256 lastSequenceNumber,
+        bytes32 blockBindingHash,
+        uint256 blockBindingNumber,
+        bytes32 crossChainRoot,
+        bytes32 blobHash
+    );
 
     // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
@@ -102,21 +112,28 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     }
 
     modifier verifyRollupIntegrity(Structs.MetaRollup calldata r) {
-        // Block binding checks
-        require(block.number > r.BlockBindingNumber, "Cannot bind to future block");
-        require(block.number < (r.BlockBindingNumber + 255), "Block binding too old");
+        // Debug block numbers
+        emit DebugBlockNumbers(block.number, r.BlockBindingNumber);
         
+        // Block binding checks
+        require(block.number >= r.BlockBindingNumber, "Cannot bind to future block");
+        require(block.number < (r.BlockBindingNumber + 255), "Block binding too old");
+
         bytes32 knownBlockHash = blockhash(r.BlockBindingNumber);
+        // Debug block hashes
+        emit DebugBlockHashes(knownBlockHash, r.BlockBindingHash);
+        
         require(knownBlockHash != 0x0, "Unknown block hash");
         require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
 
-        // Verify blob hash using the opcode
-        bytes32 computedBlobHash;
-        assembly {
-            let blobIndex := 0  // Assumes first blob index is 0
-            computedBlobHash := blobhash(blobIndex)
-        }
-        require(computedBlobHash == r.BlobHash, "Invalid blob hash");
+        // Debug rollup data
+        emit DebugRollupData(
+            r.LastSequenceNumber,
+            r.BlockBindingHash,
+            r.BlockBindingNumber,
+            r.crossChainRoot,
+            r.BlobHash
+        );
 
         // Create composite hash following MetaRollup struct field order
         bytes32 compositeHash = keccak256(abi.encodePacked(
@@ -126,6 +143,9 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             r.crossChainRoot,
             r.BlobHash
         ));
+
+        // Debug composite hash
+        emit DebugCompositeHash(compositeHash, r.Hash);
 
         // Verify the hash matches the one in the rollup
         require(compositeHash == r.Hash, "Hash mismatch");

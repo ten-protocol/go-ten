@@ -149,9 +149,9 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx, blobs []*kzg484
 	if len(blobs) > 0 {
 		fmt.Printf("blob[0] - CreateBlobRollup length: %d, first 100 bytes: %x\n", len(blobs[0]), blobs[0][:100])
 	}
-	fmt.Println("CrossChainRoot", decodedRollup.Header.CrossChainRoot)
-	fmt.Println("computedBlobHash", computedBlobHash)
-	fmt.Println("signedBlobHash", decodedRollup.Header.BlobHash)
+	//fmt.Println("CrossChainRoot", decodedRollup.Header.CrossChainRoot)
+	//fmt.Println("computedBlobHash", computedBlobHash)
+	//fmt.Println("signedBlobHash", decodedRollup.Header.BlobHash)
 
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
@@ -162,6 +162,15 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx, blobs []*kzg484
 		CrossChainRoot:     decodedRollup.Header.CrossChainRoot,
 		BlobHash:           decodedRollup.Header.BlobHash,
 	}
+
+	println("________")
+	println("Hash: ", decodedRollup.Hash().Hex())
+	println("Signature: ", decodedRollup.Header.Signature)
+	println("LastSequenceNumber: ", decodedRollup.Header.LastBatchSeqNo)
+	println("BlockBindingHash: ", decodedRollup.Header.CompressionL1Head.Hex())
+	println("BlockBindingNumber: ", decodedRollup.Header.CompressionL1Number.Uint64())
+	println("CrossChainRoot: ", decodedRollup.Header.CrossChainRoot.Hex())
+	println("BlobHash: ", decodedRollup.Header.BlobHash.Hex())
 
 	data, err := c.contractABI.Pack(
 		AddRollupMethod,

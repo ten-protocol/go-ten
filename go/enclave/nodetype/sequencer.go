@@ -337,9 +337,9 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 
 	// Create composite hash matching the contract's expectations
 	compositeHash := gethcrypto.Keccak256Hash(
-		big.NewInt(int64(extRollup.Header.LastBatchSeqNo)).Bytes(),
+		padBytesLeft(big.NewInt(int64(extRollup.Header.LastBatchSeqNo)).Bytes(), 32),
 		currentL1Head.Hash().Bytes(),
-		big.NewInt(int64(currentL1Head.Number.Uint64())).Bytes(),
+		padBytesLeft(currentL1Head.Number.Bytes(), 32),
 		extRollup.Header.CrossChainRoot.Bytes(),
 		blobHash.Bytes(),
 	)
@@ -350,12 +350,14 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 		return nil, nil, fmt.Errorf("failed to sign rollup: %w", err)
 	}
 
+	println("CROSS CHAIN ROOT BYTES: ", extRollup.Header.CrossChainRoot.Hex())
 	// Store blob data and required fields
-	extRollup.Header.CrossChainRoot = gethcommon.Hash{} // TODO: ASK STEFAN ABOUT THIS
+	//extRollup.Header.CrossChainRoot = gethcommon.Hash{} // TODO: ASK STEFAN ABOUT THIS
 	extRollup.Header.CompressionL1Number = currentL1Head.Number
 	extRollup.Header.CompressionL1Head = currentL1Head.Hash()
 	extRollup.Header.BlobHash = blobHash
 	extRollup.Header.Signature = signature
+	println("CROSS CHAIN ROOT AFTER: ", extRollup.Header.CrossChainRoot.Hex())
 
 	return extRollup, blobs, nil
 }
@@ -475,4 +477,10 @@ func (s *sequencer) OnL1Block(ctx context.Context, block *types.Header, result *
 
 func (s *sequencer) Close() error {
 	return s.mempool.Close()
+}
+
+func padBytesLeft(input []byte, size int) []byte {
+	result := make([]byte, size)
+	copy(result[size-len(input):], input)
+	return result
 }
