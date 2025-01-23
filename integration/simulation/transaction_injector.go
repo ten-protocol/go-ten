@@ -341,6 +341,10 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 				time.Sleep(1 * time.Second)
 				continue
 			}
+			if strings.Contains(err.Error(), "database closed") {
+				ti.logger.Info("Database closed, test over", log.ErrKey, err)
+				return
+			}
 			panic(fmt.Errorf("unable to get proof for value transfer. cause: %w", err))
 		}
 		break
