@@ -35,7 +35,6 @@ var (
 	NetworkSecretRequestedID          = MgmtContractABI.Events["NetworkSecretRequested"].ID
 	NetworkSecretRespondedID          = MgmtContractABI.Events["NetworkSecretResponded"].ID
 	RollupAddedID                     = MgmtContractABI.Events["RollupAdded"].ID
-	DebugID                           = MgmtContractABI.Events["Debug"].ID
 	ImportantContractAddressUpdatedID = MgmtContractABI.Events["ImportantContractAddressUpdated"].ID
 )
 

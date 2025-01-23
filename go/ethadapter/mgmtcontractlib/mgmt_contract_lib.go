@@ -128,7 +128,7 @@ func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 	}
 
 	metaRollup := ManagementContract.StructsMetaRollup{
-		Hash:               decodedRollup.Hash(),
+		Hash:               decodedRollup.Hash(), //TODO we don't actually use this anymore, do we still need it in here?
 		Signature:          decodedRollup.Header.Signature,
 		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
 		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,
@@ -137,14 +137,6 @@ func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 		BlobHash:           decodedRollup.Header.BlobHash,
 		CompositeHash:      decodedRollup.Header.CompositeHash,
 	}
-	println("Hash: ", decodedRollup.Hash().Hex())
-	println("Signature: ", decodedRollup.Header.Signature)
-	println("LastSequenceNumber: ", decodedRollup.Header.LastBatchSeqNo)
-	println("BlockBindingHash: ", decodedRollup.Header.CompressionL1Head.Hex())
-	println("BlockBindingNumber: ", decodedRollup.Header.CompressionL1Number.Uint64())
-	println("CrossChainRoot: ", decodedRollup.Header.CrossChainRoot.Hex())
-	println("BlobHash: ", decodedRollup.Header.BlobHash.Hex())
-	println("CompositeHash: ", decodedRollup.Header.CompositeHash.Hex())
 
 	data, err := c.contractABI.Pack(
 		AddRollupMethod,

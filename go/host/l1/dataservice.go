@@ -8,8 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto"
-
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
@@ -217,11 +215,6 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case crosschain.NetworkSecretRespondedID:
 			processed.AddEvent(common.SecretResponseTx, txData)
-		case crosschain.DebugID:
-			switch l.Topics[0].Hex() {
-			case crypto.Keccak256Hash([]byte("Debug(string)")).Hex():
-				println(fmt.Sprintf("Debug - Message: %s", string(l.Data)))
-			}
 		default:
 			// there are known events that we don't care about here
 			r.logger.Debug("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)

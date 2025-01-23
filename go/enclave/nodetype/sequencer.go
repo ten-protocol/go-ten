@@ -356,9 +356,6 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	extRollup.Header.Signature = signature
 	extRollup.Header.CompositeHash = compositeHash
 
-	println("___________________")
-	println("SEQUENCER COMPOSITE HASH: ", compositeHash.Hex())
-	println("SEQUENCER EXT ROLLUP COMP HASH: ", extRollup.Header.CompositeHash.Hex())
 	return extRollup, blobs, nil
 }
 
