@@ -129,4 +129,6 @@ jobs:
             --build-arg NEXT_PUBLIC_GATEWAY_URL=${{ env.GATEWAY_URL }} \
             -t testnetobscuronet.azurecr.io/obscuronet/${{ env.IMAGE_NAME_GATEWAY_FE }}:${VERSION} \
             -f ./tools/walletextension/frontend/Dockerfile .
+            
           docker push testnetobscuronet.azurecr.io/obscuronet/${{ env.IMAGE_NAME_GATEWAY_FE }}:${VERSION}
+
