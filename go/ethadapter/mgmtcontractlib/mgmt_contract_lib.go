@@ -127,32 +127,6 @@ func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 		panic(err)
 	}
 
-	c.logger.Warn("Computed blobs", "blobCount", len(blobs))
-
-	var computedBlobHash gethcommon.Hash
-
-	// Verify the blob hash matches what was signed
-	if len(blobs) > 0 {
-		commitment, err := kzg4844.BlobToCommitment(blobs[0])
-		if err != nil {
-			return nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
-		}
-
-		computedBlobHash = ethadapter.KZGToVersionedHash(commitment)
-	}
-	c.logger.Warn("Blob hash verification",
-		"computedBlobHash", computedBlobHash,
-		"signedBlobHash", decodedRollup.Header.BlobHash,
-		"match", computedBlobHash == decodedRollup.Header.BlobHash)
-
-	// Verify hash matches what was signed
-	if len(blobs) > 0 {
-		fmt.Printf("blob[0] - PopulateAddRollup length: %d, first 100 bytes: %x\n", len(blobs[0]), blobs[0][:100])
-	}
-	//fmt.Println("CrossChainRoot", decodedRollup.Header.CrossChainRoot)
-	//fmt.Println("computedBlobHash", computedBlobHash)
-	//fmt.Println("signedBlobHash", decodedRollup.Header.BlobHash)
-
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
 		Signature:          decodedRollup.Header.Signature,
@@ -161,9 +135,8 @@ func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 		BlockBindingNumber: decodedRollup.Header.CompressionL1Number,
 		CrossChainRoot:     decodedRollup.Header.CrossChainRoot,
 		BlobHash:           decodedRollup.Header.BlobHash,
+		CompositeHash:      decodedRollup.Header.CompositeHash,
 	}
-
-	println("________")
 	println("Hash: ", decodedRollup.Hash().Hex())
 	println("Signature: ", decodedRollup.Header.Signature)
 	println("LastSequenceNumber: ", decodedRollup.Header.LastBatchSeqNo)
@@ -171,6 +144,7 @@ func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 	println("BlockBindingNumber: ", decodedRollup.Header.CompressionL1Number.Uint64())
 	println("CrossChainRoot: ", decodedRollup.Header.CrossChainRoot.Hex())
 	println("BlobHash: ", decodedRollup.Header.BlobHash.Hex())
+	println("CompositeHash: ", decodedRollup.Header.CompositeHash.Hex())
 
 	data, err := c.contractABI.Pack(
 		AddRollupMethod,

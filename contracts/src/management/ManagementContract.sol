@@ -123,11 +123,11 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
 
         // Add debug logging
-        emit Debug(string.concat("LastSequenceNumber: ", toString(r.LastSequenceNumber)));
-        emit Debug(string.concat("BlockBindingHash: ", toHexString(r.BlockBindingHash)));
-        emit Debug(string.concat("BlockBindingNumber: ", toString(r.BlockBindingNumber)));
-        emit Debug(string.concat("CrossChainRoot: ", toHexString(r.crossChainRoot)));
-        emit Debug(string.concat("BlobHash: ", toHexString(r.BlobHash)));
+        emit Debug(string.concat("Solidity bytes - SeqNo: ", toString(r.LastSequenceNumber)));
+        emit Debug(string.concat("Solidity bytes - BlockHash: ", toHexString(r.BlockBindingHash)));
+        emit Debug(string.concat("Solidity bytes - BlockNum: ", toString(r.BlockBindingNumber)));
+        emit Debug(string.concat("Solidity bytes - CrossChain: ", toHexString(r.crossChainRoot)));
+        emit Debug(string.concat("Solidity bytes - BlobHash: ", toHexString(r.BlobHash)));
 
         bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
@@ -137,15 +137,17 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             r.BlobHash
         ));
 
-        emit Debug(string.concat("Final Hash (Solidity): ", toHexString(compositeHash)));
+        emit Debug(string.concat("R.Hash (Solidity): ", toHexString(r.Hash)));
+        emit Debug(string.concat("Composite Hash (Solidity): ", toHexString(compositeHash)));
+        emit Debug(string.concat("R.CompositeHash (Solidity): ", toHexString(r.CompositeHash)));
 
-//        // Verify the hash matches the one in the rollup
-//        require(compositeHash == r.Hash, "Hash mismatch");
-//
-//        // Verify the enclave signature
-//        address enclaveID = ECDSA.recover(compositeHash, r.Signature);
-//        require(attested[enclaveID], "enclaveID not attested");
-//        require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
+        // Verify the hash matches the one in the rollup
+        require(compositeHash == r.CompositeHash, "Composite hash mismatch");
+
+        // Verify the enclave signature
+        address enclaveID = ECDSA.recover(compositeHash, r.Signature);
+        require(attested[enclaveID], "enclaveID not attested");
+        require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
         _;
     }
 

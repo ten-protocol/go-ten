@@ -318,6 +318,7 @@ message RollupHeaderMsg {
   uint64 LastBatchSeqNo = 9;
   bytes CrossChainRoot = 10;
   bytes BlobHash = 11;
+  bytes CompositeHash = 12;
 }
 
 message SecretResponseMsg {
