@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+
 	"github.com/docker/docker/client"
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
@@ -84,7 +85,7 @@ func (s *SetChallengePeriod) WaitForFinish() error {
 }
 
 func (s *SetChallengePeriod) PrintLogs(cli *client.Client) {
-	logsOptions := types.ContainerLogsOptions{
+	logsOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	}

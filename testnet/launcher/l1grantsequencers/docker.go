@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+
 	"github.com/docker/docker/client"
 	"github.com/ten-protocol/go-ten/go/common/docker"
 	"github.com/ten-protocol/go-ten/go/obsclient"
@@ -125,7 +126,7 @@ func fetchEnclaveIDs(url string) (string, error) {
 }
 
 func (s *GrantSequencers) PrintLogs(cli *client.Client) {
-	logsOptions := types.ContainerLogsOptions{
+	logsOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	}
