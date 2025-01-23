@@ -65,6 +65,23 @@ jobs:
           IMAGE_NAME_GATEWAY_FE="obscuro_gateway_${SANITIZED_TESTNET_TYPE}_fe"
           echo "IMAGE_NAME_GATEWAY_FE=$IMAGE_NAME_GATEWAY_FE" >> $GITHUB_ENV
 
+          # Set instance-specific variables
+          declare -a VAR_NAMES=(
+            "GATEWAY_URL"
+            "NETWORK_NAME"
+            "TENSCAN_URL"
+          )
+
+          for VAR_NAME in "${VAR_NAMES[@]}"; do
+            FULL_VAR_NAME="${INSTANCE_PREFIX}${VAR_NAME}"
+            VAR_VALUE=$(jq -r --arg key "$FULL_VAR_NAME" '.[$key] // empty' <<< '${{ toJson(vars) }}')
+            if [[ -n "$VAR_VALUE" ]]; then
+              echo "${VAR_NAME}=${VAR_VALUE}" >> $GITHUB_ENV
+            else
+              echo "Warning: ${FULL_VAR_NAME} not found in vars" >&2
+            fi
+          done
+
       - name: "Print GitHub variables"
         run: |
           echo "Selected Testnet Type: ${{ github.event.inputs.testnet_type }}"
