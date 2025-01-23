@@ -174,5 +174,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
+	kythe.io v0.0.68 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
