@@ -681,7 +681,7 @@ func (g *Guardian) periodicRollupProduction() {
 					continue
 				}
 				// this method waits until the receipt is received
-				g.sl.L1Publisher().PublishRollup(producedRollup, blobs)
+				g.sl.L1Publisher().PublishBlob(producedRollup, blobs)
 				lastSuccessfulRollup = time.Now()
 			}
 
