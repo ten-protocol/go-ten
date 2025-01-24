@@ -123,13 +123,16 @@ func (r *DataService) FetchNextBlock(remoteHead gethcommon.Hash) (*types.Header,
 		}
 		return blk, false, nil
 	}
-
+	now := time.Now()
 	// the latestCanonAncestor will usually return the remoteHead itself but this step is necessary to walk back if there was a fork
 	fork, err := r.latestCanonAncestor(remoteHead)
 	if err != nil {
 		return nil, false, err
 	}
 
+	r.logger.Trace("fnb: latestCanonAncestor", "timeTaken", time.Since(now).String())
+
+	now2 := time.Now()
 	// and send the canonical block at the height after that
 	// (which may be a fork, or it may just be the next on the same branch if we are catching-up)
 	blk, err := r.ethClient.HeaderByNumber(increment(fork.CommonAncestor.Number))
@@ -139,6 +142,7 @@ func (r *DataService) FetchNextBlock(remoteHead gethcommon.Hash) (*types.Header,
 		}
 		return nil, false, fmt.Errorf("could not find block after latest canon ancestor, height=%s - %w", increment(fork.CommonAncestor.Number), err)
 	}
+	r.logger.Trace("fnb: fetchNextBlock", "timeTaken", time.Since(now2).String())
 
 	return blk, blk.Hash() == r.head, nil
 }
