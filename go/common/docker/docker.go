@@ -12,7 +12,6 @@ import (
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/volume"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/network"
@@ -184,7 +183,7 @@ func ensureVolumeExists(cli *client.Client, volumeName string) (*volume.Volume, 
 
 func createNetwork(networkName string, cli *client.Client) error {
 	// Check if the network already exists
-	networkFilter := types.NetworkListOptions{Filters: filters.NewArgs()}
+	networkFilter := network.ListOptions{Filters: filters.NewArgs()}
 	networkFilter.Filters.Add("name", networkName)
 	existingNetworks, err := cli.NetworkList(context.Background(), networkFilter)
 	if err != nil {
@@ -196,7 +195,7 @@ func createNetwork(networkName string, cli *client.Client) error {
 		_, err = cli.NetworkCreate(
 			context.Background(),
 			networkName,
-			types.NetworkCreate{
+			network.CreateOptions{
 				Driver:     "bridge",
 				Attachable: true,
 				Ingress:    false,
