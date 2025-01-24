@@ -97,10 +97,10 @@ func TestManagementContract(t *testing.T) {
 	for name, test := range map[string]func(*testing.T, *debugMgmtContractLib, *debugWallet, ethadapter.EthClient){
 		"secretCannotBeInitializedTwice":     secretCannotBeInitializedTwice,
 		"nonAttestedNodesCannotCreateRollup": nonAttestedNodesCannotCreateRollup,
-		// TODO @will temporarily disable these until we have time to properly create the rollups which are now verified
-		//"attestedNodesCreateRollup":          attestedNodesCreateRollup,
-		//"nonAttestedNodesCannotAttest":       nonAttestedNodesCannotAttest,
-		"newlyAttestedNodesCanAttest": newlyAttestedNodesCanAttest,
+		// TODO @will temporarily disable this test until we have time to properly create the rollups which are now verified
+		//"attestedNodesCreateRollup":    attestedNodesCreateRollup,
+		"nonAttestedNodesCannotAttest": nonAttestedNodesCannotAttest,
+		"newlyAttestedNodesCanAttest":  newlyAttestedNodesCanAttest,
 	} {
 		t.Run(name, func(t *testing.T) {
 			bytecode, err := constants.Bytecode()
@@ -248,87 +248,87 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 //}
 
 // nonAttestedNodesCannotAttest agg A initializes the network, agg B requests the secret, agg C issues response, but it's reverted
-//func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
-//	aggAPrivateKey, err := crypto.GenerateKey()
-//	if err != nil {
-//		t.Error(err)
-//	}
-//	aggAID := crypto.PubkeyToAddress(aggAPrivateKey.PublicKey)
-//
-//	// aggregator A starts the network secret
-//	txData := mgmtContractLib.CreateInitializeSecret(
-//		&common.L1InitializeSecretTx{
-//			EnclaveID: &aggAID,
-//		},
-//	)
-//
-//	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
-//	if err != nil {
-//		t.Error(err)
-//	}
-//	if receipt.Status != types.ReceiptStatusSuccessful {
-//		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
-//	}
-//
-//	// agg b requests the secret
-//	aggBPrivateKey, err := crypto.GenerateKey()
-//	if err != nil {
-//		t.Error(err)
-//	}
-//	aggBID := crypto.PubkeyToAddress(aggBPrivateKey.PublicKey)
-//
-//	txData = mgmtContractLib.CreateRequestSecret(
-//		&common.L1RequestSecretTx{
-//			Attestation: datagenerator.RandomBytes(10),
-//		},
-//	)
-//
-//	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
-//	if err != nil {
-//		t.Error(err)
-//	}
-//	if receipt.Status != types.ReceiptStatusSuccessful {
-//		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
-//	}
-//
-//	// agg c responds to the secret
-//	aggCPrivateKey, err := crypto.GenerateKey()
-//	if err != nil {
-//		t.Error(err)
-//	}
-//	aggCID := crypto.PubkeyToAddress(aggCPrivateKey.PublicKey)
-//
-//	fakeSecret := []byte{123}
-//
-//	txData = mgmtContractLib.CreateRespondSecret(
-//		Sign(&common.L1RespondSecretTx{
-//			Secret:      fakeSecret,
-//			RequesterID: aggBID,
-//			AttesterID:  aggCID,
-//		}, aggCPrivateKey),
-//		true,
-//	)
-//
-//	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
-//	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
-//		t.Error(err)
-//	}
-//
-//	// agg c responds to the secret AGAIN, but trying to mimick aggregator A
-//	txData = mgmtContractLib.CreateRespondSecret(
-//		Sign(&common.L1RespondSecretTx{
-//			Secret:      fakeSecret,
-//			RequesterID: aggBID,
-//			AttesterID:  aggAID,
-//		}, aggCPrivateKey),
-//		true,
-//	)
-//
-//	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
-//	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
-//		t.Error(err)
-//	}
-//}
+func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
+	aggAPrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Error(err)
+	}
+	aggAID := crypto.PubkeyToAddress(aggAPrivateKey.PublicKey)
+
+	// aggregator A starts the network secret
+	txData := mgmtContractLib.CreateInitializeSecret(
+		&common.L1InitializeSecretTx{
+			EnclaveID: &aggAID,
+		},
+	)
+
+	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
+	if err != nil {
+		t.Error(err)
+	}
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
+	}
+
+	// agg b requests the secret
+	aggBPrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Error(err)
+	}
+	aggBID := crypto.PubkeyToAddress(aggBPrivateKey.PublicKey)
+
+	txData = mgmtContractLib.CreateRequestSecret(
+		&common.L1RequestSecretTx{
+			Attestation: datagenerator.RandomBytes(10),
+		},
+	)
+
+	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
+	if err != nil {
+		t.Error(err)
+	}
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		t.Errorf("transaction should have succeeded, expected %d got %d", 1, receipt.Status)
+	}
+
+	// agg c responds to the secret
+	aggCPrivateKey, err := crypto.GenerateKey()
+	if err != nil {
+		t.Error(err)
+	}
+	aggCID := crypto.PubkeyToAddress(aggCPrivateKey.PublicKey)
+
+	fakeSecret := []byte{123}
+
+	txData = mgmtContractLib.CreateRespondSecret(
+		Sign(&common.L1RespondSecretTx{
+			Secret:      fakeSecret,
+			RequesterID: aggBID,
+			AttesterID:  aggCID,
+		}, aggCPrivateKey),
+		true,
+	)
+
+	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
+	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
+		t.Error(err)
+	}
+
+	// agg c responds to the secret AGAIN, but trying to mimick aggregator A
+	txData = mgmtContractLib.CreateRespondSecret(
+		Sign(&common.L1RespondSecretTx{
+			Secret:      fakeSecret,
+			RequesterID: aggBID,
+			AttesterID:  aggAID,
+		}, aggCPrivateKey),
+		true,
+	)
+
+	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
+	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
+		t.Error(err)
+	}
+}
 
 // newlyAttestedNodesCanAttest agg A initializes the network, agg B requests the secret, agg C requests the secret, agg C is attested by agg A and agg B is attested by agg C
 func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
