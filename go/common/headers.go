@@ -171,7 +171,7 @@ type RollupHeader struct {
 	BlobHash       common.Hash
 	CompositeHash  common.Hash // composite of everything
 
-	Signature []byte // The signature of the sequencer enclave on the payload hash
+	Signature []byte // The signature of the sequencer enclave over the composite hash
 }
 
 // CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.
