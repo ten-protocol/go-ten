@@ -189,17 +189,17 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 		RollupMetadata:          rollupMetadata,
 	}
 	// doing this after the network secret msgs to make sure we have stored the attestation before promotion.
-	e.processSequencerPromotions(blockData, err)
+	e.processSequencerPromotions(blockData)
 
 	return bsr, nil
 }
 
-func (e *enclaveAdminService) processSequencerPromotions(blockData *common.ProcessedL1Data, err error) {
+func (e *enclaveAdminService) processSequencerPromotions(blockData *common.ProcessedL1Data) {
 	// todo handle sequencer revoked - could move all of this into a separate processor
 	sequencerAddedTxs := blockData.GetEvents(common.SequencerAddedTx)
 	for _, tx := range sequencerAddedTxs {
 		if tx.HasSequencerEnclaveID() {
-			err = e.addSequencer(tx.SequencerEnclaveID, *tx.Receipt)
+			err := e.addSequencer(tx.SequencerEnclaveID, *tx.Receipt)
 			if err != nil {
 				e.logger.Crit("Encountered error while adding sequencer enclaveID", log.ErrKey, err)
 			}
