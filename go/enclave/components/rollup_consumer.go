@@ -149,7 +149,7 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 
 	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
 	for _, rollup := range rollups {
-		if err := rc.sigValidator.CheckSequencerSignature(rollup.Hash(), rollup.Header.Signature); err != nil {
+		if err := rc.sigValidator.CheckSequencerSignature(rollup.Header.CompositeHash, rollup.Header.Signature); err != nil {
 			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
@@ -201,7 +201,6 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 			return nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
 		}
 
-		println("CONSUMER SIG LENGTH: ", len(r.Header.Signature))
 		rollups = append(rollups, r)
 		txsSeen[tx.Transaction.Hash()] = true
 

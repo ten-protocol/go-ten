@@ -315,20 +315,23 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 		return nil, nil, fmt.Errorf("failed to compress rollup: %w", err)
 	}
 
+	extRollup.Header.CompressionL1Number = currentL1Head.Number
+	extRollup.Header.CompressionL1Head = currentL1Head.Hash()
+
 	// Create the blob data inside enclave
 	rollupData, err := common.EncodeRollup(extRollup)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to encode rollup: %w", err)
 	}
 
-	// Create the blobs inside enclave
-	blobs, err := ethadapter.EncodeBlobs(rollupData)
+	// Create temp blobs to get blob hash
+	tmpBlobs, err := ethadapter.EncodeBlobs(rollupData)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
+		return nil, nil, fmt.Errorf("failed to encode rollup to tmpBlobs: %w", err)
 	}
 
-	// Calculate blob hash from first blob (TODO: Change this when we use multiple blobs)
-	commitment, err := kzg4844.BlobToCommitment(blobs[0])
+	// Calculate blob hash from first blob (TODO: Change this when we use multiple tmpBlobs)
+	commitment, err := kzg4844.BlobToCommitment(tmpBlobs[0])
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
 	}
@@ -350,16 +353,22 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	}
 
 	// Store blob data and required fields
-	extRollup.Header.CompressionL1Number = currentL1Head.Number
-	extRollup.Header.CompressionL1Head = currentL1Head.Hash()
 	extRollup.Header.BlobHash = blobHash
-	extRollup.Header.Signature = signature
 	extRollup.Header.CompositeHash = compositeHash
-	println("EXT ROLLUP: ", len(extRollup.Header.Signature))
-	r, _ := ethadapter.ReconstructRollup(blobs)
-	println("TEST BLOBS: ", len(r.Header.Signature))
-	panic("")
-	return extRollup, blobs, nil
+	extRollup.Header.Signature = signature
+
+	// Now encode the rollup with signature
+	r, err := common.EncodeRollup(extRollup)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to encode rollup: %w", err)
+	}
+
+	// Encode blobs that include the signature on the header
+	blobsWithSignature, err := ethadapter.EncodeBlobs(r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to encode rollup to tmpBlobs: %w", err)
+	}
+	return extRollup, blobsWithSignature, nil
 }
 
 func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Header, nonCanonicalL1Path []common.L1BlockHash, canonicalL1Path []common.L1BlockHash) error {
