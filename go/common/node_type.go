@@ -12,17 +12,17 @@ const (
 type NodeType int
 
 const (
-	Validator NodeType = iota
-	Sequencer
+	Sequencer NodeType = iota
+	Validator
 	Unknown
 )
 
 func (n NodeType) String() string {
 	switch n {
-	case Validator:
-		return validator
 	case Sequencer:
 		return sequencer
+	case Validator:
+		return validator
 	case Unknown:
 		return unknown
 	default:
@@ -41,10 +41,10 @@ func (n *NodeType) UnmarshalText(text []byte) error {
 
 func ToNodeType(s string) (NodeType, error) {
 	switch s {
-	case validator:
-		return Validator, nil
 	case sequencer:
 		return Sequencer, nil
+	case validator:
+		return Validator, nil
 	default:
 		return Unknown, fmt.Errorf("string '%s' cannot be converted to a node type", s)
 	}

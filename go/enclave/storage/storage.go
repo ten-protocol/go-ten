@@ -468,9 +468,18 @@ func (s *storageImpl) StoreNodeType(ctx context.Context, enclaveId common.Enclav
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.UpdateAttestation(ctx, dbTx, enclaveId, nodeType)
+	res, err := enclavedb.UpdateAttestation(ctx, dbTx, enclaveId, nodeType)
 	if err != nil {
 		return err
+	}
+
+	// we always expect to update exactly one row here, shouldn't be permissioning an enclave we don't recognize
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("could not get rows affected - %w", err)
+	}
+	if rowsAffected != 1 {
+		return fmt.Errorf("expected to update nodetype for 1 attested enclave, but updated %d", rowsAffected)
 	}
 	err = dbTx.Commit()
 	if err != nil {

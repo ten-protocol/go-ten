@@ -127,6 +127,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 // addSequencer is used internally to add a sequencer enclaveID to the pool of attested enclaves.
 // If it is the current enclave it will change the behaviour of this enclave to be a backup sequencer (ready to become active).
 func (e *enclaveAdminService) addSequencer(id common.EnclaveID, _ types.Receipt) common.SystemError {
+	e.logger.Info("Storing new sequencer enclaveID", log.EnclaveIDKey, id)
 	err := e.storage.StoreNodeType(context.Background(), id, common.Sequencer)
 	if err != nil {
 		return responses.ToInternalError(err)
@@ -187,7 +188,23 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 		ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData),
 		RollupMetadata:          rollupMetadata,
 	}
+	// doing this after the network secret msgs to make sure we have stored the attestation before promotion.
+	e.processSequencerPromotions(blockData, err)
+
 	return bsr, nil
+}
+
+func (e *enclaveAdminService) processSequencerPromotions(blockData *common.ProcessedL1Data, err error) {
+	// todo handle sequencer revoked - could move all of this into a separate processor
+	sequencerAddedTxs := blockData.GetEvents(common.SequencerAddedTx)
+	for _, tx := range sequencerAddedTxs {
+		if tx.HasSequencerEnclaveID() {
+			err = e.addSequencer(tx.SequencerEnclaveID, *tx.Receipt)
+			if err != nil {
+				e.logger.Crit("Encountered error while adding sequencer enclaveID", log.ErrKey, err)
+			}
+		}
+	}
 }
 
 func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {
@@ -487,17 +504,6 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
 		e.logger.Error("Encountered error while processing l1 block rollups", log.ErrKey, err)
 		// Unsure what to do here; block has been stored
-	}
-
-	// todo handle sequencer revoked - could move all of this into a separate processor
-	sequencerAddedTxs := processed.GetEvents(common.SequencerAddedTx)
-	for _, tx := range sequencerAddedTxs {
-		if tx.HasSequencerEnclaveID() {
-			err = e.addSequencer(tx.SequencerEnclaveID, *tx.Receipt)
-			if err != nil {
-				e.logger.Crit("Encountered error while adding sequencer enclaveID", log.ErrKey, err)
-			}
-		}
 	}
 
 	if ingestion.IsFork() {
