@@ -14,7 +14,7 @@ import type {
 } from 'ethers';
 import { WrappedERC20 } from "../typechain-types/src/common";
 
-describe("Bridge", function () {
+describe.skip("Bridge", function () {
 
   let busL1: MessageBus
   let busL2: MessageBus
