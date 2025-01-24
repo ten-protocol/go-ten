@@ -187,10 +187,14 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
+	// in phase 1, only if the enclave is a sequencer, it can respond to shared secret requests
+	canShareSecret := e.isBackupSequencer(ctx) || e.isActiveSequencer(ctx) || e.sharedSecretService.IsGenesis()
+
 	bsr := &common.BlockSubmissionResponse{
-		ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData),
 		RollupMetadata:          rollupMetadata,
+		ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData, canShareSecret),
 	}
+
 	return bsr, nil
 }
 

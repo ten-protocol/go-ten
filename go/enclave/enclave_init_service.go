@@ -93,7 +93,7 @@ func (e *enclaveInitService) GenerateSecret(ctx context.Context) (common.Encrypt
 	e.sharedSecretService.GenerateSharedSecret()
 	secret := e.sharedSecretService.Secret()
 	if secret == nil {
-		return nil, responses.ToInternalError(errors.New("Failed to generate secret"))
+		return nil, responses.ToInternalError(errors.New("failed to generate secret"))
 	}
 	err := e.storage.StoreSecret(ctx, *secret)
 	if err != nil {
