@@ -65,7 +65,7 @@ func ExecuteTransaction(
 	snap := s.Snapshot()
 	s.SetTxContext(tx.Tx.Hash(), tCount)
 
-	s.SetLogger(&tracing.Hooks{
+	vmCfg.Tracer = &tracing.Hooks{
 		// called when the code of a contract changes.
 		OnCodeChange: func(addr gethcommon.Address, prevCodeHash gethcommon.Hash, prevCode []byte, codeHash gethcommon.Hash, code []byte) {
 			// only proceed for new deployments.
@@ -76,8 +76,9 @@ func ExecuteTransaction(
 			createdContracts = append(createdContracts, &addr)
 			logger.Debug("OnCodeChange: Contract deployed", "address", addr.Hex())
 		},
-	})
-	defer s.SetLogger(nil)
+	}
+
+	defer func() { vmCfg.Tracer = nil }()
 
 	var vmenv *vm.EVM
 	applyTx := func(

@@ -7,7 +7,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+
 	"github.com/docker/docker/client"
 	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/common/docker"
@@ -84,7 +85,7 @@ func (n *FundsRecovery) WaitForFinish() error {
 }
 
 func (n *FundsRecovery) PrintLogs(cli *client.Client) {
-	logsOptions := types.ContainerLogsOptions{
+	logsOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	}

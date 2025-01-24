@@ -9,10 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
+
 	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/node"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
@@ -84,7 +85,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		tailSize = "4"
 	}
 
-	logsOptions := types.ContainerLogsOptions{
+	logsOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 		Tail:       tailSize,

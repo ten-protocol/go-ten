@@ -1,6 +1,7 @@
 package common
 
 import (
+	"math/big"
 	"math/rand"
 	"time"
 
@@ -37,4 +38,11 @@ func RandomStr(n int) string {
 		suffix[i] = letters[randGen.Intn(len(letters))]
 	}
 	return string(suffix)
+}
+
+func BigMin(a, b *big.Int) *big.Int {
+	if a.Cmp(b) < 0 {
+		return a
+	}
+	return b
 }
