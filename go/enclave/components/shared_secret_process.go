@@ -35,7 +35,7 @@ func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, a
 }
 
 // ProcessNetworkSecretMsgs we watch for all messages that are requesting or receiving the secret and we store the nodes attested keys
-func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, processed *common.ProcessedL1Data) []*common.ProducedSecretResponse {
+func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, processed *common.ProcessedL1Data, canShareSecret bool) []*common.ProducedSecretResponse {
 	var responses []*common.ProducedSecretResponse
 	block := processed.BlockHeader
 
@@ -76,6 +76,10 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 			continue
 		}
 		responses = append(responses, resp)
+	}
+
+	if !canShareSecret {
+		return make([]*common.ProducedSecretResponse, 0)
 	}
 
 	return responses
