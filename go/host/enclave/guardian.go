@@ -224,6 +224,7 @@ func (g *Guardian) HandleBlock(block *types.Header) {
 		// the enclave is still catching up with the L1 chain, it won't be able to process this new head block yet so return
 		return
 	}
+	g.logger.Trace("submitting received L1 block")
 	_, err := g.submitL1Block(block, true)
 	if err != nil {
 		g.logger.Warn("failure processing L1 block", log.ErrKey, err)
@@ -429,9 +430,10 @@ func (g *Guardian) catchupWithL1() error {
 			// but if enclave has no current head, then we use the configured hash to find the first block to feed
 			enclaveHead = g.l1StartHash
 		}
-
+		g.logger.Trace("fetching next L1 block", log.BlockHashKey, enclaveHead)
 		l1Block, isLatest, err := g.sl.L1Data().FetchNextBlock(enclaveHead)
 		if err != nil {
+			g.logger.Trace("fetching failed", log.ErrKey, err)
 			if errors.Is(err, gethutil.ErrAncestorNotFound) {
 				g.logger.Error("should not happen. Chain fork cannot be calculated because there are missing blocks")
 			}
@@ -443,6 +445,7 @@ func (g *Guardian) catchupWithL1() error {
 			}
 			return errors.Wrap(err, "could not fetch next L1 block")
 		}
+		g.logger.Trace("fetched next L1 block", log.BlockHashKey, l1Block.Hash(), log.BlockHeightKey, l1Block.Number)
 		_, err = g.submitL1Block(l1Block, isLatest)
 		if err != nil {
 			return err
@@ -488,9 +491,10 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 		g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not extract ten transaction for block=%s - %w", block.Hash(), err)
 	}
-
+	g.logger.Trace("extracted ten tx events")
 	rollupTxs, syncContracts := g.getRollupsAndContractAddrTxs(*processedData)
 
+	g.logger.Trace("extracted rollup txs", "numRollupTxs", len(rollupTxs))
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
@@ -504,20 +508,26 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 			if err != nil {
 				return false, fmt.Errorf("failed to fetch next block after forking block=%s: %w", block.Hash(), err)
 			}
+			g.logger.Trace("recursively submitting next block", "block", nextCanonicalBlock.Hash(), "height", nextCanonicalBlock.Number)
 			return g.submitL1Block(nextCanonicalBlock, isLatest)
 		}
 		// something went wrong, return error and let the main loop check status and try again when appropriate
 		return false, errors.Wrap(err, "could not submit L1 block to enclave")
 	}
+
+	g.logger.Trace("successfully submitted L1 block to enclave", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
+	g.logger.Trace("processed block")
 	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, syncContracts)
+	g.logger.Trace("processed L1 block transactions")
 
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
 	err = g.publishSharedSecretResponses(resp.ProducedSecretResponses)
 	if err != nil {
 		g.logger.Error("Failed to publish response to secret request", log.ErrKey, err)
 	}
+	g.logger.Trace("published secret responses")
 	return true, nil
 }
 
