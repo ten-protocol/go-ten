@@ -97,7 +97,7 @@ func NotifierFromContext(ctx context.Context) (*Notifier, bool) {
 	return n, ok
 }
 
-// Notifier is tied to a RPC connection that supports subscriptions.
+// Notifier is tied to an RPC connection that supports subscriptions.
 // Server callbacks use the notifier to send notifications.
 type Notifier struct {
 	h         *handler
@@ -106,7 +106,7 @@ type Notifier struct {
 
 	mu           sync.Mutex
 	sub          *Subscription
-	buffer       []json.RawMessage
+	buffer       []any
 	callReturned bool
 	activated    bool
 }
@@ -130,12 +130,7 @@ func (n *Notifier) CreateSubscription() *Subscription {
 
 // Notify sends a notification to the client with the given data as payload.
 // If an error occurs the RPC connection is closed and the error is returned.
-func (n *Notifier) Notify(id ID, data interface{}) error {
-	enc, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-
+func (n *Notifier) Notify(id ID, data any) error {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
@@ -145,16 +140,10 @@ func (n *Notifier) Notify(id ID, data interface{}) error {
 		panic("Notify with wrong ID")
 	}
 	if n.activated {
-		return n.send(n.sub, enc)
+		return n.send(n.sub, data)
 	}
-	n.buffer = append(n.buffer, enc)
+	n.buffer = append(n.buffer, data)
 	return nil
-}
-
-// Closed returns a channel that is closed when the RPC connection is closed.
-// Deprecated: use subscription error channel
-func (n *Notifier) Closed() <-chan interface{} {
-	return n.h.conn.closed()
 }
 
 // takeSubscription returns the subscription (if one has been created). No subscription can
@@ -182,16 +171,16 @@ func (n *Notifier) activate() error {
 	return nil
 }
 
-func (n *Notifier) send(sub *Subscription, data json.RawMessage) error {
-	params, _ := json.Marshal(&subscriptionResult{ID: string(sub.ID), Result: data})
-	ctx := context.Background()
-
-	msg := &jsonrpcMessage{
+func (n *Notifier) send(sub *Subscription, data any) error {
+	msg := jsonrpcSubscriptionNotification{
 		Version: vsn,
 		Method:  n.namespace + notificationMethodSuffix,
-		Params:  params,
+		Params: subscriptionResultEnc{
+			ID:     string(sub.ID),
+			Result: data,
+		},
 	}
-	return n.h.conn.writeJSON(ctx, msg, false)
+	return n.h.conn.writeJSON(context.Background(), &msg, false)
 }
 
 // A Subscription is created by a notifier and tied to that notifier. The client can use
@@ -311,12 +300,12 @@ func (sub *ClientSubscription) run() {
 
 	// Call the unsubscribe method on the server.
 	if unsubscribe {
-		_ = sub.requestUnsubscribe()
+		sub.requestUnsubscribe()
 	}
 
 	// Send the error.
 	if err != nil {
-		if errors.Is(err, ErrClientQuit) {
+		if err == ErrClientQuit {
 			// ErrClientQuit gets here when Client.Close is called. This is reported as a
 			// nil error because it's not an error, but we can't close sub.err here.
 			err = nil
@@ -352,7 +341,7 @@ func (sub *ClientSubscription) forward() (unsubscribeServer bool, err error) {
 			if !recv.IsNil() {
 				err = recv.Interface().(error)
 			}
-			if errors.Is(err, errUnsubscribed) {
+			if err == errUnsubscribed {
 				// Exiting because Unsubscribe was called, unsubscribe on server.
 				return true, nil
 			}
@@ -383,5 +372,8 @@ func (sub *ClientSubscription) unmarshal(result json.RawMessage) (interface{}, e
 
 func (sub *ClientSubscription) requestUnsubscribe() error {
 	var result interface{}
-	return sub.client.Call(&result, sub.namespace+unsubscribeMethodSuffix, sub.subid)
+	ctx, cancel := context.WithTimeout(context.Background(), unsubscribeTimeout)
+	defer cancel()
+	err := sub.client.CallContext(ctx, &result, sub.namespace+unsubscribeMethodSuffix, sub.subid)
+	return err
 }

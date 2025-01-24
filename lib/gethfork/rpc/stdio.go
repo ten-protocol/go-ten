@@ -66,6 +66,6 @@ func (io stdioConn) RemoteAddr() string {
 	return "/dev/stdin"
 }
 
-func (io stdioConn) SetWriteDeadline(_ time.Time) error {
+func (io stdioConn) SetWriteDeadline(t time.Time) error {
 	return &net.OpError{Op: "set", Net: "stdio", Source: nil, Addr: nil, Err: errors.New("deadline not supported")}
 }
