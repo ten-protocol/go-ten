@@ -10,8 +10,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/ethereum/go-ethereum/log"
-
 	"github.com/holiman/uint256"
 )
 
@@ -37,7 +35,7 @@ func (h *TerminalHandler) format(buf []byte, r slog.Record, usecolor bool) []byt
 	color := ""
 	if usecolor {
 		switch r.Level {
-		case log.LevelCrit:
+		case LevelCrit:
 			color = "\x1b[35m"
 		case slog.LevelError:
 			color = "\x1b[31m"
@@ -47,7 +45,7 @@ func (h *TerminalHandler) format(buf []byte, r slog.Record, usecolor bool) []byt
 			color = "\x1b[32m"
 		case slog.LevelDebug:
 			color = "\x1b[36m"
-		case log.LevelTrace:
+		case LevelTrace:
 			color = "\x1b[34m"
 		}
 	}
@@ -58,10 +56,10 @@ func (h *TerminalHandler) format(buf []byte, r slog.Record, usecolor bool) []byt
 
 	if color != "" { // Start color
 		b.WriteString(color)
-		b.WriteString(log.LevelAlignedString(r.Level))
+		b.WriteString(LevelAlignedString(r.Level))
 		b.WriteString("\x1b[0m")
 	} else {
-		b.WriteString(log.LevelAlignedString(r.Level))
+		b.WriteString(LevelAlignedString(r.Level))
 	}
 	b.WriteString("[")
 	writeTimeTermFormat(b, r.Time)
@@ -81,7 +79,7 @@ func (h *TerminalHandler) format(buf []byte, r slog.Record, usecolor bool) []byt
 }
 
 func (h *TerminalHandler) formatAttributes(buf *bytes.Buffer, r slog.Record, color string) {
-	writeAttr := func(attr slog.Attr, first, last bool) {
+	writeAttr := func(attr slog.Attr, last bool) {
 		buf.WriteByte(' ')
 
 		if color != "" {
@@ -109,11 +107,11 @@ func (h *TerminalHandler) formatAttributes(buf *bytes.Buffer, r slog.Record, col
 	n := 0
 	nAttrs := len(h.attrs) + r.NumAttrs()
 	for _, attr := range h.attrs {
-		writeAttr(attr, n == 0, n == nAttrs-1)
+		writeAttr(attr, n == nAttrs-1)
 		n++
 	}
 	r.Attrs(func(attr slog.Attr) bool {
-		writeAttr(attr, n == 0, n == nAttrs-1)
+		writeAttr(attr, n == nAttrs-1)
 		n++
 		return true
 	})

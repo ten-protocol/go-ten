@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+
 	"github.com/docker/docker/client"
 	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/common/docker"
@@ -114,7 +115,7 @@ func (n *ContractDeployer) WaitForFinish() error {
 }
 
 func (n *ContractDeployer) PrintLogs(cli *client.Client) {
-	logsOptions := types.ContainerLogsOptions{
+	logsOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	}
