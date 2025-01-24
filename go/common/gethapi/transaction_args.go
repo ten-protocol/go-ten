@@ -5,11 +5,11 @@ package gethapi
 import (
 	"errors"
 	"fmt"
-	math2 "math"
+	"math"
 	"math/big"
 	"strings"
 
-	common2 "github.com/ten-protocol/go-ten/go/common"
+	tencommon "github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -364,7 +364,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 	// Set default gas & gas price if none were set
 	gas := globalGasCap
 	if gas == 0 {
-		gas = uint64(math2.MaxUint64 / 2)
+		gas = uint64(math.MaxUint64 / 2)
 	}
 	if args.Gas != nil {
 		gas = uint64(*args.Gas)
@@ -404,7 +404,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 			// Backfill the legacy gasPrice for EVM execution, unless we're all zeroes
 			gasPrice = new(big.Int)
 			if gasFeeCap.BitLen() > 0 || gasTipCap.BitLen() > 0 {
-				gasPrice = common2.BigMin(new(big.Int).Add(gasTipCap, baseFee), gasFeeCap)
+				gasPrice = tencommon.BigMin(new(big.Int).Add(gasTipCap, baseFee), gasFeeCap)
 			}
 		}
 	}

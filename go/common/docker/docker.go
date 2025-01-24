@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	image2 "github.com/docker/docker/api/types/image"
+	dockerimage "github.com/docker/docker/api/types/image"
 
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/volume"
@@ -211,7 +211,7 @@ func createNetwork(networkName string, cli *client.Client) error {
 func waitAndPullRemoteImage(image string, cli *client.Client) error {
 	// Pull the image from remote
 	fmt.Printf("Image %s not found locally. Pulling from remote...\n", image)
-	pullReader, err := cli.ImagePull(context.Background(), image, image2.PullOptions{})
+	pullReader, err := cli.ImagePull(context.Background(), image, dockerimage.PullOptions{})
 	if err != nil {
 		return err
 	}
@@ -226,7 +226,7 @@ func waitAndPullRemoteImage(image string, cli *client.Client) error {
 	// Wait until the image is available in the local Docker image cache
 	imageFilter := filters.NewArgs()
 	imageFilter.Add("reference", image)
-	imageListOptions := image2.ListOptions{Filters: imageFilter}
+	imageListOptions := dockerimage.ListOptions{Filters: imageFilter}
 	for {
 		imageSummaries, err := cli.ImageList(context.Background(), imageListOptions)
 		if err != nil {
