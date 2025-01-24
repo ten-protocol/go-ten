@@ -355,7 +355,10 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	extRollup.Header.BlobHash = blobHash
 	extRollup.Header.Signature = signature
 	extRollup.Header.CompositeHash = compositeHash
-
+	println("EXT ROLLUP: ", len(extRollup.Header.Signature))
+	r, _ := ethadapter.ReconstructRollup(blobs)
+	println("TEST BLOBS: ", len(r.Header.Signature))
+	panic("")
 	return extRollup, blobs, nil
 }
 

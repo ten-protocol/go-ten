@@ -128,7 +128,7 @@ func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 	}
 
 	metaRollup := ManagementContract.StructsMetaRollup{
-		Hash:               decodedRollup.Hash(), // TODO we don't actually use this anymore, do we still need it in here?
+		Hash:               decodedRollup.Hash(),
 		Signature:          decodedRollup.Header.Signature,
 		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
 		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,

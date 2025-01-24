@@ -226,6 +226,8 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 	}
 
+	r, _ := ethadapter.ReconstructRollup(blobs)
+	println("SIGNATURE FROM BLOBS: ", len(r.Header.Signature))
 	rollupBlobTx, err := p.mgmtContractLib.PopulateAddRollup(tx, blobs)
 	if err != nil {
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
