@@ -40,9 +40,11 @@ describe("Bridge", function () {
     console.log(`Deploying erc20`);
     try {
       const erc20 = await ERC20.deploy("XXX", "XXX", 100000);
+      await erc20.waitForDeployment();
       erc20address = await erc20.getAddress();
     } catch(err) {
       console.error(err);
+      throw err;
     }
 
 
