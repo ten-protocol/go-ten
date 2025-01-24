@@ -20,7 +20,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.23.5
+          go-version: 1.22.11
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1

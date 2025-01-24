@@ -7,7 +7,7 @@
 # final = copies over the solidity/hardhat source, takes the installed project from the 'install-npm-deps' and the final wallet executable
 #         in a lightweight image.
 
-FROM golang:1.23.5-alpine3.21 as system
+FROM golang:1.22.11-alpine3.21 as system
 
 # set the base libs to build / run
 RUN apk add build-base bash git

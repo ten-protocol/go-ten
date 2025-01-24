@@ -4,7 +4,7 @@
 # build-wallet = copies over the source code and builds the binaries using a compiler cache
 # final = copies over only the executables in an alpine image that doesn't have any additional load.
 
-FROM golang:1.23.5-alpine3.21 as system
+FROM golang:1.22.11-alpine3.21 as system
 
 # set the base libs to build / run
 RUN apk add build-base bash git
