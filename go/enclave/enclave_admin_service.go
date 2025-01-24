@@ -57,6 +57,7 @@ type enclaveAdminService struct {
 	enclaveKeyService      *crypto.EnclaveAttestedKeyService
 	mempool                *components.TxPool
 	sharedSecretService    *crypto.SharedSecretService
+	activeSequencer        bool
 }
 
 func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *components.TxPool, chainConfig *params.ChainConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService) common.EnclaveAdmin {
@@ -119,9 +120,6 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 	if eas.isBackupSequencer(context.Background()) || eas.isActiveSequencer(context.Background()) {
 		mempool.SetValidateMode(false)
 	}
-	if eas.isActiveSequencer(context.Background()) {
-		eas.service = sequencerService
-	}
 
 	return eas
 }
@@ -129,7 +127,8 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 // addSequencer is used internally to add a sequencer enclaveID to the pool of attested enclaves.
 // If it is the current enclave it will change the behaviour of this enclave to be a backup sequencer (ready to become active).
 func (e *enclaveAdminService) addSequencer(id common.EnclaveID, _ types.Receipt) common.SystemError {
-	err := e.storage.StoreNodeType(context.Background(), id, common.BackupSequencer)
+	e.logger.Info("Storing new sequencer enclaveID", log.EnclaveIDKey, id)
+	err := e.storage.StoreNodeType(context.Background(), id, common.Sequencer)
 	if err != nil {
 		return responses.ToInternalError(err)
 	}
@@ -150,12 +149,10 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 		return fmt.Errorf("only backup sequencer can become active")
 	}
 
-	err := e.storage.StoreNodeType(context.Background(), e.enclaveKeyService.EnclaveID(), common.ActiveSequencer)
-	if err != nil {
-		return err
-	}
-
+	e.activeSequencer = true
 	e.service = e.sequencerService
+	e.logger.Info("Enclave is now active sequencer.")
+
 	return nil
 }
 
@@ -195,7 +192,23 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 		ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData, canShareSecret),
 	}
 
+	// doing this after the network secret msgs to make sure we have stored the attestation before promotion.
+	e.processSequencerPromotions(blockData)
+
 	return bsr, nil
+}
+
+func (e *enclaveAdminService) processSequencerPromotions(blockData *common.ProcessedL1Data) {
+	// todo handle sequencer revoked - could move all of this into a separate processor
+	sequencerAddedTxs := blockData.GetEvents(common.SequencerAddedTx)
+	for _, tx := range sequencerAddedTxs {
+		if tx.HasSequencerEnclaveID() {
+			err := e.addSequencer(tx.SequencerEnclaveID, *tx.Receipt)
+			if err != nil {
+				e.logger.Crit("Encountered error while adding sequencer enclaveID", log.ErrKey, err)
+			}
+		}
+	}
 }
 
 func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {
@@ -497,17 +510,6 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		// Unsure what to do here; block has been stored
 	}
 
-	// todo handle sequencer revoked - could move all of this into a separate processor
-	sequencerAddedTxs := processed.GetEvents(common.SequencerAddedTx)
-	for _, tx := range sequencerAddedTxs {
-		if tx.HasSequencerEnclaveID() {
-			err = e.addSequencer(tx.SequencerEnclaveID, *tx.Receipt)
-			if err != nil {
-				e.logger.Crit("Encountered error while adding sequencer enclaveID", log.ErrKey, err)
-			}
-		}
-	}
-
 	if ingestion.IsFork() {
 		e.registry.OnL1Reorg(ingestion)
 		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)
@@ -548,11 +550,11 @@ func (e *enclaveAdminService) sequencer() nodetype.ActiveSequencer {
 }
 
 func (e *enclaveAdminService) isActiveSequencer(ctx context.Context) bool {
-	return e.getNodeType(ctx) == common.ActiveSequencer
+	return e.activeSequencer && e.getNodeType(ctx) == common.Sequencer
 }
 
 func (e *enclaveAdminService) isBackupSequencer(ctx context.Context) bool {
-	return e.getNodeType(ctx) == common.BackupSequencer
+	return e.getNodeType(ctx) == common.Sequencer && !e.activeSequencer
 }
 
 func (e *enclaveAdminService) isValidator(ctx context.Context) bool { //nolint:unused
