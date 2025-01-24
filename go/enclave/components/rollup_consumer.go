@@ -147,10 +147,14 @@ func (rc *rollupConsumerImpl) GetRollupsFromL1Data(processed *common.ProcessedL1
 func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*common.ExtRollup, error) {
 	signedRollup := make([]*common.ExtRollup, 0)
 
+	println("NUM ROLLUPS: ", len(rollups))
 	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
 	for _, rollup := range rollups {
 		if err := rc.sigValidator.CheckSequencerSignature(rollup.Hash(), rollup.Header.Signature); err != nil {
-			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
+			println("FAILED TO VERIFY AGAINST ROLLUP HASH")
+		}
+		if err := rc.sigValidator.CheckSequencerSignature(rollup.Header.CompositeHash, rollup.Header.Signature); err != nil {
+			println("FAILED TO VERIFY AGAINST COMPOSITE HASH")
 		}
 
 		signedRollup = append(signedRollup, rollup)
