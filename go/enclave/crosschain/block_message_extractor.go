@@ -56,7 +56,7 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 
 	err := m.storage.StoreValueTransfers(ctx, block.Hash(), transfers)
 	if err != nil {
-		m.logger.Crit("Unable to store the transfers", log.ErrKey, err)
+		m.logger.Error("Unable to store the transfers", log.ErrKey, err)
 		return err
 	}
 
@@ -88,7 +88,7 @@ func (m *blockMessageExtractor) StoreCrossChainMessages(ctx context.Context, blo
 		m.logger.Info(fmt.Sprintf("Storing %d messages for block", len(messages)), log.BlockHashKey, block.Hash())
 		err := m.storage.StoreL1Messages(ctx, block.Hash(), messages)
 		if err != nil {
-			m.logger.Crit("Unable to store the messages", log.ErrKey, err)
+			m.logger.Error("Unable to store the messages", log.ErrKey, err)
 			return err
 		}
 	}

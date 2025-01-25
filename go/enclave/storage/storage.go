@@ -94,7 +94,8 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	// Open trie database with provided config
 	triedb := triedb.NewDatabase(backingDB, trieDBConfig)
 
-	stateDB := state.NewDatabaseWithNodeDB(backingDB, triedb)
+	// todo - figure out the snapshot tree
+	stateDB := state.NewDatabase(triedb, nil)
 
 	return &storageImpl{
 		db:             backingDB,
@@ -410,7 +411,7 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 		return nil, err
 	}
 
-	statedb, err := state.New(batch.Root, s.stateCache, nil)
+	statedb, err := state.New(batch.Root, s.stateCache)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
 	}
@@ -419,7 +420,7 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	defer s.logDuration("EmptyStateDB", measure.NewStopwatch())
-	statedb, err := state.New(types.EmptyRootHash, s.stateCache, nil)
+	statedb, err := state.New(types.EmptyRootHash, s.stateCache)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}
@@ -468,9 +469,18 @@ func (s *storageImpl) StoreNodeType(ctx context.Context, enclaveId common.Enclav
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.UpdateAttestation(ctx, dbTx, enclaveId, nodeType)
+	res, err := enclavedb.UpdateAttestation(ctx, dbTx, enclaveId, nodeType)
 	if err != nil {
 		return err
+	}
+
+	// we always expect to update exactly one row here, shouldn't be permissioning an enclave we don't recognize
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("could not get rows affected - %w", err)
+	}
+	if rowsAffected != 1 {
+		return fmt.Errorf("expected to update nodetype for 1 attested enclave, but updated %d", rowsAffected)
 	}
 	err = dbTx.Commit()
 	if err != nil {

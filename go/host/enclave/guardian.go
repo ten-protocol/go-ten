@@ -130,6 +130,7 @@ func (g *Guardian) Start() error {
 		g.logger = g.logger.New(log.EnclaveIDKey, g.enclaveID)
 		// recreate status with new logger
 		g.state = NewStateTracker(g.logger)
+		g.state.OnReceivedBatch(g.sl.L2Repo().FetchLatestBatchSeqNo())
 		g.logger.Info("Starting guardian process.")
 	}
 
@@ -199,6 +200,11 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 		g.logger.Error("Unable to promote to active sequencer, already active")
 		return nil
 	}
+	if g.state.enclaveL2Head != nil && g.state.enclaveL2Head.Cmp(big.NewInt(0)) > 0 && !g.state.IsLive() {
+		// enclave has an L2 head so it's not just starting up, it can't be promoted to active sequencer until it is
+		// up-to-date with the L2 head according to the host's database.
+		return errors.New("cannot promote to active sequencer while behind the L2 head, it must finish syncing first")
+	}
 	err := g.enclaveClient.MakeActive()
 	if err != nil {
 		return errors.Wrap(err, "could not promote enclave to active sequencer")
@@ -241,7 +247,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
 	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
-	if g.isActiveSequencer || !g.state.IsUpToDate() {
+	if g.isActiveSequencer || !g.state.IsLive() {
 		return // ignore batches until we're up-to-date
 	}
 	// todo - @matt - does it make sense to use a timeout context?
@@ -492,6 +498,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	rollupTxs, syncContracts := g.getRollupsAndContractAddrTxs(*processedData)
 
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
+
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -530,7 +537,7 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 
 		metaData, err := g.enclaveClient.GetRollupData(context.Background(), r.Header.Hash())
 		if err != nil {
-			g.logger.Error("Could not fetch rollup metadata from enclave.", log.ErrKey, err)
+			g.logger.Error("Could not fetch rollup metadata from enclave.", log.RollupHashKey, r.Header.Hash(), log.ErrKey, err)
 		} else {
 			// TODO - This is a temporary fix, arrays should always match in practice...
 			extMetadata := common.ExtRollupMetadata{}
@@ -639,7 +646,7 @@ func (g *Guardian) periodicRollupProduction() {
 	for {
 		select {
 		case <-rollupCheckTicker.C:
-			if !g.state.IsUpToDate() {
+			if !g.state.IsLive() {
 				// if we're behind the L1, we don't want to produce rollups
 				g.logger.Debug("Skipping rollup production because L1 is not up to date", "state", g.state)
 				continue
@@ -671,13 +678,13 @@ func (g *Guardian) periodicRollupProduction() {
 			rollupJustPublished := time.Since(lastSuccessfulRollup) >= g.blockTime
 			if timeExpired || sizeExceeded && !rollupJustPublished {
 				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded, "rollupJustPublished", rollupJustPublished)
-				producedRollup, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
+				producedRollup, blobs, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
 				if err != nil {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
 				}
 				// this method waits until the receipt is received
-				g.sl.L1Publisher().PublishRollup(producedRollup)
+				g.sl.L1Publisher().PublishBlob(producedRollup, blobs)
 				lastSuccessfulRollup = time.Now()
 			}
 

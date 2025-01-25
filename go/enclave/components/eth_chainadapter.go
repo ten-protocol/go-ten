@@ -129,7 +129,7 @@ func (e *EthChainAdapter) StateAt(root gethcommon.Hash) (*state.StateDB, error) 
 		return nil, nil //nolint:nilnil
 	}
 
-	return state.New(root, e.storage.StateDB(), nil)
+	return state.New(root, e.storage.StateDB())
 }
 
 func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {
@@ -141,7 +141,7 @@ func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {
 	}
 
 	go func() {
-		e.newHeadChan <- gethcore.ChainHeadEvent{Block: convertedBlock}
+		e.newHeadChan <- gethcore.ChainHeadEvent{Header: convertedBlock.Header()}
 	}()
 
 	return nil

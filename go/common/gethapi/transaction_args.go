@@ -5,12 +5,14 @@ package gethapi
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"strings"
 
+	tencommon "github.com/ten-protocol/go-ten/go/common"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
@@ -402,7 +404,7 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 			// Backfill the legacy gasPrice for EVM execution, unless we're all zeroes
 			gasPrice = new(big.Int)
 			if gasFeeCap.BitLen() > 0 || gasTipCap.BitLen() > 0 {
-				gasPrice = math.BigMin(new(big.Int).Add(gasTipCap, baseFee), gasFeeCap)
+				gasPrice = tencommon.BigMin(new(big.Int).Add(gasTipCap, baseFee), gasFeeCap)
 			}
 		}
 	}
@@ -421,19 +423,20 @@ func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*
 		nonce = uint64(*args.Nonce)
 	}
 	msg := &core.Message{
-		To:                args.To,
-		From:              addr,
-		Nonce:             nonce,
-		Value:             value,
-		GasLimit:          gas,
-		GasPrice:          gasPrice,
-		GasFeeCap:         gasFeeCap,
-		GasTipCap:         gasTipCap,
-		Data:              data,
-		AccessList:        accessList,
-		BlobGasFeeCap:     nil,
-		BlobHashes:        nil,
-		SkipAccountChecks: true,
+		To:               args.To,
+		From:             addr,
+		Nonce:            nonce,
+		Value:            value,
+		GasLimit:         gas,
+		GasPrice:         gasPrice,
+		GasFeeCap:        gasFeeCap,
+		GasTipCap:        gasTipCap,
+		Data:             data,
+		AccessList:       accessList,
+		BlobGasFeeCap:    nil,
+		BlobHashes:       nil,
+		SkipFromEOACheck: true,
+		SkipNonceChecks:  true,
 	}
 	return msg, nil
 }

@@ -35,13 +35,17 @@ func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, a
 }
 
 // ProcessNetworkSecretMsgs we watch for all messages that are requesting or receiving the secret and we store the nodes attested keys
-func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, processed *common.ProcessedL1Data) []*common.ProducedSecretResponse {
+func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, processed *common.ProcessedL1Data, canShareSecret bool) []*common.ProducedSecretResponse {
 	var responses []*common.ProducedSecretResponse
 	block := processed.BlockHeader
 
 	// process initialize secret events
 	for _, txData := range processed.GetEvents(common.InitialiseSecretTx) {
-		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		t, err := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		if err != nil {
+			ssp.logger.Warn("Could not decode transaction", log.ErrKey, err)
+			continue
+		}
 		initSecretTx, ok := t.(*common.L1InitializeSecretTx)
 		if !ok {
 			continue
@@ -60,7 +64,11 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 
 	// process secret requests
 	for _, txData := range processed.GetEvents(common.SecretRequestTx) {
-		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		t, err := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		if err != nil {
+			ssp.logger.Warn("Could not decode transaction", log.ErrKey, err)
+			continue
+		}
 		scrtReqTx, ok := t.(*common.L1RequestSecretTx)
 		if !ok {
 			continue
@@ -76,6 +84,10 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 			continue
 		}
 		responses = append(responses, resp)
+	}
+
+	if !canShareSecret {
+		return make([]*common.ProducedSecretResponse, 0)
 	}
 
 	return responses

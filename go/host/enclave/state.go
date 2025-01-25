@@ -165,7 +165,7 @@ func (s *StateTracker) InSyncWithL1() bool {
 	return s.status == Live || s.status == L2Catchup
 }
 
-func (s *StateTracker) IsUpToDate() bool {
+func (s *StateTracker) IsLive() bool {
 	return s.status == Live
 }
 

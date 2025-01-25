@@ -9,7 +9,7 @@
 #   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
 #
 
-FROM ghcr.io/edgelesssys/ego-dev:v1.6.0 AS build-base
+FROM ghcr.io/edgelesssys/ego-dev:v1.7.0 AS build-base
 
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
@@ -36,7 +36,7 @@ FROM build-enclave as build-enclave
 RUN ego sign enclave.json
 
 # Trigger a new build stage and use the smaller ego version:
-FROM ghcr.io/edgelesssys/ego-deploy:v1.6.0
+FROM ghcr.io/edgelesssys/ego-deploy:v1.7.0
 
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \
