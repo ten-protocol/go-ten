@@ -492,6 +492,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	rollupTxs, syncContracts := g.getRollupsAndContractAddrTxs(*processedData)
 
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
+
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if err != nil {
 		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
@@ -671,13 +672,18 @@ func (g *Guardian) periodicRollupProduction() {
 			rollupJustPublished := time.Since(lastSuccessfulRollup) >= g.blockTime
 			if timeExpired || sizeExceeded && !rollupJustPublished {
 				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded, "rollupJustPublished", rollupJustPublished)
-				producedRollup, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
+				producedRollup, blobs, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
 				if err != nil {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
 				}
+				r, err := ethadapter.ReconstructRollup(blobs)
+				if err != nil {
+					println("ERROR")
+				}
+				println("SIGNATURE FROM BLOBS: ", len(r.Header.Signature))
 				// this method waits until the receipt is received
-				g.sl.L1Publisher().PublishRollup(producedRollup)
+				g.sl.L1Publisher().PublishBlob(producedRollup, blobs)
 				lastSuccessfulRollup = time.Now()
 			}
 

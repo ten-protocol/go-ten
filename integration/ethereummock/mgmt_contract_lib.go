@@ -5,6 +5,8 @@ import (
 	"encoding/gob"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ten-protocol/go-ten/go/host/l1"
@@ -83,13 +85,9 @@ func (m *mockContractLib) DecodeTx(tx *types.Transaction) common.L1TenTransactio
 	return decodeTx(tx)
 }
 
-func (m *mockContractLib) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error) {
+// TODO: Ziga - fix this mock implementation later if needed
+func (m *mockContractLib) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error) {
 	var err error
-	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to convert rollup to blobs: %w", err)
-	}
-
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
 	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, MockBlobHasher{}); err != nil {

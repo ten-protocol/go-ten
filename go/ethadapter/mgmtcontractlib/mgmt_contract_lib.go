@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -25,7 +26,7 @@ const methodBytesLen = 4
 type MgmtContractLib interface {
 	IsMock() bool
 	BlobHasher() ethadapter.BlobHasher
-	CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error)
+	PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error)
 	CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData
 	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) types.TxData
 	CreateInitializeSecret(tx *common.L1InitializeSecretTx) types.TxData
@@ -119,8 +120,8 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.L1TenTransactio
 	return nil
 }
 
-// CreateBlobRollup creates a BlobTx, encoding the rollup data into blobs.
-func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error) {
+// PopulateAddRollup creates a BlobTx, encoding the rollup data into blobs.
+func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		panic(err)
@@ -133,6 +134,8 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,
 		BlockBindingNumber: decodedRollup.Header.CompressionL1Number,
 		CrossChainRoot:     decodedRollup.Header.CrossChainRoot,
+		BlobHash:           decodedRollup.Header.BlobHash,
+		CompositeHash:      decodedRollup.Header.CompositeHash,
 	}
 
 	data, err := c.contractABI.Pack(
@@ -143,14 +146,10 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		panic(err)
 	}
 
-	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
-	}
-
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
 
+	// Use se blobs created here (they are verified that the hash matches with the blobs from the enclave)
 	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, c.BlobHasher()); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}

@@ -7,6 +7,7 @@ import (
 	generatedManagementContract "github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
@@ -41,7 +42,7 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 	if err != nil {
 		return err
 	}
-	txData, err := d.CreateBlobRollup(&common.L1RollupTx{Rollup: encodedRollup})
+	txData, err := d.PopulateAddRollup(&common.L1RollupTx{Rollup: encodedRollup}, []*kzg4844.Blob{})
 	if err != nil {
 		return fmt.Errorf("failed to create blob rollup: %w", err)
 	}
