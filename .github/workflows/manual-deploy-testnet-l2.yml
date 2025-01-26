@@ -82,6 +82,8 @@ jobs:
       - name: 'Deploy Contracts'
         id: deployContracts
         shell: bash
+        env:
+          DOCKER_API_VERSION: "1.45" # todo: should we be hardcoding the API version here? It fixes error as of 2025-01-26
         run: |
           go run ./testnet/launcher/l1contractdeployer/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
