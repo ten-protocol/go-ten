@@ -199,6 +199,9 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 		g.logger.Error("Unable to promote to active sequencer, already active")
 		return nil
 	}
+	if !g.state.IsLive() {
+		return errors.New("cannot promote to active sequencer while behind the L2 head, it must finish syncing first")
+	}
 	err := g.enclaveClient.MakeActive()
 	if err != nil {
 		return errors.Wrap(err, "could not promote enclave to active sequencer")
@@ -241,7 +244,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
 	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
-	if g.isActiveSequencer || !g.state.IsUpToDate() {
+	if g.isActiveSequencer || !g.state.IsLive() {
 		return // ignore batches until we're up-to-date
 	}
 	// todo - @matt - does it make sense to use a timeout context?
@@ -639,7 +642,7 @@ func (g *Guardian) periodicRollupProduction() {
 	for {
 		select {
 		case <-rollupCheckTicker.C:
-			if !g.state.IsUpToDate() {
+			if !g.state.IsLive() {
 				// if we're behind the L1, we don't want to produce rollups
 				g.logger.Debug("Skipping rollup production because L1 is not up to date", "state", g.state)
 				continue
