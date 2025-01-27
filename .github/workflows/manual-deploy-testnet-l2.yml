@@ -350,7 +350,7 @@ jobs:
               -v /dev/disk/:/dev/disk:ro \
               gcr.io/cadvisor/cadvisor:latest \
             && cd /home/obscuro/go-obscuro/ \
-            && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
+            && sudo DOCKER_API_VERSION=1.45 go run /home/obscuro/go-obscuro/go/node/cmd  \
                -is_genesis=${{ matrix.is_genesis }} \
                -node_type=${{ matrix.node_type }} \
                -num_enclaves=${{ env.NUM_ENCLAVES }} \
