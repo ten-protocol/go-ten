@@ -49,6 +49,10 @@ func (cs *brotliDataCompressionService) Decompress(in []byte) ([]byte, error) {
 		return nil, err
 	}
 
+	if len(data) != int(cs.decompressedSizeLimit) {
+		return data, nil
+	}
+
 	// Verify that the decompressed data is within the decompressedSizeLimit;
 	// if we manage to read again, then the decompressed data is larger than the decompressedSizeLimit
 	buf := make([]byte, 1)

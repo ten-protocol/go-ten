@@ -101,7 +101,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	dataCompressionService := compression.NewBrotliDataCompressionService(1024 * 1024)
+	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data

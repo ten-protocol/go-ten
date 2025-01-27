@@ -74,7 +74,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
-	dataCompressionService := compression.NewBrotliDataCompressionService(1024 * 1024)
+	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
 
 	rollupCompression := components.NewRollupCompression(registry, batchExecutor, daEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, config, logger)
 	rollupProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
