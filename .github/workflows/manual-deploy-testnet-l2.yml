@@ -238,7 +238,8 @@ jobs:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro \
+            --scripts 'export DOCKER_API_VERSION=1.45 \
+            && mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
             && cp /home/obscuro/go-obscuro/tools/edbconnect/edb-connect.sh /home/obscurouser/edb-connect.sh \
             && chown obscurouser:obscurouser /home/obscurouser/edb-connect.sh \
