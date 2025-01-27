@@ -199,7 +199,7 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 		g.logger.Error("Unable to promote to active sequencer, already active")
 		return nil
 	}
-	if !g.state.IsLive() {
+	if g.state.enclaveL2Head.Cmp(big.NewInt(0)) > 0 && !g.state.IsLive() {
 		return errors.New("cannot promote to active sequencer while behind the L2 head, it must finish syncing first")
 	}
 	err := g.enclaveClient.MakeActive()
