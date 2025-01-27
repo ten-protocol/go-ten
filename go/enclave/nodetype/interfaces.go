@@ -3,6 +3,8 @@ package nodetype
 import (
 	"context"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -28,7 +30,7 @@ type ActiveSequencer interface {
 
 	// CreateRollup - creates a new rollup from the latest recorded rollup in the head l1 chain
 	// and adds as many batches to it as possible.
-	CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, error)
+	CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, []*kzg4844.Blob, error)
 
 	NodeType
 }

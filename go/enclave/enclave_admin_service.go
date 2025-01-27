@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -278,7 +280,7 @@ func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty 
 	return nil
 }
 
-func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
+func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, []*kzg4844.Blob, common.SystemError) {
 	if !e.isActiveSequencer(ctx) {
 		e.logger.Crit("Only the active sequencer can create rollups")
 	}
@@ -289,15 +291,15 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 	defer e.dataInMutex.RUnlock()
 
 	if e.registry.HeadBatchSeq() == nil {
-		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
+		return nil, nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
 	}
 
-	rollup, err := e.sequencer().CreateRollup(ctx, fromSeqNo)
+	rollup, blobs, err := e.sequencer().CreateRollup(ctx, fromSeqNo)
 	// TODO do we need to store the blob hashes here so we can check them against our records?
 	if err != nil {
-		return nil, responses.ToInternalError(err)
+		return nil, nil, responses.ToInternalError(err)
 	}
-	return rollup, nil
+	return rollup, blobs, nil
 }
 
 func (e *enclaveAdminService) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, common.SystemError) {
