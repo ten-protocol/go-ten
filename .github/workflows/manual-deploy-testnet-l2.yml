@@ -25,11 +25,6 @@ on:
         required: true
         default: 3
         type: number
-      ha_enabled:
-        description: 'Enable High Availability'
-        required: true
-        default: true
-        type: boolean
 
 jobs:
   build:
@@ -204,7 +199,7 @@ jobs:
       -  name: 'Determine HA properties'
          shell: bash
          run: |
-           if [[ "${{ github.event.inputs.ha_enabled }}" == "true" && ${{ matrix.host_id }} -eq 0 ]]; then
+           if [[ ${{ matrix.host_id }} -eq 0 ]]; then
              echo "VM_SIZE=Standard_DC8s_v3" >> $GITHUB_ENV
              echo "NUM_ENCLAVES=2" >> $GITHUB_ENV
            else
@@ -237,6 +232,8 @@ jobs:
 
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
+        env:
+          DOCKER_API_VERSION: "1.45" # todo: should we be hardcoding the API version here? It fixes error as of 2025-01-26
         with:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
@@ -411,6 +408,8 @@ jobs:
       -  name: 'Grant permission to sequencer enclave(s)'
          id: grantSequencerPermission
          shell: bash
+         env:
+            DOCKER_API_VERSION: "1.45" # todo: should we be hardcoding the API version here? It fixes error as of 2025-01-26
          run: |
            go run ./testnet/launcher/l1grantsequencers/cmd \
            -l1_http_url=${{ secrets.L1_HTTP_URL }} \
@@ -478,6 +477,8 @@ jobs:
       - name: 'Deploy L2 contracts'
         id: deployL2Contracts
         shell: bash
+        env:
+          DOCKER_API_VERSION: "1.45" # todo: should we be hardcoding the API version here? It fixes error as of 2025-01-26
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd \
           -l2_host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com \
