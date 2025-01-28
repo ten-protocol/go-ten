@@ -79,7 +79,7 @@ func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTran
 	// only process transfers made to the management contract
 	toAddr, ok := to.(gethcommon.Address)
 	if !ok || toAddr.Hex() != c.mgmtContractAddr.Hex() {
-		return nil, fmt.Errorf("transfer not made to the management contract")
+		return nil, nil
 	}
 
 	amount, found := contractCallData[AmountCallData]
