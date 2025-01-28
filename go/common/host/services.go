@@ -134,6 +134,8 @@ type L2BatchRepository interface {
 
 	FetchBatchBySeqNo(background context.Context, seqNo *big.Int) (*common.ExtBatch, error)
 
+	FetchLatestBatchSeqNo() *big.Int
+
 	// AddBatch is used to notify the repository of a new batch, e.g. from the enclave when seq produces one or a rollup is consumed
 	// Note: it is fine to add batches that the repo already has, it will just ignore them
 	AddBatch(batch *common.ExtBatch) error
