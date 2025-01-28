@@ -48,7 +48,8 @@ func main() {
 	}
 
 	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPortHTTP)
-	logger.Info("TEN gateway started", "url", fmt.Sprintf("http://%s/v1/network-config", walletExtensionAddr))
+	fmt.Println("TEN gateway started") // We expect stdout message in some tests
+	logger.Info("TEN gateway started: ", "url", fmt.Sprintf("http://%s/v1/network-config", walletExtensionAddr))
 
 	select {}
 }
