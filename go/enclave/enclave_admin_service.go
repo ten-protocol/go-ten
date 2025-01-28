@@ -308,7 +308,12 @@ func (e *enclaveAdminService) ExportCrossChainData(ctx context.Context, fromSeqN
 		return nil, err
 	}
 
-	sig, err := e.enclaveKeyService.Sign(bundle.HashPacked())
+	bytes, err := bundle.HashPacked()
+	if err != nil {
+		return nil, err
+	}
+
+	sig, err := e.enclaveKeyService.Sign(bytes)
 	if err != nil {
 		return nil, err
 	}

@@ -205,20 +205,23 @@ func (ms MessageStructs) EncodeIndex(index int, w *bytes.Buffer) {
 	}
 }
 
-func (ms MessageStructs) ForMerkleTree() [][]interface{} {
+func (ms MessageStructs) ForMerkleTree() ([][]interface{}, error) {
 	values := make([][]interface{}, 0)
 	for idx := range ms {
-		hashedVal := ms.HashPacked(idx)
+		hashedVal, err := ms.HashPacked(idx)
+		if err != nil {
+			return nil, err
+		}
 		val := []interface{}{
 			"m",
 			hashedVal,
 		}
 		values = append(values, val)
 	}
-	return values
+	return values, nil
 }
 
-func (ms MessageStructs) HashPacked(index int) gethcommon.Hash {
+func (ms MessageStructs) HashPacked(index int) (gethcommon.Hash, error) {
 	messageStruct := ms[index]
 
 	addrType, _ := abi.NewType("address", "", nil)
@@ -247,13 +250,12 @@ func (ms MessageStructs) HashPacked(index int) gethcommon.Hash {
 		},
 	}
 
-	// todo @siliev: err
 	packed, err := args.Pack(messageStruct.Sender, messageStruct.Sequence, messageStruct.Nonce, messageStruct.Topic, messageStruct.Payload, messageStruct.ConsistencyLevel)
 	if err != nil {
-		panic(err)
+		return gethcommon.Hash{}, fmt.Errorf("unable to pack message struct: %w", err)
 	}
 	hash := crypto.Keccak256Hash(packed)
-	return hash
+	return hash, nil
 }
 
 type ValueTransfers []common.ValueTransferEvent
@@ -269,20 +271,23 @@ func (vt ValueTransfers) EncodeIndex(index int, w *bytes.Buffer) {
 	}
 }
 
-func (vt ValueTransfers) ForMerkleTree() [][]interface{} {
+func (vt ValueTransfers) ForMerkleTree() ([][]interface{}, error) {
 	values := make([][]interface{}, 0)
 	for idx := range vt {
-		hashedVal := vt.HashPacked(idx)
+		hashedVal, err := vt.HashPacked(idx)
+		if err != nil {
+			return nil, err
+		}
 		val := []interface{}{
 			"v", // [v, "0xblabla"]
 			hashedVal,
 		}
 		values = append(values, val)
 	}
-	return values
+	return values, nil
 }
 
-func (vt ValueTransfers) HashPacked(index int) gethcommon.Hash {
+func (vt ValueTransfers) HashPacked(index int) (gethcommon.Hash, error) {
 	valueTransfer := vt[index]
 
 	uint256Type, _ := abi.NewType("uint256", "", nil)
@@ -306,11 +311,11 @@ func (vt ValueTransfers) HashPacked(index int) gethcommon.Hash {
 
 	bytes, err := args.Pack(valueTransfer.Sender, valueTransfer.Receiver, valueTransfer.Amount, valueTransfer.Sequence)
 	if err != nil {
-		panic(err)
+		return gethcommon.Hash{}, fmt.Errorf("unable to pack value transfer: %w", err)
 	}
 
 	hash := crypto.Keccak256Hash(bytes)
-	return hash
+	return hash, nil
 }
 
 var CrossChainEncodings = []string{smt.SOL_STRING, smt.SOL_BYTES32}

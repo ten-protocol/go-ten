@@ -88,7 +88,7 @@ func (c *Client) EncryptedRPC(ctx context.Context, encryptedReq common.Encrypted
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
 func (c *Client) ExportCrossChainData(ctx context.Context, from uint64, to uint64) (*common.ExtCrossChainBundle, common.SystemError) {

@@ -170,11 +170,14 @@ func nonAttestedNodesCannotCreateRollup(t *testing.T, mgmtContractLib *debugMgmt
 // secretCannotBeInitializedTwice issues the InitializeNetworkSecret twice, failing the second time
 func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtContractLib, w *debugWallet, client ethadapter.EthClient) {
 	aggregatorID := datagenerator.RandomAddress()
-	txData := mgmtContractLib.CreateInitializeSecret(
+	txData, err := mgmtContractLib.CreateInitializeSecret(
 		&common.L1InitializeSecretTx{
 			EnclaveID: &aggregatorID,
 		},
 	)
+	if err != nil {
+		t.Error(err)
+	}
 
 	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
@@ -196,11 +199,14 @@ func secretCannotBeInitializedTwice(t *testing.T, mgmtContractLib *debugMgmtCont
 
 	// do the same again
 	aggregatorID = datagenerator.RandomAddress()
-	txData = mgmtContractLib.CreateInitializeSecret(
+	txData, err = mgmtContractLib.CreateInitializeSecret(
 		&common.L1InitializeSecretTx{
 			EnclaveID: &aggregatorID,
 		},
 	)
+	if err != nil {
+		t.Error(err)
+	}
 
 	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
@@ -256,11 +262,14 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 	aggAID := crypto.PubkeyToAddress(aggAPrivateKey.PublicKey)
 
 	// aggregator A starts the network secret
-	txData := mgmtContractLib.CreateInitializeSecret(
+	txData, err := mgmtContractLib.CreateInitializeSecret(
 		&common.L1InitializeSecretTx{
 			EnclaveID: &aggAID,
 		},
 	)
+	if err != nil {
+		t.Error(err)
+	}
 
 	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
@@ -277,11 +286,14 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 	}
 	aggBID := crypto.PubkeyToAddress(aggBPrivateKey.PublicKey)
 
-	txData = mgmtContractLib.CreateRequestSecret(
+	txData, err = mgmtContractLib.CreateRequestSecret(
 		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 	)
+	if err != nil {
+		t.Error(err)
+	}
 
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
@@ -300,7 +312,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 
 	fakeSecret := []byte{123}
 
-	txData = mgmtContractLib.CreateRespondSecret(
+	txData, err = mgmtContractLib.CreateRespondSecret(
 		Sign(&common.L1RespondSecretTx{
 			Secret:      fakeSecret,
 			RequesterID: aggBID,
@@ -308,6 +320,9 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 		}, aggCPrivateKey),
 		true,
 	)
+	if err != nil {
+		t.Error(err)
+	}
 
 	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
@@ -315,7 +330,7 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 	}
 
 	// agg c responds to the secret AGAIN, but trying to mimick aggregator A
-	txData = mgmtContractLib.CreateRespondSecret(
+	txData, err = mgmtContractLib.CreateRespondSecret(
 		Sign(&common.L1RespondSecretTx{
 			Secret:      fakeSecret,
 			RequesterID: aggBID,
@@ -323,6 +338,9 @@ func nonAttestedNodesCannotAttest(t *testing.T, mgmtContractLib *debugMgmtContra
 		}, aggCPrivateKey),
 		true,
 	)
+	if err != nil {
+		t.Error(err)
+	}
 
 	_, _, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err == nil || !assert.Contains(t, err.Error(), "execution reverted") {
@@ -341,12 +359,15 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	aggAID := crypto.PubkeyToAddress(aggAPrivateKey.PublicKey)
 
 	// the aggregator starts the network
-	txData := mgmtContractLib.CreateInitializeSecret(
+	txData, err := mgmtContractLib.CreateInitializeSecret(
 		&common.L1InitializeSecretTx{
 			EnclaveID:     &aggAID,
 			InitialSecret: secretBytes,
 		},
 	)
+	if err != nil {
+		t.Error(err)
+	}
 
 	_, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
@@ -370,11 +391,15 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	}
 	aggBID := crypto.PubkeyToAddress(aggBPrivateKey.PublicKey)
 
-	txData = mgmtContractLib.CreateRequestSecret(
+	txData, err = mgmtContractLib.CreateRequestSecret(
 		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 	)
+	if err != nil {
+		t.Error(err)
+	}
+
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
 		t.Error(err)
@@ -390,11 +415,14 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	}
 	aggCID := crypto.PubkeyToAddress(aggCPrivateKey.PublicKey)
 
-	txData = mgmtContractLib.CreateRequestSecret(
+	txData, err = mgmtContractLib.CreateRequestSecret(
 		&common.L1RequestSecretTx{
 			Attestation: datagenerator.RandomBytes(10),
 		},
 	)
+	if err != nil {
+		t.Error(err)
+	}
 
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
@@ -405,7 +433,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	}
 
 	// Agg A responds to Agg C request
-	txData = mgmtContractLib.CreateRespondSecret(
+	txData, err = mgmtContractLib.CreateRespondSecret(
 		Sign(&common.L1RespondSecretTx{
 			Secret:      secretBytes,
 			RequesterID: aggCID,
@@ -413,6 +441,10 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 		}, aggAPrivateKey),
 		true,
 	)
+	if err != nil {
+		t.Error(err)
+	}
+
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
 		t.Error(err)
@@ -432,7 +464,7 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 	}
 
 	// agg C attests agg B
-	txData = mgmtContractLib.CreateRespondSecret(
+	txData, err = mgmtContractLib.CreateRespondSecret(
 		Sign(&common.L1RespondSecretTx{
 			Secret:      secretBytes,
 			RequesterID: aggBID,
@@ -440,6 +472,10 @@ func newlyAttestedNodesCanAttest(t *testing.T, mgmtContractLib *debugMgmtContrac
 		}, aggCPrivateKey),
 		true,
 	)
+	if err != nil {
+		t.Error(err)
+	}
+
 	_, receipt, err = w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
 		t.Error(err)

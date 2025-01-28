@@ -104,7 +104,7 @@ func HandleEncryptedRPC(ctx context.Context,
 	case rpc.ERPCGetPersonalTransactions:
 		return withVKEncryption(ctx, encManager, decodedRequest, vk, GetPersonalTransactionsValidate, GetPersonalTransactionsExecute)
 	default:
-		panic(fmt.Sprintf("unsupported method %s", decodedRequest.Method))
+		return nil, fmt.Errorf("unsupported method %s", decodedRequest.Method)
 	}
 }
 

@@ -41,7 +41,11 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 
 	// process initialize secret events
 	for _, txData := range processed.GetEvents(common.InitialiseSecretTx) {
-		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		t, err := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		if err != nil {
+			ssp.logger.Warn("Could not decode transaction", log.ErrKey, err)
+			continue
+		}
 		initSecretTx, ok := t.(*common.L1InitializeSecretTx)
 		if !ok {
 			continue
@@ -60,7 +64,11 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 
 	// process secret requests
 	for _, txData := range processed.GetEvents(common.SecretRequestTx) {
-		t := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		t, err := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		if err != nil {
+			ssp.logger.Warn("Could not decode transaction", log.ErrKey, err)
+			continue
+		}
 		scrtReqTx, ok := t.(*common.L1RequestSecretTx)
 		if !ok {
 			continue
