@@ -173,7 +173,10 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 	txsSeen := make(map[gethcommon.Hash]bool)
 
 	for i, tx := range rollupTxs {
-		t := rc.MgmtContractLib.DecodeTx(tx.Transaction)
+		t, err := rc.MgmtContractLib.DecodeTx(tx.Transaction)
+		if err != nil {
+			rc.logger.Warn(fmt.Sprintf("could not decode tx at index %d. Cause: %s", i, err))
+		}
 		if t == nil {
 			continue
 		}

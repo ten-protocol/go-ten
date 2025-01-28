@@ -70,19 +70,19 @@ func (m *mockContractLib) GetContractAddr() *gethcommon.Address {
 	return &rollupTxAddr
 }
 
-func (m *mockContractLib) DecodeTx(tx *types.Transaction) common.L1TenTransaction {
+func (m *mockContractLib) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
 	// Do not decode erc20 transactions, this is the responsibility
 	// of the erc20 contract lib.
 	if tx.To().Hex() == depositTxAddr.Hex() {
-		return nil
+		return nil, nil
 	}
 
 	if tx.To().Hex() == rollupTxAddr.Hex() {
 		return &common.L1RollupHashes{
 			BlobHashes: tx.BlobHashes(),
-		}
+		}, nil
 	}
-	return decodeTx(tx)
+	return decodeTx(tx), nil
 }
 
 // TODO: Ziga - fix this mock implementation later if needed
@@ -111,16 +111,16 @@ func (m *mockContractLib) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 	}, nil
 }
 
-func (m *mockContractLib) CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData {
-	return encodeTx(tx, requestSecretTxAddr)
+func (m *mockContractLib) CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error) {
+	return encodeTx(tx, requestSecretTxAddr), nil
 }
 
-func (m *mockContractLib) CreateRespondSecret(tx *common.L1RespondSecretTx, _ bool) types.TxData {
-	return encodeTx(tx, storeSecretTxAddr)
+func (m *mockContractLib) CreateRespondSecret(tx *common.L1RespondSecretTx, _ bool) (types.TxData, error) {
+	return encodeTx(tx, storeSecretTxAddr), nil
 }
 
-func (m *mockContractLib) CreateInitializeSecret(tx *common.L1InitializeSecretTx) types.TxData {
-	return encodeTx(tx, initializeSecretTxAddr)
+func (m *mockContractLib) CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error) {
+	return encodeTx(tx, initializeSecretTxAddr), nil
 }
 
 func (m *mockContractLib) GetHostAddressesMsg() (ethereum.CallMsg, error) {

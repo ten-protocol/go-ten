@@ -91,9 +91,16 @@ func (o *OutputStats) countBlockChain() {
 
 func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient) {
 	for _, tx := range block.Transactions() {
-		t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
+		t, err := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
+		if err != nil {
+			panic(err)
+		}
 		if t == nil {
-			t = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
+			var err error
+			t, err = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
+			if err != nil {
+				testlog.Logger().Crit("could not decode tx.", log.ErrKey, err)
+			}
 		}
 
 		if t == nil {

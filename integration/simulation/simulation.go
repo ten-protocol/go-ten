@@ -144,7 +144,10 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 					panic(err)
 				}
 				for _, tx := range b.Transactions() {
-					t := s.Params.MgmtContractLib.DecodeTx(tx)
+					t, err := s.Params.MgmtContractLib.DecodeTx(tx)
+					if err != nil {
+						panic(err)
+					}
 					if t == nil {
 						continue
 					}
@@ -444,7 +447,10 @@ func (s *Simulation) prefundL1Accounts() {
 			TokenContract: s.Params.Wallets.Tokens[testcommon.HOC].L1ContractAddress,
 			Sender:        &ownerAddr,
 		}
-		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData)
+		tx, err := s.Params.ERC20ContractLib.CreateDepositTx(txData)
+		if err != nil {
+			testlog.Logger().Crit("failed to create deposit tx", log.ErrKey, err)
+		}
 		estimatedTx, err := ethadapter.SetTxGasPrice(s.ctx, ethClient, tx, tokenOwner.Address(), tokenOwner.GetNonceAndIncrement(), 0)
 		if err != nil {
 			// ignore txs that are not able to be estimated/execute

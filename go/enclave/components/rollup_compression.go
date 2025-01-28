@@ -384,7 +384,8 @@ func (rc *RollupCompression) calculateL1HeightsFromDeltas(calldataRollupHeader *
 			}
 			value := l1Delta.Int64() + int64(prevHeight)
 			if value < 0 {
-				rc.logger.Crit("Should not have a negative height")
+				rc.logger.Error("Should not have a negative height")
+				return nil, errors.New("negative height")
 			}
 			l1Heights = append(l1Heights, uint64(value))
 			prevHeight = uint64(value)

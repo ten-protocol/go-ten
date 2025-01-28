@@ -395,7 +395,11 @@ func (executor *batchExecutor) executeExistingBatch(ec *BatchExecutionContext) e
 
 func (executor *batchExecutor) readXChainMessages(ec *BatchExecutionContext) error {
 	if ec.SequencerNo.Int64() > int64(common.L2SysContractGenesisSeqNo) {
-		ec.xChainMsgs, ec.xChainValueMsgs = executor.crossChainProcessors.Local.RetrieveInboundMessages(ec.ctx, ec.parentL1Block, ec.l1block)
+		var err error
+		ec.xChainMsgs, ec.xChainValueMsgs, err = executor.crossChainProcessors.Local.RetrieveInboundMessages(ec.ctx, ec.parentL1Block, ec.l1block)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -405,7 +409,10 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 		return err
 	}
 
-	crossChainTransactions := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ec.ctx, ec.xChainMsgs, ec.xChainValueMsgs, ec.stateDB)
+	crossChainTransactions, err := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ec.ctx, ec.xChainMsgs, ec.xChainValueMsgs, ec.stateDB)
+	if err != nil {
+		return err
+	}
 	executor.crossChainProcessors.Local.ExecuteValueTransfers(ec.ctx, ec.xChainValueMsgs, ec.stateDB)
 	xchainTxs := make(common.L2PricedTransactions, 0)
 	for _, xTx := range crossChainTransactions {
@@ -667,13 +674,19 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 
 	hasMessages := false
 	if len(valueTransferMessages) > 0 {
-		transfers := crosschain.ValueTransfers(valueTransferMessages).ForMerkleTree()
+		transfers, err := crosschain.ValueTransfers(valueTransferMessages).ForMerkleTree()
+		if err != nil {
+			return err
+		}
 		xchainTree = append(xchainTree, transfers...)
 		hasMessages = true
 	}
 
 	if len(crossChainMessages) > 0 {
-		messages := crosschain.MessageStructs(crossChainMessages).ForMerkleTree()
+		messages, err := crosschain.MessageStructs(crossChainMessages).ForMerkleTree()
+		if err != nil {
+			return fmt.Errorf("could not create cross chain tree. Cause: %w", err)
+		}
 		xchainTree = append(xchainTree, messages...)
 		hasMessages = true
 	}
@@ -688,7 +701,7 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 
 		encodedTree, err := json.Marshal(xchainTree)
 		if err != nil {
-			panic(err) // todo: figure out what to do
+			return fmt.Errorf("could not marshal cross chain tree. Cause: %w", err)
 		}
 
 		batch.Header.CrossChainTree = encodedTree

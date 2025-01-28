@@ -127,7 +127,10 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
 	}
-	initialiseSecretTx := p.mgmtContractLib.CreateInitializeSecret(l1tx)
+	initialiseSecretTx, err := p.mgmtContractLib.CreateInitializeSecret(l1tx)
+	if err != nil {
+		return err
+	}
 	// we block here until we confirm a successful receipt. It is important this is published before the initial rollup.
 	return p.publishTransaction(initialiseSecretTx)
 }
@@ -152,7 +155,11 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 			panic(errors.Wrap(err, "could not fetch head block"))
 		}
 	}
-	requestSecretTx := p.mgmtContractLib.CreateRequestSecret(l1tx)
+	requestSecretTx, err := p.mgmtContractLib.CreateRequestSecret(l1tx)
+	if err != nil {
+		return gethutil.EmptyHash, err
+	}
+
 	// we wait until the secret req transaction has succeeded before we start polling for the secret
 	err = p.publishTransaction(requestSecretTx)
 	if err != nil {
@@ -169,7 +176,10 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 		AttesterID:  secretResponse.AttesterID,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	respondSecretTx := p.mgmtContractLib.CreateRespondSecret(l1tx, false)
+	respondSecretTx, err := p.mgmtContractLib.CreateRespondSecret(l1tx, false)
+	if err != nil {
+		return err
+	}
 	p.logger.Info("Broadcasting secret response L1 tx.", "requester", secretResponse.RequesterID)
 
 	// fire-and-forget (track the receipt asynchronously)
@@ -188,7 +198,11 @@ func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common
 	secretRespTxs := make([]*common.L1RespondSecretTx, 0)
 
 	for _, tx := range processed {
-		t := p.mgmtContractLib.DecodeTx(tx.Transaction)
+		t, err := p.mgmtContractLib.DecodeTx(tx.Transaction)
+		if err != nil {
+			p.logger.Error("Could not decode transaction", log.ErrKey, err)
+			continue
+		}
 		if t == nil {
 			continue
 		}
