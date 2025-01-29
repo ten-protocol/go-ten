@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
@@ -102,13 +103,15 @@ func (m *mockContractLib) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 	if err := enc.Encode(hashesTx); err != nil {
 		panic(err)
 	}
-
-	return &types.BlobTx{
+	blobTx := types.BlobTx{
 		To:         rollupTxAddr,
 		Data:       buf.Bytes(),
 		BlobHashes: blobHashes,
 		Sidecar:    sidecar,
-	}, nil
+	}
+	// Force wait before publishing tx for in-mem test
+	time.Sleep(time.Second * 1)
+	return &blobTx, nil
 }
 
 func (m *mockContractLib) CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error) {
