@@ -28,7 +28,6 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-bexpr v0.1.14
-	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/holiman/uint256 v1.3.1
 	github.com/jolestar/go-commons-pool/v2 v2.1.2
 	github.com/lib/pq v1.10.9
@@ -54,6 +53,7 @@ require (
 	google.golang.org/protobuf v1.35.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
+	kythe.io v0.0.68
 )
 
 require (
@@ -174,6 +174,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241021214115-324edc3d5d38 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
-	kythe.io v0.0.68 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
