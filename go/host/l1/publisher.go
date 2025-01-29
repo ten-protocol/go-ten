@@ -8,8 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -218,34 +216,42 @@ func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 
-func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg4844.Blob) {
-	encRollup, err := common.EncodeRollup(producedRollup)
+func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
+	// Decode the rollup from the blobs
+	rollupData, err := ethadapter.DecodeBlobs(result.Blobs)
 	if err != nil {
-		p.logger.Crit("could not encode rollup.", log.ErrKey, err)
+		p.logger.Crit("could not decode rollup from blob.", log.ErrKey, err)
 	}
+
+	// Decode the rollup to get header info for logging
+	extRollup, err := common.DecodeRollup(rollupData)
+	if err != nil {
+		p.logger.Crit("could not decode rollup.", log.ErrKey, err)
+	}
+
 	tx := &common.L1RollupTx{
-		Rollup: encRollup,
+		Rollup: rollupData,
 	}
-	p.logger.Info("Publishing rollup", "size", len(encRollup)/1024, log.RollupHashKey, producedRollup.Hash())
+	p.logger.Info("Publishing rollup", "size", len(rollupData)/1024, log.RollupHashKey, extRollup.Hash())
 
 	if p.logger.Enabled(context.Background(), gethlog.LevelTrace) {
 		var headerLog string
-		header, err := json.MarshalIndent(producedRollup.Header, "", "   ")
+		header, err := json.MarshalIndent(extRollup.Header, "", "   ")
 		if err != nil {
 			headerLog = err.Error()
 		} else {
 			headerLog = string(header)
 		}
 
-		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
+		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, extRollup.Header.Hash(), "batches_len", len(extRollup.BatchPayloads))
 	}
 
-	rollupBlobTx, err := p.mgmtContractLib.PopulateAddRollup(tx, blobs)
+	rollupBlobTx, err := p.mgmtContractLib.PopulateAddRollup(tx, result.Blobs)
 	if err != nil {
-		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
+		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, extRollup.Hash(), log.ErrKey, err)
 	}
 
-	rollupBlockNum := producedRollup.Header.CompressionL1Number
+	rollupBlockNum := extRollup.Header.CompressionL1Number
 	// wait for the next block after the block that the rollup is bound to
 	err = p.waitForBlockAfter(rollupBlockNum.Uint64())
 	if err != nil {
@@ -256,9 +262,9 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 
 	err = p.publishTransaction(rollupBlobTx)
 	if err != nil {
-		p.logger.Error("Could not issue rollup tx", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
+		p.logger.Error("Could not issue rollup tx", log.RollupHashKey, extRollup.Hash(), log.ErrKey, err)
 	} else {
-		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
+		p.logger.Info("Rollup included in L1", log.RollupHashKey, extRollup.Hash())
 	}
 	// TODO publish rollup to archive service if not already done
 }

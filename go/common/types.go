@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -76,6 +77,15 @@ type (
 	EncodedBlobHashes              []byte
 
 	EnclaveID = common.Address
+
+	// RollupSignature represents a signature over a rollup's composite hash
+	RollupSignature = []byte
+
+	// CreateRollupResult contains all data returned from creating a rollup
+	CreateRollupResult struct {
+		Signature RollupSignature // The signature over the composite hash
+		Blobs     []*kzg4844.Blob // The blobs containing the rollup data
+	}
 )
 
 // FailedDecryptErr - when the TEN enclave fails to decrypt an RPC request

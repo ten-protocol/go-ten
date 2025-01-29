@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
@@ -277,9 +275,9 @@ func (e *enclaveImpl) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) co
 	return e.adminAPI.CreateBatch(ctx, skipBatchIfEmpty)
 }
 
-func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, []*kzg4844.Blob, common.SystemError) {
+func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.CreateRollupResult, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
-		return nil, nil, systemError
+		return nil, systemError
 	}
 	return e.adminAPI.CreateRollup(ctx, fromSeqNo)
 }

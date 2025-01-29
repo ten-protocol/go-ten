@@ -25,7 +25,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     event ImportantContractAddressUpdated(string key, address newAddress);
     event SequencerEnclaveGranted(address enclaveID);
     event SequencerEnclaveRevoked(address enclaveID);
-    event RollupAdded(bytes32 rollupHash);
+    event RollupAdded(bytes32 rollupHash, bytes signature);
     event NetworkSecretRequested(address indexed requester, string requestReport);
     event NetworkSecretResponded(address indexed attester, address indexed requester);
 
@@ -111,6 +111,13 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(knownBlockHash != 0x0, "Unknown block hash");
         require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
 
+        // Verify blob hash matches
+        bytes32 actualBlobHash;
+        assembly {
+            actualBlobHash := blobhash(0)
+        }
+        require(actualBlobHash == r.BlobHash, "Blob hash mismatch");
+ 
         bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
             r.BlockBindingHash,
@@ -136,7 +143,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
             merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
         }
-        emit RollupAdded(r.Hash);
+        emit RollupAdded(r.Hash, r.Signature);
     }
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once

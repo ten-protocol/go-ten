@@ -289,3 +289,16 @@ func ToBlobMsgs(blobs []*kzg4844.Blob) []*generated.BlobMsg {
 	}
 	return msgs
 }
+
+func FromBlobMsgs(msgs []*generated.BlobMsg) []*kzg4844.Blob {
+	if msgs == nil {
+		return nil
+	}
+	blobs := make([]*kzg4844.Blob, len(msgs))
+	for i, msg := range msgs {
+		var blob kzg4844.Blob
+		copy(blob[:], msg.Blob)
+		blobs[i] = &blob
+	}
+	return blobs
+}

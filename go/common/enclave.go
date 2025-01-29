@@ -95,8 +95,8 @@ type EnclaveAdmin interface {
 	CreateBatch(ctx context.Context, skipIfEmpty bool) SystemError
 
 	// CreateRollup - will create a new rollup by going through the sequencer if the node is a sequencer
-	// or panic otherwise.
-	CreateRollup(ctx context.Context, fromSeqNo uint64) (*ExtRollup, []*kzg4844.Blob, SystemError)
+	// or panic otherwise. Returns the rollup data including signature and blobs.
+	CreateRollup(ctx context.Context, fromSeqNo uint64) (*CreateRollupResult, SystemError)
 
 	// StreamL2Updates - will stream any new batches as they are created/detected
 	// All will be queued in the channel that has been returned.
