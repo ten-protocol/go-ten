@@ -406,7 +406,6 @@ func (p *Publisher) waitForBlockAfter(targetBlock uint64) error {
 		},
 		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
 	)
-
 	if err != nil {
 		return fmt.Errorf("timeout waiting for block after %d: %w", targetBlock, err)
 	}
