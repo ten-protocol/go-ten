@@ -29,6 +29,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 )
 
+var ErrReorgedRollup = errors.New("reorged rollup")
+
 /*
 RollupCompression - responsible for the compression logic
 
@@ -413,7 +415,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 		_, err := rc.storage.FetchBatchHeader(ctx, parentHash)
 		if err != nil {
 			rc.logger.Error("Could not find batch mentioned in the rollup. This should not happen.", log.ErrKey, err)
-			return err
+			return ErrReorgedRollup
 		}
 	}
 
