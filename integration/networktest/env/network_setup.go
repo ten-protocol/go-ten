@@ -25,8 +25,8 @@ func SepoliaTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		[]string{"http://erpc.sepolia-testnet.ten.xyz:80"},
 		"http://sepolia-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"https://rpc.sepolia.org/",
-		"https://testnet.ten.xyz",
-		"wss://testnet.ten.xyz:81",
+		"https://rpc.testnet.ten.xyz",
+		"wss://rpc.testnet.ten.xyz:81",
 	)
 	return newTestnetEnv(connector, opts...)
 }
@@ -37,8 +37,8 @@ func UATTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		[]string{"http://erpc.uat-testnet.ten.xyz:80"},
 		"http://uat-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://uat-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
-		"https://uat-testnet.ten.xyz",
-		"wss://uat-testnet.ten.xyz:81",
+		"https://rpc.uat-testnet.ten.xyz",
+		"wss://rpc.uat-testnet.ten.xyz:81",
 	)
 	return newTestnetEnv(connector, opts...)
 }
@@ -49,8 +49,8 @@ func DevTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		[]string{"http://erpc.dev-testnet.ten.xyz:80"},
 		"http://dev-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
-		"https://dev-testnet.ten.xyz",
-		"wss://dev-testnet.ten.xyz:81",
+		"https://rpc.dev-testnet.ten.xyz",
+		"wss://rpc.dev-testnet.ten.xyz:81",
 	)
 	return newTestnetEnv(connector, opts...)
 }
