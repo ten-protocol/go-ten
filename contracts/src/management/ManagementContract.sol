@@ -116,18 +116,14 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         assembly {
             actualBlobHash := blobhash(0)
         }
-        require(actualBlobHash == r.BlobHash, "Blob hash mismatch");
  
         bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
             r.BlockBindingHash,
             r.BlockBindingNumber,
             r.crossChainRoot,
-            r.BlobHash
+            actualBlobHash
         ));
-
-        // Verify the hash matches the one in the rollup
-        require(compositeHash == r.CompositeHash, "Composite hash mismatch");
 
         // Verify the enclave signature
         address enclaveID = ECDSA.recover(compositeHash, r.Signature);
@@ -143,7 +139,12 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
             merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
         }
-        emit RollupAdded(r.BlobHash, r.Signature);
+
+        bytes32 actualBlobHash;
+        assembly {
+            actualBlobHash := blobhash(0)
+        }
+        emit RollupAdded(actualBlobHash, r.Signature);
     }
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once

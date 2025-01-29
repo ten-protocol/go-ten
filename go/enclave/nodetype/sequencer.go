@@ -19,7 +19,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -325,26 +324,20 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	}
 
 	// Create temp blobs to get blob hash
-	tmpBlobs, err := ethadapter.EncodeBlobs(rollupData)
+	blobs, err := ethadapter.EncodeBlobs(rollupData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode rollup to tmpBlobs: %w", err)
 	}
 
 	// Calculate blob hash from first blob (TODO: Change this when we use multiple tmpBlobs)
-	commitment, err := kzg4844.BlobToCommitment(tmpBlobs[0])
+	commitment, err := kzg4844.BlobToCommitment(blobs[0])
 	if err != nil {
 		return nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
 	}
 	blobHash := ethadapter.KZGToVersionedHash(commitment)
 
 	// Create composite hash matching the contract's expectations
-	compositeHash := gethcrypto.Keccak256Hash(
-		gethcommon.LeftPadBytes(new(big.Int).SetUint64(extRollup.Header.LastBatchSeqNo).Bytes(), 32),
-		currentL1Head.Hash().Bytes(),
-		gethcommon.LeftPadBytes(currentL1Head.Number.Bytes(), 32),
-		extRollup.Header.CrossChainRoot.Bytes(),
-		blobHash.Bytes(),
-	)
+	compositeHash := common.ComputeCompositeHash(extRollup.Header, blobHash)
 
 	// Sign the composite hash
 	signature, err := s.enclaveKeyService.Sign(compositeHash)
@@ -352,24 +345,9 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 		return nil, fmt.Errorf("failed to sign rollup: %w", err)
 	}
 
-	// Store blob data and required fields
-	extRollup.Header.BlobHash = blobHash
-	extRollup.Header.CompositeHash = compositeHash
-
-	// Now encode the rollup without signature
-	r, err := common.EncodeRollup(extRollup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode rollup: %w", err)
-	}
-
-	// Encode blobs that include the signature on the header
-	blobsWithSignature, err := ethadapter.EncodeBlobs(r)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode rollup to tmpBlobs: %w", err)
-	}
 	return &common.CreateRollupResult{
 		Signature: signature,
-		Blobs:     blobsWithSignature,
+		Blobs:     blobs,
 	}, nil
 }
 

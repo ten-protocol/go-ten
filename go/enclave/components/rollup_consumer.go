@@ -186,8 +186,8 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 			return nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
 		}
 
-		// TODO - RECONSTRUCT COMPOSITE HASH
-		if err := rc.sigValidator.CheckSequencerSignature(r.Header.CompositeHash, signatures[i]); err != nil {
+		compositeHash := common.ComputeCompositeHash(r.Header, blobHashes[i])
+		if err := rc.sigValidator.CheckSequencerSignature(compositeHash, signatures[i]); err != nil {
 			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 

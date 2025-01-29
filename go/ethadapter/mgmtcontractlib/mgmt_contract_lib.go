@@ -134,8 +134,6 @@ func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,
 		BlockBindingNumber: decodedRollup.Header.CompressionL1Number,
 		CrossChainRoot:     decodedRollup.Header.CrossChainRoot,
-		BlobHash:           decodedRollup.Header.BlobHash,
-		CompositeHash:      decodedRollup.Header.CompositeHash,
 	}
 
 	data, err := c.contractABI.Pack(

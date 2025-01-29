@@ -168,8 +168,21 @@ type RollupHeader struct {
 
 	CrossChainRoot common.Hash // The root hash of the cross chain tree.
 	LastBatchSeqNo uint64
-	BlobHash       common.Hash
-	CompositeHash  common.Hash // composite of everything
+}
+
+// ComputeCompositeHash creates a composite hash matching the contract's expectations.
+// It takes the last batch sequence number, current L1 hash and number, cross-chain root, and blob hash as inputs.
+func ComputeCompositeHash(
+	header *RollupHeader,
+	blobHash common.Hash,
+) common.Hash {
+	return crypto.Keccak256Hash(
+		common.LeftPadBytes(new(big.Int).SetUint64(header.LastBatchSeqNo).Bytes(), 32),
+		header.CompressionL1Head.Bytes(),
+		common.LeftPadBytes(header.CompressionL1Number.Bytes(), 32),
+		header.CrossChainRoot.Bytes(),
+		blobHash.Bytes(),
+	)
 }
 
 // CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.
