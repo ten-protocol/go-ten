@@ -240,14 +240,19 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 	}
 
-	r, _ := ethadapter.ReconstructRollup(blobs)
-	println("SIGNATURE FROM BLOBS: ", len(r.Header.Signature))
 	rollupBlobTx, err := p.mgmtContractLib.PopulateAddRollup(tx, blobs)
 	if err != nil {
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	}
 
-	time.Sleep(2 * time.Second) // TODO fix this for block number in management contract
+	// Wait for the next block after CompressionL1Number
+	err = p.waitForBlockAfter(producedRollup.Header.CompressionL1Number.Uint64())
+	if err != nil {
+		p.logger.Error("Failed waiting for block after rollup binding block number",
+			"compression_block", producedRollup.Header.CompressionL1Number,
+			log.ErrKey, err)
+	}
+
 	err = p.publishTransaction(rollupBlobTx)
 	if err != nil {
 		p.logger.Error("Could not issue rollup tx", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
@@ -257,7 +262,37 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 	// TODO publish rollup to archive service if not already done
 }
 
-func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, rollupNum *big.Int, forkID gethcommon.Hash) error {
+// waitForBlockAfter waits until the current block number is greater than the target block number
+func (p *Publisher) waitForBlockAfter(targetBlock uint64) error {
+	const maxWaitTime = 30 * time.Second
+	const checkInterval = 500 * time.Millisecond
+
+	ctx, cancel := context.WithTimeout(context.Background(), maxWaitTime)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return fmt.Errorf("timeout waiting for block after %d", targetBlock)
+		default:
+			currentBlock, err := p.ethClient.BlockNumber()
+			if err != nil {
+				return fmt.Errorf("failed to get current block number: %w", err)
+			}
+
+			if currentBlock > targetBlock {
+				return nil
+			}
+
+			p.logger.Debug("Waiting for next block",
+				"current", currentBlock,
+				"target", targetBlock)
+			time.Sleep(checkInterval)
+		}
+	}
+}
+
+func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *big.Int, _ gethcommon.Hash) error {
 	return nil
 }
 
