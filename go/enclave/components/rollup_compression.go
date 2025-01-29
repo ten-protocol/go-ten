@@ -29,6 +29,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 )
 
+var ErrReorgedRollup = errors.New("reorged rollup")
+
 /*
 RollupCompression - responsible for the compression logic
 
@@ -412,8 +414,8 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 	if calldataRollupHeader.FirstBatchSequence.Uint64() != common.L2GenesisSeqNo {
 		_, err := rc.storage.FetchBatchHeader(ctx, parentHash)
 		if err != nil {
-			rc.logger.Error("Could not find batch mentioned in the rollup. This should not happen.", log.ErrKey, err)
-			return err
+			rc.logger.Error("Rollup cannot be processed because the parent of the first canonical batch is missing.", log.ErrKey, err)
+			return ErrReorgedRollup
 		}
 	}
 
