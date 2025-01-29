@@ -245,7 +245,7 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	}
 
-	// Wait for the next block after CompressionL1Number
+	// wait for the next block after the block that the rollup is bound to
 	err = p.waitForBlockAfter(producedRollup.Header.CompressionL1Number.Uint64())
 	if err != nil {
 		p.logger.Error("Failed waiting for block after rollup binding block number",
@@ -260,36 +260,6 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
 	}
 	// TODO publish rollup to archive service if not already done
-}
-
-// waitForBlockAfter waits until the current block number is greater than the target block number
-func (p *Publisher) waitForBlockAfter(targetBlock uint64) error {
-	const maxWaitTime = 30 * time.Second
-	const checkInterval = 500 * time.Millisecond
-
-	ctx, cancel := context.WithTimeout(context.Background(), maxWaitTime)
-	defer cancel()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return fmt.Errorf("timeout waiting for block after %d", targetBlock)
-		default:
-			currentBlock, err := p.ethClient.BlockNumber()
-			if err != nil {
-				return fmt.Errorf("failed to get current block number: %w", err)
-			}
-
-			if currentBlock > targetBlock {
-				return nil
-			}
-
-			p.logger.Debug("Waiting for next block",
-				"current", currentBlock,
-				"target", targetBlock)
-			time.Sleep(checkInterval)
-		}
-	}
 }
 
 func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *big.Int, _ gethcommon.Hash) error {
@@ -412,5 +382,34 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 			log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
 		break
 	}
+	return nil
+}
+
+// waitForBlockAfter waits until the current block number is greater than the target block number
+func (p *Publisher) waitForBlockAfter(targetBlock uint64) error {
+	err := retry.Do(
+		func() error {
+			if p.hostStopper.IsStopping() {
+				return retry.FailFast(errors.New("host is stopping"))
+			}
+
+			currentBlock, err := p.ethClient.BlockNumber()
+			if err != nil {
+				return fmt.Errorf("failed to get current block number: %w", err)
+			}
+
+			if currentBlock <= targetBlock {
+				return fmt.Errorf("waiting for block after %d (current: %d)", targetBlock, currentBlock)
+			}
+
+			return nil
+		},
+		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
+	)
+
+	if err != nil {
+		return fmt.Errorf("timeout waiting for block after %d: %w", targetBlock, err)
+	}
+
 	return nil
 }
