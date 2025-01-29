@@ -245,11 +245,12 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	}
 
+	rollupBlockNum := producedRollup.Header.CompressionL1Number
 	// wait for the next block after the block that the rollup is bound to
-	err = p.waitForBlockAfter(producedRollup.Header.CompressionL1Number.Uint64())
+	err = p.waitForBlockAfter(rollupBlockNum.Uint64())
 	if err != nil {
 		p.logger.Error("Failed waiting for block after rollup binding block number",
-			"compression_block", producedRollup.Header.CompressionL1Number,
+			"compression_block", rollupBlockNum,
 			log.ErrKey, err)
 	}
 
