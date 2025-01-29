@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -125,7 +127,10 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
 	}
-	initialiseSecretTx := p.mgmtContractLib.CreateInitializeSecret(l1tx)
+	initialiseSecretTx, err := p.mgmtContractLib.CreateInitializeSecret(l1tx)
+	if err != nil {
+		return err
+	}
 	// we block here until we confirm a successful receipt. It is important this is published before the initial rollup.
 	return p.publishTransaction(initialiseSecretTx)
 }
@@ -150,7 +155,11 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 			panic(errors.Wrap(err, "could not fetch head block"))
 		}
 	}
-	requestSecretTx := p.mgmtContractLib.CreateRequestSecret(l1tx)
+	requestSecretTx, err := p.mgmtContractLib.CreateRequestSecret(l1tx)
+	if err != nil {
+		return gethutil.EmptyHash, err
+	}
+
 	// we wait until the secret req transaction has succeeded before we start polling for the secret
 	err = p.publishTransaction(requestSecretTx)
 	if err != nil {
@@ -167,7 +176,10 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 		AttesterID:  secretResponse.AttesterID,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	respondSecretTx := p.mgmtContractLib.CreateRespondSecret(l1tx, false)
+	respondSecretTx, err := p.mgmtContractLib.CreateRespondSecret(l1tx, false)
+	if err != nil {
+		return err
+	}
 	p.logger.Info("Broadcasting secret response L1 tx.", "requester", secretResponse.RequesterID)
 
 	// fire-and-forget (track the receipt asynchronously)
@@ -186,7 +198,11 @@ func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common
 	secretRespTxs := make([]*common.L1RespondSecretTx, 0)
 
 	for _, tx := range processed {
-		t := p.mgmtContractLib.DecodeTx(tx.Transaction)
+		t, err := p.mgmtContractLib.DecodeTx(tx.Transaction)
+		if err != nil {
+			p.logger.Error("Could not decode transaction", log.ErrKey, err)
+			continue
+		}
 		if t == nil {
 			continue
 		}
@@ -202,7 +218,7 @@ func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 
-func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
+func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg4844.Blob) {
 	encRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
 		p.logger.Crit("could not encode rollup.", log.ErrKey, err)
@@ -224,9 +240,18 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 	}
 
-	rollupBlobTx, err := p.mgmtContractLib.CreateBlobRollup(tx)
+	rollupBlobTx, err := p.mgmtContractLib.PopulateAddRollup(tx, blobs)
 	if err != nil {
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
+	}
+
+	rollupBlockNum := producedRollup.Header.CompressionL1Number
+	// wait for the next block after the block that the rollup is bound to
+	err = p.waitForBlockAfter(rollupBlockNum.Uint64())
+	if err != nil {
+		p.logger.Error("Failed waiting for block after rollup binding block number",
+			"compression_block", rollupBlockNum,
+			log.ErrKey, err)
 	}
 
 	err = p.publishTransaction(rollupBlobTx)
@@ -238,7 +263,7 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 	// TODO publish rollup to archive service if not already done
 }
 
-func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, rollupNum *big.Int, forkID gethcommon.Hash) error {
+func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *big.Int, _ gethcommon.Hash) error {
 	return nil
 }
 
@@ -358,5 +383,33 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 			log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
 		break
 	}
+	return nil
+}
+
+// waitForBlockAfter waits until the current block number is greater than the target block number
+func (p *Publisher) waitForBlockAfter(targetBlock uint64) error {
+	err := retry.Do(
+		func() error {
+			if p.hostStopper.IsStopping() {
+				return retry.FailFast(errors.New("host is stopping"))
+			}
+
+			currentBlock, err := p.ethClient.BlockNumber()
+			if err != nil {
+				return fmt.Errorf("failed to get current block number: %w", err)
+			}
+
+			if currentBlock <= targetBlock {
+				return fmt.Errorf("waiting for block after %d (current: %d)", targetBlock, currentBlock)
+			}
+
+			return nil
+		},
+		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
+	)
+	if err != nil {
+		return fmt.Errorf("timeout waiting for block after %d: %w", targetBlock, err)
+	}
+
 	return nil
 }

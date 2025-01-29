@@ -220,7 +220,6 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			r.logger.Debug("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
 		}
 	}
-
 	return processed, nil
 }
 
@@ -285,7 +284,8 @@ func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData,
 // processManagementContractTx handles decoded transaction types
 func (r *DataService) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
 	b := processed.BlockHeader
-	if decodedTx := r.mgmtContractLib.DecodeTx(txData.Transaction); decodedTx != nil {
+	decodedTx, _ := r.mgmtContractLib.DecodeTx(txData.Transaction)
+	if decodedTx != nil {
 		switch t := decodedTx.(type) {
 		case *common.L1InitializeSecretTx:
 			processed.AddEvent(common.InitialiseSecretTx, txData)

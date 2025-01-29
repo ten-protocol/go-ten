@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common"
+
 	"github.com/ten-protocol/go-ten/go/wallet"
 
 	"github.com/ten-protocol/go-ten/go/common/retry"
@@ -56,6 +58,14 @@ func awaitHealthStatus(rpcAddress string, timeout time.Duration) error {
 		}
 		if !healthy.OverallHealth {
 			return fmt.Errorf("host is not healthy (%s)", rpcAddress)
+		}
+		// wait until the node has
+		height, err := c.BatchNumber()
+		if err != nil {
+			return fmt.Errorf("failed to get host batch number (%s): %w", rpcAddress, err)
+		}
+		if height <= common.L2SysContractGenesisSeqNo+1 {
+			return fmt.Errorf("host is not initialised (%s): %d", rpcAddress, height)
 		}
 		return nil
 	}, retry.NewTimeoutStrategy(timeout, 200*time.Millisecond))

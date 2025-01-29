@@ -4,6 +4,8 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/responses"
@@ -105,9 +107,9 @@ type L1Publisher interface {
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
 	// FindSecretResponseTx will return the secret response tx from an L1 block
 	FindSecretResponseTx(responseTxs []*common.L1TxData) []*common.L1RespondSecretTx
-	// PublishRollup will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
+	// PublishBlob will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
 	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
-	PublishRollup(producedRollup *common.ExtRollup)
+	PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg4844.Blob)
 	// PublishSecretResponse will create and publish a secret response tx to the management contract - fire and forget we don't wait for receipt
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error
 
@@ -131,6 +133,8 @@ type L2BatchRepository interface {
 	SubscribeValidatedBatches(handler L2BatchHandler) func()
 
 	FetchBatchBySeqNo(background context.Context, seqNo *big.Int) (*common.ExtBatch, error)
+
+	FetchLatestBatchSeqNo() *big.Int
 
 	// AddBatch is used to notify the repository of a new batch, e.g. from the enclave when seq produces one or a rollup is consumed
 	// Note: it is fine to add batches that the repo already has, it will just ignore them

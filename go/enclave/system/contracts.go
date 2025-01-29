@@ -3,6 +3,8 @@ package system
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/common/log"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -32,7 +34,7 @@ func SystemDeployerInitTransaction(logger gethlog.Logger, eoaOwner gethcommon.Ad
 	abi, _ := SystemDeployer.SystemDeployerMetaData.GetAbi()
 	args, err := abi.Constructor.Inputs.Pack(eoaOwner)
 	if err != nil {
-		panic(err) // This error is fatal. If the system contracts can't be initialized the network cannot bootstrap.
+		logger.Crit("This error is fatal. If the system contracts can't be initialized the network cannot bootstrap.", log.ErrKey, err)
 	}
 
 	bytecode := gethcommon.FromHex(SystemDeployer.SystemDeployerMetaData.Bin)

@@ -264,9 +264,16 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 			panic(err)
 		}
 		for _, tx := range block.Transactions() {
-			t := s.Params.ERC20ContractLib.DecodeTx(tx)
+			t, err := s.Params.ERC20ContractLib.DecodeTx(tx)
+			if err != nil {
+				panic(err)
+			}
+
 			if t == nil {
-				t = s.Params.MgmtContractLib.DecodeTx(tx)
+				t, err = s.Params.MgmtContractLib.DecodeTx(tx)
+				if err != nil {
+					panic(err)
+				}
 			}
 
 			if t == nil {

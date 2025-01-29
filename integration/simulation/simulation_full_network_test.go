@@ -30,7 +30,7 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 		Wallets:                    wallets,
 		StartPort:                  integration.TestPorts.TestFullNetworkMonteCarloSimulationPort,
 		ReceiptTimeout:             45 * time.Second,
-		StoppingDelay:              15 * time.Second,
+		StoppingDelay:              20 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
 		L1BeaconPort:               integration.TestPorts.TestFullNetworkMonteCarloSimulationPort + integration.DefaultPrysmGatewayPortOffset,
 	}

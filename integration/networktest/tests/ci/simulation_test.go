@@ -19,7 +19,6 @@ func TestSimulation(t *testing.T) {
 		actions.Series(
 			actions.CreateAndFundTestUsers(25),
 			actions.GenerateUsersRandomisedTransferActionsInParallel(5, 10*time.Second),
-
 			actions.VerifyUserBalancesSanity(),
 		),
 	)

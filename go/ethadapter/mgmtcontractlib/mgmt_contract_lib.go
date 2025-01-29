@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -25,13 +26,13 @@ const methodBytesLen = 4
 type MgmtContractLib interface {
 	IsMock() bool
 	BlobHasher() ethadapter.BlobHasher
-	CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error)
-	CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData
-	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) types.TxData
-	CreateInitializeSecret(tx *common.L1InitializeSecretTx) types.TxData
+	PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error)
+	CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error)
+	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) (types.TxData, error)
+	CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error)
 
 	// DecodeTx receives a *types.Transaction and converts it to a common.L1Transaction
-	DecodeTx(tx *types.Transaction) common.L1TenTransaction
+	DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error)
 	GetContractAddr() *gethcommon.Address
 
 	// The methods below are used to create call messages for mgmt contract data and unpack the responses
@@ -79,13 +80,13 @@ func (c *contractLibImpl) GetContractAddr() *gethcommon.Address {
 	return c.addr
 }
 
-func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.L1TenTransaction {
+func (c *contractLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
 	if tx.To() == nil || tx.To().Hex() != c.addr.Hex() || len(tx.Data()) == 0 {
-		return nil
+		return nil, nil
 	}
 	method, err := c.contractABI.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("could not decode tx. Cause: %w", err)
 	}
 
 	contractCallData := map[string]interface{}{}
@@ -94,9 +95,9 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.L1TenTransactio
 		if tx.Type() == types.BlobTxType {
 			return &common.L1RollupHashes{
 				BlobHashes: tx.BlobHashes(),
-			}
+			}, nil
 		} else {
-			return nil
+			return nil, nil
 		}
 	case RespondSecretMethod:
 		return c.unpackRespondSecretTx(tx, method, contractCallData)
@@ -111,19 +112,19 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) common.L1TenTransactio
 		tx, err := c.unpackSetImportantContractsTx(tx, method, contractCallData)
 		if err != nil {
 			c.logger.Warn("could not unpack set important contracts tx", log.ErrKey, err)
-			return nil
+			return nil, err
 		}
-		return tx
+		return tx, nil
 	}
 
-	return nil
+	return nil, nil
 }
 
-// CreateBlobRollup creates a BlobTx, encoding the rollup data into blobs.
-func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, error) {
+// PopulateAddRollup creates a BlobTx, encoding the rollup data into blobs.
+func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
 	}
 
 	metaRollup := ManagementContract.StructsMetaRollup{
@@ -133,6 +134,8 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,
 		BlockBindingNumber: decodedRollup.Header.CompressionL1Number,
 		CrossChainRoot:     decodedRollup.Header.CrossChainRoot,
+		BlobHash:           decodedRollup.Header.BlobHash,
+		CompositeHash:      decodedRollup.Header.CompositeHash,
 	}
 
 	data, err := c.contractABI.Pack(
@@ -140,17 +143,13 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 		metaRollup,
 	)
 	if err != nil {
-		panic(err)
-	}
-
-	blobs, err := ethadapter.EncodeBlobs(t.Rollup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
+		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
 
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
 
+	// Use se blobs created here (they are verified that the hash matches with the blobs from the enclave)
 	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, c.BlobHasher()); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
@@ -163,19 +162,19 @@ func (c *contractLibImpl) CreateBlobRollup(t *common.L1RollupTx) (types.TxData, 
 	}, nil
 }
 
-func (c *contractLibImpl) CreateRequestSecret(tx *common.L1RequestSecretTx) types.TxData {
+func (c *contractLibImpl) CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error) {
 	data, err := c.contractABI.Pack(RequestSecretMethod, base64EncodeToString(tx.Attestation))
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
 
 	return &types.LegacyTx{
 		To:   c.addr,
 		Data: data,
-	}
+	}, nil
 }
 
-func (c *contractLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) types.TxData {
+func (c *contractLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) (types.TxData, error) {
 	data, err := c.contractABI.Pack(
 		RespondSecretMethod,
 		tx.AttesterID,
@@ -185,15 +184,15 @@ func (c *contractLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, veri
 		verifyAttester,
 	)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
 	return &types.LegacyTx{
 		To:   c.addr,
 		Data: data,
-	}
+	}, nil
 }
 
-func (c *contractLibImpl) CreateInitializeSecret(tx *common.L1InitializeSecretTx) types.TxData {
+func (c *contractLibImpl) CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error) {
 	data, err := c.contractABI.Pack(
 		InitializeSecretMethod,
 		tx.EnclaveID,
@@ -201,12 +200,12 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *common.L1InitializeSecretTx
 		base64EncodeToString(tx.Attestation),
 	)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
 	return &types.LegacyTx{
 		To:   c.addr,
 		Data: data,
-	}
+	}, nil
 }
 
 func (c *contractLibImpl) GetHostAddressesMsg() (ethereum.CallMsg, error) {
@@ -321,84 +320,84 @@ func (c *contractLibImpl) DecodeImportantAddressResponse(callResponse []byte) (g
 	return address, nil
 }
 
-func (c *contractLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *common.L1InitializeSecretTx {
+func (c *contractLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1InitializeSecretTx, error) {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("could not unpack transaction. Cause: %w", err)
 	}
 	callData, found := contractCallData["_genesisAttestation"]
 	if !found {
-		panic("call data not found for requestReport")
+		return nil, fmt.Errorf("call data not found for _genesisAttestation")
 	}
 
-	att := Base64DecodeFromString(callData.(string))
+	att, err := Base64DecodeFromString(callData.(string))
 	if err != nil {
-		c.logger.Crit("could not decode genesis attestation request.", log.ErrKey, err)
+		return nil, err
 	}
 
 	// todo (#1275) - add the other fields
 	return &common.L1InitializeSecretTx{
 		Attestation: att,
-	}
+	}, nil
 }
 
-func (c *contractLibImpl) unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *common.L1RequestSecretTx {
+func (c *contractLibImpl) unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1RequestSecretTx, error) {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("could not unpack transaction. Cause: %w", err)
 	}
 	callData, found := contractCallData["requestReport"]
 	if !found {
-		panic("call data not found for requestReport")
+		return nil, fmt.Errorf("call data not found for requestReport")
 	}
 
-	att := Base64DecodeFromString(callData.(string))
+	att, err := Base64DecodeFromString(callData.(string))
 	if err != nil {
-		c.logger.Crit("could not decode attestation request.", log.ErrKey, err)
+		return nil, fmt.Errorf("could not decode attestation request. Cause: %w", err)
 	}
 	return &common.L1RequestSecretTx{
 		Attestation: att,
-	}
+	}, nil
 }
 
-func (c *contractLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) *common.L1RespondSecretTx {
+func (c *contractLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1RespondSecretTx, error) {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:])
 	if err != nil {
-		c.logger.Crit("could not unpack transaction.", log.ErrKey, err)
+		return nil, fmt.Errorf("could not unpack transaction. Cause: %w", err)
 	}
 
 	requesterData, found := contractCallData["requesterID"]
 	if !found {
-		c.logger.Crit("call data not found for requesterID")
+		return nil, fmt.Errorf("call data not found for requesterID")
 	}
 	requesterAddr, ok := requesterData.(gethcommon.Address)
 	if !ok {
-		c.logger.Crit("could not decode requester data")
+		return nil, fmt.Errorf("could not decode requester data")
 	}
 
 	attesterData, found := contractCallData["attesterID"]
 	if !found {
-		c.logger.Crit("call data not found for attesterID")
+		return nil, fmt.Errorf("call data not found for attesterID")
 	}
 	attesterAddr, ok := attesterData.(gethcommon.Address)
 	if !ok {
-		c.logger.Crit("could not decode attester data")
+		return nil, fmt.Errorf("could not decode attester data")
 	}
 
 	responseSecretData, found := contractCallData["responseSecret"]
 	if !found {
-		c.logger.Crit("call data not found for responseSecret")
+		return nil, fmt.Errorf("call data not found for responseSecret")
 	}
 	responseSecretBytes, ok := responseSecretData.([]uint8)
 	if !ok {
-		c.logger.Crit("could not decode responseSecret data")
+		return nil, fmt.Errorf("could not decode responseSecret data")
 	}
 
 	return &common.L1RespondSecretTx{
 		AttesterID:  attesterAddr,
 		RequesterID: requesterAddr,
 		Secret:      responseSecretBytes[:],
-	}
+	}, nil
 }
 
 func (c *contractLibImpl) unpackSetImportantContractsTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1SetImportantContractsTx, error) {
@@ -437,10 +436,6 @@ func base64EncodeToString(bytes []byte) string {
 }
 
 // Base64DecodeFromString decodes a string to a byte array
-func Base64DecodeFromString(in string) []byte {
-	bytesStr, err := base64.StdEncoding.DecodeString(in)
-	if err != nil {
-		panic(err)
-	}
-	return bytesStr
+func Base64DecodeFromString(in string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(in)
 }

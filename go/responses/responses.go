@@ -40,16 +40,6 @@ func (er *EnclaveResponse) Error() error {
 	return nil
 }
 
-// AsPlaintextResponse - creates the plaintext part of the enclave response
-// It would be visible that there is an enclave response,
-// but the bytes in it will still be encrypted
-// todo - rename
-func AsPlaintextResponse(encResp EncryptedUserResponse) *EnclaveResponse {
-	return &EnclaveResponse{
-		EncUserResponse: encResp,
-	}
-}
-
 // AsEmptyResponse - Creates an empty enclave response. Useful for when no error
 // encountered but also no result found.
 func AsEmptyResponse() *EnclaveResponse {
@@ -95,7 +85,9 @@ func AsEncryptedResponse[T any](data *T, encryptHandler Encryptor) *EnclaveRespo
 		return AsPlaintextError(err)
 	}
 
-	return AsPlaintextResponse(encrypted)
+	return &EnclaveResponse{
+		EncUserResponse: encrypted,
+	}
 }
 
 // AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
@@ -114,17 +106,19 @@ func AsEncryptedError(err error, encrypt Encryptor) *EnclaveResponse {
 		return AsPlaintextError(err)
 	}
 
-	return AsPlaintextResponse(encrypted)
+	return &EnclaveResponse{
+		EncUserResponse: encrypted,
+	}
 }
 
 // ToEnclaveResponse - Converts an encoded plaintext into an enclave response
-func ToEnclaveResponse(encoded []byte) *EnclaveResponse {
+func ToEnclaveResponse(encoded []byte) (*EnclaveResponse, error) {
 	resp := EnclaveResponse{}
 	err := json.Unmarshal(encoded, &resp)
 	if err != nil {
-		panic(err) // Todo change when stable.
+		return nil, err
 	}
-	return &resp
+	return &resp, nil
 }
 
 // ToInternalError - Converts an error to an InternalError

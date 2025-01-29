@@ -149,7 +149,7 @@ func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*c
 
 	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
 	for _, rollup := range rollups {
-		if err := rc.sigValidator.CheckSequencerSignature(rollup.Hash(), rollup.Header.Signature); err != nil {
+		if err := rc.sigValidator.CheckSequencerSignature(rollup.Header.CompositeHash, rollup.Header.Signature); err != nil {
 			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
@@ -173,7 +173,10 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 	txsSeen := make(map[gethcommon.Hash]bool)
 
 	for i, tx := range rollupTxs {
-		t := rc.MgmtContractLib.DecodeTx(tx.Transaction)
+		t, err := rc.MgmtContractLib.DecodeTx(tx.Transaction)
+		if err != nil {
+			rc.logger.Warn(fmt.Sprintf("could not decode tx at index %d. Cause: %s", i, err))
+		}
 		if t == nil {
 			continue
 		}

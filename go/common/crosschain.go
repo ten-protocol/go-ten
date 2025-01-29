@@ -30,7 +30,7 @@ func (hashes CrossChainRootHashes) ToHexString() string {
 	return strings.Join(hexStrings, ",")
 }
 
-func (bundle ExtCrossChainBundle) HashPacked() common.Hash {
+func (bundle ExtCrossChainBundle) HashPacked() (common.Hash, error) {
 	uint256type, _ := abi.NewType("uint256", "", nil)
 	bytes32type, _ := abi.NewType("bytes32", "", nil)
 	bytesТype, _ := abi.NewType("bytes[]", "", nil)
@@ -52,9 +52,9 @@ func (bundle ExtCrossChainBundle) HashPacked() common.Hash {
 
 	bytes, err := args.Pack(bundle.LastBatchHash, bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes)
 	if err != nil {
-		panic(err)
+		return common.Hash{}, err
 	}
 
 	hash := crypto.Keccak256Hash(bytes)
-	return hash
+	return hash, nil
 }
