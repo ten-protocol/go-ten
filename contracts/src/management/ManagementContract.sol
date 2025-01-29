@@ -143,7 +143,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
             merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
         }
-        emit RollupAdded(r.Hash, r.Signature);
+        emit RollupAdded(r.BlobHash, r.Signature);
     }
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once

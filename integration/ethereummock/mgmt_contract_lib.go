@@ -87,7 +87,7 @@ func (m *mockContractLib) DecodeTx(tx *types.Transaction) (common.L1TenTransacti
 }
 
 // TODO: Ziga - fix this mock implementation later if needed
-func (m *mockContractLib) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error) {
+func (m *mockContractLib) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob, signature []byte) (types.TxData, error) {
 	var err error
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar

@@ -81,11 +81,17 @@ type L1Event struct {
 	Txs  []*L1TxData
 }
 
+type BlobAndSignature struct {
+	Blob      *kzg4844.Blob
+	Signature RollupSignature
+}
+
 // L1TxData represents an L1 transaction that are relevant to us
 type L1TxData struct {
 	Transaction        *types.Transaction
 	Receipt            *types.Receipt
-	Blobs              []*kzg4844.Blob     // Only populated for blob transactions
+	Blobs              []*kzg4844.Blob // Only populated for blob transactions
+	BlobsWithSignature []BlobAndSignature
 	SequencerEnclaveID gethcommon.Address  // Only non-zero when a new enclave is added as a sequencer
 	CrossChainMessages CrossChainMessages  // Only populated for xchain messages
 	ValueTransfers     ValueTransferEvents // Only populated for xchain transfers

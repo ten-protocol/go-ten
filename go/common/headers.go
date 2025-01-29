@@ -170,8 +170,6 @@ type RollupHeader struct {
 	LastBatchSeqNo uint64
 	BlobHash       common.Hash
 	CompositeHash  common.Hash // composite of everything
-
-	Signature []byte // The signature of the sequencer enclave over the composite hash
 }
 
 // CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.
@@ -231,7 +229,6 @@ func (b *BatchHeader) Hash() L2BatchHash {
 // RLP encoding excluding the signature.
 func (r *RollupHeader) Hash() L2RollupHash {
 	cp := *r
-	cp.Signature = nil
 	hash, err := rlpHash(cp)
 	if err != nil {
 		panic("err hashing rollup header")

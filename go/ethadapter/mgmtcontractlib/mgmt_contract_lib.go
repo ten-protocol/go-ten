@@ -26,7 +26,7 @@ const methodBytesLen = 4
 type MgmtContractLib interface {
 	IsMock() bool
 	BlobHasher() ethadapter.BlobHasher
-	PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error)
+	PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob, signature common.RollupSignature) (types.TxData, error)
 	CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error)
 	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) (types.TxData, error)
 	CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error)
@@ -121,7 +121,7 @@ func (c *contractLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTransacti
 }
 
 // PopulateAddRollup creates a BlobTx, encoding the rollup data into blobs.
-func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob) (types.TxData, error) {
+func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob, signature common.RollupSignature) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
@@ -129,7 +129,7 @@ func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 
 	metaRollup := ManagementContract.StructsMetaRollup{
 		Hash:               decodedRollup.Hash(),
-		Signature:          decodedRollup.Header.Signature,
+		Signature:          signature,
 		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
 		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,
 		BlockBindingNumber: decodedRollup.Header.CompressionL1Number,

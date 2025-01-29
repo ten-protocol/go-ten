@@ -90,6 +90,7 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 		rollupMetadata[idx] = common.ExtRollupMetadata{
 			CrossChainTree: serializedTree,
 		}
+
 	}
 
 	if len(rollupMetadata) < len(rollups) {
@@ -132,30 +133,11 @@ func (rc *rollupConsumerImpl) GetRollupsFromL1Data(processed *common.ProcessedL1
 		return nil, nil
 	}
 
-	rollups, err = rc.getSignedRollup(rollups)
-	if err != nil {
-		return nil, err
-	}
-
 	if len(rollups) > 0 {
 		// this is allowed as long as they come from unique transactions
 		rc.logger.Trace(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
 	}
 	return rollups, nil
-}
-
-func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*common.ExtRollup, error) {
-	signedRollup := make([]*common.ExtRollup, 0)
-
-	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
-	for _, rollup := range rollups {
-		if err := rc.sigValidator.CheckSequencerSignature(rollup.Header.CompositeHash, rollup.Header.Signature); err != nil {
-			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
-		}
-
-		signedRollup = append(signedRollup, rollup)
-	}
-	return signedRollup, nil
 }
 
 // extractAndVerifyRollups extracts rollups from L1 transactions in the processed block.
@@ -165,7 +147,7 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 	rollupTxs := processed.GetEvents(common.RollupTx)
 	rollups := make([]*common.ExtRollup, 0, len(rollupTxs))
 
-	blobs, blobHashes, err := rc.extractBlobsAndHashes(rollupTxs)
+	blobs, blobHashes, signatures, err := rc.extractBlobsAndHashes(rollupTxs)
 	if err != nil {
 		return nil, err
 	}
@@ -204,6 +186,11 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 			return nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
 		}
 
+		// TODO - RECONSTRUCT COMPOSITE HASH
+		if err := rc.sigValidator.CheckSequencerSignature(r.Header.CompositeHash, signatures[i]); err != nil {
+			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
+		}
+
 		rollups = append(rollups, r)
 		txsSeen[tx.Transaction.Hash()] = true
 
@@ -233,16 +220,20 @@ func verifyBlobHashes(rollupHashes *common.L1RollupHashes, blobHashes []gethcomm
 	return nil
 }
 
-func (rc *rollupConsumerImpl) extractBlobsAndHashes(rollupTxs []*common.L1TxData) ([]*kzg4844.Blob, []gethcommon.Hash, error) {
+func (rc *rollupConsumerImpl) extractBlobsAndHashes(rollupTxs []*common.L1TxData) ([]*kzg4844.Blob, []gethcommon.Hash, [][]byte, error) {
 	blobs := make([]*kzg4844.Blob, 0)
+	signatures := make([][]byte, 0)
 	for _, tx := range rollupTxs {
-		blobs = append(blobs, tx.Blobs...)
+		for _, blobWithSig := range tx.BlobsWithSignature {
+			blobs = append(blobs, blobWithSig.Blob)
+			signatures = append(signatures, blobWithSig.Signature)
+		}
 	}
 
 	_, blobHashes, err := ethadapter.MakeSidecar(blobs, rc.MgmtContractLib.BlobHasher())
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
+		return nil, nil, nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
 	}
 
-	return blobs, blobHashes, nil
+	return blobs, blobHashes, signatures, nil
 }
