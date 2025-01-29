@@ -160,12 +160,12 @@ func (r *DataService) latestCanonAncestor(remote gethcommon.Hash) (*common.Chain
 		return nil, fmt.Errorf("unable to fetch L1 block with hash=%s - %w", remote, err)
 	}
 
-	currentHead, err := r.FetchBlock(ctx, r.head)
+	searchBackFrom, err := r.FetchBlockByHeight(remoteHead.Number)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch current L1 head- %w", err)
+		return nil, fmt.Errorf("unable to fetch L1 block by height=%s - %w", remoteHead.Number, err)
 	}
 
-	fork, err := gethutil.LCA(ctx, currentHead, remoteHead, r)
+	fork, err := gethutil.LCA(ctx, searchBackFrom, remoteHead, r)
 	if err != nil {
 		return nil, fmt.Errorf("unable to calculate LCA - %w", err)
 	}
