@@ -683,11 +683,6 @@ func (g *Guardian) periodicRollupProduction() {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
 				}
-				r, err := ethadapter.ReconstructRollup(blobs)
-				if err != nil {
-					println("ERROR")
-				}
-				println("SIGNATURE FROM BLOBS: ", len(r.Header.Signature))
 				// this method waits until the receipt is received
 				g.sl.L1Publisher().PublishBlob(producedRollup, blobs)
 				lastSuccessfulRollup = time.Now()
