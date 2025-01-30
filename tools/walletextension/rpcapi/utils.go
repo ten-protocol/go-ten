@@ -240,7 +240,7 @@ func audit(services *services.Services, msg string, params ...any) {
 				safeParams[i] = p
 			}
 		}
-		services.Logger().Info(fmt.Sprintf(msg, params...))
+		services.Logger().Info(fmt.Sprintf(msg, safeParams...))
 	}
 }
 
