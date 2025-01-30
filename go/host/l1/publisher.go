@@ -363,7 +363,6 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 				"nonce", nonce,
 				"txHash", signedTx.Hash().Hex())
 
-			// Get the blob tx data from the original tx parameter
 			blobTx, ok := tx.(*types.BlobTx)
 			if !ok {
 				return fmt.Errorf("expected blob tx but got %T", tx)
