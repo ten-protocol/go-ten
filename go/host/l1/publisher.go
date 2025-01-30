@@ -3,7 +3,6 @@ package l1
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"sync"
@@ -246,14 +245,22 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	}
 
-	time.Sleep(2 * time.Second) // TODO fix this for block number in management contract
+	rollupBlockNum := producedRollup.Header.CompressionL1Number
+	// wait for the next block after the block that the rollup is bound to
+	err = p.waitForBlockAfter(rollupBlockNum.Uint64())
+	if err != nil {
+		p.logger.Error("Failed waiting for block after rollup binding block number",
+			"compression_block", rollupBlockNum,
+			log.ErrKey, err)
+	}
+
 	err = p.publishTransaction(rollupBlobTx)
 	if err != nil {
 		var maxRetriesErr *MaxRetriesError
 		if errors.As(err, &maxRetriesErr) {
 			p.logger.Error("Blob transaction failed after max retries",
-				"nonce", maxRetriesErr.Nonce,
-				"address", maxRetriesErr.Address,
+				"nonce", maxRetriesErr.BlobTx.Nonce,
+				"txHash", maxRetriesErr.TxHash,
 				log.RollupHashKey, producedRollup.Hash())
 
 			p.handleMaxRetriesFailure(maxRetriesErr, producedRollup)
@@ -270,13 +277,9 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 }
 
 func (p *Publisher) handleMaxRetriesFailure(err *MaxRetriesError, rollup *common.ExtRollup) {
-	// Implement recovery logic here
-	// For example:
-	// 1. Save failed rollup to persistent storage
-	// 2. Trigger alerts
-	// 3. Initiate graceful shutdown
-	// 4. Try to cancel any pending transactions
-	p.hostStopper.Stop() // Trigger graceful shutdown
+	//TODO store failed rollup details so we can easily remediate? ie send new tx with the same nonce
+	// tx hash, rollup hash, nonce & gas price?
+	fmt.Printf("failed max retries: ", rollup.Hash().Hex(), err.TxHash, err.BlobTx.Nonce)
 }
 
 func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *big.Int, _ gethcommon.Hash) error {
@@ -336,12 +339,16 @@ func (p *Publisher) ResyncImportantContracts() error {
 // this method is guarded by a lock to ensure that only one transaction is attempted at a time to avoid nonce conflicts
 // todo (@matt) this method should take a context so we can try to cancel if the tx is no longer required
 func (p *Publisher) publishTransaction(tx types.TxData) error {
+	// this log message seems superfluous but is useful to debug deadlock issues, we expect 'Host issuing l1 tx' soon
+	// after unless we're stuck blocking.
+	p.logger.Info("Host preparing to issue L1 tx")
+
 	p.sendingLock.Lock()
 	defer p.sendingLock.Unlock()
 
 	const maxRetries = 5
-	retries := 0
-	var lastTxHash gethcommon.Hash // Track the last attempted tx hash
+	retries := -1
+	var signedTx *types.Transaction
 
 	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
 	if err != nil {
@@ -350,41 +357,42 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 
 	// while the publisher service is still alive we keep trying to get the transaction into the L1
 	for !p.hostStopper.IsStopping() {
-		if retries >= maxRetries {
+		retries++
+		if retries >= maxRetries && signedTx.Type() == types.BlobTxType {
 			p.logger.Error("Max retries reached for issuing L1 tx - node may need manual intervention",
 				"nonce", nonce,
-				"retries", retries,
-				"address", p.hostWallet.Address(),
-				"lastTxHash", lastTxHash)
+				"txHash", signedTx.Hash().Hex())
+
+			// Get the blob tx data from the original tx parameter
+			blobTx, ok := tx.(*types.BlobTx)
+			if !ok {
+				return fmt.Errorf("expected blob tx but got %T", tx)
+			}
 
 			return &MaxRetriesError{
-				Nonce:   nonce,
-				Address: p.hostWallet.Address(),
-				Retries: retries,
-				TxHash:  lastTxHash,
+				TxHash: signedTx.Hash().Hex(),
+				BlobTx: blobTx,
 			}
 		}
 
 		tx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retries)
 		if err != nil {
-			return errors.Wrap(err, "could not set gas price for L1 tx")
+			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 		}
 
-		signedTx, err := p.hostWallet.SignTransaction(tx)
+		signedTx, err = p.hostWallet.SignTransaction(tx)
 		if err != nil {
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
 
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
-			retries++
-			lastTxHash = signedTx.Hash() // Update the last attempted tx hash
 			p.logger.Warn("Failed to send transaction",
 				"error", err,
 				"retry", retries,
 				"nonce", nonce,
-				"txHash", lastTxHash)
-			continue
+				"txHash", signedTx.Hash())
+			return errors.Wrap(err, "could not broadcast L1 tx")
 		}
 		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
 
@@ -419,15 +427,41 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 	return nil
 }
 
+// waitForBlockAfter waits until the current block number is greater than the target block number
+func (p *Publisher) waitForBlockAfter(targetBlock uint64) error {
+	err := retry.Do(
+		func() error {
+			if p.hostStopper.IsStopping() {
+				return retry.FailFast(errors.New("host is stopping"))
+			}
+
+			currentBlock, err := p.ethClient.BlockNumber()
+			if err != nil {
+				return fmt.Errorf("failed to get current block number: %w", err)
+			}
+
+			if currentBlock <= targetBlock {
+				return fmt.Errorf("waiting for block after %d (current: %d)", targetBlock, currentBlock)
+			}
+
+			return nil
+		},
+		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
+	)
+	if err != nil {
+		return fmt.Errorf("timeout waiting for block after %d: %w", targetBlock, err)
+	}
+
+	return nil
+}
+
 // MaxRetriesError is a specific error type for handling max retries
 type MaxRetriesError struct {
-	Nonce   uint64
-	Address gethcommon.Address
-	Retries int
-	TxHash  gethcommon.Hash // Added field for transaction hash
+	TxHash string
+	BlobTx *types.BlobTx
 }
 
 func (e *MaxRetriesError) Error() string {
-	return fmt.Sprintf("max retries (%d) reached for nonce %d on address %s, last tx hash: %s",
-		e.Retries, e.Nonce, e.Address.Hex(), e.TxHash.Hex())
+	return fmt.Sprintf("max retries reached for nonce %d  with tx hash: %s, BlobFeeCap: %d, GasTipCap: %d, GasFeeCap: %d, Gas: %d",
+		e.BlobTx.Nonce, e.TxHash, e.BlobTx.BlobFeeCap, e.BlobTx.GasTipCap, e.BlobTx.GasFeeCap, e.BlobTx.Gas)
 }

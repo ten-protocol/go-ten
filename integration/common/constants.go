@@ -92,6 +92,7 @@ func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
 		GasBatchExecutionLimit:    30_000_000,
 		RPCTimeout:                5 * time.Second,
 		StoreExecutedTransactions: true,
+		DecompressionLimit:        10 * 1024 * 1024,
 	}
 }
 

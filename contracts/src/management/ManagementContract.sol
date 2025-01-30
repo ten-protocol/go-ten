@@ -103,7 +103,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     modifier verifyRollupIntegrity(Structs.MetaRollup calldata r) {
         // Block binding checks
-        require(block.number >= r.BlockBindingNumber, "Cannot bind to future block");
+        require(block.number > r.BlockBindingNumber, "Cannot bind to future or current block");
         require(block.number < (r.BlockBindingNumber + 255), "Block binding too old");
 
         bytes32 knownBlockHash = blockhash(r.BlockBindingNumber);

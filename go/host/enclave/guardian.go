@@ -683,14 +683,19 @@ func (g *Guardian) periodicRollupProduction() {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
 				}
-				r, err := ethadapter.ReconstructRollup(blobs)
+				canonBlock, err := g.sl.L1Data().FetchBlockByHeight(producedRollup.Header.CompressionL1Number)
 				if err != nil {
-					println("ERROR")
+					g.logger.Error("Could not fetch block for compression", log.ErrKey, err)
+					continue
 				}
-				println("SIGNATURE FROM BLOBS: ", len(r.Header.Signature))
-				// this method waits until the receipt is received
-				g.sl.L1Publisher().PublishBlob(producedRollup, blobs)
-				lastSuccessfulRollup = time.Now()
+				// only publish if the block used for compression is canonical
+				if canonBlock.Hash() == producedRollup.Header.CompressionL1Head {
+					// this method waits until the receipt is received
+					g.sl.L1Publisher().PublishBlob(producedRollup, blobs)
+					lastSuccessfulRollup = time.Now()
+				} else {
+					g.logger.Info("Skipping rollup publication because compression block is not canonical", "block", canonBlock.Hash())
+				}
 			}
 
 		case <-g.hostInterrupter.Done():

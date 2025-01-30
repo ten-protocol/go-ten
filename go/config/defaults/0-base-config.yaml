@@ -75,6 +75,7 @@ host:
 enclave:
   enableAttestation: false
   storeExecutedTransactions: true
+  decompressionLimit: "10MB"
   db:
     useInMemory: true
     edgelessDBHost: "" # host address for postgres db when used
