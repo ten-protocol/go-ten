@@ -240,6 +240,7 @@ func loadReceiptList(ctx context.Context, db *sql.DB, requestingAccount *gethcom
 
 	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.cumulative_gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
 	query += baseReceiptJoin
+	query += " WHERE 1=1 "
 
 	// visibility
 	query += " AND tx_sender.address = ? "

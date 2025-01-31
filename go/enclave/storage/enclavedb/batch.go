@@ -380,7 +380,7 @@ func BatchWasExecuted(ctx context.Context, db *sql.DB, hash common.L2BatchHash) 
 }
 
 func GetTransactionsPerAddress(ctx context.Context, db *sql.DB, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
-	receipts, err := loadReceiptList(ctx, db, address, " AND tx_sender.address = ? ", []any{address.Bytes()}, " ORDER BY b.height DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
+	receipts, err := loadReceiptList(ctx, db, address, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
 	if err != nil {
 		return nil, err
 	}

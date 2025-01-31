@@ -10,8 +10,6 @@ type Config struct {
 	l2Port                    int
 	l2Host                    string
 	l2PrivateKey              string
-	hocPKString               string
-	pocPKString               string
 	managementContractAddress string
 	messageBusAddress         string
 	dockerImage               string
@@ -76,18 +74,6 @@ func WithL2PrivateKey(s string) Option {
 func WithDockerImage(s string) Option {
 	return func(c *Config) {
 		c.dockerImage = s
-	}
-}
-
-func WithHocPKString(s string) Option {
-	return func(c *Config) {
-		c.hocPKString = s
-	}
-}
-
-func WithPocPKString(s string) Option {
-	return func(c *Config) {
-		c.pocPKString = s
 	}
 }
 

@@ -167,7 +167,11 @@ func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 
 func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 	for _, tx := range block.Transactions() {
-		decodedTx := m.mgmtContractLib.DecodeTx(tx)
+		decodedTx, err := m.mgmtContractLib.DecodeTx(tx)
+		if err != nil {
+			m.logger.Warn(fmt.Sprintf("could not decode tx. Cause: %s", err))
+			continue
+		}
 		if decodedTx == nil {
 			continue
 		}

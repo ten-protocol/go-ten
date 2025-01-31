@@ -94,7 +94,7 @@ func (m *MessageBusManager) ExtractOutboundTransfers(_ context.Context, receipts
 // todo (@stefan) - fix ordering of messages, currently it is irrelevant.
 // todo (@stefan) - do not extract messages below their consistency level. Irrelevant security wise.
 // todo (@stefan) - surface errors
-func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlock *types.Header, toBlock *types.Header) (common.CrossChainMessages, common.ValueTransferEvents) {
+func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlock *types.Header, toBlock *types.Header) (common.CrossChainMessages, common.ValueTransferEvents, error) {
 	messages := make(common.CrossChainMessages, 0)
 	transfers := make(common.ValueTransferEvents, 0)
 
@@ -114,12 +114,12 @@ func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlo
 
 		messagesForBlock, err := m.storage.GetL1Messages(ctx, b.Hash())
 		if err != nil {
-			m.logger.Crit("Reading the key for the block failed with uncommon reason.", log.ErrKey, err)
+			return nil, nil, fmt.Errorf("reading the key for the block failed with uncommon reason: %w", err)
 		}
 
 		transfersForBlock, err := m.storage.GetL1Transfers(ctx, b.Hash())
 		if err != nil {
-			m.logger.Crit("Unable to get L1 transfers for block that should be there.", log.ErrKey, err)
+			return nil, nil, fmt.Errorf("unable to get L1 transfers for block that should be there %w", err)
 		}
 
 		messages = append(messages, messagesForBlock...) // Ordering here might work in POBI, but might be weird for fast finality
@@ -127,11 +127,11 @@ func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlo
 
 		// No deposits before genesis.
 		if b.Number.Uint64() < height {
-			m.logger.Crit("block height is less than genesis height")
+			return nil, nil, fmt.Errorf("block height is less than genesis height")
 		}
 		p, err := m.storage.FetchBlock(ctx, b.ParentHash)
 		if err != nil {
-			m.logger.Crit("Synthetic transactions can't be processed because the rollups are not on the same Ethereum fork")
+			return nil, nil, fmt.Errorf("synthetic transactions can't be processed because the rollups are not on the same Ethereum fork")
 		}
 		b = p
 	}
@@ -142,7 +142,7 @@ func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlo
 	}
 	logf(fmt.Sprintf("Extracted cross chain messages for block height %d ->%d", fromBlock.Number.Uint64(), toBlock.Number.Uint64()), "no_msgs", len(messages), "no_value_transfers", len(transfers))
 
-	return messages, transfers
+	return messages, transfers, nil
 }
 
 const BalanceIncreaseXChainValueTransfer tracing.BalanceChangeReason = 110
@@ -155,9 +155,9 @@ func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers
 }
 
 // CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.
-func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, rollupState *state.StateDB) common.L2Transactions {
+func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, rollupState *state.StateDB) (common.L2Transactions, error) {
 	if len(messages) == 0 && len(transfers) == 0 {
-		return make(common.L2Transactions, 0)
+		return make(common.L2Transactions, 0), nil
 	}
 
 	if m.messageBusAddress == nil {
@@ -173,11 +173,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
 		data, err := MessageBusABI.Pack("storeCrossChainMessage", message, delayInBlocks)
 		if err != nil {
-			m.logger.Crit("Failed packing storeCrossChainMessage message!")
-			return syntheticTransactions
-
-			// todo (@stefan) - return error
-			// return nil, fmt.Errorf("failed packing submitOutOfNetworkMessage %w", err)
+			return nil, fmt.Errorf("failed packing storeCrossChainMessage %w", err)
 		}
 
 		tx := &types.LegacyTx{
@@ -198,8 +194,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 	for idx, transfer := range transfers {
 		data, err := MessageBusABI.Pack("notifyDeposit", transfer.Receiver, transfer.Amount)
 		if err != nil {
-			m.logger.Crit("Failed packing notifyDeposit message!")
-			return syntheticTransactions
+			return nil, fmt.Errorf("failed packing notifyDeposit %w", err)
 		}
 
 		tx := &types.LegacyTx{
@@ -213,5 +208,5 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 		syntheticTransactions = append(syntheticTransactions, types.NewTx(tx))
 	}
 
-	return syntheticTransactions
+	return syntheticTransactions, nil
 }

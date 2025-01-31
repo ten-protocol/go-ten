@@ -47,6 +47,6 @@ func StartIPCEndpoint(ipcEndpoint string, apis []API) (net.Listener, *Server, er
 	if err != nil {
 		return nil, nil, err
 	}
-	go handler.ServeListener(listener) //nolint:errcheck
+	go handler.ServeListener(listener)
 	return listener, handler, nil
 }

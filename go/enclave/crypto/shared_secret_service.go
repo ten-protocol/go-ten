@@ -19,8 +19,9 @@ type SharedEnclaveSecret [sharedSecretLenInBytes]byte
 
 // SharedSecretService provides functionality to encapsulate, generate, extend, and encrypt the shared secret of the TEN network.
 type SharedSecretService struct {
-	secret *SharedEnclaveSecret
-	logger gethlog.Logger
+	secret    *SharedEnclaveSecret
+	isGenesis bool
+	logger    gethlog.Logger
 }
 
 func NewSharedSecretService(logger gethlog.Logger) *SharedSecretService {
@@ -36,6 +37,7 @@ func (sss *SharedSecretService) GenerateSharedSecret() {
 	var tempSecret SharedEnclaveSecret
 	copy(tempSecret[:], secret)
 	sss.secret = &tempSecret
+	sss.isGenesis = true
 }
 
 // Secret - should only be used before storing it
@@ -69,4 +71,8 @@ func (sss *SharedSecretService) EncryptSecretWithKey(pubKey []byte) (common.Encr
 
 func (sss *SharedSecretService) IsInitialised() bool {
 	return sss.secret != nil
+}
+
+func (sss *SharedSecretService) IsGenesis() bool {
+	return sss.isGenesis
 }

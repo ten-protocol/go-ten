@@ -2,9 +2,8 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 
 /* 
-    This script instantiates the L1 side of the HOC and POC tokens.
-    It is equivalent to what the old contract deployer was doing, except for
-    address prefunding.
+    This script adds admin addresses to the TenBridge contract.
+    These admins will have permission to perform administrative actions on the bridge.
 */
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {

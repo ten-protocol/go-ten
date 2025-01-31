@@ -60,15 +60,22 @@ func (s *Simulation) Start() {
 	fmt.Printf("Waiting for TEN genesis on L1\n")
 	s.waitForTenGenesisOnL1()
 
-	// Arbitrary sleep to wait for RPC clients to get up and running
-	// and for all l2 nodes to receive the genesis l2 batch
-	// todo - instead of sleeping, it would be better to poll
-	time.Sleep(time.Duration(10 * s.AvgBlockDuration))
-
-	cfg, err := s.RPCHandles.TenWalletRndClient(s.Params.Wallets.L2FaucetWallet).GetConfig()
+	// wait for all nodes to be ready
+	var cfg *common.TenNetworkInfo
+	err := retry.Do(func() error {
+		var err error
+		for _, tenClient := range s.RPCHandles.AuthObsClients[s.Params.Wallets.L2FaucetWallet.Address().String()] {
+			cfg, err = tenClient.GetConfig()
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}, retry.NewTimeoutStrategy(20*time.Second, 100*time.Millisecond))
 	if err != nil {
 		panic(err)
 	}
+
 	jsonCfg, err := json.Marshal(cfg)
 	if err == nil {
 		fmt.Printf("Config: %v\n", string(jsonCfg))
@@ -144,7 +151,10 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 					panic(err)
 				}
 				for _, tx := range b.Transactions() {
-					t := s.Params.MgmtContractLib.DecodeTx(tx)
+					t, err := s.Params.MgmtContractLib.DecodeTx(tx)
+					if err != nil {
+						panic(err)
+					}
 					if t == nil {
 						continue
 					}
@@ -444,7 +454,10 @@ func (s *Simulation) prefundL1Accounts() {
 			TokenContract: s.Params.Wallets.Tokens[testcommon.HOC].L1ContractAddress,
 			Sender:        &ownerAddr,
 		}
-		tx := s.Params.ERC20ContractLib.CreateDepositTx(txData)
+		tx, err := s.Params.ERC20ContractLib.CreateDepositTx(txData)
+		if err != nil {
+			testlog.Logger().Crit("failed to create deposit tx", log.ErrKey, err)
+		}
 		estimatedTx, err := ethadapter.SetTxGasPrice(s.ctx, ethClient, tx, tokenOwner.Address(), tokenOwner.GetNonceAndIncrement(), 0)
 		if err != nil {
 			// ignore txs that are not able to be estimated/execute

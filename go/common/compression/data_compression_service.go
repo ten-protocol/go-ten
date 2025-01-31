@@ -2,6 +2,8 @@ package compression
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 
 	"github.com/andybalholm/brotli"
@@ -15,11 +17,15 @@ type DataCompressionService interface {
 	Decompress(blob []byte) ([]byte, error)
 }
 
-func NewBrotliDataCompressionService() DataCompressionService {
-	return &brotliDataCompressionService{}
+func NewBrotliDataCompressionService(decompressedSizeLimit int64) DataCompressionService {
+	return &brotliDataCompressionService{
+		decompressedSizeLimit: decompressedSizeLimit,
+	}
 }
 
-type brotliDataCompressionService struct{}
+type brotliDataCompressionService struct {
+	decompressedSizeLimit int64
+}
 
 func (cs *brotliDataCompressionService) CompressRollup(blob []byte) ([]byte, error) {
 	return cs.compress(blob, brotli.BestCompression)
@@ -30,8 +36,36 @@ func (cs *brotliDataCompressionService) CompressBatch(blob []byte) ([]byte, erro
 }
 
 func (cs *brotliDataCompressionService) Decompress(in []byte) ([]byte, error) {
+	if in == nil {
+		return nil, errors.New("input is nil")
+	}
+
 	r := brotli.NewReader(bytes.NewReader(in))
-	return io.ReadAll(r)
+	// Limit the decompressed size to the decompressedSizeLimit
+	limitedReader := io.LimitReader(r, cs.decompressedSizeLimit)
+	// Read up to the decompressedSizeLimit
+	data, err := io.ReadAll(limitedReader)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(data) != int(cs.decompressedSizeLimit) {
+		return data, nil
+	}
+
+	// Verify that the decompressed data is within the decompressedSizeLimit;
+	// if we manage to read again, then the decompressed data is larger than the decompressedSizeLimit
+	buf := make([]byte, 1)
+	n, readErr := r.Read(buf)
+	if readErr != nil && readErr != io.EOF {
+		return nil, fmt.Errorf("decompression verification error: %w", readErr)
+	}
+
+	if n > 0 {
+		return data, errors.New("decompressed size exceeded")
+	}
+
+	return data, nil
 }
 
 func (cs *brotliDataCompressionService) compress(in []byte, level int) ([]byte, error) {

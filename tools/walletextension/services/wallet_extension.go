@@ -144,20 +144,27 @@ func _startCacheEviction(services *Services, logger gethlog.Logger) {
 
 func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services *Services, logger gethlog.Logger) (<-chan error, error) {
 	var sub *gethrpc.ClientSubscription
+	attempt := 1
+
 	err := retry.Do(
 		func() error {
 			connectionObj, err := services.BackendRPC.PlainConnectWs(context.Background())
 			if err != nil {
+				logger.Info("connection failed - retrying", "attempt", attempt)
+				attempt++
 				return fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
 			}
 			sub, err = connectionObj.Subscribe(context.Background(), rpc.SubscribeNamespace, ch, rpc.SubscriptionTypeNewHeads)
 			if err != nil {
 				logger.Info("could not subscribe for new head blocks", log.ErrKey, err)
 				_ = services.BackendRPC.ReturnConnWS(connectionObj)
+				attempt++
+				return err
 			}
-			return err
+			logger.Info("successfully connected to node")
+			return nil
 		},
-		retry.NewTimeoutStrategy(20*time.Minute, 1*time.Second),
+		retry.NewBackoffAndRetryForeverStrategy([]time.Duration{1 * time.Second, 5 * time.Second, 15 * time.Second}, 30*time.Second),
 	)
 	if err != nil {
 		logger.Error("could not subscribe for new head blocks.", log.ErrKey, err)
@@ -200,14 +207,14 @@ func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
 
 	requestEndTime := time.Now()
 	duration := requestEndTime.Sub(requestStartTime)
-	audit(w, "Storing new userID: %s, duration: %d ", hexutils.BytesToHex(userID), duration.Milliseconds())
+	audit(w, "Storing new userID: %s, duration: %d ", common.HashForLogging(userID), duration.Milliseconds())
 	return userID, nil
 }
 
 // AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
 func (w *Services) AddAddressToUser(userID []byte, address string, signature []byte, signatureType viewingkey.SignatureType) error {
 	w.MetricsTracker.RecordUserActivity(hexutils.BytesToHex(userID))
-	audit(w, "Adding address to user: %s, address: %s", hexutils.BytesToHex(userID), address)
+	audit(w, "Adding address to user: %s, address: %s", common.HashForLogging(userID), address)
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 	// check if a message was signed by the correct address and if the signature is valid
@@ -235,7 +242,7 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 // UserHasAccount checks if provided account exist in the database for given userID
 func (w *Services) UserHasAccount(userID []byte, address string) (bool, error) {
 	w.MetricsTracker.RecordUserActivity(hexutils.BytesToHex(userID))
-	audit(w, "Checking if user has account: %s, address: %s", hexutils.BytesToHex(userID), address)
+	audit(w, "Checking if user has account: %s, address: %s", common.HashForLogging(userID), address)
 	addressBytes, err := hex.DecodeString(address[2:]) // remove 0x prefix from address
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", address[2:], err).Error())

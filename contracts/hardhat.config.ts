@@ -31,6 +31,7 @@ const config: HardhatUserConfig = {
           },
         },  
       },
+      evmVersion: "cancun",
       outputSelection: { "*": { "*": [ "*" ], "": [ "*" ] } }
     },
   },
@@ -48,12 +49,6 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     deployer: { // Addressed used for deploying.
         default: 0,
-    },
-    hocowner: {
-        default: 1,
-    },
-    pocowner: {
-        default: 2,
     },
   },
   // For help configuring - https://www.npmjs.com/package/hardhat-ignore-warnings

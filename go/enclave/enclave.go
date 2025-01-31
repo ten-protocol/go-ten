@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
@@ -101,7 +103,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
-	dataCompressionService := compression.NewBrotliDataCompressionService()
+	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, *config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, logger)
 
 	// ensure cached chain state data is up-to-date using the persisted batch data
@@ -275,9 +277,9 @@ func (e *enclaveImpl) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) co
 	return e.adminAPI.CreateBatch(ctx, skipBatchIfEmpty)
 }
 
-func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
+func (e *enclaveImpl) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, []*kzg4844.Blob, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
-		return nil, systemError
+		return nil, nil, systemError
 	}
 	return e.adminAPI.CreateRollup(ctx, fromSeqNo)
 }

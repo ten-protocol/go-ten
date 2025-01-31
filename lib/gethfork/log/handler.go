@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-
 	"github.com/holiman/uint256"
 )
 
@@ -103,10 +101,10 @@ func (h *TerminalHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 }
 
 // ResetFieldPadding zeroes the field-padding for all attribute pairs.
-func (t *TerminalHandler) ResetFieldPadding() {
-	t.mu.Lock()
-	t.fieldPadding = make(map[string]int)
-	t.mu.Unlock()
+func (h *TerminalHandler) ResetFieldPadding() {
+	h.mu.Lock()
+	h.fieldPadding = make(map[string]int)
+	h.mu.Unlock()
 }
 
 type leveler struct{ minLevel slog.Level }
@@ -168,7 +166,7 @@ func builtinReplace(_ []string, attr slog.Attr, logfmt bool) slog.Attr {
 		}
 	case slog.LevelKey:
 		if l, ok := attr.Value.Any().(slog.Level); ok {
-			attr = slog.Any("lvl", log.LevelString(l))
+			attr = slog.Any("lvl", LevelString(l))
 			return attr
 		}
 	}

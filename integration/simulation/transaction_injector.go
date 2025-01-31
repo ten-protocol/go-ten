@@ -334,12 +334,20 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 
 	var proof clientapi.CrossChainProof
 	for {
-		proof, err = ti.rpcHandles.TenWalletRndClient(fromWallet).GetCrossChainProof(ti.ctx, "v", vTransfers.ForMerkleTree()[0][1].(gethcommon.Hash))
+		mtree, err := vTransfers.ForMerkleTree()
+		if err != nil {
+			panic(err)
+		}
+		proof, err = ti.rpcHandles.TenWalletRndClient(fromWallet).GetCrossChainProof(ti.ctx, "v", mtree[0][1].(gethcommon.Hash))
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				ti.logger.Info("Proof not found, retrying...", log.ErrKey, err)
 				time.Sleep(1 * time.Second)
 				continue
+			}
+			if strings.Contains(err.Error(), "database closed") {
+				ti.logger.Info("Database closed, test over", log.ErrKey, err)
+				return
 			}
 			panic(fmt.Errorf("unable to get proof for value transfer. cause: %w", err))
 		}

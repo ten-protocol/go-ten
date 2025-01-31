@@ -119,7 +119,7 @@ func (t *TxPool) start() {
 	for {
 		select {
 		case event := <-newHeadCh:
-			newHead := event.Block.Header()
+			newHead := event.Header
 			if newHead.Number.Uint64() > common.L2GenesisHeight+1 {
 				err := t._startInternalPool()
 				if err != nil {

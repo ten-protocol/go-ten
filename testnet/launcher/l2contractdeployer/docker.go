@@ -8,7 +8,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+
 	"github.com/docker/docker/client"
 	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/common/docker"
@@ -73,13 +74,11 @@ func (n *ContractDeployer) Start() error {
                 "deployment_scripts/testnet/layer2/"
             ],
             "accounts": [ 
-                "%s",
-                "%s",
                 "%s"
             ]
         }
     }
-`, n.cfg.l1HTTPURL, n.cfg.l1privateKey, n.cfg.l2PrivateKey, n.cfg.hocPKString, n.cfg.pocPKString),
+`, n.cfg.l1HTTPURL, n.cfg.l1privateKey, n.cfg.l2PrivateKey),
 	}
 
 	containerID, err := docker.StartNewContainer("hh-l2-deployer", n.cfg.dockerImage, cmds, ports, envs, nil, nil, false)
@@ -114,7 +113,7 @@ func (n *ContractDeployer) WaitForFinish() error {
 }
 
 func (n *ContractDeployer) PrintLogs(cli *client.Client) {
-	logsOptions := types.ContainerLogsOptions{
+	logsOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	}

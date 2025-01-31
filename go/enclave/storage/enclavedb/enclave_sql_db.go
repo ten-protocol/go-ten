@@ -20,6 +20,11 @@ type enclaveDB struct {
 	logger  gethlog.Logger
 }
 
+func (sqlDB *enclaveDB) DeleteRange(start, end []byte) error {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (sqlDB *enclaveDB) Tail() (uint64, error) {
 	// TODO implement me
 	panic("implement me")
@@ -46,11 +51,6 @@ func (sqlDB *enclaveDB) NewBatchWithSize(int) ethdb.Batch {
 }
 
 func (sqlDB *enclaveDB) AncientDatadir() (string, error) {
-	// TODO implement me
-	panic("implement me")
-}
-
-func (sqlDB *enclaveDB) NewSnapshot() (ethdb.Snapshot, error) {
 	// TODO implement me
 	panic("implement me")
 }

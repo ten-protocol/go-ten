@@ -109,8 +109,6 @@ func (t *Testnet) Start() error {
 			l2cd.WithMessageBusContractAddress("0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C"),
 			l2cd.WithManagementContractAddress("0x51D43a3Ca257584E770B6188232b199E76B022A2"),
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
-			l2cd.WithHocPKString("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"),
-			l2cd.WithPocPKString("4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"),
 			l2cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
 			l2cd.WithDebugEnabled(t.cfg.contractDeployerDebug),
 			l2cd.WithFaucetFunds("10000"),
