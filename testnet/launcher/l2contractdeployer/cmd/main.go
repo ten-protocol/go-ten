@@ -19,8 +19,6 @@ func main() {
 			l2cd.WithManagementContractAddress(cliConfig.managementContractAddr), // "0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF"
 			l2cd.WithMessageBusContractAddress(cliConfig.messageBusContractAddr), // "0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"
 			l2cd.WithL2PrivateKey(cliConfig.l2PrivateKey),                        // "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"
-			l2cd.WithHocPKString(cliConfig.l2HOCPrivateKey),                      // "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"),
-			l2cd.WithPocPKString(cliConfig.l2POCPrivateKey),                      // "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"),
 			l2cd.WithDockerImage(cliConfig.dockerImage),
 			l2cd.WithFaucetFunds(cliConfig.faucetFunding),
 		),
