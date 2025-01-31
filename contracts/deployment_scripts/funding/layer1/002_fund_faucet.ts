@@ -23,9 +23,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const messageBus = (await hre.ethers.getContractFactory('MessageBus')).attach(messageBusAddress)
     const prefundAmount = hre.ethers.parseEther(prefundAmountStr);
-    const tx = await messageBus.getFunction("sendValueToL2").populateTransaction("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", prefundAmount, {
-        value: prefundAmount
-    });
+
+    // Get current nonce and gas price
+    const provider = hre.ethers.provider;
+    const nonce = await provider.getTransactionCount(l1Accs.deployer, 'latest');
+    const feeData = await provider.getFeeData();
+    
+    // Increase gas price by 20% to ensure it replaces any pending tx
+    const gasPrice = (feeData.gasPrice! * BigInt(120)) / BigInt(100);
+
+    const tx = await messageBus.getFunction("sendValueToL2").populateTransaction("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", prefundAmount);
 
 
     console.log(`Sending ${prefundAmount} to ${deployer} through ${messageBusAddress}`);
@@ -35,8 +42,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         to: messageBusAddress,
         value: prefundAmount.toString(),
         data: tx.data,
+        nonce: nonce,
+        gasPrice: gasPrice,
         log: true,
-        waitConfirmations: 1,
+        waitConfirmations: 2, // Increase confirmations to ensure tx is mined
     });
     if (receipt.events?.length === 0) {
         console.log(`Account prefunding status = FAILURE NO CROSS CHAIN EVENT`);
