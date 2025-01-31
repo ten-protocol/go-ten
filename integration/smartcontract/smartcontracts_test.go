@@ -56,6 +56,7 @@ func runGethNetwork(t *testing.T) *netInfo {
 	startPort := integration.TestPorts.TestManagementContractPort
 	eth2Network := eth2network.NewPosEth2Network(
 		binDir,
+		false,
 		startPort+integration.DefaultGethNetworkPortOffset,
 		startPort+integration.DefaultPrysmP2PPortOffset,
 		startPort+integration.DefaultGethAUTHPortOffset, // RPC
