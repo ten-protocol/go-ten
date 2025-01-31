@@ -75,8 +75,6 @@ func (n *ContractDeployer) Start() error {
             ],
             "accounts": [ 
                 "%s",
-                "%s",
-                "%s"
             ]
         }
     }
