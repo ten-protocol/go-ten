@@ -25,16 +25,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const messageBus = (await hre.ethers.getContractFactory('MessageBus')).attach(messageBusAddress)
     const prefundAmount = hre.ethers.parseEther(prefundAmountStr);
 
-    // Get current nonce and gas price using the layer1 provider
+    // this block is here to prevent underpriced tx failures on testnet startup
     const provider = new HardhatEthersProvider(layer1.provider, "layer1");
     const nonce = await provider.getTransactionCount(l1Accs.deployer, 'latest');
     const feeData = await provider.getFeeData();
-    
-    // Increase gas price by 20% to ensure it replaces any pending tx
     const gasPrice = (feeData.gasPrice! * BigInt(120)) / BigInt(100);
 
     const tx = await messageBus.getFunction("sendValueToL2").populateTransaction("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", prefundAmount);
-
 
     console.log(`Sending ${prefundAmount} to ${deployer} through ${messageBusAddress}`);
 
