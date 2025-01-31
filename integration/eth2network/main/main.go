@@ -23,6 +23,7 @@ func main() {
 
 	eth2Network := eth2network.NewPosEth2Network(
 		binDir,
+		true,
 		config.gethNetworkStartPort,
 		config.prysmBeaconP2PStartPort,
 		config.gethAuthRPCStartPort,

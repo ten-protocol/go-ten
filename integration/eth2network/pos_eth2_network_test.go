@@ -38,6 +38,7 @@ func TestStartPosEth2Network(t *testing.T) {
 	startPort := integration.TestPorts.TestStartPosEth2NetworkPort
 	network := NewPosEth2Network(
 		binDir,
+		false,
 		startPort+integration.DefaultGethNetworkPortOffset,
 		startPort+integration.DefaultPrysmP2PPortOffset,
 		startPort+integration.DefaultGethAUTHPortOffset,

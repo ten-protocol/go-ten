@@ -28,7 +28,7 @@ const Connected = () => {
           the TEN Discord.
         </h3>
         <div className="flex justify-end space-x-2 my-4">
-          <LinkButton size={"sm"} href={socialLinks.discord} target="_blank">
+          <LinkButton size={"sm"} href={socialLinks.faucet} target="_blank">
             Request Tokens
           </LinkButton>
           <Button size={"sm"} variant={"destructive"} onClick={revokeAccounts}>
