@@ -1,5 +1,6 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
+import {HardhatEthersProvider} from "@nomicfoundation/hardhat-ethers/internal/hardhat-ethers-provider";
 
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -24,8 +25,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const messageBus = (await hre.ethers.getContractFactory('MessageBus')).attach(messageBusAddress)
     const prefundAmount = hre.ethers.parseEther(prefundAmountStr);
 
-    // Get current nonce and gas price
-    const provider = hre.ethers.provider;
+    // Get current nonce and gas price using the layer1 provider
+    const provider = new HardhatEthersProvider(layer1.provider, "layer1");
     const nonce = await provider.getTransactionCount(l1Accs.deployer, 'latest');
     const feeData = await provider.getFeeData();
     
