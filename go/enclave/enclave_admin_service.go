@@ -172,7 +172,12 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 
 	result, rollupMetadata, err := e.ingestL1Block(ctx, blockData)
 	if err != nil {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
+		// Only reject block for critical errors, not rollup processing errors
+		if !errors.Is(err, errutil.ErrRollupProcessing) {
+			return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
+		}
+		// Log the rollup error but continue processing the block
+		e.logger.Warn("Continuing block processing despite rollup error", log.BlockHashKey, blockHeader.Hash(), log.ErrKey, err)
 	}
 
 	if result.IsFork() {
@@ -501,8 +506,9 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	rollups, err := e.rollupConsumer.GetRollupsFromL1Data(processed)
 	if err != nil {
 		// early return before storing block if multiple rollups are found in the block
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("%w: %v", errutil.ErrRollupProcessing, err)
 	}
+
 	ingestion, err := e.l1BlockProcessor.Process(ctx, processed)
 	if err != nil {
 		// only warn for unexpected errors
@@ -514,10 +520,14 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		return nil, nil, err
 	}
 
-	rollupMetadata, err := e.rollupConsumer.ProcessRollups(ctx, rollups)
-	if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
-		e.logger.Error("Encountered error while processing l1 block rollups", log.ErrKey, err)
-		// Unsure what to do here; block has been stored
+	var rollupMetadata []common.ExtRollupMetadata
+	if len(rollups) > 0 {
+		rollupMetadata, err = e.rollupConsumer.ProcessRollups(ctx, rollups)
+		if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
+			e.logger.Error("Encountered error while processing l1 block rollups", log.ErrKey, err)
+			// return error but wrap it so the block can continue to be processed
+			return ingestion, nil, fmt.Errorf("%w: %v", errutil.ErrRollupProcessing, err)
+		}
 	}
 
 	if ingestion.IsFork() {
