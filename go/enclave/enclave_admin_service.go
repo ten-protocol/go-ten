@@ -172,11 +172,10 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 
 	result, rollupMetadata, err := e.ingestL1Block(ctx, blockData)
 	if err != nil {
-		// Only reject block for critical errors, not rollup processing errors
+		// only reject the block if the error is not from failed rollup processing
 		if !errors.Is(err, errutil.ErrRollupProcessing) {
 			return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 		}
-		// Log the rollup error but continue processing the block
 		e.logger.Warn("Continuing block processing despite rollup error", log.BlockHashKey, blockHeader.Hash(), log.ErrKey, err)
 	}
 
