@@ -74,7 +74,7 @@ func (n *ContractDeployer) Start() error {
                 "deployment_scripts/testnet/layer2/"
             ],
             "accounts": [ 
-                "%s",
+                "%s"
             ]
         }
     }
