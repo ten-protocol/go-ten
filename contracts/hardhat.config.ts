@@ -6,7 +6,7 @@ import "hardhat-abi-exporter";
 import "@solidstate/hardhat-bytecode-exporter";
 
 // Hardhat-deploy plugin - https://www.npmjs.com/package/hardhat-deploy
-import 'hardhat-deploy';
+import "hardhat-deploy";
 // Hardhat ignore warnings plugin - https://www.npmjs.com/package/hardhat-ignore-warnings
 import 'hardhat-ignore-warnings';
 
@@ -59,7 +59,7 @@ const config: HardhatUserConfig = {
     'src/testing/**/*': {
       default: 'off'
     }
-  }
+  },
 };
 
 try {
