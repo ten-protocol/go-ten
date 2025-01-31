@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
+
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
@@ -29,12 +31,12 @@ const (
 	networkTCP        = "tcp"
 )
 
-func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
-	// Create the in memory ten nodes, each connect each to a geth node
+func startInMemoryTenNodes(params *params.SimParams, l1Clients []ethadapter.EthClient) []rpc.Client {
+	// Create the in memory TEN nodes, each connect each to a geth node
 	tenNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
 	tenHosts := make([]host.Host, params.NumberOfNodes)
 	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
-
+	blobResolver := ethereummock.NewMockBlobResolver()
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
@@ -43,8 +45,6 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 			isGenesis,
 			GetNodeType(i),
 			params.MgmtContractLib,
-			true,
-			genesisJSON,
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
 			mockP2PNetw.NewNode(i),
@@ -53,11 +53,12 @@ func startInMemoryTenNodes(params *params.SimParams, genesisJSON []byte, l1Clien
 			params.AvgBlockDuration/3,
 			true,
 			params.AvgBlockDuration,
+			blobResolver,
 		)
 		tenHosts[i] = tenNodes[i].Host()
 	}
 
-	// start each ten node
+	// start each TEN node
 	for _, m := range tenNodes {
 		t := m
 		go func() {
@@ -92,6 +93,10 @@ func createAuthClientsPerWallet(clients []rpc.Client, wallets *params.SimWallets
 }
 
 func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.AuthObsClient {
+	rpcKey, err := rpc.ReadEnclaveKey(clients[0])
+	if err != nil {
+		return nil
+	}
 	authClients := make([]*obsclient.AuthObsClient, len(clients))
 	for i, client := range clients {
 		vk, err := viewingkey.GenerateViewingKeyForWallet(wal)
@@ -99,7 +104,7 @@ func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 			panic(err)
 		}
 		// todo - use a child logger
-		encClient, err := rpc.NewEncRPCClient(client, vk, testlog.Logger())
+		encClient, err := rpc.NewEncRPCClient(client, vk, rpcKey, testlog.Logger())
 		if err != nil {
 			panic(err)
 		}
@@ -108,9 +113,9 @@ func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 	return authClients
 }
 
-// StopTenNodes stops the Ten nodes and their RPC clients.
+// StopTenNodes stops the TEN nodes and their RPC clients.
 func StopTenNodes(clients []rpc.Client) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	eg, _ := errgroup.WithContext(ctx)
 
@@ -119,7 +124,7 @@ func StopTenNodes(clients []rpc.Client) {
 		eg.Go(func() error {
 			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
-				testlog.Logger().Error("Could not stop Ten node.", log.ErrKey, err)
+				testlog.Logger().Error("Could not stop TEN node.", log.ErrKey, err)
 				return err
 			}
 			c.Stop()
@@ -129,10 +134,10 @@ func StopTenNodes(clients []rpc.Client) {
 
 	err := eg.Wait()
 	if err != nil {
-		testlog.Logger().Error(fmt.Sprintf("Error waiting for the Ten nodes to stop - %s", err))
+		testlog.Logger().Error(fmt.Sprintf("Error waiting for the TEN nodes to stop - %s", err))
 	}
 
-	testlog.Logger().Info("Ten nodes stopped")
+	testlog.Logger().Info("TEN nodes stopped")
 }
 
 // CheckHostRPCServersStopped checks whether the hosts' RPC server addresses have been freed up.
@@ -157,10 +162,10 @@ func CheckHostRPCServersStopped(hostWSURLS []string) {
 
 	err := eg.Wait()
 	if err != nil {
-		panic(fmt.Sprintf("Timed out waiting for the Ten host RPC addresses to become available - %s", err))
+		panic(fmt.Sprintf("Timed out waiting for the TEN host RPC addresses to become available - %s", err))
 	}
 
-	testlog.Logger().Info("Ten host RPC addresses freed")
+	testlog.Logger().Info("TEN host RPC addresses freed")
 }
 
 func isAddressAvailable(address string) bool {

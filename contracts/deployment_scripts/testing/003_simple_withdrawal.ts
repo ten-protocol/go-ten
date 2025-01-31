@@ -18,7 +18,7 @@ function process_value_transfer(ethers, value_transfer) {
   }
 
 
-  function decode_base64(base64String) {
+  function decode_base64(base64String: string) {
     let jsonString = atob(base64String);
     return JSON.parse(jsonString);
   }
@@ -29,19 +29,20 @@ async function sleep(ms: number) {
       setTimeout(resolve, ms);
     });
 }
-async function waitForRootPublished(management, msg, proof, root, provider: EthereumProvider, interval = 5000, timeout = 120000) {
+async function waitForRootPublished(management, msg, proof, root, provider: EthereumProvider, interval = 20000, timeout = 12000000) {
     var gas_estimate = null
     const l1Ethers = new HardhatEthersProvider(provider, "layer1")    
+
+    console.log(`balance of management contract = ${await l1Ethers.getBalance(management.getAddress())}`)
 
     const startTime = Date.now();
     while (gas_estimate === null) {
         try {
             console.log(`Extracting native value from cross chain message for root ${root}`)
             const tx = await management.getFunction('ExtractNativeValue').populateTransaction(msg, proof, root, {} ) 
-            console.log(`Tx to = ${tx.to}`)
             gas_estimate = await l1Ethers.estimateGas(tx)
         } catch (error) {
-            console.log(`Estimate gas threw error : ${error}`)
+            console.log(`Elapsed: ${Date.now() - startTime}ms Estimate gas threw error : ${error}`)
         }
         if (Date.now() - startTime >= timeout) {
             console.log(`Timed out waiting for the estimate gas to return`)
@@ -52,20 +53,42 @@ async function waitForRootPublished(management, msg, proof, root, provider: Ethe
     console.log(`Estimation took ${Date.now() - startTime} ms`)
     return gas_estimate
 }
+
+async function retryLoop(callback: ()=>Promise<boolean>, interval = 20000, timeout = 12000000) {
+    const startTime = Date.now();
+    while (true) {
+      try {
+        const result = await callback();
+        if (result) {
+          return result;
+        }
+      } catch (error) {
+        console.log(`Error in retry loop: ${error}`);
+      }
+      await sleep(interval);
+    }
+}
     
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const l2Network = hre; 
     const {deployer} = await hre.getNamedAccounts();
-    
-    var mbusBase = await hre.ethers.getContractAt("MessageBus", "0x526c84529b2b8c11f57d93d3f5537aca3aecef9b");
+
+    const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+    console.log(`Network config = ${JSON.stringify(networkConfig, null, 2)}`);
+
+    const mgmtContractAddress = networkConfig.ManagementContractAddress;
+    const messageBusAddress = networkConfig.MessageBusAddress;
+    const l2MessageBusAddress = networkConfig.L2MessageBusAddress;
+
+    var mbusBase = await hre.ethers.getContractAt("MessageBus", l2MessageBusAddress);
     const mbus = mbusBase.connect(await hre.ethers.provider.getSigner(deployer)); 
     const tx = await mbus.getFunction("sendValueToL2").send(deployer, 1000, { value: 1000});
     const receipt = await tx.wait()
-    console.log(`003_simple_withdrawal: Cross Chain send receipt status = ${receipt.status}`);
+    console.log(`003_simple_withdrawal: Cross Chain send ${tx.hash} receipt status = ${receipt.status}`);
 
     const block = await hre.ethers.provider.send('eth_getBlockByHash', [receipt.blockHash, true]);
-    console.log(`Block received:       ${block.number}`)
+    console.log(`Block received:       ${block.number.toString(10)}`);
   
 
     const value_transfer = mbus.interface.parseLog(receipt.logs[0]);
@@ -74,43 +97,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const msgHash = _processed_value_transfer[1]
     const decoded = decode_base64(block.crossChainTree)
 
-    console.log(`  Sender:        ${value_transfer['args'].sender}`)
-    console.log(`  Receiver:      ${value_transfer['args'].receiver}`)
-    console.log(`  Amount:        ${value_transfer['args'].amount}`)
-    console.log(`  Sequence:      ${value_transfer['args'].sequence}`)
-    console.log(`  VTrans Hash:   ${msgHash}`)
-    console.log(`  XChain tree:   ${decoded}`)
-    
-    if (decoded[0][1] != msgHash) {
-        console.error('Value transfer hash is not in the xchain tree!');
-        return;
-    }
+    console.log(`Decoded = ${JSON.stringify(decoded, null, 2)}`)
+    console.log(`Getting cross chain proof for 'v' and msgHash = ${msgHash}`)
 
-    const tree = StandardMerkleTree.of(decoded, ["string", "bytes32"]);
-    const proof = tree.getProof(['v',msgHash])
-    console.log(`  Merkle root:   ${tree.root}`)
-    console.log(`  Merkle proof:  ${JSON.stringify(proof, null,2)}`)
-  
-    if (block.crossChainTreeHash != tree.root) {
-      console.error('Constructed merkle root matches block crossChainTreeHash');
-      return
-    }
+    const proof : any = await retryLoop(() => hre.ethers.provider.send('ten_getCrossChainProof', ['v', msgHash]))
 
-
-    //const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-    const mgmtContractAddress = "0x946600AF6893Ee818CC7CC2dEC4D0A0bF91C9817" // networkConfig.ManagementContractAddress;
-    const messageBusAddress = "0x68e95924f22Be35386A8aE0240f8885967d452D6" //networkConfig.MessageBusAddress;
-
-    const l1Accounts = await hre.companionNetworks.layer1.getNamedAccounts()
-    const fundTx = await hre.companionNetworks.layer1.deployments.rawTx({
-        from: l1Accounts.deployer,
-        to: messageBusAddress,
-        value: "1000",
-    })
-    console.log(`Message bus funding status = ${fundTx.status}`)
+    console.log(`Proof = ${JSON.stringify(proof, null, 2)}`)
 
     var managementContract = await hre.ethers.getContractAt("ManagementContract", mgmtContractAddress);
-    const estimation = await waitForRootPublished(managementContract, msg, proof, tree.root, hre.companionNetworks.layer1.provider)
+
+    const decoded_proof = hre.ethers.decodeRlp(proof.Proof)
+
+    const estimation = await waitForRootPublished(managementContract, msg, decoded_proof, proof.Root, hre.companionNetworks.layer1.provider)
     console.log(`Estimation for native value extraction = ${estimation}`)
 };
 

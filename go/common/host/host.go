@@ -3,9 +3,8 @@ package host
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/config"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -13,13 +12,13 @@ import (
 
 // Host is the half of the Obscuro node that lives outside the enclave.
 type Host interface {
-	Config() *config.HostConfig
+	Config() *hostconfig.HostConfig
 	EnclaveClient() common.Enclave
 	Storage() storage.Storage
 	// Start initializes the main loop of the host.
 	Start() error
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
-	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
+	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error)
 	// SubscribeLogs feeds logs matching the encrypted log subscription to the matchedLogs channel.
 	SubscribeLogs(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error
 	// UnsubscribeLogs terminates a log subscription between the host and the enclave.
@@ -38,11 +37,6 @@ type Host interface {
 	NewHeadsChan() chan *common.BatchHeader
 }
 
-type BlockStream struct {
-	Stream <-chan *types.Block // the channel which will receive the consecutive, canonical blocks
-	Stop   func()              // function to permanently stop the stream and clean up any associated processes/resources
-}
-
 type BatchMsg struct {
 	Batches []*common.ExtBatch // The batches being sent.
 	IsLive  bool               // true if these batches are being sent as new, false if in response to a p2p request
@@ -55,5 +49,5 @@ type P2PHostService interface {
 
 type L1RepoService interface {
 	Service
-	L1BlockRepository
+	L1DataService
 }

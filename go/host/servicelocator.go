@@ -3,7 +3,6 @@ package host
 import (
 	"github.com/ethereum/go-ethereum/log"
 	hostcommon "github.com/ten-protocol/go-ten/go/common/host"
-	"github.com/ten-protocol/go-ten/go/host/l1"
 )
 
 type ServicesRegistry struct {
@@ -41,8 +40,8 @@ func (s *ServicesRegistry) P2P() hostcommon.P2P {
 	return s.getService(hostcommon.P2PName).(hostcommon.P2P)
 }
 
-func (s *ServicesRegistry) L1Repo() hostcommon.L1BlockRepository {
-	return s.getService(hostcommon.L1BlockRepositoryName).(hostcommon.L1BlockRepository)
+func (s *ServicesRegistry) L1Data() hostcommon.L1DataService {
+	return s.getService(hostcommon.L1DataServiceName).(hostcommon.L1DataService)
 }
 
 func (s *ServicesRegistry) L1Publisher() hostcommon.L1Publisher {
@@ -59,8 +58,4 @@ func (s *ServicesRegistry) Enclaves() hostcommon.EnclaveService {
 
 func (s *ServicesRegistry) LogSubs() hostcommon.LogSubscriptionManager {
 	return s.getService(hostcommon.LogSubscriptionServiceName).(hostcommon.LogSubscriptionManager)
-}
-
-func (s *ServicesRegistry) CrossChainMachine() l1.CrossChainStateMachine {
-	return s.getService(hostcommon.CrossChainServiceName).(l1.CrossChainStateMachine)
 }

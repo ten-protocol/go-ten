@@ -1,0 +1,20 @@
+node:
+   name: validator
+   nodeType: validator
+   isGenesis: false
+   id: 0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A
+   privateKey: ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89
+   hostAddress: validator-host:15010
+host:
+   p2p:
+      bindAddress: 0.0.0.0:15010
+   enclave:
+      rpcAddresses: [ "validator-enclave-0:11010" ]
+   rpc:
+      httpPort: 13010
+      wsPort: 13011
+enclave:
+   db:
+      edgelessDBHost: validator-edgelessdb-0
+   rpc:
+      bindAddress: 0.0.0.0:11010

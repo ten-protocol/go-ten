@@ -8,6 +8,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -41,7 +43,7 @@ type Client struct {
 
 func NewClient(enclaveRPCAddress string, enclaveRPCTimeout time.Duration, logger gethlog.Logger) common.Enclave {
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
-	connection, err := grpc.Dial(enclaveRPCAddress, opts...)
+	connection, err := grpc.NewClient(enclaveRPCAddress, opts...)
 	if err != nil {
 		logger.Crit("Failed to connect to enclave RPC service.", log.ErrKey, err)
 	}
@@ -74,11 +76,11 @@ func NewClient(enclaveRPCAddress string, enclaveRPCTimeout time.Duration, logger
 	}
 }
 
-func (c *Client) GetStorageSlot(ctx context.Context, encryptedParams common.EncryptedParamsGetStorageSlot) (*responses.EnclaveResponse, common.SystemError) {
+func (c *Client) EncryptedRPC(ctx context.Context, encryptedReq common.EncryptedRequest) (*responses.EnclaveResponse, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.GetStorageSlot(timeoutCtx, &generated.GetStorageSlotRequest{EncryptedParams: encryptedParams})
+	response, err := c.protoClient.EncryptedRPC(timeoutCtx, &generated.EncCallRequest{EncryptedParams: encryptedReq})
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
 	}
@@ -86,7 +88,7 @@ func (c *Client) GetStorageSlot(ctx context.Context, encryptedParams common.Encr
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
+	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse)
 }
 
 func (c *Client) ExportCrossChainData(ctx context.Context, from uint64, to uint64) (*common.ExtCrossChainBundle, common.SystemError) {
@@ -135,6 +137,7 @@ func (c *Client) Status(ctx context.Context) (common.Status, common.SystemError)
 		StatusCode: common.StatusCode(response.StatusCode),
 		L1Head:     gethcommon.BytesToHash(response.L1Head),
 		L2Head:     big.NewInt(0).SetBytes(response.L2Head),
+		EnclaveID:  common.EnclaveID(response.EnclaveID),
 	}, nil
 }
 
@@ -195,18 +198,32 @@ func (c *Client) EnclaveID(ctx context.Context) (common.EnclaveID, common.System
 	return common.EnclaveID(response.EnclaveID), nil
 }
 
-func (c *Client) SubmitL1Block(ctx context.Context, block *common.L1Block, receipts common.L1Receipts, isLatest bool) (*common.BlockSubmissionResponse, common.SystemError) {
+func (c *Client) RPCEncryptionKey(ctx context.Context) ([]byte, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.RPCEncryptionKey(timeoutCtx, &generated.RPCEncryptionKeyRequest{})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+	return response.RpcPubKey, nil
+}
+
+func (c *Client) SubmitL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
 	var buffer bytes.Buffer
-	if err := block.EncodeRLP(&buffer); err != nil {
+	if err := processed.BlockHeader.EncodeRLP(&buffer); err != nil {
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
 	}
 
-	serialized, err := rlp.EncodeToBytes(receipts)
+	serializedProcessedData, err := rlp.EncodeToBytes(processed)
 	if err != nil {
 		return nil, fmt.Errorf("could not encode receipts. Cause: %w", err)
 	}
 
-	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedReceipts: serialized, IsLatest: isLatest})
+	response, err := c.protoClient.SubmitL1Block(ctx, &generated.SubmitBlockRequest{EncodedBlock: buffer.Bytes(), EncodedProcessedData: serializedProcessedData})
 	if err != nil {
 		return nil, fmt.Errorf("could not submit block. Cause: %w", err)
 	}
@@ -216,21 +233,6 @@ func (c *Client) SubmitL1Block(ctx context.Context, block *common.L1Block, recei
 		return nil, err
 	}
 	return blockSubmissionResponse, nil
-}
-
-func (c *Client) SubmitTx(ctx context.Context, tx common.EncryptedTx) (*responses.RawTx, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.SubmitTx(timeoutCtx, &generated.SubmitTxRequest{EncryptedTx: tx})
-	if err != nil {
-		return nil, syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
 }
 
 func (c *Client) SubmitBatch(ctx context.Context, batch *common.ExtBatch) common.SystemError {
@@ -248,38 +250,6 @@ func (c *Client) SubmitBatch(ctx context.Context, batch *common.ExtBatch) common
 	return nil
 }
 
-func (c *Client) ObsCall(ctx context.Context, encryptedParams common.EncryptedParamsCall) (*responses.Call, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.ObsCall(timeoutCtx, &generated.ObsCallRequest{
-		EncryptedParams: encryptedParams,
-	})
-	if err != nil {
-		return nil, syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
-}
-
-func (c *Client) GetTransactionCount(ctx context.Context, encryptedParams common.EncryptedParamsGetTxCount) (*responses.TxCount, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.GetTransactionCount(timeoutCtx, &generated.GetTransactionCountRequest{EncryptedParams: encryptedParams})
-	if err != nil {
-		return nil, syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
-}
-
 func (c *Client) Stop() common.SystemError {
 	c.logger.Info("Shutting down enclave client.")
 
@@ -293,60 +263,18 @@ func (c *Client) Stop() common.SystemError {
 	return nil
 }
 
-func (c *Client) GetTransaction(ctx context.Context, encryptedParams common.EncryptedParamsGetTxByHash) (*responses.TxByHash, common.SystemError) {
+func (c *Client) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash gethrpc.BlockNumberOrHash) ([]byte, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.GetTransaction(timeoutCtx, &generated.GetTransactionRequest{EncryptedParams: encryptedParams})
+	json, err := json.Marshal(blockNrOrHash)
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
 	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
-}
-
-func (c *Client) GetTransactionReceipt(ctx context.Context, encryptedParams common.EncryptedParamsGetTxReceipt) (*responses.TxReceipt, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.GetTransactionReceipt(timeoutCtx, &generated.GetTransactionReceiptRequest{EncryptedParams: encryptedParams})
-	if err != nil {
-		return nil, syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
-}
-
-func (c *Client) GetBalance(ctx context.Context, encryptedParams common.EncryptedParamsGetBalance) (*responses.Balance, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.GetBalance(timeoutCtx, &generated.GetBalanceRequest{
-		EncryptedParams: encryptedParams,
-	})
-	if err != nil {
-		return nil, syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
-}
-
-func (c *Client) GetCode(ctx context.Context, address gethcommon.Address, batchHash *gethcommon.Hash) ([]byte, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
 
 	response, err := c.protoClient.GetCode(timeoutCtx, &generated.GetCodeRequest{
-		Address:    address.Bytes(),
-		RollupHash: batchHash.Bytes(),
+		Address:       address.Bytes(),
+		BlockNrOrHash: json,
 	})
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
@@ -391,40 +319,6 @@ func (c *Client) Unsubscribe(id gethrpc.ID) common.SystemError {
 	return nil
 }
 
-func (c *Client) EstimateGas(ctx context.Context, encryptedParams common.EncryptedParamsEstimateGas) (*responses.Gas, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.EstimateGas(timeoutCtx, &generated.EstimateGasRequest{
-		EncryptedParams: encryptedParams,
-	})
-	if err != nil {
-		return nil, syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
-}
-
-func (c *Client) GetLogs(ctx context.Context, encryptedParams common.EncryptedParamsGetLogs) (*responses.Logs, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.GetLogs(timeoutCtx, &generated.GetLogsRequest{
-		EncryptedParams: encryptedParams,
-	})
-	if err != nil {
-		return nil, syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
-}
-
 func (c *Client) HealthCheck(ctx context.Context) (bool, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
@@ -452,20 +346,27 @@ func (c *Client) CreateBatch(ctx context.Context, skipIfEmpty bool) common.Syste
 	return err
 }
 
-func (c *Client) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, common.SystemError) {
+func (c *Client) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, []*kzg4844.Blob, common.SystemError) {
 	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "CreateRollup rpc call")
 
 	response, err := c.protoClient.CreateRollup(ctx, &generated.CreateRollupRequest{
 		FromSequenceNumber: &fromSeqNo,
 	})
 	if err != nil {
-		return nil, syserr.NewRPCError(err)
+		return nil, nil, syserr.NewRPCError(err)
 	}
 	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+		return nil, nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	return rpc.FromExtRollupMsg(response.Msg), nil
+	blobs := make([]*kzg4844.Blob, len(response.Blobs))
+	for i, blobMsg := range response.Blobs {
+		var blob kzg4844.Blob
+		copy(blob[:], blobMsg.Blob)
+		blobs[i] = &blob
+	}
+
+	return rpc.FromExtRollupMsg(response.Msg), blobs, nil
 }
 
 func (c *Client) DebugTraceTransaction(ctx context.Context, hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {
@@ -572,22 +473,6 @@ func (c *Client) StreamL2Updates() (chan common.StreamL2UpdatesResponse, func())
 	return batchChan, cancel
 }
 
-func (c *Client) DebugEventLogRelevancy(ctx context.Context, hash gethcommon.Hash) (json.RawMessage, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.DebugEventLogRelevancy(timeoutCtx, &generated.DebugEventLogRelevancyRequest{
-		TxHash: hash.Bytes(),
-	})
-	if err != nil {
-		return nil, syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-	return json.RawMessage(response.Msg), nil
-}
-
 func (c *Client) GetTotalContractCount(ctx context.Context) (*big.Int, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
@@ -602,23 +487,6 @@ func (c *Client) GetTotalContractCount(ctx context.Context) (*big.Int, common.Sy
 	return big.NewInt(response.Count), nil
 }
 
-func (c *Client) GetPersonalTransactions(ctx context.Context, encryptedParams common.EncryptedParamsGetPersonalTransactions) (*responses.PersonalTransactionsResponse, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
-	defer cancel()
-
-	response, err := c.protoClient.GetReceiptsByAddress(timeoutCtx, &generated.GetReceiptsByAddressRequest{
-		EncryptedParams: encryptedParams,
-	})
-	if err != nil {
-		return nil, syserr.NewRPCError(err)
-	}
-	if response != nil && response.SystemError != nil {
-		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
-	}
-
-	return responses.ToEnclaveResponse(response.EncodedEnclaveResponse), nil
-}
-
 func (c *Client) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublicConfig, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
@@ -630,7 +498,26 @@ func (c *Client) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublic
 	if response != nil && response.SystemError != nil {
 		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
+
+	publicSystemContracts := make(map[string]gethcommon.Address, len(response.PublicSystemContracts))
+	for k, v := range response.PublicSystemContracts {
+		publicSystemContracts[k] = gethcommon.BytesToAddress(v)
+	}
+
 	return &common.EnclavePublicConfig{
-		L2MessageBusAddress: gethcommon.BytesToAddress(response.L2MessageBusAddress),
+		L2MessageBusAddress:             gethcommon.BytesToAddress(response.L2MessageBusAddress),
+		TransactionPostProcessorAddress: gethcommon.BytesToAddress(response.TransactionPostProcessorAddress),
+		PublicSystemContracts:           publicSystemContracts,
 	}, nil
+}
+
+func (c *Client) MakeActive() common.SystemError {
+	response, err := c.protoClient.MakeActive(context.Background(), &generated.MakeActiveRequest{})
+	if err != nil {
+		return syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+	return nil
 }

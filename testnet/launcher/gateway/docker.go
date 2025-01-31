@@ -32,8 +32,9 @@ func (n *DockerGateway) Start() error {
 		"--nodePortWS", fmt.Sprintf("%d", n.cfg.tenNodeWSPort),
 		"--nodeHost", n.cfg.tenNodeHost,
 		"--dbType", "sqlite",
-		"--logPath", "sys_out",
+		"--logPath", "gateway_logs.log",
 		"--rateLimitUserComputeTime", fmt.Sprintf("%d", n.cfg.rateLimitUserComputeTime),
+		"--verbose",
 	}
 
 	_, err := docker.StartNewContainer("gateway", n.cfg.dockerImage, cmds, []int{n.cfg.gatewayHTTPPort, n.cfg.gatewayWSPort}, nil, nil, nil, true)

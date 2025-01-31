@@ -11,7 +11,9 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
-const gethTestEnv = "GETH_TEST_ENABLED"
+const (
+	gethTestEnv = "GETH_TEST_ENABLED"
+)
 
 // TestGethSimulation runs the simulation against a private geth network using Clique (PoA)
 func TestGethSimulation(t *testing.T) {
@@ -27,14 +29,15 @@ func TestGethSimulation(t *testing.T) {
 
 	simParams := &params.SimParams{
 		NumberOfNodes:         numberOfNodes,
-		AvgBlockDuration:      1 * time.Second,
+		AvgBlockDuration:      2 * time.Second,
 		SimulationTime:        35 * time.Second,
 		L1EfficiencyThreshold: 0.2,
 		Wallets:               wallets,
-		StartPort:             integration.StartPortSimulationGethInMem,
+		StartPort:             integration.TestPorts.TestGethSimulationPort,
 		IsInMem:               true,
 		ReceiptTimeout:        30 * time.Second,
 		StoppingDelay:         10 * time.Second,
+		L1BeaconPort:          integration.TestPorts.TestGethSimulationPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

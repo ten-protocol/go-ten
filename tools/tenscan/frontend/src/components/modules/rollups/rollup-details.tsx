@@ -1,8 +1,13 @@
-import TruncatedAddress from "../common/truncated-address";
-import KeyValueItem, { KeyValueList } from "@/src/components/ui/key-value";
-import { formatTimeAgo } from "@/src/lib/utils";
-import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
+import TruncatedAddress from "@repo/ui/components/common/truncated-address";
+import KeyValueItem, {
+  KeyValueList,
+} from "@repo/ui/components/shared/key-value";
+import { formatTimeAgo, formatTimestampToDate } from "@repo/ui/lib/utils";
 import Link from "next/link";
+import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
+import { pathToUrl } from "@/src/routes/router";
+import { pageLinks } from "@/src/routes";
+import { Badge } from "@repo/ui/components/shared/badge";
 
 export function RollupDetailsComponent({
   rollupDetails,
@@ -15,14 +20,23 @@ export function RollupDetailsComponent({
         <KeyValueItem label="ID" value={"#" + Number(rollupDetails?.ID)} />
         <KeyValueItem
           label="Timestamp"
-          value={formatTimeAgo(rollupDetails?.Timestamp)}
+          value={
+            <Badge variant="outline">
+              {formatTimeAgo(rollupDetails?.Timestamp) +
+                " - " +
+                formatTimestampToDate(rollupDetails?.Timestamp)}
+            </Badge>
+          }
         />
         <KeyValueItem
           label="Full Hash"
           value={
             <TruncatedAddress
               address={rollupDetails?.Hash}
-              link={`/rollup/${rollupDetails?.Hash}`}
+              link={pathToUrl(pageLinks.rollupByHash, {
+                hash: rollupDetails?.Hash,
+              })}
+              showFullLength
             />
           }
         />
@@ -31,19 +45,26 @@ export function RollupDetailsComponent({
           value={
             <TruncatedAddress
               address={rollupDetails?.Header?.hash}
-              link={`/rollup/${rollupDetails?.Header?.hash}`}
+              link={pathToUrl(pageLinks.rollupByHash, {
+                hash: rollupDetails?.Header?.hash,
+              })}
+              showFullLength
             />
           }
         />
         <KeyValueItem
           label="L1 Hash"
-          value={<TruncatedAddress address={rollupDetails?.L1Hash} />}
+          value={
+            <TruncatedAddress address={rollupDetails?.L1Hash} showFullLength />
+          }
         />
         <KeyValueItem
           label="First Batch Seq No."
           value={
             <Link
-              href={`/rollup/batch/sequence/${rollupDetails?.FirstSeq}`}
+              href={pathToUrl(pageLinks.rollupByBatchSequence, {
+                sequence: rollupDetails?.FirstSeq,
+              })}
               className="text-primary"
             >
               {"#" + rollupDetails?.FirstSeq}
@@ -54,7 +75,9 @@ export function RollupDetailsComponent({
           label="Last Batch Seq No."
           value={
             <Link
-              href={`/rollup/batch/sequence/${rollupDetails?.LastSeq}`}
+              href={pathToUrl(pageLinks.rollupByBatchSequence, {
+                sequence: rollupDetails?.LastSeq,
+              })}
               className="text-primary"
             >
               {"#" + rollupDetails?.LastSeq}
@@ -66,13 +89,17 @@ export function RollupDetailsComponent({
           value={
             <TruncatedAddress
               address={rollupDetails?.Header?.CompressionL1Head}
+              showFullLength
             />
           }
         />
         <KeyValueItem
           label="Payload Hash"
           value={
-            <TruncatedAddress address={rollupDetails?.Header?.PayloadHash} />
+            <TruncatedAddress
+              address={rollupDetails?.Header?.PayloadHash}
+              showFullLength
+            />
           }
         />
         <KeyValueItem
@@ -93,7 +120,9 @@ export function RollupDetailsComponent({
                         label="Sequence"
                         value={
                           <Link
-                            href={`/rollup/batch/sequence/${msg.Sequence}`}
+                            href={pathToUrl(pageLinks.rollupByBatchSequence, {
+                              sequence: msg?.Sequence,
+                            })}
                             className="text-primary"
                           >
                             {"#" + msg.Sequence}

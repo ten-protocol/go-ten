@@ -7,12 +7,12 @@ import (
 	"sync"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -37,14 +37,48 @@ type BatchHeader struct {
 	BaseFee          *big.Int       `json:"baseFee"`
 	Coinbase         common.Address `json:"coinbase"`
 
-	// The custom Ten fields.
-	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
-	Signature                     []byte                                `json:"signature"`
-	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
-	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
-	LatestInboundCrossChainHeight *big.Int                              `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
-	CrossChainRoot                common.Hash                           `json:"crossChainTreeHash"`      // This is the root hash of a merkle tree, built from all the cross chain messages and transfers that need to go on MainNet.
-	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`          // Those are the leafs of the merkle tree hashed for privacy. Necessary for clients to be able to build proofs as they have no access to all transactions in a batch or their receipts.
+	// The custom TEN fields.
+	L1Proof        L1BlockHash              `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
+	Signature      []byte                   `json:"signature"`
+	CrossChainRoot common.Hash              `json:"crossChainTreeHash"` // This is the root hash of a merkle tree, built from all the cross chain messages and transfers that need to go on MainNet.
+	CrossChainTree SerializedCrossChainTree `json:"crossChainTree"`     // Those are the leafs of the merkle tree hashed for privacy. Necessary for clients to be able to build proofs as they have no access to all transactions in a batch or their receipts.
+}
+
+// TODO - use exposed headers once #3987 is completed.
+func ConvertBatchHeaderToHeader(batchHeader *BatchHeader) *types.Header {
+	var header types.Header
+
+	// Convert ParentHash if necessary
+	header.ParentHash = batchHeader.ParentHash
+
+	// Convert Root if necessary
+	header.Root = batchHeader.Root
+
+	// Directly assign fields that have the same type
+	header.TxHash = batchHeader.TxHash
+	header.ReceiptHash = batchHeader.ReceiptHash
+	header.Number = batchHeader.Number
+	header.GasLimit = batchHeader.GasLimit
+	header.GasUsed = batchHeader.GasUsed
+	header.Time = batchHeader.Time
+	header.Extra = batchHeader.Extra
+	header.BaseFee = batchHeader.BaseFee
+	header.Coinbase = batchHeader.Coinbase
+
+	// Set default values for fields not present in BatchHeader
+	header.UncleHash = common.Hash{}  // Default to zero hash
+	header.Bloom = types.Bloom{}      // Default to zero bloom filter
+	header.Difficulty = big.NewInt(0) // Default difficulty
+	header.MixDigest = common.Hash{}  // Default mix digest
+	header.Nonce = types.BlockNonce{} // Default nonce
+
+	// Set optional fields to nil or default values
+	header.WithdrawalsHash = nil
+	header.BlobGasUsed = nil
+	header.ExcessBlobGas = nil
+	header.ParentBeaconRoot = nil
+
+	return &header
 }
 
 // IsGenesis indicates whether the batch is the genesis batch.
@@ -69,13 +103,10 @@ type batchHeaderEncoding struct {
 	Coinbase         *common.Address `json:"miner"`
 
 	// The custom Obscuro fields.
-	L1Proof                       L1BlockHash                           `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
-	Signature                     []byte                                `json:"signature"`
-	CrossChainMessages            []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
-	LatestInboundCrossChainHash   common.Hash                           `json:"inboundCrossChainHash"`   // The block hash of the latest block that has been scanned for cross chain messages.
-	LatestInboundCrossChainHeight *hexutil.Big                          `json:"inboundCrossChainHeight"` // The block height of the latest block that has been scanned for cross chain messages.
-	CrossChainRootHash            common.Hash                           `json:"crossChainTreeHash"`
-	CrossChainTree                SerializedCrossChainTree              `json:"crossChainTree"`
+	L1Proof            L1BlockHash              `json:"l1Proof"` // the L1 block used by the enclave to generate the current batch
+	Signature          []byte                   `json:"signature"`
+	CrossChainRootHash common.Hash              `json:"crossChainTreeHash"`
+	CrossChainTree     SerializedCrossChainTree `json:"crossChainTree"`
 }
 
 // MarshalJSON custom marshals the BatchHeader into a json
@@ -96,9 +127,6 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 		&b.Coinbase,
 		b.L1Proof,
 		b.Signature,
-		b.CrossChainMessages,
-		b.LatestInboundCrossChainHash,
-		(*hexutil.Big)(b.LatestInboundCrossChainHeight),
 		b.CrossChainRoot,
 		b.CrossChainTree,
 	})
@@ -125,9 +153,6 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 	b.Coinbase = *dec.Coinbase
 	b.L1Proof = dec.L1Proof
 	b.Signature = dec.Signature
-	b.CrossChainMessages = dec.CrossChainMessages
-	b.LatestInboundCrossChainHash = dec.LatestInboundCrossChainHash
-	b.LatestInboundCrossChainHeight = (*big.Int)(dec.LatestInboundCrossChainHeight)
 	b.CrossChainRoot = dec.CrossChainRootHash
 	b.CrossChainTree = dec.CrossChainTree
 	return nil
@@ -136,14 +161,17 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 // RollupHeader is a public / plaintext struct that holds common properties of rollups.
 // All these fields are processed by the Management contract
 type RollupHeader struct {
-	CompressionL1Head L1BlockHash // the l1 block that the sequencer considers canonical at the time when this rollup is created
+	// CompressionL1Head is the reference L1 block. If a rollup is published in a fork where it does not exist, the rollup will not be decomperssible
+	// by validators who only use the L1 as a DA, thus upon submission if this block is not found the rollup should be invalid.
+	CompressionL1Head   L1BlockHash
+	CompressionL1Number *big.Int
 
-	CrossChainMessages []MessageBus.StructsCrossChainMessage `json:"crossChainMessages"`
-
-	PayloadHash common.Hash // The hash of the compressed batches. TODO
-	Signature   []byte      // The signature of the sequencer enclave on the payload hash
-
+	CrossChainRoot common.Hash // The root hash of the cross chain tree.
 	LastBatchSeqNo uint64
+	BlobHash       common.Hash
+	CompositeHash  common.Hash // composite of everything
+
+	Signature []byte // The signature of the sequencer enclave over the composite hash
 }
 
 // CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.

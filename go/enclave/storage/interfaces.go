@@ -6,6 +6,8 @@ import (
 	"io"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
+
 	"github.com/ethereum/go-ethereum/triedb"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -13,28 +15,23 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/common/tracers"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 )
 
 // BlockResolver stores new blocks and returns information on existing blocks
 type BlockResolver interface {
-	// FetchBlock returns the L1 Block with the given hash.
-	FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Block, error)
+	// FetchBlock returns the L1 BlockHeader with the given hash.
+	FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Header, error)
 	IsBlockCanonical(ctx context.Context, blockHash common.L1BlockHash) (bool, error)
 	// FetchCanonicaBlockByHeight - self explanatory
-	FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Block, error)
+	FetchCanonicaBlockByHeight(ctx context.Context, height *big.Int) (*types.Header, error)
 	// FetchHeadBlock - returns the head of the current chain.
-	FetchHeadBlock(ctx context.Context) (*types.Block, error)
-	// StoreBlock persists the L1 Block and updates the canonical ancestors if there was a fork
-	StoreBlock(ctx context.Context, block *types.Block, fork *common.ChainFork) error
-	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
-	IsAncestor(ctx context.Context, block *types.Block, maybeAncestor *types.Block) bool
-	// IsBlockAncestor returns true if maybeAncestor is an ancestor of the L1 Block, and false otherwise
-	// Takes into consideration that the Block to verify might be on a branch we haven't received yet
-	// todo (low priority) - this is super confusing, analyze the usage
-	IsBlockAncestor(ctx context.Context, block *types.Block, maybeAncestor common.L1BlockHash) bool
+	FetchHeadBlock(ctx context.Context) (*types.Header, error)
+	// StoreBlock persists the L1 BlockHeader and updates the canonical ancestors if there was a fork
+	StoreBlock(ctx context.Context, block *types.Header, fork *common.ChainFork) error
+	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
+	IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool
 }
 
 type BatchResolver interface {
@@ -71,7 +68,7 @@ type BatchResolver interface {
 	// StoreBatch stores an un-executed batch.
 	StoreBatch(ctx context.Context, batch *core.Batch, convertedHash gethcommon.Hash) error
 	// StoreExecutedBatch - store the batch after it was executed
-	StoreExecutedBatch(ctx context.Context, batch *common.BatchHeader, receipts []*types.Receipt, contracts map[gethcommon.Hash][]*gethcommon.Address) error
+	StoreExecutedBatch(ctx context.Context, batch *core.Batch, results core.TxExecResults) error
 
 	// StoreRollup
 	StoreRollup(ctx context.Context, rollup *common.ExtRollup, header *common.CalldataRollupHeader) error
@@ -95,16 +92,17 @@ type SharedSecretStorage interface {
 
 type TransactionStorage interface {
 	// GetTransaction - returns the positional metadata of the tx by hash
-	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, error)
-	// GetTransactionReceipt - returns the receipt of a tx by tx hash
-	GetTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (*types.Receipt, error)
+	GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error)
+	// GetFilteredInternalReceipt - returns the receipt of a tx with event logs visible to the requester
+	GetFilteredInternalReceipt(ctx context.Context, txHash common.L2TxHash, requester *gethcommon.Address, syntheticTx bool) (*core.InternalReceipt, error)
+	ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error)
 }
 
 type AttestationStorage interface {
-	// FetchAttestedKey returns the public key of an attested aggregator
-	FetchAttestedKey(ctx context.Context, aggregator gethcommon.Address) (*ecdsa.PublicKey, error)
-	// StoreAttestedKey - store the public key of an attested aggregator
-	StoreAttestedKey(ctx context.Context, aggregator gethcommon.Address, key *ecdsa.PublicKey) error
+	GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*AttestedEnclave, error)
+	StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error
+	StoreNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) error
+	GetSequencerEnclaveIDs(ctx context.Context) ([]common.EnclaveID, error)
 }
 
 type CrossChainMessagesStorage interface {
@@ -116,8 +114,13 @@ type CrossChainMessagesStorage interface {
 }
 
 type EnclaveKeyStorage interface {
-	StoreEnclaveKey(ctx context.Context, enclaveKey *crypto.EnclaveKey) error
-	GetEnclaveKey(ctx context.Context) (*crypto.EnclaveKey, error)
+	StoreEnclaveKey(ctx context.Context, enclaveKey []byte) error
+	GetEnclaveKey(ctx context.Context) ([]byte, error)
+}
+
+type SystemContractAddressesStorage interface {
+	StoreSystemContractAddresses(ctx context.Context, addresses common.SystemContractAddresses) error
+	GetSystemContractAddresses(ctx context.Context) (common.SystemContractAddresses, error)
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore
@@ -131,6 +134,7 @@ type Storage interface {
 	CrossChainMessagesStorage
 	EnclaveKeyStorage
 	ScanStorage
+	SystemContractAddressesStorage
 	io.Closer
 
 	// HealthCheck returns whether the storage is deemed healthy or not
@@ -142,7 +146,7 @@ type Storage interface {
 	FilterLogs(ctx context.Context, requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, blockHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error)
 
 	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
-	DebugGetLogs(ctx context.Context, txHash common.TxHash) ([]*tracers.DebugLogs, error)
+	DebugGetLogs(ctx context.Context, from *big.Int, to *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error)
 
 	// TrieDB - return the underlying trie database
 	TrieDB() *triedb.Database
@@ -150,12 +154,13 @@ type Storage interface {
 	// StateDB - return the underlying state database
 	StateDB() state.Database
 
-	ReadContractOwner(ctx context.Context, address gethcommon.Address) (*gethcommon.Address, error)
+	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
+	ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error)
 }
 
 type ScanStorage interface {
 	GetContractCount(ctx context.Context) (*big.Int, error)
-	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) (types.Receipts, error)
+	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error)
 
 	CountTransactionsPerAddress(ctx context.Context, addr *gethcommon.Address) (uint64, error)
 }

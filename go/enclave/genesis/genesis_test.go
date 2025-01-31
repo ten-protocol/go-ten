@@ -7,8 +7,7 @@ import (
 	"time"
 
 	"github.com/holiman/uint256"
-
-	"github.com/ten-protocol/go-ten/go/config"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/enclave/storage/init/sqlite"
@@ -21,38 +20,6 @@ import (
 )
 
 const testLogs = "../.build/tests/"
-
-func TestDefaultGenesis(t *testing.T) {
-	testlog.Setup(&testlog.Cfg{
-		LogDir:      testLogs,
-		TestType:    "unit",
-		TestSubtype: "genesis",
-		LogLevel:    gethlog.LvlInfo,
-	})
-
-	gen, err := New("")
-	if err != nil {
-		t.Fatalf("unexpected error %s", err)
-	}
-
-	if len(gen.Accounts) != 3 {
-		t.Fatal("unexpected number of accounts")
-	}
-
-	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", config.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
-	if err != nil {
-		t.Fatalf("unable to create temp db: %s", err)
-	}
-	storageDB := storage.NewStorage(backingDB, storage.NewCacheService(gethlog.New()), nil, gethlog.New())
-	stateDB, err := gen.applyAllocations(storageDB)
-	if err != nil {
-		t.Fatalf("unable to apply genesis allocations")
-	}
-
-	if uint256.MustFromBig(TestnetGenesis.Accounts[0].Amount).Cmp(stateDB.GetBalance(TestnetGenesis.Accounts[0].Address)) != 0 {
-		t.Fatalf("unexpected balance")
-	}
-}
 
 func TestCustomGenesis(t *testing.T) {
 	testlog.Setup(&testlog.Cfg{
@@ -82,11 +49,11 @@ func TestCustomGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", config.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
+	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", enclaveconfig.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
 	if err != nil {
 		t.Fatalf("unable to create temp db: %s", err)
 	}
-	storageDB := storage.NewStorage(backingDB, storage.NewCacheService(gethlog.New()), nil, gethlog.New())
+	storageDB := storage.NewStorage(backingDB, storage.NewCacheService(gethlog.New(), true), nil, nil, gethlog.New())
 	stateDB, err := gen.applyAllocations(storageDB)
 	if err != nil {
 		t.Fatalf("unable to apply genesis allocations")

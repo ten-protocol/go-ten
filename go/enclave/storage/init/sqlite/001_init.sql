@@ -15,11 +15,12 @@ create table if not exists config
 insert into config
 values ('CURRENT_SEQ', -1);
 
-create table if not exists attestation_key
+create table if not exists attestation
 (
---     party  binary(20) primary key, // todo -pk
-    party binary(20),
-    ky    binary(33) NOT NULL
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    enclave_id binary(20),
+    pub_key    binary(33) NOT NULL,
+    node_type  smallint   NOT NULL
 );
 
 create table if not exists block
@@ -82,9 +83,12 @@ create table if not exists tx
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
+    to_address     int,
+    type           int8       NOT NULL,
     sender_address int        NOT NULL REFERENCES externally_owned_account,
     idx            int        NOT NULL,
-    batch_height   int        NOT NULL
+    batch_height   int        NOT NULL,
+    is_synthetic   boolean    NOT NULL
 );
 create index IDX_TX_HASH on tx (hash);
 create index IDX_TX_SENDER_ADDRESS on tx (sender_address);
@@ -93,9 +97,12 @@ create index IDX_TX_BATCH_HEIGHT on tx (batch_height, idx);
 create table if not exists receipt
 (
     id                       INTEGER PRIMARY KEY AUTOINCREMENT,
-    content                  mediumblob,
-    --     commenting out the fk until synthetic transactions are also stored
-    tx                       INTEGER,
+    post_state               binary(32),
+    status                   int     not null,
+    cumulative_gas_used      int     not null,
+    effective_gas_price      int,
+    created_contract_address binary(20),
+    tx                       INTEGER NOT NULL REFERENCES tx,
     batch                    INTEGER NOT NULL REFERENCES batch
 );
 create index IDX_EX_TX_BATCH on receipt (batch);
@@ -103,12 +110,15 @@ create index IDX_EX_TX_CCA on receipt (tx);
 
 create table if not exists contract
 (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    address binary(20) NOT NULL,
---     denormalised for ease of access during balance checks
-    owner   int        NOT NULL REFERENCES externally_owned_account
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    address         binary(20) NOT NULL,
+    --     the tx signer that created the contract
+    creator         int        NOT NULL REFERENCES externally_owned_account,
+    auto_visibility boolean    NOT NULL,
+    transparent     boolean,
+    tx              INTEGER    NOT NULL REFERENCES tx
 );
-create index IDX_CONTRACT_AD on contract (address, owner);
+create index IDX_CONTRACT_AD on contract (address);
 
 create table if not exists externally_owned_account
 (
@@ -122,8 +132,14 @@ create table if not exists event_type
 (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     contract        INTEGER    NOT NULL references contract,
-    event_sig       binary(32) NOT NULL, -- no need to index because there are only a few events for an address
-    lifecycle_event boolean    NOT NULL  -- set based on the first event, and then updated to false if it turns out it is true
+    event_sig       binary(32) NOT NULL,
+    auto_visibility boolean    NOT NULL,
+    auto_public     boolean,
+    config_public   boolean    NOT NULL,
+    topic1_can_view boolean,
+    topic2_can_view boolean,
+    topic3_can_view boolean,
+    sender_can_view boolean
 );
 create index IDX_EV_CONTRACT on event_type (contract, event_sig);
 
@@ -131,12 +147,13 @@ create index IDX_EV_CONTRACT on event_type (contract, event_sig);
 create table if not exists event_topic
 (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type  INTEGER references event_type,
     topic       binary(32) NOT NULL,
     rel_address INTEGER references externally_owned_account
 --    pos         INTEGER    NOT NULL -- todo
 );
--- create index IDX_TOP on event_topic (topic, pos);
 create index IDX_TOP on event_topic (topic);
+create index IDX_REL_A on event_topic (rel_address);
 
 create table if not exists event_log
 (
@@ -149,35 +166,5 @@ create table if not exists event_log
     log_idx    INTEGER NOT NULL,
     receipt    INTEGER NOT NULL references receipt
 );
--- create index IDX_BATCH_TX on event_log (receipt);
 create index IDX_EV on event_log (receipt, event_type, topic1, topic2, topic3);
 
--- requester - address
--- receipt - range of batch heights or a single batch
--- address []list of contract addresses
--- topic0 - event sig   []list
--- topic1    []list
--- topic2    []list
--- topic3    []list
-
-
--- select * from event_log
---          join receipt on receipt
---              join batch on receipt.batch -- to get the batch height range
---          join event_type ec on event_type
---              join contract c  on
---          left join event_topic t1 on topic1
---              left join externally_owned_account eoa1 on t1.rel_address
---          left join event_topic t2 on topic2
---              left join externally_owned_account eoa2 on t2.rel_address
---          left join event_topic t3 on topic3
---              left join externally_owned_account eoa3 on t3.rel_address
--- where
---  receipt.
---  c.address in [address..] AND
---  ec.event_sig in [topic0..] AND
---  t1.topic in [topic1..] AND
---  t2.topic in [topic2..] AND
---  t3.topic in [topic3..] AND
---  b.height in [] and b.is_canonical=true
---  (ec.lifecycle_event OR eoa1.address=requester OR eoa2.address=requester OR eoa3.address=requester)

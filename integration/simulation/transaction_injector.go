@@ -2,18 +2,16 @@ package simulation
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
+	"strings"
 	"sync/atomic"
 	"time"
 
-	"github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -21,6 +19,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -37,10 +36,6 @@ import (
 
 const (
 	nonceTimeoutMillis = 30000 // The timeout in millis to wait for an updated nonce for a wallet.
-
-	// EnclavePublicKeyHex is the public key of the enclave.
-	// todo (@stefan) - retrieve this key from the management contract instead
-	EnclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
 )
 
 // TransactionInjector is a structure that generates, issues and tracks transactions
@@ -67,8 +62,6 @@ type TransactionInjector struct {
 	interruptRun     *int32
 	fullyStoppedChan chan bool
 
-	enclavePublicKey *ecies.PublicKey
-
 	// The number of transactions of each type to issue, or 0 for unlimited transactions
 	txsToIssue int
 
@@ -94,13 +87,6 @@ func NewTransactionInjector(
 ) *TransactionInjector {
 	interrupt := int32(0)
 
-	// We retrieve the enclave public key to encrypt transactions.
-	enclavePublicKey, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(EnclavePublicKeyHex))
-	if err != nil {
-		panic(fmt.Errorf("could not decompress enclave public key from hex. Cause: %w", err))
-	}
-	enclavePublicKeyEcies := ecies.ImportECDSAPublic(enclavePublicKey)
-
 	return &TransactionInjector{
 		avgBlockDuration: avgBlockDuration,
 		stats:            stats,
@@ -112,7 +98,6 @@ func NewTransactionInjector(
 		erc20ContractLib: erc20ContractLib,
 		wallets:          wallets,
 		TxTracker:        newCounter(),
-		enclavePublicKey: enclavePublicKeyEcies,
 		txsToIssue:       txsToIssue,
 		params:           params,
 		ctx:              context.Background(), // for now we create a new context here, should allow it to be passed in
@@ -323,10 +308,6 @@ func (ti *TransactionInjector) issueRandomDeposits() {
 }
 
 func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction, fromWallet wallet.Wallet) {
-	if ti.mgmtContractLib.IsMock() {
-		return
-	}
-
 	err := testcommon.AwaitReceipt(ti.ctx, ti.rpcHandles.TenWalletRndClient(fromWallet), tx.Hash(), 45*time.Second)
 	if err != nil {
 		ti.logger.Error("Failed to await receipt for withdrawal transaction", log.ErrKey, err)
@@ -337,37 +318,6 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	if err != nil {
 		ti.logger.Error("Failed to retrieve receipt for withdrawal transaction", log.ErrKey, err)
 		return
-	}
-	header, err := ti.rpcHandles.TenWalletRndClient(fromWallet).GetBatchHeaderByHash(receipt.BlockHash)
-	if err != nil {
-		ti.logger.Error("Failed to retrieve batch header for withdrawal transaction", log.ErrKey, err)
-		return
-	}
-
-	xchainTree := make([][]interface{}, 0) // ["v", "0xblablablabla"]
-	err = json.Unmarshal(header.CrossChainTree, &xchainTree)
-	if err != nil {
-		ti.logger.Error("Failed to unmarshal cross chain tree for withdrawal transaction", log.ErrKey, err)
-		return
-	}
-
-	for k, value := range xchainTree {
-		xchainTree[k][1] = gethcommon.HexToHash(value[1].(string))
-	}
-
-	tree, err := standard_merkle_tree.Of(xchainTree, crosschain.CrossChainEncodings)
-	if err != nil {
-		ti.logger.Error("Failed to load cross chain tree for withdrawal transaction", log.ErrKey, err)
-		return
-	}
-
-	if gethcommon.BytesToHash(tree.GetRoot()) != header.CrossChainRoot {
-		ti.logger.Error("Root of cross chain tree does not match header", "expected", header.CrossChainRoot, "actual", gethcommon.BytesToHash(tree.GetRoot()))
-		return
-	}
-
-	if len(receipt.Logs) != 1 {
-		panic("unexpected number of logs in receipt")
 	}
 
 	logs := make([]types.Log, len(receipt.Logs))
@@ -381,12 +331,40 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	vTransfers := crosschain.ValueTransfers(transfers)
-	proof, err := tree.GetProof(vTransfers.ForMerkleTree()[0])
-	if err != nil {
-		panic("unable to get proof for value transfer")
+
+	var proof clientapi.CrossChainProof
+	for {
+		mtree, err := vTransfers.ForMerkleTree()
+		if err != nil {
+			panic(err)
+		}
+		proof, err = ti.rpcHandles.TenWalletRndClient(fromWallet).GetCrossChainProof(ti.ctx, "v", mtree[0][1].(gethcommon.Hash))
+		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				ti.logger.Info("Proof not found, retrying...", log.ErrKey, err)
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			if strings.Contains(err.Error(), "database closed") {
+				ti.logger.Info("Database closed, test over", log.ErrKey, err)
+				return
+			}
+			panic(fmt.Errorf("unable to get proof for value transfer. cause: %w", err))
+		}
+		break
 	}
 
-	if len(proof) == 0 {
+	if len(proof.Proof) == 0 {
+		return
+	}
+
+	proofBytes := [][]byte{}
+	if err := rlp.DecodeBytes(proof.Proof, &proofBytes); err != nil {
+		panic("unable to decode proof")
+	}
+
+	// In mem sim does not support the l1 interaction required for the rest of the function.
+	if ti.mgmtContractLib.IsMock() {
 		return
 	}
 
@@ -401,8 +379,8 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	proof32 := make([][32]byte, 0)
-	for i := 0; i < len(proof); i++ {
-		proof32 = append(proof32, [32]byte(proof[i][0:32]))
+	for i := 0; i < len(proofBytes); i++ {
+		proof32 = append(proof32, [32]byte(proofBytes[i][0:32]))
 	}
 
 	time.Sleep(20 * time.Second)
@@ -413,7 +391,12 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	withdrawalTx, err := mCtr.ExtractNativeValue(opts, ManagementContract.StructsValueTransferMessage(vTransfers[0]), proof32, header.CrossChainRoot)
+	withdrawalTx, err := mCtr.ExtractNativeValue(
+		opts,
+		ManagementContract.StructsValueTransferMessage(vTransfers[0]),
+		proof32,
+		proof.Root,
+	)
 	if err != nil {
 		ti.logger.Error("Failed to extract value transfer from L2", log.ErrKey, err)
 		return
@@ -446,8 +429,11 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 
 // issueRandomWithdrawals creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomWithdrawals() {
-	// todo (@stefan) - rework this when old contract deployer is phased out?
-	msgBusAddr := gethcommon.HexToAddress("0x526c84529B2b8c11F57D93d3f5537aCA3AeCEf9B")
+	cfg, err := ti.rpcHandles.TenWalletRndClient(ti.wallets.L2FaucetWallet).GetConfig()
+	if err != nil {
+		panic(err)
+	}
+	msgBusAddr := cfg.L2MessageBusAddress
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
@@ -461,7 +447,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 		tx := &types.LegacyTx{
 			Nonce:    fromWallet.GetNonceAndIncrement(),
 			Value:    gethcommon.Big1,
-			Gas:      uint64(1_000_000_000),
+			Gas:      uint64(1_000_000),
 			GasPrice: price,
 			Data:     nil,
 			To:       &msgBusAddr,
@@ -544,7 +530,7 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64, ercType testcomm
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,
-		Gas:      uint64(1_000_000_000),
+		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     data,
 		To:       ti.wallets.Tokens[ercType].L2ContractAddress,

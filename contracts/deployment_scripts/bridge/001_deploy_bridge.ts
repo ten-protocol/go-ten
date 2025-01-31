@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const messengerL1 = await hre.companionNetworks.layer1.deployments.get("CrossChainMessenger");
 
     // We deploy the layer 1 part of the bridge.
-    const layer1BridgeDeployment = await hre.companionNetworks.layer1.deployments.deploy('ObscuroBridge', {
+    const layer1BridgeDeployment = await hre.companionNetworks.layer1.deployments.deploy('TenBridge', {
         from: accountsL1.deployer,
         log: true,
         proxy: {
@@ -61,7 +61,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const messengerL2 = await deployments.get("CrossChainMessenger");
 
     // Deploy the layer 2 part of the bridge and instruct it to use the address of the L2 cross chain messenger to enable functionality
-    // and be subordinate of the L1 ObscuroBridge
+    // and be subordinate of the L1 TenBridge
     const layer2BridgeDeployment = await deployments.deploy('EthereumBridge', {
         from: accountsL2.deployer,
         log: true,
@@ -76,7 +76,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         }
     });
 
-    await hre.companionNetworks.layer1.deployments.execute("ObscuroBridge", {
+    await hre.companionNetworks.layer1.deployments.execute("TenBridge", {
         from: accountsL1.deployer, 
         log: true,
     }, "setRemoteBridge", layer2BridgeDeployment.address);

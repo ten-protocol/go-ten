@@ -372,6 +372,7 @@ func (n *Node) startRPC() error {
 		}); err != nil {
 			return err
 		}
+		server.tlsConfig = n.config.TLSConfig
 		servers = append(servers, server)
 		return nil
 	}

@@ -1,12 +1,11 @@
 import {
   nativeCurrency,
   tenChainIDDecimal,
-  tenChainIDHex,
-  tenscanLink,
+  tenChainIDHex, tenNetworkName,
+  tenscanAddress,
   userStorageAddress,
 } from "@/lib/constants";
 import {
-  getNetworkName,
   getRandomIntAsString,
   isTenChain,
   ethereum,
@@ -83,25 +82,18 @@ export const getSignature = async (account: string, data: any) => {
   }
 };
 
-export const getToken = async (provider: ethers.providers.Web3Provider) => {
-  if (!provider.send) {
-    return null;
-  }
+export const getToken = async () => {
   try {
-    if (await isTenChain()) {
-      const token = await provider.send(requestMethods.getStorageAt, [
-        userStorageAddress,
-        getRandomIntAsString(0, 1000),
-        null,
-      ]);
-      return token;
-    } else {
-      return null;
-    }
+    const token = localStorage.getItem('ten_token') || '';
+    return token;
   } catch (e: any) {
     console.error(e);
     throw e;
   }
+};
+
+export const clearToken = () => {
+  localStorage.removeItem('ten_token');
 };
 
 export async function addNetworkToMetaMask(rpcUrls: string[]) {
@@ -114,10 +106,10 @@ export async function addNetworkToMetaMask(rpcUrls: string[]) {
       params: [
         {
           chainId: tenChainIDHex,
-          chainName: getNetworkName(),
+          chainName: tenNetworkName,
           nativeCurrency,
           rpcUrls,
-          blockExplorerUrls: [tenscanLink],
+          blockExplorerUrls: [tenscanAddress],
         },
       ],
     });
@@ -151,7 +143,7 @@ export async function authenticateAccountWithTenGatewayEIP712(
       ...typedData,
       message: {
         ...typedData.message,
-        "Encryption Token":  token,
+        "Encryption Token": token,
       },
     };
     const signature = await getSignature(account, data);

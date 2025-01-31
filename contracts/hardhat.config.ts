@@ -20,12 +20,18 @@ const config: HardhatUserConfig = {
     sources: "src"
   },
   solidity: {
-    version: "0.8.20",
+    version: "0.8.28",
     settings: {
       optimizer: {
         enabled: true,
         runs: 1000,
+        details: {
+          yulDetails: {
+            optimizerSteps: "u",
+          },
+        },  
       },
+      evmVersion: "cancun",
       outputSelection: { "*": { "*": [ "*" ], "": [ "*" ] } }
     },
   },
@@ -43,12 +49,6 @@ const config: HardhatUserConfig = {
   namedAccounts: {
     deployer: { // Addressed used for deploying.
         default: 0,
-    },
-    hocowner: {
-        default: 1,
-    },
-    pocowner: {
-        default: 2,
     },
   },
   // For help configuring - https://www.npmjs.com/package/hardhat-ignore-warnings

@@ -1,4 +1,4 @@
-Ten executes EVM compatible transactions on top of a database that implements the Go-Ethereum interfaces.
+TEN executes EVM compatible transactions on top of a database that implements the Go-Ethereum interfaces.
 
 The entry point is the evm_facade.
 

@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"math/big"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/measure"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -28,15 +31,16 @@ import (
 type batchRegistry struct {
 	storage      storage.Storage
 	logger       gethlog.Logger
-	headBatchSeq *big.Int // keep track of the last executed batch to optimise db access
+	headBatchSeq atomic.Pointer[big.Int] // keep track of the last executed batch to optimise db access
 
 	batchesCallback   func(*core.Batch, types.Receipts)
 	callbackMutex     sync.RWMutex
 	healthTimeout     time.Duration
 	lastExecutedBatch *async.Timestamp
+	ethChainAdapter   *EthChainAdapter
 }
 
-func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegistry {
+func NewBatchRegistry(storage storage.Storage, config *enclaveconfig.EnclaveConfig, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger) BatchRegistry {
 	var headBatchSeq *big.Int
 	headBatch, err := storage.FetchHeadBatchHeader(context.Background())
 	if err != nil {
@@ -49,18 +53,24 @@ func NewBatchRegistry(storage storage.Storage, logger gethlog.Logger) BatchRegis
 	} else {
 		headBatchSeq = headBatch.SequencerOrderNo
 	}
-
-	return &batchRegistry{
+	br := &batchRegistry{
 		storage:           storage,
-		headBatchSeq:      headBatchSeq,
 		logger:            logger,
 		healthTimeout:     time.Minute,
 		lastExecutedBatch: async.NewAsyncTimestamp(time.Now().Add(-time.Minute)),
 	}
+	br.headBatchSeq.Store(headBatchSeq)
+
+	br.ethChainAdapter = NewEthChainAdapter(big.NewInt(config.TenChainID), br, storage, gethEncodingService, *config, logger)
+	return br
+}
+
+func (br *batchRegistry) EthChain() *EthChainAdapter {
+	return br.ethChainAdapter
 }
 
 func (br *batchRegistry) HeadBatchSeq() *big.Int {
-	return br.headBatchSeq
+	return br.headBatchSeq.Load()
 }
 
 func (br *batchRegistry) SubscribeForExecutedBatches(callback func(*core.Batch, types.Receipts)) {
@@ -83,10 +93,10 @@ func (br *batchRegistry) OnL1Reorg(_ *BlockIngestionType) {
 		br.logger.Error("Could not fetch head batch", log.ErrKey, err)
 		return
 	}
-	br.headBatchSeq = headBatch.SequencerOrderNo
+	br.headBatchSeq.Store(headBatch.SequencerOrderNo)
 }
 
-func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, receipts types.Receipts) {
+func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExecResults []*core.TxExecResult) error {
 	defer core.LogMethodDuration(br.logger, measure.NewStopwatch(), "OnBatchExecuted", log.BatchHashKey, batchHeader.Hash())
 	br.callbackMutex.RLock()
 	defer br.callbackMutex.RUnlock()
@@ -96,23 +106,33 @@ func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, receip
 		// this function is called after a batch was successfully executed. This is a catastrophic failure
 		br.logger.Crit("should not happen. cannot get transactions. ", log.ErrKey, err)
 	}
-	br.headBatchSeq = batchHeader.SequencerOrderNo
+	batch := &core.Batch{
+		Header:       batchHeader,
+		Transactions: txs,
+	}
+	err = br.ethChainAdapter.IngestNewBlock(batch)
+	if err != nil {
+		return fmt.Errorf("failed to feed batch into the virtual eth chain. cause %w", err)
+	}
+
+	br.headBatchSeq.Store(batchHeader.SequencerOrderNo)
 	if br.batchesCallback != nil {
-		batch := &core.Batch{
-			Header:       batchHeader,
-			Transactions: txs,
+		txReceipts := make([]*types.Receipt, len(txExecResults))
+		for i, txExecResult := range txExecResults {
+			txReceipts[i] = txExecResult.Receipt
 		}
-		br.batchesCallback(batch, receipts)
+		br.batchesCallback(batch, txReceipts)
 	}
 
 	br.lastExecutedBatch.Mark()
+	return nil
 }
 
 func (br *batchRegistry) HasGenesisBatch() (bool, error) {
 	return br.HeadBatchSeq() != nil, nil
 }
 
-func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error) {
+func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Header, error) {
 	// sanity check
 	headBatch, err := br.storage.FetchBatchHeaderBySeqNo(ctx, br.HeadBatchSeq().Uint64())
 	if err != nil {
@@ -124,10 +144,10 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 	}
 
 	resultBatches := make([]*core.Batch, 0)
-	resultBlocks := make([]*types.Block, 0)
+	resultBlocks := make([]*types.Header, 0)
 
 	currentBatchSeq := batchSeqNo
-	var currentBlock *types.Block
+	var currentBlock *types.Header
 	for currentBatchSeq <= headBatch.SequencerOrderNo.Uint64() {
 		batch, err := br.storage.FetchBatchBySeqNo(ctx, currentBatchSeq)
 		if err != nil {
@@ -142,7 +162,7 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 				return nil, nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 			}
 			currentBlock = block
-			if block.NumberU64() > upToL1Height {
+			if block.Number.Uint64() > upToL1Height {
 				break
 			}
 			resultBlocks = append(resultBlocks, block)
@@ -176,8 +196,14 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 	return resultBatches, resultBlocks, nil
 }
 
-func (br *batchRegistry) GetBatchState(ctx context.Context, hash *common.L2BatchHash) (*state.StateDB, error) {
-	return getBatchState(ctx, br.storage, *hash)
+func (br *batchRegistry) GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, error) {
+	if blockNumberOrHash.BlockHash != nil {
+		return getBatchState(ctx, br.storage, *blockNumberOrHash.BlockHash)
+	}
+	if blockNumberOrHash.BlockNumber != nil {
+		return br.GetBatchStateAtHeight(ctx, blockNumberOrHash.BlockNumber)
+	}
+	return nil, fmt.Errorf("block number or block hash does not exist")
 }
 
 func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
@@ -237,6 +263,10 @@ func (br *batchRegistry) HealthCheck() (bool, error) {
 	lastExecutedBatchTime := br.lastExecutedBatch.LastTimestamp()
 	if time.Now().After(lastExecutedBatchTime.Add(br.healthTimeout)) {
 		return false, fmt.Errorf("last executed batch was %s ago", time.Since(lastExecutedBatchTime))
+	}
+
+	if br.HeadBatchSeq() == nil {
+		return false, fmt.Errorf("head batch seq is nil")
 	}
 
 	return true, nil

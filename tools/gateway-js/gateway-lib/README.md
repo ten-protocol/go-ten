@@ -1,6 +1,6 @@
-# Ten Gateway JS
+# TEN Gateway JS
 
-A JavaScript library for the gateway, providing streamlined access and functionalities for interacting with the Ten network.
+A JavaScript library for the gateway, providing streamlined access and functionalities for interacting with the TEN network.
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@ A JavaScript library for the gateway, providing streamlined access and functiona
 
 ## Features
 
-- Seamless connection to Ten Network.
+- Seamless connection to TEN Network.
 - Easy-to-use methods for joining and authenticating.
 - External consumption support through CDN or NPM.
 

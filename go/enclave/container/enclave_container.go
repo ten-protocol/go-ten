@@ -9,15 +9,11 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave"
 
-	"github.com/ten-protocol/go-ten/go/config"
-
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	obscuroGenesis "github.com/ten-protocol/go-ten/go/enclave/genesis"
 )
-
-// todo (#1056) - replace with the genesis.json of Obscuro's L1 network.
-const hardcodedGenesisJSON = "TODO - REPLACE ME"
 
 type EnclaveContainer struct {
 	Enclave   common.Enclave
@@ -44,26 +40,18 @@ func (e *EnclaveContainer) Stop() error {
 }
 
 // NewEnclaveContainerFromConfig wires up the components of the Enclave and its RPC server. Manages their lifecycle/monitors their status
-func NewEnclaveContainerFromConfig(config *config.EnclaveConfig) *EnclaveContainer {
-	// todo - improve this wiring, perhaps setup DB etc. at this level and inject into enclave
-	// (at that point the WithLogger constructor could be a full DI constructor like the HostContainer tries, for testability)
-	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.HostID)
+func NewEnclaveContainerFromConfig(config *enclaveconfig.EnclaveConfig) *EnclaveContainer {
+	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.NodeID)
 
-	// todo - this is for debugging purposes only, should be remove in the future
-	fmt.Printf("Building enclave container with config: %+v\n", config)
 	logger.Info(fmt.Sprintf("Building enclave container with config: %+v", config))
 
 	return NewEnclaveContainerWithLogger(config, logger)
 }
 
 // NewEnclaveContainerWithLogger is useful for testing etc.
-func NewEnclaveContainerWithLogger(config *config.EnclaveConfig, logger gethlog.Logger) *EnclaveContainer {
+func NewEnclaveContainerWithLogger(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) *EnclaveContainer {
 	contractAddr := config.ManagementContractAddress
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)
-
-	if config.ValidateL1Blocks {
-		config.GenesisJSON = []byte(hardcodedGenesisJSON)
-	}
 
 	genesis, err := obscuroGenesis.New(config.TenGenesis)
 	if err != nil {
@@ -71,7 +59,7 @@ func NewEnclaveContainerWithLogger(config *config.EnclaveConfig, logger gethlog.
 	}
 
 	encl := enclave.NewEnclave(config, genesis, mgmtContractLib, logger)
-	rpcServer := enclave.NewEnclaveRPCServer(config.Address, encl, logger)
+	rpcServer := enclave.NewEnclaveRPCServer(config.RPCAddress, encl, logger)
 
 	return &EnclaveContainer{
 		Enclave:   encl,

@@ -11,6 +11,8 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/ten-protocol/go-ten/go/common/gethutil"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -52,12 +54,14 @@ type gethEncodingServiceImpl struct {
 	storage        storage.Storage
 	logger         gethlog.Logger
 	cachingService *storage.CacheService
+	entropyService *crypto.EvmEntropyService
 }
 
-func NewGethEncodingService(storage storage.Storage, cachingService *storage.CacheService, logger gethlog.Logger) EncodingService {
+func NewGethEncodingService(storage storage.Storage, cachingService *storage.CacheService, entropyService *crypto.EvmEntropyService, logger gethlog.Logger) EncodingService {
 	return &gethEncodingServiceImpl{
 		storage:        storage,
 		logger:         logger,
+		entropyService: entropyService,
 		cachingService: cachingService,
 	}
 }
@@ -263,18 +267,14 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 // Special care must be taken to maintain a valid chain of these converted headers.
 func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context, h *common.BatchHeader) (*types.Header, error) {
 	// wrap in a caching layer
-	return enc.cachingService.ReadConvertedHeader(ctx, h.Hash(), func(a any) (*types.Header, error) {
+	return enc.cachingService.ReadConvertedHeader(ctx, h.Hash(), func() (*types.Header, error) {
 		// deterministically calculate the private randomness that will be exposed to the EVM
-		secret, err := enc.storage.FetchSecret(ctx)
-		if err != nil {
-			enc.logger.Crit("Could not fetch shared secret. Exiting.", log.ErrKey, err)
-		}
-		perBatchRandomness := crypto.CalculateRootBatchEntropy(secret[:], h.Number)
+		perBatchRandomness := enc.entropyService.BatchEntropy(h)
 
 		// calculate the converted hash of the parent, for a correct converted chain
 		// default to the genesis
 		convertedParentHash := common.GethGenesisParentHash
-
+		var err error
 		if h.SequencerOrderNo.Uint64() > common.L2GenesisSeqNo {
 			convertedParentHash, err = enc.storage.FetchConvertedHash(ctx, h.ParentHash)
 			if err != nil {
@@ -290,7 +290,7 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context,
 
 		gethHeader := types.Header{
 			ParentHash:      convertedParentHash,
-			UncleHash:       gethcommon.Hash{},
+			UncleHash:       gethutil.EmptyHash,
 			Root:            h.Root,
 			TxHash:          h.TxHash,
 			ReceiptHash:     h.ReceiptHash,
@@ -309,6 +309,7 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context,
 			ExcessBlobGas:   nil,
 			Bloom:           types.Bloom{},
 		}
+		enc.cachingService.CacheConvertedHash(ctx, h.Hash(), gethHeader.Hash())
 		return &gethHeader, nil
 	})
 }
@@ -348,7 +349,7 @@ func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context,
 	return (*types.Block)(unsafe.Pointer(&lb)), nil
 }
 
-// ExtractPrivateTransactionsQuery is designed to support a wide range of custom Ten queries.
+// ExtractPrivateTransactionsQuery is designed to support a wide range of custom TEN queries.
 // The first parameter here is the method name, which is used to determine the query type.
 // The second parameter is the query parameters.
 func ExtractPrivateTransactionsQuery(queryParams any) (*common.ListPrivateTransactionsQueryParams, error) {

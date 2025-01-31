@@ -19,8 +19,11 @@ import "github.com/ethereum/go-ethereum/common"
 
 // CustomQuery methods
 const (
-	UserIDRequestCQMethod           = "0x0000000000000000000000000000000000000001"
 	ListPrivateTransactionsCQMethod = "0x0000000000000000000000000000000000000002"
+	CreateSessionKeyCQMethod        = "0x0000000000000000000000000000000000000003"
+	ActivateSessionKeyCQMethod      = "0x0000000000000000000000000000000000000004"
+	DeactivateSessionKeyCQMethod    = "0x0000000000000000000000000000000000000005"
+	DeleteSessionKeyCQMethod        = "0x0000000000000000000000000000000000000006"
 )
 
 type ListPrivateTransactionsQueryParams struct {

@@ -4,7 +4,7 @@
 # build-wallet = copies over the source code and builds the binaries using a compiler cache
 # final = copies over only the executables in an alpine image that doesn't have any additional load.
 
-FROM golang:1.22.1-alpine3.19 as system
+FROM golang:1.22.11-alpine3.21 as system
 
 # set the base libs to build / run
 RUN apk add build-base bash git
@@ -36,6 +36,11 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 
 # Lightweight final build stage. Includes bare minimum to start wallet extension
 FROM alpine:3.18
+
+
+# Set a writable working directory
+WORKDIR /home/obscuro
+RUN mkdir -p /home/obscuro && chmod -R 777 /home/obscuro
 
 # copy over the gateway executable
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/bin /home/obscuro/go-obscuro/tools/walletextension/bin

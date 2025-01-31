@@ -37,8 +37,6 @@ jobs:
       MGMT_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MGMT_CONTRACT_ADDR }}
       MSG_BUS_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MSG_BUS_CONTRACT_ADDR }}
       L1_START_HASH: ${{ steps.deployContracts.outputs.L1_START_HASH }}
-      HOC_ERC20_ADDR: ${{ steps.deployContracts.outputs.HOC_ERC20_ADDR }}
-      POC_ERC20_ADDR: ${{ steps.deployContracts.outputs.POC_ERC20_ADDR }}
 
 
     steps:
@@ -51,7 +49,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.21.8
+          go-version: 1.22.11
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -67,7 +65,7 @@ jobs:
 
       - name: 'Build and push obscuro node images'
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} --build-arg TESTMODE=true -f dockerfiles/enclave.Dockerfile  .
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} -f dockerfiles/enclave.Dockerfile  .
           docker push ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_HOST }} -f dockerfiles/host.Dockerfile .
           docker push ${{ vars.DOCKER_BUILD_TAG_HOST }}
@@ -77,6 +75,8 @@ jobs:
       - name: 'Deploy Contracts'
         id: deployContracts
         shell: bash
+        env:
+          DOCKER_API_VERSION: "1.45"
         run: |
           go run ./testnet/launcher/l1contractdeployer/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
@@ -193,16 +193,28 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # Determine the HA properties, HA sequencer needs a larger VM and two enclaves
+      -  name: 'Determine HA properties'
+         shell: bash
+         run: |
+           if [[ ${{ matrix.host_id }} -eq 0 ]]; then
+             echo "VM_SIZE=Standard_DC8s_v3" >> $GITHUB_ENV
+             echo "NUM_ENCLAVES=2" >> $GITHUB_ENV
+           else
+             echo "VM_SIZE=Standard_DC8_v2" >> $GITHUB_ENV
+             echo "NUM_ENCLAVES=1" >> $GITHUB_ENV
+           fi
+
       - name: 'Create VM for Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
         with:
           inlineScript: |
             az vm create -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}" \
+            --public-ip-address-dns-name "obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}" \
             --tags deploygroup=ObscuroNode-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}  ${{ vars.AZURE_DEPLOY_GROUP_L2 }}=true \
             --vnet-name ${{ github.event.inputs.testnet_type }}-virtual-network --subnet ${{ github.event.inputs.testnet_type }}-sub-network \
-            --size Standard_DC8_v2 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
+            --size ${{ env.VM_SIZE }} --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
             --public-ip-sku Standard --authentication-type password
 
       - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
@@ -218,34 +230,128 @@ jobs:
 
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
+        env:
+          DOCKER_API_VERSION: "1.45"
         with:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}"  \
             --command-id RunShellScript \
-            --scripts 'mkdir -p /home/obscuro \
+            --scripts 'export DOCKER_API_VERSION=1.45 \
+            && mkdir -p /home/obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
             && cp /home/obscuro/go-obscuro/tools/edbconnect/edb-connect.sh /home/obscurouser/edb-connect.sh \
             && chown obscurouser:obscurouser /home/obscurouser/edb-connect.sh \
             && chmod u+x /home/obscurouser/edb-connect.sh \
             && docker network create --driver bridge node_network || true \
-            && docker run -d --name datadog-agent \
-               --network node_network \
-               -e DD_API_KEY=${{ secrets.DD_API_KEY }} \
-               -e DD_LOGS_ENABLED=true \
-               -e DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true \
-               -e DD_LOGS_CONFIG_AUTO_MULTI_LINE_DETECTION=true \
-               -e DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent" \
-               -e DD_SITE="datadoghq.eu"  \
-               -v /var/run/docker.sock:/var/run/docker.sock:ro \
-               -v /proc/:/host/proc/:ro \
-               -v /opt/datadog-agent/run:/opt/datadog-agent/run:rw \
-               -v /sys/fs/cgroup/:/host/sys/fs/cgroup:ro \
-               --log-opt max-file=3 --log-opt max-size=10m \
-               datadog/agent:latest \
+            && mkdir -p /home/obscuro/metrics \
+            && echo "
+            server:
+              http_listen_port: 9080
+              grpc_listen_port: 0
+
+            positions:
+              filename: /tmp/positions.yaml
+
+            clients:
+              - url: ${{ vars.LOKI_URI }}
+                batchwait: 3s
+                batchsize: 1048576
+                tls_config:
+                  insecure_skip_verify: true
+                basic_auth:
+                  username: ${{ secrets.LOKI_USER }}
+                  password: ${{ secrets.LOKI_PASSWORD }}
+
+            scrape_configs:
+            - job_name: flog_scrape
+              docker_sd_configs:
+                - host: unix:///var/run/docker.sock
+                  refresh_interval: 5s
+              relabel_configs:
+                - source_labels: [\"__meta_docker_container_name\"]
+                  regex: \"/(.*)\"
+                  target_label: \"container\"
+                - source_labels: [\"__meta_docker_container_log_stream\"]
+                  target_label: \"logstream\"
+                - source_labels: [\"__meta_docker_container_label_logging_jobname\"]
+                  target_label: \"job\"
+                - replacement: ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+                  target_label: "node_name"
+            " > /home/obscuro/metrics/promtail-config.yaml \
+            && echo "
+            global:
+              scrape_interval: 15s
+              evaluation_interval: 15s
+            remote_write:
+              - url: ${{ vars.PROMETHEUS_URI }}
+                tls_config:
+                  insecure_skip_verify: true
+                basic_auth:
+                  username: ${{ secrets.LOKI_USER }}
+                  password: ${{ secrets.LOKI_PASSWORD }}
+            scrape_configs:
+              # Node metrics
+              - job_name:  node-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+                scrape_interval: 5s  # Frequent scrapes for node metrics
+                static_configs:
+                  - targets:
+                      - node_exporter:9100  # Node Exporter instance
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: 'node'
+                    replacement:  ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+
+              # Container metrics
+              - job_name:  container-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+                scrape_interval: 5s
+                static_configs:
+                  - targets:
+                      - cadvisor:8080  # cAdvisor instance for container metrics
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: 'node'
+                    replacement:  ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+
+            " > /home/obscuro/metrics/prometheus.yaml \
+            && docker run -d --name promtail \
+              --network node_network \
+              -e HOSTNAME=${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }} \
+              -v /var/log:/var/log \
+              -v /home/obscuro/metrics:/etc/promtail \
+              -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              grafana/promtail:latest \
+              -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true \
+            && docker volume create prometheus-data \
+            && docker run -d --name prometheus \
+              --network node_network \
+              -p 9090:9090 \
+              -v /home/obscuro/metrics/prometheus.yaml:/etc/prometheus/prometheus.yml \
+              -v prometheus-data:/prometheus \
+              prom/prometheus:latest \
+              --config.file=/etc/prometheus/prometheus.yml \
+            && docker run -d --name node_exporter \
+              --network node_network \
+              -p 9100:9100 \
+              --pid="host" \
+              -v /:/host:ro \
+              quay.io/prometheus/node-exporter:latest \
+              --path.rootfs=/host \
+            && docker run -d --name cadvisor \
+              --network node_network \
+              -p 8080:8080 \
+              --privileged \
+              -v /:/rootfs:ro \
+              -v /var/run:/var/run:ro \
+              -v /sys:/sys:ro \
+              -v /var/lib/docker/:/var/lib/docker:ro \
+              -v /dev/disk/:/dev/disk:ro \
+              gcr.io/cadvisor/cadvisor:latest \
             && cd /home/obscuro/go-obscuro/ \
-            && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
+            && sudo DOCKER_API_VERSION=1.45 go run /home/obscuro/go-obscuro/go/node/cmd  \
                -is_genesis=${{ matrix.is_genesis }} \
                -node_type=${{ matrix.node_type }} \
+               -num_enclaves=${{ env.NUM_ENCLAVES }} \
                -is_sgx_enabled=true \
                -host_id=${{ vars[matrix.node_addr_lookup] }} \
                -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
@@ -253,8 +359,8 @@ jobs:
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
                -l1_start=${{needs.build.outputs.L1_START_HASH}} \
                -private_key=${{ secrets[matrix.node_pk_lookup] }} \
-               -sequencer_addr=obscuronode-0-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
-               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com:10000 \
+               -sequencer_addr=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
+               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
                -host_p2p_port=10000 \
                -enclave_docker_image=${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
                -host_docker_image=${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
@@ -264,6 +370,9 @@ jobs:
                -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
                -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
                -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
+               -l1_beacon_url=${{ vars.L1_BEACON_URL }} \
+               -l1_blob_archive_url=${{ vars.L1_BLOB_ARCHIVE_URL }} \
+               -system_contracts_upgrader=${{ vars.NETWORK_SEQUENCER_SYSTEMCONTRACTSUPGRADER }} \
                -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
                start'
 
@@ -280,14 +389,86 @@ jobs:
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-2-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-2-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          
+
+  grant-sequencer-enclaves:
+    needs:
+      - build
+      - check-obscuro-is-healthy
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      -  uses: actions/checkout@v4
+
+      -  name: 'Grant permission to sequencer enclave(s)'
+         id: grantSequencerPermission
+         shell: bash
+         env:
+            DOCKER_API_VERSION: "1.45"
+         run: |
+           go run ./testnet/launcher/l1grantsequencers/cmd \
+           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
+           -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
+           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
+           -sequencer_url=http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
+
+      -  name: 'Save sequencer permissioning container logs'
+         run: |
+           docker logs `docker ps -aqf "name=grant-sequencers"` > grant-sequencers.out 2>&1
+
+      -  name: 'Upload sequencer permissioning container logs'
+         uses: actions/upload-artifact@v4
+         with:
+           name: grant-sequencers
+           path: |
+             grant-sequencers.out
+           retention-days: 7
+
+  set-challenge-period:
+    needs:
+      - build
+      - check-obscuro-is-healthy
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    env:
+      DOCKER_API_VERSION: "1.45"
+    steps:
+      -  uses: actions/checkout@v4
+
+      -  name: 'Set challenge period on management contract'
+         id: setChallengePeriod
+         shell: bash
+         run: |
+           go run ./testnet/launcher/l1challengeperiod/cmd \
+           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
+           -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
+           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
+           -l1_challenge_period=${{ vars.L1_CHALLENGE_PERIOD }} \
+           echo "Setting challenge period to ${{ vars.L1_CHALLENGE_PERIOD }}"
+
+      -  name: 'Save challenge period container logs'
+         run: |
+           docker logs `docker ps -aqf "name=set-challenge-period"` > set-challenge-period.out 2>&1
+
+      -  name: 'Upload challenge period container logs'
+         uses: actions/upload-artifact@v4
+         with:
+           name: set-challenge-period
+           path: |
+             set-challenge-period.out
+           retention-days: 7
 
   deploy-l2-contracts:
     needs:
       - build
-      - check-obscuro-is-healthy
+      - grant-sequencer-enclaves
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -297,15 +478,15 @@ jobs:
       - name: 'Deploy L2 contracts'
         id: deployL2Contracts
         shell: bash
+        env:
+          DOCKER_API_VERSION: "1.45"
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd \
-          -l2_host=obscuronode-0-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}.uksouth.cloudapp.azure.com \
+          -l2_host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -l2_ws_port=81 \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-          -l2_private_key=8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b \
-          -l2_hoc_private_key=6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682 \
-          -l2_poc_private_key=4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8 \
+          -l2_private_key=${{ secrets.L2_DEPLOYER_KEY }} \
           -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
           -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
@@ -325,7 +506,7 @@ jobs:
 
   update-loadbalancer:
     needs:
-      - check-obscuro-is-healthy
+      - grant-sequencer-enclaves
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -358,7 +539,7 @@ jobs:
       testnet_type: ${{ github.event.inputs.testnet_type }}
     secrets: inherit
     needs:
-      - check-obscuro-is-healthy
+      - grant-sequencer-enclaves
 
   obscuro-test-repository-dispatch:
     runs-on: ubuntu-latest

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
+
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 
 	"golang.org/x/exp/slices"
@@ -26,6 +28,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 )
+
+var ErrReorgedRollup = errors.New("reorged rollup")
 
 /*
 RollupCompression - responsible for the compression logic
@@ -48,7 +52,8 @@ Eg. If the time between 2 batches is always 1second, there is no need to store a
 5. The cross chain messages are calculated.
 */
 type RollupCompression struct {
-	dataEncryptionService  crypto.DataEncryptionService
+	daEncryptionService    *crypto.DAEncryptionService
+	config                 *enclaveconfig.EnclaveConfig
 	dataCompressionService compression.DataCompressionService
 	batchRegistry          BatchRegistry
 	batchExecutor          BatchExecutor
@@ -61,21 +66,23 @@ type RollupCompression struct {
 func NewRollupCompression(
 	batchRegistry BatchRegistry,
 	batchExecutor BatchExecutor,
-	dataEncryptionService crypto.DataEncryptionService,
+	daEncryptionService *crypto.DAEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	storage storage.Storage,
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
+	config *enclaveconfig.EnclaveConfig,
 	logger gethlog.Logger,
 ) *RollupCompression {
 	return &RollupCompression{
 		batchRegistry:          batchRegistry,
 		batchExecutor:          batchExecutor,
-		dataEncryptionService:  dataEncryptionService,
+		daEncryptionService:    daEncryptionService,
 		dataCompressionService: dataCompressionService,
 		storage:                storage,
 		gethEncodingService:    gethEncodingService,
 		chainConfig:            chainConfig,
+		config:                 config,
 		logger:                 logger,
 	}
 }
@@ -201,11 +208,11 @@ func (rc *RollupCompression) createRollupHeader(ctx context.Context, rollup *cor
 
 		// the first element is the actual height
 		if i == 0 {
-			l1HeightDeltas[i] = block.Number()
+			l1HeightDeltas[i] = block.Number
 		} else {
-			l1HeightDeltas[i] = big.NewInt(block.Number().Int64() - prevL1Height.Int64())
+			l1HeightDeltas[i] = big.NewInt(block.Number.Int64() - prevL1Height.Int64())
 		}
-		prevL1Height = block.Number()
+		prevL1Height = block.Number
 	}
 
 	l1DeltasBA := make([][]byte, len(l1HeightDeltas))
@@ -284,7 +291,7 @@ func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, callda
 	}
 
 	// a cache of the l1 blocks used by the current rollup, indexed by their height
-	l1BlocksAtHeight := make(map[uint64]*types.Block)
+	l1BlocksAtHeight := make(map[uint64]*types.Header)
 	err = rc.calcL1AncestorsOfHeight(ctx, big.NewInt(int64(slices.Min(l1Heights))), rollupL1Block, l1BlocksAtHeight)
 	if err != nil {
 		return nil, err
@@ -353,7 +360,7 @@ func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, callda
 			baseFee:      calldataRollupHeader.BaseFee,
 			gasLimit:     calldataRollupHeader.GasLimit,
 		}
-		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number(), "l1_hash", block.Hash())
+		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number, "l1_hash", block.Hash())
 	}
 	return incompleteBatches, nil
 }
@@ -379,7 +386,8 @@ func (rc *RollupCompression) calculateL1HeightsFromDeltas(calldataRollupHeader *
 			}
 			value := l1Delta.Int64() + int64(prevHeight)
 			if value < 0 {
-				rc.logger.Crit("Should not have a negative height")
+				rc.logger.Error("Should not have a negative height")
+				return nil, errors.New("negative height")
 			}
 			l1Heights = append(l1Heights, uint64(value))
 			prevHeight = uint64(value)
@@ -388,12 +396,12 @@ func (rc *RollupCompression) calculateL1HeightsFromDeltas(calldataRollupHeader *
 	return l1Heights, nil
 }
 
-func (rc *RollupCompression) calcL1AncestorsOfHeight(ctx context.Context, fromHeight *big.Int, toBlock *types.Block, path map[uint64]*types.Block) error {
-	path[toBlock.NumberU64()] = toBlock
-	if toBlock.NumberU64() == fromHeight.Uint64() {
+func (rc *RollupCompression) calcL1AncestorsOfHeight(ctx context.Context, fromHeight *big.Int, toBlock *types.Header, path map[uint64]*types.Header) error {
+	path[toBlock.Number.Uint64()] = toBlock
+	if toBlock.Number.Uint64() == fromHeight.Uint64() {
 		return nil
 	}
-	p, err := rc.storage.FetchBlock(ctx, toBlock.ParentHash())
+	p, err := rc.storage.FetchBlock(ctx, toBlock.ParentHash)
 	if err != nil {
 		return err
 	}
@@ -406,8 +414,8 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 	if calldataRollupHeader.FirstBatchSequence.Uint64() != common.L2GenesisSeqNo {
 		_, err := rc.storage.FetchBatchHeader(ctx, parentHash)
 		if err != nil {
-			rc.logger.Error("Could not find batch mentioned in the rollup. This should not happen.", log.ErrKey, err)
-			return err
+			rc.logger.Error("Rollup cannot be processed because the parent of the first canonical batch is missing.", log.ErrKey, err)
+			return ErrReorgedRollup
 		}
 	}
 
@@ -470,11 +478,15 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			err = rc.storage.StoreExecutedBatch(ctx, genBatch.Header, nil, nil)
+			err = rc.storage.StoreExecutedBatch(ctx, genBatch, nil)
 			if err != nil {
 				return err
 			}
-			rc.batchRegistry.OnBatchExecuted(genBatch.Header, nil)
+
+			err = rc.batchRegistry.OnBatchExecuted(genBatch.Header, nil)
+			if err != nil {
+				return err
+			}
 
 			rc.logger.Info("Stored genesis", log.BatchHashKey, genBatch.Hash())
 			parentHash = genBatch.Hash()
@@ -514,11 +526,14 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 			if err != nil {
 				return err
 			}
-			err = rc.storage.StoreExecutedBatch(ctx, computedBatch.Batch.Header, computedBatch.Receipts, computedBatch.CreatedContracts)
+			err = rc.storage.StoreExecutedBatch(ctx, computedBatch.Batch, computedBatch.TxExecResults)
 			if err != nil {
 				return err
 			}
-			rc.batchRegistry.OnBatchExecuted(computedBatch.Batch.Header, nil)
+			err = rc.batchRegistry.OnBatchExecuted(computedBatch.Batch.Header, nil)
+			if err != nil {
+				return err
+			}
 
 			parentHash = computedBatch.Batch.Hash()
 		}
@@ -535,7 +550,7 @@ func (rc *RollupCompression) serialiseCompressAndEncrypt(obj any) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
-	encrypted, err := rc.dataEncryptionService.Encrypt(compressed)
+	encrypted, err := rc.daEncryptionService.Encrypt(compressed)
 	if err != nil {
 		return nil, err
 	}
@@ -543,7 +558,7 @@ func (rc *RollupCompression) serialiseCompressAndEncrypt(obj any) ([]byte, error
 }
 
 func (rc *RollupCompression) decryptDecompressAndDeserialise(blob []byte, obj any) error {
-	plaintextBlob, err := rc.dataEncryptionService.Decrypt(blob)
+	plaintextBlob, err := rc.daEncryptionService.Decrypt(blob)
 	if err != nil {
 		return err
 	}
@@ -573,6 +588,7 @@ func (rc *RollupCompression) computeBatch(
 		&BatchExecutionContext{
 			BlockPtr:     BlockPtr,
 			ParentPtr:    ParentPtr,
+			UseMempool:   false,
 			Transactions: Transactions,
 			AtTime:       AtTime,
 			Creator:      Coinbase,

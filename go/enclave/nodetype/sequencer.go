@@ -8,19 +8,18 @@ import (
 	"sort"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/common/gethencoding"
-	"github.com/ten-protocol/go-ten/go/common/signature"
-
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/measure"
-	"github.com/ten-protocol/go-ten/go/enclave/evm/ethchainadapter"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
-	"github.com/ten-protocol/go-ten/go/enclave/txpool"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethcrypto "github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -46,20 +45,17 @@ type sequencer struct {
 	batchProducer     components.BatchExecutor
 	batchRegistry     components.BatchRegistry
 	rollupProducer    components.RollupProducer
-	rollupConsumer    components.RollupConsumer
 	rollupCompression *components.RollupCompression
 	gethEncoding      gethencoding.EncodingService
 
 	logger gethlog.Logger
 
 	chainConfig            *params.ChainConfig
-	enclaveKey             *crypto.EnclaveKey
-	mempool                *txpool.TxPool
+	enclaveKeyService      *crypto.EnclaveAttestedKeyService
+	mempool                *components.TxPool
 	storage                storage.Storage
-	dataEncryptionService  crypto.DataEncryptionService
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
-	blockchain             *ethchainadapter.EthChainAdapter
 }
 
 func NewSequencer(
@@ -67,36 +63,30 @@ func NewSequencer(
 	batchExecutor components.BatchExecutor,
 	registry components.BatchRegistry,
 	rollupProducer components.RollupProducer,
-	rollupConsumer components.RollupConsumer,
 	rollupCompression *components.RollupCompression,
 	gethEncodingService gethencoding.EncodingService,
 	logger gethlog.Logger,
 	chainConfig *params.ChainConfig,
-	enclavePrivateKey *crypto.EnclaveKey,
-	mempool *txpool.TxPool,
+	enclaveKeyService *crypto.EnclaveAttestedKeyService,
+	mempool *components.TxPool,
 	storage storage.Storage,
-	dataEncryptionService crypto.DataEncryptionService,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
-	blockchain *ethchainadapter.EthChainAdapter,
-) Sequencer {
+) ActiveSequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
 		batchProducer:          batchExecutor,
 		batchRegistry:          registry,
 		rollupProducer:         rollupProducer,
-		rollupConsumer:         rollupConsumer,
 		rollupCompression:      rollupCompression,
 		gethEncoding:           gethEncodingService,
 		logger:                 logger,
 		chainConfig:            chainConfig,
-		enclaveKey:             enclavePrivateKey,
+		enclaveKeyService:      enclaveKeyService,
 		mempool:                mempool,
 		storage:                storage,
-		dataEncryptionService:  dataEncryptionService,
 		dataCompressionService: dataCompressionService,
 		settings:               settings,
-		blockchain:             blockchain,
 	}
 }
 
@@ -117,15 +107,6 @@ func (s *sequencer) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) erro
 		return s.createGenesisBatch(ctx, l1HeadBlock)
 	}
 
-	if running := s.mempool.Running(); !running {
-		// the mempool can only be started after at least 1 block (the genesis) is in the blockchain object
-		// if the node restarted the mempool must be started again
-		err = s.mempool.Start()
-		if err != nil {
-			return err
-		}
-	}
-
 	return s.createNewHeadBatch(ctx, l1HeadBlock, skipBatchIfEmpty)
 }
 
@@ -133,9 +114,9 @@ func (s *sequencer) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) erro
 // should only create batches and stateDBs but not commit them to the database,
 // this is the responsibility of the sequencer. Refactor the code so genesis state
 // won't be committed by the producer.
-func (s *sequencer) createGenesisBatch(ctx context.Context, block *common.L1Block) error {
+func (s *sequencer) createGenesisBatch(ctx context.Context, block *types.Header) error {
 	s.logger.Info("Initializing genesis state", log.BlockHashKey, block.Hash())
-	batch, msgBusTx, err := s.batchProducer.CreateGenesisState(
+	batch, _, err := s.batchProducer.CreateGenesisState(
 		ctx,
 		block.Hash(),
 		uint64(time.Now().Unix()),
@@ -150,32 +131,28 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *common.L1Bloc
 		return fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.StoreExecutedBatch(ctx, batch, nil, nil); err != nil {
+	if err := s.StoreExecutedBatch(ctx, batch, nil); err != nil {
 		return fmt.Errorf("1. failed storing batch. Cause: %w", err)
 	}
 
 	// this is the actual first block produced in chain
-	err = s.blockchain.IngestNewBlock(batch)
+	err = s.batchRegistry.EthChain().IngestNewBlock(batch)
 	if err != nil {
 		return fmt.Errorf("failed to feed batch into the virtual eth chain - %w", err)
-	}
-
-	// the mempool can only be started after at least 1 block is in the blockchain object
-	err = s.mempool.Start()
-	if err != nil {
-		return err
 	}
 
 	// errors in unit test seem to suggest that batch 2 was received before batch 1
 	// this ensures that there is enough gap so that batch 1 is issued before batch 2
 	time.Sleep(time.Second)
+
 	// produce batch #2 which has the message bus and any other system contracts
-	cb, err := s.produceBatch(
+	_, err = s.produceBatch(
 		ctx,
-		big.NewInt(0).Add(batch.Header.SequencerOrderNo, big.NewInt(1)),
+		big.NewInt(0).SetUint64(common.L2SysContractGenesisSeqNo),
 		block.Hash(),
 		batch.Hash(),
-		common.L2Transactions{msgBusTx},
+		common.L2Transactions{},
+		false,
 		uint64(time.Now().Unix()),
 		false,
 	)
@@ -186,21 +163,13 @@ func (s *sequencer) createGenesisBatch(ctx context.Context, block *common.L1Bloc
 			s.logger.Debug("Skipping batch production, no transactions to execute")
 			return nil
 		}
-		return fmt.Errorf(" failed producing batch. Cause: %w", err)
+		return fmt.Errorf("[SystemContracts] failed producing batch. Cause: %w", err)
 	}
-
-	if len(cb.Receipts) == 0 || cb.Receipts[0].TxHash.Hex() != msgBusTx.Hash().Hex() {
-		err = fmt.Errorf("message Bus contract not minted - no receipts in batch")
-		s.logger.Error(err.Error())
-		return err
-	}
-
-	s.logger.Info("Message Bus Contract minted successfully", "address", cb.Receipts[0].ContractAddress.Hex())
 
 	return nil
 }
 
-func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *common.L1Block, skipBatchIfEmpty bool) error {
+func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *types.Header, skipBatchIfEmpty bool) error {
 	headBatchSeq := s.batchRegistry.HeadBatchSeq()
 	if headBatchSeq == nil {
 		headBatchSeq = big.NewInt(int64(common.L2GenesisSeqNo))
@@ -228,35 +197,13 @@ func (s *sequencer) createNewHeadBatch(ctx context.Context, l1HeadBlock *common.
 		return fmt.Errorf("attempted to create batch on top of batch=%s. With l1 head=%s", headBatch.Hash(), l1HeadBlock.Hash())
 	}
 
-	// todo (@stefan) - limit on receipts too
-	limiter := limiters.NewBatchSizeLimiter(s.settings.MaxBatchSize)
-	pendingTransactions := s.mempool.PendingTransactions()
-	var transactions []*types.Transaction
-	for _, group := range pendingTransactions {
-		// lazily resolve transactions until the batch runs out of space
-		for _, lazyTx := range group {
-			if tx := lazyTx.Resolve(); tx != nil {
-				err = limiter.AcceptTransaction(tx)
-				if err != nil {
-					s.logger.Info("Unable to accept transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
-					if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
-						break
-					}
-					// Limiter encountered unexpected error
-					return fmt.Errorf("limiter encountered unexpected error - %w", err)
-				}
-				transactions = append(transactions, tx)
-			}
-		}
-	}
-
 	sequencerNo, err := s.storage.FetchCurrentSequencerNo(ctx)
 	if err != nil {
 		return err
 	}
 
 	// todo - time is set only here; take from l1 block?
-	if _, err := s.produceBatch(ctx, sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), transactions, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
+	if _, err := s.produceBatch(ctx, sequencerNo.Add(sequencerNo, big.NewInt(1)), l1HeadBlock.Hash(), headBatch.Hash(), nil, true, uint64(time.Now().Unix()), skipBatchIfEmpty); err != nil {
 		if errors.Is(err, components.ErrNoTransactionsToProcess) {
 			// skip batch production when there are no transactions to process
 			// todo: this might be a useful event to track for metrics (skipping batch production because empty batch)
@@ -275,6 +222,7 @@ func (s *sequencer) produceBatch(
 	l1Hash common.L1BlockHash,
 	headBatch common.L2BatchHash,
 	transactions common.L2Transactions,
+	useMempool bool,
 	batchTime uint64,
 	failForEmptyBatch bool,
 ) (*components.ComputedBatch, error) {
@@ -282,6 +230,7 @@ func (s *sequencer) produceBatch(
 		&components.BatchExecutionContext{
 			BlockPtr:     l1Hash,
 			ParentPtr:    headBatch,
+			UseMempool:   useMempool,
 			Transactions: transactions,
 			AtTime:       batchTime,
 			Creator:      s.settings.GasPaymentAddress,
@@ -301,7 +250,7 @@ func (s *sequencer) produceBatch(
 		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}
 
-	if err := s.StoreExecutedBatch(ctx, cb.Batch, cb.Receipts, cb.CreatedContracts); err != nil {
+	if err := s.StoreExecutedBatch(ctx, cb.Batch, cb.TxExecResults); err != nil {
 		return nil, fmt.Errorf("2. failed storing batch. Cause: %w", err)
 	}
 
@@ -309,7 +258,7 @@ func (s *sequencer) produceBatch(
 		"height", cb.Batch.Number(), "numTxs", len(cb.Batch.Transactions), log.BatchSeqNoKey, cb.Batch.SeqNo(), "parent", cb.Batch.Header.ParentHash)
 
 	// add the batch to the chain so it can remove pending transactions from the pool
-	err = s.blockchain.IngestNewBlock(cb.Batch)
+	err = s.batchRegistry.EthChain().IngestNewBlock(cb.Batch)
 	if err != nil {
 		return nil, fmt.Errorf("failed to feed batch into the virtual eth chain - %w", err)
 	}
@@ -319,7 +268,7 @@ func (s *sequencer) produceBatch(
 
 // StoreExecutedBatch - stores an executed batch in one go. This can be done for the sequencer because it is guaranteed
 // that all dependencies are in place for the execution to be successful.
-func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, receipts types.Receipts, newContracts map[gethcommon.Hash][]*gethcommon.Address) error {
+func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, txResults []*core.TxExecResult) error {
 	defer core.LogMethodDuration(s.logger, measure.NewStopwatch(), "Registry StoreBatch() exit", log.BatchHashKey, batch.Hash())
 
 	// Check if this batch is already stored.
@@ -337,42 +286,92 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, r
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	if err := s.storage.StoreExecutedBatch(ctx, batch.Header, receipts, newContracts); err != nil {
+	if err := s.storage.StoreExecutedBatch(ctx, batch, txResults); err != nil {
 		return fmt.Errorf("failed to store batch. Cause: %w", err)
 	}
 
-	s.batchRegistry.OnBatchExecuted(batch.Header, receipts)
-
+	err = s.batchRegistry.OnBatchExecuted(batch.Header, txResults)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, error) {
+func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.ExtRollup, []*kzg4844.Blob, error) {
 	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
 
 	currentL1Head, err := s.blockProcessor.GetHead(ctx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	upToL1Height := currentL1Head.NumberU64() - RollupDelay
+	upToL1Height := currentL1Head.Number.Uint64() - RollupDelay
 	rollup, err := s.rollupProducer.CreateInternalRollup(ctx, lastBatchNo, upToL1Height, rollupLimiter)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	extRollup, err := s.rollupCompression.CreateExtRollup(ctx, rollup)
 	if err != nil {
-		return nil, fmt.Errorf("failed to compress rollup: %w", err)
+		return nil, nil, fmt.Errorf("failed to compress rollup: %w", err)
 	}
 
-	// todo - double-check that this signing approach is secure, and it properly includes the entire payload
-	if err := s.signRollup(extRollup); err != nil {
-		return nil, fmt.Errorf("failed to sign created rollup: %w", err)
+	extRollup.Header.CompressionL1Number = currentL1Head.Number
+	extRollup.Header.CompressionL1Head = currentL1Head.Hash()
+
+	// Create the blob data inside enclave
+	rollupData, err := common.EncodeRollup(extRollup)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to encode rollup: %w", err)
 	}
 
-	return extRollup, nil
+	// Create temp blobs to get blob hash
+	tmpBlobs, err := ethadapter.EncodeBlobs(rollupData)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to encode rollup to tmpBlobs: %w", err)
+	}
+
+	// Calculate blob hash from first blob (TODO: Change this when we use multiple tmpBlobs)
+	commitment, err := kzg4844.BlobToCommitment(tmpBlobs[0])
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
+	}
+	blobHash := ethadapter.KZGToVersionedHash(commitment)
+
+	// Create composite hash matching the contract's expectations
+	compositeHash := gethcrypto.Keccak256Hash(
+		gethcommon.LeftPadBytes(new(big.Int).SetUint64(extRollup.Header.LastBatchSeqNo).Bytes(), 32),
+		currentL1Head.Hash().Bytes(),
+		gethcommon.LeftPadBytes(currentL1Head.Number.Bytes(), 32),
+		extRollup.Header.CrossChainRoot.Bytes(),
+		blobHash.Bytes(),
+	)
+
+	// Sign the composite hash
+	signature, err := s.enclaveKeyService.Sign(compositeHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to sign rollup: %w", err)
+	}
+
+	// Store blob data and required fields
+	extRollup.Header.BlobHash = blobHash
+	extRollup.Header.CompositeHash = compositeHash
+	extRollup.Header.Signature = signature
+
+	// Now encode the rollup with signature
+	r, err := common.EncodeRollup(extRollup)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to encode rollup: %w", err)
+	}
+
+	// Encode blobs that include the signature on the header
+	blobsWithSignature, err := ethadapter.EncodeBlobs(r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to encode rollup to tmpBlobs: %w", err)
+	}
+	return extRollup, blobsWithSignature, nil
 }
 
-func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, nonCanonicalL1Path []common.L1BlockHash, canonicalL1Path []common.L1BlockHash) error {
+func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Header, nonCanonicalL1Path []common.L1BlockHash, canonicalL1Path []common.L1BlockHash) error {
 	batchesToDuplicate := make([]*common.BatchHeader, 0)
 	batchesToExclude := make(map[uint64]*common.BatchHeader, 0)
 
@@ -435,7 +434,7 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 			return fmt.Errorf("could not fetch transactions to duplicate. Cause %w", err)
 		}
 		// create the duplicate and store/broadcast it, recreate batch even if it was empty
-		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.Hash(), currentHead, transactions, orphanBatch.Time, false)
+		cb, err := s.produceBatch(ctx, sequencerNo, l1Head.Hash(), currentHead, transactions, false, orphanBatch.Time, false)
 		if err != nil {
 			return fmt.Errorf("could not produce batch. Cause %w", err)
 		}
@@ -456,10 +455,6 @@ func (s *sequencer) duplicateBatches(ctx context.Context, l1Head *types.Block, n
 	return nil
 }
 
-func (s *sequencer) SubmitTransaction(transaction *common.L2Tx) error {
-	return s.mempool.Add(transaction)
-}
-
 func (s *sequencer) OnL1Fork(ctx context.Context, fork *common.ChainFork) error {
 	if !fork.IsFork() {
 		return nil
@@ -470,68 +465,25 @@ func (s *sequencer) OnL1Fork(ctx context.Context, fork *common.ChainFork) error 
 		return fmt.Errorf("could not duplicate batches. Cause %w", err)
 	}
 
-	rollup, err := s.storage.FetchReorgedRollup(ctx, fork.NonCanonicalPath)
-	if err == nil {
-		s.logger.Error("Reissue rollup", log.RollupHashKey, rollup)
-		// todo - tudor - finalise the logic to reissue a rollup when the block used for compression was reorged
-		return nil
-	}
-	if !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("could not call FetchReorgedRollup. Cause: %w", err)
-	}
-
+	// note: there is no need to do anything about Rollups that were published against re-orged blocks
+	// because the state machine in the host will detect that case
 	return nil
 }
 
 func (s *sequencer) signBatch(batch *core.Batch) error {
 	var err error
-	h := batch.Hash()
-	batch.Header.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
+	batch.Header.Signature, err = s.enclaveKeyService.Sign(batch.Hash())
 	if err != nil {
 		return fmt.Errorf("could not sign batch. Cause: %w", err)
 	}
 	return nil
 }
 
-func (s *sequencer) signRollup(rollup *common.ExtRollup) error {
-	var err error
-	h := rollup.Header.Hash()
-	rollup.Header.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
-	if err != nil {
-		return fmt.Errorf("could not sign batch. Cause: %w", err)
-	}
-	return nil
-}
-
-func (s *sequencer) signCrossChainBundle(bundle *common.ExtCrossChainBundle) error {
-	var err error
-	h := bundle.HashPacked()
-	bundle.Signature, err = signature.Sign(h.Bytes(), s.enclaveKey.PrivateKey())
-	if err != nil {
-		return fmt.Errorf("could not sign batch. Cause: %w", err)
-	}
-	return nil
-}
-
-func (s *sequencer) OnL1Block(ctx context.Context, _ *common.L1Block, result *components.BlockIngestionType) error {
+func (s *sequencer) OnL1Block(ctx context.Context, block *types.Header, result *components.BlockIngestionType) error {
 	// nothing to do
 	return nil
 }
 
 func (s *sequencer) Close() error {
 	return s.mempool.Close()
-}
-
-func (s *sequencer) ExportCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64) (*common.ExtCrossChainBundle, error) {
-	bundle, err := ExportCrossChainData(ctx, s.storage, fromSeqNo, toSeqNo)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.signCrossChainBundle(bundle)
-	if err != nil {
-		return nil, err
-	}
-
-	return bundle, nil
 }

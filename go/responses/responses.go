@@ -40,16 +40,6 @@ func (er *EnclaveResponse) Error() error {
 	return nil
 }
 
-// AsPlaintextResponse - creates the plaintext part of the enclave response
-// It would be visible that there is an enclave response,
-// but the bytes in it will still be encrypted
-// todo - rename
-func AsPlaintextResponse(encResp EncryptedUserResponse) *EnclaveResponse {
-	return &EnclaveResponse{
-		EncUserResponse: encResp,
-	}
-}
-
 // AsEmptyResponse - Creates an empty enclave response. Useful for when no error
 // encountered but also no result found.
 func AsEmptyResponse() *EnclaveResponse {
@@ -95,26 +85,9 @@ func AsEncryptedResponse[T any](data *T, encryptHandler Encryptor) *EnclaveRespo
 		return AsPlaintextError(err)
 	}
 
-	return AsPlaintextResponse(encrypted)
-}
-
-// AsEncryptedEmptyResponse - encrypts an empty message
-func AsEncryptedEmptyResponse(encryptHandler Encryptor) *EnclaveResponse {
-	userResp := UserResponse[any]{
-		Result: nil,
+	return &EnclaveResponse{
+		EncUserResponse: encrypted,
 	}
-
-	encoded, err := json.Marshal(userResp)
-	if err != nil {
-		return AsPlaintextError(err)
-	}
-
-	encrypted, err := encryptHandler.Encrypt(encoded)
-	if err != nil {
-		return AsPlaintextError(err)
-	}
-
-	return AsPlaintextResponse(encrypted)
 }
 
 // AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
@@ -133,17 +106,19 @@ func AsEncryptedError(err error, encrypt Encryptor) *EnclaveResponse {
 		return AsPlaintextError(err)
 	}
 
-	return AsPlaintextResponse(encrypted)
+	return &EnclaveResponse{
+		EncUserResponse: encrypted,
+	}
 }
 
 // ToEnclaveResponse - Converts an encoded plaintext into an enclave response
-func ToEnclaveResponse(encoded []byte) *EnclaveResponse {
+func ToEnclaveResponse(encoded []byte) (*EnclaveResponse, error) {
 	resp := EnclaveResponse{}
 	err := json.Unmarshal(encoded, &resp)
 	if err != nil {
-		panic(err) // Todo change when stable.
+		return nil, err
 	}
-	return &resp
+	return &resp, nil
 }
 
 // ToInternalError - Converts an error to an InternalError
@@ -161,7 +136,7 @@ func DecodeResponse[T any](encoded []byte) (*T, error) {
 	resp := UserResponse[T]{}
 	err := json.Unmarshal(encoded, &resp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not decode response. Cause: %w", err)
 	}
 	if resp.Err != nil {
 		return nil, resp.Err

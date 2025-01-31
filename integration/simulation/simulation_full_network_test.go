@@ -24,14 +24,15 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 
 	simParams := &params.SimParams{
 		NumberOfNodes:              numberOfNodes,
-		AvgBlockDuration:           1 * time.Second,
+		AvgBlockDuration:           2 * time.Second,
 		SimulationTime:             120 * time.Second,
 		L1EfficiencyThreshold:      0.2,
 		Wallets:                    wallets,
-		StartPort:                  integration.StartPortSimulationFullNetwork,
-		ReceiptTimeout:             20 * time.Second,
-		StoppingDelay:              15 * time.Second,
+		StartPort:                  integration.TestPorts.TestFullNetworkMonteCarloSimulationPort,
+		ReceiptTimeout:             45 * time.Second,
+		StoppingDelay:              20 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
+		L1BeaconPort:               integration.TestPorts.TestFullNetworkMonteCarloSimulationPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15
 

@@ -3,14 +3,13 @@ package storage
 import (
 	"fmt"
 
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/init/edgelessdb"
 	"github.com/ten-protocol/go-ten/go/enclave/storage/init/sqlite"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-
-	"github.com/ten-protocol/go-ten/go/config"
 )
 
 // _journal_mode=wal - The recommended running mode: "Write-ahead logging": https://www.sqlite.org/draft/matrix/wal.html
@@ -19,7 +18,7 @@ import (
 const sqliteCfg = "_foreign_keys=on&_journal_mode=wal&_txlock=immediate&_synchronous=normal"
 
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
-func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
+func CreateDBFromConfig(cfg *enclaveconfig.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	if err := validateDBConf(cfg); err != nil {
 		return nil, err
 	}
@@ -47,7 +46,7 @@ func CreateDBFromConfig(cfg *config.EnclaveConfig, logger gethlog.Logger) (encla
 }
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation
-func validateDBConf(cfg *config.EnclaveConfig) error {
+func validateDBConf(cfg *enclaveconfig.EnclaveConfig) error {
 	if cfg.UseInMemoryDB && cfg.EdgelessDBHost != "" {
 		return fmt.Errorf("invalid db config, useInMemoryDB=true so EdgelessDB host not expected, but EdgelessDBHost=%s", cfg.EdgelessDBHost)
 	}
@@ -63,7 +62,7 @@ func validateDBConf(cfg *config.EnclaveConfig) error {
 	return nil
 }
 
-func getEdgelessDB(cfg *config.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
+func getEdgelessDB(cfg *enclaveconfig.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
 	if cfg.EdgelessDBHost == "" {
 		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
 	}

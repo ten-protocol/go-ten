@@ -3,6 +3,8 @@ package params
 import (
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/host/l1"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
@@ -20,13 +22,15 @@ type SimParams struct {
 	SimulationTime time.Duration // how long the simulations should run for
 
 	L1EfficiencyThreshold float64
+	L1BeaconPort          int
 
 	// MgmtContractLib allows parsing MgmtContract txs to and from the eth txs
 	MgmtContractLib mgmtcontractlib.MgmtContractLib
 	// ERC20ContractLib allows parsing ERC20Contract txs to and from the eth txs
 	ERC20ContractLib erc20contractlib.ERC20ContractLib
 
-	L1TenData *L1TenData
+	BlobResolver l1.BlobResolver
+	L1TenData    *L1TenData
 
 	// Contains all the wallets required by the simulation
 	Wallets *SimWallets
@@ -42,7 +46,7 @@ type SimParams struct {
 }
 
 type L1TenData struct {
-	// TenStartBlock is the L1 block hash where the Ten network activity begins (e.g. mgmt contract deployment)
+	// TenStartBlock is the L1 block hash where the TEN network activity begins (e.g. mgmt contract deployment)
 	TenStartBlock common.Hash
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddress common.Address

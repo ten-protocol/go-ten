@@ -10,6 +10,10 @@ import (
 	"testing"
 	"time"
 
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+
+	"github.com/ten-protocol/go-ten/go/common"
+
 	"github.com/ten-protocol/go-ten/tools/tenscan/backend/config"
 	"github.com/ten-protocol/go-ten/tools/tenscan/backend/container"
 
@@ -17,7 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -26,7 +29,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/assert"
-	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
@@ -48,8 +50,8 @@ const (
 )
 
 func TestTenscan(t *testing.T) {
-	startPort := integration.StartPortTenscanUnitTest
-	createTenNetwork(t, startPort)
+	startPort := integration.TestPorts.TestTenscanPort
+	createTenNetwork(t, integration.TestPorts.TestTenscanPort)
 
 	tenScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
@@ -74,20 +76,22 @@ func TestTenscan(t *testing.T) {
 	issueTransactions(
 		t,
 		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
-		wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
+		wallet.NewInMemoryWalletFromConfig(testcommon.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
 		5,
 	)
 
-	// Issue tests
+	err = waitForFirstRollup(serverAddress)
+	require.NoError(t, err)
+
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":1}", string(body))
+	assert.Equal(t, "{\"count\":13}", string(body))
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/transactions/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":6}", string(body))
+	assert.Equal(t, "{\"count\":5}", string(body))
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))
 	assert.NoError(t, err)
@@ -121,8 +125,8 @@ func TestTenscan(t *testing.T) {
 	publicTxsObj := publicTxsRes{}
 	err = json.Unmarshal(body, &publicTxsObj)
 	assert.NoError(t, err)
-	assert.Equal(t, 6, len(publicTxsObj.Result.TransactionsData))
-	assert.Equal(t, uint64(6), publicTxsObj.Result.Total)
+	assert.Equal(t, 5, len(publicTxsObj.Result.TransactionsData))
+	assert.Equal(t, uint64(5), publicTxsObj.Result.Total)
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batches/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)
@@ -290,25 +294,26 @@ func waitServerIsReady(serverAddr string) error {
 	return fmt.Errorf("timed out before server was ready")
 }
 
-// Creates a single-node Ten network for testing.
+// Creates a single-node TEN network for testing.
 func createTenNetwork(t *testing.T, startPort int) {
-	// Create the Ten network.
+	// Create the TEN network.
 	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    1,
-		AvgBlockDuration: 1 * time.Second,
+		AvgBlockDuration: 2 * time.Second,
 		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,
 		StartPort:        startPort,
 		WithPrefunding:   true,
+		L1BeaconPort:     integration.TestPorts.TestTenscanPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)
 	t.Cleanup(tenNetwork.TearDown)
 	_, err := tenNetwork.Create(&simParams, nil)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create test Ten network. Cause: %s", err))
+		panic(fmt.Sprintf("failed to create test TEN network. Cause: %s", err))
 	}
 }
 
@@ -377,4 +382,21 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 			t.Fatalf("Tx Failed")
 		}
 	}
+}
+
+func waitForFirstRollup(serverAddress string) error {
+	for now := time.Now(); time.Since(now) < 4*time.Minute; time.Sleep(5 * time.Second) {
+		statusCode, _, err := fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/latest/", serverAddress))
+		if err != nil {
+			if strings.Contains(err.Error(), "connection") {
+				continue
+			}
+			return err
+		}
+
+		if statusCode == http.StatusOK {
+			return nil
+		}
+	}
+	return fmt.Errorf("timed out before rollup was found")
 }

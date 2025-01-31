@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/l2"
 
 	"github.com/ten-protocol/go-ten/go/host/enclave"
@@ -17,7 +17,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/profiler"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
-	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/host/events"
@@ -33,8 +32,7 @@ import (
 
 // Implementation of host.Host.
 type host struct {
-	config   *config.HostConfig
-	shortID  uint64
+	config   *hostconfig.HostConfig
 	services *ServicesRegistry // registry of services that the host manages and makes available
 
 	// ignore incoming requests
@@ -45,10 +43,11 @@ type host struct {
 	logger gethlog.Logger
 
 	metricRegistry gethmetrics.Registry
-
 	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
-	l2MessageBusAddress *gethcommon.Address
-	newHeads            chan *common.BatchHeader
+	l2MessageBusAddress             *gethcommon.Address
+	transactionPostProcessorAddress gethcommon.Address
+	publicSystemContracts           map[string]gethcommon.Address
+	newHeads                        chan *common.BatchHeader
 }
 
 type batchListener struct {
@@ -59,13 +58,13 @@ func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
 	bl.newHeads <- batch.Header
 }
 
-func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry) hostcommon.Host {
+func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
 	hostStorage := storage.NewHostStorageFromConfig(config, logger)
+	l1Repo.SetBlockResolver(hostStorage)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
 		// config
-		config:  config,
-		shortID: common.ShortAddress(config.ID),
+		config: config,
 
 		// services
 		services: hostServices,
@@ -76,8 +75,9 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		logger:         logger,
 		metricRegistry: regMetrics,
 
-		stopControl: stopcontrol.New(),
-		newHeads:    make(chan *common.BatchHeader),
+		stopControl:           stopcontrol.New(),
+		newHeads:              make(chan *common.BatchHeader),
+		publicSystemContracts: make(map[string]gethcommon.Address),
 	}
 
 	enclGuardians := make([]*enclave.Guardian, 0, len(enclaveClients))
@@ -85,8 +85,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		// clone the hostIdentity data for each enclave
 		enclHostID := hostIdentity
 		if i > 0 {
-			// only the first enclave can be the sequencer for now, others behave as read-only validators
-			enclHostID.IsSequencer = false
+			// we only let the first enclave be the genesis node to avoid initialization issues
 			enclHostID.IsGenesis = false
 		}
 		enclGuardian := enclave.NewGuardian(config, enclHostID, hostServices, enclClient, hostStorage, host.stopControl, logger)
@@ -96,10 +95,9 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	enclService := enclave.NewService(hostIdentity, hostServices, enclGuardians, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
-
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
-	hostServices.RegisterService(hostcommon.L1BlockRepositoryName, l1Repo)
+	hostServices.RegisterService(hostcommon.L1DataServiceName, l1Repo)
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
 	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
 	l1Publisher := l1.NewL1Publisher(
@@ -108,6 +106,7 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 		ethClient,
 		mgmtContractLib,
 		l1Repo,
+		blobResolver,
 		host.stopControl,
 		logger,
 		maxWaitForL1Receipt,
@@ -119,8 +118,6 @@ func NewHost(config *config.HostConfig, hostServices *ServicesRegistry, p2p host
 	hostServices.RegisterService(hostcommon.L2BatchRepositoryName, l2Repo)
 	hostServices.RegisterService(hostcommon.EnclaveServiceName, enclService)
 	hostServices.RegisterService(hostcommon.LogSubscriptionServiceName, subsService)
-	l1StateMachine := l1.NewCrossChainStateMachine(l1Publisher, mgmtContractLib, ethClient, hostServices.Enclaves().GetEnclaveClient(), logger, host.stopControl)
-	hostServices.RegisterService(hostcommon.CrossChainServiceName, l1StateMachine)
 
 	var prof *profiler.Profiler
 	if config.ProfilerEnabled {
@@ -162,7 +159,7 @@ func (h *host) Start() error {
 	return nil
 }
 
-func (h *host) Config() *config.HostConfig {
+func (h *host) Config() *hostconfig.HostConfig {
 	return h.config
 }
 
@@ -170,7 +167,7 @@ func (h *host) EnclaveClient() common.Enclave {
 	return h.services.Enclaves().GetEnclaveClient()
 }
 
-func (h *host) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+func (h *host) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error) {
 	if h.stopControl.IsStopping() {
 		return nil, responses.ToInternalError(fmt.Errorf("requested SubmitAndBroadcastTx with the host stopping"))
 	}
@@ -228,28 +225,50 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 		}
 	}
 
+	// fetch all enclaves and check status of each
+	enclaveStatus := make([]common.Status, 0)
+	for _, client := range h.services.Enclaves().GetEnclaveClients() {
+		status, err := client.Status(ctx)
+		if err != nil {
+			healthErrors = append(healthErrors, fmt.Sprintf("Enclave error: failed to get status - %v", err))
+			continue
+		}
+
+		enclaveStatus = append(enclaveStatus, status)
+
+		if status.StatusCode == common.Unavailable {
+			healthErrors = append(healthErrors, fmt.Sprintf("Enclave with ID [%s] is unavailable", status.EnclaveID))
+		}
+	}
+
 	return &hostcommon.HealthCheck{
 		OverallHealth: len(healthErrors) == 0,
 		Errors:        healthErrors,
+		Enclaves:      enclaveStatus,
 	}, nil
 }
 
-// ObscuroConfig returns info on the Obscuro network
+// TenConfig returns info on the TEN network
 func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
-	if h.l2MessageBusAddress == nil {
+	if h.l2MessageBusAddress == nil || h.transactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
 		publicCfg, err := h.EnclaveClient().EnclavePublicConfig(context.Background())
 		if err != nil {
 			return nil, responses.ToInternalError(fmt.Errorf("unable to get L2 message bus address - %w", err))
 		}
 		h.l2MessageBusAddress = &publicCfg.L2MessageBusAddress
+		h.transactionPostProcessorAddress = publicCfg.TransactionPostProcessorAddress
+		h.publicSystemContracts = publicCfg.PublicSystemContracts
 	}
+
 	return &common.TenNetworkInfo{
 		ManagementContractAddress: h.config.ManagementContractAddress,
 		L1StartHash:               h.config.L1StartHash,
 
-		MessageBusAddress:   h.config.MessageBusAddress,
-		L2MessageBusAddress: *h.l2MessageBusAddress,
-		ImportantContracts:  h.services.L1Publisher().GetImportantContracts(),
+		MessageBusAddress:               h.config.MessageBusAddress,
+		L2MessageBusAddress:             *h.l2MessageBusAddress,
+		ImportantContracts:              h.services.L1Publisher().GetImportantContracts(),
+		TransactionPostProcessorAddress: h.transactionPostProcessorAddress,
+		PublicSystemContracts:           h.publicSystemContracts,
 	}, nil
 }
 

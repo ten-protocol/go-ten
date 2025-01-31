@@ -45,6 +45,7 @@ var (
 const (
 	defaultDialTimeout = 10 * time.Second // used if context has no deadline
 	subscribeTimeout   = 10 * time.Second // overall timeout eth_subscribe, rpc_modules calls
+	unsubscribeTimeout = 10 * time.Second // timeout for *_unsubscribe calls
 )
 
 const (
@@ -107,6 +108,10 @@ type Client struct {
 	reqTimeout  chan *requestOp  // removes response IDs when call timeout expires
 }
 
+func (c *Client) Stop() {
+	// todo
+}
+
 type reconnectFunc func(context.Context) (ServerCodec, error)
 
 type clientContextKey struct{}
@@ -114,11 +119,6 @@ type clientContextKey struct{}
 type clientConn struct {
 	codec   ServerCodec
 	handler *handler
-}
-
-// Stop closes the client.
-func (c *Client) Stop() {
-	c.Close()
 }
 
 func (c *Client) newClientConn(conn ServerCodec) *clientConn {
@@ -438,7 +438,7 @@ func (c *Client) BatchCallContext(ctx context.Context, b []BatchElem) error {
 	}
 
 	// Wait for all responses to come back.
-	for n := 0; n < len(batchresp) && err == nil; n++ {
+	for n := 0; n < len(batchresp); n++ {
 		resp := batchresp[n]
 		if resp == nil {
 			// Ignore null responses. These can happen for batches sent via HTTP.

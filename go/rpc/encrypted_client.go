@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"sync/atomic"
@@ -25,25 +26,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-const (
-	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
-	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
-)
-
-// SensitiveMethods for which the RPC requests and responses should be encrypted
-var SensitiveMethods = []string{
-	Call,
-	GetBalance,
-	GetTransactionByHash,
-	GetTransactionCount,
-	GetTransactionReceipt,
-	SendRawTransaction,
-	EstimateGas,
-	GetLogs,
-	GetStorageAt,
-	GetPersonalTransactions,
-}
-
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type EncRPCClient struct {
 	obscuroClient    Client
@@ -53,9 +35,8 @@ type EncRPCClient struct {
 }
 
 // NewEncRPCClient wrapper over rpc clients with a viewing key for encrypted communication
-func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
-	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
-	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
+func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, enclavePublicKeyBytes []byte, logger gethlog.Logger) (*EncRPCClient, error) {
+	enclPubECDSA, err := crypto.DecompressPubkey(enclavePublicKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decompress key for RPC client: %w", err)
 	}
@@ -90,12 +71,28 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 		return fmt.Errorf("call result parameter must be pointer or nil interface: %v", result)
 	}
 
-	if !IsSensitiveMethod(method) {
-		// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
-		return c.executeRPCCall(ctx, result, method, args...)
+	if rpc.IsEncryptedMethod(method) {
+		err := c.executeEncryptedCall(ctx, result, method, args...)
+		// this should only be triggered during testing
+		if err != nil && errors.Is(err, common.FailedDecryptErr) {
+			c.logger.Warn("Reconnecting to new backend. Reading the enclave key.")
+			newKey, err := ReadEnclaveKey(c.obscuroClient)
+			if err != nil {
+				return fmt.Errorf("could not refresh enclave key: %w", err)
+			}
+			enclPubECDSA, err := crypto.DecompressPubkey(newKey)
+			if err != nil {
+				return fmt.Errorf("failed to decompress key for RPC client: %w", err)
+			}
+			c.enclavePublicKey = ecies.ImportECDSAPublic(enclPubECDSA)
+			// retry with the updated key
+			return c.executeEncryptedCall(ctx, result, method, args...)
+		}
+		return err
 	}
 
-	return c.executeSensitiveCall(ctx, result, method, args...)
+	// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
+	return c.executeRPCCall(ctx, result, method, args...)
 }
 
 func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
@@ -113,16 +110,18 @@ func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch inter
 	}
 }
 
-func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+func (c *EncRPCClient) executeEncryptedCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	// encode the params into a json blob and encrypt them
-	encryptedParams, err := c.encryptArgs(args...)
+	encryptedParams, err := c.encryptArgs(method, args...)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
 	}
 
-	// We setup the rawResult to receive an EnclaveResponse. All sensitive methods should return this
+	// we need to inform the TEN node that the call is a transaction because it needs to broadcast it
+	isTx := method == rpc.ERPCSendRawTransaction
+
 	var rawResult responses.EnclaveResponse
-	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
+	err = c.executeRPCCall(ctx, &rawResult, rpc.EncRPC, common.EncryptedRPCRequest{Req: encryptedParams, IsTx: isTx})
 	if err != nil {
 		return err
 	}
@@ -139,7 +138,7 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 	}
 
 	// If there is no encrypted response then this is equivalent to nil response
-	if rawResult.EncUserResponse == nil || len(rawResult.EncUserResponse) == 0 {
+	if len(rawResult.EncUserResponse) == 0 {
 		return nil
 	}
 
@@ -198,7 +197,7 @@ func (c *EncRPCClient) Account() *gethcommon.Address {
 	return c.viewingKey.Account
 }
 
-func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
+func (c *EncRPCClient) encryptArgs(method string, args ...interface{}) ([]byte, error) {
 	if len(args) == 0 {
 		return nil, nil
 	}
@@ -207,7 +206,7 @@ func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
 		SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey,
 		SignatureType:           c.viewingKey.SignatureType,
 	}
-	argsWithVK := &rpc.RequestWithVk{VK: &vk, Params: args}
+	argsWithVK := &rpc.RequestWithVk{VK: &vk, Method: method, Params: args}
 
 	paramsJSON, err := json.Marshal(argsWithVK)
 	if err != nil {
@@ -233,7 +232,7 @@ func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {
 	return decryptedResult, nil
 }
 
-// creates a subscription to the Ten node, but decrypts the messages from that channel and forwards them to the `ch`
+// creates a subscription to the TEN node, but decrypts the messages from that channel and forwards them to the `ch`
 func (c *EncRPCClient) logSubscription(ctx context.Context, namespace string, ch interface{}, args ...any) (*gethrpc.ClientSubscription, error) {
 	outboundChannel, ok := ch.(chan types.Log)
 	if !ok {
@@ -303,14 +302,4 @@ func (c *EncRPCClient) onMessage(encLog []byte, outboundChannel chan types.Log) 
 
 func (c *EncRPCClient) newHeadSubscription(ctx context.Context, namespace string, ch interface{}, args ...any) (*gethrpc.ClientSubscription, error) {
 	return nil, fmt.Errorf("not implemented")
-}
-
-// IsSensitiveMethod indicates whether the RPC method's requests and responses should be encrypted.
-func IsSensitiveMethod(method string) bool {
-	for _, m := range SensitiveMethods {
-		if m == method {
-			return true
-		}
-	}
-	return false
 }

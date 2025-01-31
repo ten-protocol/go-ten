@@ -1,0 +1,15 @@
+host:
+   debug:
+      enableDebugNamespace: true
+   log:
+     level: 1
+     path: ""
+enclave:
+   debug:
+      enableDebugNamespace: true
+   log:
+     level: 1
+     path: ""
+network:
+   sequencer:
+      systemContractsUpgrader: 0x5

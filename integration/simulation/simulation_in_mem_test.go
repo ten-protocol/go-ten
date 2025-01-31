@@ -18,26 +18,26 @@ import (
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupSimTestLog("in-mem")
 
-	// todo (#718) - try increasing this back to 7 once faster-finality model is optimised
 	numberOfNodes := 5
 	numberOfSimWallets := 10
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 
 	simParams := params.SimParams{
-		NumberOfNodes: numberOfNodes,
-		//  todo (#718) - try reducing this back to 50 milliseconds once faster-finality model is optimised
+		NumberOfNodes:              numberOfNodes,
 		AvgBlockDuration:           180 * time.Millisecond,
 		SimulationTime:             45 * time.Second,
-		L1EfficiencyThreshold:      0.2,
+		L1EfficiencyThreshold:      0.8,
 		MgmtContractLib:            ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib:           ethereummock.NewERC20ContractLibMock(),
+		BlobResolver:               ethereummock.NewMockBlobResolver(),
 		Wallets:                    wallets,
-		StartPort:                  integration.StartPortSimulationInMem,
+		StartPort:                  integration.TestPorts.TestInMemoryMonteCarloSimulationPort,
 		IsInMem:                    true,
 		L1TenData:                  &params.L1TenData{},
-		ReceiptTimeout:             5 * time.Second,
-		StoppingDelay:              15 * time.Second,
+		ReceiptTimeout:             6 * time.Second,
+		StoppingDelay:              10 * time.Second,
 		NodeWithInboundP2PDisabled: 2,
+		L1BeaconPort:               integration.TestPorts.TestInMemoryMonteCarloSimulationPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

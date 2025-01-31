@@ -54,6 +54,7 @@ type PosImpl struct {
 	gethLogFile              string
 	prysmBeaconLogFile       string
 	prysmValidatorLogFile    string
+	testNameLogFile          string
 	gethdataDir              string
 	beacondataDir            string
 	validatordataDir         string
@@ -68,7 +69,6 @@ type PosImpl struct {
 type PosEth2Network interface {
 	Start() error
 	Stop() error
-	GenesisBytes() []byte
 }
 
 func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, beaconGatewayPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
@@ -98,9 +98,12 @@ func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPor
 		panic(err)
 	}
 
+	testName := integration.GetTestName(gethNetworkPort)
+
 	gethLogFile := path.Join(buildDir, "geth.log")
 	prysmBeaconLogFile := path.Join(buildDir, "beacon-chain.log")
 	prysmValidatorLogFile := path.Join(buildDir, "validator.log")
+	testNameLogFile := path.Join(buildDir, fmt.Sprintf("%s.log", testName))
 
 	gethdataDir := path.Join(buildDir, "/gethdata")
 	beacondataDir := path.Join(buildDir, "/beacondata")
@@ -139,6 +142,7 @@ func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPor
 		gethLogFile:              gethLogFile,
 		prysmBeaconLogFile:       prysmBeaconLogFile,
 		prysmValidatorLogFile:    prysmValidatorLogFile,
+		testNameLogFile:          testNameLogFile,
 		gethdataDir:              gethdataDir,
 		beacondataDir:            beacondataDir,
 		validatordataDir:         validatordataDir,
@@ -157,9 +161,10 @@ func (n *PosImpl) Start() error {
 
 	err := eg.Wait()
 	go func() {
+		fmt.Println("starting with ws port:", n.gethWSPort)
 		n.gethProcessID, n.beaconProcessID, n.validatorProcessID, err = startNetworkScript(n.gethNetworkPort, n.beaconP2PPort,
 			n.gethRPCPort, n.gethHTTPPort, n.gethWSPort, n.beaconRPCPort, n.beaconGatewayPort, n.chainID, n.buildDir, n.prysmBeaconLogFile,
-			n.prysmValidatorLogFile, n.gethLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath,
+			n.prysmValidatorLogFile, n.gethLogFile, n.testNameLogFile, n.prysmBeaconBinaryPath, n.prysmBinaryPath, n.prysmValidatorBinaryPath,
 			n.gethBinaryPath, n.gethdataDir, n.beacondataDir, n.validatordataDir)
 		time.Sleep(time.Second)
 	}()
@@ -171,9 +176,10 @@ func (n *PosImpl) Start() error {
 }
 
 func (n *PosImpl) Stop() error {
+	println("Stopping geth Network")
 	kill(n.gethProcessID)
-	kill(n.beaconProcessID)
 	kill(n.validatorProcessID)
+	kill(n.beaconProcessID)
 	time.Sleep(time.Second)
 	return nil
 }
@@ -254,11 +260,7 @@ func (n *PosImpl) prefundedBalanceActive(client *ethclient.Client) error {
 	return nil
 }
 
-func (n *PosImpl) GenesisBytes() []byte {
-	return n.gethGenesisBytes
-}
-
-func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPort, gethWSPort, beaconRPCPort, beaconGatewayPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile,
+func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPort, gethWSPort, beaconRPCPort, beaconGatewayPort, chainID int, buildDir, beaconLogFile, validatorLogFile, gethLogFile, testLogFile,
 	beaconBinary, prysmBinary, validatorBinary, gethBinary, gethdataDir, beacondataDir, validatordataDir string,
 ) (int, int, int, error) {
 	startScript := filepath.Join(basepath, "start-pos-network.sh")
@@ -292,6 +294,7 @@ func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPor
 		"--gethdata-dir", gethdataDir,
 		"--beacondata-dir", beacondataDir,
 		"--validatordata-dir", validatordataDir,
+		"--test-log", testLogFile,
 	)
 	fmt.Println(cmd.String())
 
@@ -392,6 +395,7 @@ func fundWallets(walletsToFund []string, buildDir string, chainID int) (string, 
 }
 
 func kill(pid int) {
+	fmt.Printf("Killing %d\n", pid)
 	process, err := os.FindProcess(pid)
 	if err != nil {
 		fmt.Printf("Error finding process with PID %d: %v\n", pid, err)

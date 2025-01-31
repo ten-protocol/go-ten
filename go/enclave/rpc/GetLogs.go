@@ -14,7 +14,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
-func GetLogsValidate(reqParams []any, builder *CallBuilder[filters.FilterCriteria, []*types.Log], _ *EncryptionManager) error {
+func GetLogsValidate(reqParams []any, builder *CallBuilder[filters.FilterCriteria, []*types.Log], rpc *EncryptionManager) error {
+	if !storeTxEnabled(rpc, builder) {
+		return nil
+	}
 	// Parameters are [Filter]
 	if len(reqParams) != 1 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
@@ -40,15 +43,13 @@ func GetLogsValidate(reqParams []any, builder *CallBuilder[filters.FilterCriteri
 
 func GetLogsExecute(builder *CallBuilder[filters.FilterCriteria, []*types.Log], rpc *EncryptionManager) error { //nolint:gocognit
 	filter := builder.Param
-	// todo logic to check that the filter is valid
 	// can't have both from and blockhash
-	// from <=to
-	// todo (@stefan) - return user error
 	if filter.BlockHash != nil && filter.FromBlock != nil {
 		builder.Err = fmt.Errorf("invalid filter. Cannot have both blockhash and fromBlock")
 		return nil
 	}
 
+	// from <=to
 	from := filter.FromBlock
 	if from != nil && from.Int64() < 0 {
 		batch, err := rpc.storage.FetchBatchHeaderBySeqNo(builder.ctx, rpc.registry.HeadBatchSeq().Uint64())

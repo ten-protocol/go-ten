@@ -1,14 +1,15 @@
 package erc20contractlib
 
 import (
+	"fmt"
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/common"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 const methodBytesLen = 4
@@ -17,10 +18,10 @@ const methodBytesLen = 4
 type ERC20ContractLib interface {
 	// DecodeTx receives a *types.Transaction and converts it to an common.L1Transaction
 	// returns nil if the transaction is not convertible
-	DecodeTx(tx *types.Transaction) ethadapter.L1Transaction
+	DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error)
 
 	// CreateDepositTx receives an common.L1Transaction and converts it to an eth transaction
-	CreateDepositTx(tx *ethadapter.L1DepositTx) types.TxData
+	CreateDepositTx(tx *common.L1DepositTx) (types.TxData, error)
 }
 
 // erc20ContractLibImpl takes a mgmtContractAddr and processes multiple erc20ContractAddrs
@@ -44,60 +45,60 @@ func NewERC20ContractLib(mgmtContractAddr *gethcommon.Address, contractAddrs ...
 	}
 }
 
-func (c *erc20ContractLibImpl) CreateDepositTx(tx *ethadapter.L1DepositTx) types.TxData {
+func (c *erc20ContractLibImpl) CreateDepositTx(tx *common.L1DepositTx) (types.TxData, error) {
 	data, err := c.contractABI.Pack("transfer", &tx.To, tx.Amount)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to pack transfer data: %w", err)
 	}
 
 	return &types.LegacyTx{
 		To:   tx.TokenContract,
 		Data: data,
-	}
+	}, nil
 }
 
-func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) ethadapter.L1Transaction {
+func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
 	if !c.isRelevant(tx) {
-		return nil
+		return nil, nil
 	}
 	method, err := c.contractABI.MethodById(tx.Data()[:methodBytesLen])
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to extract method from tx data: %w", err)
 	}
 
 	contractCallData := map[string]interface{}{}
 	if err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[methodBytesLen:]); err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to unpack contract call data: %w", err)
 	}
 
 	to, found := contractCallData[ToCallData]
 	if !found {
-		panic("to address not found for transfer")
+		return nil, fmt.Errorf("to not found for transfer")
 	}
 
 	// only process transfers made to the management contract
 	toAddr, ok := to.(gethcommon.Address)
 	if !ok || toAddr.Hex() != c.mgmtContractAddr.Hex() {
-		return nil
+		return nil, nil
 	}
 
 	amount, found := contractCallData[AmountCallData]
 	if !found {
-		panic("amount not found for transfer")
+		return nil, fmt.Errorf("amount not found for transfer")
 	}
 
 	signer := types.NewLondonSigner(tx.ChainId())
 	sender, err := signer.Sender(tx)
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to extract sender from tx: %w", err)
 	}
 
-	return &ethadapter.L1DepositTx{
+	return &common.L1DepositTx{
 		Amount:        amount.(*big.Int),
 		To:            &toAddr,
 		TokenContract: tx.To(),
 		Sender:        &sender,
-	}
+	}, nil
 }
 
 func (c *erc20ContractLibImpl) isRelevant(tx *types.Transaction) bool {

@@ -3,8 +3,9 @@ package env
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/integration/common"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/networktest"
@@ -24,8 +25,8 @@ func SepoliaTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		[]string{"http://erpc.sepolia-testnet.ten.xyz:80"},
 		"http://sepolia-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"https://rpc.sepolia.org/",
-		"https://testnet.ten.xyz",
-		"wss://testnet.ten.xyz:81",
+		"https://rpc.testnet.ten.xyz",
+		"wss://rpc.testnet.ten.xyz:81",
 	)
 	return newTestnetEnv(connector, opts...)
 }
@@ -36,8 +37,8 @@ func UATTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		[]string{"http://erpc.uat-testnet.ten.xyz:80"},
 		"http://uat-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://uat-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
-		"https://uat-testnet.ten.xyz",
-		"wss://uat-testnet.ten.xyz:81",
+		"https://rpc.uat-testnet.ten.xyz",
+		"wss://rpc.uat-testnet.ten.xyz:81",
 	)
 	return newTestnetEnv(connector, opts...)
 }
@@ -48,8 +49,8 @@ func DevTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		[]string{"http://erpc.dev-testnet.ten.xyz:80"},
 		"http://dev-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
-		"https://dev-testnet.ten.xyz",
-		"wss://dev-testnet.ten.xyz:81",
+		"https://rpc.dev-testnet.ten.xyz",
+		"wss://rpc.dev-testnet.ten.xyz:81",
 	)
 	return newTestnetEnv(connector, opts...)
 }
@@ -59,7 +60,7 @@ func LongRunningLocalNetwork(l1WSURL string) networktest.Environment {
 	connector := newTestnetConnectorWithFaucetAccount(
 		"ws://127.0.0.1:17900",
 		[]string{"ws://127.0.0.1:17901"},
-		genesis.TestnetPrefundedPK,
+		common.TestnetPrefundedPK,
 		l1WSURL,
 		"",
 	)
@@ -87,7 +88,7 @@ func (t *testnetEnv) Prepare() (networktest.NetworkConnector, func(), error) {
 			go func() {
 				err := t.tenGatewayContainer.Stop()
 				if err != nil {
-					fmt.Println("failed to stop ten gateway", err.Error())
+					fmt.Println("failed to stop TEN gateway", err.Error())
 				}
 			}()
 		}
@@ -115,10 +116,10 @@ func (t *testnetEnv) startTenGateway() {
 	}
 	tenGWContainer := walletextension.NewContainerFromConfig(cfg, t.logger)
 
-	fmt.Println("Starting Ten Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
+	fmt.Println("Starting TEN Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 	err := tenGWContainer.Start()
 	if err != nil {
-		t.logger.Error("failed to start ten gateway", "err", err)
+		t.logger.Error("failed to start TEN gateway", "err", err)
 		panic(err)
 	}
 	t.tenGatewayContainer = tenGWContainer

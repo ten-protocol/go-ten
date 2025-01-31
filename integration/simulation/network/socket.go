@@ -3,11 +3,17 @@ package network
 import (
 	"bufio"
 	"fmt"
+	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
 	"time"
 
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/config"
+	"github.com/ten-protocol/go-ten/go/host/l1"
 	"github.com/ten-protocol/go-ten/integration/noderunner"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -25,7 +31,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 )
 
-// creates Ten nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
+// creates TEN nodes with their own enclave servers that communicate with peers via sockets, wires them up, and populates the network objects
 type networkOfSocketNodes struct {
 	l2Clients         []rpc.Client
 	hostWebsocketURLs []string
@@ -57,11 +63,14 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		&simParams.L1TenData.ObxErc20Address,
 		&simParams.L1TenData.EthErc20Address,
 	)
+	beaconURL := fmt.Sprintf("127.0.0.1:%d", simParams.L1BeaconPort)
+	simParams.BlobResolver = l1.NewBlobResolver(ethadapter.NewL1BeaconClient(
+		ethadapter.NewBeaconHTTPClient(new(http.Client), beaconURL)))
 
 	// get the sequencer Address
 	seqPrivateKey := n.wallets.NodeWallets[0].PrivateKey()
 	seqPrivKey := fmt.Sprintf("%x", crypto.FromECDSA(seqPrivateKey))
-	seqHostAddress := crypto.PubkeyToAddress(seqPrivateKey.PublicKey)
+	seqHostAddress := "0"
 
 	// create the nodes
 	nodes := make([]node.Node, simParams.NumberOfNodes)
@@ -76,41 +85,50 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		if i != 0 {
 			nodeTypeStr = "validator"
 			privateKey = fmt.Sprintf("%x", crypto.FromECDSA(n.wallets.NodeWallets[i].PrivateKey()))
-			hostAddress = crypto.PubkeyToAddress(n.wallets.NodeWallets[i].PrivateKey().PublicKey)
-
+			hostAddress = fmt.Sprintf("%d", i)
 			// only the validators can have the incoming p2p disabled
 			isInboundP2PDisabled = i == simParams.NodeWithInboundP2PDisabled
 		}
 
 		genesis := "{}"
 		if simParams.WithPrefunding {
-			genesis = ""
+			genesis = testcommon.TestnetGenesisJSON()
 		}
+		nodeType, err := common.ToNodeType(nodeTypeStr)
+		if err != nil {
+			return nil, fmt.Errorf("unable to convert node type (%s): %w", nodeTypeStr, err)
+		}
+		hostP2PAddress := fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset+i)
+
+		tenCfg, err := config.LoadTenConfig("defaults/sim/1-env-sim.yaml")
+		if err != nil {
+			return nil, fmt.Errorf("unable to load TEN config: %w", err)
+		}
+		tenCfg.Network.GenesisJSON = genesis
+		tenCfg.Network.Sequencer.P2PAddress = fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset)
+		tenCfg.Network.L1.BlockTime = simParams.AvgBlockDuration
+		tenCfg.Network.L1.L1Contracts.ManagementContract = simParams.L1TenData.MgmtContractAddress
+		tenCfg.Network.L1.L1Contracts.MessageBusContract = simParams.L1TenData.MessageBusAddr
+		tenCfg.Network.Gas.PaymentAddress = simParams.Wallets.L2FeesWallet.Address()
+
+		tenCfg.Node.PrivateKeyString = privateKey
+		tenCfg.Node.HostAddress = hostP2PAddress
+		tenCfg.Node.NodeType = nodeType
+		tenCfg.Node.IsGenesis = i == 0
+		tenCfg.Node.ID = hostAddress
+		tenCfg.Host.P2P.IsDisabled = isInboundP2PDisabled
+		tenCfg.Host.P2P.BindAddress = hostP2PAddress
+		tenCfg.Host.RPC.HTTPPort = uint64(simParams.StartPort + integration.DefaultHostRPCHTTPOffset + i)
+		tenCfg.Host.RPC.WSPort = uint64(simParams.StartPort + integration.DefaultHostRPCWSOffset + i)
+		tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)}
+		tenCfg.Host.L1.WebsocketURL = fmt.Sprintf("ws://127.0.0.1:%d", simParams.StartPort+100)
+		tenCfg.Host.L1.L1BeaconUrl = beaconURL
+		tenCfg.Host.Log.Level = 1
+		tenCfg.Enclave.Log.Level = 1
+		tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)
 
 		// create the nodes
-		nodes[i] = noderunner.NewInMemNode(
-			node.NewNodeConfig(
-				node.WithGenesis(i == 0),
-				node.WithHostID(hostAddress.String()),
-				node.WithPrivateKey(privateKey),
-				node.WithSequencerP2PAddr(fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset)),
-				node.WithEnclaveWSPort(simParams.StartPort+integration.DefaultEnclaveOffset+i),
-				node.WithHostWSPort(simParams.StartPort+integration.DefaultHostRPCWSOffset+i),
-				node.WithHostHTTPPort(simParams.StartPort+integration.DefaultHostRPCHTTPOffset+i),
-				node.WithHostP2PPort(simParams.StartPort+integration.DefaultHostP2pOffset+i),
-				node.WithHostPublicP2PAddr(fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset+i)),
-				node.WithManagementContractAddress(simParams.L1TenData.MgmtContractAddress.String()),
-				node.WithMessageBusContractAddress(simParams.L1TenData.MessageBusAddr.String()),
-				node.WithNodeType(nodeTypeStr),
-				node.WithCoinbase(simParams.Wallets.L2FeesWallet.Address().Hex()),
-				node.WithL1WebsocketURL(fmt.Sprintf("ws://%s:%d", "127.0.0.1", simParams.StartPort+100)),
-				node.WithInboundP2PDisabled(isInboundP2PDisabled),
-				node.WithLogLevel(4),
-				node.WithDebugNamespaceEnabled(true),
-				node.WithL1BlockTime(simParams.AvgBlockDuration),
-				node.WithTenGenesis(genesis),
-			),
-		)
+		nodes[i] = noderunner.NewInMemNode(tenCfg)
 
 		// start the nodes
 		err = nodes[i].Start()
@@ -119,8 +137,8 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 			if errCheck != nil {
 				testlog.Logger().Warn("no port found on error", log.ErrKey, err)
 			}
-			fmt.Printf("unable to start Ten node: %s", err)
-			testlog.Logger().Error("unable to start Ten node ", log.ErrKey, err)
+			fmt.Printf("unable to start TEN node: %s\n", err)
+			testlog.Logger().Error("unable to start TEN node ", log.ErrKey, err)
 		}
 	}
 
@@ -131,6 +149,46 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, simParams.Wallets)
 
+	time.Sleep(15 * simParams.AvgBlockDuration)
+
+	// permission the sequencer enclaveID
+	// we retry fetching the seqHealth until it comes back with the enclaveID as the nodes are still starting up
+	startTime := time.Now()
+	var seqEnclaveID *common.EnclaveID
+	for ; seqEnclaveID == nil; time.Sleep(100 * time.Millisecond) {
+		seqHealth, _ := n.tenClients[0].Health()
+		if seqHealth.Enclaves == nil || len(seqHealth.Enclaves) == 0 {
+			continue
+		}
+		seqEnclaveID = &seqHealth.Enclaves[0].EnclaveID
+		if time.Now().After(startTime.Add(2 * time.Minute)) {
+			return nil, fmt.Errorf("unable to get sequencer enclaveID after 2 minutes")
+		}
+	}
+
+	// permission the sequencer enclaveID (also requires retries as the enclaveID may not be attested yet)
+	err = PermissionTenSequencerEnclave(n.wallets.MCOwnerWallet, n.gethClients[0], simParams.L1TenData.MgmtContractAddress, *seqEnclaveID)
+	if err != nil {
+		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
+	}
+
+	// wait for nodes to be healthy now we've permissioned
+	// make sure the nodes are healthy
+	for _, client := range n.tenClients {
+		startTime := time.Now()
+		healthy := false
+		for ; !healthy; time.Sleep(500 * time.Millisecond) {
+			h, _ := client.Health()
+			healthy = h.OverallHealth
+			if !healthy {
+				fmt.Println(h.Errors)
+			}
+			if time.Now().After(startTime.Add(3 * time.Minute)) {
+				return nil, fmt.Errorf("nodes not healthy after 3 minutes")
+			}
+		}
+	}
+
 	return &RPCHandles{
 		EthClients:     n.gethClients,
 		TenClients:     n.tenClients,
@@ -140,10 +198,10 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 }
 
 func (n *networkOfSocketNodes) TearDown() {
-	// Stop the Ten nodes first (each host will attempt to shut down its enclave as part of shutdown).
+	// Stop the TEN nodes first (each host will attempt to shut down its enclave as part of shutdown).
 	StopTenNodes(n.l2Clients)
-	StopEth2Network(n.gethClients, n.eth2Network)
 	CheckHostRPCServersStopped(n.hostWebsocketURLs)
+	StopEth2Network(n.gethClients, n.eth2Network)
 }
 
 func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) error {
@@ -166,7 +224,7 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 				return fmt.Errorf("failed to create a connect to node after 2 minute - %w", err)
 			}
 
-			testlog.Logger().Info(fmt.Sprintf("Could not create client %d. Retrying...", i), log.ErrKey, err)
+			testlog.Logger().Info(fmt.Sprintf("Could not create client %d at port %d. Retrying...", i, port), log.ErrKey, err)
 		}
 
 		n.l2Clients[i] = client
@@ -177,17 +235,6 @@ func (n *networkOfSocketNodes) createConnections(simParams *params.SimParams) er
 		n.tenClients[idx] = obsclient.NewObsClient(l2Client)
 	}
 
-	// make sure the nodes are healthy
-	for _, client := range n.tenClients {
-		startTime := time.Now()
-		healthy := false
-		for ; !healthy; time.Sleep(500 * time.Millisecond) {
-			healthy, _ = client.Health()
-			if time.Now().After(startTime.Add(3 * time.Minute)) {
-				return fmt.Errorf("nodes not healthy after 3 minutes")
-			}
-		}
-	}
 	return nil
 }
 

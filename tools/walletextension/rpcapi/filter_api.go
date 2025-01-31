@@ -7,13 +7,18 @@ import (
 	"sync/atomic"
 	"time"
 
+	rpc2 "github.com/ten-protocol/go-ten/go/common/rpc"
+	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+
 	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ethereum/go-ethereum/log"
 
 	subscriptioncommon "github.com/ten-protocol/go-ten/go/common/subscription"
-
-	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -25,14 +30,14 @@ import (
 )
 
 type FilterAPI struct {
-	we     *Services
+	we     *services.Services
 	logger log.Logger
 }
 
-func NewFilterAPI(we *Services) *FilterAPI {
+func NewFilterAPI(we *services.Services) *FilterAPI {
 	return &FilterAPI{
 		we:     we,
-		logger: we.logger,
+		logger: we.Logger(),
 	}
 }
 
@@ -81,14 +86,14 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	errorChannels := make([]<-chan error, 0)
 	backendSubscriptions := make([]*rpc.ClientSubscription, 0)
 	for _, address := range candidateAddresses {
-		rpcWSClient, err := connectWS(ctx, user.accounts[*address], api.we.Logger())
+		rpcWSClient, err := api.we.BackendRPC.ConnectWS(ctx, user.AllAccounts()[address])
 		if err != nil {
 			return nil, err
 		}
 		backendWSConnections = append(backendWSConnections, rpcWSClient)
 
 		inCh := make(chan types.Log)
-		backendSubscription, err := rpcWSClient.Subscribe(ctx, "eth", inCh, "logs", crit)
+		backendSubscription, err := rpcWSClient.Subscribe(ctx, tenrpc.SubscribeNamespace, inCh, "logs", crit)
 		if err != nil {
 			fmt.Printf("could not connect to backend %s", err)
 			return nil, err
@@ -148,11 +153,11 @@ func (api *FilterAPI) closeConnections(backendSubscriptions []*rpc.ClientSubscri
 		backendSub.Unsubscribe()
 	}
 	for _, connection := range backendWSConnections {
-		_ = returnConn(api.we.rpcWSConnPool, connection.BackingClient(), api.logger)
+		_ = api.we.BackendRPC.ReturnConnWS(connection.BackingClient())
 	}
 }
 
-func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *GWUser, error) {
+func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *wecommon.GWUser, error) {
 	subNotifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return nil, nil, fmt.Errorf("creation of subscriptions is not supported")
@@ -163,21 +168,21 @@ func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *GW
 		return nil, nil, fmt.Errorf("illegal access")
 	}
 
-	user, err := getUser(subNotifier.UserID, api.we)
+	user, err := api.we.Storage.GetUser(subNotifier.UserID)
 	if err != nil {
 		return nil, nil, fmt.Errorf("illegal access: %s, %w", subNotifier.UserID, err)
 	}
 	return subNotifier, user, nil
 }
 
-func searchForAddressInFilterCriteria(filterCriteria common.FilterCriteria, possibleAddresses []*gethcommon.Address) []*gethcommon.Address {
-	result := make([]*gethcommon.Address, 0)
+func searchForAddressInFilterCriteria(filterCriteria common.FilterCriteria, possibleAddresses []gethcommon.Address) []gethcommon.Address {
+	result := make([]gethcommon.Address, 0)
 	addrMap := toMap(possibleAddresses)
 	for _, topicCondition := range filterCriteria.Topics {
 		for _, topic := range topicCondition {
 			potentialAddr := common.ExtractPotentialAddress(topic)
-			if potentialAddr != nil && addrMap[*potentialAddr] != nil {
-				result = append(result, potentialAddr)
+			if potentialAddr != nil && addrMap[*potentialAddr] {
+				result = append(result, *potentialAddr)
 			}
 		}
 	}
@@ -189,47 +194,42 @@ func (api *FilterAPI) NewFilter(crit common.FilterCriteria) (rpc.ID, error) {
 }
 
 func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) ([]*types.Log, error) {
-	method := "eth_getLogs"
+	method := rpc2.ERPCGetLogs
 	audit(api.we, "RPC start method=%s args=%v", method, ctx)
 	requestStartTime := time.Now()
-	userID, err := extractUserID(ctx, api.we)
+	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
 		return nil, err
 	}
 
-	rateLimitAllowed, requestUUID := api.we.RateLimiter.Allow(gethcommon.Address(userID))
-	defer api.we.RateLimiter.SetRequestEnd(gethcommon.Address(userID), requestUUID)
+	rateLimitAllowed, requestUUID := api.we.RateLimiter.Allow(gethcommon.Address(user.ID))
+	defer api.we.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	if !rateLimitAllowed {
 		return nil, fmt.Errorf("rate limit exceeded")
 	}
 
-	res, err := withCache(
-		api.we.Cache,
-		&CacheCfg{
-			CacheTypeDynamic: func() CacheStrategy {
+	res, err := cache.WithCache(
+		api.we.RPCResponsesCache,
+		&cache.Cfg{
+			DynamicType: func() cache.Strategy {
 				if crit.ToBlock != nil && crit.ToBlock.Int64() > 0 {
-					return LongLiving
+					return cache.LongLiving
 				}
 				if crit.BlockHash != nil {
-					return LongLiving
+					return cache.LongLiving
 				}
 				// when the toBlock or the block Hash are not specified, the request is open-ended
-				return LatestBatch
+				return cache.LatestBatch
 			},
 		},
-		generateCacheKey([]any{userID, method, common.SerializableFilterCriteria(crit)}),
+		generateCacheKey([]any{user.ID, method, common.SerializableFilterCriteria(crit)}),
 		func() (*[]*types.Log, error) { // called when there is no entry in the cache
-			user, err := getUser(userID, api.we)
-			if err != nil {
-				return nil, err
-			}
-
 			allEventLogsMap := make(map[LogKey]*types.Log)
 			// for each account registered for the current user
 			// execute the get_Logs function
 			// dedupe and concatenate the results
-			for _, acct := range user.accounts {
-				eventLogs, err := withEncRPCConnection(ctx, api.we, acct, func(rpcClient *tenrpc.EncRPCClient) (*[]*types.Log, error) {
+			for _, acct := range user.AllAccounts() {
+				eventLogs, err := services.WithEncRPCConnection(ctx, api.we.BackendRPC, acct, func(rpcClient *tenrpc.EncRPCClient) (*[]*types.Log, error) {
 					var result []*types.Log
 
 					// wrap the context with a timeout to prevent long executions
@@ -267,7 +267,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	if err != nil {
 		return nil, err
 	}
-	audit(api.we, "RPC call. uid=%s, method=%s args=%v result=%v error=%v time=%d", hexutils.BytesToHex(userID), method, crit, res, err, time.Since(requestStartTime).Milliseconds())
+	audit(api.we, "RPC call. uid=%s, method=%s args=%v result=%v error=%v time=%d", hexutils.BytesToHex(user.ID), method, crit, res, err, time.Since(requestStartTime).Milliseconds())
 	return *res, err
 }
 
@@ -277,7 +277,7 @@ func (api *FilterAPI) UninstallFilter(id rpc.ID) bool {
 }
 
 func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.Log, error) {
-	//txRec, err := ExecAuthRPC[[]*types.Log](ctx, api.we, "GetFilterLogs", ExecCfg{account: args.From}, id)
+	//txRec, err := ExecAuthRPC[[]*types.Log](ctx, api.we, "GetFilterLogs", AuthExecCfg{account: args.From}, id)
 	//if txRec != nil {
 	//	return *txRec, err
 	//}

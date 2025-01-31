@@ -1,9 +1,13 @@
 package network
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/retry"
+
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/host/container"
@@ -51,15 +55,12 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		incomingP2PDisabled := !isGenesis && i == params.NodeWithInboundP2PDisabled
 
 		// create the in memory l1 and l2 node
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
-
+		miner := createMockEthNode(i, params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, params.BlobResolver)
 		agg := createInMemTenNode(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
 			params.MgmtContractLib,
-			false,
-			nil,
 			params.Wallets.NodeWallets[i],
 			miner,
 			p2pNetw.NewNode(i),
@@ -68,6 +69,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			params.AvgBlockDuration/2,
 			incomingP2PDisabled,
 			params.AvgBlockDuration,
+			params.BlobResolver,
 		)
 		tenClient := p2p.NewInMemTenClient(agg)
 
@@ -87,7 +89,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
 	// The reason is to make sure that they catch up correctly.
 	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the en nodes
-	// Then, we begin the starting sequence of the Ten nodes, again with a delay between them, to test that they are able to cach up correctly.
+	// Then, we begin the starting sequence of the TEN nodes, again with a delay between them, to test that they are able to cach up correctly.
 	// Note: Other simulations might test variations of this pattern.
 	for _, m := range n.ethNodes {
 		t := m
@@ -111,6 +113,39 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		tenClients[idx] = obsclient.NewObsClient(l2Client)
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
+
+	var sequencerHealth host.HealthCheck
+	// wait for the sequencer to be healthy
+	err := retry.Do(func() error {
+		var err error
+		sequencerHealth, err = tenClients[0].Health()
+		if err != nil {
+			return err
+		}
+		if len(sequencerHealth.Enclaves) == 0 {
+			return fmt.Errorf("no enclaves available to promote on sequencer")
+		}
+
+		// the nodes are healthy, we can continue
+		return nil
+	}, retry.NewTimeoutStrategy(30*params.AvgBlockDuration, params.AvgBlockDuration))
+	if err != nil {
+		panic(err)
+	}
+
+	// mock implementation of the permissioning, tell the mock L1 the seq address
+	for _, node := range n.ethNodes {
+		node.PromoteEnclave(sequencerHealth.Enclaves[0].EnclaveID)
+	}
+	permMockAddr := ethereummock.MockGrantSeqTxAddress()
+	mockTx := types.NewTx(&types.LegacyTx{
+		To:   &permMockAddr,
+		Data: []byte{0x1},
+	})
+	err = n.ethNodes[0].SendTransaction(mockTx)
+	if err != nil {
+		return nil, err
+	}
 
 	return &RPCHandles{
 		EthClients:     l1Clients,

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 
@@ -35,14 +34,14 @@ type TenConfig struct {
 	NumNodes           int
 	TenGatewayEnabled  bool
 	NumSeqEnclaves     int
+	L1BeaconPort       int
+	L1BlockTime        time.Duration
 	DeployerPK         string
-
-	L1BlockTime time.Duration
 }
 
 func DefaultTenConfig() *TenConfig {
 	return &TenConfig{
-		PortStart:          integration.StartPortNetworkTests,
+		PortStart:          integration.TestPorts.NetworkTestsPort,
 		NumNodes:           4,
 		InitNumValidators:  3,
 		BatchInterval:      1 * time.Second,
@@ -50,6 +49,7 @@ func DefaultTenConfig() *TenConfig {
 		CrossChainInterval: 11 * time.Second,
 		TenGatewayEnabled:  false,
 		NumSeqEnclaves:     1, // increase for HA simulation
+		L1BeaconPort:       integration.TestPorts.NetworkTestsPort + integration.DefaultPrysmGatewayPortOffset,
 		DeployerPK:         "",
 	}
 }
@@ -72,9 +72,9 @@ func LocalDevNetwork(tenConfigOpts ...TenConfigOption) *InMemDevNetwork {
 	}
 
 	l1Config := &L1Config{
-		PortStart:        integration.StartPortNetworkTests,
+		PortStart:        integration.TestPorts.NetworkTestsPort,
 		NumNodes:         tenConfig.NumNodes, // we'll have 1 L1 node per L2 node
-		AvgBlockDuration: 1 * time.Second,
+		AvgBlockDuration: 2 * time.Second,
 	}
 	l1Network := NewGethNetwork(nodeOpL1Wallets, l1Config)
 
@@ -103,7 +103,7 @@ func LiveL1DevNetwork(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet,
 	// setup the host and deployer wallets to be the prefunded wallets
 
 	// create the L2 faucet wallet
-	l2FaucetPrivKey, err := crypto.HexToECDSA(genesis.TestnetPrefundedPK)
+	l2FaucetPrivKey, err := crypto.HexToECDSA(testcommon.TestnetPrefundedPK)
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}

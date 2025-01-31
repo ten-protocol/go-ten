@@ -4,19 +4,22 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
+	"github.com/ten-protocol/go-ten/go/host/storage"
+
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
 // service names - these are the keys used to register known services with the host
 const (
 	P2PName                    = "p2p"
-	L1BlockRepositoryName      = "l1-block-repo"
+	L1DataServiceName          = "l1-data-service"
 	L1PublisherName            = "l1-publisher"
 	L2BatchRepositoryName      = "l2-batch-repo"
 	EnclaveServiceName         = "enclaves"
@@ -76,36 +79,37 @@ type P2PBatchRequestHandler interface {
 	HandleBatchRequest(requestID string, fromSeqNo *big.Int)
 }
 
-// L1BlockRepository provides an interface for the host to request L1 block data (live-streaming and historical)
-type L1BlockRepository interface {
+// L1DataService provides an interface for the host to request L1 block data (live-streaming and historical)
+type L1DataService interface {
+	SetBlockResolver(br storage.BlockResolver)
 	// Subscribe will register a block handler to receive new blocks as they arrive, returns unsubscribe func
 	Subscribe(handler L1BlockHandler) func()
 
-	FetchBlockByHeight(height *big.Int) (*types.Block, error)
+	FetchBlockByHeight(height *big.Int) (*types.Header, error)
 	// FetchNextBlock returns the next canonical block after a given block hash
 	// It returns the new block, a bool which is true if the block is the current L1 head and a bool if the block is on a different fork to prevBlock
-	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Block, bool, error)
-	// FetchObscuroReceipts returns the receipts for a given L1 block
-	FetchObscuroReceipts(block *common.L1Block) (types.Receipts, error)
+	FetchNextBlock(prevBlock gethcommon.Hash) (*types.Header, bool, error)
+	// GetTenRelevantTransactions returns the events and transactions relevant to Ten
+	GetTenRelevantTransactions(block *types.Header) (*common.ProcessedL1Data, error)
 }
 
 // L1BlockHandler is an interface for receiving new blocks from the repository as they arrive
 type L1BlockHandler interface {
 	// HandleBlock will be called in a new goroutine for each new block as it arrives
-	HandleBlock(block *types.Block)
+	HandleBlock(block *types.Header)
 }
 
-// L1Publisher provides an interface for the host to interact with Obscuro data (management contract etc.) on L1
+// L1Publisher provides an interface for the host to interact with Ten data (management contract etc.) on L1
 type L1Publisher interface {
 	// InitializeSecret will send a management contract transaction to initialize the network with the generated secret
 	InitializeSecret(attestation *common.AttestationReport, encSecret common.EncryptedSharedEnclaveSecret) error
 	// RequestSecret will send a management contract transaction to request a secret from the enclave, returning the L1 head at time of sending
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
-	// ExtractObscuroRelevantTransactions will return all Obscuro relevant tx from an L1 block
-	ExtractObscuroRelevantTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx)
-	// PublishRollup will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
+	// FindSecretResponseTx will return the secret response tx from an L1 block
+	FindSecretResponseTx(responseTxs []*common.L1TxData) []*common.L1RespondSecretTx
+	// PublishBlob will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
 	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
-	PublishRollup(producedRollup *common.ExtRollup)
+	PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg4844.Blob)
 	// PublishSecretResponse will create and publish a secret response tx to the management contract - fire and forget we don't wait for receipt
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error
 
@@ -118,9 +122,6 @@ type L1Publisher interface {
 	GetImportantContracts() map[string]gethcommon.Address
 	// ResyncImportantContracts will fetch the latest important contracts from the management contract, update the cache
 	ResyncImportantContracts() error
-
-	// GetBundleRangeFromManagementContract returns the range of batches for which to build a bundle
-	GetBundleRangeFromManagementContract(lastRollupNumber *big.Int, lastRollupUID gethcommon.Hash) (*gethcommon.Hash, *big.Int, *big.Int, error)
 }
 
 // L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)
@@ -132,6 +133,8 @@ type L2BatchRepository interface {
 	SubscribeValidatedBatches(handler L2BatchHandler) func()
 
 	FetchBatchBySeqNo(background context.Context, seqNo *big.Int) (*common.ExtBatch, error)
+
+	FetchLatestBatchSeqNo() *big.Int
 
 	// AddBatch is used to notify the repository of a new batch, e.g. from the enclave when seq produces one or a rollup is consumed
 	// Note: it is fine to add batches that the repo already has, it will just ignore them
@@ -157,8 +160,16 @@ type EnclaveService interface {
 	// GetEnclaveClient returns an enclave client // todo (@matt) we probably don't want to expose this
 	GetEnclaveClient() common.Enclave
 
+	// GetEnclaveClients returns a list of all enclave clients
+	GetEnclaveClients() []common.Enclave
+
+	// EvictEnclave will remove the enclave from the list of enclaves, it is used when an enclave is unhealthy
+	// - the enclave guardians are responsible for calling this method when they detect an enclave is unhealthy to notify
+	//	 the service that it should failover if possible
+	NotifyUnavailable(enclaveID *common.EnclaveID)
+
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to other hosts on the network (in particular, to the sequencer)
-	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
+	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error)
 
 	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription) error
 	Unsubscribe(id rpc.ID) error

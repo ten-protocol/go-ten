@@ -5,6 +5,9 @@ import (
 	"errors"
 	"math/big"
 
+	gethcore "github.com/ethereum/go-ethereum/core"
+	"github.com/ten-protocol/go-ten/go/enclave/evm"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -18,15 +21,13 @@ import (
 var ErrDuplicateRollup = errors.New("duplicate rollup received")
 
 type BlockIngestionType struct {
-	// PreGenesis is true if there is no stored L1 head block.
-	// (L1 head is only stored when there is an L2 state to associate it with. Soon we will start consuming from the
-	// genesis block and then, we should only see one block ingested in a 'PreGenesis' state)
-	PreGenesis bool
+	// FirstL1Block is true if there is no stored L1 head block.
+	FirstL1Block bool
 
 	// ChainFork contains information about the status of the new block in the chain
 	ChainFork *common.ChainFork
 
-	// Block that is already on the canonical chain
+	// BlockHeader that is already on the canonical chain
 	OldCanonicalBlock bool
 }
 
@@ -38,22 +39,51 @@ func (bit *BlockIngestionType) IsFork() bool {
 }
 
 type L1BlockProcessor interface {
-	Process(ctx context.Context, br *common.BlockAndReceipts) (*BlockIngestionType, error)
-	GetHead(context.Context) (*common.L1Block, error)
+	Process(ctx context.Context, processed *common.ProcessedL1Data) (*BlockIngestionType, error)
+	GetHead(context.Context) (*types.Header, error)
 	GetCrossChainContractAddress() *gethcommon.Address
 	HealthCheck() (bool, error)
 }
 
-// BatchExecutionContext - Contains all of the data that each batch depends on
+// BatchExecutionContext - Contains all data that each batch depends on
 type BatchExecutionContext struct {
-	BlockPtr     common.L1BlockHash // Block is needed for the cross chain messages
-	ParentPtr    common.L2BatchHash
+	BlockPtr  common.L1BlockHash // BlockHeader is needed for the cross chain messages
+	ParentPtr common.L2BatchHash
+
+	// either use the transactions from an existing batch, or fetch transactions from the mempool
+	UseMempool   bool
 	Transactions common.L2Transactions
-	AtTime       uint64
-	Creator      gethcommon.Address
-	ChainConfig  *params.ChainConfig
-	SequencerNo  *big.Int
-	BaseFee      *big.Int
+
+	AtTime      uint64
+	Creator     gethcommon.Address
+	ChainConfig *params.ChainConfig
+	SequencerNo *big.Int
+	BaseFee     *big.Int
+	GasPool     *gethcore.GasPool
+
+	EthHeader *types.Header
+	Chain     *evm.TenChainContext
+
+	// these properties are calculated during execution
+	ctx           context.Context
+	l1block       *types.Header
+	parentL1Block *types.Header
+	parentBatch   *common.BatchHeader
+	usedGas       *uint64
+
+	xChainMsgs      common.CrossChainMessages
+	xChainValueMsgs common.ValueTransferEvents
+
+	currentBatch         *core.Batch
+	stateDB              *state.StateDB
+	beforeProcessingSnap int
+
+	genesisSysCtrResult core.TxExecResults
+
+	xChainResults     core.TxExecResults
+	batchTxResults    core.TxExecResults
+	callbackTxResults core.TxExecResults
+	blockEndResult    core.TxExecResults
 }
 
 // ComputedBatch - a structure representing the result of a batch
@@ -63,11 +93,9 @@ type BatchExecutionContext struct {
 // the computation of the batch. One might not want to commit in case the
 // resulting batch differs than what is being validated for example.
 type ComputedBatch struct {
-	Batch    *core.Batch
-	Receipts types.Receipts
-	// while executing the batch, we collect the newly created contracts mapped by the transaction that created them
-	CreatedContracts map[gethcommon.Hash][]*gethcommon.Address
-	Commit           func(bool) (gethcommon.Hash, error)
+	Batch         *core.Batch
+	TxExecResults []*core.TxExecResult
+	Commit        func(bool) (gethcommon.Hash, error)
 }
 
 type BatchExecutor interface {
@@ -77,8 +105,9 @@ type BatchExecutor interface {
 	// failForEmptyBatch bool is used to skip batch production
 	ComputeBatch(ctx context.Context, batchContext *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error)
 
-	// ExecuteBatch - executes the transactions and xchain messages, returns the receipts, and updates the stateDB
-	ExecuteBatch(context.Context, *core.Batch) (types.Receipts, map[gethcommon.Hash][]*gethcommon.Address, error)
+	// ExecuteBatch - executes the transactions and xchain messages, returns the receipts and a list of newly deployed contracts
+	//, and updates the stateDB
+	ExecuteBatch(context.Context, *core.Batch) ([]*core.TxExecResult, error)
 
 	// CreateGenesisState - will create and commit the genesis state in the stateDB for the given block hash,
 	// and uint64 timestamp representing the time now. In this genesis state is where one can
@@ -88,13 +117,13 @@ type BatchExecutor interface {
 
 type BatchRegistry interface {
 	// BatchesAfter - Given a hash, will return batches following it until the head batch and the l1 blocks referenced by those batches
-	BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Block, error)
+	BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Header, error)
 
 	// GetBatchStateAtHeight - creates a stateDB for the block number
 	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
 
 	// GetBatchState - creates a stateDB for the block hash
-	GetBatchState(ctx context.Context, hash *common.L2BatchHash) (*state.StateDB, error)
+	GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, error)
 
 	// GetBatchAtHeight - same as `GetBatchStateAtHeight`, but instead returns the full batch
 	// rather than its stateDB only.
@@ -104,7 +133,7 @@ type BatchRegistry interface {
 	SubscribeForExecutedBatches(func(*core.Batch, types.Receipts))
 	UnsubscribeFromBatches()
 
-	OnBatchExecuted(batch *common.BatchHeader, receipts types.Receipts)
+	OnBatchExecuted(batch *common.BatchHeader, txExecResults []*core.TxExecResult) error
 	OnL1Reorg(*BlockIngestionType)
 
 	// HasGenesisBatch - returns if genesis batch is available yet or not, or error in case
@@ -112,6 +141,8 @@ type BatchRegistry interface {
 	HasGenesisBatch() (bool, error)
 
 	HeadBatchSeq() *big.Int
+
+	EthChain() *EthChainAdapter
 
 	HealthCheck() (bool, error)
 }
@@ -122,8 +153,9 @@ type RollupProducer interface {
 }
 
 type RollupConsumer interface {
-	// ProcessRollupsInBlock - extracts the rollup from the block's transactions
-	// and verifies its integrity, saving and processing any batches that have
-	// not been seen previously.
-	ProcessRollupsInBlock(ctx context.Context, b *common.BlockAndReceipts) error
+	// ProcessRollups - extracts the blob hashes from the block's transactions and builds the blob hashes from the blobs,
+	// compares this with the hashes seen in the block.
+	ProcessRollups(ctx context.Context, rollups []*common.ExtRollup) ([]common.ExtRollupMetadata, error)
+	// GetRollupsFromL1Data -
+	GetRollupsFromL1Data(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error)
 }

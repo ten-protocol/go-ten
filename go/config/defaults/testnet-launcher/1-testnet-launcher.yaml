@@ -1,0 +1,23 @@
+# The node-launcher environment is
+
+network:
+   GenesisJSON: "{}"
+   gas:
+      minGasPrice: +1
+   sequencer:
+      p2pAddress: sequencer-host:15000
+      systemContractsUpgrader: 0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77
+host:
+   debug:
+        enableDebugNamespace: true
+   l1:
+      wsURL: ws://eth2network:9000
+   log:
+      level: 4
+enclave:
+   db:
+      useInMemory: false
+   debug:
+      enableDebugNamespace: true
+   log:
+        level: 4

@@ -55,7 +55,7 @@ const (
 
 	tenChainIDName      = "tenChainID"
 	tenChainIDDefault   = 443
-	tenChainIDFlagUsage = "ChainID of Ten network that the gateway is communicating with"
+	tenChainIDFlagUsage = "ChainID of TEN network that the gateway is communicating with"
 
 	storeIncomingTxs        = "storeIncomingTxs"
 	storeIncomingTxsDefault = true
@@ -72,6 +72,30 @@ const (
 	rateLimitMaxConcurrentRequestsName    = "maxConcurrentRequestsPerUser"
 	rateLimitMaxConcurrentRequestsDefault = 3
 	rateLimitMaxConcurrentRequestsUsage   = "Number of concurrent requests allowed per user. Default: 3"
+
+	insideEnclaveFlagName    = "insideEnclave"
+	insideEnclaveFlagDefault = false
+	insideEnclaveFlagUsage   = "Flag to indicate if the program is running inside an enclave. Default: false"
+
+	keyExchangeURLFlagName    = "keyExchangeURL"
+	keyExchangeURLFlagDefault = ""
+	keyExchangeURLFlagUsage   = "URL to exchange the key with another enclave. Default: empty"
+
+	enableTLSFlagName    = "enableTLS"
+	enableTLSFlagDefault = false
+	enableTLSFlagUsage   = "Flag to enable TLS/HTTPS"
+
+	tlsDomainFlagName    = "tlsDomain"
+	tlsDomainFlagDefault = ""
+	tlsDomainFlagUsage   = "Domain name for TLS certificate"
+
+	encryptingCertificateEnabledFlagName    = "encryptingCertificateEnabled"
+	encryptingCertificateEnabledFlagDefault = false
+	encryptingCertificateEnabledFlagUsage   = "Flag to enable encrypting certificate functionality. Default: false"
+
+	disableCachingFlagName    = "disableCaching"
+	disableCachingFlagDefault = false
+	disableCachingFlagUsage   = "Flag to disable response caching in the gateway. Default: false"
 )
 
 func parseCLIArgs() wecommon.Config {
@@ -91,6 +115,12 @@ func parseCLIArgs() wecommon.Config {
 	rateLimitUserComputeTime := flag.Duration(rateLimitUserComputeTimeName, rateLimitUserComputeTimeDefault, rateLimitUserComputeTimeUsage)
 	rateLimitWindow := flag.Duration(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
+	insideEnclaveFlag := flag.Bool(insideEnclaveFlagName, insideEnclaveFlagDefault, insideEnclaveFlagUsage)
+	keyExchangeURL := flag.String(keyExchangeURLFlagName, keyExchangeURLFlagDefault, keyExchangeURLFlagUsage)
+	enableTLSFlag := flag.Bool(enableTLSFlagName, enableTLSFlagDefault, enableTLSFlagUsage)
+	tlsDomainFlag := flag.String(tlsDomainFlagName, tlsDomainFlagDefault, tlsDomainFlagUsage)
+	encryptingCertificateEnabled := flag.Bool(encryptingCertificateEnabledFlagName, encryptingCertificateEnabledFlagDefault, encryptingCertificateEnabledFlagUsage)
+	disableCaching := flag.Bool(disableCachingFlagName, disableCachingFlagDefault, disableCachingFlagUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -109,5 +139,11 @@ func parseCLIArgs() wecommon.Config {
 		RateLimitUserComputeTime:       *rateLimitUserComputeTime,
 		RateLimitWindow:                *rateLimitWindow,
 		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
+		InsideEnclave:                  *insideEnclaveFlag,
+		KeyExchangeURL:                 *keyExchangeURL,
+		EnableTLS:                      *enableTLSFlag,
+		TLSDomain:                      *tlsDomainFlag,
+		EncryptingCertificateEnabled:   *encryptingCertificateEnabled,
+		DisableCaching:                 *disableCaching,
 	}
 }

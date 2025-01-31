@@ -8,15 +8,14 @@ import {
 } from "@tanstack/react-query";
 import "@/styles/globals.css";
 import type { AppProps } from "next/app";
-import { Toaster } from "@/src/components/ui/toaster";
-import { WalletConnectionProvider } from "@/src/components/providers/wallet-provider";
-import { NetworkStatus } from "@/src/components/modules/common/network-status";
+import { Toaster } from "@repo/ui/components/shared/toaster";
+import { NetworkStatus } from "@repo/ui/components/common/network-status";
 import HeadSeo from "@/src/components/head-seo";
 import { siteMetadata } from "@/src/lib/siteMetadata";
 import Script from "next/script";
 import { GOOGLE_ANALYTICS_ID } from "@/src/lib/constants";
-import { showToast } from "@/src/components/ui/use-toast";
-import { ToastType } from "@/src/types/interfaces";
+import { showToast } from "@repo/ui/components/shared/use-toast";
+import { ToastType } from "@repo/ui/lib/enums/toast";
 
 export default function App({ Component, pageProps }: AppProps) {
   const mutationCache = new MutationCache({
@@ -68,27 +67,7 @@ export default function App({ Component, pageProps }: AppProps) {
         ogImageUrl={siteMetadata.siteLogo}
         ogTwitterImage={siteMetadata.siteLogo}
         ogType={"website"}
-      >
-        <link rel="icon" href="/favicon/favicon.ico" />
-        <link
-          rel="apple-touch-icon"
-          sizes="180x180"
-          href="/favicon/apple-touch-icon.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="32x32"
-          href="/favicon/favicon-32x32.png"
-        />
-        <link
-          rel="icon"
-          type="image/png"
-          sizes="16x16"
-          href="/favicon/favicon-16x16.png"
-        />
-        <link rel="manifest" href="/favicon/site.webmanifest" />
-      </HeadSeo>
+      ></HeadSeo>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
           attribute="class"
@@ -96,12 +75,10 @@ export default function App({ Component, pageProps }: AppProps) {
           enableSystem
           disableTransitionOnChange
         >
-          <WalletConnectionProvider>
-            <Component {...pageProps} />
-            <Toaster />
-            <NetworkStatus />
-            <ReactQueryDevtools initialIsOpen={false} />
-          </WalletConnectionProvider>
+          <Component {...pageProps} />
+          <Toaster />
+          <NetworkStatus />
+          <ReactQueryDevtools initialIsOpen={false} />
         </ThemeProvider>
       </QueryClientProvider>
     </>

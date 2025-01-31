@@ -43,7 +43,7 @@ const (
 func TestFaucet(t *testing.T) {
 	t.Skip("Skipping because it is too flaky")
 
-	startPort := integration.StartPortFaucetUnitTest
+	startPort := integration.TestPorts.TestFaucetPort
 	createObscuroNetwork(t, startPort)
 	// This sleep is required to ensure the initial rollup exists, and thus contract deployer can check its balance.
 	time.Sleep(2 * time.Second)
@@ -54,7 +54,7 @@ func TestFaucet(t *testing.T) {
 		PK:                "0x" + contractDeployerPrivateKeyHex,
 		JWTSecret:         "This_is_secret",
 		ChainID:           big.NewInt(integration.TenChainID),
-		ServerPort:        integration.StartPortFaucetHTTPUnitTest,
+		ServerPort:        integration.TestPorts.TestFaucetHTTPPort,
 		DefaultFundAmount: new(big.Int).Mul(big.NewInt(100), big.NewInt(1e18)),
 	}
 	faucetContainer, err := container.NewFaucetContainerFromConfig(faucetConfig)
@@ -101,7 +101,7 @@ func createObscuroNetwork(t *testing.T, startPort int) {
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    numberOfNodes,
-		AvgBlockDuration: 1 * time.Second,
+		AvgBlockDuration: 2 * time.Second,
 		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -29,7 +28,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*
 	}
 
 	// connect to the first host to deploy
-	tmpEthClient, err := ethadapter.NewEthClient(Localhost, uint(startPort+100), DefaultL1RPCTimeout, common.HexToAddress("0x0"), testlog.Logger())
+	tmpEthClient, err := ethadapter.NewEthClient(Localhost, uint(startPort+100), DefaultL1RPCTimeout, testlog.Logger())
 	if err != nil {
 		panic(fmt.Errorf("error connecting to te first host %w", err))
 	}
@@ -41,7 +40,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*
 
 	ethClients := make([]ethadapter.EthClient, nrNodes)
 	for i := 0; i < nrNodes; i++ {
-		ethClients[i] = CreateEthClientConnection(int64(i), uint(startPort+100))
+		ethClients[i] = CreateEthClientConnection(uint(startPort + 100))
 	}
 
 	return l1Data, ethClients, eth2Network
@@ -74,6 +73,7 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 		walletAddresses...,
 	)
 
+	fmt.Println("Starting Geth network with WS port", startPort+integration.DefaultGethWSPortOffset)
 	err = network.Start()
 	if err != nil {
 		return nil, err
@@ -148,6 +148,30 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}, nil
 }
 
+func PermissionTenSequencerEnclave(mcOwner wallet.Wallet, client ethadapter.EthClient, mcAddress common.Address, seqEnclaveID common.Address) error {
+	ctr, err := ManagementContract.NewManagementContract(mcAddress, client.EthClient())
+	if err != nil {
+		return err
+	}
+
+	opts, err := bind.NewKeyedTransactorWithChainID(mcOwner.PrivateKey(), mcOwner.ChainID())
+	if err != nil {
+		return err
+	}
+
+	tx, err := ctr.GrantSequencerEnclave(opts, seqEnclaveID)
+	if err != nil {
+		return err
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func StopEth2Network(clients []ethadapter.EthClient, network eth2network.PosEth2Network) {
 	// Stop the clients first
 	for _, c := range clients {
@@ -201,10 +225,13 @@ func InitializeContract(workerClient ethadapter.EthClient, w wallet.Wallet, cont
 // DeployContract returns receipt of deployment
 // todo (@matt) - this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
-	deployContractTx, err := workerClient.PrepareTransactionToSend(
+	deployContractTx, err := ethadapter.SetTxGasPrice(
 		context.Background(),
+		workerClient,
 		&types.LegacyTx{Data: contractBytes},
 		w.Address(),
+		w.GetNonceAndIncrement(),
+		0,
 	)
 	if err != nil {
 		return nil, err
@@ -239,8 +266,8 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 	return nil, fmt.Errorf("failed to mine contract deploy tx (%s) into a block after %s. Aborting", signedTx.Hash(), time.Since(start))
 }
 
-func CreateEthClientConnection(id int64, port uint) ethadapter.EthClient {
-	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1RPCTimeout, common.BigToAddress(big.NewInt(id)), testlog.Logger())
+func CreateEthClientConnection(port uint) ethadapter.EthClient {
+	ethnode, err := ethadapter.NewEthClient(Localhost, port, DefaultL1RPCTimeout, testlog.Logger())
 	if err != nil {
 		panic(err)
 	}

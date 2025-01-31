@@ -2,6 +2,7 @@ package container
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
@@ -12,7 +13,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/metrics"
-	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/host"
@@ -24,16 +24,15 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	hostcommon "github.com/ten-protocol/go-ten/go/common/host"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 )
 
 const (
-	APIVersion1         = "1.0"
-	APINamespaceObscuro = "obscuro"
-	APINamespaceEth     = "eth"
-	APINamespaceScan    = "scan"
-	APINamespaceNetwork = "net"
-	APINamespaceTest    = "test"
-	APINamespaceDebug   = "debug"
+	APIVersion1       = "1.0"
+	APINamespaceTen   = "ten"
+	APINamespaceScan  = "scan"
+	APINamespaceTest  = "test"
+	APINamespaceDebug = "debug"
 )
 
 type HostContainer struct {
@@ -51,8 +50,8 @@ func (h *HostContainer) Start() error {
 	if err != nil {
 		return err
 	}
-	h.logger.Info("Started Obscuro host...")
-	fmt.Println("Started Obscuro host...")
+	h.logger.Info("Started TEN host...")
+	fmt.Println("Started TEN host...")
 
 	if h.rpcServer != nil {
 		err = h.rpcServer.Start()
@@ -60,8 +59,8 @@ func (h *HostContainer) Start() error {
 			return err
 		}
 
-		h.logger.Info("Started Obscuro host RPC Server...")
-		fmt.Println("Started Obscuro host RPC Server...")
+		h.logger.Info("Started TEN host RPC Server...")
+		fmt.Println("Started TEN host RPC Server...")
 	}
 
 	return nil
@@ -94,14 +93,12 @@ func (h *HostContainer) Host() hostcommon.Host {
 
 // NewHostContainerFromConfig uses config to create all HostContainer dependencies and inject them into a new HostContainer
 // (Note: it does not start the HostContainer process, `Start()` must be called on the container)
-func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger gethlog.Logger) *HostContainer {
-	cfg := parsedConfig.ToHostConfig()
-
-	addr, err := wallet.RetrieveAddress(parsedConfig.PrivateKeyString)
+func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) *HostContainer {
+	addr, err := wallet.RetrieveAddress(cfg.PrivateKeyString)
 	if err != nil {
 		panic("unable to retrieve the Node ID")
 	}
-	cfg.ID = *addr
+	cfg.ID = addr.String()
 
 	// create the logger if not set - used when the testlogger is injected
 	if logger == nil {
@@ -114,7 +111,7 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	ethWallet := wallet.NewInMemoryWalletFromConfig(cfg.PrivateKeyString, cfg.L1ChainID, log.New("wallet", cfg.LogLevel, cfg.LogPath))
 
 	fmt.Println("Connecting to L1 network...")
-	l1Client, err := ethadapter.NewEthClientFromURL(cfg.L1WebsocketURL, cfg.L1RPCTimeout, cfg.ID, logger)
+	l1Client, err := ethadapter.NewEthClientFromURL(cfg.L1WebsocketURL, cfg.L1RPCTimeout, logger)
 	if err != nil {
 		logger.Crit("could not create Ethereum client.", log.ErrKey, err)
 	}
@@ -126,9 +123,6 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	}
 	ethWallet.SetNonce(nonce)
 
-	// set the Host ID as the Public Key Address
-	cfg.ID = ethWallet.Address()
-
 	fmt.Println("Connecting to the enclave...")
 	services := host.NewServicesRegistry(logger)
 	enclaveClients := make([]common.Enclave, len(cfg.EnclaveRPCAddresses))
@@ -139,7 +133,6 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
 
 	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
-
 	rpcServer := node.NewServer(&node.RPCConfig{
 		EnableHTTP: cfg.HasClientRPCHTTP,
 		HTTPPort:   int(cfg.ClientRPCPortHTTP),
@@ -149,16 +142,22 @@ func NewHostContainerFromConfig(parsedConfig *config.HostInputConfig, logger get
 	}, logger)
 
 	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)
-	obscuroRelevantContracts := []gethcommon.Address{cfg.ManagementContractAddress, cfg.MessageBusAddress}
-	l1Repo := l1.NewL1Repository(l1Client, obscuroRelevantContracts, logger)
-
-	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Repo, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService)
+	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BeaconUrl)
+	// we can add more fallback clients as they become available
+	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BlobArchiveUrl)
+	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback))
+	contractAddresses := map[l1.ContractType][]gethcommon.Address{
+		l1.MgmtContract: {cfg.ManagementContractAddress},
+		l1.MsgBus:       {cfg.MessageBusAddress},
+	}
+	l1Data := l1.NewL1DataService(l1Client, logger, mgmtContractLib, blobResolver, contractAddresses)
+	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Data, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService, blobResolver)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service) *HostContainer {
-	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClients, hostWallet, contractLib, logger, metricsService.Registry())
+func NewHostContainer(cfg *hostconfig.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service, blobResolver l1.BlobResolver) *HostContainer {
+	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClients, hostWallet, contractLib, logger, metricsService.Registry(), blobResolver)
 
 	hostContainer := &HostContainer{
 		host:           h,
@@ -171,12 +170,16 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 		filterAPI := clientapi.NewFilterAPI(h, logger)
 		rpcServer.RegisterAPIs([]rpc.API{
 			{
-				Namespace: APINamespaceObscuro,
-				Service:   clientapi.NewTenAPI(h),
+				Namespace: APINamespaceTen,
+				Service:   clientapi.NewTenAPI(h, logger),
 			},
 			{
-				Namespace: APINamespaceEth,
-				Service:   clientapi.NewEthereumAPI(h, logger),
+				Namespace: APINamespaceTen,
+				Service:   clientapi.NewChainAPI(h, logger),
+			},
+			{
+				Namespace: APINamespaceTen,
+				Service:   filterAPI,
 			},
 			{
 				Namespace: APINamespaceScan,
@@ -185,16 +188,8 @@ func NewHostContainer(cfg *config.HostConfig, services *host.ServicesRegistry, p
 				Public:    true,
 			},
 			{
-				Namespace: APINamespaceNetwork,
-				Service:   clientapi.NewNetworkAPI(h),
-			},
-			{
 				Namespace: APINamespaceTest,
 				Service:   clientapi.NewTestAPI(hostContainer),
-			},
-			{
-				Namespace: APINamespaceEth,
-				Service:   filterAPI,
 			},
 		})
 

@@ -40,8 +40,8 @@ func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RP
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(&params.L1TenData.MgmtContractAddress,
 		&params.L1TenData.ObxErc20Address, &params.L1TenData.EthErc20Address)
 
-	// Start the ten nodes and return the handles
-	n.l2Clients = startInMemoryTenNodes(params, n.eth2Network.GenesisBytes(), n.gethClients)
+	// Start the TEN nodes and return the handles
+	n.l2Clients = startInMemoryTenNodes(params, n.gethClients)
 
 	tenClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
 	for idx, l2Client := range n.l2Clients {
@@ -58,7 +58,7 @@ func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RP
 }
 
 func (n *networkInMemGeth) TearDown() {
-	// Stop the Ten nodes first
+	// Stop the TEN nodes first
 	StopTenNodes(n.l2Clients)
 
 	// Stop geth last

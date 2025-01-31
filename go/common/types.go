@@ -1,8 +1,12 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -29,7 +33,6 @@ type (
 	// MainNet aliases
 	L1Address     = common.Address
 	L1BlockHash   = common.Hash
-	L1Block       = types.Block
 	L1Transaction = types.Transaction
 	L1Receipt     = types.Receipt
 	L1Receipts    = types.Receipts
@@ -48,8 +51,10 @@ type (
 	L2PricedTransaction struct {
 		Tx             *L2Tx
 		PublishingCost *big.Int
+		FromSelf       bool
+		SystemDeployer bool // Free contract construction
 	}
-	L2PricedTransactions []L2PricedTransaction
+	L2PricedTransactions []*L2PricedTransaction
 
 	CrossChainMessage  = MessageBus.StructsCrossChainMessage
 	CrossChainMessages = []CrossChainMessage
@@ -59,29 +64,28 @@ type (
 		Amount   *big.Int
 		Sequence uint64
 	}
-	ValueTransferEvents   = []ValueTransferEvent
-	EncryptedTx           []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
-	EncryptedTransactions []byte // A blob of encrypted transactions, as they're stored in the rollup, with the nonce prepended.
-
-	EncryptedParamsGetBalance              []byte // The params for an RPC getBalance request, as a JSON object encrypted with the public key of the enclave.
-	EncryptedParamsCall                    []byte // As above, but for an RPC call request.
-	EncryptedParamsGetTxByHash             []byte // As above, but for an RPC getTransactionByHash request.
-	EncryptedParamsGetTxReceipt            []byte // As above, but for an RPC getTransactionReceipt request.
-	EncryptedParamsLogSubscription         []byte // As above, but for an RPC logs subscription request.
-	EncryptedParamsSendRawTx               []byte // As above, but for an RPC sendRawTransaction request.
-	EncryptedParamsGetTxCount              []byte // As above, but for an RPC getTransactionCount request.
-	EncryptedParamsEstimateGas             []byte // As above, but for an RPC estimateGas request.
-	EncryptedParamsGetLogs                 []byte // As above, but for an RPC getLogs request.
-	EncryptedParamsGetPersonalTransactions []byte
-	EncryptedParamsGetStorageSlot          []byte
-
-	Nonce               = uint64
-	EncodedRollup       []byte
-	EncodedBatchMsg     []byte
-	EncodedBatchRequest []byte
+	ValueTransferEvents            = []ValueTransferEvent
+	EncryptedRequest               []byte
+	EncryptedTx                    []byte // A single transaction, encoded as a JSON list of transaction binary hexes and encrypted using the enclave's public key
+	EncryptedTransactions          []byte // A blob of encrypted transactions, as they're stored in the rollup, with the nonce prepended.
+	EncryptedParamsLogSubscription []byte
+	Nonce                          = uint64
+	EncodedRollup                  []byte
+	EncodedBatchMsg                []byte
+	EncodedBatchRequest            []byte
+	EncodedBlobHashes              []byte
 
 	EnclaveID = common.Address
 )
+
+// FailedDecryptErr - when the TEN enclave fails to decrypt an RPC request
+var FailedDecryptErr = errors.New("failed to decrypt RPC payload. please use the correct enclave key")
+
+// EncryptedRPCRequest - an encrypted request with extra plaintext metadata
+type EncryptedRPCRequest struct {
+	Req  EncryptedRequest
+	IsTx bool // we can make this an enum if we need to provide more info to the TEN host
+}
 
 func (txs L2PricedTransactions) ToTransactions() types.Transactions {
 	ret := make(types.Transactions, 0)
@@ -92,11 +96,13 @@ func (txs L2PricedTransactions) ToTransactions() types.Transactions {
 }
 
 const (
-	L2GenesisHeight = uint64(0)
 	L1GenesisHeight = uint64(0)
-	L2GenesisSeqNo  = uint64(1)
-	// HeightCommittedBlocks is the number of blocks deep a transaction must be to be considered safe from reorganisations.
-	HeightCommittedBlocks = 15
+
+	L2GenesisHeight           = uint64(0)
+	L2GenesisSeqNo            = uint64(1)
+	L2SysContractGenesisSeqNo = uint64(2)
+
+	SyntheticTxGasLimit = params.MaxGasLimit
 )
 
 var GethGenesisParentHash = common.Hash{}
@@ -125,61 +131,52 @@ type (
 // To work properly, all of the receipts are required, due to rlp encoding pruning some of the information.
 // The receipts must also be in the correct order.
 type BlockAndReceipts struct {
-	Block                  *L1Block
-	ReceiptsMap            map[int]*types.Receipt // sparse map with obscuro-relevant receipts in it
-	Receipts               *types.Receipts
+	BlockHeader            *types.Header
+	TxsWithReceipts        []*TxAndReceiptAndBlobs
 	successfulTransactions *types.Transactions
 }
 
 // ParseBlockAndReceipts - will create a container struct that has preprocessed the receipts
 // and verified if they indeed match the receipt root hash in the block.
-func ParseBlockAndReceipts(block *L1Block, receipts *L1Receipts) (*BlockAndReceipts, error) {
-	if len(block.Transactions()) != len(*receipts) {
-		// the receipts list is currently a *sparse* list of relevant receipts, it needs to have the same length as the
-		// transactions list even though some of the entries may be nil
-		return nil, fmt.Errorf("transactions and receipts are not the same length")
-	}
-
+func ParseBlockAndReceipts(block *types.Header, receiptsAndBlobs []*TxAndReceiptAndBlobs) (*BlockAndReceipts, error) {
 	br := BlockAndReceipts{
-		Block:                  block,
-		Receipts:               receipts,
-		ReceiptsMap:            make(map[int]*types.Receipt, len(block.Transactions())),
-		successfulTransactions: nil,
-	}
-
-	for idx, receipt := range *receipts {
-		br.ReceiptsMap[idx] = receipt
+		BlockHeader:     block,
+		TxsWithReceipts: receiptsAndBlobs,
 	}
 
 	return &br, nil
 }
 
-// SuccessfulTransactions - returns slice containing only the transactions that have receipts with successful status.
-func (br *BlockAndReceipts) SuccessfulTransactions() *types.Transactions {
+func (br *BlockAndReceipts) Receipts() L1Receipts {
+	rec := make(L1Receipts, 0)
+	for _, txsWithReceipt := range br.TxsWithReceipts {
+		rec = append(rec, txsWithReceipt.Receipt)
+	}
+	return rec
+}
+
+// RelevantTransactions - returns slice containing only the transactions that have receipts with successful status.
+func (br *BlockAndReceipts) RelevantTransactions() *types.Transactions {
 	if br.successfulTransactions != nil {
 		return br.successfulTransactions
 	}
 
-	txs := br.Block.Transactions()
 	st := make(types.Transactions, 0)
-
-	for idx, tx := range txs {
-		receipt, ok := br.ReceiptsMap[idx]
-		if ok && receipt.Status == types.ReceiptStatusSuccessful {
-			st = append(st, tx)
+	for _, tx := range br.TxsWithReceipts {
+		if tx.Receipt.Status == types.ReceiptStatusSuccessful {
+			st = append(st, tx.Tx)
 		}
 	}
-
 	br.successfulTransactions = &st
 	return br.successfulTransactions
 }
 
 // ChainFork - represents the result of walking the chain when processing a fork
 type ChainFork struct {
-	NewCanonical *types.Block
-	OldCanonical *types.Block
+	NewCanonical *types.Header
+	OldCanonical *types.Header
 
-	CommonAncestor   *types.Block
+	CommonAncestor   *types.Header
 	CanonicalPath    []L1BlockHash
 	NonCanonicalPath []L1BlockHash
 }
@@ -194,4 +191,18 @@ func (cf *ChainFork) String() string {
 	}
 	return fmt.Sprintf("ChainFork{NewCanonical: %s, OldCanonical: %s, CommonAncestor: %s, CanonicalPath: %s, NonCanonicalPath: %s}",
 		cf.NewCanonical.Hash(), cf.OldCanonical.Hash(), cf.CommonAncestor.Hash(), cf.CanonicalPath, cf.NonCanonicalPath)
+}
+
+func MaskedSender(address L2Address) L2Address {
+	return common.BigToAddress(big.NewInt(0).Sub(address.Big(), big.NewInt(1)))
+}
+
+type SystemContractAddresses map[string]*gethcommon.Address
+
+func (s *SystemContractAddresses) ToString() string {
+	var str string
+	for name, addr := range *s {
+		str += fmt.Sprintf("%s: %s; ", name, addr.Hex())
+	}
+	return str
 }

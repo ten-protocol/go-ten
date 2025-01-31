@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 	"sync/atomic"
+	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -13,6 +15,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
+)
+
+const (
+	_promoteSeqRetryInterval = 1 * time.Second
 )
 
 // This private interface enforces the services that the enclaves service depends on
@@ -26,7 +32,9 @@ type Service struct {
 	sl       enclaveServiceLocator
 
 	// The service goes via the Guardians to talk to the enclave (because guardian knows if the enclave is healthy etc.)
-	enclaveGuardians []*Guardian
+	enclaveGuardians  []*Guardian
+	activeSequencerID *common.EnclaveID
+	haLock            sync.Mutex // lock for failover operations: evicting an enclave, promoting a standby to active, etc.
 
 	running atomic.Bool
 	logger  gethlog.Logger
@@ -48,6 +56,9 @@ func (e *Service) Start() error {
 			// abandon starting the rest of the guardians if one fails
 			return err
 		}
+	}
+	if e.hostData.IsSequencer {
+		go e.promoteNewActiveSequencer()
 	}
 	return nil
 }
@@ -83,7 +94,7 @@ func (e *Service) HealthStatus(ctx context.Context) host.HealthStatus {
 		}
 
 		if !guardian.GetEnclaveState().InSyncWithL1() {
-			errors = append(errors, fmt.Errorf("enclave[%d] not in sync with L1", i))
+			errors = append(errors, fmt.Errorf("enclave[%d - %s] not in sync with L1 - %s", i, guardian.GetEnclaveID(), guardian.GetEnclaveState()))
 		}
 	}
 
@@ -110,10 +121,52 @@ func (e *Service) GetEnclaveClient() common.Enclave {
 	return e.enclaveGuardians[0].GetEnclaveClient()
 }
 
-func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error) {
+func (e *Service) GetEnclaveClients() []common.Enclave {
+	clients := make([]common.Enclave, len(e.enclaveGuardians))
+	for i, guardian := range e.enclaveGuardians {
+		clients[i] = guardian.enclaveClient
+	}
+	return clients
+}
+
+func (e *Service) NotifyUnavailable(enclaveID *common.EnclaveID) {
+	if len(e.enclaveGuardians) <= 1 {
+		e.logger.Info("not running in HA mode, no need to evict enclave", log.EnclaveIDKey, enclaveID)
+		return
+	}
+	if e.activeSequencerID == nil || *e.activeSequencerID != *enclaveID {
+		e.logger.Info("Enclave is not the active sequencer, no need to evict yet.", log.EnclaveIDKey, enclaveID)
+		return
+	}
+	failedEnclaveIdx := -1
+	e.haLock.Lock()
+	defer e.haLock.Unlock()
+	for i, guardian := range e.enclaveGuardians {
+		if *(guardian.GetEnclaveID()) == *enclaveID {
+			failedEnclaveIdx = i
+			break
+		}
+	}
+	if failedEnclaveIdx == -1 {
+		e.logger.Warn("Could not find enclave to evict.", log.EnclaveIDKey, enclaveID)
+		return
+	}
+	err := e.enclaveGuardians[failedEnclaveIdx].Stop()
+	if err != nil {
+		e.logger.Info("Failed to stop enclave guardian.", log.EnclaveIDKey, enclaveID, log.ErrKey, err)
+	}
+
+	// remove the failed enclave from the list of enclaves
+	e.enclaveGuardians = append(e.enclaveGuardians[:failedEnclaveIdx], e.enclaveGuardians[failedEnclaveIdx+1:]...)
+	e.logger.Warn("Evicted enclave from HA pool.", log.EnclaveIDKey, enclaveID)
+
+	go e.promoteNewActiveSequencer()
+}
+
+func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
-	enclaveResponse, sysError := e.GetEnclaveClient().SubmitTx(ctx, encryptedTx)
+	enclaveResponse, sysError := e.GetEnclaveClient().EncryptedRPC(ctx, encryptedParams)
 	if sysError != nil {
 		e.logger.Warn("Could not submit transaction due to sysError.", log.ErrKey, sysError)
 		return nil, sysError
@@ -139,4 +192,30 @@ func (e *Service) Subscribe(id rpc.ID, encryptedParams common.EncryptedParamsLog
 
 func (e *Service) Unsubscribe(id rpc.ID) error {
 	return e.GetEnclaveClient().Unsubscribe(id)
+}
+
+// promoteNewActiveSequencer is a background goroutine that promotes a new active sequencer at startup or when the current one fails.
+// It will never give up, it just cycles through current enclaves until one can be successfully promoted.
+func (e *Service) promoteNewActiveSequencer() {
+	// remove activeSequencerID
+	e.activeSequencerID = nil
+	for e.activeSequencerID == nil && e.running.Load() {
+		if len(e.enclaveGuardians) == 0 {
+			e.logger.Crit("No enclaves to promote to active sequencer, sequencer host cannot continue.")
+		}
+		for _, guardian := range e.enclaveGuardians {
+			enclID := guardian.GetEnclaveID()
+			e.logger.Info("Attempting to promote new sequencer.", log.EnclaveIDKey, enclID)
+			err := guardian.PromoteToActiveSequencer()
+			if err != nil {
+				e.logger.Warn("Failed to promote new sequencer.", log.EnclaveIDKey, enclID, log.ErrKey, err)
+				continue
+			}
+			e.activeSequencerID = enclID
+			e.logger.Warn("Successfully promoted new sequencer.", log.EnclaveIDKey, e.activeSequencerID)
+			return
+		}
+		// wait for retry interval before trying again, enclaves may not be ready yet or we may not have permissioned them
+		time.Sleep(_promoteSeqRetryInterval)
+	}
 }

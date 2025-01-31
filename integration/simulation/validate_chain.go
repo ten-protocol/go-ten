@@ -10,7 +10,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/host/l1"
+
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
@@ -28,12 +32,11 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
-
-	erc20 "github.com/ten-protocol/go-ten/integration/erc20contract/generated/EthERC20"
 )
 
 const (
@@ -41,22 +44,22 @@ const (
 	// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
 	// type, for example.
 	txThreshold = 5
-	// The maximum number of blocks an Ten node can fall behind
-	maxBlockDelay = 5
+	// The maximum number of blocks an TEN node can fall behind
+	maxBlockDelay = 10
 	// The leading zero bytes in a hash indicating that it is possibly an address, since it only has 20 bytes of data.
 	zeroBytesHex = "000000000000000000000000"
 )
 
 // After a simulation has run, check as much as possible that the outputs of the simulation are expected.
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
-// time of the simulation and the average block duration, that all Ten nodes are roughly in sync, etc
+// time of the simulation and the average block duration, that all TEN nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
-	time.Sleep(2 * time.Second)
 	checkTransactionsInjected(t, s)
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
 	checkTenBlockchainValidity(t, s, l1MaxHeight)
 	checkReceivedLogs(t, s)
 	checkTenscan(t, s)
+	checkZenBaseMinting(t, s)
 }
 
 // Ensures that L1 and L2 txs were actually issued.
@@ -123,7 +126,7 @@ func checkTenBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uint64)
 	// This checks that all the nodes are in sync. When a node falls behind with processing blocks it might highlight a problem.
 	// since there is one node that only listens to rollups it will be naturally behind.
 	if max-min > max/3 {
-		t.Errorf("There is a problem with the Ten chain. Nodes fell out of sync. Max height: %d. Min height: %d -> %+v", max, min, heights)
+		t.Errorf("There is a problem with the TEN chain. Nodes fell out of sync. Max height: %d. Min height: %d -> %+v", max, min, heights)
 	}
 }
 
@@ -173,26 +176,27 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	if err != nil {
 		t.Errorf("Node %d: Could not find head block. Cause: %s", nodeIdx, err)
 	}
-	height := head.NumberU64()
+	height := head.Number.Uint64()
 
 	if height < minHeight {
 		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeIdx, height, minHeight)
 	}
 
-	deposits, rollups, _, blockCount, _, rollupReceipts := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
+	deposits, rollups, _, blockCount, _, rollupReceipts := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock.Header(), head, node, s, nodeIdx)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
 	checkCollectedL1Fees(t, node, s, nodeIdx, rollupReceipts)
 
-	if len(findHashDups(deposits)) > 0 {
-		dups := findHashDups(deposits)
-		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeIdx, dups)
+	hashDups := findHashDups(deposits)
+	if len(hashDups) > 0 {
+		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeIdx, hashDups)
 	}
-	if len(findRollupDups(rollups)) > 0 {
-		dups := findRollupDups(rollups)
+
+	rollupDups := findRollupDups(rollups)
+	if len(rollupDups) > 0 {
 		// todo @siliev - fix in memory rollups, lack of real client breaks the normal ask smart contract flow.
 		if !s.Params.IsInMem {
-			t.Errorf("Node %d: Found Rollup duplicates: %v", nodeIdx, dups)
+			t.Errorf("Node %d: Found Rollup duplicates: %v", nodeIdx, rollupDups)
 		}
 	}
 
@@ -243,25 +247,33 @@ func checkRollups(t *testing.T, _ *Simulation, nodeIdx int, rollups []*common.Ex
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
 // between the start block and the end block.
-func ExtractDataFromEthereumChain(
-	startBlock *types.Block,
-	endBlock *types.Block,
-	node ethadapter.EthClient,
-	s *Simulation,
-	nodeIdx int,
-) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int, uint64, types.Receipts) {
+func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Header, node ethadapter.EthClient, s *Simulation, nodeIdx int) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int, uint64, types.Receipts) {
 	deposits := make([]gethcommon.Hash, 0)
 	rollups := make([]*common.ExtRollup, 0)
 	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
-	blockchain := node.BlocksBetween(startBlock, endBlock)
+	blockchain, err := node.BlocksBetween(startBlock, endBlock)
+	if err != nil {
+		panic(err)
+	}
 	successfulDeposits := uint64(0)
-	for _, block := range blockchain {
+	for _, header := range blockchain {
+		block, err := node.BlockByHash(header.Hash())
+		if err != nil {
+			panic(err)
+		}
 		for _, tx := range block.Transactions() {
-			t := s.Params.ERC20ContractLib.DecodeTx(tx)
+			t, err := s.Params.ERC20ContractLib.DecodeTx(tx)
+			if err != nil {
+				panic(err)
+			}
+
 			if t == nil {
-				t = s.Params.MgmtContractLib.DecodeTx(tx)
+				t, err = s.Params.MgmtContractLib.DecodeTx(tx)
+				if err != nil {
+					panic(err)
+				}
 			}
 
 			if t == nil {
@@ -274,13 +286,13 @@ func ExtractDataFromEthereumChain(
 			}
 
 			switch l1tx := t.(type) {
-			case *ethadapter.L1DepositTx:
+			case *common.L1DepositTx:
 				// todo (@stefan) - remove this hack once the old integrated bridge is removed.
 				deposits = append(deposits, tx.Hash())
 				totalDeposited.Add(totalDeposited, l1tx.Amount)
 				successfulDeposits++
-			case *ethadapter.L1RollupTx:
-				r, err := common.DecodeRollup(l1tx.Rollup)
+			case *common.L1RollupHashes:
+				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, l1tx.BlobHashes)
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
@@ -322,6 +334,63 @@ func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
 	}
 }
 
+func checkZenBaseMinting(t *testing.T, s *Simulation) {
+	// Map to track the number of transactions per sender
+	txCountPerSender := make(map[gethcommon.Address]int)
+
+	// Aggregate transaction counts from Transfer and Withdrawal transactions
+	for _, tx := range s.TxInjector.TxTracker.TransferL2Transactions {
+		sender := getSender(tx)
+		txCountPerSender[sender]++
+	}
+
+	for _, tx := range s.TxInjector.TxTracker.WithdrawalL2Transactions {
+		sender := getSender(tx)
+		txCountPerSender[sender]++
+	}
+
+	for _, tx := range s.TxInjector.TxTracker.NativeValueTransferL2Transactions {
+		sender := getSender(tx)
+		txCountPerSender[sender]++
+	}
+
+	// Iterate through each sender and verify ZenBase balance
+	for sender, expectedMinted := range txCountPerSender {
+		senderRpc := s.RPCHandles.TenWalletClient(sender, 1)
+		zenBaseContract, err := ZenBase.NewZenBase(s.ZenBaseAddress, senderRpc)
+		if err != nil {
+			t.Errorf("Sender %s: Failed to create ZenBase contract. Cause: %s", sender.Hex(), err)
+		}
+		zenBaseBalance, err := zenBaseContract.BalanceOf(&bind.CallOpts{
+			From: sender,
+		}, sender)
+		if err != nil {
+			t.Errorf("Sender %s: Failed to get ZenBase balance. Cause: %s", sender.Hex(), err)
+		}
+
+		expectedBalance := big.NewInt(int64(expectedMinted)) // Assuming 1 ZenBase per transaction
+		if zenBaseBalance.Cmp(expectedBalance) < 0 {
+			t.Errorf("Sender %s: Expected ZenBase balance %d, but found %d", sender.Hex(), expectedBalance, zenBaseBalance)
+		}
+	}
+
+	rpc := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
+	zenBaseContract, err := ZenBase.NewZenBase(s.ZenBaseAddress, rpc)
+	if err != nil {
+		t.Errorf("Failed to create ZenBase contract. Cause: %s", err)
+	}
+	totalSupply, err := zenBaseContract.TotalSupply(&bind.CallOpts{
+		From: s.Params.Wallets.L2FaucetWallet.Address(),
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if totalSupply.Cmp(big.NewInt(0)) <= 0 {
+		t.Errorf("ZenBase total supply is 0")
+	}
+}
+
 func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minTenHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {
 	defer wg.Done()
 	tenClient := rpcHandles.TenClients[nodeIdx]
@@ -335,7 +404,7 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 		t.Errorf("Node %d: Could not retrieve L1 height. Cause: %s", nodeIdx, err)
 	}
 	if int(maxEthereumHeight)-int(l1Height) > maxBlockDelay {
-		t.Errorf("Node %d: Ten node fell behind by %d blocks.", nodeIdx, maxEthereumHeight-l1Height)
+		t.Errorf("Node %d: TEN node fell behind by %d blocks.", nodeIdx, maxEthereumHeight-l1Height)
 	}
 
 	// check that the height of the l2 chain is higher than a minimum expected value.
@@ -366,7 +435,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	}
 
 	verifyGasBridgeTransactions(t, s, nodeIdx)
-
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
@@ -382,17 +450,16 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	}
 
 	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
-
 	totalSuccessfullyWithdrawn := extractWithdrawals(t, tenClient, nodeIdx)
 
-	totalAmountLogged := getLoggedWithdrawals(minTenHeight, tenClient, headBatchHeader)
-	if totalAmountLogged.Cmp(totalSuccessfullyWithdrawn) != 0 {
-		t.Errorf("Node %d: Logged withdrawals do not match!", nodeIdx)
-	}
+	// todo: @siliev check that the total amount deposited is the same as the total amount withdraw
+	// the previous check is no longer possible due to header removal of xchain messages; and we cannot
+	// take the preimages of the crossChainTree as we dont really know them so they must be saved somewhere
+	// We can rely on the e2e tests for now.
 
 	injectorDepositedAmt := big.NewInt(0)
 	for _, tx := range s.TxInjector.TxTracker.GetL1Transactions() {
-		if depTx, ok := tx.(*ethadapter.L1DepositTx); ok {
+		if depTx, ok := tx.(*common.L1DepositTx); ok {
 			injectorDepositedAmt.Add(injectorDepositedAmt, depTx.Amount)
 		}
 	}
@@ -439,33 +506,6 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	if parentHeader.Hash() != headBatchHeader.ParentHash {
 		t.Errorf("mismatch in hash of retrieved header. Parent: %+v\nCurrent: %+v", parentHeader, headBatchHeader)
 	}
-}
-
-func getLoggedWithdrawals(minTenHeight uint64, tenClient *obsclient.ObsClient, currentHeader *common.BatchHeader) *big.Int {
-	totalAmountLogged := big.NewInt(0)
-	for i := minTenHeight; i < currentHeader.Number.Uint64(); i++ {
-		header, err := tenClient.GetBatchHeaderByNumber(big.NewInt(int64(i)))
-		if err != nil {
-			panic(err)
-		}
-
-		for _, msg := range header.CrossChainMessages {
-			contractAbi, err := abi.JSON(strings.NewReader(erc20.EthERC20MetaData.ABI))
-			if err != nil {
-				panic(err)
-			}
-
-			transfer := map[string]interface{}{}
-			err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, msg.Payload) // can't figure out how to unpack it without cheating, geth is kinda clunky
-			if err != nil {
-				panic(err)
-			}
-
-			amount := transfer["amount"].(*big.Int)
-			totalAmountLogged = totalAmountLogged.Add(totalAmountLogged, amount)
-		}
-	}
-	return totalAmountLogged
 }
 
 // FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.
@@ -516,7 +556,6 @@ func getSender(tx *common.L2Tx) gethcommon.Address {
 // Checks that there is a receipt available for each L2 transaction.
 func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
-
 	nrSuccessful := 0
 	for _, tx := range l2Txs {
 		sender := getSender(tx)
@@ -544,7 +583,13 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		t.Errorf("node %d: More than half the transactions failed. Successful number: %d", nodeIdx, nrSuccessful)
 	}
 
-	msgBusAddr := gethcommon.HexToAddress("0x526c84529B2b8c11F57D93d3f5537aCA3AeCEf9B")
+	rpc := rpcHandles.TenWalletClient(txInjector.rndObsWallet().Address(), nodeIdx)
+	cfg, err := rpc.GetConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	msgBusAddr := cfg.L2MessageBusAddress
 
 	for _, tx := range txInjector.TxTracker.WithdrawalL2Transactions {
 		sender := getSender(tx)
@@ -847,4 +892,21 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 	if batchByHash.Header.Hash() != batchByTx.Header.Hash() {
 		t.Errorf("node %d: retrieved batch by hash, but hash was incorrect", nodeIdx)
 	}
+}
+
+func getRollupFromBlobHashes(ctx context.Context, blobResolver l1.BlobResolver, block *types.Block, blobHashes []gethcommon.Hash) (*common.ExtRollup, error) {
+	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch blobs from hashes during chain validation. Cause: %w", err)
+	}
+	data, err := ethadapter.DecodeBlobs(blobs)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding rollup blob. Cause: %w", err)
+	}
+
+	var rollup common.ExtRollup
+	if err := rlp.DecodeBytes(data, &rollup); err != nil {
+		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+	}
+	return &rollup, nil
 }

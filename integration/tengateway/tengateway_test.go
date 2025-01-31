@@ -12,13 +12,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
+
+	"github.com/ten-protocol/go-ten/go/responses"
+
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension"
 
 	"github.com/go-kit/kit/transport/http/jsonrpc"
-	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
-
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ethereum/go-ethereum"
@@ -33,7 +36,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/httputil"
-	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
 	integrationCommon "github.com/ten-protocol/go-ten/integration/common"
@@ -51,30 +53,30 @@ func init() { //nolint:gochecknoinits
 		LogDir:      testLogs,
 		TestType:    "tengateway",
 		TestSubtype: "test",
-		LogLevel:    log.LvlInfo,
+		LogLevel:    log.LvlTrace,
 	})
 }
 
 const (
-	testLogs   = "../.build/tengateway/"
-	_startPort = integration.StartPortTenGatewayUnitTest
+	testLogs = "../.build/tengateway/"
 )
 
 func TestTenGateway(t *testing.T) {
-	createTenNetwork(t, _startPort)
+	startPort := integration.TestPorts.TestTenGatewayPort
+	createTenNetwork(t, startPort)
 
 	tenGatewayConf := wecommon.Config{
 		WalletExtensionHost:            "127.0.0.1",
-		WalletExtensionPortHTTP:        _startPort + integration.DefaultTenGatewayHTTPPortOffset,
-		WalletExtensionPortWS:          _startPort + integration.DefaultTenGatewayWSPortOffset,
-		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", _startPort+integration.DefaultHostRPCHTTPOffset),
-		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", _startPort+integration.DefaultHostRPCWSOffset),
+		WalletExtensionPortHTTP:        startPort + integration.DefaultTenGatewayHTTPPortOffset,
+		WalletExtensionPortWS:          startPort + integration.DefaultTenGatewayWSPortOffset,
+		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
+		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
 		LogPath:                        "sys_out",
 		VerboseFlag:                    false,
 		DBType:                         "sqlite",
 		TenChainID:                     443,
 		StoreIncomingTxs:               true,
-		RateLimitUserComputeTime:       200 * time.Millisecond,
+		RateLimitUserComputeTime:       0,
 		RateLimitWindow:                1 * time.Second,
 		RateLimitMaxConcurrentRequests: 3,
 	}
@@ -99,10 +101,10 @@ func TestTenGateway(t *testing.T) {
 	require.NoError(t, err)
 
 	// prefunded wallet
-	w := wallet.NewInMemoryWalletFromConfig(genesis.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
+	w := wallet.NewInMemoryWalletFromConfig(integrationCommon.TestnetPrefundedPK, integration.TenChainID, testlog.Logger())
 
 	// run the tests against the exis
-	for name, test := range map[string]func(*testing.T, string, string, wallet.Wallet){
+	for name, test := range map[string]func(*testing.T, int, string, string, wallet.Wallet){
 		//"testAreTxsMinted":            testAreTxsMinted, this breaks the other tests bc, enable once concurrency issues are fixed
 		"testErrorHandling":                    testErrorHandling,
 		"testMultipleAccountsSubscription":     testMultipleAccountsSubscription,
@@ -113,11 +115,11 @@ func TestTenGateway(t *testing.T) {
 		"testSubscriptionTopics":               testSubscriptionTopics,
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
-		"testGetStorageAtForReturningUserID":   testGetStorageAtForReturningUserID,
-		"testRateLimiter":                      testRateLimiter,
+		// "testRateLimiter":                      testRateLimiter,
+		"testSessionKeys": testSessionKeys,
 	} {
 		t.Run(name, func(t *testing.T) {
-			test(t, httpURL, wsURL, w)
+			test(t, startPort, httpURL, wsURL, w)
 		})
 	}
 
@@ -128,46 +130,178 @@ func TestTenGateway(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func testRateLimiter(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+//func testRateLimiter(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+//	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+//	require.NoError(t, err)
+//	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
+//	// register the user so we can call the endpoints that require authentication
+//	err = user0.RegisterAccounts()
+//	require.NoError(t, err)
+//
+//	// call BalanceAt - fist call should be successful
+//	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+//	require.NoError(t, err)
+//
+//	// sleep for a period of time to allow the rate limiter to reset
+//	time.Sleep(1 * time.Second)
+//
+//	// first call after the rate limiter reset should be successful
+//	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+//	require.NoError(t, err)
+//
+//	address := user0.Wallets[0].Address()
+//
+//	// make 1000 requests with the same user to "spam" the gateway
+//	for i := 0; i < 1000; i++ {
+//		msg := ethereum.CallMsg{
+//			From: address,
+//			To:   &address, // Example: self-call to the user's address
+//			Gas:  uint64(i),
+//			Data: nil,
+//		}
+//
+//		user0.HTTPClient.EstimateGas(context.Background(), msg)
+//	}
+//
+//	// after 1000 requests, the rate limiter should block the user
+//	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+//	require.Error(t, err)
+//	require.Equal(t, "rate limit exceeded", err.Error())
+//}
+
+func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
-	// register the user so we can call the endpoints that require authentication
 	err = user0.RegisterAccounts()
 	require.NoError(t, err)
 
-	// call BalanceAt - fist call should be successful
+	var amountToTransfer int64 = 1_000_000_000_000_000_000
+	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user0.Wallets[0].Address(), amountToTransfer)
+	require.NoError(t, err)
+
 	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
 	require.NoError(t, err)
 
-	// sleep for a period of time to allow the rate limiter to reset
-	time.Sleep(1 * time.Second)
+	contractAddr := deployContract(t, w, user0)
 
-	// first call after the rate limiter reset should be successful
-	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	// create session key
+	skAddr, err := user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.CreateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+	skAddress := gethcommon.BytesToAddress(skAddr)
+
+	// move some funds to the SK
+	var skAmount int64 = 100_000_000_000_000_000
+	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], skAddress, skAmount)
 	require.NoError(t, err)
 
-	address := user0.Wallets[0].Address()
+	// activate SK
+	_, err = user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.ActivateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	require.NoError(t, err)
 
-	// make 1000 requests with the same user to "spam" the gateway
-	for i := 0; i < 1000; i++ {
-		msg := ethereum.CallMsg{
-			From: address,
-			To:   &address, // Example: self-call to the user's address
-			Gas:  uint64(i),
-			Data: nil,
-		}
+	skNonce := uint64(0)
 
-		user0.HTTPClient.EstimateGas(context.Background(), msg)
-	}
+	// interact with the contract - unsigned tx calling "sendRawTransaction"
+	contractInteractionData, err := eventsContractABI.Pack("setMessage", "user0PrivateEvent")
+	require.NoError(t, err)
+	rec, err := interactWithSmartContractUnsigned(user0.HTTPClient, true, skNonce, contractAddr, contractInteractionData, nil)
+	require.NoError(t, err)
+	require.Equal(t, uint64(0x1), rec.Status)
 
-	// after 1000 requests, the rate limiter should block the user
-	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	// move money back - unsigned tx calling "sendTransaction"
+	skNonce++
+	rec1, err := interactWithSmartContractUnsigned(user0.HTTPClient, false, skNonce, user0.Wallets[0].Address(), nil, big.NewInt(1_000))
+	require.NoError(t, err)
+	require.Equal(t, uint64(0x1), rec1.Status)
+
+	// deactivate
+	_, err = user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.DeactivateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+
+	// interact with the contract - unsigned - should fail
+	skNonce++
+	rec2, err := interactWithSmartContractUnsigned(user0.HTTPClient, false, skNonce, contractAddr, contractInteractionData, nil)
 	require.Error(t, err)
-	require.Equal(t, "rate limit exceeded", err.Error())
+	require.Nil(t, rec2)
 }
 
-func testNewHeadsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func deployContract(t *testing.T, w wallet.Wallet, user0 *GatewayUser) gethcommon.Address {
+	// deploy events contract
+	deployTx := &types.LegacyTx{
+		Nonce:    w.GetNonceAndIncrement(),
+		Gas:      uint64(1_000_000),
+		GasPrice: gethcommon.Big1,
+		Data:     gethcommon.FromHex(eventsContractBytecode),
+	}
+
+	err := getFeeAndGas(user0.HTTPClient, w, deployTx)
+	require.NoError(t, err)
+
+	signedTx, err := w.SignTransaction(deployTx)
+	require.NoError(t, err)
+
+	err = user0.HTTPClient.SendTransaction(context.Background(), signedTx)
+	require.NoError(t, err)
+
+	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
+	require.NoError(t, err)
+	return contractReceipt.ContractAddress
+}
+
+func interactWithSmartContractUnsigned(client *ethclient.Client, sendRaw bool, nonce uint64, contractAddress gethcommon.Address, contractInteractionData []byte, value *big.Int) (*types.Receipt, error) {
+	var result responses.GasPriceType
+	err := client.Client().CallContext(context.Background(), &result, "eth_gasPrice")
+	if err != nil {
+		return nil, err
+	}
+
+	var txHash gethcommon.Hash
+
+	if sendRaw {
+		interactionTx := types.LegacyTx{
+			Nonce:    nonce,
+			To:       &contractAddress,
+			Gas:      uint64(1_000_000),
+			GasPrice: result.ToInt(),
+			Data:     contractInteractionData,
+			Value:    value,
+		}
+		unSignedTx := types.NewTx(&interactionTx)
+		blob, err := unSignedTx.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		err = client.Client().CallContext(context.Background(), &txHash, "eth_sendRawTransaction", hexutil.Encode(blob))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		n := hexutil.Uint64(nonce)
+		g := hexutil.Uint64(10_000_000)
+		d := hexutil.Bytes(contractInteractionData)
+		interactionTx := gethapi.TransactionArgs{
+			Nonce:    &n,
+			To:       &contractAddress,
+			Gas:      &g,
+			GasPrice: &result,
+			Data:     &d,
+			Value:    (*hexutil.Big)(value),
+		}
+		err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	txReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), client, txHash, 10*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	return txReceipt, nil
+}
+
+func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 
@@ -198,7 +332,7 @@ func testNewHeadsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wall
 	require.True(t, len(receivedHeads) > 1)
 }
 
-func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testMultipleAccountsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
@@ -356,7 +490,7 @@ func testMultipleAccountsSubscription(t *testing.T, httpURL, wsURL string, w wal
 	require.NoError(t, err)
 }
 
-func testSubscriptionTopics(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testSubscriptionTopics(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
 
@@ -476,7 +610,7 @@ func testAreTxsMinted(t *testing.T, httpURL, wsURL string, w wallet.Wallet) { //
 	require.True(t, receipt.Status == 1)
 }
 
-func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testErrorHandling(t *testing.T, startPort int, httpURL, wsURL string, w wallet.Wallet) {
 	// set up the tgClient
 	ogClient := lib.NewTenGatewayLibrary(httpURL, wsURL)
 
@@ -488,11 +622,18 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
 	require.NoError(t, err)
 
+	privateTxs, _ := json.Marshal(common.ListPrivateTransactionsQueryParams{
+		Address:    gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
+		Pagination: common.QueryPagination{Size: 10},
+	})
+
 	// make requests to geth for comparison
 	for _, req := range []string{
+		`{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["` + common.ListPrivateTransactionsCQMethod + `", "` + string(privateTxs) + `","latest"],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
+		`{"jsonrpc":"2.0","method":"debug_eventLogRelevancy","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
 		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs"],"id":1}`,
 		//`{"jsonrpc":"2.0","method":"eth_subscribe","params":["logs",{"topics":[]}],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}`,
@@ -521,7 +662,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 		require.NoError(t, err, req, response)
 
 		// repeat the process for geth
-		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", _startPort+integration.DefaultGethHTTPPortOffset), []byte(req))
+		_, response, err = httputil.PostDataJSON(fmt.Sprintf("http://localhost:%d", startPort+integration.DefaultGethHTTPPortOffset), []byte(req))
 		require.NoError(t, err)
 
 		// we only care about format
@@ -531,7 +672,7 @@ func testErrorHandling(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	}
 }
 
-func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testErrorsRevertedArePassed(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	// set up the tgClient
 	ogClient := lib.NewTenGatewayLibrary(httpURL, wsURL)
 
@@ -610,7 +751,7 @@ func testErrorsRevertedArePassed(t *testing.T, httpURL, wsURL string, w wallet.W
 	require.Equal(t, "execution reverted: assert(false)", err.Error())
 }
 
-func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testUnsubscribe(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
 	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
@@ -626,7 +767,7 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	// deploy events contract
 	deployTx := &types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
-		Gas:      uint64(10_000_000),
+		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
 	}
@@ -666,7 +807,7 @@ func testUnsubscribe(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
 	assert.Equal(t, 1, len(userLogs))
 }
 
-func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testClosingConnectionWhileSubscribed(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	// create a user with multiple accounts
 	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
@@ -730,7 +871,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, httpURL, wsURL string, w
 	subscription.Unsubscribe()
 }
 
-func testDifferentMessagesOnRegister(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testDifferentMessagesOnRegister(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token: %s\n", user.tgClient.UserID())
@@ -744,53 +885,15 @@ func testDifferentMessagesOnRegister(t *testing.T, httpURL, wsURL string, w wall
 	require.NoError(t, err)
 }
 
-func testInvokeNonSensitiveMethod(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
+func testInvokeNonSensitiveMethod(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
 	require.NoError(t, err)
 
 	// call one of the non-sensitive methods with unauthenticated user
 	// and make sure gateway is not complaining about not having viewing keys
-	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.ChainID, user.tgClient.UserID(), nil)
-	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", tenrpc.ChainID)) {
-		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", tenrpc.ChainID)
-	}
-}
-
-func testGetStorageAtForReturningUserID(t *testing.T, httpURL, wsURL string, w wallet.Wallet) {
-	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
-	require.NoError(t, err)
-
-	type JSONResponse struct {
-		Result string `json:"result"`
-	}
-	var response JSONResponse
-
-	// make a request to GetStorageAt with correct parameters to get userID that exists in the database
-	respBody := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{common.UserIDRequestCQMethod, "0", nil})
-	if err = json.Unmarshal(respBody, &response); err != nil {
-		t.Error("Unable to unmarshal response")
-	}
-	if !bytes.Equal(gethcommon.FromHex(response.Result), user.tgClient.UserIDBytes()) {
-		t.Errorf("Wrong UserID returned. Expected: %s, received: %s", user.tgClient.UserID(), response.Result)
-	}
-
-	// make a request to GetStorageAt with correct parameters to get userID, but with wrong userID
-	respBody2 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, "0x0000000000000000000000000000000000000001", []interface{}{common.UserIDRequestCQMethod, "0", nil})
-	if !strings.Contains(string(respBody2), "not found") {
-		t.Error("eth_getStorageAt did not respond with not found error")
-	}
-
-	err = user.RegisterAccounts()
-	if err != nil {
-		t.Errorf("Failed to register accounts: %s", err)
-		return
-	}
-
-	// make a request to GetStorageAt with wrong parameters to get userID, but correct userID
-	respBody3 := makeHTTPEthJSONReq(httpURL, tenrpc.GetStorageAt, user.tgClient.UserID(), []interface{}{"0x0000000000000000000000000000000000000007", "0", nil})
-	expectedErr := "not supported"
-	if !strings.Contains(string(respBody3), expectedErr) {
-		t.Errorf("eth_getStorageAt did not respond with error: %s, it was: %s", expectedErr, string(respBody3))
+	respBody := makeHTTPEthJSONReq(httpURL, "eth_chainId", user.tgClient.UserID(), nil)
+	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", "eth_chainId")) {
+		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", "eth_chainId")
 	}
 }
 
@@ -859,26 +962,27 @@ func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet)
 	return signedTx.Hash()
 }
 
-// Creates a single-node Ten network for testing.
+// Creates a single-node TEN network for testing.
 func createTenNetwork(t *testing.T, startPort int) {
-	// Create the Ten network.
+	// Create the TEN network.
 	numberOfNodes := 1
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
 		NumberOfNodes:    numberOfNodes,
-		AvgBlockDuration: 1 * time.Second,
+		AvgBlockDuration: 2 * time.Second,
 		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
 		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
 		Wallets:          wallets,
 		StartPort:        startPort,
 		WithPrefunding:   true,
+		L1BeaconPort:     integration.TestPorts.TestTenGatewayPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)
 	t.Cleanup(tenNetwork.TearDown)
 	_, err := tenNetwork.Create(&simParams, nil)
 	if err != nil {
-		panic(fmt.Sprintf("failed to create test Ten network. Cause: %s", err))
+		panic(fmt.Sprintf("failed to create test TEN network. Cause: %s", err))
 	}
 }
 

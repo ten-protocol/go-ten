@@ -59,12 +59,14 @@ task("generate-abi-bindings", "Using the evm bytecode and exported abi's of the 
         fs.mkdirSync(outputFileDir);
       }
 
-      const abigenSpawn = spawnSync("abigen", [
+      const abigenArgs = [
         `--abi=${abiFilePath}`, 
         `--bin=${binFilePath}`, 
         `--pkg=${contractName}`, 
-        `--out=${outputFilePath}`]
-      );
+        `--out=${outputFilePath}`
+      ];
+      console.log(`Running: abigen ${abigenArgs.join(' ')}`);
+      const abigenSpawn = spawnSync("abigen", abigenArgs);
     
       if (abigenSpawn.status == 0) {
         console.log(`Successfully generated go binding for ${sourceName}`);

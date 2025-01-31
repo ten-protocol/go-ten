@@ -12,6 +12,16 @@ import (
 )
 
 func main() {
+	// get edbHost from first command line arg
+	var edbHost string
+	if len(os.Args) > 1 {
+		edbHost = os.Args[1]
+	} else {
+		fmt.Println("Usage: edbconnect <edb-host>")
+		fmt.Println("Ensure you have the latest copy of the ./edb-connect.sh launch script if you see this error.")
+		os.Exit(1)
+	}
+
 	fmt.Println("Retrieving Edgeless DB credentials...")
 	creds, found, err := edgelessdb.LoadCredentialsFromFile()
 	if err != nil {
@@ -29,9 +39,9 @@ func main() {
 	}
 	fmt.Println("TLS config created. Connecting to Edgeless DB...")
 	testlog.SetupSysOut()
-	db, err := edgelessdb.ConnectToEdgelessDB("obscuronode-edgelessdb", cfg, testlog.Logger())
+	db, err := edgelessdb.ConnectToEdgelessDB(edbHost, cfg, testlog.Logger())
 	if err != nil {
-		fmt.Println("Error connecting to Edgeless DB:", err)
+		fmt.Printf("Error connecting to Edgeless DB at %s: %v\n", edbHost, err)
 		panic(err)
 	}
 	fmt.Println("Connected to Edgeless DB.")

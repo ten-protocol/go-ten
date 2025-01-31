@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ten-protocol/go-ten/go/config"
+	"github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -16,17 +16,17 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
-// ObscuroChainContext - basic implementation of the ChainContext needed for the EVM integration
-type ObscuroChainContext struct {
+// TenChainContext - basic implementation of the ChainContext needed for the EVM integration
+type TenChainContext struct {
 	storage             storage.Storage
 	config              config.EnclaveConfig
 	gethEncodingService gethencoding.EncodingService
 	logger              gethlog.Logger
 }
 
-// NewObscuroChainContext returns a new instance of the ObscuroChainContext given a storage ( and logger )
-func NewObscuroChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, logger gethlog.Logger) *ObscuroChainContext {
-	return &ObscuroChainContext{
+// NewTenChainContext returns a new instance of the TenChainContext given a storage ( and logger )
+func NewTenChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, logger gethlog.Logger) *TenChainContext {
+	return &TenChainContext{
 		storage:             storage,
 		config:              config,
 		gethEncodingService: gethEncodingService,
@@ -34,11 +34,11 @@ func NewObscuroChainContext(storage storage.Storage, gethEncodingService gethenc
 	}
 }
 
-func (occ *ObscuroChainContext) Engine() consensus.Engine {
-	return &ObscuroNoOpConsensusEngine{logger: occ.logger}
+func (occ *TenChainContext) Engine() consensus.Engine {
+	return &NoOpConsensusEngine{logger: occ.logger}
 }
 
-func (occ *ObscuroChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header {
+func (occ *TenChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), occ.config.RPCTimeout)
 	defer cancelCtx()
 

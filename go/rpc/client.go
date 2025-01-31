@@ -6,28 +6,22 @@ import (
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
+// these are public RPC methods exposed by a TEN node
 const (
-	BatchNumber           = "eth_blockNumber"
-	Call                  = "eth_call"
-	ChainID               = "eth_chainId"
-	GetBalance            = "eth_getBalance"
-	GetBatchByHash        = "eth_getBlockByHash"
-	GetBatchByNumber      = "eth_getBlockByNumber"
-	GetCode               = "eth_getCode"
-	GetTransactionByHash  = "eth_getTransactionByHash"
-	GetTransactionCount   = "eth_getTransactionCount"
-	GetTransactionReceipt = "eth_getTransactionReceipt"
-	SendRawTransaction    = "eth_sendRawTransaction"
-	EstimateGas           = "eth_estimateGas"
-	GetLogs               = "eth_getLogs"
-	GetStorageAt          = "eth_getStorageAt"
-	GasPrice              = "eth_gasPrice"
+	BatchNumber        = "ten_batchNumber"
+	ChainID            = "ten_chainId"
+	GetBatchByHash     = "ten_getBatchByHash"
+	GetBatchByNumber   = "ten_getBatchByNumber"
+	GetCode            = "ten_getCode"
+	GasPrice           = "ten_gasPrice"
+	GetCrossChainProof = "ten_getCrossChainProof"
 
-	Health = "obscuro_health"
-	Config = "obscuro_config"
+	Health = "ten_health"
+	Config = "ten_config"
+	RPCKey = "ten_rpcKey"
 
 	StopHost                 = "test_stopHost"
-	SubscribeNamespace       = "eth"
+	SubscribeNamespace       = "ten"
 	SubscriptionTypeLogs     = "logs"
 	SubscriptionTypeNewHeads = "newHeads"
 
@@ -53,7 +47,7 @@ const (
 	GetPersonalTransactions = "scan_getPersonalTransactions"
 )
 
-// Client is used by client applications to interact with the Ten node
+// Client is used by client applications to interact with the TEN node
 type Client interface {
 	// Call executes the named method via RPC.
 	Call(result interface{}, method string, args ...interface{}) error

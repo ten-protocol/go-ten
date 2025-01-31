@@ -19,6 +19,7 @@ package node
 import (
 	"compress/gzip"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
@@ -92,6 +93,8 @@ type httpServer struct {
 	port     int
 
 	handlerNames map[string]string
+
+	tlsConfig *tls.Config
 }
 
 const (
@@ -152,7 +155,16 @@ func (h *httpServer) start() error {
 	}
 
 	// Start the server.
-	listener, err := net.Listen("tcp", h.endpoint)
+	var listener net.Listener
+	var err error
+
+	if h.tlsConfig != nil {
+		// If TLS is enabled, use tls.Listen to create a TLS listener
+		listener, err = tls.Listen("tcp", h.endpoint, h.tlsConfig)
+	} else {
+		listener, err = net.Listen("tcp", h.endpoint)
+	}
+
 	if err != nil {
 		// If the server fails to start, we need to clear out the RPC and WS
 		// configuration so they can be configured another time.
@@ -163,17 +175,24 @@ func (h *httpServer) start() error {
 	h.listener = listener
 	go h.server.Serve(listener)
 
+	// Determine the scheme for WebSockets based on TLS presence
 	if h.wsAllowed() {
-		url := fmt.Sprintf("ws://%v", listener.Addr())
+		scheme := "ws"
+		if h.tlsConfig != nil {
+			scheme = "wss"
+		}
+		url := fmt.Sprintf("%s://%v", scheme, listener.Addr())
 		if h.wsConfig.prefix != "" {
 			url += h.wsConfig.prefix
 		}
 		h.log.Info("WebSocket enabled", "url", url)
 	}
-	// if server is websocket only, return after logging
+
+	// If server is websocket only, return after logging
 	if !h.rpcAllowed() {
 		return nil
 	}
+
 	// Log http endpoint.
 	h.log.Info("HTTP server started",
 		"endpoint", listener.Addr(), "auth", (h.httpConfig.jwtSecret != nil),

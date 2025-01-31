@@ -6,10 +6,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/config"
-
 	"github.com/ethereum/go-ethereum/ethdb"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 )
 
 // enclaveDB - Implements the key-value ethdb.Database and also exposes the underlying sql database
@@ -17,8 +16,13 @@ import (
 type enclaveDB struct {
 	sqldb   *sql.DB
 	rwSqldb *sql.DB // required only by sqlite. For a normal db, it will be the same instance as sqldb
-	config  config.EnclaveConfig
+	config  enclaveconfig.EnclaveConfig
 	logger  gethlog.Logger
+}
+
+func (sqlDB *enclaveDB) DeleteRange(start, end []byte) error {
+	// TODO implement me
+	panic("implement me")
 }
 
 func (sqlDB *enclaveDB) Tail() (uint64, error) {
@@ -51,12 +55,7 @@ func (sqlDB *enclaveDB) AncientDatadir() (string, error) {
 	panic("implement me")
 }
 
-func (sqlDB *enclaveDB) NewSnapshot() (ethdb.Snapshot, error) {
-	// TODO implement me
-	panic("implement me")
-}
-
-func NewEnclaveDB(db *sql.DB, rwdb *sql.DB, config config.EnclaveConfig, logger gethlog.Logger) (EnclaveDB, error) {
+func NewEnclaveDB(db *sql.DB, rwdb *sql.DB, config enclaveconfig.EnclaveConfig, logger gethlog.Logger) (EnclaveDB, error) {
 	return &enclaveDB{sqldb: db, rwSqldb: rwdb, config: config, logger: logger}, nil
 }
 

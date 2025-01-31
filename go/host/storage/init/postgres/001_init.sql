@@ -23,6 +23,18 @@ CREATE INDEX IF NOT EXISTS IDX_ROLLUP_HASH_HOST ON rollup_host USING HASH (hash)
 CREATE INDEX IF NOT EXISTS IDX_ROLLUP_PROOF_HOST ON rollup_host (compression_block);
 CREATE INDEX IF NOT EXISTS IDX_ROLLUP_SEQ_HOST ON rollup_host (start_seq, end_seq);
 
+CREATE TABLE IF NOT EXISTS cross_chain_message_host
+(
+    id                SERIAL PRIMARY KEY,
+    message_hash      BYTEA       NOT NULL UNIQUE,
+    rollup_id         INT         NOT NULL,
+    message_type      CHAR(1)     NOT NULL CHECK (message_type IN ('m', 'v')),
+    FOREIGN KEY (rollup_id) REFERENCES rollup_host(id)
+);
+
+CREATE INDEX IF NOT EXISTS IDX_CCM_HASH_HOST ON cross_chain_message_host USING HASH (message_hash);
+CREATE INDEX IF NOT EXISTS IDX_CCM_ROLLUP_HOST ON cross_chain_message_host (rollup_id);
+
 CREATE TABLE IF NOT EXISTS batch_host
 (
     sequence    INT PRIMARY KEY,

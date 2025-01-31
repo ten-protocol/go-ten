@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/obsclient"
@@ -58,14 +57,20 @@ func TestL1IssueContractInteractWaitReceipt(t *testing.T) {
 	t.Skipf("skip manual tests")
 
 	var err error
-	ethClient, err := ethadapter.NewEthClient(l1Host, uint(l1Port), 30*time.Second, common.L2Address{}, gethlog.New())
+	ethClient, err := ethadapter.NewEthClient(l1Host, uint(l1Port), 30*time.Second, gethlog.New())
 	require.NoError(t, err)
 
 	storeContractBytecode := "0x608060405234801561001057600080fd5b5061020b806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632e64cec11461003b57806370ef6e0b14610059575b600080fd5b610043610075565b60405161005091906100ab565b60405180910390f35b610073600480360381019061006e9190610161565b61007e565b005b60008054905090565b836000819055508260008190555050505050565b6000819050919050565b6100a581610092565b82525050565b60006020820190506100c0600083018461009c565b92915050565b600080fd5b600080fd5b6100d981610092565b81146100e457600080fd5b50565b6000813590506100f6816100d0565b92915050565b600080fd5b600080fd5b600080fd5b60008083601f840112610121576101206100fc565b5b8235905067ffffffffffffffff81111561013e5761013d610101565b5b60208301915083600182028301111561015a57610159610106565b5b9250929050565b6000806000806060858703121561017b5761017a6100c6565b5b6000610189878288016100e7565b945050602061019a878288016100e7565b935050604085013567ffffffffffffffff8111156101bb576101ba6100cb565b5b6101c78782880161010b565b92509250509295919450925056fea2646970667358221220eda68578fb741c32f26000b6c0273945f8322dd35f536c918e3d5a6193aaf62564736f6c63430008120033"
 
-	estimatedTx, err := ethClient.PrepareTransactionToSend(context.Background(), &types.LegacyTx{
-		Data: gethcommon.FromHex(storeContractBytecode),
-	}, l1Wallet.Address())
+	estimatedTx, err := ethadapter.SetTxGasPrice(
+		context.Background(),
+		ethClient,
+		&types.LegacyTx{
+			Data: gethcommon.FromHex(storeContractBytecode),
+		},
+		l1Wallet.Address(),
+		l1Wallet.GetNonceAndIncrement(),
+		0)
 	require.NoError(t, err)
 
 	signedTx, err := l1Wallet.SignTransaction(estimatedTx)
@@ -97,7 +102,7 @@ func TestL1IssueTxWaitReceipt(t *testing.T) {
 	t.Skipf("skip manual tests")
 
 	var err error
-	ethClient, err := ethadapter.NewEthClient(l1Host, uint(l1Port), 30*time.Second, common.L2Address{}, gethlog.New())
+	ethClient, err := ethadapter.NewEthClient(l1Host, uint(l1Port), 30*time.Second, gethlog.New())
 	require.NoError(t, err)
 
 	toAddr := datagenerator.RandomAddress()
@@ -105,10 +110,10 @@ func TestL1IssueTxWaitReceipt(t *testing.T) {
 	require.NoError(t, err)
 
 	l1Wallet.SetNonce(nonce)
-	estimatedTx, err := ethClient.PrepareTransactionToSend(context.Background(), &types.LegacyTx{
+	estimatedTx, err := ethadapter.SetTxGasPrice(context.Background(), ethClient, &types.LegacyTx{
 		To:    &toAddr,
 		Value: big.NewInt(100),
-	}, l1Wallet.Address())
+	}, l1Wallet.Address(), l1Wallet.GetNonceAndIncrement(), 0)
 	require.NoError(t, err)
 
 	signedTx, err := l1Wallet.SignTransaction(estimatedTx)

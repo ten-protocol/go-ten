@@ -2,8 +2,6 @@ package webserver
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -49,7 +47,8 @@ func New(backend *backend.Backend, bindAddress string, logger log.Logger) *WebSe
 	r.GET("/health/", server.health)
 	r.GET("/batchHeader/:hash", server.getBatchHeader)
 	r.GET("/tx/:hash", server.getTransaction)
-	r.POST("/actions/decryptTxBlob/", server.decryptTxBlob)
+	// no longer available because the key is not public any more
+	// r.POST("/actions/decryptTxBlob/", server.decryptTxBlob)
 
 	return server
 }
@@ -88,7 +87,7 @@ func (w *WebServer) health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"healthy": true})
 }
 
-func (w *WebServer) decryptTxBlob(c *gin.Context) {
+/*func (w *WebServer) decryptTxBlob(c *gin.Context) {
 	// Read the payload as a string
 	payloadBytes, err := c.GetRawData()
 	if err != nil {
@@ -110,7 +109,7 @@ func (w *WebServer) decryptTxBlob(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"result": result})
-}
+}*/
 
 type PostData struct {
 	StrData string `json:"strData"`

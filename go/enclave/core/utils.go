@@ -15,14 +15,14 @@ import (
 
 // VerifySignature - Checks that the L2Tx has a valid signature.
 func VerifySignature(chainID int64, tx *types.Transaction) error {
-	signer := types.NewLondonSigner(big.NewInt(chainID))
+	signer := types.LatestSignerForChainID(big.NewInt(chainID))
 	_, err := types.Sender(signer, tx)
 	return err
 }
 
 // GetAuthenticatedSender - Get sender and tx nonce from transaction
 func GetAuthenticatedSender(chainID int64, tx *types.Transaction) (*gethcommon.Address, error) {
-	signer := types.NewLondonSigner(big.NewInt(chainID))
+	signer := types.LatestSignerForChainID(tx.ChainId())
 	sender, err := types.Sender(signer, tx)
 	if err != nil {
 		return nil, err
@@ -60,11 +60,24 @@ func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg 
 	f(fmt.Sprintf("LogMethodDuration::%s", msg), newArgs...)
 }
 
-// GetTxSigner returns the address that signed a transaction
-func GetTxSigner(tx *common.L2Tx) (gethcommon.Address, error) {
-	// TODO - Once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`.
-
+// GetExternalTxSigner returns the address that signed a transaction
+func GetExternalTxSigner(tx *types.Transaction) (gethcommon.Address, error) {
 	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
+	}
+
+	return from, nil
+}
+
+func GetTxSigner(tx *common.L2PricedTransaction) (gethcommon.Address, error) {
+	if tx.SystemDeployer {
+		return common.MaskedSender(gethcommon.BigToAddress(big.NewInt(tx.Tx.ChainId().Int64()))), nil
+	} else if tx.FromSelf {
+		return common.MaskedSender(*tx.Tx.To()), nil
+	}
+
+	from, err := types.Sender(types.LatestSignerForChainID(tx.Tx.ChainId()), tx.Tx)
 	if err != nil {
 		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
 	}

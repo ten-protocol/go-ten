@@ -15,7 +15,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/subscription"
-	"github.com/ten-protocol/go-ten/go/config"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 )
 
@@ -62,7 +62,7 @@ type Repository struct {
 	logger  gethlog.Logger
 }
 
-func NewBatchRepository(cfg *config.HostConfig, hostService batchRepoServiceLocator, storage storage.Storage, logger gethlog.Logger) *Repository {
+func NewBatchRepository(cfg *hostconfig.HostConfig, hostService batchRepoServiceLocator, storage storage.Storage, logger gethlog.Logger) *Repository {
 	return &Repository{
 		batchSubscribers:          subscription.NewManager[host.L2BatchHandler](),
 		validatedBatchSubscribers: subscription.NewManager[host.L2BatchHandler](),
@@ -176,6 +176,10 @@ func (r *Repository) FetchBatchBySeqNo(ctx context.Context, seqNo *big.Int) (*co
 		return nil, err
 	}
 	return b, nil
+}
+
+func (r *Repository) FetchLatestBatchSeqNo() *big.Int {
+	return r.latestBatchSeqNo
 }
 
 // AddBatch allows the host to add a batch to the repository, this is used:

@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"net"
 
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -78,8 +77,13 @@ func (s *RPCServer) Status(ctx context.Context, _ *generated.StatusRequest) (*ge
 		StatusCode:  int32(status.StatusCode),
 		L1Head:      status.L1Head.Bytes(),
 		L2Head:      l2Head,
+		EnclaveID:   status.EnclaveID.Bytes(),
 		SystemError: toRPCError(sysError),
 	}, nil
+}
+
+func (s *RPCServer) MakeActive(ctx context.Context, in *generated.MakeActiveRequest) (*generated.MakeActiveResponse, error) {
+	return &generated.MakeActiveResponse{SystemError: toRPCError(s.enclave.MakeActive())}, nil
 }
 
 func (s *RPCServer) Attestation(ctx context.Context, _ *generated.AttestationRequest) (*generated.AttestationResponse, error) {
@@ -118,18 +122,23 @@ func (s *RPCServer) EnclaveID(ctx context.Context, _ *generated.EnclaveIDRequest
 	return &generated.EnclaveIDResponse{EnclaveID: id.Bytes()}, nil
 }
 
-func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
-	bl, err := s.decodeBlock(request.EncodedBlock)
-	if err != nil {
-		s.logger.Error("Error decoding block", log.ErrKey, err)
-		return nil, err
+func (s *RPCServer) RPCEncryptionKey(ctx context.Context, _ *generated.RPCEncryptionKeyRequest) (*generated.RPCEncryptionKeyResponse, error) {
+	key, sysError := s.enclave.RPCEncryptionKey(ctx)
+	if sysError != nil {
+		s.logger.Error("Error getting enclave ID", log.ErrKey, sysError)
+		return &generated.RPCEncryptionKeyResponse{SystemError: toRPCError(sysError)}, nil
 	}
-	receipts, err := s.decodeReceipts(request.EncodedReceipts)
+	return &generated.RPCEncryptionKeyResponse{RpcPubKey: key}, nil
+}
+
+func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.SubmitBlockRequest) (*generated.SubmitBlockResponse, error) {
+	processedData, err := s.decodeProcessedData(request.EncodedProcessedData)
 	if err != nil {
 		s.logger.Error("Error decoding receipts", log.ErrKey, err)
 		return nil, err
 	}
-	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, bl, receipts, request.IsLatest)
+
+	blockSubmissionResponse, err := s.enclave.SubmitL1Block(ctx, processedData)
 	if err != nil {
 		var rejErr *errutil.BlockRejectError
 		isReject := errors.As(err, &rejErr)
@@ -154,15 +163,6 @@ func (s *RPCServer) SubmitL1Block(ctx context.Context, request *generated.Submit
 	return &generated.SubmitBlockResponse{BlockSubmissionResponse: msg}, nil
 }
 
-func (s *RPCServer) SubmitTx(ctx context.Context, request *generated.SubmitTxRequest) (*generated.SubmitTxResponse, error) {
-	enclaveResponse, sysError := s.enclave.SubmitTx(ctx, request.EncryptedTx)
-	if sysError != nil {
-		s.logger.Error("Error submitting tx", log.ErrKey, sysError)
-		return &generated.SubmitTxResponse{SystemError: toRPCError(sysError)}, nil
-	}
-	return &generated.SubmitTxResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
-}
-
 func (s *RPCServer) SubmitBatch(ctx context.Context, request *generated.SubmitBatchRequest) (*generated.SubmitBatchResponse, error) {
 	batch := rpc.FromExtBatchMsg(request.Batch)
 	sysError := s.enclave.SubmitBatch(ctx, batch)
@@ -172,71 +172,23 @@ func (s *RPCServer) SubmitBatch(ctx context.Context, request *generated.SubmitBa
 	return &generated.SubmitBatchResponse{SystemError: toRPCError(sysError)}, nil
 }
 
-func (s *RPCServer) ObsCall(ctx context.Context, request *generated.ObsCallRequest) (*generated.ObsCallResponse, error) {
-	enclaveResp, sysError := s.enclave.ObsCall(ctx, request.EncryptedParams)
-	if sysError != nil {
-		s.logger.Error("Error calling ObsCall", log.ErrKey, sysError)
-		return &generated.ObsCallResponse{SystemError: toRPCError(sysError)}, nil
-	}
-	return &generated.ObsCallResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
-}
-
-func (s *RPCServer) GetTransactionCount(ctx context.Context, request *generated.GetTransactionCountRequest) (*generated.GetTransactionCountResponse, error) {
-	enclaveResp, sysError := s.enclave.GetTransactionCount(ctx, request.EncryptedParams)
-	if sysError != nil {
-		s.logger.Error("Error tx count", log.ErrKey, sysError)
-		return &generated.GetTransactionCountResponse{SystemError: toRPCError(sysError)}, nil
-	}
-	return &generated.GetTransactionCountResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
-}
-
 func (s *RPCServer) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
 	// stop the grpcServer on its own goroutine to avoid killing the existing connection
 	go s.grpcServer.GracefulStop()
 	return &generated.StopResponse{SystemError: toRPCError(s.enclave.Stop())}, nil
 }
 
-func (s *RPCServer) GetTransaction(ctx context.Context, request *generated.GetTransactionRequest) (*generated.GetTransactionResponse, error) {
-	enclaveResp, sysError := s.enclave.GetTransaction(ctx, request.EncryptedParams)
-	if sysError != nil {
-		s.logger.Error("Error get tx", log.ErrKey, sysError)
-		return &generated.GetTransactionResponse{SystemError: toRPCError(sysError)}, nil
-	}
-	return &generated.GetTransactionResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
-}
-
-func (s *RPCServer) GetTransactionReceipt(ctx context.Context, request *generated.GetTransactionReceiptRequest) (*generated.GetTransactionReceiptResponse, error) {
-	enclaveResponse, sysError := s.enclave.GetTransactionReceipt(ctx, request.EncryptedParams)
-	if sysError != nil {
-		s.logger.Error("Error getting tx receipt", log.ErrKey, sysError)
-		return &generated.GetTransactionReceiptResponse{SystemError: toRPCError(sysError)}, nil
-	}
-	return &generated.GetTransactionReceiptResponse{EncodedEnclaveResponse: enclaveResponse.Encode()}, nil
-}
-
-func (s *RPCServer) GetStorageSlot(ctx context.Context, request *generated.GetStorageSlotRequest) (*generated.GetStorageSlotResponse, error) {
-	enclaveResp, sysError := s.enclave.GetStorageSlot(ctx, request.EncryptedParams)
-	if sysError != nil {
-		s.logger.Error("Error getting storage slot", log.ErrKey, sysError)
-		return &generated.GetStorageSlotResponse{SystemError: toRPCError(sysError)}, nil
-	}
-	return &generated.GetStorageSlotResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
-}
-
-func (s *RPCServer) GetBalance(ctx context.Context, request *generated.GetBalanceRequest) (*generated.GetBalanceResponse, error) {
-	enclaveResp, sysError := s.enclave.GetBalance(ctx, request.EncryptedParams)
-	if sysError != nil {
-		s.logger.Error("Error getting balance", log.ErrKey, sysError)
-		return &generated.GetBalanceResponse{SystemError: toRPCError(sysError)}, nil
-	}
-	return &generated.GetBalanceResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
-}
-
 func (s *RPCServer) GetCode(ctx context.Context, request *generated.GetCodeRequest) (*generated.GetCodeResponse, error) {
 	address := gethcommon.BytesToAddress(request.Address)
-	rollupHash := gethcommon.BytesToHash(request.RollupHash)
 
-	code, sysError := s.enclave.GetCode(ctx, address, &rollupHash)
+	blockNrOrHash := &gethrpc.BlockNumberOrHash{}
+	err := blockNrOrHash.UnmarshalJSON(request.BlockNrOrHash)
+	if err != nil {
+		s.logger.Error("Error unmarshalling block nr or hash", log.ErrKey, err)
+		return &generated.GetCodeResponse{SystemError: toRPCError(err)}, nil
+	}
+
+	code, sysError := s.enclave.GetCode(ctx, address, *blockNrOrHash)
 	if sysError != nil {
 		s.logger.Error("Error getting code", log.ErrKey, sysError)
 		return &generated.GetCodeResponse{SystemError: toRPCError(sysError)}, nil
@@ -260,24 +212,6 @@ func (s *RPCServer) Unsubscribe(_ context.Context, req *generated.UnsubscribeReq
 	return &generated.UnsubscribeResponse{SystemError: toRPCError(sysError)}, nil
 }
 
-func (s *RPCServer) EstimateGas(ctx context.Context, req *generated.EstimateGasRequest) (*generated.EstimateGasResponse, error) {
-	enclaveResp, sysError := s.enclave.EstimateGas(ctx, req.EncryptedParams)
-	if sysError != nil {
-		s.logger.Error("Error estimating gas", log.ErrKey, sysError)
-		return &generated.EstimateGasResponse{SystemError: toRPCError(sysError)}, nil
-	}
-	return &generated.EstimateGasResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
-}
-
-func (s *RPCServer) GetLogs(ctx context.Context, req *generated.GetLogsRequest) (*generated.GetLogsResponse, error) {
-	enclaveResp, sysError := s.enclave.GetLogs(ctx, req.EncryptedParams)
-	if sysError != nil {
-		s.logger.Error("Error getting logs", log.ErrKey, sysError)
-		return &generated.GetLogsResponse{SystemError: toRPCError(sysError)}, nil
-	}
-	return &generated.GetLogsResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
-}
-
 func (s *RPCServer) HealthCheck(ctx context.Context, _ *generated.EmptyArgs) (*generated.HealthCheckResponse, error) {
 	healthy, sysError := s.enclave.HealthCheck(ctx)
 	if sysError != nil {
@@ -292,7 +226,7 @@ func (s *RPCServer) CreateRollup(ctx context.Context, req *generated.CreateRollu
 		fromSeqNo = *req.FromSequenceNumber
 	}
 
-	rollup, sysError := s.enclave.CreateRollup(ctx, fromSeqNo)
+	rollup, blobs, sysError := s.enclave.CreateRollup(ctx, fromSeqNo)
 	if sysError != nil {
 		s.logger.Error("Error creating rollup", log.ErrKey, sysError)
 	}
@@ -301,6 +235,7 @@ func (s *RPCServer) CreateRollup(ctx context.Context, req *generated.CreateRollu
 
 	return &generated.CreateRollupResponse{
 		Msg:         &msg,
+		Blobs:       rpc.ToBlobMsgs(blobs),
 		SystemError: toRPCError(sysError),
 	}, nil
 }
@@ -433,17 +368,6 @@ func (s *RPCServer) StreamL2Updates(_ *generated.StreamL2UpdatesRequest, stream 
 	return nil
 }
 
-func (s *RPCServer) DebugEventLogRelevancy(ctx context.Context, req *generated.DebugEventLogRelevancyRequest) (*generated.DebugEventLogRelevancyResponse, error) {
-	txHash := gethcommon.BytesToHash(req.TxHash)
-
-	logs, sysError := s.enclave.DebugEventLogRelevancy(ctx, txHash)
-	if sysError != nil {
-		s.logger.Error("Error debugging event relevancy", log.ErrKey, sysError)
-	}
-
-	return &generated.DebugEventLogRelevancyResponse{Msg: string(logs), SystemError: toRPCError(sysError)}, nil
-}
-
 func (s *RPCServer) GetTotalContractCount(ctx context.Context, _ *generated.GetTotalContractCountRequest) (*generated.GetTotalContractCountResponse, error) {
 	count, sysError := s.enclave.GetTotalContractCount(ctx)
 	if sysError != nil {
@@ -460,13 +384,13 @@ func (s *RPCServer) GetTotalContractCount(ctx context.Context, _ *generated.GetT
 	}, nil
 }
 
-func (s *RPCServer) GetReceiptsByAddress(ctx context.Context, req *generated.GetReceiptsByAddressRequest) (*generated.GetReceiptsByAddressResponse, error) {
-	enclaveResp, sysError := s.enclave.GetPersonalTransactions(ctx, req.EncryptedParams)
+func (s *RPCServer) EncryptedRPC(ctx context.Context, req *generated.EncCallRequest) (*generated.EncCallResponse, error) {
+	enclaveResp, sysError := s.enclave.EncryptedRPC(ctx, req.EncryptedParams)
 	if sysError != nil {
 		s.logger.Error("Error getting receipt", log.ErrKey, sysError)
-		return &generated.GetReceiptsByAddressResponse{SystemError: toRPCError(sysError)}, nil
+		return &generated.EncCallResponse{SystemError: toRPCError(sysError)}, nil
 	}
-	return &generated.GetReceiptsByAddressResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
+	return &generated.EncCallResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil
 }
 
 func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.EnclavePublicConfigRequest) (*generated.EnclavePublicConfigResponse, error) {
@@ -475,28 +399,29 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 		s.logger.Error("Error getting message bus address", log.ErrKey, sysError)
 		return &generated.EnclavePublicConfigResponse{SystemError: toRPCError(sysError)}, nil
 	}
-	return &generated.EnclavePublicConfigResponse{L2MessageBusAddress: enclaveCfg.L2MessageBusAddress.Bytes()}, nil
-}
 
-func (s *RPCServer) decodeBlock(encodedBlock []byte) (*types.Block, error) {
-	block := types.Block{}
-	err := rlp.DecodeBytes(encodedBlock, &block)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode block, bytes=%x, err=%w", encodedBlock, err)
-	}
-	return &block, nil
-}
-
-// decodeReceipts - converts the rlp encoded bytes to receipts if possible.
-func (s *RPCServer) decodeReceipts(encodedReceipts []byte) (types.Receipts, error) {
-	receipts := make(types.Receipts, 0)
-
-	err := rlp.DecodeBytes(encodedReceipts, &receipts)
-	if err != nil {
-		return nil, fmt.Errorf("unable to decode receipts, bytes=%x, err=%w", encodedReceipts, err)
+	publicContracts := make(map[string][]byte, len(enclaveCfg.PublicSystemContracts))
+	for k, v := range enclaveCfg.PublicSystemContracts {
+		publicContracts[k] = v.Bytes()
 	}
 
-	return receipts, nil
+	return &generated.EnclavePublicConfigResponse{
+		L2MessageBusAddress:             enclaveCfg.L2MessageBusAddress.Bytes(),
+		TransactionPostProcessorAddress: enclaveCfg.TransactionPostProcessorAddress.Bytes(),
+		PublicSystemContracts:           publicContracts,
+	}, nil
+}
+
+// decodeProcessedData - converts the rlp encoded bytes to processed if possible.
+func (s *RPCServer) decodeProcessedData(encodedData []byte) (*common.ProcessedL1Data, error) {
+	var processed common.ProcessedL1Data
+
+	err := rlp.DecodeBytes(encodedData, &processed)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode receipts, bytes=%x, err=%w", encodedData, err)
+	}
+
+	return &processed, nil
 }
 
 func toRPCError(err common.SystemError) *generated.SystemError {

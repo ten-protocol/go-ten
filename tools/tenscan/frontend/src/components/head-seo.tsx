@@ -1,6 +1,6 @@
 import Head from "next/head";
-import { SeoProps } from "../types/interfaces";
 import { siteMetadata } from "../lib/siteMetadata";
+import { SeoProps } from "@repo/ui/lib/interfaces/ui";
 
 const HeadSeo = ({
   title,
@@ -9,6 +9,7 @@ const HeadSeo = ({
   ogTwitterImage,
   ogImageUrl,
   ogType,
+  includeDefaultKeywords = true,
   children,
 }: SeoProps) => {
   return (
@@ -18,6 +19,9 @@ const HeadSeo = ({
       <meta charSet="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <meta name={siteMetadata.metaTitle} content={siteMetadata.companyName} />
+      {includeDefaultKeywords && (
+        <meta name="keywords" content={siteMetadata.keywords} />
+      )}
       {/* twitter metadata */}
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:site" content={siteMetadata.twitterHandle} />
@@ -42,6 +46,25 @@ const HeadSeo = ({
         key="og-image"
       />
       <meta property="og:url" content={canonicalUrl} key="og-url" />
+      <link rel="icon" href="/favicon/favicon.ico" />
+      <link
+        rel="apple-touch-icon"
+        sizes="180x180"
+        href="/favicon/apple-touch-icon.png"
+      />
+      <link
+        rel="icon"
+        type="image/png"
+        sizes="32x32"
+        href="/favicon/favicon-32x32.png"
+      />
+      <link
+        rel="icon"
+        type="image/png"
+        sizes="16x16"
+        href="/favicon/favicon-16x16.png"
+      />
+      <link rel="manifest" href="/favicon/site.webmanifest" />
       {children}
     </Head>
   );

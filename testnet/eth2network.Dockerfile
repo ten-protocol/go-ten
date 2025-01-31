@@ -9,7 +9,7 @@
 # final = copies over the executables from the 'build-*' stages and prepares the final image.
 
 # Build stage for downloading dependencies based on the core defined system
-FROM golang:1.22.1-bullseye as get-dependencies
+FROM golang:1.22.11-bullseye as get-dependencies
 
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
@@ -34,5 +34,5 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # RUN ./main --onlyDownload=true
 
 # expose the http and the ws ports to the host
-EXPOSE 12000 12100 12200 12300 12400 12500
+EXPOSE 12000 12100 12200 12300 12400 12500 12600
 ENTRYPOINT ["/home/obscuro/go-obscuro/integration/eth2network/main/main"]

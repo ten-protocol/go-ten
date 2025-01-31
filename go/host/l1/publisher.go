@@ -8,12 +8,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
+	"github.com/ten-protocol/go-ten/go/common/gethutil"
+
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -33,13 +34,14 @@ type Publisher struct {
 	ethClient       ethadapter.EthClient
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	storage         storage.Storage
+	blobResolver    BlobResolver
 
 	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
 	importantContractAddresses map[string]gethcommon.Address
 	// lock for the important contract addresses map
 	importantAddressesMutex sync.RWMutex
 
-	repository host.L1BlockRepository
+	repository host.L1DataService
 	logger     gethlog.Logger
 
 	hostStopper *stopcontrol.StopControl
@@ -59,7 +61,8 @@ func NewL1Publisher(
 	hostWallet wallet.Wallet,
 	client ethadapter.EthClient,
 	mgmtContract mgmtcontractlib.MgmtContractLib,
-	repository host.L1BlockRepository,
+	repository host.L1DataService,
+	blobResolver BlobResolver,
 	hostStopper *stopcontrol.StopControl,
 	logger gethlog.Logger,
 	maxWaitForL1Receipt time.Duration,
@@ -73,6 +76,7 @@ func NewL1Publisher(
 		ethClient:                 client,
 		mgmtContractLib:           mgmtContract,
 		repository:                repository,
+		blobResolver:              blobResolver,
 		hostStopper:               hostStopper,
 		logger:                    logger,
 		maxWaitForL1Receipt:       maxWaitForL1Receipt,
@@ -99,48 +103,6 @@ func (p *Publisher) Start() error {
 	return nil
 }
 
-func (p *Publisher) GetBundleRangeFromManagementContract(lastRollupNumber *big.Int, lastRollupUID gethcommon.Hash) (*gethcommon.Hash, *big.Int, *big.Int, error) {
-	if p.mgmtContractLib.IsMock() {
-		return nil, nil, nil, fmt.Errorf("bundle publishing unavailable for mocked environments")
-	}
-
-	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
-	if err != nil {
-		p.logger.Error("Unable to instantiate management contract client")
-		return nil, nil, nil, err
-	}
-
-	hashBytes, rollup, err := managementCtr.GetUniqueForkID(&bind.CallOpts{}, lastRollupNumber)
-	if err != nil {
-		p.logger.Error("Unable to get unique fork ID from management contract")
-		return nil, nil, nil, err
-	}
-
-	rollupUid := gethcommon.BytesToHash(hashBytes[:])
-	if rollupUid != lastRollupUID {
-		return nil, nil, nil, errutil.ErrRollupForkMismatch
-	}
-
-	fromSeqNo := big.NewInt(0)
-	if lastRollupNumber.Cmp(big.NewInt(0)) != 0 {
-		fromSeqNo = big.NewInt(0).SetUint64(rollup.LastSequenceNumber.Uint64() + 1)
-	}
-
-	nextRollupNumber := big.NewInt(0).SetUint64(lastRollupNumber.Uint64() + 1)
-	nextHashBytes, nextRollup, err := managementCtr.GetUniqueForkID(&bind.CallOpts{}, nextRollupNumber)
-	if err != nil {
-		p.logger.Error("Unable to get unique fork ID from management contract")
-		return nil, nil, nil, err
-	}
-
-	nextRollupUID := gethcommon.BytesToHash(nextHashBytes[:])
-	if nextRollupUID.Big().Cmp(gethcommon.Big0) == 0 {
-		return nil, nil, nil, errutil.ErrNoNextRollup
-	}
-
-	return &nextRollupUID, fromSeqNo, nextRollup.LastSequenceNumber, nil
-}
-
 func (p *Publisher) Stop() error {
 	p.sendingCtxCancel()
 	return nil
@@ -160,12 +122,15 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 	if err != nil {
 		return errors.Wrap(err, "could not encode attestation")
 	}
-	l1tx := &ethadapter.L1InitializeSecretTx{
+	l1tx := &common.L1InitializeSecretTx{
 		EnclaveID:     &attestation.EnclaveID,
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
 	}
-	initialiseSecretTx := p.mgmtContractLib.CreateInitializeSecret(l1tx)
+	initialiseSecretTx, err := p.mgmtContractLib.CreateInitializeSecret(l1tx)
+	if err != nil {
+		return err
+	}
 	// we block here until we confirm a successful receipt. It is important this is published before the initial rollup.
 	return p.publishTransaction(initialiseSecretTx)
 }
@@ -173,9 +138,9 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethcommon.Hash, error) {
 	encodedAttestation, err := common.EncodeAttestation(attestation)
 	if err != nil {
-		return gethcommon.Hash{}, errors.Wrap(err, "could not encode attestation")
+		return gethutil.EmptyHash, errors.Wrap(err, "could not encode attestation")
 	}
-	l1tx := &ethadapter.L1RequestSecretTx{
+	l1tx := &common.L1RequestSecretTx{
 		Attestation: encodedAttestation,
 	}
 	// record the L1 head height before we submit the secret request, so we know which block to watch from
@@ -190,24 +155,31 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 			panic(errors.Wrap(err, "could not fetch head block"))
 		}
 	}
-	requestSecretTx := p.mgmtContractLib.CreateRequestSecret(l1tx)
+	requestSecretTx, err := p.mgmtContractLib.CreateRequestSecret(l1tx)
+	if err != nil {
+		return gethutil.EmptyHash, err
+	}
+
 	// we wait until the secret req transaction has succeeded before we start polling for the secret
 	err = p.publishTransaction(requestSecretTx)
 	if err != nil {
-		return gethcommon.Hash{}, err
+		return gethutil.EmptyHash, err
 	}
 
 	return l1Head.Hash(), nil
 }
 
 func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error {
-	l1tx := &ethadapter.L1RespondSecretTx{
+	l1tx := &common.L1RespondSecretTx{
 		Secret:      secretResponse.Secret,
 		RequesterID: secretResponse.RequesterID,
 		AttesterID:  secretResponse.AttesterID,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	respondSecretTx := p.mgmtContractLib.CreateRespondSecret(l1tx, false)
+	respondSecretTx, err := p.mgmtContractLib.CreateRespondSecret(l1tx, false)
+	if err != nil {
+		return err
+	}
 	p.logger.Info("Broadcasting secret response L1 tx.", "requester", secretResponse.RequesterID)
 
 	// fire-and-forget (track the receipt asynchronously)
@@ -221,43 +193,37 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 	return nil
 }
 
-// ExtractObscuroRelevantTransactions will extract any transactions from the block that are relevant to obscuro
-// todo (#2495) we should monitor for relevant L1 events instead of scanning every transaction in the block
-func (p *Publisher) ExtractObscuroRelevantTransactions(block *types.Block) ([]*ethadapter.L1RespondSecretTx, []*ethadapter.L1RollupTx, []*ethadapter.L1SetImportantContractsTx) {
-	var secretRespTxs []*ethadapter.L1RespondSecretTx
-	var rollupTxs []*ethadapter.L1RollupTx
-	var contractAddressTxs []*ethadapter.L1SetImportantContractsTx
-	for _, tx := range block.Transactions() {
-		t := p.mgmtContractLib.DecodeTx(tx)
+// FindSecretResponseTx will attempt to decode the transactions passed in
+func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common.L1RespondSecretTx {
+	secretRespTxs := make([]*common.L1RespondSecretTx, 0)
+
+	for _, tx := range processed {
+		t, err := p.mgmtContractLib.DecodeTx(tx.Transaction)
+		if err != nil {
+			p.logger.Error("Could not decode transaction", log.ErrKey, err)
+			continue
+		}
 		if t == nil {
 			continue
 		}
-		if scrtTx, ok := t.(*ethadapter.L1RespondSecretTx); ok {
+		if scrtTx, ok := t.(*common.L1RespondSecretTx); ok {
 			secretRespTxs = append(secretRespTxs, scrtTx)
 			continue
 		}
-		if rollupTx, ok := t.(*ethadapter.L1RollupTx); ok {
-			rollupTxs = append(rollupTxs, rollupTx)
-			continue
-		}
-		if contractAddressTx, ok := t.(*ethadapter.L1SetImportantContractsTx); ok {
-			contractAddressTxs = append(contractAddressTxs, contractAddressTx)
-			continue
-		}
 	}
-	return secretRespTxs, rollupTxs, contractAddressTxs
+	return secretRespTxs
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 
-func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
+func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg4844.Blob) {
 	encRollup, err := common.EncodeRollup(producedRollup)
 	if err != nil {
 		p.logger.Crit("could not encode rollup.", log.ErrKey, err)
 	}
-	tx := &ethadapter.L1RollupTx{
+	tx := &common.L1RollupTx{
 		Rollup: encRollup,
 	}
 	p.logger.Info("Publishing rollup", "size", len(encRollup)/1024, log.RollupHashKey, producedRollup.Hash())
@@ -274,64 +240,30 @@ func (p *Publisher) PublishRollup(producedRollup *common.ExtRollup) {
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, producedRollup.Header.Hash(), "batches_len", len(producedRollup.BatchPayloads))
 	}
 
-	rollupTx := p.mgmtContractLib.CreateRollup(tx)
+	rollupBlobTx, err := p.mgmtContractLib.PopulateAddRollup(tx, blobs)
+	if err != nil {
+		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
+	}
 
-	err = p.publishTransaction(rollupTx)
+	rollupBlockNum := producedRollup.Header.CompressionL1Number
+	// wait for the next block after the block that the rollup is bound to
+	err = p.waitForBlockAfter(rollupBlockNum.Uint64())
+	if err != nil {
+		p.logger.Error("Failed waiting for block after rollup binding block number",
+			"compression_block", rollupBlockNum,
+			log.ErrKey, err)
+	}
+
+	err = p.publishTransaction(rollupBlobTx)
 	if err != nil {
 		p.logger.Error("Could not issue rollup tx", log.RollupHashKey, producedRollup.Hash(), log.ErrKey, err)
 	} else {
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, producedRollup.Hash())
 	}
+	// TODO publish rollup to archive service if not already done
 }
 
-func (p *Publisher) PublishCrossChainBundle(bundle *common.ExtCrossChainBundle, rollupNum *big.Int, forkID gethcommon.Hash) error {
-	if p.mgmtContractLib.IsMock() {
-		return nil
-	}
-
-	managementCtr, err := ManagementContract.NewManagementContract(*p.mgmtContractLib.GetContractAddr(), p.ethClient.EthClient())
-	if err != nil {
-		p.logger.Error("Unable to instantiate management contract client")
-		return fmt.Errorf("unable to init")
-	}
-
-	transactor, err := bind.NewKeyedTransactorWithChainID(p.hostWallet.PrivateKey(), p.hostWallet.ChainID())
-	if err != nil {
-		p.logger.Error("Unable to create transactor for management contract")
-		return fmt.Errorf("unable to init")
-	}
-
-	p.logger.Info("Host preparing to send cross chain bundle transaction")
-	p.sendingLock.Lock()
-	defer p.sendingLock.Unlock()
-
-	nonce, err := p.ethClient.EthClient().PendingNonceAt(context.Background(), p.hostWallet.Address())
-	if err != nil {
-		p.logger.Error("Unable to get nonce for management contract", log.ErrKey, err)
-		return fmt.Errorf("unable to get nonce for management contract. Cause: %w", err)
-	}
-
-	transactor.Nonce = big.NewInt(0).SetUint64(nonce)
-
-	p.logger.Debug("Adding cross chain roots to management contract", log.BundleHashKey, bundle.CrossChainRootHashes)
-
-	tx, err := managementCtr.AddCrossChainMessagesRoot(transactor, [32]byte(bundle.LastBatchHash.Bytes()), bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes, bundle.Signature, rollupNum, forkID)
-	if err != nil {
-		if !errors.Is(err, errutil.ErrCrossChainBundleRepublished) {
-			p.logger.Info("Cross chain bundle already published. Proceeding without publishing", log.ErrKey, err, log.BundleHashKey, bundle.LastBatchHash)
-			return nil
-		}
-		p.hostWallet.SetNonce(p.hostWallet.GetNonce() - 1)
-		return fmt.Errorf("unable to submit cross chain bundle transaction. Cause: %w", err)
-	}
-
-	err = p.awaitTransaction(tx)
-	if err != nil {
-		p.logger.Error("Error with receipt of cross chain publish transaction", log.TxKey, tx.Hash(), log.ErrKey, err)
-		return fmt.Errorf("unable to get receipt for cross chain bundle transaction. Cause: %w", err)
-	}
-
-	p.logger.Info("Successfully submitted bundle", log.BundleHashKey, bundle.LastBatchHash)
+func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *big.Int, _ gethcommon.Hash) error {
 	return nil
 }
 
@@ -397,8 +329,6 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 
 	retries := -1
 
-	// we keep trying to send the transaction with this nonce until it is included in a block
-	// note: this is only safe because of the sendingLock guaranteeing only one transaction in-flight at a time
 	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
 	if err != nil {
 		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
@@ -409,7 +339,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		retries++ // count each attempt so we can increase gas price
 
 		// update the tx gas price before each attempt
-		tx, err := p.ethClient.PrepareTransactionToRetry(p.sendingContext, tx, p.hostWallet.Address(), nonce, retries)
+		tx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retries)
 		if err != nil {
 			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 		}
@@ -418,8 +348,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		if err != nil {
 			return errors.Wrap(err, "could not sign L1 tx")
 		}
-
-		p.logger.Info("Host issuing l1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
+		p.logger.Info("Host issuing L1 tx", log.TxKey, signedTx.Hash(), "size", signedTx.Size()/1024, "retries", retries)
 		err = p.ethClient.SendTransaction(signedTx)
 		if err != nil {
 			return errors.Wrap(err, "could not broadcast L1 tx")
@@ -427,15 +356,15 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
 
 		var receipt *types.Receipt
-		// retry until receipt is found
+		// retry until receipt is found or context is canceled
 		err = retry.Do(
 			func() error {
 				if p.hostStopper.IsStopping() {
-					return retry.FailFast(errors.New("host is stopping"))
+					return retry.FailFast(errors.New("host is stopping or context canceled"))
 				}
 				receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
 				if err != nil {
-					return fmt.Errorf("could not get receipt for L1 tx=%s: %w", signedTx.Hash(), err)
+					return fmt.Errorf("could not get receipt publishing tx for L1 tx=%s: %w", signedTx.Hash(), err)
 				}
 				return err
 			},
@@ -446,7 +375,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 			continue // try again with updated gas price
 		}
 
-		if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
+		if receipt.Status != types.ReceiptStatusSuccessful {
 			return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
 		}
 
@@ -457,26 +386,30 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 	return nil
 }
 
-func (p *Publisher) awaitTransaction(tx *types.Transaction) error {
-	var receipt *types.Receipt
-	var err error
-	err = retry.Do(
+// waitForBlockAfter waits until the current block number is greater than the target block number
+func (p *Publisher) waitForBlockAfter(targetBlock uint64) error {
+	err := retry.Do(
 		func() error {
-			receipt, err = p.ethClient.TransactionReceipt(tx.Hash())
-			if err != nil {
-				return fmt.Errorf("could not get receipt for L1 tx=%s: %w", tx.Hash(), err)
+			if p.hostStopper.IsStopping() {
+				return retry.FailFast(errors.New("host is stopping"))
 			}
-			return err
+
+			currentBlock, err := p.ethClient.BlockNumber()
+			if err != nil {
+				return fmt.Errorf("failed to get current block number: %w", err)
+			}
+
+			if currentBlock <= targetBlock {
+				return fmt.Errorf("waiting for block after %d (current: %d)", targetBlock, currentBlock)
+			}
+
+			return nil
 		},
 		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
 	)
 	if err != nil {
-		p.logger.Info("Receipt not found for transaction, we will re-attempt", log.ErrKey, err)
-		return err
+		return fmt.Errorf("timeout waiting for block after %d: %w", targetBlock, err)
 	}
 
-	if err == nil && receipt.Status != types.ReceiptStatusSuccessful {
-		return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
-	}
 	return nil
 }

@@ -28,6 +28,11 @@ interface IMessageBus {
         uint64 sequence
     );
 
+    event NativeDeposit(
+        address indexed receiver,
+        uint256 amount
+    );
+
     // This method is called from contracts to publish messages to the other linked message bus.
     // nonce - This is provided and serves as deduplication nonce. It can also be used to group a batch of messages together.
     // topic - This is the topic for which the payload is published. 
@@ -41,7 +46,7 @@ interface IMessageBus {
         uint32 topic,
         bytes calldata payload, 
         uint8 consistencyLevel
-    ) external returns (uint64 sequence);
+    ) external payable returns (uint64 sequence);
 
     function sendValueToL2(
         address receiver,
@@ -67,4 +72,7 @@ interface IMessageBus {
 
     // This is a testnet function which allows the bridge owner to retrieve all funds from the message bus.
     function retrieveAllFunds(address receiver) external;
+
+    // the fee needed to be paid in msg.value to publish the value transfer
+    function getPublishFee() external view returns (uint256);
 }

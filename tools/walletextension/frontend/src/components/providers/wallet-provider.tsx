@@ -15,6 +15,7 @@ import { ToastType } from "@/types/interfaces";
 import {
   authenticateAccountWithTenGatewayEIP712,
   getToken,
+  clearToken
 } from "@/api/ethRequests";
 import { ethers } from "ethers";
 import ethService from "@/services/ethService";
@@ -56,7 +57,7 @@ export const WalletConnectionProvider = ({
     try {
       await ethService.checkIfMetamaskIsLoaded(providerInstance);
 
-      const fetchedToken = await getToken(providerInstance);
+      const fetchedToken = await getToken();
       setToken(fetchedToken);
 
       const status = await ethService.isUserConnectedToTenChain(fetchedToken);
@@ -67,9 +68,9 @@ export const WalletConnectionProvider = ({
       setVersion(await fetchVersion());
     } catch (error) {
       showToast(
-          ToastType.DESTRUCTIVE,
-      error instanceof Error ? error.message : "Error initializing wallet connection. Please refresh the page."
-    );
+        ToastType.DESTRUCTIVE,
+        error instanceof Error ? error.message : "Error initializing wallet connection. Please refresh the page."
+      );
     } finally {
       setLoading(false);
     }
@@ -124,6 +125,7 @@ export const WalletConnectionProvider = ({
       setAccounts(null);
       setWalletConnected(false);
       setToken("");
+      clearToken();
     }
   };
 
@@ -135,7 +137,7 @@ export const WalletConnectionProvider = ({
       );
       return;
     }
-    const token = await getToken(provider);
+    const token = await getToken();
 
     if (!isValidTokenFormat(token)) {
       showToast(
@@ -189,16 +191,27 @@ export const WalletConnectionProvider = ({
       setProvider(providerInstance);
       initialize(providerInstance);
 
-      ethereum.on("accountsChanged", fetchUserAccounts);
+      const handleAccountsChanged = async (accounts: string[]) => {
+        if (accounts.length === 0) {
+          setAccounts(null);
+          setWalletConnected(false);
+          setToken("");
+          clearToken();
+        } else {
+          window.location.reload();
+        }
+      };
+
+      ethereum.on("accountsChanged", handleAccountsChanged);
+
+      return () => {
+        if (ethereum && ethereum.removeListener) {
+          ethereum.removeListener("accountsChanged", handleAccountsChanged);
+        }
+      };
     } else {
       setLoading(false);
     }
-
-    return () => {
-      if (ethereum && ethereum.removeListener) {
-        ethereum.removeListener("accountsChanged", fetchUserAccounts);
-      }
-    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

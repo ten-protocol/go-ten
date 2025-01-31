@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -17,7 +18,7 @@ import (
 )
 
 func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
-	header, err := rlp.EncodeToBytes(b)
+	header, err := encodeHeader(b)
 	if err != nil {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
@@ -32,6 +33,9 @@ func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
 }
 
 func UpdateCanonicalBlock(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash) error {
+	if len(blocks) == 0 {
+		return nil
+	}
 	args := make([]any, 0)
 	args = append(args, isCanonical)
 	for _, blockHash := range blocks {
@@ -56,8 +60,8 @@ func IsCanonicalBlock(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) 
 }
 
 // CheckCanonicalValidity - expensive but useful for debugging races
-func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx) error {
-	rows, err := dbtx.QueryContext(ctx, "select count(*), height from batch where is_canonical=true group by height having count(*) >1")
+func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx, blockId int64) error {
+	rows, err := dbtx.QueryContext(ctx, "select count(*), height from batch where l1_proof >=? AND is_canonical=true group by height having count(*) >1", blockId)
 	if err != nil {
 		return err
 	}
@@ -67,28 +71,27 @@ func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx) error {
 	}
 	if rows.Next() {
 		var cnt uint64
-		var heignt uint64
-		err := rows.Scan(&cnt, &heignt)
+		var height uint64
+		err := rows.Scan(&cnt, &height)
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("found multiple (%d) canonical batches for height %d", cnt, heignt)
+		return fmt.Errorf("found multiple (%d) canonical batches for height %d", cnt, height)
 	}
 	return nil
 }
 
-// HandleBlockArrivedAfterBatches- handle the corner case where the block wasn't available when the batch was received
+// HandleBlockArrivedAfterBatches - handle the corner case where the block wasn't available when the batch was received
 func HandleBlockArrivedAfterBatches(ctx context.Context, dbtx *sql.Tx, blockId int64, blockHash common.L1BlockHash) error {
 	_, err := dbtx.ExecContext(ctx, "update batch set l1_proof=?, is_canonical=true where l1_proof_hash=?", blockId, blockHash.Bytes())
 	return err
 }
 
-// todo - remove this. For now creates a "block" but without a body.
-func FetchBlock(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (*types.Block, error) {
+func FetchBlockHeader(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (*types.Header, error) {
 	return fetchBlock(ctx, db, " where hash=?", hash.Bytes())
 }
 
-func FetchHeadBlock(ctx context.Context, db *sql.DB) (*types.Block, error) {
+func FetchHeadBlock(ctx context.Context, db *sql.DB) (*types.Header, error) {
 	return fetchBlock(ctx, db, "order by id desc limit 1")
 }
 
@@ -234,18 +237,22 @@ func fetchBlockHeader(ctx context.Context, db *sql.DB, whereQuery string, args .
 		}
 		return nil, err
 	}
-	h := new(types.Header)
-	if err := rlp.Decode(bytes.NewReader([]byte(header)), h); err != nil {
-		return nil, fmt.Errorf("could not decode l1 block header. Cause: %w", err)
-	}
-
-	return h, nil
+	return decodeHeader([]byte(header))
 }
 
-func fetchBlock(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*types.Block, error) {
-	h, err := fetchBlockHeader(ctx, db, whereQuery, args...)
+func fetchBlock(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*types.Header, error) {
+	return fetchBlockHeader(ctx, db, whereQuery, args...)
+}
+
+func encodeHeader(h *types.Header) ([]byte, error) {
+	return json.Marshal(h)
+}
+
+func decodeHeader(b []byte) (*types.Header, error) {
+	h := new(types.Header)
+	err := json.Unmarshal(b, h)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not decode l1 block header. Cause: %w", err)
 	}
-	return types.NewBlockWithHeader(h), nil
+	return h, nil
 }

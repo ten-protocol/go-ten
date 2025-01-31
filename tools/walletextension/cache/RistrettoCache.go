@@ -1,31 +1,32 @@
 package cache
 
 import (
+	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/dgraph-io/ristretto"
+	"github.com/dgraph-io/ristretto/v2"
 )
 
 const (
-	numCounters = 1e7       // number of keys to track frequency of (10M).
-	maxCost     = 1_000_000 // 1 million entries
-	bufferItems = 64        // number of keys per Get buffer.
-	defaultCost = 1         // default cost of cache.
+	bufferItems = 64 // number of keys per Get buffer.
+	defaultCost = 1  // default cost of cache.
 )
 
 type ristrettoCache struct {
-	cache        *ristretto.Cache
-	quit         chan struct{}
-	lastEviction time.Time
+	cache              *ristretto.Cache[[]byte, any]
+	quit               chan struct{}
+	lastEviction       time.Time
+	shortLivingEnabled *atomic.Bool
 }
 
 // NewRistrettoCacheWithEviction returns a new ristrettoCache.
-func NewRistrettoCacheWithEviction(logger log.Logger) (Cache, error) {
-	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: numCounters,
-		MaxCost:     maxCost,
+func NewRistrettoCacheWithEviction(nrElems int, logger log.Logger) (Cache, error) {
+	cache, err := ristretto.NewCache[[]byte, any](&ristretto.Config[[]byte, any]{
+		NumCounters: int64(nrElems * 10),
+		MaxCost:     int64(nrElems),
 		BufferItems: bufferItems,
 		Metrics:     true,
 	})
@@ -34,10 +35,12 @@ func NewRistrettoCacheWithEviction(logger log.Logger) (Cache, error) {
 	}
 
 	c := &ristrettoCache{
-		cache:        cache,
-		quit:         make(chan struct{}),
-		lastEviction: time.Now(),
+		cache:              cache,
+		quit:               make(chan struct{}),
+		lastEviction:       time.Now(),
+		shortLivingEnabled: &atomic.Bool{},
 	}
+	c.shortLivingEnabled.Store(true)
 
 	// Start the metrics logging
 	go c.startMetricsLogging(logger)
@@ -46,10 +49,19 @@ func NewRistrettoCacheWithEviction(logger log.Logger) (Cache, error) {
 }
 
 func (c *ristrettoCache) EvictShortLiving() {
+	// this event happens when a new batch is received, so the cache can be enabled
+	c.shortLivingEnabled.Store(true)
 	c.lastEviction = time.Now()
 }
 
-func (c *ristrettoCache) IsEvicted(key any, originalTTL time.Duration) bool {
+func (c *ristrettoCache) DisableShortLiving() {
+	c.shortLivingEnabled.Store(false)
+}
+
+func (c *ristrettoCache) IsEvicted(key []byte, originalTTL time.Duration) bool {
+	if !c.shortLivingEnabled.Load() {
+		return true
+	}
 	remainingTTL, notExpired := c.cache.GetTTL(key)
 	if !notExpired {
 		return true
@@ -81,8 +93,8 @@ func (c *ristrettoCache) startMetricsLogging(logger log.Logger) {
 		select {
 		case <-ticker.C:
 			metrics := c.cache.Metrics
-			logger.Info("Cache metrics: Hits: %d, Misses: %d, Cost Added: %d\n",
-				metrics.Hits(), metrics.Misses(), metrics.CostAdded())
+			logger.Info(fmt.Sprintf("Cache metrics: Hits: %d, Misses: %d, Cost Added: %d",
+				metrics.Hits(), metrics.Misses(), metrics.CostAdded()))
 		case <-c.quit:
 			ticker.Stop()
 			return

@@ -8,12 +8,45 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/eth/filters"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
+
+// DebugLogVisibility are the payloads returned when using the DebugGetLogs endpoint
+// they are intended for the contract developer to debug visibility issues.
+type DebugLogVisibility struct {
+	// identify the event
+	Address  *gethcommon.Address `json:"contractAddress"`
+	EventSig *gethcommon.Hash    `json:"eventSig"`
+
+	// the contract configuration
+	AutoContract        bool  `json:"defaultContract"`
+	TransparentContract *bool `json:"transparentContract"`
+
+	// the explicit saved configuration for this event type
+	EventConfigPublic *bool `json:"eventConfigPublic"`
+	Topic1            *bool `json:"topic1Relevant"`
+	Topic2            *bool `json:"topic2Relevant"`
+	Topic3            *bool `json:"topic3Relevant"`
+	Sender            *bool `json:"senderRelevant"`
+
+	// if the event is auto-detected, return which topics will see it
+	AutoVisibility *bool `json:"eventAutoVisibility"`
+	AutoPublic     *bool `json:"eventAutoPublic"`
+	RelAddress1    *bool `json:"topic1AutoRelevant"`
+	RelAddress2    *bool `json:"topic2AutoRelevant"`
+	RelAddress3    *bool `json:"topic3AutoRelevant"`
+
+	// position of the event
+	BlockNumber uint64          `json:"blockNumber" rlp:"-"`
+	TxHash      gethcommon.Hash `json:"transactionHash" gencodec:"required" rlp:"-"`
+	TxIndex     uint            `json:"transactionIndex" rlp:"-"`
+	BlockHash   gethcommon.Hash `json:"blockHash" rlp:"-"`
+	Index       uint            `json:"logIndex" rlp:"-"`
+}
 
 // LogSubscription is an authenticated subscription to logs.
 type LogSubscription struct {
@@ -52,11 +85,11 @@ func CreateAuthenticatedLogSubscriptionPayload(args []interface{}, vk *viewingke
 // filters.FilterCriteria object (round-tripping a filters.FilterCriteria to JSON and back doesn't work, due to a
 // custom serialiser implemented by filters.FilterCriteria).
 type FilterCriteriaJSON struct {
-	BlockHash *common.Hash     `json:"blockHash"`
-	FromBlock *rpc.BlockNumber `json:"fromBlock"`
-	ToBlock   *rpc.BlockNumber `json:"toBlock"`
-	Addresses []common.Address `json:"addresses"`
-	Topics    [][]common.Hash  `json:"topics"`
+	BlockHash *gethcommon.Hash     `json:"blockHash"`
+	FromBlock *rpc.BlockNumber     `json:"fromBlock"`
+	ToBlock   *rpc.BlockNumber     `json:"toBlock"`
+	Addresses []gethcommon.Address `json:"addresses"`
+	Topics    [][]gethcommon.Hash  `json:"topics"`
 }
 
 func SerializableFilterCriteria(crit FilterCriteria) FilterCriteriaJSON {
@@ -110,7 +143,7 @@ type FilterCriteria ethereum.FilterQuery
 // UnmarshalJSON sets *args fields with given data.
 func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 	type input struct {
-		BlockHash *common.Hash     `json:"blockHash"`
+		BlockHash *gethcommon.Hash `json:"blockHash"`
 		FromBlock *rpc.BlockNumber `json:"fromBlock"`
 		ToBlock   *rpc.BlockNumber `json:"toBlock"`
 		Addresses interface{}      `json:"address"`
@@ -142,7 +175,7 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 		}
 	}
 
-	args.Addresses = []common.Address{}
+	args.Addresses = []gethcommon.Address{}
 
 	if raw.Addresses != nil {
 		// raw.Address can contain a single address or an array of addresses
@@ -164,7 +197,7 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 			if err != nil {
 				return fmt.Errorf("invalid address: %v", err)
 			}
-			args.Addresses = []common.Address{addr}
+			args.Addresses = []gethcommon.Address{addr}
 		default:
 			return errors.New("invalid addresses in query")
 		}
@@ -173,7 +206,7 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 	// topics is an array consisting of strings and/or arrays of strings.
 	// JSON null values are converted to common.Hash{} and ignored by the filter manager.
 	if len(raw.Topics) > 0 {
-		args.Topics = make([][]common.Hash, len(raw.Topics))
+		args.Topics = make([][]gethcommon.Hash, len(raw.Topics))
 		for i, t := range raw.Topics {
 			switch topic := t.(type) {
 			case nil:
@@ -185,7 +218,7 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 				if err != nil {
 					return err
 				}
-				args.Topics[i] = []common.Hash{top}
+				args.Topics[i] = []gethcommon.Hash{top}
 
 			case []interface{}:
 				// or case e.g. [null, "topic0", "topic1"]
@@ -214,18 +247,18 @@ func (args *FilterCriteria) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-func decodeAddress(s string) (common.Address, error) {
+func decodeAddress(s string) (gethcommon.Address, error) {
 	b, err := hexutil.Decode(s)
-	if err == nil && len(b) != common.AddressLength {
-		err = fmt.Errorf("hex has invalid length %d after decoding; expected %d for address", len(b), common.AddressLength)
+	if err == nil && len(b) != gethcommon.AddressLength {
+		err = fmt.Errorf("hex has invalid length %d after decoding; expected %d for address", len(b), gethcommon.AddressLength)
 	}
-	return common.BytesToAddress(b), err
+	return gethcommon.BytesToAddress(b), err
 }
 
-func decodeTopic(s string) (common.Hash, error) {
+func decodeTopic(s string) (gethcommon.Hash, error) {
 	b, err := hexutil.Decode(s)
-	if err == nil && len(b) != common.HashLength {
-		err = fmt.Errorf("hex has invalid length %d after decoding; expected %d for topic", len(b), common.HashLength)
+	if err == nil && len(b) != gethcommon.HashLength {
+		err = fmt.Errorf("hex has invalid length %d after decoding; expected %d for topic", len(b), gethcommon.HashLength)
 	}
-	return common.BytesToHash(b), err
+	return gethcommon.BytesToHash(b), err
 }

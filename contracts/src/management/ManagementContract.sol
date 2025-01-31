@@ -18,7 +18,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     using MessageHashUtils for bytes;
 
     constructor() {
-      //  _disableInitializers();
         _transferOwnership(msg.sender);
     }
 
@@ -27,6 +26,8 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     event SequencerEnclaveGranted(address enclaveID);
     event SequencerEnclaveRevoked(address enclaveID);
     event RollupAdded(bytes32 rollupHash);
+    event NetworkSecretRequested(address indexed requester, string requestReport);
+    event NetworkSecretResponded(address indexed attester, address indexed requester);
 
     // mapping of enclaveID to whether it is attested
     mapping(address => bool) private attested;
@@ -59,10 +60,11 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     bytes32 public lastBatchHash;
 
+    uint256 private challengePeriod;
+
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         lastBatchSeqNo = 0;
-        rollups.nextFreeSequenceNumber = 1; // rollup 0 == nil hash
         merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus();
         messageBus = MessageBus.IMessageBus(address(merkleMessageBus));
 
@@ -74,30 +76,9 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return (rol.Hash == rollupHash , rol);
     }
 
-    function GetRollupByNumber(uint256 number) view public returns(bool, Structs.MetaRollup memory) {
-        bytes32 hash = rollups.byOrder[number];
-        if (hash == 0x0) { // ensure we don't try to get rollup for hash zero as that would not pull anything, but the hash would match and return true
-            return (false, Structs.MetaRollup(0x0, "", 0));
-        }
-
-        return GetRollupByHash(hash);
-    }
-
-    function GetUniqueForkID(uint256 number) view public returns(bytes32, Structs.MetaRollup memory) {
-        (bool success, Structs.MetaRollup memory rollup) = GetRollupByNumber(number);
-        if (!success) {
-            return (0x0, rollup);
-        }
-
-        return (rollups.toUniqueForkID[number], rollup);
-    }
-
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
-        rollups.byOrder[rollups.nextFreeSequenceNumber] = _r.Hash;
-        rollups.toUniqueForkID[rollups.nextFreeSequenceNumber] = keccak256(abi.encode(_r.Hash, blockhash(block.number-1)));
-        rollups.nextFreeSequenceNumber++;
-
+       
         if (_r.LastSequenceNumber > lastBatchSeqNo) {
             lastBatchSeqNo = _r.LastSequenceNumber;
         }
@@ -113,35 +94,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         return isBundleSaved[bundleHash];
     }
 
-    function addCrossChainMessagesRoot(bytes32 _lastBatchHash, bytes32 blockHash, uint256 blockNum, bytes[] memory crossChainHashes, bytes calldata signature, uint256 rollupNumber, bytes32 forkID) external {
-      /*  if (block.number > blockNum + 255) {
-            revert("Block binding too old");
-        }
-
-        if ((blockhash(blockNum) != blockHash)) {
-            revert(string(abi.encodePacked("Invalid block binding:", Strings.toString(block.number),":", Strings.toString(uint256(blockHash)), ":", Strings.toString(uint256(blockhash(blockNum))))));
-        } */
-
-        if (rollups.toUniqueForkID[rollupNumber] != forkID) {
-            revert("Invalid forkID");
-        }
-
-        address enclaveID = ECDSA.recover(keccak256(abi.encode(_lastBatchHash, blockHash, blockNum, crossChainHashes)), signature);
-        require(attested[enclaveID], "enclaveID not attested"); //todo: only sequencer, rather than everyone who has attested.
-
-        lastBatchHash = _lastBatchHash;
-
-        bytes32 bundleHash = bytes32(0);
-
-        for(uint256 i = 0; i < crossChainHashes.length; i++) {
-            merkleMessageBus.addStateRoot(bytes32(crossChainHashes[i]), block.timestamp); //todo: change the activation time.
-            bundleHash = keccak256(abi.encode(bundleHash, bytes32(crossChainHashes[i])));
-        }
-
-        isBundleSaved[bundleHash] = true;
-    }
-
-// TODO: ensure challenge period is added on top of block timestamp.
     function pushCrossChainMessages(Structs.HeaderCrossChainData calldata crossChainData) internal {
         uint256 messagesLength = crossChainData.messages.length;
         for (uint256 i = 0; i < messagesLength; ++i) {
@@ -149,15 +101,41 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         }
     }
 
-    // solc-ignore-next-line unused-param
-    function AddRollup(Structs.MetaRollup calldata r, string calldata  _rollupData, Structs.HeaderCrossChainData calldata) public {
-        address enclaveID = ECDSA.recover(r.Hash, r.Signature);
-        // revert if the EnclaveID is not attested
-        require(attested[enclaveID], "enclaveID not attested");
-        // revert if the EnclaveID is not permissioned as a sequencer
-        require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
+    modifier verifyRollupIntegrity(Structs.MetaRollup calldata r) {
+        // Block binding checks
+        require(block.number > r.BlockBindingNumber, "Cannot bind to future or current block");
+        require(block.number < (r.BlockBindingNumber + 255), "Block binding too old");
 
+        bytes32 knownBlockHash = blockhash(r.BlockBindingNumber);
+
+        require(knownBlockHash != 0x0, "Unknown block hash");
+        require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
+
+        bytes32 compositeHash = keccak256(abi.encodePacked(
+            r.LastSequenceNumber,
+            r.BlockBindingHash,
+            r.BlockBindingNumber,
+            r.crossChainRoot,
+            r.BlobHash
+        ));
+
+        // Verify the hash matches the one in the rollup
+        require(compositeHash == r.CompositeHash, "Composite hash mismatch");
+
+        // Verify the enclave signature
+        address enclaveID = ECDSA.recover(compositeHash, r.Signature);
+        require(attested[enclaveID], "enclaveID not attested");
+        require(sequencerEnclave[enclaveID], "enclaveID not a sequencer");
+        _;
+    }
+
+    // solc-ignore-next-line unused-param
+    function AddRollup(Structs.MetaRollup calldata r) public verifyRollupIntegrity(r) {
         AppendRollup(r);
+
+        if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
+            merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
+        }
         emit RollupAdded(r.Hash);
     }
 
@@ -179,7 +157,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     // Enclaves can request the Network Secret given an attestation request report
     function RequestNetworkSecret(string calldata requestReport) public {
-        // currently this is a no-op, nodes will monitor for these transactions and respond to them
+        emit NetworkSecretRequested(msg.sender, requestReport);
     }
 
     function ExtractNativeValue(MessageStructs.Structs.ValueTransferMessage calldata _msg, bytes32[] calldata proof, bytes32 root) external {
@@ -187,7 +165,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         bytes32 msgHash = keccak256(abi.encode(_msg));
         require(isWithdrawalSpent[msgHash] == false, "withdrawal already spent");
         isWithdrawalSpent[keccak256(abi.encode(_msg))] = true;
-        
+
         messageBus.receiveValueFromL2(_msg.receiver, _msg.amount);
     }
 
@@ -201,7 +179,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(isEnclAttested, "responding attester is not attested");
 
         if (verifyAttester) {
-            
+
             // the data must be signed with by the correct private key
             // signature = f(PubKey, PrivateKey, message)
             // address = f(signature, message)
@@ -214,6 +192,8 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         // mark the requesterID enclave as an attested enclave and store its host address
         attested[requesterID] = true;
+
+        emit NetworkSecretResponded(attesterID, requesterID);
     }
 
 
@@ -263,5 +243,15 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
     function GetImportantContractKeys() public view returns(string[] memory) {
         return importantContractKeys;
+    }
+
+    // Return the challenge period delay for message bus root
+    function GetChallengePeriod() public view returns (uint256) {
+        return challengePeriod;
+    }
+
+    // Sets the challenge period for message bus root (owner only)
+    function SetChallengePeriod(uint256 _delay) public onlyOwner {
+        challengePeriod = _delay;
     }
 }

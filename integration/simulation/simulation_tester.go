@@ -39,7 +39,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	// Return early if the network was not created
 	if err != nil {
 		fmt.Printf("Could not run test: %s\n", err)
-		return
+		t.Fatal()
 	}
 
 	txInjector := NewTransactionInjector(
@@ -75,11 +75,11 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	testlog.Logger().Info("Validating simulation results")
 	checkNetworkValidity(t, &simulation)
 
-	fmt.Printf("Stopping simulation\n")
-	testlog.Logger().Info("Stopping simulation")
-	simulation.Stop()
-
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))
 	testlog.Logger().Info(fmt.Sprintf("Simulation results:%+v", NewOutputStats(&simulation)))
+
+	fmt.Printf("Stopping simulation\n")
+	testlog.Logger().Info("Stopping simulation")
+	simulation.Stop()
 }

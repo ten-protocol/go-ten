@@ -80,16 +80,27 @@ func (o *OutputStats) countBlockChain() {
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for block, _ := l1Node.FetchHeadBlock(); block != nil && !bytes.Equal(block.Hash().Bytes(), (common.L1BlockHash{}).Bytes()); block, _ = l1Node.BlockByHash(block.ParentHash()) {
-		o.incrementStats(block, l1Node)
+	for block, _ := l1Node.FetchHeadBlock(); block != nil && !bytes.Equal(block.Hash().Bytes(), (common.L1BlockHash{}).Bytes()); block, _ = l1Node.HeaderByHash(block.ParentHash) {
+		b, err := l1Node.BlockByHash(block.Hash())
+		if err != nil {
+			panic(err)
+		}
+		o.incrementStats(b, l1Node)
 	}
 }
 
 func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient) {
 	for _, tx := range block.Transactions() {
-		t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
+		t, err := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
+		if err != nil {
+			panic(err)
+		}
 		if t == nil {
-			t = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
+			var err error
+			t, err = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
+			if err != nil {
+				testlog.Logger().Crit("could not decode tx.", log.ErrKey, err)
+			}
 		}
 
 		if t == nil {
@@ -97,7 +108,7 @@ func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient)
 		}
 
 		switch l1Tx := t.(type) {
-		case *ethadapter.L1RollupTx:
+		case *common.L1RollupTx:
 			_, err := common.DecodeRollup(l1Tx.Rollup)
 			if err != nil {
 				testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
@@ -109,7 +120,7 @@ func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient)
 			//	}
 			//}
 
-		case *ethadapter.L1DepositTx:
+		case *common.L1DepositTx:
 			o.canonicalERC20DepositCount++
 		}
 	}

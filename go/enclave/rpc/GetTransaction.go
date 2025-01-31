@@ -5,16 +5,24 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/common"
+
+	"github.com/ten-protocol/go-ten/go/common/gethutil"
+
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
+
+	"github.com/ten-protocol/go-ten/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
-func GetTransactionValidate(reqParams []any, builder *CallBuilder[gethcommon.Hash, RpcTransaction], _ *EncryptionManager) error {
+func GetTransactionValidate(reqParams []any, builder *CallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
+	if !storeTxEnabled(rpc, builder) {
+		return nil
+	}
 	// Parameters are [Hash]
 	if len(reqParams) != 1 {
 		builder.Err = fmt.Errorf("wrong parameters")
@@ -31,33 +39,48 @@ func GetTransactionValidate(reqParams []any, builder *CallBuilder[gethcommon.Has
 }
 
 func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction], rpc *EncryptionManager) error {
-	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
-	tx, blockHash, blockNumber, index, err := rpc.storage.GetTransaction(builder.ctx, *builder.Param)
-	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			builder.Status = NotFound
-			return nil
-		}
-		return err
-	}
+	txHash := *builder.Param
+	requester := builder.VK.AccountAddress
 
-	sender, err := core.GetTxSigner(tx)
-	if err != nil {
-		return fmt.Errorf("could not recover the tx %s sender. Cause: %w", tx.Hash(), err)
-	}
-
-	// authorise - only the signer can request the transaction
-	if sender.Hex() != builder.VK.AccountAddress.Hex() {
-		builder.Status = NotAuthorised
-		// builder.ReturnValue= []byte{}
+	// first try the cache for recent transactions
+	rec, err := rpc.cacheService.ReadReceipt(builder.ctx, txHash)
+	// there is an explicit entry in the cache that the tx was not found
+	if err != nil && errors.Is(err, storage.ReceiptDoesNotExist) {
+		builder.Status = NotFound
 		return nil
 	}
 
-	// Unlike in the Geth impl, we hardcode the use of a London signer.
-	// todo (#1553) - once the enclave's genesis.json is set, retrieve the signer type using `types.MakeSigner`
-	signer := types.NewLondonSigner(tx.ChainId())
-	rpcTx := newRPCTransaction(tx, blockHash, blockNumber, index, rpc.config.BaseFee, signer)
-	builder.ReturnValue = rpcTx
+	if rec != nil {
+		rpc.logger.Debug("Cache hit for tx", log.TxKey, txHash)
+		// authorise - only the signer can request the transaction
+		if *rec.From != *requester {
+			builder.Status = NotAuthorised
+			return nil
+		}
+		builder.ReturnValue = newRPCTransaction(rec.Tx, rec.Receipt.BlockHash, rec.Receipt.BlockNumber.Uint64(), uint64(rec.Receipt.TransactionIndex), rpc.config.BaseFee, *rec.From)
+		return nil
+	}
+
+	rpc.logger.Debug("Cache miss for tx", log.TxKey, txHash)
+
+	// Unlike in the Geth impl, we do not try and retrieve unconfirmed transactions from the mempool.
+	tx, blockHash, blockNumber, index, sender, err := rpc.storage.GetTransaction(builder.ctx, *builder.Param)
+	if err != nil && errors.Is(err, errutil.ErrNotFound) {
+		builder.Status = NotFound
+		rpc.cacheService.ReceiptDoesNotExist(txHash)
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	// authorise - only the signer can request the transaction
+	if sender != *requester {
+		builder.Status = NotAuthorised
+		return nil
+	}
+
+	builder.ReturnValue = newRPCTransaction(tx, blockHash, blockNumber, index, rpc.config.BaseFee, sender)
 	return nil
 }
 
@@ -85,8 +108,7 @@ type RpcTransaction struct { //nolint
 }
 
 // Lifted from Geth's internal `ethapi` package.
-func newRPCTransaction(tx *types.Transaction, blockHash gethcommon.Hash, blockNumber uint64, index uint64, baseFee *big.Int, signer types.Signer) *RpcTransaction {
-	from, _ := types.Sender(signer, tx)
+func newRPCTransaction(tx *types.Transaction, blockHash gethcommon.Hash, blockNumber uint64, index uint64, baseFee *big.Int, from gethcommon.Address) *RpcTransaction {
 	v, r, s := tx.RawSignatureValues()
 	result := &RpcTransaction{
 		Type:     hexutil.Uint64(tx.Type()),
@@ -102,7 +124,7 @@ func newRPCTransaction(tx *types.Transaction, blockHash gethcommon.Hash, blockNu
 		R:        (*hexutil.Big)(r),
 		S:        (*hexutil.Big)(s),
 	}
-	if blockHash != (gethcommon.Hash{}) {
+	if blockHash != gethutil.EmptyHash {
 		result.BlockHash = &blockHash
 		result.BlockNumber = (*hexutil.Big)(new(big.Int).SetUint64(blockNumber))
 		result.TransactionIndex = (*hexutil.Uint64)(&index)
@@ -119,9 +141,9 @@ func newRPCTransaction(tx *types.Transaction, blockHash gethcommon.Hash, blockNu
 		result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
 		result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
 		// if the transaction has been mined, compute the effective gas price
-		if baseFee != nil && blockHash != (gethcommon.Hash{}) {
+		if baseFee != nil && blockHash != gethutil.EmptyHash {
 			// price = min(tip, gasFeeCap - baseFee) + baseFee
-			price := math.BigMin(new(big.Int).Add(tx.GasTipCap(), baseFee), tx.GasFeeCap())
+			price := common.BigMin(new(big.Int).Add(tx.GasTipCap(), baseFee), tx.GasFeeCap())
 			result.GasPrice = (*hexutil.Big)(price)
 		} else {
 			result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())

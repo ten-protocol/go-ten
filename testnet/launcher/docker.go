@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/config"
 	"github.com/ten-protocol/go-ten/go/node"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -14,6 +16,7 @@ import (
 	"github.com/ten-protocol/go-ten/testnet/launcher/gateway"
 
 	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
+	l1gs "github.com/ten-protocol/go-ten/testnet/launcher/l1grantsequencers"
 	l2cd "github.com/ten-protocol/go-ten/testnet/launcher/l2contractdeployer"
 )
 
@@ -40,86 +43,56 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
 
-	sequencerNodeConfig := node.NewNodeConfig(
-		node.WithNodeName("sequencer"),
-		node.WithNodeType("sequencer"),
-		node.WithGenesis(true),
-		node.WithSGXEnabled(t.cfg.isSGXEnabled),
-		node.WithEnclaveImage(t.cfg.sequencerEnclaveDockerImage),
-		node.WithEnclaveDebug(t.cfg.sequencerEnclaveDebug),
-		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
-		node.WithL1WebsocketURL("ws://eth2network:9000"),
-		node.WithEnclaveWSPort(11000),
-		node.WithHostHTTPPort(80),
-		node.WithHostWSPort(81),
-		node.WithHostP2PPort(15000),
-		node.WithHostPublicP2PAddr("sequencer-host:15000"),
-		node.WithPrivateKey("8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99"),
-		node.WithHostID("0x0654D8B60033144D567f25bF41baC1FB0D60F23B"),
-		node.WithSequencerP2PAddr("sequencer-host:15000"),
-		node.WithManagementContractAddress(networkConfig.ManagementContractAddress),
-		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
-		node.WithL1Start(networkConfig.L1StartHash),
-		node.WithInMemoryHostDB(true),
-		node.WithDebugNamespaceEnabled(true),
-		node.WithLogLevel(t.cfg.logLevel),
-		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
-	)
+	println("MANAGEMENT CONTRACT: ", networkConfig.ManagementContractAddress)
+
+	edgelessDBImage := "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
+	// todo: revisit how we should configure the image, this condition is not ideal
 	if !t.cfg.isSGXEnabled {
-		sequencerNodeConfig.UpdateNodeConfig(node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"))
+		edgelessDBImage = "ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"
 	}
 
-	sequencerNode := node.NewDockerNode(sequencerNodeConfig)
+	sequencerCfg, err := config.LoadTenConfig(
+		"defaults/testnet-launcher/1-testnet-launcher.yaml",
+		"defaults/testnet-launcher/2-sequencer.yaml",
+	)
+	if err != nil {
+		return fmt.Errorf("unable to load sequencer config - %w", err)
+	}
+	sequencerCfg.Network.L1.StartHash = common.HexToHash(networkConfig.L1StartHash)
+	sequencerCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkConfig.ManagementContractAddress)
+	sequencerCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
+
+	sequencerNode := node.NewDockerNode(sequencerCfg, "testnetobscuronet.azurecr.io/obscuronet/host:latest", "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", edgelessDBImage, false, "", 1)
 
 	err = sequencerNode.Start()
 	if err != nil {
-		return fmt.Errorf("unable to start the Ten node - %w", err)
+		return fmt.Errorf("unable to start the TEN node - %w", err)
 	}
-	fmt.Println("Ten node was successfully started...")
+	fmt.Println("TEN node was successfully started...")
 
 	// wait until the node is healthy
 	err = waitForHealthyNode(80)
 	if err != nil {
-		return fmt.Errorf("sequencer Ten node not healthy - %w", err)
+		return fmt.Errorf("sequencer TEN node not healthy - %w", err)
 	}
 
-	validatorNodeConfig := node.NewNodeConfig(
-		node.WithNodeName("validator"),
-		node.WithNodeType("validator"),
-		node.WithGenesis(false),
-		node.WithSGXEnabled(t.cfg.isSGXEnabled),
-		node.WithEnclaveImage(t.cfg.validatorEnclaveDockerImage),
-		node.WithEnclaveDebug(t.cfg.validatorEnclaveDebug),
-		node.WithHostImage("testnetobscuronet.azurecr.io/obscuronet/host:latest"),
-		node.WithL1WebsocketURL("ws://eth2network:9000"),
-		node.WithEnclaveWSPort(11010),
-		node.WithHostHTTPPort(13010),
-		node.WithHostWSPort(13011),
-		node.WithHostP2PPort(15010),
-		node.WithHostPublicP2PAddr("validator-host:15010"),
-		node.WithPrivateKey("ebca545772d6438bbbe1a16afbed455733eccf96157b52384f1722ea65ccfa89"),
-		node.WithHostID("0x2f7fCaA34b38871560DaAD6Db4596860744e1e8A"),
-		node.WithSequencerP2PAddr("sequencer-host:15000"),
-		node.WithManagementContractAddress(networkConfig.ManagementContractAddress),
-		node.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
-		node.WithL1Start(networkConfig.L1StartHash),
-		node.WithInMemoryHostDB(true),
-		node.WithDebugNamespaceEnabled(true),
-		node.WithLogLevel(t.cfg.logLevel),
-		node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"), // default edgeless db value
+	validatorNodeCfg, err := config.LoadTenConfig(
+		"defaults/testnet-launcher/1-testnet-launcher.yaml",
+		"defaults/testnet-launcher/2-validator.yaml",
 	)
-
-	if !t.cfg.isSGXEnabled {
-		validatorNodeConfig.UpdateNodeConfig(node.WithEdgelessDBImage("ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"))
+	if err != nil {
+		return fmt.Errorf("unable to load validator config - %w", err)
 	}
+	validatorNodeCfg.Network.L1.StartHash = common.HexToHash(networkConfig.L1StartHash)
+	validatorNodeCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkConfig.ManagementContractAddress)
+	validatorNodeCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
 
-	validatorNode := node.NewDockerNode(validatorNodeConfig)
-
+	validatorNode := node.NewDockerNode(validatorNodeCfg, "testnetobscuronet.azurecr.io/obscuronet/host:latest", "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", edgelessDBImage, false, "", 1)
 	err = validatorNode.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start the obscuro node - %w", err)
 	}
-	fmt.Println("Ten validator node was successfully started...")
+	fmt.Println("TEN validator node was successfully started...")
 
 	// wait until the node it healthy
 	err = waitForHealthyNode(13010)
@@ -136,8 +109,6 @@ func (t *Testnet) Start() error {
 			l2cd.WithMessageBusContractAddress("0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C"),
 			l2cd.WithManagementContractAddress("0x51D43a3Ca257584E770B6188232b199E76B022A2"),
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
-			l2cd.WithHocPKString("6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682"),
-			l2cd.WithPocPKString("4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"),
 			l2cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
 			l2cd.WithDebugEnabled(t.cfg.contractDeployerDebug),
 			l2cd.WithFaucetFunds("10000"),
@@ -145,6 +116,11 @@ func (t *Testnet) Start() error {
 	)
 	if err != nil {
 		return fmt.Errorf("unable to configure the l2 contract deployer - %w", err)
+	}
+
+	err = t.grantSequencerStatus(networkConfig.ManagementContractAddress)
+	if err != nil {
+		return fmt.Errorf("failed to grant sequencer status: %w", err)
 	}
 
 	err = l2ContractDeployer.Start()
@@ -290,17 +266,44 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 			if err != nil {
 				return err
 			}
-			if health {
+			if health.OverallHealth {
 				fmt.Println("Obscuro node is ready")
 				return nil
 			}
 
 			return fmt.Errorf("node OverallHealth is not good yet")
-		}, retry.NewTimeoutStrategy(5*time.Minute, 1*time.Second),
+		}, retry.NewTimeoutStrategy(7*time.Minute, 1*time.Second),
 	)
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Node became healthy after %f seconds\n", time.Since(timeStart).Seconds())
+	return nil
+}
+
+func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
+	// fetch enclaveIDs
+	hostURL := fmt.Sprintf("http://localhost:%d", 80)
+
+	l1grantsequencers, err := l1gs.NewGrantSequencers(
+		l1gs.NewGrantSequencerConfig(
+			l1gs.WithL1HTTPURL("http://eth2network:8025"),
+			l1gs.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
+			l1gs.WithDockerImage(t.cfg.contractDeployerDockerImage),
+			l1gs.WithMgmtContractAddress(mgmtContractAddr),
+			l1gs.WithSequencerURL(hostURL),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to configure l1 grant sequencersr - %w", err)
+	}
+
+	err = l1grantsequencers.Start()
+	if err != nil {
+		return fmt.Errorf("unable to start l1 grant sequencers - %w", err)
+	}
+
+	fmt.Println("Enclaves were successfully granted sequencer roles...")
+
 	return nil
 }

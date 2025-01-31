@@ -1,6 +1,9 @@
 package common
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -14,6 +17,8 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
+
+const EncryptionKeySize = 32
 
 // PrivateKeyToCompressedPubKey converts *ecies.PrivateKey to compressed PubKey ([]byte with length 33)
 func PrivateKeyToCompressedPubKey(prvKey *ecies.PrivateKey) []byte {
@@ -33,14 +38,7 @@ func BytesToPrivateKey(keyBytes []byte) (*ecies.PrivateKey, error) {
 	return eciesPrivateKey, nil
 }
 
-func CreateEncClient(
-	conn *gethrpc.Client,
-	addressBytes []byte,
-	privateKeyBytes []byte,
-	signature []byte,
-	signatureType viewingkey.SignatureType,
-	logger gethlog.Logger,
-) (*rpc.EncRPCClient, error) {
+func CreateEncClient(conn *gethrpc.Client, encKey []byte, addressBytes []byte, privateKeyBytes []byte, signature []byte, signatureType viewingkey.SignatureType, logger gethlog.Logger) (*rpc.EncRPCClient, error) {
 	privateKey, err := BytesToPrivateKey(privateKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert bytes to ecies private key: %w", err)
@@ -55,7 +53,7 @@ func CreateEncClient(
 		SignatureWithAccountKey: signature,
 		SignatureType:           signatureType,
 	}
-	encClient, err := rpc.NewEncNetworkClientFromConn(conn, vk, logger)
+	encClient, err := rpc.NewEncNetworkClientFromConn(conn, encKey, vk, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create EncRPCClient: %w", err)
 	}
@@ -75,4 +73,22 @@ func (r *RPCRequest) Clone() *RPCRequest {
 		Method: r.Method,
 		Params: r.Params,
 	}
+}
+
+func GenerateRandomKey() ([]byte, error) {
+	key := make([]byte, EncryptionKeySize)
+	_, err := rand.Read(key)
+	if err != nil {
+		return nil, err
+	}
+	return key, nil
+}
+
+// HashForLogging creates a double-hashed hex string of the input bytes for secure logging
+func HashForLogging(input []byte) string {
+	// First hash
+	firstHash := sha256.Sum256(input)
+	// Second hash
+	secondHash := sha256.Sum256(firstHash[:])
+	return hex.EncodeToString(secondHash[:])
 }
