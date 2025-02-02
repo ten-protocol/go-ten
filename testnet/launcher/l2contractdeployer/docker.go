@@ -74,13 +74,11 @@ func (n *ContractDeployer) Start() error {
                 "deployment_scripts/testnet/layer2/"
             ],
             "accounts": [ 
-                "%s",
-                "%s",
                 "%s"
             ]
         }
     }
-`, n.cfg.l1HTTPURL, n.cfg.l1privateKey, n.cfg.l2PrivateKey, n.cfg.hocPKString, n.cfg.pocPKString),
+`, n.cfg.l1HTTPURL, n.cfg.l1privateKey, n.cfg.l2PrivateKey),
 	}
 
 	containerID, err := docker.StartNewContainer("hh-l2-deployer", n.cfg.dockerImage, cmds, ports, envs, nil, nil, false)

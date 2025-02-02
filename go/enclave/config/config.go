@@ -1,11 +1,13 @@
 package config
 
 import (
+	"fmt"
 	"math/big"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/config"
+	"kythe.io/kythe/go/util/datasize"
 )
 
 // For now, this is the bridge between TenConfig and the config used internally by the enclave service.
@@ -73,6 +75,7 @@ type EnclaveConfig struct {
 	ProfilerEnabled          bool
 	DebugNamespaceEnabled    bool
 	GasLocalExecutionCapFlag uint64
+	DecompressionLimit       uint64
 
 	// The public peer-to-peer IP address of the host the enclave service is tied to
 	// This is required to advertise for node discovery, and we include it in the attestation
@@ -81,11 +84,16 @@ type EnclaveConfig struct {
 }
 
 func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
+	limit, err := datasize.Parse(tenCfg.Enclave.DecompressionLimit)
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse decompression limit: %v", err))
+	}
 	return &EnclaveConfig{
 		NodeID:                    tenCfg.Node.ID,
 		HostAddress:               tenCfg.Node.HostAddress,
 		WillAttest:                tenCfg.Enclave.EnableAttestation,
 		StoreExecutedTransactions: tenCfg.Enclave.StoreExecutedTransactions,
+		DecompressionLimit:        uint64(limit),
 
 		TenChainID: tenCfg.Network.ChainID,
 
