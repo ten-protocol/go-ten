@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/measure"
@@ -329,12 +328,10 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 		return nil, fmt.Errorf("failed to encode rollup to tmpBlobs: %w", err)
 	}
 
-	// Calculate blob hash from first blob (TODO: Change this when we use multiple tmpBlobs)
-	commitment, err := kzg4844.BlobToCommitment(blobs[0])
+	blobHash, err := common.DeriveBlobHash(blobs[0])
 	if err != nil {
-		return nil, fmt.Errorf("cannot compute KZG commitment: %w", err)
+		return nil, fmt.Errorf("failed to derive blob hash: %w", err)
 	}
-	blobHash := ethadapter.KZGToVersionedHash(commitment)
 
 	// Create composite hash matching the contract's expectations
 	compositeHash := common.ComputeCompositeHash(extRollup.Header, blobHash)

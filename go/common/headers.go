@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -183,6 +184,38 @@ func ComputeCompositeHash(
 		header.CrossChainRoot.Bytes(),
 		blobHash.Bytes(),
 	)
+}
+
+const BlobVersion byte = 0x01
+
+// DeriveBlobHash computes the versioned blob hash for the given blob.
+// If blob is nil (or otherwise considered "non-existent"), it returns the zero hash.
+func DeriveBlobHash(blob *kzg4844.Blob) (common.Hash, error) {
+	// If the blob doesn't exist, return the zero hash.
+	if blob == nil {
+		return common.Hash{}, nil
+	}
+
+	// Compute the KZG commitment for the blob.
+	// Adjust the function name and signature to match your KZG library.
+	commitment, err := kzg4844.BlobToCommitment(blob)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to compute KZG commitment: %w", err)
+	}
+
+	// Serialize the commitment.
+	commitmentBytes := commitment[:] // Expecting, for example, 48 bytes.
+
+	// Prepend the version byte.
+	// Create a new slice with capacity 1 + len(commitmentBytes).
+	versioned := make([]byte, 0, 1+len(commitmentBytes))
+	versioned = append(versioned, BlobVersion)
+	versioned = append(versioned, commitmentBytes...)
+
+	// Compute the Keccak-256 hash of the versioned commitment.
+	blobHash := crypto.Keccak256Hash(versioned)
+
+	return blobHash, nil
 }
 
 // CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.
