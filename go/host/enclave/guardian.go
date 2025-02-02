@@ -806,7 +806,7 @@ func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data
 	syncContracts = false
 
 	for _, txData := range processed.GetEvents(common.RollupTx) {
-		encodedRlp, err := ethadapter.DecodeBlobs(txData.Blobs)
+		encodedRlp, err := ethadapter.DecodeBlobs(txData.BlobsWithSignature.ToBlobs())
 		if err != nil {
 			g.logger.Crit("could not decode blobs.", log.ErrKey, err)
 			continue

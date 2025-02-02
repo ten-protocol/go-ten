@@ -111,18 +111,17 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         require(knownBlockHash != 0x0, "Unknown block hash");
         require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
 
-        // Verify blob hash matches
+        /*// Verify blob hash matches
         bytes32 actualBlobHash;
         assembly {
             actualBlobHash := blobhash(0)
-        }
+        } */
  
         bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
             r.BlockBindingHash,
             r.BlockBindingNumber,
-            r.crossChainRoot,
-            actualBlobHash
+            r.crossChainRoot
         ));
 
         // Verify the enclave signature

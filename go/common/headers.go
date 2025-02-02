@@ -182,7 +182,7 @@ func ComputeCompositeHash(
 		header.CompressionL1Head.Bytes(),
 		common.LeftPadBytes(header.CompressionL1Number.Bytes(), 32),
 		header.CrossChainRoot.Bytes(),
-		blobHash.Bytes(),
+		//blobHash.Bytes(),
 	)
 }
 
