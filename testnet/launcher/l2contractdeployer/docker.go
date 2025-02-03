@@ -72,7 +72,7 @@ func (n *ContractDeployer) Start() error {
                 "CrossChainMessengerL2",
                 "EthereumBridge",       
                 "BridgeAdmin",         
-                "ZenBase"           
+                "ZenBase",           
                 "SetFees"           	
             ],
             "accounts": [ 
