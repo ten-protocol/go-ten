@@ -90,7 +90,6 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 		rollupMetadata[idx] = common.ExtRollupMetadata{
 			CrossChainTree: serializedTree,
 		}
-
 	}
 
 	if len(rollupMetadata) < len(rollups) {

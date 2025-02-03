@@ -702,7 +702,6 @@ func (g *Guardian) periodicRollupProduction() {
 				} else {
 					g.logger.Info("Skipping rollup publication because compression block is not canonical", "block", canonBlock.Hash())
 				}
-
 			}
 
 		case <-g.hostInterrupter.Done():
