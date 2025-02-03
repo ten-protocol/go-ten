@@ -37,21 +37,18 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 		return fmt.Errorf("could not read block id: %w", err)
 	}
 
-	result, err := dbtx.Tx.Exec(statements.InsertRollup,
-		rollup.Header.Hash().Bytes(),         //  hash
+	// Use QueryRow instead of Exec to retrieve the id directly.
+	var rollupId int64
+	err = dbtx.Tx.QueryRow(statements.InsertRollup,
+		rollup.Header.Hash().Bytes(),         // hash
 		metadata.FirstBatchSequence.Uint64(), // first batch sequence
 		rollup.Header.LastBatchSeqNo,         // last batch sequence
 		metadata.StartTime,                   // timestamp
 		extRollup,                            // rollup blob
 		blockId,                              // l1 block hash
-	)
+	).Scan(&rollupId)
 	if err != nil {
-		return fmt.Errorf("could not insert rollup. Cause: %w", err)
-	}
-
-	rollupId, err := result.LastInsertId()
-	if err != nil {
-		return fmt.Errorf("could not get rollup insertion id: %w", err)
+		return fmt.Errorf("could not insert rollup: %w", err)
 	}
 
 	if len(extMetadata.CrossChainTree) == 0 {

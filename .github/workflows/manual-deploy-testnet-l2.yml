@@ -37,8 +37,6 @@ jobs:
       MGMT_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MGMT_CONTRACT_ADDR }}
       MSG_BUS_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MSG_BUS_CONTRACT_ADDR }}
       L1_START_HASH: ${{ steps.deployContracts.outputs.L1_START_HASH }}
-      HOC_ERC20_ADDR: ${{ steps.deployContracts.outputs.HOC_ERC20_ADDR }}
-      POC_ERC20_ADDR: ${{ steps.deployContracts.outputs.POC_ERC20_ADDR }}
 
 
     steps:
@@ -489,8 +487,6 @@ jobs:
           -l2_ws_port=81 \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -l2_private_key=${{ secrets.L2_DEPLOYER_KEY }} \
-          -l2_hoc_private_key=${{ secrets.L2_HOC_KEY }} \
-          -l2_poc_private_key=${{ secrets.L2_POC_KEY}} \
           -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
           -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \

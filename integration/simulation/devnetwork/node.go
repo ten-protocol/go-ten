@@ -202,6 +202,7 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		NodeID:                    fmt.Sprintf("%d", idx),
 		HostAddress:               hostAddr,
 		RPCAddress:                enclaveAddr,
+		DecompressionLimit:        defaultCfg.DecompressionLimit,
 		L1ChainID:                 integration.EthereumChainID,
 		TenChainID:                integration.TenChainID,
 		WillAttest:                false,
