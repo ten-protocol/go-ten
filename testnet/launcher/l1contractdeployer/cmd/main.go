@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -15,6 +16,7 @@ func main() {
 			l1cd.WithL1HTTPURL(cliConfig.l1HTTPURL),     // "http://eth2network:8025"
 			l1cd.WithPrivateKey(cliConfig.privateKey),   //"f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1cd.WithDockerImage(cliConfig.dockerImage), //"testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
+			l1cd.WithAzureKeyVaultURL(cliConfig.azureKeyVaultURL),
 		),
 	)
 	if err != nil {
@@ -59,5 +61,14 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	// Store in Azure Key Vault if configured
+	if cliConfig.azureKeyVaultURL != "" {
+		if err := l1cd.StoreNetworkCfgInKeyVault(context.Background(), cliConfig.azureKeyVaultURL, networkConfig); err != nil {
+			fmt.Printf("Failed to store contracts in Azure Key Vault: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	os.Exit(0)
 }
