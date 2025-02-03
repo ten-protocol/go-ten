@@ -110,18 +110,13 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         require(knownBlockHash != 0x0, "Unknown block hash");
         require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
-
-        /*// Verify blob hash matches
-        bytes32 actualBlobHash;
-        assembly {
-            actualBlobHash := blobhash(0)
-        } */
  
         bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
             r.BlockBindingHash,
             r.BlockBindingNumber,
-            r.crossChainRoot
+            r.crossChainRoot,
+            blobhash(0)
         ));
 
         // Verify the enclave signature
@@ -139,12 +134,9 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
             merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
         }
 
-        bytes32 actualBlobHash;
-        assembly {
-            actualBlobHash := blobhash(0)
-        }
-        emit RollupAdded(actualBlobHash, r.Signature);
+        emit RollupAdded(blobhash(0), r.Signature);
     }
+
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
     // solc-ignore-next-line unused-param

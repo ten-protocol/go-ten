@@ -182,7 +182,7 @@ func ComputeCompositeHash(
 		header.CompressionL1Head.Bytes(),
 		common.LeftPadBytes(header.CompressionL1Number.Bytes(), 32),
 		header.CrossChainRoot.Bytes(),
-		//blobHash.Bytes(),
+		blobHash.Bytes(),
 	)
 }
 
@@ -204,7 +204,7 @@ func DeriveBlobHash(blob *kzg4844.Blob) (common.Hash, error) {
 	}
 
 	// Serialize the commitment.
-	commitmentBytes := commitment[:] // Expecting, for example, 48 bytes.
+	commitmentBytes := commitment[:31] // Expecting, for example, 48 bytes.
 
 	// Prepend the version byte.
 	// Create a new slice with capacity 1 + len(commitmentBytes).
