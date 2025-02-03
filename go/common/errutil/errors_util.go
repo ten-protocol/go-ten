@@ -25,7 +25,7 @@ var (
 	ErrAncestorBatchNotFound     = errors.New("parent for batch not found")
 	ErrCrossChainBundleNoBatches = errors.New("no batches for cross chain bundle")
 	ErrCrossChainRootMismatch    = errors.New("cross chain root mismatch")
-	ErrRollupProcessing          = errors.New("rollup processing error")
+	ErrCriticalRollupProcessing  = errors.New("critical error during rollup processing")
 )
 
 // BlockRejectError is used as a standard format for error response from enclave for block submission errors

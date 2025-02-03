@@ -73,9 +73,10 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 		internalHeader, err := rc.rollupCompression.ProcessExtRollup(ctx, rollup)
 		if err != nil {
 			rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
-			// todo - issue challenge as a validator
 			return nil, err
 		}
+		// todo - issue challenge as a validator
+
 		if err := rc.storage.StoreRollup(ctx, rollup, internalHeader); err != nil {
 			rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			return nil, err
@@ -93,7 +94,7 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 	}
 
 	if len(rollupMetadata) < len(rollups) {
-		return nil, fmt.Errorf("missing metadata for some rollups")
+		return nil, fmt.Errorf("%w: missing metadata for some rollups", errutil.ErrCriticalRollupProcessing)
 	}
 
 	return rollupMetadata, nil
@@ -132,6 +133,7 @@ func (rc *rollupConsumerImpl) GetRollupsFromL1Data(processed *common.ProcessedL1
 		return nil, nil
 	}
 
+	// if we encounter an error after this point it is fatal as the rollup has been signed by the enclave key
 	rollups, err = rc.getSignedRollup(rollups)
 	if err != nil {
 		return nil, err

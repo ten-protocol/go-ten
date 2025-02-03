@@ -174,11 +174,11 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 
 	result, rollupMetadata, err := e.ingestL1Block(ctx, blockData)
 	if err != nil {
-		// only reject the block if the error is not from failed rollup processing
-		if !errors.Is(err, errutil.ErrRollupProcessing) {
+		// only reject the block if it's a critical error ie duplicate block or signed rollup error
+		if e.isCriticalError(err) {
 			return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 		}
-		e.logger.Warn("Continuing block processing despite rollup error", log.BlockHashKey, blockHeader.Hash(), log.ErrKey, err)
+		e.logger.Warn("Continuing block processing despite non-critical rollup error", log.BlockHashKey, blockHeader.Hash(), log.ErrKey, err)
 	}
 
 	if result.IsFork() {
@@ -501,8 +501,9 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	e.logger.Info("Start ingesting block", log.BlockHashKey, processed.BlockHeader.Hash())
 	rollups, err := e.rollupConsumer.GetRollupsFromL1Data(processed)
 	if err != nil {
+		e.logger.Error("Error getting rollups from L1 data", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
 		// early return before storing block if multiple rollups are found in the block
-		return nil, nil, fmt.Errorf("%w: %v", errutil.ErrRollupProcessing, err)
+		return nil, nil, err
 	}
 
 	ingestion, err := e.l1BlockProcessor.Process(ctx, processed)
@@ -519,10 +520,10 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	var rollupMetadata []common.ExtRollupMetadata
 	if len(rollups) > 0 {
 		rollupMetadata, err = e.rollupConsumer.ProcessRollups(ctx, rollups)
-		if err != nil && !errors.Is(err, components.ErrDuplicateRollup) {
+		if err != nil {
 			e.logger.Error("Encountered error while processing l1 block rollups", log.ErrKey, err)
-			// return error but wrap it so the block can continue to be processed
-			return ingestion, nil, fmt.Errorf("%w: %v", errutil.ErrRollupProcessing, err)
+			// any errors returned here are after verifying the rollup was signed by the enclave which should be fatal errors
+			return ingestion, nil, fmt.Errorf("%w: %v", errutil.ErrCriticalRollupProcessing, err)
 		}
 	}
 
@@ -632,4 +633,11 @@ func getSignatureValidator(useInMemDB bool, storage storage.Storage) (components
 		return ethereummock.NewMockSignatureValidator(), nil
 	}
 	return components.NewSignatureValidator(storage)
+}
+
+// isCriticalError returns true if the error should cause block processing to stop
+func (e *enclaveAdminService) isCriticalError(err error) bool {
+	return errors.Is(err, errutil.ErrCriticalRollupProcessing) ||
+		errors.Is(err, errutil.ErrBlockAncestorNotFound) ||
+		errors.Is(err, errutil.ErrBlockAlreadyProcessed)
 }

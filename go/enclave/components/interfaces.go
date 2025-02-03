@@ -2,7 +2,6 @@ package components
 
 import (
 	"context"
-	"errors"
 	"math/big"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
@@ -17,8 +16,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
-
-var ErrDuplicateRollup = errors.New("duplicate rollup received")
 
 type BlockIngestionType struct {
 	// FirstL1Block is true if there is no stored L1 head block.
