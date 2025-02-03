@@ -71,13 +71,8 @@ type PosEth2Network interface {
 	Stop() error
 }
 
-func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, beaconGatewayPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
-	build, err := getBuildNumber()
-	if err != nil {
-		panic(fmt.Sprintf("could not get build number: %s", err.Error()))
-	}
-	buildString := strconv.Itoa(build)
-	buildDir := path.Join(basepath, "../.build/eth2", buildString)
+func NewPosEth2Network(binDir string, isDocker bool, gethNetworkPort, beaconP2PPort, gethRPCPort, gethWSPort, gethHTTPPort, beaconRPCPort, beaconGatewayPort, chainID int, timeout time.Duration, walletsToFund ...string) PosEth2Network {
+	buildDir := getBuildDir(isDocker)
 
 	gethBinaryPath := path.Join(binDir, gethFileNameVersion, _gethBinaryName)
 	prysmBeaconBinaryPath := path.Join(binDir, prysmBeaconChainFileNameVersion)
@@ -93,7 +88,7 @@ func NewPosEth2Network(binDir string, gethNetworkPort, beaconP2PPort, gethRPCPor
 		}
 	}
 
-	err = os.MkdirAll(buildDir, os.ModePerm)
+	err := os.MkdirAll(buildDir, os.ModePerm)
 	if err != nil {
 		panic(err)
 	}
@@ -413,4 +408,17 @@ func kill(pid int) {
 	if err != nil {
 		fmt.Printf("Error releasing process with PID %d: %v\n", pid, err)
 	}
+}
+
+func getBuildDir(isDocker bool) string {
+	if isDocker {
+		return path.Join(basepath, "/home/obscuro/logs/")
+	}
+
+	build, err := getBuildNumber()
+	if err != nil {
+		panic(fmt.Sprintf("could not get build number: %s", err.Error()))
+	}
+	buildString := strconv.Itoa(build)
+	return path.Join(basepath, "../.build/eth2", buildString)
 }

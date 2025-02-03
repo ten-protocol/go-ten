@@ -59,6 +59,7 @@ docker network create --driver bridge node_network || true
 docker run --name=eth2network -d \
   --network=node_network \
   -p 8025:8025 -p 8026:8026 -p 9000:9000 -p 9001:9001 \
+  -v eth2network_logs:/home/obscuro/logs \
   --entrypoint /home/obscuro/go-obscuro/integration/eth2network/main/main \
    testnetobscuronet.azurecr.io/obscuronet/eth2network:latest \
   --gethHTTPStartPort=${port} \
@@ -66,3 +67,7 @@ docker run --name=eth2network -d \
   --prefundedAddrs=${pkaddresses}
 
 echo "Network should be up and running"
+echo "To view logs:"
+echo "  Geth logs: docker exec eth2network cat /home/obscuro/go-obscuro/integration/eth2network/home/obscuro/logs/geth.log"
+echo "  Beacon chain logs: docker exec eth2network cat /home/obscuro/go-obscuro/integration/eth2network/home/obscuro/logs/beacon-chain.log"
+echo "  Validator logs: docker exec eth2network cat /home/obscuro/go-obscuro/integration/eth2network/home/obscuro/logs/validator.log"

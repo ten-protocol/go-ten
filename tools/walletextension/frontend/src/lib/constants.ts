@@ -7,6 +7,7 @@ export const tenscanAddress =
   process.env.NEXT_PUBLIC_TENSCAN_URL || "https://tenscan.io";
 
 export const socialLinks = {
+  faucet: "https://faucet.ten.xyz",
   github: "https://github.com/ten-protocol",
   discord: "https://discord.gg/tenprotocol",
   twitter: "https://twitter.com/tenprotocol",

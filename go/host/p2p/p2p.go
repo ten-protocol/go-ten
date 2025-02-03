@@ -269,7 +269,8 @@ func (p *Service) RegisterForBroadcasts() error {
 // if there's more than 100 failures on a given fail type
 // if there's a known peer for which a message hasn't been received
 func (p *Service) verifyHealth() error {
-	if p.isIncomingP2PDisabled {
+	if p.isIncomingP2PDisabled || p.isSequencer {
+		// sequencer is not expected to periodically receive p2p messages so this health check is ignored
 		return nil
 	}
 	var noMsgReceivedPeers []string
