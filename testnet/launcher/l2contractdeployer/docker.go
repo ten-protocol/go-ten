@@ -66,14 +66,14 @@ func (n *ContractDeployer) Start() error {
             "saveDeployments" : true,
             "companionNetworks" : { "layer1" : "layer1" },
             "deploy": [ 
-				"InitialFunding",    	    "deployment_scripts/funding/layer1"
-                "FaucetFunding",      		"deployment_scripts/funding/layer1"
-                "CrossChainMessengerL1",    "deployment_scripts/messenger/layer1"
-                "CrossChainMessengerL2",    "deployment_scripts/messenger/layer2
-                "EthereumBridge",           "deployment_scripts/bridge/"
-                "BridgeAdmin",              "deployment_scripts/testnet/layer1/"
-                "ZenBase",                  "deployment_scripts/testnet/layer2/
-                "SetFees"           	
+				"InitialFunding",
+                "FaucetFunding",
+                "CrossChainMessengerL1",
+                "CrossChainMessengerL2",
+                "EthereumBridge",
+                "BridgeAdmin",
+                "ZenBase",
+                "SetFees"
             ],
             "accounts": [ 
                 "%s"
