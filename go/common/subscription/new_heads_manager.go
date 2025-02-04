@@ -92,11 +92,16 @@ func (nhs *NewHeadsService) onNewBatch(head *common.BatchHeader) error {
 		msg = ConvertBatchHeader(head)
 	}
 
-	nhs.notifiersMutex.Lock()
-	defer nhs.notifiersMutex.Unlock()
+	// copy the notifiers
+	nhs.notifiersMutex.RLock()
+	notifiers := make(map[rpc.ID]*rpc.Notifier)
+	for id, notifier := range nhs.newHeadNotifiers {
+		notifiers[id] = notifier
+	}
+	nhs.notifiersMutex.RUnlock()
 
 	// for each new head, notify all registered subscriptions
-	for id, notifier := range nhs.newHeadNotifiers {
+	for id, notifier := range notifiers {
 		if nhs.stopped.Load() {
 			return nil
 		}

@@ -98,8 +98,6 @@ func (br *batchRegistry) OnL1Reorg(_ *BlockIngestionType) {
 
 func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExecResults []*core.TxExecResult) error {
 	defer core.LogMethodDuration(br.logger, measure.NewStopwatch(), "OnBatchExecuted", log.BatchHashKey, batchHeader.Hash())
-	br.callbackMutex.RLock()
-	defer br.callbackMutex.RUnlock()
 
 	txs, err := br.storage.FetchBatchTransactionsBySeq(context.Background(), batchHeader.SequencerOrderNo.Uint64())
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -116,12 +114,17 @@ func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExec
 	}
 
 	br.headBatchSeq.Store(batchHeader.SequencerOrderNo)
-	if br.batchesCallback != nil {
+
+	br.callbackMutex.RLock()
+	callback := br.batchesCallback
+	br.callbackMutex.RUnlock()
+
+	if callback != nil {
 		txReceipts := make([]*types.Receipt, len(txExecResults))
 		for i, txExecResult := range txExecResults {
 			txReceipts[i] = txExecResult.Receipt
 		}
-		br.batchesCallback(batch, txReceipts)
+		callback(batch, txReceipts)
 	}
 
 	br.lastExecutedBatch.Mark()

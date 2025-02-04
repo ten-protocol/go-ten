@@ -250,9 +250,6 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 		return err
 	}
 
-	e.dataInMutex.Lock()
-	defer e.dataInMutex.Unlock()
-
 	// if the signature is valid, then store the batch together with the converted hash
 	err = e.storage.StoreBatch(ctx, batch, convertedHeader.Hash())
 	if err != nil {
