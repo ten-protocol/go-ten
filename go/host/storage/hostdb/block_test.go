@@ -15,7 +15,7 @@ import (
 )
 
 func TestCanStoreAndRetrieveBlock(t *testing.T) {
-	db, _ := createSQLiteDB(t)
+	db, _ := CreateSQLiteDB(t)
 	block1 := createBlock(batchNumber)
 	block2 := createBlock(batchNumber + 1)
 
@@ -62,7 +62,7 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 }
 
 func TestAddBlockWithForeignKeyConstraint(t *testing.T) {
-	db, _ := createSQLiteDB(t)
+	db, _ := CreateSQLiteDB(t)
 	dbtx, _ := db.NewDBTransaction()
 	statements := db.GetSQLStatement()
 	metadata := createRollupMetadata(batchNumber - 10)
