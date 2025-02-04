@@ -3,10 +3,11 @@ package hostdb
 import (
 	"encoding/hex"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common"
 	"math/big"
 	"testing"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
 )

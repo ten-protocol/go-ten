@@ -2,12 +2,13 @@ package hostdb
 
 import (
 	"errors"
+	"math/big"
+	"testing"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
-	"math/big"
-	"testing"
 
 	"github.com/ten-protocol/go-ten/go/common"
 )

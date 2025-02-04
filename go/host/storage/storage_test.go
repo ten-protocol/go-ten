@@ -1,11 +1,12 @@
 package storage
 
 import (
+	"testing"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
-	"testing"
 )
 
 func TestAddBatchWithDuplicateSequenceNumberStorageImpl(t *testing.T) {
