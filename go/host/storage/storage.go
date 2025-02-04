@@ -48,7 +48,7 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 	}
 
 	if err := dbtx.Write(); err != nil {
-		if errors.Is(err, errutil.ErrAlreadyExists) {
+		if hostdb.IsUniqueKeyConstraintError(err) {
 			return nil
 		}
 		return fmt.Errorf("could not commit batch tx. Cause: %w", err)
