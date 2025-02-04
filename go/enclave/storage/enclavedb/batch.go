@@ -29,14 +29,9 @@ func WriteBatchHeader(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, conv
 		isCanonical,                            // is_canonical
 		header,                                 // header blob
 		batch.Header.L1Proof.Bytes(),           // l1 proof hash
+		false,                                  // executed
 	}
-	if blockId == 0 {
-		args = append(args, nil) // l1_proof block id
-	} else {
-		args = append(args, blockId)
-	}
-	args = append(args, false) // executed
-	_, err = dbtx.ExecContext(ctx, "insert into batch values (?,?,?,?,?,?,?,?,?)", args...)
+	_, err = dbtx.ExecContext(ctx, "insert into batch values (?,?,?,?,?,?,?,?)", args...)
 	return err
 }
 
