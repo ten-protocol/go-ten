@@ -25,5 +25,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ['BridgeAdmin', 'BridgeAdmin_deploy'];
+func.tags = ['BRIDGEADMIN', 'BRIDGEADMIN_deploy'];
 func.dependencies = ['TenBridge']
