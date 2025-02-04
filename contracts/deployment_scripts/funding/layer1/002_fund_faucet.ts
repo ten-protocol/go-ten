@@ -53,6 +53,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ['FaucetFunding', 'FaucetFunding_deploy'];
-func.dependencies = ['InitialFunding'];
+func.tags = ['GasPrefunding', 'GasPrefunding_deploy'];
 // No dependencies

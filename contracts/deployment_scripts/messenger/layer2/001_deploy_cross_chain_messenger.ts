@@ -69,4 +69,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ['CrossChainMessengerL2', 'CrossChainMessengerL2_deploy'];
+func.tags = ['CrossChainMessenger', 'CrossChainMessenger_deploy'];
