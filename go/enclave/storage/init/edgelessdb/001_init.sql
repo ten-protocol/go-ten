@@ -75,12 +75,10 @@ create table if not exists tendb.batch
     is_canonical   boolean    NOT NULL,
     header         blob       NOT NULL,
     l1_proof_hash  binary(32) NOT NULL,
-    l1_proof       INTEGER,
     is_executed    boolean    NOT NULL,
     primary key (sequence),
     INDEX USING HASH (hash),
     INDEX USING HASH (l1_proof_hash),
-    INDEX (l1_proof),
     INDEX (height),
     INDEX (is_canonical, is_executed, height)
 );
