@@ -37,7 +37,7 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 		extBatch,                     // ext_batch
 	)
 	if err != nil {
-		if strings.Contains(strings.ToLower(err.Error()), "unique") {
+		if IsRowExistsError(err) {
 			return errutil.ErrAlreadyExists
 		}
 		return fmt.Errorf("host failed to insert batch: %w", err)
@@ -496,4 +496,8 @@ func fetchBatchTxs(db *sql.DB, whereQuery string, batchHash []byte) (*common.Tra
 		TransactionsData: transactions,
 		Total:            uint64(len(transactions)),
 	}, nil
+}
+
+func IsRowExistsError(err error) bool {
+	return strings.Contains(strings.ToLower(err.Error()), "unique") || strings.Contains(strings.ToLower(err.Error()), "duplicate key")
 }

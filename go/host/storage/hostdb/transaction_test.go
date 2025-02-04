@@ -10,9 +10,9 @@ import (
 )
 
 func TestGetTransactionListing(t *testing.T) {
-	db, _ := createSQLiteDB(t)
+	db, _ := CreateSQLiteDB(t)
 	txHash12 := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	batchOne := createBatch(batchNumber, txHash12)
+	batchOne := CreateBatch(batchNumber, txHash12)
 	dbtx, _ := db.NewDBTransaction()
 	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
 	if err != nil {
@@ -20,7 +20,7 @@ func TestGetTransactionListing(t *testing.T) {
 	}
 
 	txHash34 := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
-	batchTwo := createBatch(batchNumber+1, txHash34)
+	batchTwo := CreateBatch(batchNumber+1, txHash34)
 
 	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
 	if err != nil {
@@ -28,7 +28,7 @@ func TestGetTransactionListing(t *testing.T) {
 	}
 
 	txHash56 := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringFive")), gethcommon.BytesToHash([]byte("magicStringSix"))}
-	batchThree := createBatch(batchNumber+2, txHash56)
+	batchThree := CreateBatch(batchNumber+2, txHash56)
 
 	err = AddBatch(dbtx, db.GetSQLStatement(), &batchThree)
 	if err != nil {
@@ -86,11 +86,11 @@ func TestGetTransactionListing(t *testing.T) {
 }
 
 func TestGetTransaction(t *testing.T) {
-	db, _ := createSQLiteDB(t)
+	db, _ := CreateSQLiteDB(t)
 	txHash1 := gethcommon.BytesToHash([]byte("magicStringOne"))
 	txHash2 := gethcommon.BytesToHash([]byte("magicStringOne"))
 	txHashes := []common.L2TxHash{txHash1, txHash2}
-	batchOne := createBatch(batchNumber, txHashes)
+	batchOne := CreateBatch(batchNumber, txHashes)
 	dbtx, _ := db.NewDBTransaction()
 	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
 	if err != nil {
@@ -112,9 +112,9 @@ func TestGetTransaction(t *testing.T) {
 }
 
 func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
-	db, _ := createSQLiteDB(t)
+	db, _ := CreateSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	batchOne := createBatch(batchNumber, txHashesOne)
+	batchOne := CreateBatch(batchNumber, txHashesOne)
 	dbtx, _ := db.NewDBTransaction()
 	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
 	if err != nil {
@@ -122,7 +122,7 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 	}
 
 	txHashesTwo := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
-	batchTwo := createBatch(batchNumber+1, txHashesTwo)
+	batchTwo := CreateBatch(batchNumber+1, txHashesTwo)
 
 	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
 	if err != nil {
@@ -141,13 +141,13 @@ func TestCanRetrieveTotalNumberOfTransactions(t *testing.T) {
 }
 
 func TestTotalTxsQuery(t *testing.T) {
-	db, _ := createSQLiteDB(t)
+	db, _ := CreateSQLiteDB(t)
 	var txHashes []common.L2TxHash
 	for i := 0; i < 100; i++ {
 		txHash := gethcommon.BytesToHash([]byte(fmt.Sprintf("magicString%d", i+1)))
 		txHashes = append(txHashes, txHash)
 	}
-	batchOne := createBatch(batchNumber, txHashes)
+	batchOne := CreateBatch(batchNumber, txHashes)
 	dbtx, _ := db.NewDBTransaction()
 	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
 	if err != nil {

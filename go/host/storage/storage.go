@@ -26,10 +26,10 @@ type storageImpl struct {
 }
 
 func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
-	// Check if the Batch is already stored
 	_, err := hostdb.GetBatchHeader(s.db, batch.Hash())
 	if err == nil {
-		return errutil.ErrAlreadyExists
+		// batch already exists don't error
+		return nil
 	}
 
 	dbtx, err := s.db.NewDBTransaction()
@@ -42,12 +42,15 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 			return err1
 		}
 		if errors.Is(err, errutil.ErrAlreadyExists) {
-			return err
+			return nil
 		}
 		return fmt.Errorf("could not add batch to host. Cause: %w", err)
 	}
 
 	if err := dbtx.Write(); err != nil {
+		if hostdb.IsRowExistsError(err) {
+			return nil
+		}
 		return fmt.Errorf("could not commit batch tx. Cause: %w", err)
 	}
 	return nil
