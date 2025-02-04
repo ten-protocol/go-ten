@@ -37,6 +37,7 @@ create table if not exists tendb.block
     is_canonical boolean    NOT NULL,
     header       blob       NOT NULL,
     height       int        NOT NULL,
+    processed    boolean    NOT NULL,
     primary key (id),
     INDEX (height),
     INDEX USING HASH (hash)
