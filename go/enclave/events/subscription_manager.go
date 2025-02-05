@@ -87,7 +87,11 @@ func (s *SubscriptionManager) RemoveSubscription(id gethrpc.ID) {
 // The assumption is that this function is called synchronously after the batch is produced
 func (s *SubscriptionManager) GetSubscribedLogsForBatch(ctx context.Context, batch *core.Batch, receipts types.Receipts) (common.EncryptedSubscriptionLogs, error) {
 	s.subscriptionMutex.RLock()
-	defer s.subscriptionMutex.RUnlock()
+	subs := make(map[gethrpc.ID]*logSubscription)
+	for key, value := range s.subscriptions {
+		subs[key] = value
+	}
+	s.subscriptionMutex.RUnlock()
 
 	// exit early if there are no subscriptions
 	if len(s.subscriptions) == 0 {
@@ -101,7 +105,7 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(ctx context.Context, bat
 		return nil, nil
 	}
 
-	for id, sub := range s.subscriptions {
+	for id, sub := range subs {
 		relevantLogsForSub, err := s.storage.FilterLogs(ctx, sub.ViewingKeyEncryptor.AccountAddress, nil, nil, &h, sub.Subscription.Filter.Addresses, sub.Subscription.Filter.Topics)
 		if err != nil {
 			return nil, err
