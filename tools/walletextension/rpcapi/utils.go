@@ -231,7 +231,16 @@ func generateCacheKey(params []any) []byte {
 
 func audit(services *services.Services, msg string, params ...any) {
 	if services.Config.VerboseFlag {
-		services.Logger().Info(fmt.Sprintf(msg, params...))
+		// Sanitize params to handle nil values
+		safeParams := make([]any, len(params))
+		for i, p := range params {
+			if p == nil {
+				safeParams[i] = "<nil>"
+			} else {
+				safeParams[i] = p
+			}
+		}
+		services.Logger().Info(fmt.Sprintf(msg, safeParams...))
 	}
 }
 
