@@ -624,13 +624,6 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	}
 	defer dbTx.Rollback()
 
-	// it is possible that the block is not available if this is a validator
-	blockId, err := enclavedb.GetBlockId(ctx, dbTx, batch.Header.L1Proof)
-	if err != nil {
-		s.logger.Warn("could not get block id from db", log.ErrKey, err)
-	}
-	s.logger.Trace("write batch", log.BatchHashKey, batch.Hash(), "l1Proof", batch.Header.L1Proof, log.BatchSeqNoKey, batch.SeqNo(), "block_id", blockId)
-
 	// the batch is canonical only if the l1 proof is canonical
 	isL1ProofCanonical, err := enclavedb.IsCanonicalBlock(ctx, dbTx, &batch.Header.L1Proof)
 	if err != nil {
@@ -652,7 +645,7 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 		return fmt.Errorf("could not read ExistsBatchAtHeight. Cause: %w", err)
 	}
 
-	if err := enclavedb.WriteBatchHeader(ctx, dbTx, batch, convertedHash, blockId, isL1ProofCanonical); err != nil {
+	if err := enclavedb.WriteBatchHeader(ctx, dbTx, batch, convertedHash, isL1ProofCanonical); err != nil {
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
 
