@@ -12,8 +12,6 @@ interface Structs {
         bytes32 BlockBindingHash;
         uint256 BlockBindingNumber;
         bytes32 crossChainRoot;
-        bytes32 BlobHash;
-        bytes32 CompositeHash;
     }
 
     struct RollupStorage {

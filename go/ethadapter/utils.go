@@ -19,13 +19,15 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	to := rawTx.To()
 	value := rawTx.Value()
 	data := rawTx.Data()
+	blobHashes := rawTx.BlobHashes()
 
 	// estimate gas
 	estimatedGas, err := ethClient.EstimateGas(ctx, ethereum.CallMsg{
-		From:  from,
-		To:    to,
-		Value: value,
-		Data:  data,
+		From:       from,
+		To:         to,
+		Value:      value,
+		Data:       data,
+		BlobHashes: blobHashes,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not estimate gas - %w", err)

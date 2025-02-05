@@ -110,7 +110,8 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         require(knownBlockHash != 0x0, "Unknown block hash");
         require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
- 
+        require(blobhash(0) != bytes32(0), "Blob hash is not set");
+
         bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
             r.BlockBindingHash,
