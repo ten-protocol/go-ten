@@ -47,7 +47,7 @@ func (e *Encryptor) Encrypt(plaintext []byte) ([]byte, error) {
 	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
 		return nil, err
 	}
-	return e.gcm.Seal(nil, nonce, plaintext, nil), nil
+	return e.gcm.Seal(nonce, nonce, plaintext, nil), nil
 }
 
 func (e *Encryptor) Decrypt(ciphertext []byte) ([]byte, error) {
