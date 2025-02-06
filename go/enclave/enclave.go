@@ -118,6 +118,11 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	// signal to stop the enclave
 	stopControl := stopcontrol.New()
 
+	err = storage.DeleteDirtyBlocks(context.Background())
+	if err != nil {
+		logger.Crit("failed to clean dirty blocks", log.ErrKey, err)
+	}
+
 	// these services are directly exposed as the API of the Enclave
 	initAPI := NewEnclaveInitAPI(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider, sharedSecretService, daEncryptionService, rpcKeyService)
 	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, mgmtContractLib, attestationProvider, sharedSecretService, daEncryptionService)

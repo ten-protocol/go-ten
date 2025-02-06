@@ -29,9 +29,8 @@ create table if not exists block
     hash         binary(32) NOT NULL,
     is_canonical boolean    NOT NULL,
     header       blob       NOT NULL,
-    height       int        NOT NULL
-    --   the unique constraint is commented for now because there might be multiple non-canonical blocks for the same height
---     unique (height, is_canonical)
+    height       int        NOT NULL,
+    processed    boolean    NOT NULL
 );
 create index IDX_BLOCK_HEIGHT on block (height);
 create index IDX_BLOCK_HASH on block (hash);
@@ -67,14 +66,10 @@ create table if not exists batch
     is_canonical   boolean    NOT NULL,
     header         blob       NOT NULL,
     l1_proof_hash  binary(32) NOT NULL,
-    l1_proof       INTEGER, -- normally this would be a FK, but there is a weird edge case where an L2 node might not have the block used to create this batch
     is_executed    boolean    NOT NULL
-    --   the unique constraint is commented for now because there might be multiple non-canonical batches for the same height
---   unique (height, is_canonical, is_executed)
 );
 create index IDX_BATCH_HASH on batch (hash);
 create index IDX_BATCH_BLOCK on batch (l1_proof_hash);
-create index IDX_BATCH_L1 on batch (l1_proof);
 create index IDX_BATCH_HEIGHT on batch (height);
 create index IDX_BATCH_HEIGHT_COMP on batch (is_canonical, is_executed, height);
 

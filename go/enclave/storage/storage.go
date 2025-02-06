@@ -290,10 +290,11 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Header, chain
 
 	// sanity check that there is always a single canonical batch or block per layer
 	// called after forks, for the latest 50 blocks
-	err = enclavedb.CheckCanonicalValidity(ctx, dbTx, blockId-50)
-	if err != nil {
-		s.logger.Crit("Should not happen.", log.ErrKey, err)
-	}
+	// uncomment when debugging a race
+	//err = enclavedb.CheckCanonicalValidity(ctx, dbTx, blockId-50)
+	//if err != nil {
+	//	s.logger.Crit("Should not happen.", log.ErrKey, err)
+	//}
 
 	if err := dbTx.Commit(); err != nil {
 		return fmt.Errorf("4. could not store block %s. Cause: %w", block.Hash(), err)
@@ -301,6 +302,68 @@ func (s *storageImpl) StoreBlock(ctx context.Context, block *types.Header, chain
 
 	s.cachingService.CacheBlock(ctx, block)
 
+	return nil
+}
+
+func (s *storageImpl) UpdateProcessed(ctx context.Context, block common.L1BlockHash) error {
+	defer s.logDuration("UpdateProcessed", measure.NewStopwatch())
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+
+	err = enclavedb.UpdateBlockProcessed(ctx, dbTx, block)
+	if err != nil {
+		return fmt.Errorf("could not update block processed - %w", err)
+	}
+	if err := dbTx.Commit(); err != nil {
+		return fmt.Errorf(" could not update block processed. Cause: %w", err)
+	}
+	return nil
+}
+
+func (s *storageImpl) DeleteDirtyBlocks(ctx context.Context) error {
+	defer s.logDuration("DeleteDirtyBlocks", measure.NewStopwatch())
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+	dirtyBlocks, err := enclavedb.SelectUnprocessedBlocks(ctx, dbTx)
+	if err != nil {
+		return fmt.Errorf("could not select unprocessed blocks - %w", err)
+	}
+	if len(dirtyBlocks) > 1 {
+		return fmt.Errorf("more than one dirty block found. Should not happen")
+	}
+
+	if len(dirtyBlocks) == 0 {
+		// nothing to do
+		return nil
+	}
+
+	blockId := dirtyBlocks[0]
+
+	// delete rollups
+	err = enclavedb.DeleteRollupsForBlock(ctx, dbTx, blockId)
+	if err != nil {
+		return fmt.Errorf("could not delete rollups for block %d. Cause: %w", blockId, err)
+	}
+	// delete cross chain messages
+	err = enclavedb.DeleteL1MessagesForBlock(ctx, dbTx, blockId)
+	if err != nil {
+		return fmt.Errorf("could not delete cross chain messages for block %d. Cause: %w", blockId, err)
+	}
+	// delete block
+	err = enclavedb.DeleteBlock(ctx, dbTx, blockId)
+	if err != nil {
+		return fmt.Errorf("could not delete block %d. Cause: %w", blockId, err)
+	}
+
+	if err := dbTx.Commit(); err != nil {
+		return fmt.Errorf(" could not remove dirty blocks. Cause: %w", err)
+	}
 	return nil
 }
 
@@ -561,13 +624,6 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	}
 	defer dbTx.Rollback()
 
-	// it is possible that the block is not available if this is a validator
-	blockId, err := enclavedb.GetBlockId(ctx, dbTx, batch.Header.L1Proof)
-	if err != nil {
-		s.logger.Warn("could not get block id from db", log.ErrKey, err)
-	}
-	s.logger.Trace("write batch", log.BatchHashKey, batch.Hash(), "l1Proof", batch.Header.L1Proof, log.BatchSeqNoKey, batch.SeqNo(), "block_id", blockId)
-
 	// the batch is canonical only if the l1 proof is canonical
 	isL1ProofCanonical, err := enclavedb.IsCanonicalBlock(ctx, dbTx, &batch.Header.L1Proof)
 	if err != nil {
@@ -589,7 +645,7 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 		return fmt.Errorf("could not read ExistsBatchAtHeight. Cause: %w", err)
 	}
 
-	if err := enclavedb.WriteBatchHeader(ctx, dbTx, batch, convertedHash, blockId, isL1ProofCanonical); err != nil {
+	if err := enclavedb.WriteBatchHeader(ctx, dbTx, batch, convertedHash, isL1ProofCanonical); err != nil {
 		return fmt.Errorf("could not write batch header. Cause: %w", err)
 	}
 

@@ -184,6 +184,11 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
+	err = e.storage.UpdateProcessed(ctx, blockHeader.Hash())
+	if err != nil {
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
+	}
+
 	// in phase 1, only if the enclave is a sequencer, it can respond to shared secret requests
 	canShareSecret := e.isBackupSequencer(ctx) || e.isActiveSequencer(ctx) || e.sharedSecretService.IsGenesis()
 
@@ -243,14 +248,15 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 		return err
 	}
 
+	// todo - review whether we need to lock here.
 	e.dataInMutex.Lock()
-	defer e.dataInMutex.Unlock()
-
 	// if the signature is valid, then store the batch together with the converted hash
 	err = e.storage.StoreBatch(ctx, batch, convertedHeader.Hash())
 	if err != nil {
+		e.dataInMutex.Unlock()
 		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))
 	}
+	e.dataInMutex.Unlock()
 
 	err = e.validator().ExecuteStoredBatches(ctx)
 	if err != nil {

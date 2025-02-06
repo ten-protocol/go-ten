@@ -48,6 +48,9 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 		blockId,                              // l1 block hash
 	).Scan(&rollupId)
 	if err != nil {
+		if IsRowExistsError(err) {
+			return errutil.ErrAlreadyExists
+		}
 		return fmt.Errorf("could not insert rollup: %w", err)
 	}
 

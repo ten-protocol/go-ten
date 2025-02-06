@@ -16,7 +16,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
-func WriteBatchHeader(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, convertedHash gethcommon.Hash, blockId int64, isCanonical bool) error {
+func WriteBatchHeader(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, convertedHash gethcommon.Hash, isCanonical bool) error {
 	header, err := rlp.EncodeToBytes(batch.Header)
 	if err != nil {
 		return fmt.Errorf("could not encode batch header. Cause: %w", err)
@@ -29,14 +29,9 @@ func WriteBatchHeader(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, conv
 		isCanonical,                            // is_canonical
 		header,                                 // header blob
 		batch.Header.L1Proof.Bytes(),           // l1 proof hash
+		false,                                  // executed
 	}
-	if blockId == 0 {
-		args = append(args, nil) // l1_proof block id
-	} else {
-		args = append(args, blockId)
-	}
-	args = append(args, false) // executed
-	_, err = dbtx.ExecContext(ctx, "insert into batch values (?,?,?,?,?,?,?,?,?)", args...)
+	_, err = dbtx.ExecContext(ctx, "insert into batch values (?,?,?,?,?,?,?,?)", args...)
 	return err
 }
 

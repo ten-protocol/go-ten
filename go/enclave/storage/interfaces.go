@@ -30,6 +30,10 @@ type BlockResolver interface {
 	FetchHeadBlock(ctx context.Context) (*types.Header, error)
 	// StoreBlock persists the L1 BlockHeader and updates the canonical ancestors if there was a fork
 	StoreBlock(ctx context.Context, block *types.Header, fork *common.ChainFork) error
+	// UpdateProcessed - marks the block as processed
+	UpdateProcessed(ctx context.Context, block common.L1BlockHash) error
+	// DeleteDirtyBlocks - deletes all traces of a block that was not finished. Only called at startup.
+	DeleteDirtyBlocks(ctx context.Context) error
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
 	IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool
 }

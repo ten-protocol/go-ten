@@ -13,7 +13,7 @@ import (
 )
 
 func TestCanStoreAndRetrieveRollup(t *testing.T) {
-	db, err := createSQLiteDB(t)
+	db, err := CreateSQLiteDB(t)
 	if err != nil {
 		t.Fatalf("unable to initialise test db: %s", err)
 	}
@@ -53,7 +53,7 @@ func TestCanStoreAndRetrieveRollup(t *testing.T) {
 }
 
 func TestGetRollupByBlockHash(t *testing.T) {
-	db, err := createSQLiteDB(t)
+	db, err := CreateSQLiteDB(t)
 	if err != nil {
 		t.Fatalf("unable to initialise test db: %s", err)
 	}
@@ -83,7 +83,7 @@ func TestGetRollupByBlockHash(t *testing.T) {
 }
 
 func TestGetLatestRollup(t *testing.T) {
-	db, err := createSQLiteDB(t)
+	db, err := CreateSQLiteDB(t)
 	if err != nil {
 		t.Fatalf("unable to initialise test db: %s", err)
 	}
@@ -128,7 +128,7 @@ func TestGetLatestRollup(t *testing.T) {
 }
 
 func TestGetRollupBySeqNo(t *testing.T) {
-	db, err := createSQLiteDB(t)
+	db, err := CreateSQLiteDB(t)
 	if err != nil {
 		t.Fatalf("unable to initialise test db: %s", err)
 	}
@@ -183,7 +183,7 @@ func TestGetRollupBySeqNo(t *testing.T) {
 }
 
 func TestGetRollupListing(t *testing.T) {
-	db, err := createSQLiteDB(t)
+	db, err := CreateSQLiteDB(t)
 	if err != nil {
 		t.Fatalf("unable to initialise test db: %s", err)
 	}
@@ -286,7 +286,7 @@ func TestGetRollupListing(t *testing.T) {
 }
 
 func TestGetRollupByHash(t *testing.T) {
-	db, err := createSQLiteDB(t)
+	db, err := CreateSQLiteDB(t)
 	if err != nil {
 		t.Fatalf("unable to initialise test db: %s", err)
 	}
@@ -333,9 +333,9 @@ func TestGetRollupByHash(t *testing.T) {
 }
 
 func TestGetRollupBatches(t *testing.T) {
-	db, _ := createSQLiteDB(t)
+	db, _ := CreateSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	batchOne := createBatch(batchNumber, txHashesOne)
+	batchOne := CreateBatch(batchNumber, txHashesOne)
 	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
 	err := AddBlock(dbtx.Tx, db.GetSQLStatement(), block.Header())
@@ -350,7 +350,7 @@ func TestGetRollupBatches(t *testing.T) {
 	}
 
 	txHashesTwo := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
-	batchTwo := createBatch(batchNumber+1, txHashesTwo)
+	batchTwo := CreateBatch(batchNumber+1, txHashesTwo)
 
 	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
 	if err != nil {
@@ -358,7 +358,7 @@ func TestGetRollupBatches(t *testing.T) {
 	}
 
 	txHashesThree := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringFive")), gethcommon.BytesToHash([]byte("magicStringSix"))}
-	batchThree := createBatch(batchNumber+2, txHashesThree)
+	batchThree := CreateBatch(batchNumber+2, txHashesThree)
 
 	err = AddBatch(dbtx, db.GetSQLStatement(), &batchThree)
 	if err != nil {
@@ -366,7 +366,7 @@ func TestGetRollupBatches(t *testing.T) {
 	}
 
 	txHashesFour := []gethcommon.Hash{gethcommon.BytesToHash([]byte("magicStringSeven")), gethcommon.BytesToHash([]byte("magicStringEight"))}
-	batchFour := createBatch(batchNumber+3, txHashesFour)
+	batchFour := CreateBatch(batchNumber+3, txHashesFour)
 
 	err = AddBatch(dbtx, db.GetSQLStatement(), &batchFour)
 	if err != nil {

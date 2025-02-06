@@ -293,6 +293,13 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 }
 
 func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash, overrides *StateOverride) (hexutil.Uint64, error) {
+	// if blockNrOrHash is nil use default (latest) number
+	if blockNrOrHash == nil {
+		latest := rpc.LatestBlockNumber
+		blockNrOrHash = &rpc.BlockNumberOrHash{
+			BlockNumber: &latest,
+		}
+	}
 	resp, err := ExecAuthRPC[hexutil.Uint64](ctx, api.we, &AuthExecCfg{
 		cacheCfg: &cache.Cfg{
 			DynamicType: func() cache.Strategy {

@@ -26,10 +26,10 @@ type storageImpl struct {
 }
 
 func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
-	// Check if the Batch is already stored
 	_, err := hostdb.GetBatchHeader(s.db, batch.Hash())
 	if err == nil {
-		return errutil.ErrAlreadyExists
+		// batch already exists don't error
+		return nil
 	}
 
 	dbtx, err := s.db.NewDBTransaction()
@@ -42,22 +42,25 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 			return err1
 		}
 		if errors.Is(err, errutil.ErrAlreadyExists) {
-			return err
+			return nil
 		}
 		return fmt.Errorf("could not add batch to host. Cause: %w", err)
 	}
 
 	if err := dbtx.Write(); err != nil {
+		if hostdb.IsRowExistsError(err) {
+			return nil
+		}
 		return fmt.Errorf("could not commit batch tx. Cause: %w", err)
 	}
 	return nil
 }
 
 func (s *storageImpl) AddRollup(rollup *common.ExtRollup, extMetadata *common.ExtRollupMetadata, metadata *common.PublicRollupMetadata, block *types.Header) error {
-	// Check if the Header is already stored
 	_, err := hostdb.GetRollupHeader(s.db, rollup.Header.Hash())
 	if err == nil {
-		return errutil.ErrAlreadyExists
+		// rollup already exists don't error
+		return nil
 	}
 
 	dbtx, err := s.db.NewDBTransaction()
@@ -66,13 +69,19 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, extMetadata *common.Ex
 	}
 
 	if err := hostdb.AddRollup(dbtx, s.db.GetSQLStatement(), rollup, extMetadata, metadata, block); err != nil {
-		if err := dbtx.Rollback(); err != nil {
-			return err
+		if err1 := dbtx.Rollback(); err1 != nil {
+			return err1
+		}
+		if errors.Is(err, errutil.ErrAlreadyExists) {
+			return nil
 		}
 		return fmt.Errorf("could not add rollup to host. Cause: %w", err)
 	}
 
 	if err := dbtx.Write(); err != nil {
+		if hostdb.IsRowExistsError(err) {
+			return nil
+		}
 		return fmt.Errorf("could not commit rollup tx. Cause %w", err)
 	}
 	return nil

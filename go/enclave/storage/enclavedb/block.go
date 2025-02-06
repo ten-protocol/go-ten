@@ -23,11 +23,12 @@ func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
 
-	_, err = dbtx.ExecContext(ctx, "insert into block (hash,is_canonical,header,height) values (?,?,?,?)",
+	_, err = dbtx.ExecContext(ctx, "insert into block (hash,is_canonical,header,height, processed) values (?,?,?,?,?)",
 		b.Hash().Bytes(),  // hash
 		true,              // is_canonical
 		header,            // header
 		b.Number.Uint64(), // height
+		false,             // processed
 	)
 	return err
 }
@@ -59,9 +60,9 @@ func IsCanonicalBlock(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) 
 	return isCanon, err
 }
 
-// CheckCanonicalValidity - expensive but useful for debugging races
-func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx, blockId int64) error {
-	rows, err := dbtx.QueryContext(ctx, "select count(*), height from batch where l1_proof >=? AND is_canonical=true group by height having count(*) >1", blockId)
+/*// CheckCanonicalValidity - expensive but useful for debugging races
+func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx, batchId int64) error {
+	rows, err := dbtx.QueryContext(ctx, "select count(*), height from batch where height >=? AND is_canonical=true group by height having count(*) >1", batchId)
 	if err != nil {
 		return err
 	}
@@ -80,10 +81,11 @@ func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx, blockId int64) er
 	}
 	return nil
 }
+*/
 
 // HandleBlockArrivedAfterBatches - handle the corner case where the block wasn't available when the batch was received
-func HandleBlockArrivedAfterBatches(ctx context.Context, dbtx *sql.Tx, blockId int64, blockHash common.L1BlockHash) error {
-	_, err := dbtx.ExecContext(ctx, "update batch set l1_proof=?, is_canonical=true where l1_proof_hash=?", blockId, blockHash.Bytes())
+func HandleBlockArrivedAfterBatches(ctx context.Context, dbtx *sql.Tx, _ int64, blockHash common.L1BlockHash) error {
+	_, err := dbtx.ExecContext(ctx, "update batch set is_canonical=true where l1_proof_hash=?", blockHash.Bytes())
 	return err
 }
 
@@ -255,4 +257,44 @@ func decodeHeader(b []byte) (*types.Header, error) {
 		return nil, fmt.Errorf("could not decode l1 block header. Cause: %w", err)
 	}
 	return h, nil
+}
+
+func UpdateBlockProcessed(ctx context.Context, dbtx *sql.Tx, block common.L1BlockHash) error {
+	_, err := dbtx.ExecContext(ctx, "update block set processed=true where hash=?", block.Bytes())
+	return err
+}
+
+func SelectUnprocessedBlocks(ctx context.Context, dbtx *sql.Tx) ([]uint64, error) {
+	query := "select id from block where processed=false"
+	rows, err := dbtx.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	ids := make([]uint64, 0)
+	for rows.Next() {
+		var id uint64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, rows.Err()
+}
+
+func DeleteRollupsForBlock(ctx context.Context, tx *sql.Tx, blockId uint64) error {
+	_, err := tx.ExecContext(ctx, "delete from rollup where compression_block=?", blockId)
+	return err
+}
+
+func DeleteL1MessagesForBlock(ctx context.Context, tx *sql.Tx, blockId uint64) error {
+	_, err := tx.ExecContext(ctx, "delete from l1_msg where block=?", blockId)
+	return err
+}
+
+func DeleteBlock(ctx context.Context, tx *sql.Tx, blockId uint64) error {
+	_, err := tx.ExecContext(ctx, "delete from block where id=?", blockId)
+	return err
 }

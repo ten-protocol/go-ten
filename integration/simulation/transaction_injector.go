@@ -345,7 +345,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 				time.Sleep(1 * time.Second)
 				continue
 			}
-			if strings.Contains(err.Error(), "database closed") {
+			if strings.Contains(err.Error(), "database closed") || strings.Contains(err.Error(), "database is closed") {
 				ti.logger.Info("Database closed, test over", log.ErrKey, err)
 				return
 			}
