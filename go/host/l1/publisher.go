@@ -278,8 +278,7 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 
 func (p *Publisher) handleMaxRetriesFailure(err *MaxRetriesError, rollup *common.ExtRollup) {
 	//TODO store failed rollup details so we can easily remediate? ie send new tx with the same nonce
-	// tx hash, rollup hash, nonce & gas price?
-	fmt.Printf("failed max retries: ", rollup.Hash().Hex(), err.TxHash, err.BlobTx.Nonce)
+	p.logger.Error("failed max retries: ", log.RollupHashKey, rollup.Hash(), err.Error())
 }
 
 func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *big.Int, _ gethcommon.Hash) error {
@@ -339,91 +338,110 @@ func (p *Publisher) ResyncImportantContracts() error {
 // this method is guarded by a lock to ensure that only one transaction is attempted at a time to avoid nonce conflicts
 // todo (@matt) this method should take a context so we can try to cancel if the tx is no longer required
 func (p *Publisher) publishTransaction(tx types.TxData) error {
-	// this log message seems superfluous but is useful to debug deadlock issues, we expect 'Host issuing l1 tx' soon
-	// after unless we're stuck blocking.
-	p.logger.Info("Host preparing to issue L1 tx")
-
 	p.sendingLock.Lock()
 	defer p.sendingLock.Unlock()
-
-	const maxRetries = 5
-	retries := -1
-	var signedTx *types.Transaction
 
 	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
 	if err != nil {
 		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
 	}
 
-	// while the publisher service is still alive we keep trying to get the transaction into the L1
-	for !p.hostStopper.IsStopping() {
-		retries++
-		if retries >= maxRetries && signedTx.Type() == types.BlobTxType {
-			p.logger.Error("Max retries reached for issuing L1 tx - node may need manual intervention",
-				"nonce", nonce,
-				"txHash", signedTx.Hash().Hex())
-
-			blobTx, ok := tx.(*types.BlobTx)
-			if !ok {
-				return fmt.Errorf("expected blob tx but got %T", tx)
-			}
-
-			return &MaxRetriesError{
-				TxHash: signedTx.Hash().Hex(),
-				BlobTx: blobTx,
-			}
+	// Try initial publish
+	if err := p.executeTransaction(tx, nonce, 0); err != nil {
+		// If transaction fails, retry with appropriate strategy based on tx type
+		if _, ok := tx.(*types.BlobTx); ok {
+			return p.publishBlobTxWithRetry(tx, nonce)
 		}
-
-		tx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retries)
-		if err != nil {
-			return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
-		}
-
-		signedTx, err = p.hostWallet.SignTransaction(tx)
-		if err != nil {
-			return errors.Wrap(err, "could not sign L1 tx")
-		}
-
-		err = p.ethClient.SendTransaction(signedTx)
-		if err != nil {
-			p.logger.Warn("Failed to send transaction",
-				"error", err,
-				"retry", retries,
-				"nonce", nonce,
-				"txHash", signedTx.Hash())
-			return errors.Wrap(err, "could not broadcast L1 tx")
-		}
-		p.logger.Info("Successfully submitted tx to L1", "txHash", signedTx.Hash())
-
-		var receipt *types.Receipt
-		// retry until receipt is found or context is canceled
-		err = retry.Do(
-			func() error {
-				if p.hostStopper.IsStopping() {
-					return retry.FailFast(errors.New("host is stopping or context canceled"))
-				}
-				receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
-				if err != nil {
-					return fmt.Errorf("could not get receipt publishing tx for L1 tx=%s: %w", signedTx.Hash(), err)
-				}
-				return err
-			},
-			retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
-		)
-		if err != nil {
-			p.logger.Info("Receipt not found for transaction, we will re-attempt", log.ErrKey, err)
-			continue // try again with updated gas price
-		}
-
-		if receipt.Status != types.ReceiptStatusSuccessful {
-			return fmt.Errorf("unsuccessful receipt found for published L1 transaction, status=%d", receipt.Status)
-		}
-
-		p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),
-			log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
-		break
+		return p.publishDynamicTxWithRetry(tx, nonce)
 	}
 	return nil
+}
+
+func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData, nonce uint64) error {
+	retries := 0
+	for !p.hostStopper.IsStopping() {
+		if err := p.executeTransaction(tx, nonce, retries); err != nil {
+			retries++
+			continue
+		}
+		return nil
+	}
+	return errors.New("stopped while retrying transaction")
+}
+
+func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error {
+	const maxRetries = 5
+	retries := 0
+
+	for !p.hostStopper.IsStopping() && retries < maxRetries {
+		if err := p.executeTransaction(tx, nonce, retries); err != nil {
+			if retries >= maxRetries-1 {
+				blobTx := tx.(*types.BlobTx)
+				return &MaxRetriesError{
+					TxHash: err.Error(), // Pass the failed tx hash through error
+					BlobTx: blobTx,
+				}
+			}
+			retries++
+			continue
+		}
+		return nil
+	}
+	return errors.New("stopped while retrying transaction")
+}
+
+// executeTransaction handles the common flow of pricing, signing, sending and waiting for receipt
+func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) error {
+	// Set gas prices and create transaction
+	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum)
+	if err != nil {
+		return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
+	}
+
+	// Sign and send
+	signedTx, err := p.hostWallet.SignTransaction(pricedTx)
+	if err != nil {
+		return errors.Wrap(err, "could not sign L1 tx")
+	}
+
+	err = p.ethClient.SendTransaction(signedTx)
+	if err != nil {
+		p.logger.Warn("Failed to send transaction",
+			"error", err,
+			"nonce", signedTx.Nonce(),
+			"txHash", signedTx.Hash())
+		return errors.Wrap(err, "could not broadcast L1 tx")
+	}
+
+	// Wait for receipt
+	receipt, err := p.waitForReceipt(signedTx)
+	if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+		return fmt.Errorf(signedTx.Hash().Hex()) // Return hash for MaxRetriesError
+	}
+
+	p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),
+		log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
+	return nil
+}
+
+// Helper functions to reduce duplication
+func (p *Publisher) waitForReceipt(signedTx *types.Transaction) (*types.Receipt, error) {
+	var receipt *types.Receipt
+	err := retry.Do(
+		func() error {
+			if p.hostStopper.IsStopping() {
+				return retry.FailFast(errors.New("host is stopping or context canceled"))
+			}
+			var err error
+			receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
+			if err != nil {
+				return fmt.Errorf("could not get receipt publishing tx for L1 tx=%s: %w", signedTx.Hash(), err)
+			}
+			return err
+		},
+		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
+	)
+	return receipt, err
 }
 
 // waitForBlockAfter waits until the current block number is greater than the target block number

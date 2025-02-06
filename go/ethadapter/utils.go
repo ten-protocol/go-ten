@@ -3,6 +3,7 @@ package ethadapter
 import (
 	"context"
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum"
@@ -10,6 +11,10 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/holiman/uint256"
+)
+
+var (
+	_retryPriceMultiplier = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
 )
 
 // SetTxGasPrice takes a txData type and overrides the From, Gas and Gas Price field with current values
@@ -38,13 +43,13 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	}
 
 	/*
-			// there is no need to adjust the gasTipCap if we have to retry because we are already using the latest suggested value
-		    // adjust the gasTipCap if we have to retry
-		   	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
-		   	// we apply a 100% gas price increase for each retry (retrying with similar price gets rejected by mempool)
-		   	// Retry '0' is the first attempt, gives multiplier of 1.0
-		   	retryMultiplier := math.Pow(_retryPriceMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
-		   	gasTipCap = big.NewInt(0).Mul(gasTipCap, big.NewInt(int64(retryMultiplier)))
+		// there is no need to adjust the gasTipCap if we have to retry because we are already using the latest suggested value
+		// adjust the gasTipCap if we have to retry
+		// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
+		// we apply a 100% gas price increase for each retry (retrying with similar price gets rejected by mempool)
+		// Retry '0' is the first attempt, gives multiplier of 1.0
+		retryMultiplier := math.Pow(_retryPriceMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
+		gasTipCap = big.NewInt(0).Mul(gasTipCap, big.NewInt(int64(retryMultiplier)))
 	*/
 
 	// calculate the gas fee cap
@@ -53,7 +58,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		return nil, fmt.Errorf("failed to get the latest block header: %w", err)
 	}
 
-	baseFee := head.BaseFee // Base fee per gas (EIP-1559)
+	baseFee := head.BaseFee
 	gasFeeCap := big.NewInt(0).Add(baseFee, gasTipCap)
 
 	// Check if txData is of type *types.BlobTx
@@ -64,7 +69,14 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		} else {
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
-		// blobFeeCap := calcBlobFeeCap(blobBaseFee, retryNumber)
+
+		// For blob transactions, increase the tip by 50% on each retry
+		if retryNumber > 0 {
+			multiplier := int64(math.Pow(_retryPriceMultiplier, float64(retryNumber)))
+			gasTipCap = new(big.Int).Mul(gasTipCap, big.NewInt(multiplier))
+		}
+		// gasFeeCap must be at least baseFee + gasTipCap
+		gasFeeCap := new(big.Int).Add(head.BaseFee, gasTipCap)
 
 		return &types.BlobTx{
 			Nonce:      nonce,
@@ -80,6 +92,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		}, nil
 	}
 
+	// For non-blob transactions, just use the latest suggested values without multiplier
 	return &types.DynamicFeeTx{
 		Nonce:     nonce,
 		GasTipCap: gasTipCap,
@@ -90,29 +103,3 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		Data:      data,
 	}, nil
 }
-
-/*
-// geth enforces a 1 gwei minimum for blob tx fee
-var minBlobTxFee = big.NewInt(params.GWei)
-
-// calcBlobFeeCap computes a suggested blob fee cap that is twice the current header's blob base fee
-// value, with a minimum value of minBlobTxFee. It also doubles the blob fee cap based on the retry number.
-func calcBlobFeeCap(blobBaseFee *big.Int, retryNumber int) *big.Int {
-	// Base calculation: twice the current blob base fee
-	// todo - why twice?
-	blobFeeCap := new(big.Int).Mul(blobBaseFee, big.NewInt(2))
-
-	// Ensure the blob fee cap is at least the minimum value
-	if blobFeeCap.Cmp(minBlobTxFee) < 0 {
-		blobFeeCap.Set(minBlobTxFee)
-	}
-
-	// Double the blob fee cap for each retry attempt
-	if retryNumber > 0 {
-		multiplier := new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(retryNumber)), nil)
-		blobFeeCap.Mul(blobFeeCap, multiplier)
-	}
-
-	return blobFeeCap
-}
-*/
