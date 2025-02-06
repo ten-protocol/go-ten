@@ -578,7 +578,9 @@ func (e *enclaveAdminService) getNodeType(ctx context.Context) common.NodeType {
 	id := e.enclaveKeyService.EnclaveID()
 	attestedEnclave, err := e.storage.GetEnclavePubKey(ctx, id)
 	if err != nil {
-		e.logger.Info("could not read enclave pub key. Defaulting to validator type", log.ErrKey, err)
+		// this log message doesn't need to be info level, we can assume enclave is in this state until we see a msg like
+		// "Store attestation. Owner: <EnclaveID>" in the logs (i.e. after initial L1 catchup)
+		e.logger.Trace("could not read enclave pub key. Defaulting to validator type", log.ErrKey, err)
 		return common.Validator
 	}
 	return attestedEnclave.Type
