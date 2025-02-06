@@ -311,7 +311,22 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 			topic = crosschain.RollupAddedID
 			blobHashes := tx.BlobHashes()
 			if len(blobHashes) > 0 {
-				signature, data := m.getSignature(data, blobHashes)
+				// event data should be: rollupHash (bytes32) + signature (dynamic bytes)
+				signature := make([]byte, 65)
+
+				// rollupHash (32 bytes) + offset (32 bytes) + length (32 bytes) + signature (65 bytes)
+				data = make([]byte, 32+32+32+65)
+
+				// copy blob hash to first 32 bytes
+				copy(data[:32], blobHashes[0].Bytes())
+
+				offset := big.NewInt(32).Bytes()
+				copy(data[32+32-len(offset):64], offset)
+
+				// signature check is no-op, so we just need the correct length
+				sigLen := big.NewInt(65).Bytes()
+				copy(data[96-len(sigLen):96], sigLen)
+
 				copy(data[96:], signature)
 			}
 		case messageBusAddr.Hex():
@@ -345,26 +360,6 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 		logs = append(logs, dummyLog)
 	}
 	return logs, nil
-}
-
-func (m *Node) getSignature(data []byte, blobHashes []gethcommon.Hash) ([]byte, []byte) {
-	// Event data should be: rollupHash (bytes32) + signature (dynamic bytes)
-	signature := make([]byte, 65) // 65-byte ECDSA signature
-
-	// Format: rollupHash (32 bytes) + offset (32 bytes) + length (32 bytes) + signature (65 bytes)
-	data = make([]byte, 32+32+32+65)
-
-	// Copy blob hash to first 32 bytes
-	copy(data[:32], blobHashes[0].Bytes())
-
-	// Offset to signature data (32)
-	offset := big.NewInt(32).Bytes()
-	copy(data[32+32-len(offset):64], offset)
-
-	// Length of signature (65)
-	sigLen := big.NewInt(65).Bytes()
-	copy(data[96-len(sigLen):96], sigLen)
-	return signature, data
 }
 
 func (m *Node) Start() {
