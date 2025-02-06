@@ -169,6 +169,7 @@ type RollupHeader struct {
 
 	CrossChainRoot common.Hash // The root hash of the cross chain tree.
 	LastBatchSeqNo uint64
+	LastBatchHash  common.Hash
 }
 
 // ComputeCompositeHash creates a composite hash matching the contract's expectations.
@@ -179,6 +180,7 @@ func ComputeCompositeHash(
 ) common.Hash {
 	return crypto.Keccak256Hash(
 		common.LeftPadBytes(new(big.Int).SetUint64(header.LastBatchSeqNo).Bytes(), 32),
+		header.LastBatchHash.Bytes(),
 		header.CompressionL1Head.Bytes(),
 		common.LeftPadBytes(header.CompressionL1Number.Bytes(), 32),
 		header.CrossChainRoot.Bytes(),

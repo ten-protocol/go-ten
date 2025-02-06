@@ -114,6 +114,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
+            r.LastBatchHash,
             r.BlockBindingHash,
             r.BlockBindingNumber,
             r.crossChainRoot,

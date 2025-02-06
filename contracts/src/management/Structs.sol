@@ -11,6 +11,7 @@ interface Structs {
         bytes32 BlockBindingHash;
         uint256 BlockBindingNumber;
         bytes32 crossChainRoot;
+        bytes32 LastBatchHash;
         bytes Signature;
     }
 

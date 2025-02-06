@@ -314,6 +314,7 @@ message RollupHeaderMsg {
   uint64 Number = 5;
   uint64 Time = 6;
   bytes EnclaveID = 7;
+  bytes LastBatchHash = 8;
   uint64 LastBatchSeqNo = 9;
   bytes CrossChainRoot = 10;
 }

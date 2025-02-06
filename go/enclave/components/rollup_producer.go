@@ -58,6 +58,7 @@ func (re *rollupProducerImpl) CreateInternalRollup(ctx context.Context, fromBatc
 
 	lastBatch := batches[len(batches)-1]
 	rh.LastBatchSeqNo = lastBatch.SeqNo().Uint64()
+	rh.LastBatchHash = lastBatch.Hash()
 
 	blockMap := map[common.L1BlockHash]*types.Header{}
 	for _, b := range blocks {
