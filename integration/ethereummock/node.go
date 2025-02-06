@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -308,7 +309,46 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 		var data []byte
 		switch tx.To().Hex() {
 		case rollupTxAddr.Hex():
+			data = make([]byte, 32)
 			topic = crosschain.RollupAddedID
+			blobHashes := tx.BlobHashes()
+			if len(blobHashes) > 0 {
+				copy(data, blobHashes[0].Bytes())
+			}
+			txData := tx.Data()
+
+			if len(txData) > 4 {
+				// Create a MetaRollup struct type that matches the Solidity struct
+				type MetaRollup struct {
+					Hash               [32]byte
+					LastSequenceNumber *big.Int
+					BlockBindingHash   [32]byte
+					BlockBindingNumber *big.Int
+					CrossChainRoot     [32]byte
+					Signature          []byte
+				}
+
+				abi, err := ManagementContract.ManagementContractMetaData.GetAbi()
+				if err != nil {
+					m.logger.Error("Failed to get abi", "error", err)
+					continue
+				}
+
+				method, exist := abi.Methods["AddRollup"]
+				if !exist {
+					m.logger.Error("AddRollup method not found in ABI")
+					continue
+				}
+				values, err := method.Inputs.UnpackValues(txData[4:])
+				if err != nil {
+					m.logger.Error("Failed to unpack inputs", "error", err)
+					continue
+				}
+				rollup := values[0].(MetaRollup)
+
+				// Append the signature to the data
+				data = append(data, rollup.Signature...)
+			}
 		case messageBusAddr.Hex():
 			topic = crosschain.CrossChainEventID
 		case depositTxAddr.Hex():
