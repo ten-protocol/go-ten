@@ -13,9 +13,7 @@ import (
 	"github.com/holiman/uint256"
 )
 
-var (
-	_retryPriceMultiplier = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
-)
+var _retryPriceMultiplier = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
 
 // SetTxGasPrice takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
