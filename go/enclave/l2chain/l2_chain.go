@@ -24,36 +24,36 @@ import (
 
 type tenChain struct {
 	chainConfig         *params.ChainConfig
-	config              enclaveconfig.EnclaveConfig
+	config              *enclaveconfig.EnclaveConfig
+	evmFacade           evm.EVMFacade
 	storage             storage.Storage
 	gethEncodingService gethencoding.EncodingService
 	genesis             *genesis.Genesis
 
 	logger gethlog.Logger
 
-	Registry         components.BatchRegistry
-	gasEstimationCap uint64
+	Registry components.BatchRegistry
 }
 
 func NewChain(
 	storage storage.Storage,
-	config enclaveconfig.EnclaveConfig,
+	config *enclaveconfig.EnclaveConfig,
+	evmFacade evm.EVMFacade,
 	gethEncodingService gethencoding.EncodingService,
 	chainConfig *params.ChainConfig,
 	genesis *genesis.Genesis,
 	logger gethlog.Logger,
 	registry components.BatchRegistry,
-	gasEstimationCap uint64,
 ) ObscuroChain {
 	return &tenChain{
 		storage:             storage,
+		evmFacade:           evmFacade,
 		config:              config,
 		gethEncodingService: gethEncodingService,
 		chainConfig:         chainConfig,
 		logger:              logger,
 		genesis:             genesis,
 		Registry:            registry,
-		gasEstimationCap:    gasEstimationCap,
 	}
 }
 
@@ -105,5 +105,5 @@ func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Transac
 			batch.Header.Root.Hex()))
 	}
 
-	return evm.ExecuteCall(ctx, callMsg, blockState, batch.Header, oc.storage, oc.gethEncodingService, oc.chainConfig, oc.gasEstimationCap, oc.config, oc.logger)
+	return oc.evmFacade.ExecuteCall(ctx, callMsg, blockState, batch.Header)
 }

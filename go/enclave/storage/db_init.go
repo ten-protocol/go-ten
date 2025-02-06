@@ -25,7 +25,7 @@ func CreateDBFromConfig(cfg *enclaveconfig.EnclaveConfig, logger gethlog.Logger)
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating temporary sqlite database...")
 		// this creates a temporary sqlite sqldb
-		return sqlite.CreateTemporarySQLiteDB("", sqliteCfg, *cfg, logger)
+		return sqlite.CreateTemporarySQLiteDB("", sqliteCfg, cfg, logger)
 	}
 
 	if !cfg.WillAttest && len(cfg.SqliteDBPath) > 0 {
@@ -33,7 +33,7 @@ func CreateDBFromConfig(cfg *enclaveconfig.EnclaveConfig, logger gethlog.Logger)
 		logger.Warn("Attestation is disabled, using a basic sqlite DB for persistence")
 		// when we want to test persistence after node restart the SqliteDBPath should be set
 		// (if empty string then a temp sqldb file will be created for the lifetime of the enclave)
-		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, sqliteCfg, *cfg, logger)
+		return sqlite.CreateTemporarySQLiteDB(cfg.SqliteDBPath, sqliteCfg, cfg, logger)
 	}
 
 	if !cfg.WillAttest && len(cfg.EdgelessDBHost) > 0 {
@@ -67,5 +67,5 @@ func getEdgelessDB(cfg *enclaveconfig.EnclaveConfig, logger gethlog.Logger) (enc
 		return nil, fmt.Errorf("failed to prepare EdgelessDB connection - EdgelessDBHost was not set on enclave config")
 	}
 	dbConfig := edgelessdb.Config{Host: cfg.EdgelessDBHost}
-	return edgelessdb.Connector(&dbConfig, *cfg, logger)
+	return edgelessdb.Connector(&dbConfig, cfg, logger)
 }

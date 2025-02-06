@@ -16,7 +16,7 @@ import (
 type enclaveDB struct {
 	sqldb   *sql.DB
 	rwSqldb *sql.DB // required only by sqlite. For a normal db, it will be the same instance as sqldb
-	config  enclaveconfig.EnclaveConfig
+	config  *enclaveconfig.EnclaveConfig
 	logger  gethlog.Logger
 }
 
@@ -55,7 +55,7 @@ func (sqlDB *enclaveDB) AncientDatadir() (string, error) {
 	panic("implement me")
 }
 
-func NewEnclaveDB(db *sql.DB, rwdb *sql.DB, config enclaveconfig.EnclaveConfig, logger gethlog.Logger) (EnclaveDB, error) {
+func NewEnclaveDB(db *sql.DB, rwdb *sql.DB, config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) (EnclaveDB, error) {
 	return &enclaveDB{sqldb: db, rwSqldb: rwdb, config: config, logger: logger}, nil
 }
 
