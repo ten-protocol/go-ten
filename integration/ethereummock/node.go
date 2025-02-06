@@ -10,7 +10,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -309,45 +308,11 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 		var data []byte
 		switch tx.To().Hex() {
 		case rollupTxAddr.Hex():
-			data = make([]byte, 32)
 			topic = crosschain.RollupAddedID
 			blobHashes := tx.BlobHashes()
 			if len(blobHashes) > 0 {
-				copy(data, blobHashes[0].Bytes())
-			}
-			txData := tx.Data()
-
-			if len(txData) > 4 {
-				// Create a MetaRollup struct type that matches the Solidity struct
-				type MetaRollup struct {
-					Hash               [32]byte
-					LastSequenceNumber *big.Int
-					BlockBindingHash   [32]byte
-					BlockBindingNumber *big.Int
-					CrossChainRoot     [32]byte
-					Signature          []byte
-				}
-
-				abi, err := ManagementContract.ManagementContractMetaData.GetAbi()
-				if err != nil {
-					m.logger.Error("Failed to get abi", "error", err)
-					continue
-				}
-
-				method, exist := abi.Methods["AddRollup"]
-				if !exist {
-					m.logger.Error("AddRollup method not found in ABI")
-					continue
-				}
-				values, err := method.Inputs.UnpackValues(txData[4:])
-				if err != nil {
-					m.logger.Error("Failed to unpack inputs", "error", err)
-					continue
-				}
-				rollup := values[0].(MetaRollup)
-
-				// Append the signature to the data
-				data = append(data, rollup.Signature...)
+				signature, data := m.getSignature(data, blobHashes)
+				copy(data[96:], signature)
 			}
 		case messageBusAddr.Hex():
 			topic = crosschain.CrossChainEventID
@@ -380,6 +345,26 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 		logs = append(logs, dummyLog)
 	}
 	return logs, nil
+}
+
+func (m *Node) getSignature(data []byte, blobHashes []gethcommon.Hash) ([]byte, []byte) {
+	// Event data should be: rollupHash (bytes32) + signature (dynamic bytes)
+	signature := make([]byte, 65) // 65-byte ECDSA signature
+
+	// Format: rollupHash (32 bytes) + offset (32 bytes) + length (32 bytes) + signature (65 bytes)
+	data = make([]byte, 32+32+32+65)
+
+	// Copy blob hash to first 32 bytes
+	copy(data[:32], blobHashes[0].Bytes())
+
+	// Offset to signature data (32)
+	offset := big.NewInt(32).Bytes()
+	copy(data[32+32-len(offset):64], offset)
+
+	// Length of signature (65)
+	sigLen := big.NewInt(65).Bytes()
+	copy(data[96-len(sigLen):96], sigLen)
+	return signature, data
 }
 
 func (m *Node) Start() {

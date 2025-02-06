@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"math/big"
 	"sync/atomic"
 	"time"
 
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
@@ -314,6 +314,8 @@ func (r *DataService) processManagementContractTx(txData *common.L1TxData, proce
 			processed.AddEvent(common.InitialiseSecretTx, txData)
 		case *common.L1SetImportantContractsTx:
 			processed.AddEvent(common.SetImportantContractsTx, txData)
+		case *common.L1PermissionSeqTx:
+			return //no-op as it was processed in the previous processSequencerLogs call
 		default:
 			// this should never happen since the specific events should always decode into one of these types
 			r.logger.Error("Unknown tx type", "txHash", txData.Transaction.Hash().Hex())
