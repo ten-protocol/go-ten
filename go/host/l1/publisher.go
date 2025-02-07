@@ -267,7 +267,7 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 			p.logger.Error("Blob transaction failed after max retries",
 				"nonce", maxRetriesErr.BlobTx.Nonce,
 				"txHash", maxRetriesErr.TxHash,
-				log.RollupHashKey, producedRollup.Hash())
+				log.RollupHashKey, extRollup.Hash())
 
 			p.handleMaxRetriesFailure(maxRetriesErr, extRollup)
 			return
