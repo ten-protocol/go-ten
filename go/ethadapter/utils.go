@@ -59,7 +59,6 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	baseFee := head.BaseFee
 	gasFeeCap := big.NewInt(0).Add(baseFee, gasTipCap)
 
-	// Check if txData is of type *types.BlobTx
 	if blobTx, ok := txData.(*types.BlobTx); ok {
 		var blobBaseFee *big.Int
 		if head.ExcessBlobGas != nil {
@@ -68,17 +67,16 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
 
-		// For blob transactions, increase the tip by 50% on each retry
+		// for blob transactions, increase the tip by 30% on each retry
 		if retryNumber > 0 {
 			multiplier := int64(math.Pow(_retryPriceMultiplier, float64(retryNumber)))
 			gasTipCap = new(big.Int).Mul(gasTipCap, big.NewInt(multiplier))
 		}
-		// gasFeeCap must be at least baseFee + gasTipCap
-		gasFeeCap := new(big.Int).Add(head.BaseFee, gasTipCap)
+		gasFeeCapUpdated := new(big.Int).Add(head.BaseFee, gasTipCap)
 
 		return &types.BlobTx{
 			Nonce:      nonce,
-			GasTipCap:  uint256.MustFromBig(gasTipCap),
+			GasTipCap:  uint256.MustFromBig(gasFeeCapUpdated),
 			GasFeeCap:  uint256.MustFromBig(gasFeeCap),
 			Gas:        estimatedGas,
 			To:         *to,

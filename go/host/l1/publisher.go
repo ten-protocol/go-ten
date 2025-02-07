@@ -277,8 +277,9 @@ func (p *Publisher) PublishBlob(producedRollup *common.ExtRollup, blobs []*kzg48
 }
 
 func (p *Publisher) handleMaxRetriesFailure(err *MaxRetriesError, rollup *common.ExtRollup) {
-	// TODO store failed rollup details so we can easily remediate? ie send new tx with the same nonce
-	p.logger.Error("failed max retries: ", log.RollupHashKey, rollup.Hash(), err.Error())
+	//TODO store failed rollup details so we can easily remediate? ie send new tx with the same nonce
+	// tx hash, rollup hash, nonce & gas price?
+	p.logger.Error("failed max retries: ", rollup.Hash().Hex(), err.TxHash, err.BlobTx.Nonce)
 }
 
 func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *big.Int, _ gethcommon.Hash) error {
@@ -346,15 +347,10 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
 	}
 
-	// Try initial publish
-	if err := p.executeTransaction(tx, nonce, 0); err != nil {
-		// If transaction fails, retry with appropriate strategy based on tx type
-		if _, ok := tx.(*types.BlobTx); ok {
-			return p.publishBlobTxWithRetry(tx, nonce)
-		}
-		return p.publishDynamicTxWithRetry(tx, nonce)
+	if _, ok := tx.(*types.BlobTx); ok {
+		return p.publishBlobTxWithRetry(tx, nonce)
 	}
-	return nil
+	return p.publishDynamicTxWithRetry(tx, nonce)
 }
 
 func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData, nonce uint64) error {
