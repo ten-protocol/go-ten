@@ -27,13 +27,13 @@ type EthChainAdapter struct {
 	batchRegistry BatchRegistry
 	gethEncoding  gethencoding.EncodingService
 	storage       storage.Storage
-	config        enclaveconfig.EnclaveConfig
+	config        *enclaveconfig.EnclaveConfig
 	chainID       *big.Int
 	logger        gethlog.Logger
 }
 
 // NewEthChainAdapter returns a new instance
-func NewEthChainAdapter(chainID *big.Int, batchRegistry BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, config enclaveconfig.EnclaveConfig, logger gethlog.Logger) *EthChainAdapter {
+func NewEthChainAdapter(chainID *big.Int, batchRegistry BatchRegistry, storage storage.Storage, gethEncoding gethencoding.EncodingService, config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) *EthChainAdapter {
 	return &EthChainAdapter{
 		newHeadChan:   make(chan gethcore.ChainHeadEvent),
 		batchRegistry: batchRegistry,

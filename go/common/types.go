@@ -50,7 +50,8 @@ type (
 	SerializedCrossChainTree = []byte
 
 	L2PricedTransaction struct {
-		Tx             *L2Tx
+		Tx *L2Tx
+		// todo - add sender
 		PublishingCost *big.Int
 		FromSelf       bool
 		SystemDeployer bool // Free contract construction

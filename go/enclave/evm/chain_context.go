@@ -19,13 +19,13 @@ import (
 // TenChainContext - basic implementation of the ChainContext needed for the EVM integration
 type TenChainContext struct {
 	storage             storage.Storage
-	config              config.EnclaveConfig
+	config              *config.EnclaveConfig
 	gethEncodingService gethencoding.EncodingService
 	logger              gethlog.Logger
 }
 
 // NewTenChainContext returns a new instance of the TenChainContext given a storage ( and logger )
-func NewTenChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config config.EnclaveConfig, logger gethlog.Logger) *TenChainContext {
+func NewTenChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config *config.EnclaveConfig, logger gethlog.Logger) *TenChainContext {
 	return &TenChainContext{
 		storage:             storage,
 		config:              config,
