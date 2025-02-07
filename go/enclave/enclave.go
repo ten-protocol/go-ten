@@ -9,8 +9,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
