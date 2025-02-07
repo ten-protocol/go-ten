@@ -100,7 +100,6 @@ func (b *BlobsAndSignatures) ToBlobs() []*kzg4844.Blob {
 type L1TxData struct {
 	Transaction        *types.Transaction
 	Receipt            *types.Receipt
-	Blobs              []*kzg4844.Blob // Only populated for blob transactions
 	BlobsWithSignature BlobsAndSignatures
 	SequencerEnclaveID gethcommon.Address  // Only non-zero when a new enclave is added as a sequencer
 	CrossChainMessages CrossChainMessages  // Only populated for xchain messages
