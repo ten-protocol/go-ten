@@ -49,7 +49,7 @@ func TestCustomGenesis(t *testing.T) {
 		t.Fatal("unexpected number of accounts")
 	}
 
-	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", enclaveconfig.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
+	backingDB, err := sqlite.CreateTemporarySQLiteDB("", "", &enclaveconfig.EnclaveConfig{RPCTimeout: time.Second}, testlog.Logger())
 	if err != nil {
 		t.Fatalf("unable to create temp db: %s", err)
 	}

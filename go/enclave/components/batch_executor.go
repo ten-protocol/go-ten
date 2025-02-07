@@ -14,7 +14,6 @@ import (
 
 	gethcore "github.com/ethereum/go-ethereum/core"
 
-	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 
 	"github.com/ethereum/go-ethereum/trie"
@@ -53,8 +52,9 @@ var ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")
 // batchExecutor - the component responsible for executing batches
 type batchExecutor struct {
 	storage                storage.Storage
+	evmFacade              evm.EVMFacade
 	batchRegistry          BatchRegistry
-	config                 enclaveconfig.EnclaveConfig
+	config                 *enclaveconfig.EnclaveConfig
 	gethEncodingService    gethencoding.EncodingService
 	crossChainProcessors   *crosschain.Processors
 	dataCompressionService compression.DataCompressionService
@@ -69,13 +69,13 @@ type batchExecutor struct {
 	stateDBMutex sync.Mutex
 
 	batchGasLimit uint64 // max execution gas allowed in a batch
-	chainContext  *evm.TenChainContext
 }
 
 func NewBatchExecutor(
 	storage storage.Storage,
 	batchRegistry BatchRegistry,
-	config enclaveconfig.EnclaveConfig,
+	evmFacade evm.EVMFacade,
+	config *enclaveconfig.EnclaveConfig,
 	gethEncodingService gethencoding.EncodingService,
 	cc *crosschain.Processors,
 	genesis *genesis.Genesis,
@@ -90,6 +90,7 @@ func NewBatchExecutor(
 	return &batchExecutor{
 		storage:                storage,
 		batchRegistry:          batchRegistry,
+		evmFacade:              evmFacade,
 		config:                 config,
 		gethEncodingService:    gethEncodingService,
 		crossChainProcessors:   cc,
@@ -103,7 +104,6 @@ func NewBatchExecutor(
 		entropyService:         entropyService,
 		mempool:                mempool,
 		dataCompressionService: dataCompressionService,
-		chainContext:           evm.NewTenChainContext(storage, gethEncodingService, config, logger),
 	}
 }
 
@@ -731,26 +731,12 @@ func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions c
 }
 
 func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L2PricedTransaction, offset int, noBaseFee bool) (*core.TxExecResult, error) {
-	vmCfg := vm.Config{
-		NoBaseFee: noBaseFee,
-	}
 	ethHeader := *ec.EthHeader
 	before := ethHeader.MixDigest
 	ethHeader.MixDigest = executor.entropyService.TxEntropy(before.Bytes(), offset)
 
 	// if the tx fails, it handles the revert
-	txResult := evm.ExecuteTransaction(
-		tx,
-		ec.stateDB,
-		&ethHeader,
-		ec.Chain,
-		ec.ChainConfig,
-		ec.GasPool,
-		ec.usedGas,
-		vmCfg,
-		offset,
-		executor.logger,
-	)
+	txResult := executor.evmFacade.ExecuteTx(tx, ec.stateDB, &ethHeader, ec.GasPool, ec.usedGas, offset, noBaseFee)
 
 	if txResult.Err == nil {
 		// populate the derived fields in the receipt

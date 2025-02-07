@@ -61,7 +61,7 @@ func NewBatchRegistry(storage storage.Storage, config *enclaveconfig.EnclaveConf
 	}
 	br.headBatchSeq.Store(headBatchSeq)
 
-	br.ethChainAdapter = NewEthChainAdapter(big.NewInt(config.TenChainID), br, storage, gethEncodingService, *config, logger)
+	br.ethChainAdapter = NewEthChainAdapter(big.NewInt(config.TenChainID), br, storage, gethEncodingService, config, logger)
 	return br
 }
 
