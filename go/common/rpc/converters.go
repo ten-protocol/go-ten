@@ -210,12 +210,10 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 	}
 	headerMsg := generated.RollupHeaderMsg{
 		CompressionL1Head:   header.CompressionL1Head.Bytes(),
-		Signature:           header.Signature,
-		LastBatchSeqNo:      header.LastBatchSeqNo,
-		CrossChainRoot:      header.CrossChainRoot.Bytes(),
 		CompressionL1Number: header.CompressionL1Number.Bytes(),
-		BlobHash:            header.BlobHash.Bytes(),
-		CompositeHash:       header.CompositeHash.Bytes(),
+		CrossChainRoot:      header.CrossChainRoot.Bytes(),
+		LastBatchSeqNo:      header.LastBatchSeqNo,
+		LastBatchHash:       header.LastBatchHash.Bytes(),
 	}
 
 	return &headerMsg
@@ -245,9 +243,7 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		CompressionL1Number: big.NewInt(0).SetBytes(header.CompressionL1Number),
 		CrossChainRoot:      gethcommon.BytesToHash(header.CrossChainRoot),
 		LastBatchSeqNo:      header.LastBatchSeqNo,
-		Signature:           header.Signature,
-		BlobHash:            gethcommon.BytesToHash(header.BlobHash),
-		CompositeHash:       gethcommon.BytesToHash(header.CompositeHash),
+		LastBatchHash:       gethcommon.BytesToHash(header.LastBatchHash),
 	}
 }
 
@@ -288,4 +284,17 @@ func ToBlobMsgs(blobs []*kzg4844.Blob) []*generated.BlobMsg {
 		}
 	}
 	return msgs
+}
+
+func FromBlobMsgs(msgs []*generated.BlobMsg) []*kzg4844.Blob {
+	if msgs == nil {
+		return nil
+	}
+	blobs := make([]*kzg4844.Blob, len(msgs))
+	for i, msg := range msgs {
+		var blob kzg4844.Blob
+		copy(blob[:], msg.Blob)
+		blobs[i] = &blob
+	}
+	return blobs
 }

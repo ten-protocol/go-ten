@@ -1,7 +1,6 @@
 package smartcontract
 
 import (
-	"bytes"
 	"fmt"
 
 	generatedManagementContract "github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
@@ -37,12 +36,13 @@ func newDebugMgmtContractLib(address gethcommon.Address, client *ethereumclient.
 }
 
 // AwaitedIssueRollup speeds ups the issuance of rollup, await of tx to be minted and makes sure the values are correctly stored
-func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, client ethadapter.EthClient, w *debugWallet) error {
+// TODO: this is not even called...
+func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, client ethadapter.EthClient, w *debugWallet, signature []byte) error {
 	encodedRollup, err := common.EncodeRollup(&rollup)
 	if err != nil {
 		return err
 	}
-	txData, err := d.PopulateAddRollup(&common.L1RollupTx{Rollup: encodedRollup}, []*kzg4844.Blob{})
+	txData, err := d.PopulateAddRollup(&common.L1RollupTx{Rollup: encodedRollup}, []*kzg4844.Blob{}, signature)
 	if err != nil {
 		return fmt.Errorf("failed to create blob rollup: %w", err)
 	}
@@ -61,7 +61,7 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 	}
 
 	// rollup meta data is actually stored
-	found, rollupElement, err := d.GenContract.GetRollupByHash(nil, rollup.Hash())
+	found, _, err := d.GenContract.GetRollupByHash(nil, rollup.Hash())
 	if err != nil {
 		return err
 	}
@@ -70,9 +70,7 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 		return fmt.Errorf("rollup not stored in tree")
 	}
 
-	if !bytes.Equal(rollupElement.Signature, rollup.Header.Signature) {
-		return fmt.Errorf("stored rollup does not match the generated rollup")
-	}
+	// todo: check signature
 
 	return nil
 }

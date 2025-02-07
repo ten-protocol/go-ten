@@ -26,7 +26,6 @@ func RandomRollup(block *types.Header) common.ExtRollup {
 			CompressionL1Number: l1Number,
 			LastBatchSeqNo:      1,
 			CrossChainRoot:      gethcommon.Hash{}, // Empty root for test
-			BlobHash:            gethcommon.Hash{}, // Will be set by contract from blob data
 		},
 	}
 	return extRollup

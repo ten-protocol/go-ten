@@ -112,7 +112,7 @@ message CreateRollupRequest{
 }
 
 message CreateRollupResponse{
-  ExtRollupMsg msg = 1;
+  bytes signature = 1;
   repeated BlobMsg blobs = 2;
   SystemError systemError = 3;
 }
@@ -314,11 +314,9 @@ message RollupHeaderMsg {
   uint64 Number = 5;
   uint64 Time = 6;
   bytes EnclaveID = 7;
-  bytes Signature = 8;
+  bytes LastBatchHash = 8;
   uint64 LastBatchSeqNo = 9;
   bytes CrossChainRoot = 10;
-  bytes BlobHash = 11;
-  bytes CompositeHash = 12;
 }
 
 message SecretResponseMsg {

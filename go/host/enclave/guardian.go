@@ -678,20 +678,26 @@ func (g *Guardian) periodicRollupProduction() {
 			rollupJustPublished := time.Since(lastSuccessfulRollup) >= g.blockTime
 			if timeExpired || sizeExceeded && !rollupJustPublished {
 				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded, "rollupJustPublished", rollupJustPublished)
-				producedRollup, blobs, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
+				result, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
 				if err != nil {
 					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
 					continue
 				}
-				canonBlock, err := g.sl.L1Data().FetchBlockByHeight(producedRollup.Header.CompressionL1Number)
+				rollup, err := ethadapter.ReconstructRollup(result.Blobs)
+				if err != nil {
+					g.logger.Error("Could not reconstruct rollup", log.ErrKey, err)
+					continue
+				}
+				canonBlock, err := g.sl.L1Data().FetchBlockByHeight(rollup.Header.CompressionL1Number)
 				if err != nil {
 					g.logger.Error("Could not fetch block for compression", log.ErrKey, err)
 					continue
 				}
+
 				// only publish if the block used for compression is canonical
-				if canonBlock.Hash() == producedRollup.Header.CompressionL1Head {
+				if canonBlock.Hash() == rollup.Header.CompressionL1Head {
 					// this method waits until the receipt is received
-					g.sl.L1Publisher().PublishBlob(producedRollup, blobs)
+					g.sl.L1Publisher().PublishBlob(*result)
 					lastSuccessfulRollup = time.Now()
 				} else {
 					g.logger.Info("Skipping rollup publication because compression block is not canonical", "block", canonBlock.Hash())
@@ -816,7 +822,7 @@ func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data
 	syncContracts = false
 
 	for _, txData := range processed.GetEvents(common.RollupTx) {
-		encodedRlp, err := ethadapter.DecodeBlobs(txData.Blobs)
+		encodedRlp, err := ethadapter.DecodeBlobs(txData.BlobsWithSignature.ToBlobs())
 		if err != nil {
 			g.logger.Crit("could not decode blobs.", log.ErrKey, err)
 			continue

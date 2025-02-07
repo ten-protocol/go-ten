@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/crypto/kzg4844"
-
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -346,27 +344,24 @@ func (c *Client) CreateBatch(ctx context.Context, skipIfEmpty bool) common.Syste
 	return err
 }
 
-func (c *Client) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.ExtRollup, []*kzg4844.Blob, common.SystemError) {
-	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "CreateRollup rpc call")
+func (c *Client) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.CreateRollupResult, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
+	defer cancel()
 
-	response, err := c.protoClient.CreateRollup(ctx, &generated.CreateRollupRequest{
+	response, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{
 		FromSequenceNumber: &fromSeqNo,
 	})
 	if err != nil {
-		return nil, nil, syserr.NewRPCError(err)
+		return nil, syserr.NewRPCError(err)
 	}
 	if response != nil && response.SystemError != nil {
-		return nil, nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
 	}
 
-	blobs := make([]*kzg4844.Blob, len(response.Blobs))
-	for i, blobMsg := range response.Blobs {
-		var blob kzg4844.Blob
-		copy(blob[:], blobMsg.Blob)
-		blobs[i] = &blob
-	}
-
-	return rpc.FromExtRollupMsg(response.Msg), blobs, nil
+	return &common.CreateRollupResult{
+		Signature: response.Signature,
+		Blobs:     rpc.FromBlobMsgs(response.Blobs),
+	}, nil
 }
 
 func (c *Client) DebugTraceTransaction(ctx context.Context, hash gethcommon.Hash, config *tracers.TraceConfig) (json.RawMessage, common.SystemError) {

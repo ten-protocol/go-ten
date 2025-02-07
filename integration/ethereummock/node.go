@@ -309,6 +309,26 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 		switch tx.To().Hex() {
 		case rollupTxAddr.Hex():
 			topic = crosschain.RollupAddedID
+			blobHashes := tx.BlobHashes()
+			if len(blobHashes) > 0 {
+				// event data should be: rollupHash (bytes32) + signature (dynamic bytes)
+				signature := make([]byte, 65)
+
+				// rollupHash (32 bytes) + offset (32 bytes) + length (32 bytes) + signature (65 bytes)
+				data = make([]byte, 32+32+32+65)
+
+				// copy blob hash to first 32 bytes
+				copy(data[:32], blobHashes[0].Bytes())
+
+				offset := big.NewInt(32).Bytes()
+				copy(data[32+32-len(offset):64], offset)
+
+				// signature check is no-op, so we just need the correct length
+				sigLen := big.NewInt(65).Bytes()
+				copy(data[96-len(sigLen):96], sigLen)
+
+				copy(data[96:], signature)
+			}
 		case messageBusAddr.Hex():
 			topic = crosschain.CrossChainEventID
 		case depositTxAddr.Hex():

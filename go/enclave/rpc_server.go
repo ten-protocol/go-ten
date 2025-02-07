@@ -226,16 +226,14 @@ func (s *RPCServer) CreateRollup(ctx context.Context, req *generated.CreateRollu
 		fromSeqNo = *req.FromSequenceNumber
 	}
 
-	rollup, blobs, sysError := s.enclave.CreateRollup(ctx, fromSeqNo)
+	result, sysError := s.enclave.CreateRollup(ctx, fromSeqNo)
 	if sysError != nil {
 		s.logger.Error("Error creating rollup", log.ErrKey, sysError)
 	}
 
-	msg := rpc.ToExtRollupMsg(rollup)
-
 	return &generated.CreateRollupResponse{
-		Msg:         &msg,
-		Blobs:       rpc.ToBlobMsgs(blobs),
+		Signature:   result.Signature,
+		Blobs:       rpc.ToBlobMsgs(result.Blobs),
 		SystemError: toRPCError(sysError),
 	}, nil
 }

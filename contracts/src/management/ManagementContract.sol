@@ -25,7 +25,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     event ImportantContractAddressUpdated(string key, address newAddress);
     event SequencerEnclaveGranted(address enclaveID);
     event SequencerEnclaveRevoked(address enclaveID);
-    event RollupAdded(bytes32 rollupHash);
+    event RollupAdded(bytes32 rollupHash, bytes signature);
     event NetworkSecretRequested(address indexed requester, string requestReport);
     event NetworkSecretResponded(address indexed attester, address indexed requester);
 
@@ -110,17 +110,16 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
 
         require(knownBlockHash != 0x0, "Unknown block hash");
         require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
+        require(blobhash(0) != bytes32(0), "Blob hash is not set");
 
         bytes32 compositeHash = keccak256(abi.encodePacked(
             r.LastSequenceNumber,
+            r.LastBatchHash,
             r.BlockBindingHash,
             r.BlockBindingNumber,
             r.crossChainRoot,
-            r.BlobHash
+            blobhash(0)
         ));
-
-        // Verify the hash matches the one in the rollup
-        require(compositeHash == r.CompositeHash, "Composite hash mismatch");
 
         // Verify the enclave signature
         address enclaveID = ECDSA.recover(compositeHash, r.Signature);
@@ -136,8 +135,10 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
             merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
         }
-        emit RollupAdded(r.Hash);
+
+        emit RollupAdded(blobhash(0), r.Signature);
     }
+
 
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
     // solc-ignore-next-line unused-param

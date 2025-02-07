@@ -6,14 +6,13 @@ import * as MessageBusStructs from "../messaging/Structs.sol";
 interface Structs {
     struct MetaRollup{
         bytes32 Hash;
-        bytes Signature;
         uint256 LastSequenceNumber;
 
         bytes32 BlockBindingHash;
         uint256 BlockBindingNumber;
         bytes32 crossChainRoot;
-        bytes32 BlobHash;
-        bytes32 CompositeHash;
+        bytes32 LastBatchHash;
+        bytes Signature;
     }
 
     struct RollupStorage {

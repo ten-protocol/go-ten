@@ -168,10 +168,23 @@ type RollupHeader struct {
 
 	CrossChainRoot common.Hash // The root hash of the cross chain tree.
 	LastBatchSeqNo uint64
-	BlobHash       common.Hash
-	CompositeHash  common.Hash // composite of everything
+	LastBatchHash  common.Hash
+}
 
-	Signature []byte // The signature of the sequencer enclave over the composite hash
+// ComputeCompositeHash creates a composite hash matching the contract's expectations.
+// It takes the last batch sequence number, current L1 hash and number, cross-chain root, and blob hash as inputs.
+func ComputeCompositeHash(
+	header *RollupHeader,
+	blobHash common.Hash,
+) common.Hash {
+	return crypto.Keccak256Hash(
+		common.LeftPadBytes(new(big.Int).SetUint64(header.LastBatchSeqNo).Bytes(), 32),
+		header.LastBatchHash.Bytes(),
+		header.CompressionL1Head.Bytes(),
+		common.LeftPadBytes(header.CompressionL1Number.Bytes(), 32),
+		header.CrossChainRoot.Bytes(),
+		blobHash.Bytes(),
+	)
 }
 
 // CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.
@@ -231,7 +244,6 @@ func (b *BatchHeader) Hash() L2BatchHash {
 // RLP encoding excluding the signature.
 func (r *RollupHeader) Hash() L2RollupHash {
 	cp := *r
-	cp.Signature = nil
 	hash, err := rlpHash(cp)
 	if err != nil {
 		panic("err hashing rollup header")

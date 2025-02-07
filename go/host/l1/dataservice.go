@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
+
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
@@ -210,7 +212,7 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 		case crosschain.ImportantContractAddressUpdatedID:
 			r.processManagementContractTx(txData, processed)
 		case crosschain.RollupAddedID:
-			r.processManagementContractTx(txData, processed)
+			r.processRollupLogs(l, txData, processed)
 		case crosschain.NetworkSecretRequestedID:
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case crosschain.NetworkSecretRespondedID:
@@ -281,21 +283,40 @@ func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData,
 	}
 }
 
+func (r *DataService) processRollupLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+	abi, err := ManagementContract.ManagementContractMetaData.GetAbi()
+	if err != nil {
+		r.logger.Error("Error getting ManagementContract ABI", log.ErrKey, err)
+		return
+	}
+	var event ManagementContract.ManagementContractRollupAdded
+	err = abi.UnpackIntoInterface(&event, "RollupAdded", l.Data)
+	if err != nil {
+		r.logger.Error("Error unpacking RollupAdded event", log.ErrKey, err)
+		return
+	}
+	if blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash}); err == nil {
+		txData.BlobsWithSignature = []common.BlobAndSignature{
+			{
+				Blob:      blobs[0],
+				Signature: event.Signature,
+			},
+		}
+		processed.AddEvent(common.RollupTx, txData)
+	}
+}
+
 // processManagementContractTx handles decoded transaction types
 func (r *DataService) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	b := processed.BlockHeader
 	decodedTx, _ := r.mgmtContractLib.DecodeTx(txData.Transaction)
 	if decodedTx != nil {
-		switch t := decodedTx.(type) {
+		switch decodedTx.(type) {
 		case *common.L1InitializeSecretTx:
 			processed.AddEvent(common.InitialiseSecretTx, txData)
 		case *common.L1SetImportantContractsTx:
 			processed.AddEvent(common.SetImportantContractsTx, txData)
-		case *common.L1RollupHashes:
-			if blobs, err := r.blobResolver.FetchBlobs(context.Background(), b, t.BlobHashes); err == nil {
-				txData.Blobs = blobs
-				processed.AddEvent(common.RollupTx, txData)
-			}
+		case *common.L1PermissionSeqTx:
+			return // no-op as it was processed in the previous processSequencerLogs call
 		default:
 			// this should never happen since the specific events should always decode into one of these types
 			r.logger.Error("Unknown tx type", "txHash", txData.Transaction.Hash().Hex())
