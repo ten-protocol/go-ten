@@ -221,7 +221,7 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 		e.logger.Crit("Can't submit a batch to the active sequencer")
 	}
 
-	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "SubmitBatch call completed.", log.BatchHashKey, extBatch.Hash())
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "SubmitBatch call completed.", &core.RelaxedThresholds, log.BatchHashKey, extBatch.Hash())
 
 	e.logger.Info("Received new p2p batch", log.BatchHeightKey, extBatch.Header.Number, log.BatchHashKey, extBatch.Hash(), "l1", extBatch.Header.L1Proof)
 	seqNo := extBatch.Header.SequencerOrderNo.Uint64()
@@ -271,7 +271,7 @@ func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty 
 		e.logger.Crit("Only the active sequencer can create batches")
 	}
 
-	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateBatch call ended")
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateBatch call ended", &core.RelaxedThresholds)
 
 	e.dataInMutex.RLock()
 	defer e.dataInMutex.RUnlock()
@@ -288,7 +288,7 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 	if !e.isActiveSequencer(ctx) {
 		e.logger.Crit("Only the active sequencer can create rollups")
 	}
-	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateRollup call ended")
+	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateRollup call ended", &core.RelaxedThresholds)
 
 	// allow the simultaneous production of rollups and batches
 	e.dataInMutex.RLock()

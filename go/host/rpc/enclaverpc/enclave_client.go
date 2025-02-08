@@ -332,7 +332,7 @@ func (c *Client) HealthCheck(ctx context.Context) (bool, common.SystemError) {
 }
 
 func (c *Client) CreateBatch(ctx context.Context, skipIfEmpty bool) common.SystemError {
-	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "CreateBatch rpc call")
+	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "CreateBatch rpc call", &core.RelaxedThresholds)
 
 	response, err := c.protoClient.CreateBatch(ctx, &generated.CreateBatchRequest{SkipIfEmpty: skipIfEmpty})
 	if err != nil {
