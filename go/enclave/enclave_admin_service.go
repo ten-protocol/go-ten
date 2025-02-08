@@ -502,13 +502,6 @@ func (e *enclaveAdminService) streamEventsForNewHeadBatch(ctx context.Context, b
 
 func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*components.BlockIngestionType, []common.ExtRollupMetadata, error) {
 	e.logger.Info("Start ingesting block", log.BlockHashKey, processed.BlockHeader.Hash())
-	rollups, err := e.rollupConsumer.GetRollupsFromL1Data(processed)
-	if err != nil {
-		e.logger.Error("Error getting rollups from L1 data", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
-		// early return before storing block if multiple rollups are found in the block
-		return nil, nil, err
-	}
-
 	ingestion, err := e.l1BlockProcessor.Process(ctx, processed)
 	if err != nil {
 		// only warn for unexpected errors
@@ -520,24 +513,73 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		return nil, nil, err
 	}
 
+	// process rollups
 	var rollupMetadata []common.ExtRollupMetadata
-	if len(rollups) > 0 {
-		rollupMetadata, err = e.rollupConsumer.ProcessRollups(ctx, rollups)
+	if processed.HasEvents(common.RollupTx) {
+		rollups, err := e.rollupConsumer.GetRollupsFromL1Data(processed)
 		if err != nil {
-			e.logger.Error("Encountered error while processing l1 block rollups", log.ErrKey, err)
-			// any errors returned here are after verifying the rollup was signed by the enclave which should be fatal errors
-			return ingestion, nil, fmt.Errorf("%w: %v", errutil.ErrCriticalRollupProcessing, err)
+			e.logger.Error("Error getting rollups from L1 data", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
+			return nil, nil, err
+		}
+		for _, rollupTx := range rollups {
+			metadata, err := e.processRollup(ctx, rollupTx)
+			if err != nil {
+				e.logger.Error("Critical error processing rollup", log.ErrKey, err)
+				return ingestion, nil, fmt.Errorf("%w: %v", errutil.ErrCriticalRollupProcessing, err)
+			}
+			if metadata != nil {
+				rollupMetadata = append(rollupMetadata, *metadata)
+			}
 		}
 	}
 
+	// Handle any L1 fork events
 	if ingestion.IsFork() {
 		e.registry.OnL1Reorg(ingestion)
-		err := e.service.OnL1Fork(ctx, ingestion.ChainFork)
-		if err != nil {
+		if err := e.service.OnL1Fork(ctx, ingestion.ChainFork); err != nil {
 			return nil, nil, err
 		}
 	}
 	return ingestion, rollupMetadata, nil
+}
+
+func (e *enclaveAdminService) processRollup(ctx context.Context, rollupTx *common.ExtRollup) (*common.ExtRollupMetadata, error) {
+	// a. Check sequencer signature using hash from header
+
+	if err := e.rollupConsumer.VerifySequencerSignature(rollupTx); err != nil {
+		return nil, fmt.Errorf("invalid sequencer signature: %w", err)
+	}
+
+	// b. Extract blob data
+	blobData, err := e.rollupConsumer.ExtractBlobData(rollupTx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract blob data: %w", err)
+	}
+
+	// c. Decode rollup data
+	decodedRollup, err := e.rollupConsumer.DecodeRollup(blobData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode rollup: %w", err)
+	}
+
+	// d. Verify hashes
+	if err := e.rollupConsumer.VerifyRollupHashes(decodedRollup); err != nil {
+		return nil, fmt.Errorf("rollup hash verification failed: %w", err)
+	}
+
+	// e. Reconstruct rollup
+	reconstructedRollup, err := e.rollupConsumer.ReconstructRollup(decodedRollup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reconstruct rollup: %w", err)
+	}
+
+	// f. Process rollup through compression service
+	metadata, err := e.rollupConsumer.ProcessRollups(ctx, reconstructedRollup)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process rollup: %w", err)
+	}
+
+	return metadata, nil
 }
 
 func (e *enclaveAdminService) rejectBlockErr(ctx context.Context, cause error) *errutil.BlockRejectError {
