@@ -183,7 +183,7 @@ The missing link to achieving fully private transactions while allowing end-user
 wallets (like MetaMask). This is a very thin component that is responsible for encrypting and decrypting traffic 
 between the TEN node and its clients.
 
-See the [docs](https://docs.ten.xyz/wallet-extension/wallet-extension/) for more information.
+See the [docs](https://docs.ten.xyz/docs/getting-started/for-users/setup-you-wallet/) for more information.
 
 
 ## Repository Structure
