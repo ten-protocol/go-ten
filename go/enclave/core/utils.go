@@ -30,28 +30,55 @@ func GetAuthenticatedSender(chainID int64, tx *types.Transaction) (*gethcommon.A
 	return &sender, nil
 }
 
-const (
-	// log level for requests that take longer than this threshold in millis
-	_errorThreshold = 500
-	_warnThreshold  = 200
-	_infoThreshold  = 100
-	_debugThreshold = 50
+type DurationThresholds struct {
+	Error int64
+	Warn  int64
+	Info  int64
+	Debug int64
+}
+
+var (
+	// default thresholds for quick operations
+	DefaultThresholds = DurationThresholds{
+		Error: 500,
+		Warn:  200,
+		Info:  100,
+		Debug: 50,
+	}
+
+	// relaxed thresholds for known longer operations
+	RelaxedThresholds = DurationThresholds{
+		Error: 4000,
+		Warn:  1000,
+		Info:  100,
+		Debug: 50,
+	}
 )
 
 // LogMethodDuration - call only with "defer"
 func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg string, args ...any) {
+	var thresholds *DurationThresholds
+	if len(args) > 0 {
+		if t, ok := args[0].(*DurationThresholds); ok {
+			thresholds = t
+			args = args[1:] // remove thresholds from args if present
+		}
+	}
+	if thresholds == nil {
+		thresholds = &DefaultThresholds
+	}
+
 	var f func(msg string, ctx ...interface{})
 	durationMillis := stopWatch.Measure().Milliseconds()
 
-	// we adjust the logging level based on the time
 	switch {
-	case durationMillis > _errorThreshold:
+	case durationMillis > thresholds.Error:
 		f = logger.Error
-	case durationMillis > _warnThreshold:
+	case durationMillis > thresholds.Warn:
 		f = logger.Warn
-	case durationMillis > _infoThreshold:
+	case durationMillis > thresholds.Info:
 		f = logger.Info
-	case durationMillis > _debugThreshold:
+	case durationMillis > thresholds.Debug:
 		f = logger.Debug
 	default:
 		f = logger.Trace

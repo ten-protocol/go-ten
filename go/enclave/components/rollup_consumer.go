@@ -52,7 +52,7 @@ func NewRollupConsumer(
 
 // ProcessRollups - processes the rollups found in the block, verifies the rollups and stores them
 func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*common.ExtRollup) ([]common.ExtRollupMetadata, error) {
-	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs")
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", &core.RelaxedThresholds)
 
 	rollupMetadata := make([]common.ExtRollupMetadata, len(rollups))
 	for idx, rollup := range rollups {
