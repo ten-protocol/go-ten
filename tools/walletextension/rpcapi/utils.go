@@ -92,7 +92,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 		return nil, err
 	}
 
-	w.MetricsTracker.RecordUserActivity(hexutils.BytesToHex(user.ID))
+	//w.MetricsTracker.RecordUserActivity(hexutils.BytesToHex(user.ID))
 
 	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
 	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)

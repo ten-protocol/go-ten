@@ -412,7 +412,7 @@ jobs:
             docker pull ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
 
             # Start Ten Gateway Container
-            docker run -d -p 80:80 -p 81:81 -p 443:443 --name "${{ env.VM_NAME }}" \
+            docker run -d --restart=unless-stopped -p 80:80 -p 81:81 -p 443:443 --name "${{ env.VM_NAME }}" \
             --device /dev/sgx_enclave --device /dev/sgx_provision \
             -v "TENGateway-${{ github.event.inputs.testnet_type }}-data:/data" \
             -e OBSCURO_GATEWAY_VERSION="${{ github.run_number }}-${{ github.sha }}" \
