@@ -185,15 +185,12 @@ func (e *Service) Unsubscribe(id rpc.ID) error {
 // It will never give up, it just cycles through current enclaves until one can be successfully promoted.
 func (e *Service) promoteNewActiveSequencer() {
 	for e.running.Load() {
-		if len(e.enclaveGuardians) == 0 {
-			e.logger.Crit("No enclaves to promote to active sequencer, sequencer host cannot continue.")
-		}
 		for _, guardian := range e.enclaveGuardians {
 			enclID := guardian.GetEnclaveID()
 			e.logger.Info("Attempting to promote new sequencer.", log.EnclaveIDKey, enclID)
 			err := guardian.PromoteToActiveSequencer()
 			if err != nil {
-				e.logger.Warn("Failed to promote new sequencer.", log.EnclaveIDKey, enclID, log.ErrKey, err)
+				e.logger.Info("Unable to promote new sequencer.", log.EnclaveIDKey, enclID, log.ErrKey, err)
 				continue
 			}
 			e.activeSequencerID.Store(enclID)

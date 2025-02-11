@@ -74,7 +74,7 @@ type Guardian struct {
 	maxRollupSize      uint64
 
 	hostInterrupter      *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
-	sequencerInterrupter *stopcontrol.StopControl // new field
+	sequencerInterrupter *stopcontrol.StopControl
 	running              atomic.Bool
 
 	logger           gethlog.Logger
