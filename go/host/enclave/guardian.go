@@ -74,8 +74,9 @@ type Guardian struct {
 	l1StartHash        gethcommon.Hash
 	maxRollupSize      uint64
 
-	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
-	running         atomic.Bool
+	hostInterrupter      *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
+	sequencerInterrupter *stopcontrol.StopControl // new field
+	running              atomic.Bool
 
 	logger           gethlog.Logger
 	maxBatchInterval time.Duration
@@ -87,20 +88,21 @@ type Guardian struct {
 
 func NewGuardian(cfg *hostconfig.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
-		hostData:           hostData,
-		state:              NewStateTracker(logger),
-		enclaveClient:      enclaveClient,
-		sl:                 serviceLocator,
-		batchInterval:      cfg.BatchInterval,
-		maxBatchInterval:   cfg.MaxBatchInterval,
-		rollupInterval:     cfg.RollupInterval,
-		l1StartHash:        cfg.L1StartHash,
-		maxRollupSize:      cfg.MaxRollupSize,
-		blockTime:          cfg.L1BlockTime,
-		crossChainInterval: cfg.CrossChainInterval,
-		storage:            storage,
-		hostInterrupter:    interrupter,
-		logger:             logger,
+		hostData:             hostData,
+		state:                NewStateTracker(logger),
+		enclaveClient:        enclaveClient,
+		sl:                   serviceLocator,
+		batchInterval:        cfg.BatchInterval,
+		maxBatchInterval:     cfg.MaxBatchInterval,
+		rollupInterval:       cfg.RollupInterval,
+		l1StartHash:          cfg.L1StartHash,
+		maxRollupSize:        cfg.MaxRollupSize,
+		blockTime:            cfg.L1BlockTime,
+		crossChainInterval:   cfg.CrossChainInterval,
+		storage:              storage,
+		hostInterrupter:      interrupter,
+		sequencerInterrupter: stopcontrol.New(),
+		logger:               logger,
 	}
 }
 
@@ -210,8 +212,33 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 		return errors.Wrap(err, "could not promote enclave to active sequencer")
 	}
 	g.isActiveSequencer = true
+	// Reset the sequencer interrupter before starting new processes
+	g.sequencerInterrupter = stopcontrol.New()
 	g.startSequencerProcesses()
 	return nil
+}
+
+// DemoteFromActiveSequencer stops the guardian from being the active sequencer,
+// stopping batch and rollup production. The enclave can be promoted again later if it catches up and failover is needed.
+func (g *Guardian) DemoteFromActiveSequencer() {
+	if !g.isActiveSequencer {
+		g.logger.Info("Cannot demote from active sequencer - not currently active")
+		return
+	}
+	g.logger.Info("Guardian demoted from active sequencer")
+	g.isActiveSequencer = false
+
+	// Signal the sequencer processes to stop
+	g.sequencerInterrupter.Stop()
+
+	// if this has been called the enclave is probably already dead, but we should try to stop it for good measure
+	err := g.enclaveClient.Stop()
+	if err != nil {
+		// log the error at info, this will be common as the enclave is probably already dead
+		g.logger.Info("could not stop enclave after demotion", log.ErrKey, err)
+	}
+
+	return
 }
 
 // HandleBlock is called by the L1 repository when new blocks arrive.
@@ -290,7 +317,7 @@ func (g *Guardian) mainLoop() {
 		g.logger.Trace("mainLoop - enclave status", "status", g.state.GetStatus())
 		switch g.state.GetStatus() {
 		case Disconnected, Unavailable:
-			// todo make this eviction trigger configurable once we've settled on how it should work
+			// todo make this demotion trigger configurable once we've settled on how it should work
 			if unavailableCounter > 10 {
 				// enclave has been unavailable for a while, evict it from the HA pool
 				g.evictEnclaveFromHAPool()
@@ -604,22 +631,18 @@ func (g *Guardian) periodicBatchProduction() {
 		interval = 1 * time.Second
 	}
 	batchProdTicker := time.NewTicker(interval)
-	// attempt to produce rollup every time the timer ticks until we are stopped/interrupted
 	for {
 		if !g.running.Load() {
 			batchProdTicker.Stop()
-			return // stop periodic rollup production
+			return
 		}
 		select {
 		case <-batchProdTicker.C:
 			if !g.state.InSyncWithL1() {
-				// if we're behind the L1, we don't want to produce batches
 				g.logger.Debug("Skipping batch production because L1 is not up to date")
 				continue
 			}
 			g.logger.Debug("Create batch")
-			// if maxBatchInterval is set higher than batchInterval then we are happy to skip creating batches when there is no data
-			// (up to a maximum time of maxBatchInterval)
 			skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
 			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
@@ -627,7 +650,11 @@ func (g *Guardian) periodicBatchProduction() {
 				g.evictEnclaveFromHAPool()
 			}
 		case <-g.hostInterrupter.Done():
-			// interrupted - end periodic process
+			// interrupted by host stopping
+			batchProdTicker.Stop()
+			return
+		case <-g.sequencerInterrupter.Done():
+			// interrupted by demotion
 			batchProdTicker.Stop()
 			return
 		}
@@ -639,7 +666,6 @@ const batchCompressionFactor = 0.85
 func (g *Guardian) periodicRollupProduction() {
 	defer g.logger.Info("Stopping rollup production")
 
-	// check rollup every l1 block time
 	rollupCheckTicker := time.NewTicker(g.blockTime)
 	lastSuccessfulRollup := time.Now()
 
@@ -705,7 +731,11 @@ func (g *Guardian) periodicRollupProduction() {
 			}
 
 		case <-g.hostInterrupter.Done():
-			// interrupted - end periodic process
+			// interrupted by host stopping
+			rollupCheckTicker.Stop()
+			return
+		case <-g.sequencerInterrupter.Done():
+			// interrupted by demotion
 			rollupCheckTicker.Stop()
 			return
 		}
@@ -716,16 +746,16 @@ func (g *Guardian) streamEnclaveData() {
 	defer g.logger.Info("Stopping enclave data stream")
 	g.logger.Info("Starting L2 update stream from enclave")
 
-	streamChan, stop := g.enclaveClient.StreamL2Updates()
+	streamChan, stopStream := g.enclaveClient.StreamL2Updates()
 	var lastBatch *common.ExtBatch
 	for {
 		select {
 		case resp, ok := <-streamChan:
 			if !ok {
-				stop()
+				stopStream()
 				g.logger.Warn("Batch streaming failed. Reconnecting after 3 seconds")
 				time.Sleep(3 * time.Second)
-				streamChan, stop = g.enclaveClient.StreamL2Updates()
+				streamChan, stopStream = g.enclaveClient.StreamL2Updates()
 
 				continue
 			}
@@ -760,7 +790,7 @@ func (g *Guardian) streamEnclaveData() {
 			}
 
 		case <-g.hostInterrupter.Done():
-			// interrupted - end periodic process
+			// interrupted by host stopping
 			return
 		}
 	}
