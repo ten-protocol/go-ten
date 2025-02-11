@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -33,8 +32,7 @@ type Service struct {
 
 	// The service goes via the Guardians to talk to the enclave (because guardian knows if the enclave is healthy etc.)
 	enclaveGuardians  []*Guardian
-	activeSequencerID *common.EnclaveID
-	haLock            sync.Mutex // lock for failover operations: evicting an enclave, promoting a standby to active, etc.
+	activeSequencerID atomic.Value // atomic pointer for thread safety, type: *common.EnclaveID
 
 	running atomic.Bool
 	logger  gethlog.Logger
@@ -129,18 +127,14 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 	return clients
 }
 
+// NotifyUnavailable is called by enclave guardians when they detect that the enclave is unavailable.
+// If this is a sequencer host then this function will start a search for a live standby enclave to promote to active sequencer.
 func (e *Service) NotifyUnavailable(enclaveID *common.EnclaveID) {
-	if len(e.enclaveGuardians) <= 1 {
-		e.logger.Info("not running in HA mode, no need to evict enclave", log.EnclaveIDKey, enclaveID)
-		return
-	}
-	if e.activeSequencerID == nil || *e.activeSequencerID != *enclaveID {
-		e.logger.Info("Enclave is not the active sequencer, no need to evict yet.", log.EnclaveIDKey, enclaveID)
+	if len(e.enclaveGuardians) <= 1 || e.activeSequencerID.Load() == nil || e.activeSequencerID.Load() != *enclaveID {
+		e.logger.Debug("Failed enclave is not an active sequencer on an HA node, no action required.", log.EnclaveIDKey, enclaveID)
 		return
 	}
 	failedEnclaveIdx := -1
-	e.haLock.Lock()
-	defer e.haLock.Unlock()
 	for i, guardian := range e.enclaveGuardians {
 		if *(guardian.GetEnclaveID()) == *enclaveID {
 			failedEnclaveIdx = i
@@ -148,17 +142,10 @@ func (e *Service) NotifyUnavailable(enclaveID *common.EnclaveID) {
 		}
 	}
 	if failedEnclaveIdx == -1 {
-		e.logger.Warn("Could not find enclave to evict.", log.EnclaveIDKey, enclaveID)
+		e.logger.Warn("Could not find failed enclave to evict.", log.EnclaveIDKey, enclaveID)
 		return
 	}
-	err := e.enclaveGuardians[failedEnclaveIdx].Stop()
-	if err != nil {
-		e.logger.Info("Failed to stop enclave guardian.", log.EnclaveIDKey, enclaveID, log.ErrKey, err)
-	}
-
-	// remove the failed enclave from the list of enclaves
-	e.enclaveGuardians = append(e.enclaveGuardians[:failedEnclaveIdx], e.enclaveGuardians[failedEnclaveIdx+1:]...)
-	e.logger.Warn("Evicted enclave from HA pool.", log.EnclaveIDKey, enclaveID)
+	e.enclaveGuardians[failedEnclaveIdx].DemoteFromActiveSequencer()
 
 	go e.promoteNewActiveSequencer()
 }
@@ -197,9 +184,7 @@ func (e *Service) Unsubscribe(id rpc.ID) error {
 // promoteNewActiveSequencer is a background goroutine that promotes a new active sequencer at startup or when the current one fails.
 // It will never give up, it just cycles through current enclaves until one can be successfully promoted.
 func (e *Service) promoteNewActiveSequencer() {
-	// remove activeSequencerID
-	e.activeSequencerID = nil
-	for e.activeSequencerID == nil && e.running.Load() {
+	for e.running.Load() {
 		if len(e.enclaveGuardians) == 0 {
 			e.logger.Crit("No enclaves to promote to active sequencer, sequencer host cannot continue.")
 		}
@@ -211,7 +196,7 @@ func (e *Service) promoteNewActiveSequencer() {
 				e.logger.Warn("Failed to promote new sequencer.", log.EnclaveIDKey, enclID, log.ErrKey, err)
 				continue
 			}
-			e.activeSequencerID = enclID
+			e.activeSequencerID.Store(enclID)
 			e.logger.Warn("Successfully promoted new sequencer.", log.EnclaveIDKey, e.activeSequencerID)
 			return
 		}
