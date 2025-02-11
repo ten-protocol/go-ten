@@ -240,8 +240,6 @@ func (g *Guardian) DemoteFromActiveSequencer() {
 		// log the error at info, this will be common as the enclave is probably already dead
 		g.logger.Info("could not stop enclave after demotion", log.ErrKey, err)
 	}
-
-	return
 }
 
 // HandleBlock is called by the L1 repository when new blocks arrive.
