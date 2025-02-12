@@ -5,7 +5,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 )
@@ -45,15 +44,7 @@ func (o *oracle) EstimateL1StorageGasCost(tx *types.Transaction, block *types.He
 		return nil, err
 	}
 
-	// If the block does not have excess blob gas, we can't estimate the cost
-	if block.ExcessBlobGas == nil {
-		return big.NewInt(0), nil
-	}
-
-	blobFee := eip4844.CalcBlobFee(*block.ExcessBlobGas)
-
-	l1Gas := CalculateL1GasUsed(encodedTx, big.NewInt(0))
-	return big.NewInt(0).Mul(l1Gas, blobFee), nil
+	return o.calculateL1Cost(block, encodedTx)
 }
 
 func (o *oracle) EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *types.Header) (*big.Int, error) {
@@ -62,15 +53,17 @@ func (o *oracle) EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *type
 		encoded = append(encoded, *args.Data...)
 	}
 
-	// We get the non zero gas cost per byte of calldata, and multiply it by the fixed bytes
-	// of a transaction. Then we take the data of a transaction and calculate the l1 gas used for it.
-	// Both are added together and multiplied by the base fee to give us the final cost for the message.
-	nonZeroGas := big.NewInt(int64(params.TxDataNonZeroGasEIP2028))
-	overhead := big.NewInt(0).Mul(big.NewInt(150), nonZeroGas)
-	l1Gas := CalculateL1GasUsed(encoded, overhead)
-	baseFee := big.NewInt(0)
-	if block.BaseFee != nil {
-		baseFee = block.BaseFee
+	return o.calculateL1Cost(block, encoded)
+}
+
+func (o *oracle) calculateL1Cost(block *types.Header, encodedTx []byte) (*big.Int, error) {
+	// If the block does not have excess blob gas, we can't estimate the cost
+	if block.ExcessBlobGas == nil {
+		return big.NewInt(0), nil
 	}
-	return big.NewInt(0).Mul(l1Gas, baseFee), nil
+
+	blobFee := eip4844.CalcBlobFee(*block.ExcessBlobGas)
+
+	l1Gas := CalculateL1GasUsed(encodedTx)
+	return big.NewInt(0).Mul(l1Gas, blobFee), nil
 }
