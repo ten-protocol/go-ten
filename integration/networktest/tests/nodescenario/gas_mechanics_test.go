@@ -15,7 +15,7 @@ import (
 
 // TestGasMechanics verifies gas mechanics including L1 publishing costs and base fee calculations
 func TestGasMechanics(t *testing.T) {
-	networktest.TestOnlyRunsInIDE(t)
+	// networktest.TestOnlyRunsInIDE(t)
 
 	// Create test context to store transaction results
 	type txResult struct {
@@ -45,13 +45,14 @@ func TestGasMechanics(t *testing.T) {
 					return ctx, err
 				}
 
-				senderBalance, err := sender.NativeBalance(ctx)
+				oneEth := big.NewInt(1e14)
+				initialBalance, err := sender.NativeBalance(ctx)
 				if err != nil {
 					return ctx, err
 				}
 
 				// Send 1 ETH
-				txHash, err := sender.SendFunds(ctx, receiver.Wallet().Address(), big.NewInt(1e14))
+				txHash, err := sender.SendFunds(ctx, receiver.Wallet().Address(), oneEth)
 				if err != nil {
 					return ctx, err
 				}
@@ -61,9 +62,9 @@ func TestGasMechanics(t *testing.T) {
 					return ctx, err
 				}
 
-				leftOverBalance, err := sender.NativeBalance(ctx)
-				differenceInBalance := new(big.Int).Sub(senderBalance, leftOverBalance)
-				differenceInBalance = new(big.Int).Sub(differenceInBalance, big.NewInt(1e14))
+				afterBalance, err := sender.NativeBalance(ctx)
+				differenceInBalance := new(big.Int).Sub(initialBalance, afterBalance)
+				differenceInBalance = new(big.Int).Sub(differenceInBalance, oneEth)
 
 				gasUsedBalance := new(big.Int).Mul(big.NewInt(int64(receipt.GasUsed)), receipt.EffectiveGasPrice)
 
