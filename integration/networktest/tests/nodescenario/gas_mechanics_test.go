@@ -22,7 +22,6 @@ func TestGasMechanics(t *testing.T) {
 		hash    common.Hash
 		receipt *types.Receipt
 		gasUsed uint64
-		l1Cost  *big.Int
 	}
 	var transactions []txResult
 
