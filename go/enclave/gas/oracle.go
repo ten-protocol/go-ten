@@ -54,6 +54,7 @@ func (o *oracle) calculateL1Cost(block *types.Header, encodedTx []byte, header *
 	l1Gas := CalculateL1GasUsed(encodedTx)
 	gasCost := big.NewInt(0).Mul(l1Gas, blobFee)
 
+	// round the gasCost up to the nearest multiple of header.BaseFee
 	remainder := new(big.Int).Mod(gasCost, header.BaseFee)
 	if remainder.Sign() > 0 {
 		gasCost.Add(gasCost, new(big.Int).Sub(header.BaseFee, remainder))
