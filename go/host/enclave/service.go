@@ -20,6 +20,10 @@ const (
 	_promoteSeqRetryInterval = 1 * time.Second
 )
 
+var (
+	_noActiveSequencer = common.EnclaveID{}
+)
+
 // This private interface enforces the services that the enclaves service depends on
 type enclaveServiceLocator interface {
 	P2P() host.P2P
@@ -55,6 +59,7 @@ func (e *Service) Start() error {
 			return err
 		}
 	}
+	e.activeSequencerID.Store(_noActiveSequencer)
 	if e.hostData.IsSequencer {
 		go e.promoteNewActiveSequencer()
 	}
@@ -130,7 +135,7 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 // NotifyUnavailable is called by enclave guardians when they detect that the enclave is unavailable.
 // If this is a sequencer host then this function will start a search for a live standby enclave to promote to active sequencer.
 func (e *Service) NotifyUnavailable(enclaveID *common.EnclaveID) {
-	if len(e.enclaveGuardians) <= 1 || e.activeSequencerID.Load() == nil || e.activeSequencerID.Load() != *enclaveID {
+	if len(e.enclaveGuardians) <= 1 || e.activeSequencerID.Load() != *enclaveID {
 		e.logger.Debug("Failed enclave is not an active sequencer on an HA node, no action required.", log.EnclaveIDKey, enclaveID)
 		return
 	}
@@ -184,7 +189,8 @@ func (e *Service) Unsubscribe(id rpc.ID) error {
 // promoteNewActiveSequencer is a background goroutine that promotes a new active sequencer at startup or when the current one fails.
 // It will never give up, it just cycles through current enclaves until one can be successfully promoted.
 func (e *Service) promoteNewActiveSequencer() {
-	for e.running.Load() {
+	e.activeSequencerID.Store(_noActiveSequencer)
+	for e.activeSequencerID.Load() == _noActiveSequencer && e.running.Load() {
 		for _, guardian := range e.enclaveGuardians {
 			enclID := guardian.GetEnclaveID()
 			e.logger.Info("Attempting to promote new sequencer.", log.EnclaveIDKey, enclID)
@@ -193,7 +199,7 @@ func (e *Service) promoteNewActiveSequencer() {
 				e.logger.Info("Unable to promote new sequencer.", log.EnclaveIDKey, enclID, log.ErrKey, err)
 				continue
 			}
-			e.activeSequencerID.Store(enclID)
+			e.activeSequencerID.Store(*enclID)
 			e.logger.Warn("Successfully promoted new sequencer.", log.EnclaveIDKey, e.activeSequencerID)
 			return
 		}
