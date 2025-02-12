@@ -159,13 +159,13 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 			rc.logger.Warn(fmt.Sprintf("could not decode tx at index %d. Cause: %s", i, err))
 		}
 		if t == nil {
-			rc.logger.Debug("could not cast decoded transaction to l1 rollup hashes", log.ErrKey, err)
+			rc.logger.Debug("could not decode transaction")
 			continue
 		}
 
 		rollupHashes, ok := t.(*common.L1RollupHashes)
 		if !ok {
-			rc.logger.Debug(fmt.Sprintf("could not cast decoded transaction to l1 rollup hashes. Cause: %s", err))
+			rc.logger.Error(fmt.Sprintf("could not cast decoded rollup tx to l1 rollup hashes"))
 			continue
 		}
 
