@@ -63,6 +63,9 @@ func TestGasMechanics(t *testing.T) {
 				}
 
 				afterBalance, err := sender.NativeBalance(ctx)
+				if err != nil {
+					return ctx, err
+				}
 				differenceInBalance := new(big.Int).Sub(initialBalance, afterBalance)
 				differenceInBalance = new(big.Int).Sub(differenceInBalance, oneEth)
 
