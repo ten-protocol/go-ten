@@ -306,7 +306,6 @@ func (r *DataService) processRollupLogs(l types.Log, txData *common.L1TxData, pr
 	} else {
 		r.logger.Debug(fmt.Sprintf("error while fetching blobs. Cause: %s", err))
 	}
-
 }
 
 // processManagementContractTx handles decoded transaction types

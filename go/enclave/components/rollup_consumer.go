@@ -159,7 +159,7 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 			rc.logger.Warn(fmt.Sprintf("could not decode tx at index %d. Cause: %s", i, err))
 		}
 		if t == nil {
-			rc.logger.Debug(fmt.Sprintf("rollup event was provided with a tx that is not a rollup."))
+			rc.logger.Debug("rollup event was provided with a tx that is not a rollup.")
 			continue
 		}
 
