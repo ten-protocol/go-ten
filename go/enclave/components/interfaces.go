@@ -158,4 +158,6 @@ type RollupConsumer interface {
 	ProcessRollups(ctx context.Context, rollups []*common.ExtRollup) ([]common.ExtRollupMetadata, error)
 	// GetRollupsFromL1Data -
 	GetRollupsFromL1Data(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error)
+
+	//VerifySequencerSignature()
 }

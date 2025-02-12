@@ -279,12 +279,10 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 	} else {
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, extRollup.Hash())
 	}
-	// TODO publish rollup to archive service if not already done
 }
 
 func (p *Publisher) handleMaxRetriesFailure(err *MaxRetriesError, rollup *common.ExtRollup) {
 	//TODO store failed rollup details so we can easily remediate? ie send new tx with the same nonce
-	// tx hash, rollup hash, nonce & gas price?
 	p.logger.Error("failed max retries: ", rollup.Hash().Hex(), err.TxHash, err.BlobTx.Nonce)
 }
 
