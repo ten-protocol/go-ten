@@ -295,15 +295,18 @@ func (r *DataService) processRollupLogs(l types.Log, txData *common.L1TxData, pr
 		r.logger.Error("Error unpacking RollupAdded event", log.ErrKey, err)
 		return
 	}
-	if blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash}); err == nil {
-		txData.BlobsWithSignature = []common.BlobAndSignature{
-			{
-				Blob:      blobs[0],
-				Signature: event.Signature,
-			},
-		}
-		processed.AddEvent(common.RollupTx, txData)
+	blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash})
+	if err != nil {
+		r.logger.Error(fmt.Sprintf("error while fetching blobs. Cause: %s", err))
+		return
 	}
+	txData.BlobsWithSignature = []common.BlobAndSignature{
+		{
+			Blob:      blobs[0],
+			Signature: event.Signature,
+		},
+	}
+	processed.AddEvent(common.RollupTx, txData)
 }
 
 // processManagementContractTx handles decoded transaction types
