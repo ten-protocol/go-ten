@@ -321,7 +321,9 @@ func (g *Guardian) mainLoop() {
 			// todo make this demotion trigger configurable once we've settled on how it should work
 			if unavailableCounter > 10 {
 				// enclave has been unavailable for a while, evict it from the HA pool
-				g.evictEnclaveFromHAPool()
+				g.evictEnclaveFromHAPool("enclave has been unavailable for too long")
+				// reset the counter so we don't spam the log
+				unavailableCounter = 0
 			}
 			// nothing to do, we are waiting for the enclave to be available
 			time.Sleep(_retryInterval)
@@ -652,7 +654,7 @@ func (g *Guardian) periodicBatchProduction() {
 			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
 				g.logger.Error("Unable to produce batch", log.ErrKey, err)
-				g.evictEnclaveFromHAPool()
+				g.evictEnclaveFromHAPool("seq enclave could not produce batch")
 			}
 		case <-g.hostInterrupter.Done():
 			// interrupted by host stopping
@@ -845,8 +847,8 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 // evictEnclaveFromHAPool evicts a failing enclave from the HA pool if appropriate
 // This is called when the enclave is unrecoverable and we want to notify the host that it should failover if an
 // alternative enclave is available.
-func (g *Guardian) evictEnclaveFromHAPool() {
-	g.logger.Warn("Enclave is unavailable - notifying enclave service to evict it from HA pool if necessary")
+func (g *Guardian) evictEnclaveFromHAPool(reason string) {
+	g.logger.Debug("Enclave is unavailable - notifying enclave service to evict it from HA pool if necessary", log.ErrKey, reason)
 	go g.sl.Enclaves().NotifyUnavailable(g.enclaveID)
 }
 
