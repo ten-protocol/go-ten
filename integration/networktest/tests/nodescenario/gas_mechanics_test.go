@@ -15,7 +15,7 @@ import (
 
 // TestGasMechanics verifies gas mechanics including L1 publishing costs and base fee calculations
 func TestGasMechanics(t *testing.T) {
-	// networktest.TestOnlyRunsInIDE(t)
+	networktest.TestOnlyRunsInIDE(t)
 
 	// Create test context to store transaction results
 	type txResult struct {
