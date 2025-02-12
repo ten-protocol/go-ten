@@ -14,8 +14,8 @@ network:
     maxInterval: 10m # rollups will be produced after this time even if the data blob is not full
     maxSize: 131072 # 128kb - the size of a blob
   gas: # todo: ask stefan about these fields
-    baseFee: 100000000 # using geth's initial base fee for EIP-1559 blocks.
-    minGasPrice: 1000000000 # using geth's initial base fee for EIP-1559 blocks.
+    baseFee: 100000000
+    minGasPrice: 100000000
     paymentAddress: 0xd6C9230053f45F873Cb66D8A02439380a37A4fbF
     batchExecutionLimit: 30000000 # same as Ethereum blocks
     localExecutionCap: 300000000000 # 300 gwei
