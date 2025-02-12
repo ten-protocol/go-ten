@@ -229,6 +229,7 @@ func (s *RPCServer) CreateRollup(ctx context.Context, req *generated.CreateRollu
 	result, sysError := s.enclave.CreateRollup(ctx, fromSeqNo)
 	if sysError != nil {
 		s.logger.Error("Error creating rollup", log.ErrKey, sysError)
+		return &generated.CreateRollupResponse{SystemError: toRPCError(sysError)}, nil
 	}
 
 	return &generated.CreateRollupResponse{
