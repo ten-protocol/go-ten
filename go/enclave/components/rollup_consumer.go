@@ -87,9 +87,9 @@ func (rc *rollupConsumerImpl) ProcessRollupData(ctx context.Context, processed *
 		rc.logger.Trace(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), processed.BlockHeader.Hash()))
 	}
 
-	// process rollup through compression service
 	metadata, err := rc.ProcessRollups(ctx, rollups)
 	if err != nil {
+		// critical error as the sequencer has signed this rollup
 		return nil, fmt.Errorf("failed to process rollup: %w", errutil.ErrCriticalRollupProcessing)
 	}
 
@@ -163,6 +163,16 @@ func (rc *rollupConsumerImpl) ExportAndVerifyCrossChainData(ctx context.Context,
 	return serializedTree, nil
 }
 
+// verifySequencerSignature - verifies that a rollup transaction was properly signed by the sequencer.
+//
+// 1. Extracts blobs and signatures from the transaction
+// 2. Computes blob hashes using KZG commitments
+// 3. Reconstructs the rollup from blob data
+// 4. Verifies the sequencer signature using a composite hash of the rollup header and blob hash
+//
+// Note: All errors are considered non-critical as they occur prior to signature verification
+// and could be due to malformed or invalid input data. We don't want to prevent blocks from being processed if this is
+// the case.
 func (rc *rollupConsumerImpl) verifySequencerSignature(rollupTx *common.L1TxData) (*common.ExtRollup, []gethcommon.Hash, error) {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed rollup sequencer", &core.RelaxedThresholds)
 	blobs := make([]*kzg4844.Blob, 0)
@@ -195,11 +205,13 @@ func (rc *rollupConsumerImpl) verifySequencerSignature(rollupTx *common.L1TxData
 	return rollup, blobHashes, nil
 }
 
-// verifyBlobHashes -
-// there may be many rollups in one block so the blobHashes array, so it is possible that the rollupHashes array is a
-// subset of the blobHashes array
+// verifyBlobHashes - verifies that all blob hashes referenced in a rollup transaction
+// exist in the block's blob hash list. Since multiple rollups can be included in a single
+// block, the rollup's blob hashes should be a subset of the block's total blob hashes.
+//
+// The function creates an efficient hash lookup map and verifies each rollup blob hash
+// exists in the block's blob hash set.
 func (rc *rollupConsumerImpl) verifyBlobHashes(rollupTx *common.L1TxData, blobHashes []gethcommon.Hash) error {
-	// more efficient lookup
 	blobHashSet := make(map[gethcommon.Hash]struct{}, len(blobHashes))
 	for _, h := range blobHashes {
 		blobHashSet[h] = struct{}{}
