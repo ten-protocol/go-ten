@@ -184,6 +184,7 @@ func (rc *rollupConsumerImpl) verifySequencerSignature(rollupTx *common.L1TxData
 		return nil, nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
 	}
 
+
 	// TODO would there ever be more than one blob hash and signature?
 	compositeHash := common.ComputeCompositeHash(rollup.Header, blobHashes[0])
 	if err := rc.sigValidator.CheckSequencerSignature(compositeHash, signatures[0]); err != nil {

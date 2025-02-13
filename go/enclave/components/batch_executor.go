@@ -268,7 +268,7 @@ func (executor *batchExecutor) toPricedTx(ec *BatchExecutionContext, tx *common.
 	}
 	accBalance := ec.stateDB.GetBalance(*sender)
 
-	cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block)
+	cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block, ec.currentBatch.Header)
 	if err != nil {
 		executor.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
 		return nil, fmt.Errorf("unable to get gas cost for tx. Cause: %w", err)
@@ -741,12 +741,15 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 	if txResult.Err == nil {
 		// populate the derived fields in the receipt
 		batch := ec.currentBatch
+		gasUsed := txResult.Receipt.GasUsed
 		txReceipts := &types.Receipts{txResult.Receipt}
 		err := txReceipts.DeriveFields(executor.chainConfig, batch.Hash(), batch.NumberU64(), batch.Header.Time, batch.Header.BaseFee, nil, types.Transactions{tx.Tx})
 		if err != nil {
 			return nil, fmt.Errorf("could not process receipts. Cause: %w", err)
 		}
 		txResult.Receipt.TransactionIndex = uint(offset)
+		// transactions.Derive messes with the gasUsed field, so we need to set it back
+		txResult.Receipt.GasUsed = gasUsed
 	}
 
 	return txResult, nil

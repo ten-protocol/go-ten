@@ -121,7 +121,7 @@ func MarkBatchExecuted(ctx context.Context, dbtx *sql.Tx, seqNo *big.Int) error 
 }
 
 func WriteReceipt(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint64, txId *uint64, receipt *types.Receipt) (uint64, error) {
-	insert := "insert into receipt (post_state, status, cumulative_gas_used, effective_gas_price, created_contract_address, tx, batch) values " + "(?,?,?,?,?,?,?)"
+	insert := "insert into receipt (post_state, status, gas_used, effective_gas_price, created_contract_address, tx, batch) values " + "(?,?,?,?,?,?,?)"
 	addr := &receipt.ContractAddress
 	if *addr == (gethcommon.Address{}) {
 		addr = nil
@@ -130,7 +130,7 @@ func WriteReceipt(ctx context.Context, dbtx *sql.Tx, batchSeqNo uint64, txId *ui
 	if receipt.EffectiveGasPrice != nil {
 		effPrice = receipt.EffectiveGasPrice.Uint64()
 	}
-	res, err := dbtx.ExecContext(ctx, insert, receipt.PostState, receipt.Status, receipt.CumulativeGasUsed, effPrice, addr, txId, batchSeqNo)
+	res, err := dbtx.ExecContext(ctx, insert, receipt.PostState, receipt.Status, receipt.GasUsed, effPrice, addr, txId, batchSeqNo)
 	if err != nil {
 		return 0, err
 	}
