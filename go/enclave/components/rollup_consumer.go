@@ -52,7 +52,7 @@ func NewRollupConsumer(
 
 // ProcessRollups - processes the rollups found in the block, verifies the rollups and stores them
 func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*common.ExtRollup) ([]common.ExtRollupMetadata, error) {
-	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs")
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", &core.RelaxedThresholds)
 
 	rollupMetadata := make([]common.ExtRollupMetadata, len(rollups))
 	for idx, rollup := range rollups {
@@ -159,11 +159,13 @@ func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.Processe
 			rc.logger.Warn(fmt.Sprintf("could not decode tx at index %d. Cause: %s", i, err))
 		}
 		if t == nil {
+			rc.logger.Warn("decoded transaction is nil")
 			continue
 		}
 
 		rollupHashes, ok := t.(*common.L1RollupHashes)
 		if !ok {
+			rc.logger.Error("could not cast decoded rollup tx to l1 rollup hashes")
 			continue
 		}
 
