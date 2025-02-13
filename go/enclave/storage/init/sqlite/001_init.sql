@@ -94,7 +94,7 @@ create table if not exists receipt
     id                       INTEGER PRIMARY KEY AUTOINCREMENT,
     post_state               binary(32),
     status                   int     not null,
-    cumulative_gas_used      int     not null,
+    gas_used                 int     not null,
     effective_gas_price      int,
     created_contract_address binary(20),
     tx                       INTEGER NOT NULL REFERENCES tx,

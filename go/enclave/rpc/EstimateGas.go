@@ -68,15 +68,15 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 		return err
 	}
 
-	// The message is run through the l1 publishing cost estimation for the current
-	// known head BlockHeader.
-	l1Cost, err := rpc.gasOracle.EstimateL1CostForMsg(txArgs, block)
+	headBatchSeq := rpc.registry.HeadBatchSeq()
+	batch, err := rpc.storage.FetchBatchHeaderBySeqNo(builder.ctx, headBatchSeq.Uint64())
 	if err != nil {
 		return err
 	}
 
-	headBatchSeq := rpc.registry.HeadBatchSeq()
-	batch, err := rpc.storage.FetchBatchHeaderBySeqNo(builder.ctx, headBatchSeq.Uint64())
+	// The message is run through the l1 publishing cost estimation for the current
+	// known head BlockHeader.
+	l1Cost, err := rpc.gasOracle.EstimateL1CostForMsg(txArgs, block, batch)
 	if err != nil {
 		return err
 	}

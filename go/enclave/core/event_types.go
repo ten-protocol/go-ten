@@ -59,6 +59,7 @@ type InternalReceipt struct {
 	PostState         []byte
 	Status            uint64
 	CumulativeGasUsed uint64
+	GasUsed           uint64
 	EffectiveGasPrice *uint64
 	CreatedContract   *gethcommon.Address
 	TxHash            gethcommon.Hash
@@ -86,7 +87,7 @@ func (receipt *InternalReceipt) MarshalToJson() map[string]interface{} {
 		"transactionIndex":  hexutil.Uint64(receipt.TransactionIndex),
 		"from":              receipt.From,
 		"to":                receipt.To,
-		"gasUsed":           hexutil.Uint64(receipt.CumulativeGasUsed),
+		"gasUsed":           hexutil.Uint64(receipt.GasUsed),
 		"cumulativeGasUsed": hexutil.Uint64(receipt.CumulativeGasUsed),
 		"contractAddress":   receipt.CreatedContract,
 		"logs":              receipt.Logs,
@@ -127,7 +128,7 @@ func (receipt *InternalReceipt) ToReceipt() *types.Receipt {
 		Logs:              receipt.Logs,
 		TxHash:            receipt.TxHash,
 		ContractAddress:   cc,
-		GasUsed:           receipt.CumulativeGasUsed,
+		GasUsed:           receipt.GasUsed,
 		EffectiveGasPrice: effGasPrice,
 		BlobGasUsed:       0,
 		BlobGasPrice:      nil,

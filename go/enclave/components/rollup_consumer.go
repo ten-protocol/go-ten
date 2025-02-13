@@ -139,7 +139,7 @@ func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*com
 	}
 
 	if len(rollupMetadata) < len(rollups) {
-		return nil, fmt.Errorf("%w: missing metadata for some rollups", errutil.ErrCriticalRollupProcessing)
+		return nil, fmt.Errorf("missing metadata for some rollups")
 	}
 
 	return rollupMetadata, nil

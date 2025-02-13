@@ -106,7 +106,7 @@ create table if not exists tendb.receipt
     id                       INTEGER AUTO_INCREMENT,
     post_state               binary(32),
     status                   TINYINT not null,
-    cumulative_gas_used      BIGINT  not null,
+    gas_used                 BIGINT  not null,
     effective_gas_price      BIGINT,
     created_contract_address binary(20),
     tx                       int     NOT NULL,
