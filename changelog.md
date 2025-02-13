@@ -5,6 +5,13 @@
 # December 2024-12-12 (v1.0.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
+    * `f501d11e` Update readme.md (#2302)
+    * `4c1bcb55` Update readme.md (#2142)
+    * `4277bb3b` Fix receipt.gasused  (#2311)
+    * `6cbe6319` Debug logging for rollups to see if we're losing any (#2310)
+    * `6ed2dc13` Fix min price (#2312)
+    * `3c6b5c55` Update base fee (#2309)
+    * `b0957492` More prs going in the release (#2307)
     * `c9bd00bd` Fix gas calculation (#2306)
     * `d3771fae` Auto restart gateway and comment out metrics (#2305)
     * `5e0b611a` Add relaxed log method duration threshold (#2301)
