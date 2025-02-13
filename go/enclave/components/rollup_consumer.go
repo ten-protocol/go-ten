@@ -50,9 +50,55 @@ func NewRollupConsumer(
 	}
 }
 
+func (rc *rollupConsumerImpl) ProcessRollupData(ctx context.Context, processed *common.ProcessedL1Data) ([]common.ExtRollupMetadata, error) {
+	rollupTxs := processed.GetEvents(common.RollupTx)
+	rollups := make([]*common.ExtRollup, 0, len(rollupTxs))
+	txsSeen := make(map[gethcommon.Hash]bool)
+
+	for _, rtx := range rollupTxs {
+		// verify signature and decode rollups
+		r, hashes, err := rc.verifySequencerSignature(rtx)
+		if err != nil {
+			return nil, fmt.Errorf("invalid sequencer signature: %w", err)
+		}
+
+		// prevent the case where someone pushes a blob to the same slot. multiple rollups can be found in a block,
+		// but they must come from unique transactions
+		if txsSeen[rtx.Transaction.Hash()] {
+			return nil, fmt.Errorf("multiple rollups from same transaction: %s. Err: %w", rtx.Transaction.Hash(), errutil.ErrCriticalRollupProcessing)
+		}
+
+		err = rc.verifyBlobHashes(rtx, hashes)
+		if err != nil {
+			// critical error as the sequencer has signed this rollup
+			return nil, fmt.Errorf("rollup hash verification failed: %w", errutil.ErrCriticalRollupProcessing)
+		}
+		rollups = append(rollups, r)
+		txsSeen[rtx.Transaction.Hash()] = true
+	}
+
+	if len(rollups) == 0 {
+		rc.logger.Warn("No rollups found in block when rollupTxs present", log.BlockHashKey, processed.BlockHeader.Hash())
+		return nil, nil
+	}
+
+	if len(rollups) > 1 {
+		// this is allowed as long as they come from unique transactions
+		rc.logger.Trace(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), processed.BlockHeader.Hash()))
+	}
+
+	// process rollup through compression service
+	metadata, err := rc.ProcessRollups(ctx, rollups)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process rollup: %w", errutil.ErrCriticalRollupProcessing)
+	}
+
+	return metadata, nil
+}
+
 // ProcessRollups - processes the rollups found in the block, verifies the rollups and stores them
 func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*common.ExtRollup) ([]common.ExtRollupMetadata, error) {
-	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", &core.RelaxedThresholds)
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed rollups", &core.RelaxedThresholds)
 
 	rollupMetadata := make([]common.ExtRollupMetadata, len(rollups))
 	for idx, rollup := range rollups {
@@ -117,94 +163,59 @@ func (rc *rollupConsumerImpl) ExportAndVerifyCrossChainData(ctx context.Context,
 	return serializedTree, nil
 }
 
-// GetRollupsFromL1Data - extracts the rollups from the processed L1 data and checks sequencer signature on them
-func (rc *rollupConsumerImpl) GetRollupsFromL1Data(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error) {
-	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer get rollups from L1 data", log.BlockHashKey, processed.BlockHeader.Hash())
+func (rc *rollupConsumerImpl) verifySequencerSignature(rollupTx *common.L1TxData) (*common.ExtRollup, []gethcommon.Hash, error) {
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed rollup sequencer", &core.RelaxedThresholds)
+	blobs := make([]*kzg4844.Blob, 0)
+	signatures := make([][]byte, 0)
+	for _, blobWithSig := range rollupTx.BlobsWithSignature {
+		blobs = append(blobs, blobWithSig.Blob)
+		signatures = append(signatures, blobWithSig.Signature)
+	}
 
-	block := processed.BlockHeader
-	rollups, err := rc.extractAndVerifyRollups(processed)
+	_, blobHashes, err := ethadapter.MakeSidecar(blobs, rc.MgmtContractLib.BlobHasher())
 	if err != nil {
-		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
-		return nil, err // if multiple rollups are found with the same tx hash we will return here
-	}
-	if len(rollups) == 0 {
-		rc.logger.Trace("No rollups found in block", log.BlockHashKey, block.Hash())
-		return nil, nil
+		// non-critical as signature not verified - could be bad data
+		return nil, nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
 	}
 
-	if len(rollups) > 0 {
-		// this is allowed as long as they come from unique transactions
-		rc.logger.Trace(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
+	rollup, err := ethadapter.ReconstructRollup(blobs)
+	if err != nil {
+		// non-critical as signature not verified - could be bad data
+		return nil, nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
 	}
-	return rollups, nil
+
+	// TODO would there ever be more than one blob hash and signature?
+	compositeHash := common.ComputeCompositeHash(rollup.Header, blobHashes[0])
+	if err := rc.sigValidator.CheckSequencerSignature(compositeHash, signatures[0]); err != nil {
+		// non-critical as signature not verified
+		return nil, nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
+	}
+	rc.logger.Info("Extracted rollup from block with valid sequencer signature", log.RollupHashKey, rollup.Hash(), log.BlockHashKey, rollup.Header.CompressionL1Head.Hex())
+
+	return rollup, blobHashes, nil
 }
 
-// extractAndVerifyRollups extracts rollups from L1 transactions in the processed block.
-// It verifies blob hashes match the rollup hashes and ensures each transaction only contains one rollup.
-// Returns an error if multiple rollups are found in the same transaction or if rollup reconstruction fails.
-func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error) {
-	rollupTxs := processed.GetEvents(common.RollupTx)
-	rollups := make([]*common.ExtRollup, 0, len(rollupTxs))
-
-	blobs, blobHashes, signatures, err := rc.extractBlobsAndHashes(rollupTxs)
-	if err != nil {
-		return nil, err
-	}
-
-	txsSeen := make(map[gethcommon.Hash]bool)
-
-	for i, tx := range rollupTxs {
-		t, err := rc.MgmtContractLib.DecodeTx(tx.Transaction)
-		if err != nil {
-			rc.logger.Warn(fmt.Sprintf("could not decode tx at index %d. Cause: %s", i, err))
-		}
-		if t == nil {
-			continue
-		}
-
-		rollupHashes, ok := t.(*common.L1RollupHashes)
-		if !ok {
-			continue
-		}
-
-		// prevent the case where someone pushes a blob to the same slot. multiple rollups can be found in a block,
-		// but they must come from unique transactions
-		if txsSeen[tx.Transaction.Hash()] {
-			return nil, fmt.Errorf("multiple rollups from same transaction: %s", tx.Transaction.Hash())
-		}
-
-		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
-			rc.logger.Warn(fmt.Sprintf("blob hashes in rollup at index %d do not match the rollup blob hashes. Cause: %s", i, err))
-			continue // Blob hashes don't match, skip this rollup
-		}
-
-		r, err := ethadapter.ReconstructRollup(blobs)
-		if err != nil {
-			// This is a critical error because we've already verified the blob hashes
-			// If we can't reconstruct the rollup at this point, something is seriously wrong
-			return nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
-		}
-
-		compositeHash := common.ComputeCompositeHash(r.Header, blobHashes[i])
-		if err := rc.sigValidator.CheckSequencerSignature(compositeHash, signatures[i]); err != nil {
-			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
-		}
-
-		rollups = append(rollups, r)
-		txsSeen[tx.Transaction.Hash()] = true
-
-		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, processed.BlockHeader.Hash())
-	}
-	return rollups, nil
-}
-
+// verifyBlobHashes -
 // there may be many rollups in one block so the blobHashes array, so it is possible that the rollupHashes array is a
 // subset of the blobHashes array
-func verifyBlobHashes(rollupHashes *common.L1RollupHashes, blobHashes []gethcommon.Hash) error {
+func (rc *rollupConsumerImpl) verifyBlobHashes(rollupTx *common.L1TxData, blobHashes []gethcommon.Hash) error {
 	// more efficient lookup
 	blobHashSet := make(map[gethcommon.Hash]struct{}, len(blobHashes))
 	for _, h := range blobHashes {
 		blobHashSet[h] = struct{}{}
+	}
+
+	t, err := rc.MgmtContractLib.DecodeTx(rollupTx.Transaction)
+	if err != nil {
+		return fmt.Errorf("could not decode tx. Cause: %s", err)
+	}
+	if t == nil {
+		return fmt.Errorf("decoded transaction should not be nil at this point")
+	}
+
+	rollupHashes, ok := t.(*common.L1RollupHashes)
+	if !ok {
+		return fmt.Errorf("decoded transaction should contain blob hashes")
 	}
 
 	for i, rollupHash := range rollupHashes.BlobHashes {
@@ -217,22 +228,4 @@ func verifyBlobHashes(rollupHashes *common.L1RollupHashes, blobHashes []gethcomm
 		}
 	}
 	return nil
-}
-
-func (rc *rollupConsumerImpl) extractBlobsAndHashes(rollupTxs []*common.L1TxData) ([]*kzg4844.Blob, []gethcommon.Hash, [][]byte, error) {
-	blobs := make([]*kzg4844.Blob, 0)
-	signatures := make([][]byte, 0)
-	for _, tx := range rollupTxs {
-		for _, blobWithSig := range tx.BlobsWithSignature {
-			blobs = append(blobs, blobWithSig.Blob)
-			signatures = append(signatures, blobWithSig.Signature)
-		}
-	}
-
-	_, blobHashes, err := ethadapter.MakeSidecar(blobs, rc.MgmtContractLib.BlobHasher())
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
-	}
-
-	return blobs, blobHashes, signatures, nil
 }
