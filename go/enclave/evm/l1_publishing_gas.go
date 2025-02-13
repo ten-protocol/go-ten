@@ -1,6 +1,7 @@
 package evm
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -13,7 +14,16 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
-func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Message, s *state.StateDB, header *types.Header, noBaseFee bool, execute func() (receipt *types.Receipt, err error)) error {
+var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
+
+const (
+	BalanceDecreaseL1Payment       tracing.BalanceChangeReason = 100
+	BalanceIncreaseL1Payment       tracing.BalanceChangeReason = 101
+	BalanceRevertDecreaseL1Payment tracing.BalanceChangeReason = 102
+	BalanceRevertIncreaseL1Payment tracing.BalanceChangeReason = 103
+)
+
+func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Message, s *state.StateDB, header *types.Header, noBaseFee bool, execute func() (receipt *types.Receipt, err error)) (*types.Receipt, error) {
 	l1cost := tx.PublishingCost
 	l1Gas := big.NewInt(0)
 	hasL1Cost := l1cost.Cmp(big.NewInt(0)) != 0
@@ -21,13 +31,12 @@ func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Messa
 	// If a transaction has to be published on the l1, it will have an l1 cost
 	if hasL1Cost {
 		l1Gas.Div(l1cost, header.BaseFee) // TotalCost/CostPerGas = Gas
-		l1Gas.Add(l1Gas, big.NewInt(1))   // Cover from leftover from the division
 
 		// The gas limit of the transaction (evm message) should always be higher than the gas overhead
 		// used to cover the l1 cost
 		// todo - this check has to be added to the mempool as well
 		if msg.GasLimit < l1Gas.Uint64() {
-			return fmt.Errorf("%w. Want at least: %d have: %d", ErrGasNotEnoughForL1, l1Gas, msg.GasLimit)
+			return nil, fmt.Errorf("%w. Want at least: %d have: %d", ErrGasNotEnoughForL1, l1Gas, msg.GasLimit)
 		}
 
 		// Remove the gas overhead for l1 publishing from the gas limit in order to define
@@ -48,7 +57,7 @@ func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Messa
 			s.SubBalance(header.Coinbase, uint256.MustFromBig(l1cost), BalanceRevertIncreaseL1Payment)
 			s.AddBalance(msg.From, uint256.MustFromBig(l1cost), BalanceRevertDecreaseL1Payment)
 		}
-		return err
+		return nil, err
 	}
 
 	// Synthetic transactions and ten zen are free. Do not increase the balance of the coinbase.
@@ -66,5 +75,5 @@ func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Messa
 
 	receipt.GasUsed += l1Gas.Uint64()
 
-	return nil
+	return receipt, nil
 }

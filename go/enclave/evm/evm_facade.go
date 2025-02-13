@@ -4,7 +4,6 @@ package evm
 // This allows us to customize the message generated from a signed transaction and inject custom gas logic.
 import (
 	"context"
-	"errors"
 	"fmt"
 	_ "unsafe"
 
@@ -26,15 +25,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcore "github.com/ethereum/go-ethereum/core"
 	gethlog "github.com/ethereum/go-ethereum/log"
-)
-
-var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
-
-const (
-	BalanceDecreaseL1Payment       tracing.BalanceChangeReason = 100
-	BalanceIncreaseL1Payment       tracing.BalanceChangeReason = 101
-	BalanceRevertDecreaseL1Payment tracing.BalanceChangeReason = 102
-	BalanceRevertIncreaseL1Payment tracing.BalanceChangeReason = 103
 )
 
 type evmExecutor struct {
@@ -113,12 +103,9 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 		return nil, err
 	}
 
-	var receipt *types.Receipt
-	err = adjustPublishingCostGas(tx, msg, s, header, noBaseFee, func() (*types.Receipt, error) {
-		var err1 error
+	receipt, err := adjustPublishingCostGas(tx, msg, s, header, noBaseFee, func() (*types.Receipt, error) {
 		s.SetTxContext(tx.Tx.Hash(), tCount)
-		receipt, err1 = gethcore.ApplyTransactionWithEVM(msg, exec.cc, gp, s, header.Number, header.Hash(), tx.Tx, usedGas, evmEnv)
-		return receipt, err1
+		return gethcore.ApplyTransactionWithEVM(msg, exec.cc, gp, s, header.Number, header.Hash(), tx.Tx, usedGas, evmEnv)
 	})
 	if err != nil {
 		return nil, err

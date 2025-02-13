@@ -86,9 +86,6 @@ func (bp *l1BlockProcessor) Process(ctx context.Context, processed *common.Proce
 		}
 	}
 
-	// todo @siliev - not sure if this is the best way to update the price, will pick up random stale blocks from forks?
-	bp.gasOracle.ProcessL1Block(processed.BlockHeader)
-
 	h := processed.BlockHeader.Hash()
 	bp.currentL1Head = &h
 	bp.lastIngestedBlock.Mark()
