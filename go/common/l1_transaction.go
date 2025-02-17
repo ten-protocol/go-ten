@@ -155,3 +155,17 @@ func (p *ProcessedL1Data) GetEvents(txType L1TenEventType) []*L1TxData {
 	}
 	return nil
 }
+
+func (p *ProcessedL1Data) HasEvents(tenEventType L1TenEventType) bool {
+	if p == nil || len(p.Events) == 0 {
+		return false
+	}
+
+	for _, event := range p.Events {
+		if event.Type == uint8(tenEventType) && len(event.Txs) > 0 {
+			return true
+		}
+	}
+
+	return false
+}
