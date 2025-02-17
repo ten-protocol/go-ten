@@ -63,7 +63,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	baseFee := head.BaseFee
 	gasFeeCap := big.NewInt(0).Add(baseFee, gasTipCap)
 
-	logger.Info("Sending tx with gas price", "retry", retryNumber, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap, "estimatedGas", estimatedGas, "to", to.Hex())
+	logger.Info("Sending tx with gas price", "retry", retryNumber, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap, "estimatedGas", estimatedGas, "to", to)
 
 	if blobTx, ok := txData.(*types.BlobTx); ok {
 		var blobBaseFee *big.Int
