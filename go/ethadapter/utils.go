@@ -13,7 +13,10 @@ import (
 	"github.com/holiman/uint256"
 )
 
-var _retryPriceMultiplier = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
+const (
+	_retryPriceMultiplier     = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
+	_maxTxRetryPriceIncreases = 5
+)
 
 // SetTxGasPrice takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
@@ -42,15 +45,12 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		return nil, fmt.Errorf("could not suggest gas price - %w", err)
 	}
 
-	/*
-		// there is no need to adjust the gasTipCap if we have to retry because we are already using the latest suggested value
-		// adjust the gasTipCap if we have to retry
-		// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
-		// we apply a 100% gas price increase for each retry (retrying with similar price gets rejected by mempool)
-		// Retry '0' is the first attempt, gives multiplier of 1.0
-		retryMultiplier := math.Pow(_retryPriceMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
-		gasTipCap = big.NewInt(0).Mul(gasTipCap, big.NewInt(int64(retryMultiplier)))
-	*/
+	// adjust the gasTipCap if we have to retry
+	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
+	// we apply a 30% gas price increase for each retry (retrying with similar price gets rejected by mempool)
+	// Retry '0' is the first attempt, gives multiplier of 1.0
+	retryMultiplier := math.Pow(_retryPriceMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
+	gasTipCap = big.NewInt(0).Mul(gasTipCap, big.NewInt(int64(retryMultiplier)))
 
 	// calculate the gas fee cap
 	head, err := ethClient.HeaderByNumber(nil)
@@ -69,16 +69,9 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
 
-		// for blob transactions, increase the tip by 30% on each retry
-		if retryNumber > 0 {
-			multiplier := int64(math.Pow(_retryPriceMultiplier, float64(retryNumber)))
-			gasTipCap = new(big.Int).Mul(gasTipCap, big.NewInt(multiplier))
-		}
-		gasFeeCapUpdated := new(big.Int).Add(head.BaseFee, gasTipCap)
-
 		return &types.BlobTx{
 			Nonce:      nonce,
-			GasTipCap:  uint256.MustFromBig(gasFeeCapUpdated),
+			GasTipCap:  uint256.MustFromBig(gasTipCap),
 			GasFeeCap:  uint256.MustFromBig(gasFeeCap),
 			Gas:        estimatedGas,
 			To:         *to,
