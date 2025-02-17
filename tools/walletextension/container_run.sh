@@ -11,12 +11,12 @@ set -euo pipefail
 port=3000
 portWS=3001
 host="0.0.0.0"
-nodeHost="testnet.obscu.ro"
-nodePortHTTP=13000
-nodePortWS=13001
+nodeHost="erpc.sepolia-testnet.ten.xyz"
+nodePortHTTP=80
+nodePortWS=81
 logPath="wallet_extension_logs.txt"
 databasePath=".obscuro/gateway_database.db"
-image="obscuronet/obscuro_gateway_testnet:latest"
+image="obscuronet/obscuro_gateway_sepolia_testnet:latest"
 
 # Parse the options
 for argument in "$@"

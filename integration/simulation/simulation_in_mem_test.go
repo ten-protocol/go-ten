@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
 // This test creates a network of in memory L1 and L2 nodes, then injects transactions, and finally checks the resulting output blockchain.
@@ -18,27 +18,26 @@ import (
 func TestInMemoryMonteCarloSimulation(t *testing.T) {
 	setupSimTestLog("in-mem")
 
-	// todo (#718) - try increasing this back to 7 once faster-finality model is optimised
 	numberOfNodes := 5
 	numberOfSimWallets := 10
-	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.ObscuroChainID)
+	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 
 	simParams := params.SimParams{
-		NumberOfNodes: numberOfNodes,
-		//  todo (#718) - try reducing this back to 50 milliseconds once faster-finality model is optimised
-		AvgBlockDuration:          250 * time.Millisecond,
-		SimulationTime:            30 * time.Second,
-		L1EfficiencyThreshold:     0.2,
-		L2EfficiencyThreshold:     0.5,
-		L2ToL1EfficiencyThreshold: 0.5,
-		MgmtContractLib:           ethereummock.NewMgmtContractLibMock(),
-		ERC20ContractLib:          ethereummock.NewERC20ContractLibMock(),
-		Wallets:                   wallets,
-		StartPort:                 integration.StartPortSimulationInMem,
-		IsInMem:                   true,
-		L1SetupData:               &params.L1SetupData{},
-		ReceiptTimeout:            10 * time.Second,
-		StoppingDelay:             2 * time.Second,
+		NumberOfNodes:              numberOfNodes,
+		AvgBlockDuration:           180 * time.Millisecond,
+		SimulationTime:             45 * time.Second,
+		L1EfficiencyThreshold:      0.8,
+		MgmtContractLib:            ethereummock.NewMgmtContractLibMock(),
+		ERC20ContractLib:           ethereummock.NewERC20ContractLibMock(),
+		BlobResolver:               ethereummock.NewMockBlobResolver(),
+		Wallets:                    wallets,
+		StartPort:                  integration.TestPorts.TestInMemoryMonteCarloSimulationPort,
+		IsInMem:                    true,
+		L1TenData:                  &params.L1TenData{},
+		ReceiptTimeout:             6 * time.Second,
+		StoppingDelay:              10 * time.Second,
+		NodeWithInboundP2PDisabled: 2,
+		L1BeaconPort:               integration.TestPorts.TestInMemoryMonteCarloSimulationPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	simParams.AvgNetworkLatency = simParams.AvgBlockDuration / 15

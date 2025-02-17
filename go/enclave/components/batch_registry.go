@@ -1,414 +1,276 @@
 package components
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"sync"
+	"sync/atomic"
+	"time"
 
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/ten-protocol/go-ten/go/common/gethencoding"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
+
+	"github.com/ten-protocol/go-ten/go/common"
+
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/measure"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
-	"github.com/obscuronet/go-obscuro/go/enclave/db/sql"
-	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
+	"github.com/ten-protocol/go-ten/go/common/async"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/limiters"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-type batchRegistryImpl struct {
-	storage       db.Storage
-	logger        gethlog.Logger
-	chainConfig   *params.ChainConfig
-	batchProducer BatchProducer
-	sigValidator  *SignatureValidator
-	// Channel on which batches will be pushed. It is held by another caller outside the
-	// batch registry.
-	batchSubscription *chan *core.Batch
-	// Channel for pushing batch height numbers which are needed in order
-	// to figure out what events to send to subscribers.
-	eventSubscription *chan uint64
+type batchRegistry struct {
+	storage      storage.Storage
+	logger       gethlog.Logger
+	headBatchSeq atomic.Pointer[big.Int] // keep track of the last executed batch to optimise db access
 
-	subscriptionMutex sync.Mutex
+	batchesCallback   func(*core.Batch, types.Receipts)
+	callbackMutex     sync.RWMutex
+	healthTimeout     time.Duration
+	lastExecutedBatch *async.Timestamp
+	ethChainAdapter   *EthChainAdapter
 }
 
-func NewBatchRegistry(storage db.Storage, batchProducer BatchProducer, sigValidator *SignatureValidator, chainConfig *params.ChainConfig, logger gethlog.Logger) BatchRegistry {
-	return &batchRegistryImpl{
-		storage:       storage,
-		batchProducer: batchProducer,
-		sigValidator:  sigValidator,
-		chainConfig:   chainConfig,
-		logger:        logger,
-	}
-}
-
-func (br *batchRegistryImpl) CommitBatch(cb *ComputedBatch) error {
-	_, err := cb.Commit(true)
-	return err
-}
-
-func (br *batchRegistryImpl) SubscribeForEvents() chan uint64 {
-	evSub := make(chan uint64)
-	br.eventSubscription = &evSub
-	return *br.eventSubscription
-}
-
-func (br *batchRegistryImpl) UnsubscribeFromEvents() {
-	br.eventSubscription = nil
-}
-
-// StoreBatch - stores a batch and if it is the new l2 head, then registry will update
-// stored head pointers
-func (br *batchRegistryImpl) StoreBatch(batch *core.Batch, receipts types.Receipts) error {
-	defer br.logger.Info("Registry StoreBatch() exit", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
-
-	// Check if this batch is already stored.
-	if _, err := br.storage.FetchBatchHeader(batch.Hash()); err == nil {
-		br.logger.Warn("Attempted to store batch twice! This indicates issues with the batch processing loop")
-		return nil
-	}
-
-	dbBatch := br.storage.OpenBatch()
-
-	isHeadBatch, err := br.updateHeadPointers(batch, receipts, dbBatch)
+func NewBatchRegistry(storage storage.Storage, config *enclaveconfig.EnclaveConfig, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger) BatchRegistry {
+	var headBatchSeq *big.Int
+	headBatch, err := storage.FetchHeadBatchHeader(context.Background())
 	if err != nil {
-		return fmt.Errorf("failed updating head pointers. Cause: %w", err)
+		if errors.Is(err, errutil.ErrNotFound) {
+			headBatchSeq = nil
+		} else {
+			logger.Crit("Could not create batch registry", log.ErrKey, err)
+			return nil
+		}
+	} else {
+		headBatchSeq = headBatch.SequencerOrderNo
+	}
+	br := &batchRegistry{
+		storage:           storage,
+		logger:            logger,
+		healthTimeout:     time.Minute,
+		lastExecutedBatch: async.NewAsyncTimestamp(time.Now().Add(-time.Minute)),
+	}
+	br.headBatchSeq.Store(headBatchSeq)
+
+	br.ethChainAdapter = NewEthChainAdapter(big.NewInt(config.TenChainID), br, storage, gethEncodingService, config, logger)
+	return br
+}
+
+func (br *batchRegistry) EthChain() *EthChainAdapter {
+	return br.ethChainAdapter
+}
+
+func (br *batchRegistry) HeadBatchSeq() *big.Int {
+	return br.headBatchSeq.Load()
+}
+
+func (br *batchRegistry) SubscribeForExecutedBatches(callback func(*core.Batch, types.Receipts)) {
+	br.callbackMutex.Lock()
+	defer br.callbackMutex.Unlock()
+	br.batchesCallback = callback
+}
+
+func (br *batchRegistry) UnsubscribeFromBatches() {
+	br.callbackMutex.Lock()
+	defer br.callbackMutex.Unlock()
+
+	br.batchesCallback = nil
+}
+
+func (br *batchRegistry) OnL1Reorg(_ *BlockIngestionType) {
+	// refresh the cached head batch from the database because there was an L1 reorg
+	headBatch, err := br.storage.FetchHeadBatchHeader(context.Background())
+	if err != nil {
+		br.logger.Error("Could not fetch head batch", log.ErrKey, err)
+		return
+	}
+	br.headBatchSeq.Store(headBatch.SequencerOrderNo)
+}
+
+func (br *batchRegistry) OnBatchExecuted(batchHeader *common.BatchHeader, txExecResults []*core.TxExecResult) error {
+	defer core.LogMethodDuration(br.logger, measure.NewStopwatch(), "OnBatchExecuted", log.BatchHashKey, batchHeader.Hash())
+
+	txs, err := br.storage.FetchBatchTransactionsBySeq(context.Background(), batchHeader.SequencerOrderNo.Uint64())
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		// this function is called after a batch was successfully executed. This is a catastrophic failure
+		br.logger.Crit("should not happen. cannot get transactions. ", log.ErrKey, err)
+	}
+	batch := &core.Batch{
+		Header:       batchHeader,
+		Transactions: txs,
+	}
+	err = br.ethChainAdapter.IngestNewBlock(batch)
+	if err != nil {
+		return fmt.Errorf("failed to feed batch into the virtual eth chain. cause %w", err)
 	}
 
-	if err = br.storage.StoreBatch(batch, receipts, dbBatch); err != nil {
-		return fmt.Errorf("failed to store batch. Cause: %w", err)
+	br.headBatchSeq.Store(batchHeader.SequencerOrderNo)
+
+	br.callbackMutex.RLock()
+	callback := br.batchesCallback
+	br.callbackMutex.RUnlock()
+
+	if callback != nil {
+		txReceipts := make([]*types.Receipt, len(txExecResults))
+		for i, txExecResult := range txExecResults {
+			txReceipts[i] = txExecResult.Receipt
+		}
+		callback(batch, txReceipts)
 	}
 
-	if err = br.storage.CommitBatch(dbBatch); err != nil {
-		return fmt.Errorf("unable to commit changes to db. Cause: %w", err)
-	}
-
-	br.notifySubscriber(batch, isHeadBatch)
-
+	br.lastExecutedBatch.Mark()
 	return nil
 }
 
-func (br *batchRegistryImpl) handleGenesisBatch(incomingBatch *core.Batch) (bool, error) {
-	batch, _, err := br.batchProducer.CreateGenesisState(incomingBatch.Header.L1Proof, incomingBatch.Header.Time)
+func (br *batchRegistry) HasGenesisBatch() (bool, error) {
+	return br.HeadBatchSeq() != nil, nil
+}
+
+func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Header, error) {
+	// sanity check
+	headBatch, err := br.storage.FetchBatchHeaderBySeqNo(ctx, br.HeadBatchSeq().Uint64())
 	if err != nil {
-		return false, err
+		return nil, nil, err
 	}
 
-	if !bytes.Equal(incomingBatch.Hash().Bytes(), batch.Hash().Bytes()) {
-		return false, fmt.Errorf("received bad genesis batch")
+	if headBatch.SequencerOrderNo.Uint64() < batchSeqNo {
+		return nil, nil, fmt.Errorf("head batch height %d is in the past compared to requested batch %d", headBatch.SequencerOrderNo.Uint64(), batchSeqNo)
 	}
 
-	return true, br.StoreBatch(incomingBatch, nil)
-}
+	resultBatches := make([]*core.Batch, 0)
+	resultBlocks := make([]*types.Header, 0)
 
-func (br *batchRegistryImpl) ValidateBatch(incomingBatch *core.Batch) (types.Receipts, error) {
-	if incomingBatch.NumberU64() == 0 {
-		if handled, err := br.handleGenesisBatch(incomingBatch); handled {
-			return nil, err
-		}
-	}
-
-	defer br.logger.Info("Validator processed batch", log.BatchHashKey, incomingBatch.Hash(), log.DurationKey, measure.NewStopwatch())
-
-	if batch, err := br.GetBatch(incomingBatch.Hash()); err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return nil, err
-	} else if batch != nil {
-		return nil, nil // already know about this one
-	}
-
-	if err := br.sigValidator.CheckSequencerSignature(incomingBatch.Hash(), incomingBatch.Header.R, incomingBatch.Header.S); err != nil {
-		return nil, err
-	}
-
-	// Validators recompute the entire batch using the same batch context
-	// if they have all necessary prerequisites like having the l1 block processed
-	// and the parent hash. This recomputed batch is then checked against the incoming batch.
-	// If the sequencer has tampered with something the hash will not add up and validation will
-	// produce an error.
-	cb, err := br.batchProducer.ComputeBatch(&BatchExecutionContext{
-		BlockPtr:     incomingBatch.Header.L1Proof,
-		ParentPtr:    incomingBatch.Header.ParentHash,
-		Transactions: incomingBatch.Transactions,
-		AtTime:       incomingBatch.Header.Time,
-		ChainConfig:  br.chainConfig,
-		SequencerNo:  incomingBatch.Header.SequencerOrderNo,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed recomputing batch %s. Cause: %w", incomingBatch.Hash(), err)
-	}
-
-	if !bytes.Equal(cb.Batch.Hash().Bytes(), incomingBatch.Hash().Bytes()) {
-		// todo @stefan - generate a validator challenge here and return it
-		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", incomingBatch.Hash().Hex(), cb.Batch.Hash().Hex())
-	}
-
-	if _, err := cb.Commit(true); err != nil {
-		return nil, fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", incomingBatch.Hash(), err)
-	}
-
-	return cb.Receipts, nil
-}
-
-func (br *batchRegistryImpl) notifySubscriber(batch *core.Batch, isHeadBatch bool) {
-	defer br.logger.Info("Registry notified subscribers of batch", log.BatchHashKey, batch.Hash(), log.DurationKey, measure.NewStopwatch())
-
-	br.subscriptionMutex.Lock()
-	subscriptionChan := br.batchSubscription
-	eventChan := br.eventSubscription
-	br.subscriptionMutex.Unlock()
-
-	if subscriptionChan != nil {
-		*subscriptionChan <- batch
-	}
-
-	if br.eventSubscription != nil && isHeadBatch {
-		*eventChan <- batch.NumberU64()
-	}
-}
-
-func (br *batchRegistryImpl) updateHeadPointers(batch *core.Batch, receipts types.Receipts, dbBatch *sql.Batch) (bool, error) {
-	if err := br.updateBlockPointers(batch, receipts, dbBatch); err != nil {
-		return false, err
-	}
-
-	return br.updateBatchPointers(batch, dbBatch)
-}
-
-func (br *batchRegistryImpl) updateBatchPointers(batch *core.Batch, dbBatch *sql.Batch) (bool, error) {
-	if head, err := br.storage.FetchHeadBatch(); err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return false, err
-	} else if head != nil && batch.NumberU64() < head.NumberU64() {
-		return false, nil
-	}
-
-	return true, br.storage.SetHeadBatchPointer(batch, dbBatch)
-}
-
-func (br *batchRegistryImpl) updateBlockPointers(batch *core.Batch, receipts types.Receipts, dbBatch *sql.Batch) error {
-	head, err := br.GetHeadBatchFor(batch.Header.L1Proof)
-
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return fmt.Errorf("unexpected error while getting head batch for block. Cause: %w", err)
-	} else if head != nil && batch.NumberU64() < head.NumberU64() {
-		return fmt.Errorf("inappropriate update from previous head with height %d to new head with height %d for same l1 block", head.NumberU64(), batch.NumberU64())
-	}
-
-	return br.storage.UpdateHeadBatch(batch.Header.L1Proof, batch, receipts, dbBatch)
-}
-
-func (br *batchRegistryImpl) GetHeadBatch() (*core.Batch, error) {
-	return br.storage.FetchHeadBatch()
-}
-
-func (br *batchRegistryImpl) GetHeadBatchFor(blockHash common.L1BlockHash) (*core.Batch, error) {
-	return br.storage.FetchHeadBatchForBlock(blockHash)
-}
-
-func (br *batchRegistryImpl) GetBatch(batchHash common.L2BatchHash) (*core.Batch, error) {
-	return br.storage.FetchBatch(batchHash)
-}
-
-func (br *batchRegistryImpl) Subscribe(lastKnownHead *common.L2BatchHash) (chan *core.Batch, error) {
-	br.subscriptionMutex.Lock()
-	defer br.subscriptionMutex.Unlock()
-	missingBatches, err := br.getMissingBatches(lastKnownHead)
-	if err != nil {
-		return nil, err
-	}
-
-	subChannel := make(chan *core.Batch, len(missingBatches))
-	for i := len(missingBatches) - 1; i >= 0; i-- {
-		batch := missingBatches[i]
-		subChannel <- batch
-	}
-
-	br.batchSubscription = &subChannel
-	return *br.batchSubscription, nil
-}
-
-func (br *batchRegistryImpl) Unsubscribe() {
-	br.subscriptionMutex.Lock()
-	defer br.subscriptionMutex.Unlock()
-	if br.batchSubscription != nil {
-		close(*br.batchSubscription)
-		br.batchSubscription = nil
-	}
-}
-
-func (br *batchRegistryImpl) getMissingBatches(fromHash *common.L2BatchHash) ([]*core.Batch, error) {
-	if fromHash == nil {
-		return nil, nil
-	}
-
-	from, err := br.GetBatch(*fromHash)
-	if err != nil {
-		br.logger.Error("Error while attempting to stream from batch", log.ErrKey, err)
-		return nil, err
-	}
-
-	to, err := br.GetHeadBatch()
-	if err != nil {
-		br.logger.Error("Unable to get head batch while attempting to stream", log.ErrKey, err)
-		return nil, err
-	}
-
-	missingBatches := make([]*core.Batch, 0)
-	for !bytes.Equal(to.Hash().Bytes(), from.Hash().Bytes()) {
-		if to.NumberU64() == 0 {
-			br.logger.Error("Reached genesis when seeking missing batches to stream", log.ErrKey, err)
-			return nil, err
+	currentBatchSeq := batchSeqNo
+	var currentBlock *types.Header
+	for currentBatchSeq <= headBatch.SequencerOrderNo.Uint64() {
+		batch, err := br.storage.FetchBatchBySeqNo(ctx, currentBatchSeq)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not retrieve batch by sequence number %d. Cause: %w", currentBatchSeq, err)
 		}
 
-		if from.NumberU64() == to.NumberU64() {
-			from, err = br.GetBatch(from.Header.ParentHash)
+		// check the block height
+		// if it's the same block as the previous batch there is no reason to check
+		if currentBlock == nil || currentBlock.Hash() != batch.Header.L1Proof {
+			block, err := br.storage.FetchBlock(ctx, batch.Header.L1Proof)
 			if err != nil {
-				br.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
-				return nil, err
+				return nil, nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
+			}
+			currentBlock = block
+			if block.Number.Uint64() > upToL1Height {
+				break
+			}
+			resultBlocks = append(resultBlocks, block)
+		}
+
+		// check the limiter
+		didAcceptBatch, err := rollupLimiter.AcceptBatch(batch)
+		if err != nil {
+			return nil, nil, err
+		}
+		if !didAcceptBatch {
+			break
+		}
+
+		resultBatches = append(resultBatches, batch)
+		br.logger.Info("Added batch to rollup", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.SeqNo(), log.BatchHeightKey, batch.Number(), "l1_proof", batch.Header.L1Proof)
+
+		currentBatchSeq++
+	}
+
+	if len(resultBatches) > 0 {
+		// Sanity check that the rollup includes consecutive batches (according to the seqNo)
+		current := resultBatches[0].SeqNo().Uint64()
+		for i, b := range resultBatches {
+			if current+uint64(i) != b.SeqNo().Uint64() {
+				return nil, nil, fmt.Errorf("created invalid rollup with batches out of sequence")
 			}
 		}
-
-		missingBatches = append(missingBatches, to)
-		to, err = br.GetBatch(to.Header.ParentHash)
-		if err != nil {
-			br.logger.Error("Unable to get batch in chain while attempting to stream", log.ErrKey, err)
-			return nil, err
-		}
 	}
 
-	return missingBatches, nil
+	return resultBatches, resultBlocks, nil
 }
 
-func (br *batchRegistryImpl) FindAncestralBatchFor(block *common.L1Block) (*core.Batch, error) {
-	currentBlock := block
-	var ancestorBatch *core.Batch
-	var err error
-
-	br.logger.Trace("Searching for ancestral batch")
-	// todo - this for loop should have more edge cases.
-	for ancestorBatch == nil {
-		if currentBlock.NumberU64() == common.L1GenesisHeight {
-			return nil, fmt.Errorf("reached genesis block")
-		}
-
-		ancestorBatch, err = br.GetHeadBatchFor(currentBlock.Hash())
-		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-			return nil, fmt.Errorf("unable to get latest ancestral batch. Cause: %w", err)
-		}
-
-		parentBlockHash := currentBlock.ParentHash()
-		currentBlock, err = br.storage.FetchBlock(parentBlockHash)
-		if err != nil {
-			return nil, fmt.Errorf("unable to find parent for block %s in ancestral chain. Cause: %w", parentBlockHash.Hex(), err)
-		}
+func (br *batchRegistry) GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, error) {
+	if blockNumberOrHash.BlockHash != nil {
+		return getBatchState(ctx, br.storage, *blockNumberOrHash.BlockHash)
 	}
-
-	br.logger.Trace("Found ancestral batch")
-
-	return ancestorBatch, nil
+	if blockNumberOrHash.BlockNumber != nil {
+		return br.GetBatchStateAtHeight(ctx, blockNumberOrHash.BlockNumber)
+	}
+	return nil, fmt.Errorf("block number or block hash does not exist")
 }
 
-func (br *batchRegistryImpl) HasGenesisBatch() (bool, error) {
-	genesisBatchStored := true
-	_, err := br.GetHeadBatch()
-	if err != nil {
-		if !errors.Is(err, errutil.ErrNotFound) {
-			return false, fmt.Errorf("could not retrieve current head batch. Cause: %w", err)
-		}
-		genesisBatchStored = false
-	}
-
-	return genesisBatchStored, nil
-}
-
-func (br *batchRegistryImpl) BatchesAfter(batchSeqNo uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, error) {
-	batches := make([]*core.Batch, 0)
-
-	var batch *core.Batch
-	var err error
-	if batch, err = br.storage.FetchBatchBySeqNo(batchSeqNo); err != nil {
-		return nil, err
-	}
-	batches = append(batches, batch)
-
-	headBatch, err := br.storage.FetchHeadBatch()
-	if err != nil {
-		return nil, err
-	}
-
-	if headBatch.SeqNo().Uint64() < batch.SeqNo().Uint64() {
-		return nil, fmt.Errorf("head batch height %d is in the past compared to requested batch %d",
-			headBatch.SeqNo().Uint64(),
-			batch.SeqNo().Uint64())
-	}
-	for batch.SeqNo().Cmp(headBatch.SeqNo()) != 0 {
-		if didAcceptBatch, err := rollupLimiter.AcceptBatch(batch); err != nil {
-			return nil, err
-		} else if !didAcceptBatch {
-			return batches, nil
-		}
-
-		batch, err = br.storage.FetchBatchBySeqNo(batch.SeqNo().Uint64() + 1)
-		if err != nil {
-			return nil, fmt.Errorf("could not retrieve batch by sequence number less than the head batch. Cause: %w", err)
-		}
-
-		batches = append(batches, batch)
-		br.logger.Info("Added batch to rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
-	}
-
-	return batches, nil
-}
-
-func (br *batchRegistryImpl) GetBatchStateAtHeight(blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
+func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
 	// We retrieve the batch of interest.
-	batch, err := br.GetBatchAtHeight(*blockNumber)
+	batch, err := br.GetBatchAtHeight(ctx, *blockNumber)
 	if err != nil {
 		return nil, err
 	}
 
-	// We get that of the chain at that height
-	blockchainState, err := br.storage.CreateStateDB(batch.Hash())
+	return getBatchState(ctx, br.storage, batch.Hash())
+}
+
+func getBatchState(ctx context.Context, storage storage.Storage, batchHash common.L2BatchHash) (*state.StateDB, error) {
+	blockchainState, err := storage.CreateStateDB(ctx, batchHash)
 	if err != nil {
 		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
 	if blockchainState == nil {
-		return nil, fmt.Errorf("unable to fetch chain state for batch %s", batch.Hash().Hex())
+		return nil, fmt.Errorf("unable to fetch chain state for batch %s", batchHash.Hex())
 	}
 
 	return blockchainState, err
 }
 
-func (br *batchRegistryImpl) GetBatchAtHeight(height gethrpc.BlockNumber) (*core.Batch, error) {
+func (br *batchRegistry) GetBatchAtHeight(ctx context.Context, height gethrpc.BlockNumber) (*core.Batch, error) {
+	if br.HeadBatchSeq() == nil {
+		return nil, fmt.Errorf("chain not initialised")
+	}
 	var batch *core.Batch
 	switch height {
 	case gethrpc.EarliestBlockNumber:
-		genesisBatch, err := br.storage.FetchBatchByHeight(0)
+		genesisBatch, err := br.storage.FetchBatchByHeight(ctx, 0)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
 		batch = genesisBatch
-	case gethrpc.PendingBlockNumber:
-		// todo - depends on the current pending rollup; leaving it for a different iteration as it will need more thought
-		return nil, fmt.Errorf("requested balance for pending block. This is not handled currently")
-	case gethrpc.LatestBlockNumber:
-		headBatch, err := br.storage.FetchHeadBatch()
+	// note: our API currently treats all these block statuses the same for obscuro batches
+	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber, gethrpc.LatestBlockNumber, gethrpc.PendingBlockNumber:
+		headBatch, err := br.storage.FetchBatchBySeqNo(ctx, br.HeadBatchSeq().Uint64())
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)
 		}
 		batch = headBatch
 	default:
-		maybeBatch, err := br.storage.FetchBatchByHeight(uint64(height))
+		maybeBatch, err := br.storage.FetchBatchByHeight(ctx, uint64(height))
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d could not be retrieved. Cause: %w", height, err)
 		}
 		batch = maybeBatch
 	}
 	return batch, nil
+}
+
+// HealthCheck checks if the last executed batch was more than healthTimeout ago
+func (br *batchRegistry) HealthCheck() (bool, error) {
+	lastExecutedBatchTime := br.lastExecutedBatch.LastTimestamp()
+	if time.Now().After(lastExecutedBatchTime.Add(br.healthTimeout)) {
+		return false, fmt.Errorf("last executed batch was %s ago", time.Since(lastExecutedBatchTime))
+	}
+
+	if br.HeadBatchSeq() == nil {
+		return false, fmt.Errorf("head batch seq is nil")
+	}
+
+	return true, nil
 }

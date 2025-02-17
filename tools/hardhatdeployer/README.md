@@ -1,6 +1,6 @@
 # Contract deployer
 
-Deploys contracts to both the obscuro network (L2) and eth network (L1)
+Deploys contracts to both the TEN network (L2) and eth network (L1)
 
 ## Usage
 
@@ -8,7 +8,7 @@ All commands are executed by running `contractdeployer/main/main()`.
 
 Contract is a string value to select the contract bytecode to deploy, currently ERC20, and MGMT are supported:
 -  `ERC20`: a standard ERC20 contract
--  `MGMT`: the Obscuro L1 management contract
+-  `MGMT`: the TEN L1 management contract
 
 * Example arguments to deploy an L2 contract:
 

@@ -5,12 +5,18 @@
 #
 #
 
-if [[ $1 == "testnet" ]]; then
-  lb=testnet-loadbalancer
-  pool=Backend-Pool-Obscuro-testnet
+if [[ $1 == "uat-testnet" ]]; then
+  lb=uat-testnet-loadbalancer
+  pool=uat-testnet-backend-pool
+elif [[ $1 == "dev-testnet" ]]; then
+  lb=dev-testnet-loadbalancer
+  pool=dev-testnet-backend-pool
+elif [[ $1 == "sepolia-testnet" ]]; then
+  lb=sepolia-testnet-loadbalancer
+  pool=sepolia-testnet-backend-pool
 else
-  lb=devtestnet-loadbalancer
-  pool=Backend-Pool-Obscuro-devtestnet
+  echo "Invalid argument. Use 'uat-testnet', 'dev-testnet', or 'sepolia-testnet'"
+  exit 1
 fi
 
 nic_id=$(az network lb address-pool show \
@@ -37,12 +43,12 @@ if [[ -z "${ipconfig_id}" ]]; then
     exit 0
 fi
 
-az network nic ip-config address-pool remove \
-   --address-pool ${pool} \
-   --ip-config-name "${ipconfig_id}" \
-   --nic-name "${nic_id}" \
-   --resource-group Testnet \
-   --lb-name ${lb} \
+#az network nic ip-config address-pool remove \
+#   --address-pool ${pool} \
+#   --ip-config-name "${ipconfig_id}" \
+#   --nic-name "${nic_id}" \
+#   --resource-group Testnet \
+#   --lb-name ${lb} \
    
 
 echo 'Load balancer removed successfully'

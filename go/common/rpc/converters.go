@@ -1,16 +1,14 @@
 package rpc
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/rpc/generated"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+
+	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/rpc/generated"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -19,44 +17,16 @@ import (
 // Protobuf message classes.
 
 func ToAttestationReportMsg(report *common.AttestationReport) generated.AttestationReportMsg {
-	return generated.AttestationReportMsg{Report: report.Report, PubKey: report.PubKey, Owner: report.Owner.Bytes(), HostAddress: report.HostAddress}
+	return generated.AttestationReportMsg{Report: report.Report, PubKey: report.PubKey, EnclaveID: report.EnclaveID.Bytes(), HostAddress: report.HostAddress}
 }
 
 func FromAttestationReportMsg(msg *generated.AttestationReportMsg) *common.AttestationReport {
 	return &common.AttestationReport{
 		Report:      msg.Report,
 		PubKey:      msg.PubKey,
-		Owner:       gethcommon.BytesToAddress(msg.Owner),
+		EnclaveID:   gethcommon.BytesToAddress(msg.EnclaveID),
 		HostAddress: msg.HostAddress,
 	}
-}
-
-func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (*generated.BlockSubmissionResponseMsg, error) {
-	var subscribedLogBytes []byte
-	var err error
-
-	if response == nil {
-		return nil, fmt.Errorf("no response that could be converted to a message")
-	}
-
-	producedBatchMsg := ToExtBatchMsg(response.ProducedBatch)
-	producedRollupMsg := ToExtRollupMsg(response.ProducedRollup)
-
-	msg := &generated.BlockSubmissionResponseMsg{
-		ProducedBatch:           &producedBatchMsg,
-		ProducedRollup:          &producedRollupMsg,
-		SubscribedLogs:          subscribedLogBytes,
-		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
-	}
-
-	if response.SubscribedLogs != nil {
-		msg.SubscribedLogs, err = json.Marshal(response.SubscribedLogs)
-		if err != nil {
-			return &generated.BlockSubmissionResponseMsg{}, fmt.Errorf("could not marshal subscribed logs to JSON. Cause: %w", err)
-		}
-	}
-
-	return msg, nil
 }
 
 func ToSecretRespMsg(responses []*common.ProducedSecretResponse) []*generated.SecretResponseMsg {
@@ -66,6 +36,7 @@ func ToSecretRespMsg(responses []*common.ProducedSecretResponse) []*generated.Se
 		msg := generated.SecretResponseMsg{
 			Secret:      resp.Secret,
 			RequesterID: resp.RequesterID.Bytes(),
+			AttesterID:  resp.AttesterID.Bytes(),
 			HostAddress: resp.HostAddress,
 		}
 		respMsgs[i] = &msg
@@ -81,6 +52,7 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 		r := common.ProducedSecretResponse{
 			Secret:      msgResp.Secret,
 			RequesterID: gethcommon.BytesToAddress(msgResp.RequesterID),
+			AttesterID:  gethcommon.BytesToAddress(msgResp.AttesterID),
 			HostAddress: msgResp.HostAddress,
 		}
 		respList[i] = &r
@@ -88,42 +60,34 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 	return respList
 }
 
-func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (*common.BlockSubmissionResponse, error) {
-	if msg.Error != nil {
-		return nil, &errutil.BlockRejectError{
-			L1Head:  gethcommon.BytesToHash(msg.Error.L1Head),
-			Wrapped: errors.New(msg.Error.Cause),
-		}
-	}
-	var subscribedLogs map[rpc.ID][]byte
-	if msg.SubscribedLogs != nil {
-		if err := json.Unmarshal(msg.SubscribedLogs, &subscribedLogs); err != nil {
-			return nil, fmt.Errorf("could not unmarshal subscribed logs from submission response JSON. Cause: %w", err)
-		}
+func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (*generated.BlockSubmissionResponseMsg, error) {
+	if response == nil {
+		return nil, fmt.Errorf("no response that could be converted to a message")
 	}
 
-	return &common.BlockSubmissionResponse{
-		ProducedBatch:           FromExtBatchMsg(msg.ProducedBatch),
-		ProducedRollup:          FromExtRollupMsg(msg.ProducedRollup),
-		SubscribedLogs:          subscribedLogs,
-		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
-	}, nil
-}
-
-func ToCrossChainMsgs(messages []MessageBus.StructsCrossChainMessage) []*generated.CrossChainMsg {
-	generatedMessages := make([]*generated.CrossChainMsg, 0)
-
-	for _, message := range messages {
-		generatedMessages = append(generatedMessages, &generated.CrossChainMsg{
-			Sender:   message.Sender.Bytes(),
-			Sequence: message.Sequence,
-			Nonce:    message.Nonce,
-			Topic:    message.Topic,
-			Payload:  message.Payload,
+	msg := &generated.BlockSubmissionResponseMsg{
+		ProducedSecretResponses: ToSecretRespMsg(response.ProducedSecretResponses),
+	}
+	for _, metadata := range response.RollupMetadata {
+		msg.RollupMetadata = append(msg.RollupMetadata, &generated.ExtRollupMetadataResponseMsg{
+			CrossChainTree: metadata.CrossChainTree,
 		})
 	}
 
-	return generatedMessages
+	return msg, nil
+}
+
+func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (*common.BlockSubmissionResponse, error) {
+	rollupMetadata := make([]common.ExtRollupMetadata, len(msg.RollupMetadata))
+	for i, metadata := range msg.RollupMetadata {
+		rollupMetadata[i] = common.ExtRollupMetadata{
+			CrossChainTree: metadata.CrossChainTree,
+		}
+	}
+	return &common.BlockSubmissionResponse{
+		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
+		RollupMetadata:          rollupMetadata,
+	}, nil
 }
 
 func FromCrossChainMsgs(messages []*generated.CrossChainMsg) []MessageBus.StructsCrossChainMessage {
@@ -166,26 +130,22 @@ func ToBatchHeaderMsg(header *common.BatchHeader) *generated.BatchHeaderMsg {
 		baseFee = header.BaseFee.Uint64()
 	}
 	headerMsg = generated.BatchHeaderMsg{
-		ParentHash:                  header.ParentHash.Bytes(),
-		Proof:                       header.L1Proof.Bytes(),
-		Root:                        header.Root.Bytes(),
-		TxHash:                      header.TxHash.Bytes(),
-		Number:                      header.Number.Uint64(),
-		SequencerOrderNo:            header.SequencerOrderNo.Uint64(),
-		ReceiptHash:                 header.ReceiptHash.Bytes(),
-		Extra:                       header.Extra,
-		R:                           header.R.Bytes(),
-		S:                           header.S.Bytes(),
-		GasLimit:                    header.GasLimit,
-		GasUsed:                     header.GasUsed,
-		Time:                        header.Time,
-		BaseFee:                     baseFee,
-		CrossChainMessages:          ToCrossChainMsgs(header.CrossChainMessages),
-		LatestInboundCrossChainHash: header.LatestInboundCrossChainHash.Bytes(),
-	}
-
-	if header.LatestInboundCrossChainHeight != nil {
-		headerMsg.LatestInboundCrossChainHeight = header.LatestInboundCrossChainHeight.Bytes()
+		ParentHash:       header.ParentHash.Bytes(),
+		Proof:            header.L1Proof.Bytes(),
+		Root:             header.Root.Bytes(),
+		TxHash:           header.TxHash.Bytes(),
+		Number:           header.Number.Uint64(),
+		SequencerOrderNo: header.SequencerOrderNo.Uint64(),
+		ReceiptHash:      header.ReceiptHash.Bytes(),
+		Extra:            header.Extra,
+		Signature:        header.Signature,
+		GasLimit:         header.GasLimit,
+		GasUsed:          header.GasUsed,
+		Time:             header.Time,
+		BaseFee:          baseFee,
+		CrossChainRoot:   header.CrossChainRoot.Bytes(),
+		Coinbase:         header.Coinbase.Bytes(),
+		CrossChainTree:   header.CrossChainTree,
 	}
 
 	return &headerMsg
@@ -216,26 +176,23 @@ func FromBatchHeaderMsg(header *generated.BatchHeaderMsg) *common.BatchHeader {
 		return nil
 	}
 
-	r := &big.Int{}
-	s := &big.Int{}
 	return &common.BatchHeader{
-		ParentHash:                    gethcommon.BytesToHash(header.ParentHash),
-		L1Proof:                       gethcommon.BytesToHash(header.Proof),
-		Root:                          gethcommon.BytesToHash(header.Root),
-		TxHash:                        gethcommon.BytesToHash(header.TxHash),
-		Number:                        big.NewInt(int64(header.Number)),
-		SequencerOrderNo:              big.NewInt(int64(header.SequencerOrderNo)),
-		ReceiptHash:                   gethcommon.BytesToHash(header.ReceiptHash),
-		Extra:                         header.Extra,
-		R:                             r.SetBytes(header.R),
-		S:                             s.SetBytes(header.S),
-		GasLimit:                      header.GasLimit,
-		GasUsed:                       header.GasUsed,
-		Time:                          header.Time,
-		BaseFee:                       big.NewInt(int64(header.BaseFee)),
-		CrossChainMessages:            FromCrossChainMsgs(header.CrossChainMessages),
-		LatestInboundCrossChainHash:   gethcommon.BytesToHash(header.LatestInboundCrossChainHash),
-		LatestInboundCrossChainHeight: big.NewInt(0).SetBytes(header.LatestInboundCrossChainHeight),
+		ParentHash:       gethcommon.BytesToHash(header.ParentHash),
+		L1Proof:          gethcommon.BytesToHash(header.Proof),
+		Root:             gethcommon.BytesToHash(header.Root),
+		TxHash:           gethcommon.BytesToHash(header.TxHash),
+		Number:           big.NewInt(int64(header.Number)),
+		SequencerOrderNo: big.NewInt(int64(header.SequencerOrderNo)),
+		ReceiptHash:      gethcommon.BytesToHash(header.ReceiptHash),
+		Extra:            header.Extra,
+		Signature:        header.Signature,
+		GasLimit:         header.GasLimit,
+		GasUsed:          header.GasUsed,
+		Time:             header.Time,
+		CrossChainRoot:   gethcommon.BytesToHash(header.CrossChainRoot),
+		BaseFee:          big.NewInt(0).SetUint64(header.BaseFee),
+		Coinbase:         gethcommon.BytesToAddress(header.Coinbase),
+		CrossChainTree:   header.CrossChainTree,
 	}
 }
 
@@ -244,7 +201,7 @@ func ToExtRollupMsg(rollup *common.ExtRollup) generated.ExtRollupMsg {
 		return generated.ExtRollupMsg{}
 	}
 
-	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), BatchPayloads: rollup.BatchPayloads, BatchHeaders: rollup.BatchHeaders}
+	return generated.ExtRollupMsg{Header: ToRollupHeaderMsg(rollup.Header), BatchPayloads: rollup.BatchPayloads, CalldataRollupHeader: rollup.CalldataRollupHeader}
 }
 
 func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
@@ -252,13 +209,11 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 		return nil
 	}
 	headerMsg := generated.RollupHeaderMsg{
-		Proof:              header.L1Proof.Bytes(),
-		ProofNumber:        header.L1ProofNumber.Uint64(),
-		R:                  header.R.Bytes(),
-		S:                  header.S.Bytes(),
-		Coinbase:           header.Coinbase.Bytes(),
-		CrossChainMessages: ToCrossChainMsgs(header.CrossChainMessages),
-		LastBatchSeqNo:     header.LastBatchSeqNo,
+		CompressionL1Head:   header.CompressionL1Head.Bytes(),
+		CompressionL1Number: header.CompressionL1Number.Bytes(),
+		CrossChainRoot:      header.CrossChainRoot.Bytes(),
+		LastBatchSeqNo:      header.LastBatchSeqNo,
+		LastBatchHash:       header.LastBatchHash.Bytes(),
 	}
 
 	return &headerMsg
@@ -272,9 +227,9 @@ func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
 	}
 
 	return &common.ExtRollup{
-		Header:        FromRollupHeaderMsg(msg.Header),
-		BatchPayloads: msg.BatchPayloads,
-		BatchHeaders:  msg.BatchHeaders,
+		Header:               FromRollupHeaderMsg(msg.Header),
+		BatchPayloads:        msg.BatchPayloads,
+		CalldataRollupHeader: msg.CalldataRollupHeader,
 	}
 }
 
@@ -283,15 +238,63 @@ func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader
 		return nil
 	}
 
-	r := &big.Int{}
-	s := &big.Int{}
 	return &common.RollupHeader{
-		L1Proof:            gethcommon.BytesToHash(header.Proof),
-		L1ProofNumber:      big.NewInt(int64(header.ProofNumber)),
-		R:                  r.SetBytes(header.R),
-		S:                  s.SetBytes(header.S),
-		Coinbase:           gethcommon.BytesToAddress(header.Coinbase),
-		CrossChainMessages: FromCrossChainMsgs(header.CrossChainMessages),
-		LastBatchSeqNo:     header.LastBatchSeqNo,
+		CompressionL1Head:   gethcommon.BytesToHash(header.CompressionL1Head),
+		CompressionL1Number: big.NewInt(0).SetBytes(header.CompressionL1Number),
+		CrossChainRoot:      gethcommon.BytesToHash(header.CrossChainRoot),
+		LastBatchSeqNo:      header.LastBatchSeqNo,
+		LastBatchHash:       gethcommon.BytesToHash(header.LastBatchHash),
 	}
+}
+
+func ToRollupDataMsg(rollupData *common.PublicRollupMetadata) generated.PublicRollupDataMsg {
+	if rollupData == nil {
+		return generated.PublicRollupDataMsg{}
+	}
+
+	return generated.PublicRollupDataMsg{StartSeq: rollupData.FirstBatchSequence.Uint64(), Timestamp: rollupData.StartTime}
+}
+
+func FromRollupDataMsg(msg *generated.PublicRollupDataMsg) (*common.PublicRollupMetadata, error) {
+	if msg.Timestamp == 0 {
+		return nil, fmt.Errorf("timestamp on the rollup can not be zero")
+	}
+
+	if msg.StartSeq == 0 {
+		return &common.PublicRollupMetadata{
+			FirstBatchSequence: nil,
+			StartTime:          msg.Timestamp,
+		}, nil
+	}
+
+	return &common.PublicRollupMetadata{
+		FirstBatchSequence: big.NewInt(int64(msg.StartSeq)),
+		StartTime:          msg.Timestamp,
+	}, nil
+}
+
+func ToBlobMsgs(blobs []*kzg4844.Blob) []*generated.BlobMsg {
+	if blobs == nil {
+		return nil
+	}
+	msgs := make([]*generated.BlobMsg, len(blobs))
+	for i, blob := range blobs {
+		msgs[i] = &generated.BlobMsg{
+			Blob: blob[:],
+		}
+	}
+	return msgs
+}
+
+func FromBlobMsgs(msgs []*generated.BlobMsg) []*kzg4844.Blob {
+	if msgs == nil {
+		return nil
+	}
+	blobs := make([]*kzg4844.Blob, len(msgs))
+	for i, msg := range msgs {
+		var blob kzg4844.Blob
+		copy(blob[:], msg.Blob)
+		blobs[i] = &blob
+	}
+	return blobs
 }

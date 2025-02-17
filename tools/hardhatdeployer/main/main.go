@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"time"
 
-	contractdeployer "github.com/obscuronet/go-obscuro/tools/hardhatdeployer"
+	contractdeployer "github.com/ten-protocol/go-ten/tools/hardhatdeployer"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
 func main() {
 	config := contractdeployer.ParseConfig()
-	logger := log.New(log.DeployerCmp, int(gethlog.LvlError), log.SysOut)
+	logger := log.New(log.DeployerCmp, int(gethlog.LevelError), log.SysOut)
 
 	contractAddr, err := contractdeployer.Deploy(config, logger)
 	if err != nil {

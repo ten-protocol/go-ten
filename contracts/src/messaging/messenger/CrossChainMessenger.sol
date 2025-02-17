@@ -3,6 +3,9 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "./ICrossChainMessenger.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "../IMerkleTreeMessageBus.sol";
+
 
 // CrossChainMessenger is the contract that provides the context for contracts
 // that inherit CrossChainEnabledObscuro. It allows to deliver messages using relayMessage.
@@ -14,15 +17,17 @@ import "./ICrossChainMessenger.sol";
 // from whom the messages are coming from.
 // Notice that this Messenger has no restrictions on who can relay messages, nor does it have any understanding of fees.
 // You can opt in to deploy a customer messenger for your cross chain dApp with more specialized logic.
-contract CrossChainMessenger is ICrossChainMessenger {
+contract CrossChainMessenger is ICrossChainMessenger, Initializable {
     error CallFailed(bytes error);
 
-    IMessageBus messageBusContract;
-    address public crossChainSender = address(0x0);
+    IMerkleTreeMessageBus messageBusContract;
+    address public crossChainSender;
     mapping(bytes32 => bool) messageConsumed;
 
-    constructor(address messageBusAddr) {
-        messageBusContract = IMessageBus(messageBusAddr);
+    //todo - make only once
+    function initialize(address messageBusAddr) external initializer {
+        messageBusContract = IMerkleTreeMessageBus(messageBusAddr);
+        crossChainSender =  address(0x0);
     }
 
     function messageBus() external view returns (address) {
@@ -35,7 +40,7 @@ contract CrossChainMessenger is ICrossChainMessenger {
         Structs.CrossChainMessage calldata message
     ) private {
         require(
-            messageBusContract.verifyMessageFinalized(message),
+            IMessageBus(address(messageBusContract)).verifyMessageFinalized(message),
             "Message not found or finalized."
         );
         bytes32 msgHash = keccak256(abi.encode(message));
@@ -43,6 +48,20 @@ contract CrossChainMessenger is ICrossChainMessenger {
 
         messageConsumed[msgHash] = true;
     }
+
+     function consumeMessageWithProof(
+        Structs.CrossChainMessage calldata message,
+        bytes32[] calldata proof, 
+        bytes32 root
+    ) private {
+        messageBusContract.verifyMessageInclusion(message, proof, root);
+        bytes32 msgHash = keccak256(abi.encode(message));
+        require(messageConsumed[msgHash] == false, "Message already consumed.");
+
+        messageConsumed[msgHash] = true;
+    }
+
+
 
     // TODO: Remove this. It does not serve any real purpose on chain, but is currently required for hardhat tests
     // as producing the same result in JS has proven difficult...
@@ -59,6 +78,30 @@ contract CrossChainMessenger is ICrossChainMessenger {
     // the address of the message sender on the other layer, as it is when reaching the message bus.
     function relayMessage(Structs.CrossChainMessage calldata message) public {
         consumeMessage(message);
+
+        crossChainSender = message.sender;
+
+        //TODO: Do not relay to self. Do not relay to known contracts. Consider what else not to talk to.
+        //Add reentracy guards and paranoid security checks as messenger contracts will have above average rights
+        //when communicating with other contracts.
+
+        CrossChainCall memory callData = abi.decode(
+            message.payload,
+            (CrossChainCall)
+        );
+        (bool success, bytes memory returnData) = callData.target.call{gas: gasleft()}(
+            callData.data
+        );
+        if (!success) {
+            revert CallFailed(returnData);
+        }
+
+        crossChainSender = address(0x0);
+    }
+
+
+    function relayMessageWithProof(Structs.CrossChainMessage calldata message, bytes32[] calldata proof, bytes32 root) public {
+        consumeMessageWithProof(message, proof, root);
 
         crossChainSender = message.sender;
 

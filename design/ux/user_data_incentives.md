@@ -1,4 +1,4 @@
-# User interaction with Obscuro 
+# User interaction with TEN 
 
 In a typical transparent blockchain, there are service providers like "Infura" who act as the interface to the blockchain from the point of view of most users.
 
@@ -29,7 +29,7 @@ Also, the service provider will not gain any insights from this service since al
 
 The usual rescue in the crypto space is to employ incentives.
 
-Obscuro is a decentralised network of nodes with different roles who already have their own incentives (Aggregators and Verifiers).
+TEN is a decentralised network of nodes with different roles who already have their own incentives (Aggregators and Verifiers).
 
 The ideal scenario is to have a large and diverse community of verifiers node to make sure that the network functions correctly.
 
@@ -58,18 +58,18 @@ Node operators could charge fees for this service.
 Given that everyone is now expecting this to be a free service, this is unlikely to be something that has a chance.
 
 
-#### 3. Incentives payed by the protocol.
+#### 3. Incentives paid by the protocol.
 
 The network (or protocol) charges fees from user when submitting transactions. This is something that users expect to pay.
 
-The Obscuro protocol is designed in such a way that it decouples the income from the costs by maintaing a buffer.
+The TEN protocol is designed in such a way that it decouples the income from the costs by maintaining a buffer.
 
 We can use this designed mechanism to pay for node usage as well along with the L1 gas fees and the general incentives to follow the protocol.
 
 
 ##### Measuring node usage
 
-As a proxy for a node responding to user requests, we can use a model where a node is payed a percentage of the gas fees that originated from their node. 
+As a proxy for a node responding to user requests, we can use a model where a node is paid a percentage of the gas fees that originated from their node. 
 
 A user that is connected to a node that doesn't respond to requests (like transaction receipts, or events), will leave that node and connect to a different node.
 

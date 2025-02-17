@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/networktest/actions"
+	"github.com/ten-protocol/go-ten/integration/networktest/actions"
 
-	"github.com/obscuronet/go-obscuro/integration/networktest"
-	"github.com/obscuronet/go-obscuro/integration/networktest/env"
+	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest/env"
 )
 
 // restart both the sequencer and the validators (the entire network)
@@ -28,7 +28,7 @@ func TestRestartNetwork(t *testing.T) {
 
 			// stop sequencer and validator
 			actions.StopSequencerHost(),
-			actions.StopSequencerEnclave(),
+			actions.StopSequencerEnclave(0),
 			actions.StopValidatorHost(0),
 			actions.StopValidatorEnclave(0),
 			actions.StopValidatorHost(1),
@@ -45,7 +45,7 @@ func TestRestartNetwork(t *testing.T) {
 			actions.StartValidatorHost(1),
 			actions.StartValidatorEnclave(2),
 			actions.StartValidatorHost(2),
-			actions.StartSequencerEnclave(),
+			actions.StartSequencerEnclave(0),
 			actions.StartSequencerHost(),
 			actions.WaitForValidatorHealthCheck(0, 30*time.Second),
 			actions.WaitForValidatorHealthCheck(1, 30*time.Second),
@@ -55,10 +55,6 @@ func TestRestartNetwork(t *testing.T) {
 			// todo: we often see 1 transaction getting lost without this sleep after the node restarts.
 			// 	This needs investigating but it suggests to me that the health check is succeeding prematurely
 			actions.SleepAction(5*time.Second), // allow time for re-sync
-
-			// resubmit user viewing keys (all users will have lost their "session")
-			// todo: get rid of this once the enclave persists viewing keys correctly
-			actions.AuthenticateAllUsers(),
 
 			// another load test, check that the network is still working
 			actions.GenerateUsersRandomisedTransferActionsInParallel(4, 60*time.Second),

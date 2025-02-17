@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
 )
 
 func TestSerialiseL2Tx(t *testing.T) {

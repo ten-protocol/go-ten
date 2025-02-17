@@ -9,18 +9,25 @@ import (
 	"sync"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/retry"
+	"github.com/ethereum/go-ethereum"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/params"
+
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+
+	"github.com/ten-protocol/go-ten/go/wallet"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/rpc"
 )
 
-var _awaitReceiptPollingInterval = 100 * time.Millisecond
+var _awaitReceiptPollingInterval = 200 * time.Millisecond
 
 func RndBtw(min uint64, max uint64) uint64 {
 	if min >= max {
@@ -43,8 +50,7 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 	var err error
 	err = retry.Do(func() error {
 		receipt, err = client.TransactionReceipt(ctx, txHash)
-		if err != nil && !errors.Is(err, rpc.ErrNilResponse) {
-			// we only retry for a nil "not found" response. This is a different error, so we bail out of the retry loop
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return retry.FailFast(err)
 		}
 		return err
@@ -60,6 +66,32 @@ func AwaitReceipt(ctx context.Context, client *obsclient.AuthObsClient, txHash g
 	return nil
 }
 
+func AwaitReceiptEth(ctx context.Context, client *ethclient.Client, txHash gethcommon.Hash, timeout time.Duration) (*types.Receipt, error) {
+	var receipt *types.Receipt
+	var err error
+	startTime := time.Now()
+
+	testlog.Logger().Info("Fetching receipt for tx: ", "tx", txHash.Hex())
+	err = retry.Do(func() error {
+		receipt, err = client.TransactionReceipt(ctx, txHash)
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			// we only retry for a nil "not found" response. This is a different error, so we bail out of the retry loop
+			return retry.FailFast(err)
+		}
+		testlog.Logger().Info("No tx receipt after: ", "time", time.Since(startTime))
+		return err
+	}, retry.NewTimeoutStrategy(timeout, _awaitReceiptPollingInterval))
+	if err != nil {
+		return nil, fmt.Errorf("could not retrieve receipt for transaction %s - %w", txHash.Hex(), err)
+	}
+
+	if receipt.Status == types.ReceiptStatusFailed {
+		return nil, fmt.Errorf("receipt had status failed for transaction %s", txHash.Hex())
+	}
+
+	return receipt, nil
+}
+
 // PrefundWallets sends an amount `alloc` from the faucet wallet to each listed wallet.
 // The transactions are sent with sequential nonces, starting with `startingNonce`.
 func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClient *obsclient.AuthObsClient, startingNonce uint64, wallets []wallet.Wallet, alloc *big.Int, timeout time.Duration) {
@@ -67,13 +99,16 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 	txHashes := make([]gethcommon.Hash, len(wallets))
 	for idx, w := range wallets {
 		destAddr := w.Address()
-		tx := &types.LegacyTx{
+		fmt.Printf("L2 prefund: %s\n", destAddr.Hex())
+		txData := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
 			Value:    alloc,
-			Gas:      uint64(1_000_000),
+			Gas:      uint64(100_000),
 			GasPrice: gethcommon.Big1,
 			To:       &destAddr,
 		}
+
+		tx := faucetClient.EstimateGasAndGasPrice(txData) //nolint: contextcheck
 		signedTx, err := faucetWallet.SignTransaction(tx)
 		if err != nil {
 			panic(err)
@@ -81,7 +116,9 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 
 		err = faucetClient.SendTransaction(ctx, signedTx)
 		if err != nil {
-			panic(fmt.Sprintf("could not transfer from faucet. Cause: %s", err))
+			var txJSON []byte
+			txJSON, _ = signedTx.MarshalJSON()
+			panic(fmt.Sprintf("could not transfer from faucet for tx %s. Cause: %s", string(txJSON[:]), err))
 		}
 
 		txHashes[idx] = signedTx.Hash()
@@ -95,9 +132,39 @@ func PrefundWallets(ctx context.Context, faucetWallet wallet.Wallet, faucetClien
 			defer wg.Done()
 			err := AwaitReceipt(ctx, faucetClient, txHash, timeout)
 			if err != nil {
-				panic(fmt.Sprintf("faucet transfer transaction unsuccessful. Cause: %s", err))
+				panic(fmt.Sprintf("faucet transfer transaction %s unsuccessful. Cause: %s", txHash, err))
 			}
 		}(txHash)
 	}
 	wg.Wait()
+}
+
+func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, contractAbi abi.ABI, methodName string, methodParam string, contractAddress gethcommon.Address) (*types.Receipt, error) {
+	contractInteractionData, err := contractAbi.Pack(methodName, methodParam)
+	if err != nil {
+		return nil, err
+	}
+
+	interactionTx := types.LegacyTx{
+		Nonce:    wallet.GetNonceAndIncrement(),
+		To:       &contractAddress,
+		Gas:      uint64(1_000_000),
+		GasPrice: big.NewInt(params.InitialBaseFee),
+		Data:     contractInteractionData,
+	}
+	signedTx, err := wallet.SignTransaction(&interactionTx)
+	if err != nil {
+		return nil, err
+	}
+	err = client.SendTransaction(context.Background(), signedTx)
+	if err != nil {
+		return nil, err
+	}
+
+	txReceipt, err := AwaitReceiptEth(context.Background(), client, signedTx.Hash(), 10*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	return txReceipt, nil
 }

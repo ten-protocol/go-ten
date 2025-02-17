@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/obscuronet/go-obscuro/testnet/launcher"
+	"github.com/ten-protocol/go-ten/testnet/launcher"
 )
 
 func main() {
@@ -17,6 +17,10 @@ func main() {
 			launcher.WithValidatorEnclaveDebug(cliConfig.validatorEnclaveDebug),
 			launcher.WithSequencerEnclaveDockerImage(cliConfig.sequencerEnclaveDockerImage),
 			launcher.WithSequencerEnclaveDebug(cliConfig.sequencerEnclaveDebug),
+			launcher.WithContractDeployerDebug(cliConfig.contractDeployerDebug),
+			launcher.WithContractDeployerDockerImage(cliConfig.contractDeployerDockerImage),
+			launcher.WithSGXEnabled(cliConfig.isSGXEnabled),
+			launcher.WithLogLevel(cliConfig.logLevel),
 		),
 	)
 	err := testnet.Start()

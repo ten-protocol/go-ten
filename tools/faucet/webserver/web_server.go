@@ -3,6 +3,7 @@ package webserver
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -10,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/gin-gonic/gin"
-	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
+	"github.com/ten-protocol/go-ten/tools/faucet/faucet"
 )
 
 type WebServer struct {
@@ -24,79 +25,42 @@ type requestAddr struct {
 	Address string `json:"address" binding:"required"`
 }
 
-func NewWebServer(faucetServer *faucet.Faucet, bindAddress string, jwtSecret []byte) *WebServer {
+func NewWebServer(faucetServer *faucet.Faucet, bindAddress string, jwtSecret []byte, defaultAmount *big.Int) *WebServer {
 	r := gin.New()
 	gin.SetMode(gin.ReleaseMode)
 
-	// todo move this declaration out of this scope
-	parseFunding := func(c *gin.Context) {
-		tokenReq := c.Params.ByName("token")
-		var token string
-
-		// check the token request type
-		switch tokenReq {
-		case faucet.OBXNativeToken:
-			token = faucet.OBXNativeToken
-		case faucet.WrappedOBX:
-			token = faucet.WrappedOBX
-		case faucet.WrappedEth:
-			token = faucet.WrappedEth
-		case faucet.WrappedUSDC:
-			token = faucet.WrappedUSDC
-		default:
-			errorHandler(c, fmt.Errorf("token not recognized: %s", tokenReq), faucetServer.Logger)
-			return
-		}
-
-		// make sure there's an address
-		var req requestAddr
-		if err := c.Bind(&req); err != nil {
-			errorHandler(c, fmt.Errorf("unable to parse request: %w", err), faucetServer.Logger)
-			return
-		}
-
-		// make sure the address is valid
-		if !common.IsHexAddress(req.Address) {
-			errorHandler(c, fmt.Errorf("unexpected address %s", req.Address), faucetServer.Logger)
-			return
-		}
-
-		amount := int64(100)
-
-		// fund the address
-		addr := common.HexToAddress(req.Address)
-		if err := faucetServer.Fund(&addr, token, amount); err != nil {
-			errorHandler(c, fmt.Errorf("unable to fund request %w", err), faucetServer.Logger)
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
-	}
-
-	jwtTokenCheck := func(c *gin.Context) {
-		jwtToken, err := extractBearerToken(c.GetHeader("Authorization"))
-		if err != nil {
-			errorHandler(c, err, faucetServer.Logger)
-			return
-		}
-
-		_, err = faucet.ValidateToken(jwtToken, jwtSecret)
-		if err != nil {
-			errorHandler(c, err, faucetServer.Logger)
-			return
-		}
-
-		c.Next()
-	}
 	// authed endpoint
-	r.POST("/auth/fund/:token", jwtTokenCheck, parseFunding)
+	r.POST("/auth/fund/:token", jwtTokenChecker(jwtSecret, faucetServer.Logger), fundingHandler(faucetServer, defaultAmount))
 
-	r.POST("/fund/:token", parseFunding)
+	// todo (@matt) we need to remove this unsecure endpoint before we provide a fully public sepolia faucet
+	r.POST("/fund/:token", fundingHandler(faucetServer, defaultAmount))
+
+	r.GET("/balance", balanceReqHandler(faucetServer))
+
+	r.GET("/health", healthReqHandler())
 
 	return &WebServer{
 		engine:      r,
 		faucet:      faucetServer,
 		bindAddress: bindAddress,
+	}
+}
+
+func jwtTokenChecker(jwtSecret []byte, logger log.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		jwtToken, err := extractBearerToken(c.GetHeader("Authorization"))
+		if err != nil {
+			errorHandler(c, err, logger)
+			return
+		}
+
+		_, err = faucet.ValidateToken(jwtToken, jwtSecret)
+		if err != nil {
+			errorHandler(c, err, logger)
+			return
+		}
+
+		c.Next()
 	}
 }
 
@@ -145,4 +109,73 @@ func extractBearerToken(header string) (string, error) {
 	}
 
 	return jwtToken[1], nil
+}
+
+func fundingHandler(faucetServer *faucet.Faucet, defaultAmount *big.Int) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tokenReq := c.Params.ByName("token")
+		var token string
+
+		// check the token request type
+		switch tokenReq {
+		case faucet.NativeToken:
+			token = faucet.NativeToken
+		// we leave this option in temporarily for tools that are still using `/ten` endpoint for native funds
+		case faucet.DeprecatedNativeToken:
+			token = faucet.NativeToken
+		case faucet.WrappedOBX:
+			token = faucet.WrappedOBX
+		case faucet.WrappedEth:
+			token = faucet.WrappedEth
+		case faucet.WrappedUSDC:
+			token = faucet.WrappedUSDC
+		default:
+			errorHandler(c, fmt.Errorf("token not recognized: %s", tokenReq), faucetServer.Logger)
+			return
+		}
+
+		// make sure there's an address
+		var req requestAddr
+		if err := c.Bind(&req); err != nil {
+			errorHandler(c, fmt.Errorf("unable to parse request: %w", err), faucetServer.Logger)
+			return
+		}
+
+		// make sure the address is valid
+		if !common.IsHexAddress(req.Address) {
+			errorHandler(c, fmt.Errorf("unexpected address %s", req.Address), faucetServer.Logger)
+			return
+		}
+
+		// fund the address
+		addr := common.HexToAddress(req.Address)
+		hash, err := faucetServer.Fund(&addr, token, defaultAmount)
+		if err != nil {
+			errorHandler(c, fmt.Errorf("unable to fund request %w", err), faucetServer.Logger)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"status": "ok", "tx": hash})
+	}
+}
+
+// returns the remaining native balance of the faucet
+func balanceReqHandler(faucetServer *faucet.Faucet) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// get the balance
+		balance, err := faucetServer.Balance(c)
+		if err != nil {
+			errorHandler(c, fmt.Errorf("unable to get balance %w", err), faucetServer.Logger)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"balance": balance.String()})
+	}
+}
+
+// returns the remaining native balance of the faucet
+func healthReqHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"healthy": true})
+	}
 }

@@ -2,7 +2,7 @@ package constants
 
 import (
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
+	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 )
 
 func Bytecode() ([]byte, error) {

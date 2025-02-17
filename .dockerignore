@@ -31,7 +31,7 @@ go/enclave/main/main
 tools/walletextension/main/main
 tools/walletextension/main/wallet_extension
 tools/networkmanager/main/main
-tools/obscuroscan/main/main
+tools/tenscan/main/main
 **/node_modules/
 **/dist
 .git

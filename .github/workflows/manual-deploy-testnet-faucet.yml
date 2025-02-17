@@ -9,7 +9,7 @@
 #  dev-testnet-faucet or testnet-faucet.uksouth.azurecontainer.io
 
 name: '[M] Deploy Faucet Testnet'
-run-name: '[M] Deploy Faucet Testnet ( ${{ github.event.inputs.testnet_type }} )'
+run-name: '[M] Deploy Faucet Testnet ( ${{ inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:
@@ -20,40 +20,33 @@ on:
         type: choice
         options:
           - 'dev-testnet'
-          - 'testnet'
+          - 'uat-testnet'
+          - 'sepolia-testnet'
 
   workflow_call:
     inputs:
       testnet_type:
-        description: 'Testnet Type'
         required: true
         type: string
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - uses: actions/checkout@v3
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
+
+      - run: echo "Workflow_dispatch inputs ${{ github.event.inputs.testnet_type }}"
+      - run: echo "Workflow_call inputs     ${{ inputs.testnet_type }}"
+
+      - uses: actions/checkout@v4
 
       - name: 'Set up Docker'
         uses: docker/setup-buildx-action@v1
-
-      - name: 'Sets env vars for testnet'
-        if: ${{ github.event.inputs.testnet_type == 'testnet' }}
-        run: |
-          echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/faucet_testnet:latest" >> $GITHUB_ENV
-          echo "TESTNET_ADDR=testnet.obscu.ro" >> $GITHUB_ENV
-
-      - name: 'Sets env vars for dev-testnet'
-        # github.event.inputs.testnet_type is inherited from the L2 [deploy | upgrade] of [testnet | dev-testnet]
-        # when they are called manually.
-        # inputs.testnet_type is set generally i.e. when L2 [deploy | upgrade] of dev-testnet is performed as a
-        # result of a schedule. To ensure the faucet is deployed on a scheduled dev-testnet L2 deployment or
-        # upgrade we test for both here.
-        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (inputs.testnet_type == 'dev-testnet') }}
-        run: |
-          echo "FAUCET_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_faucet_testnet:latest" >> $GITHUB_ENV
-          echo "TESTNET_ADDR=dev-testnet.obscu.ro" >> $GITHUB_ENV
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -69,20 +62,20 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{env.FAUCET_BUILD_TAG}} -f tools/faucet/Dockerfile . 
-          docker push ${{env.FAUCET_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_FAUCET }} -f tools/faucet/Dockerfile . 
+          docker push ${{ vars.DOCKER_BUILD_TAG_FAUCET }}
 
       - name: 'Deploy to Azure Container Instances'
         uses: 'azure/aci-deploy@v1'
         with:
           resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: ${{ github.event.inputs.testnet_type }}-faucet
-          image: ${{ env.FAUCET_BUILD_TAG }}
-          name: ${{ github.event.inputs.testnet_type }}-faucet
+          dns-name-label: ${{ inputs.testnet_type }}-faucet
+          image: ${{ vars.DOCKER_BUILD_TAG_FAUCET }}
+          name: ${{ inputs.testnet_type }}-faucet
           location: 'uksouth'
           restart-policy: 'Never'
           environment-variables: PORT=80
-          command-line: ./faucet --nodeHost ${{ env.TESTNET_ADDR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }}
+          command-line: ./faucet --nodeHost ${{ vars.L2_RPC_URL_VALIDATOR }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }} --defaultAmount ${{ vars.FAUCET_PAY_AMOUNT }}
           ports: '80'
           cpu: 2
           memory: 2

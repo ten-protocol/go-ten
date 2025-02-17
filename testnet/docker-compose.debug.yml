@@ -7,8 +7,8 @@ services:
     networks:
       - default
     ports:
-      - "13000:13000"
-      - "13001:13001"
+      - "80:80"
+      - "81:81"
       - "6061:6061"
       - "10000:10000"
     environment:
@@ -26,8 +26,9 @@ services:
       "/home/obscuro/go-obscuro/go/host/main/main",
       "--l1NodeHost=$L1HOST",
       "--l1NodePort=$L1PORT",
-      "--enclaveRPCAddress=enclave:11000",
+      "--enclaveRPCAddresses=enclave:11000",
       "--managementContractAddress=$MGMTCONTRACTADDR",
+      "--messageBusContractAddress=$MSGBUSCONTRACTADDR",
       "--privateKey=$PKSTRING",
       "--clientRPCHost=0.0.0.0",
       "--isGenesis=$ISGENESIS",
@@ -35,7 +36,8 @@ services:
       "--logLevel=$LOGLEVEL",
       "--logPath=sys_out",
       "--profilerEnabled=$PROFILERENABLED",
-      "--p2pPublicAddress=$P2PPUBLICADDRESS"
+      "--p2pPublicAddress=$P2PPUBLICADDRESS",
+      "--sequencerID=$SEQUENCERID"
     ]
 
   enclave:

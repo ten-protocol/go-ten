@@ -6,12 +6,13 @@ import (
 	"math/big"
 	"time"
 
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/obsclient/clientutil"
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/obsclient/clientutil"
+	"github.com/ten-protocol/go-ten/go/wallet"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -34,7 +35,7 @@ func prepareObscuroDeployer(cfg *Config, wal wallet.Wallet, logger gethlog.Logge
 
 func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient, logger gethlog.Logger) error {
 	// Create the L2 faucet wallet and client.
-	faucetPrivKey, err := crypto.HexToECDSA(genesis.TestnetPrefundedPK)
+	faucetPrivKey, err := crypto.HexToECDSA(testcommon.TestnetPrefundedPK)
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}
@@ -60,13 +61,14 @@ func fundDeployerWithFaucet(cfg *Config, client *obsclient.AuthObsClient, logger
 	}
 
 	destAddr := client.Address()
-	tx := &types.LegacyTx{
+	txData := &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    big.NewInt(Prealloc),
 		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		To:       &destAddr,
 	}
+	tx := faucetClient.EstimateGasAndGasPrice(txData)
 	signedTx, err := faucetWallet.SignTransaction(tx)
 	if err != nil {
 		return fmt.Errorf("failed to sign faucet transaction: %w", err)

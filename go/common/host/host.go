@@ -1,43 +1,53 @@
 package host
 
 import (
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/config"
-	"github.com/obscuronet/go-obscuro/go/host/db"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"context"
+
+	"github.com/ten-protocol/go-ten/go/common"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
+	"github.com/ten-protocol/go-ten/go/host/storage"
+	"github.com/ten-protocol/go-ten/go/responses"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 // Host is the half of the Obscuro node that lives outside the enclave.
 type Host interface {
-	Config() *config.HostConfig
-	DB() *db.DB
+	Config() *hostconfig.HostConfig
 	EnclaveClient() common.Enclave
-
+	Storage() storage.Storage
 	// Start initializes the main loop of the host.
 	Start() error
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to the other hosts on the network.
-	SubmitAndBroadcastTx(encryptedParams common.EncryptedParamsSendRawTx) (*responses.RawTx, error)
-	// Subscribe feeds logs matching the encrypted log subscription to the matchedLogs channel.
-	Subscribe(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error
-	// Unsubscribe terminates a log subscription between the host and the enclave.
-	Unsubscribe(id rpc.ID)
+	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error)
+	// SubscribeLogs feeds logs matching the encrypted log subscription to the matchedLogs channel.
+	SubscribeLogs(id rpc.ID, encryptedLogSubscription common.EncryptedParamsLogSubscription, matchedLogs chan []byte) error
+	// UnsubscribeLogs terminates a log subscription between the host and the enclave.
+	UnsubscribeLogs(id rpc.ID)
 	// Stop gracefully stops the host execution.
 	Stop() error
 
 	// HealthCheck returns the health status of the host + enclave + db
-	HealthCheck() (*HealthCheck, error)
+	HealthCheck(context.Context) (*HealthCheck, error)
 
-	P2PTxHandler
-}
+	// TenConfig returns the info of the Obscuro network
+	TenConfig() (*common.TenNetworkInfo, error)
 
-type BlockStream struct {
-	Stream <-chan *types.Block // the channel which will receive the consecutive, canonical blocks
-	Stop   func()              // function to permanently stop the stream and clean up any associated processes/resources
+	// NewHeadsChan returns live batch headers
+	// Note - do not use directly. This is meant only for the NewHeadsManager, which multiplexes the headers
+	NewHeadsChan() chan *common.BatchHeader
 }
 
 type BatchMsg struct {
 	Batches []*common.ExtBatch // The batches being sent.
 	IsLive  bool               // true if these batches are being sent as new, false if in response to a p2p request
+}
+
+type P2PHostService interface {
+	Service
+	P2P
+}
+
+type L1RepoService interface {
+	Service
+	L1DataService
 }

@@ -7,16 +7,18 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 )
 
 type SendNativeFunds struct {
-	FromUser int
-	ToUser   int
-	Amount   *big.Int
+	FromUser   int
+	ToUser     int
+	Amount     *big.Int
+	GasLimit   *big.Int
+	SkipVerify bool
 
-	user   *userwallet.UserWallet
+	user   userwallet.User
 	txHash *common.Hash
 }
 
@@ -33,7 +35,7 @@ func (s *SendNativeFunds) Run(ctx context.Context, _ networktest.NetworkConnecto
 	if err != nil {
 		return ctx, err
 	}
-	txHash, err := user.SendFunds(ctx, target.Address(), s.Amount)
+	txHash, err := user.SendFunds(ctx, target.Wallet().Address(), s.Amount)
 	if err != nil {
 		return nil, err
 	}
@@ -43,6 +45,10 @@ func (s *SendNativeFunds) Run(ctx context.Context, _ networktest.NetworkConnecto
 }
 
 func (s *SendNativeFunds) Verify(ctx context.Context, _ networktest.NetworkConnector) error {
+	if s.SkipVerify {
+		return nil
+	}
+
 	receipt, err := s.user.AwaitReceipt(ctx, s.txHash)
 	if err != nil {
 		return fmt.Errorf("failed to fetch receipt - %w", err)

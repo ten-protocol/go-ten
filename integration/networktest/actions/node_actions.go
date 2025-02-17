@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 )
 
 func StartValidatorEnclave(validatorIdx int) networktest.Action {
@@ -20,7 +20,8 @@ type startValidatorEnclaveAction struct {
 func (s *startValidatorEnclaveAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 	fmt.Printf("Validator %d: starting enclave\n", s.validatorIdx)
 	validator := network.GetValidatorNode(s.validatorIdx)
-	err := validator.StartEnclave()
+	// note: these actions are assuming single-enclave setups
+	err := validator.StartEnclave(0)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +43,7 @@ type stopValidatorEnclaveAction struct {
 func (s *stopValidatorEnclaveAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 	fmt.Printf("Validator %d: stopping enclave\n", s.validatorIdx)
 	validator := network.GetValidatorNode(s.validatorIdx)
-	err := validator.StopEnclave()
+	err := validator.StopEnclave(0)
 	if err != nil {
 		return nil, err
 	}
@@ -101,11 +102,11 @@ func StartSequencerHost() networktest.Action {
 	})
 }
 
-func StopSequencerEnclave() networktest.Action {
+func StopSequencerEnclave(enclaveIdx int) networktest.Action {
 	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
-		fmt.Println("Sequencer: stopping enclave")
+		fmt.Printf("Sequencer: stopping enclave %d\n", enclaveIdx)
 		sequencer := network.GetSequencerNode()
-		err := sequencer.StopEnclave()
+		err := sequencer.StopEnclave(enclaveIdx)
 		if err != nil {
 			return nil, err
 		}
@@ -113,11 +114,11 @@ func StopSequencerEnclave() networktest.Action {
 	})
 }
 
-func StartSequencerEnclave() networktest.Action {
+func StartSequencerEnclave(enclaveIdx int) networktest.Action {
 	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
-		fmt.Println("Sequencer: starting enclave")
+		fmt.Printf("Sequencer: starting enclave %d\n", enclaveIdx)
 		sequencer := network.GetSequencerNode()
-		err := sequencer.StartEnclave()
+		err := sequencer.StartEnclave(enclaveIdx)
 		if err != nil {
 			return nil, err
 		}
@@ -141,7 +142,7 @@ func (w *waitForValidatorHealthCheckAction) Run(ctx context.Context, network net
 	validator := network.GetValidatorNode(w.validatorIdx)
 	// poll the health check until success or timeout
 	err := retry.Do(func() error {
-		return networktest.NodeHealthCheck(validator.HostRPCAddress())
+		return networktest.NodeHealthCheck(validator.HostRPCWSAddress())
 	}, retry.NewTimeoutStrategy(w.maxWait, 1*time.Second))
 	if err != nil {
 		return nil, err
@@ -158,7 +159,7 @@ func WaitForSequencerHealthCheck(maxWait time.Duration) networktest.Action {
 		sequencer := network.GetSequencerNode()
 		// poll the health check until success or timeout
 		err := retry.Do(func() error {
-			return networktest.NodeHealthCheck(sequencer.HostRPCAddress())
+			return networktest.NodeHealthCheck(sequencer.HostRPCWSAddress())
 		}, retry.NewTimeoutStrategy(maxWait, 1*time.Second))
 		if err != nil {
 			return nil, err

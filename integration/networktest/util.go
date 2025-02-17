@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 )
 
 // IDEFlag is used as an environnment variable to allow tests to run that are designed not to run in CI
@@ -28,7 +28,7 @@ func NodeHealthCheck(rpcAddress string) error {
 	if err != nil {
 		return err
 	}
-	if !health {
+	if !health.OverallHealth {
 		return errors.New("node health check failed")
 	}
 	return nil

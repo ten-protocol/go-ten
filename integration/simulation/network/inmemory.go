@@ -1,20 +1,24 @@
 package network
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/retry"
+
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/host/container"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
-	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
-	"github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ten-protocol/go-ten/go/common/host"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/host/container"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
+	"github.com/ten-protocol/go-ten/integration/simulation/p2p"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 )
 
 type basicNetworkOfInMemoryNodes struct {
@@ -30,46 +34,50 @@ func NewBasicNetworkOfInMemoryNodes() Network {
 func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
 	l1Clients := make([]ethadapter.EthClient, params.NumberOfNodes)
 	n.ethNodes = make([]*ethereummock.Node, params.NumberOfNodes)
-	obscuroNodes := make([]*container.HostContainer, params.NumberOfNodes)
+	tenNodes := make([]*container.HostContainer, params.NumberOfNodes)
 	n.l2Clients = make([]rpc.Client, params.NumberOfNodes)
-	obscuroHosts := make([]host.Host, params.NumberOfNodes)
+	tenHosts := make([]host.Host, params.NumberOfNodes)
 
-	p2pNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency)
+	p2pNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
 
 	// Invent some addresses to assign as the L1 erc20 contracts
 	dummyOBXAddress := datagenerator.RandomAddress()
 	params.Wallets.Tokens[testcommon.HOC].L1ContractAddress = &dummyOBXAddress
 	dummyETHAddress := datagenerator.RandomAddress()
 	params.Wallets.Tokens[testcommon.POC].L1ContractAddress = &dummyETHAddress
-	disabledBus := common.BigToAddress(common.Big0)
+	dummyBus := datagenerator.RandomAddress()
+	// dummyMgmtContractAddress := datagenerator.RandomAddress()
+	// params.MgmtContractLib
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
-		// create the in memory l1 and l2 node
-		miner := createMockEthNode(int64(i), params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats)
+		incomingP2PDisabled := !isGenesis && i == params.NodeWithInboundP2PDisabled
 
-		agg := createInMemObscuroNode(
+		// create the in memory l1 and l2 node
+		miner := createMockEthNode(i, params.NumberOfNodes, params.AvgBlockDuration, params.AvgNetworkLatency, stats, params.BlobResolver)
+		agg := createInMemTenNode(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
 			params.MgmtContractLib,
-			false,
-			nil,
 			params.Wallets.NodeWallets[i],
 			miner,
 			p2pNetw.NewNode(i),
-			&disabledBus,
+			dummyBus,
 			common.Hash{},
 			params.AvgBlockDuration/2,
+			incomingP2PDisabled,
+			params.AvgBlockDuration,
+			params.BlobResolver,
 		)
-		obscuroClient := p2p.NewInMemObscuroClient(agg)
+		tenClient := p2p.NewInMemTenClient(agg)
 
 		n.ethNodes[i] = miner
-		obscuroNodes[i] = agg
-		n.l2Clients[i] = obscuroClient
+		tenNodes[i] = agg
+		n.l2Clients[i] = tenClient
 		l1Clients[i] = miner
-		obscuroHosts[i] = obscuroNodes[i].Host()
+		tenHosts[i] = tenNodes[i].Host()
 	}
 
 	// populate the nodes field of each network
@@ -80,8 +88,8 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	// The sequence of starting the nodes is important to catch various edge cases.
 	// Here we first start the mock layer 1 nodes, with a pause between them of a fraction of a block duration.
 	// The reason is to make sure that they catch up correctly.
-	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the Obscuro nodes
-	// Then, we begin the starting sequence of the Obscuro nodes, again with a delay between them, to test that they are able to cach up correctly.
+	// Then we pause for a while, to give the L1 network enough time to create a number of blocks, which will have to be ingested by the en nodes
+	// Then, we begin the starting sequence of the TEN nodes, again with a delay between them, to test that they are able to cach up correctly.
 	// Note: Other simulations might test variations of this pattern.
 	for _, m := range n.ethNodes {
 		t := m
@@ -89,7 +97,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		time.Sleep(params.AvgBlockDuration)
 	}
 
-	for _, m := range obscuroNodes {
+	for _, m := range tenNodes {
 		t := m
 		go func() {
 			err := t.Start()
@@ -100,22 +108,55 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 		time.Sleep(params.AvgBlockDuration / 3)
 	}
 
-	obscuroClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
+	tenClients := make([]*obsclient.ObsClient, params.NumberOfNodes)
 	for idx, l2Client := range n.l2Clients {
-		obscuroClients[idx] = obsclient.NewObsClient(l2Client)
+		tenClients[idx] = obsclient.NewObsClient(l2Client)
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
+	var sequencerHealth host.HealthCheck
+	// wait for the sequencer to be healthy
+	err := retry.Do(func() error {
+		var err error
+		sequencerHealth, err = tenClients[0].Health()
+		if err != nil {
+			return err
+		}
+		if len(sequencerHealth.Enclaves) == 0 {
+			return fmt.Errorf("no enclaves available to promote on sequencer")
+		}
+
+		// the nodes are healthy, we can continue
+		return nil
+	}, retry.NewTimeoutStrategy(30*params.AvgBlockDuration, params.AvgBlockDuration))
+	if err != nil {
+		panic(err)
+	}
+
+	// mock implementation of the permissioning, tell the mock L1 the seq address
+	for _, node := range n.ethNodes {
+		node.PromoteEnclave(sequencerHealth.Enclaves[0].EnclaveID)
+	}
+	permMockAddr := ethereummock.MockGrantSeqTxAddress()
+	mockTx := types.NewTx(&types.LegacyTx{
+		To:   &permMockAddr,
+		Data: []byte{0x1},
+	})
+	err = n.ethNodes[0].SendTransaction(mockTx)
+	if err != nil {
+		return nil, err
+	}
+
 	return &RPCHandles{
 		EthClients:     l1Clients,
-		ObscuroClients: obscuroClients,
+		TenClients:     tenClients,
 		RPCClients:     n.l2Clients,
 		AuthObsClients: walletClients,
 	}, nil
 }
 
 func (n *basicNetworkOfInMemoryNodes) TearDown() {
-	StopObscuroNodes(n.l2Clients)
+	StopTenNodes(n.l2Clients)
 
 	for _, node := range n.ethNodes {
 		temp := node

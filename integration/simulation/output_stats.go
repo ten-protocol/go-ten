@@ -6,12 +6,12 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 // OutputStats decouples the processing of data and the collection of statistics
@@ -47,8 +47,8 @@ func (o *OutputStats) populateHeights() {
 	}
 	o.l1Height = int(l1Height)
 
-	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
-	hRollup, err := getHeadBatchHeader(obscuroClient)
+	tenClient := o.simulation.RPCHandles.TenClients[0]
+	hRollup, err := getHeadBatchHeader(tenClient)
 	if err != nil {
 		panic(err)
 	}
@@ -58,10 +58,10 @@ func (o *OutputStats) populateHeights() {
 
 func (o *OutputStats) countBlockChain() {
 	l1Node := o.simulation.RPCHandles.EthClients[0]
-	obscuroClient := o.simulation.RPCHandles.ObscuroClients[0]
+	tenClient := o.simulation.RPCHandles.TenClients[0]
 
 	// iterate the Node Headers and get the rollups
-	header, err := getHeadBatchHeader(obscuroClient)
+	header, err := getHeadBatchHeader(tenClient)
 	if err != nil {
 		panic(err)
 	}
@@ -73,23 +73,34 @@ func (o *OutputStats) countBlockChain() {
 
 		o.l2RollupCountInHeaders++
 
-		header, err = obscuroClient.BatchHeaderByHash(header.ParentHash)
+		header, err = tenClient.GetBatchHeaderByHash(header.ParentHash)
 		if err != nil {
 			testlog.Logger().Crit("could not retrieve rollup by hash.", log.ErrKey, err)
 		}
 	}
 
 	// iterate the L1 Blocks and get the rollups
-	for block, _ := l1Node.FetchHeadBlock(); block != nil && !bytes.Equal(block.Hash().Bytes(), (common.L1BlockHash{}).Bytes()); block, _ = l1Node.BlockByHash(block.ParentHash()) {
-		o.incrementStats(block, l1Node)
+	for block, _ := l1Node.FetchHeadBlock(); block != nil && !bytes.Equal(block.Hash().Bytes(), (common.L1BlockHash{}).Bytes()); block, _ = l1Node.HeaderByHash(block.ParentHash) {
+		b, err := l1Node.BlockByHash(block.Hash())
+		if err != nil {
+			panic(err)
+		}
+		o.incrementStats(b, l1Node)
 	}
 }
 
 func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient) {
 	for _, tx := range block.Transactions() {
-		t := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
+		t, err := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
+		if err != nil {
+			panic(err)
+		}
 		if t == nil {
-			t = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
+			var err error
+			t, err = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
+			if err != nil {
+				testlog.Logger().Crit("could not decode tx.", log.ErrKey, err)
+			}
 		}
 
 		if t == nil {
@@ -97,7 +108,7 @@ func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient)
 		}
 
 		switch l1Tx := t.(type) {
-		case *ethadapter.L1RollupTx:
+		case *common.L1RollupTx:
 			_, err := common.DecodeRollup(l1Tx.Rollup)
 			if err != nil {
 				testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
@@ -109,7 +120,7 @@ func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient)
 			//	}
 			//}
 
-		case *ethadapter.L1DepositTx:
+		case *common.L1DepositTx:
 			o.canonicalERC20DepositCount++
 		}
 	}
@@ -133,7 +144,9 @@ func (o *OutputStats) String() string {
 		"totalWithdrawnAmount: %d\n"+
 		"rollupWithMoreRecentProof: %d\n"+
 		"nrTransferTransactions: %d\n"+
-		"nrBlockParsedERC20Deposits: %d\n",
+		"nrNativeTransferTransactions: %d\n"+
+		"nrBlockParsedERC20Deposits: %d\n"+
+		"gasBridgeCount: %d\n",
 		o.simulation.Stats.NrMiners,
 		o.l1Height,
 		o.l2Height,
@@ -150,6 +163,8 @@ func (o *OutputStats) String() string {
 		o.simulation.Stats.TotalWithdrawalRequestedAmount,
 		o.simulation.Stats.RollupWithMoreRecentProofCount,
 		o.simulation.Stats.NrTransferTransactions,
+		o.simulation.Stats.NrNativeTransferTransactions,
 		o.canonicalERC20DepositCount,
+		len(o.simulation.TxInjector.TxTracker.GasBridgeTransactions),
 	)
 }

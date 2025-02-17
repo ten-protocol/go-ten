@@ -8,7 +8,7 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -20,13 +20,13 @@ type Wallet interface {
 	Address() common.Address
 	// SignTransaction returns a signed transaction
 	SignTransaction(tx types.TxData) (*types.Transaction, error)
-
 	// SetNonce overrides the current nonce
 	// The GetTransactionCount is expected to be the next nonce to use in a transaction, not the current account GetTransactionCount
 	SetNonce(nonce uint64)
 	// GetNonceAndIncrement atomically increments the nonce by one and returns the previous value
 	GetNonceAndIncrement() uint64
 	GetNonce() uint64
+	ChainID() *big.Int
 
 	// PrivateKey returns the wallets private key
 	PrivateKey() *ecdsa.PrivateKey
@@ -67,12 +67,16 @@ func NewInMemoryWalletFromConfig(pkStr string, l1ChainID int64, logger gethlog.L
 
 // SignTransaction returns a signed transaction
 func (m *inMemoryWallet) SignTransaction(tx types.TxData) (*types.Transaction, error) {
-	return types.SignNewTx(m.prvKey, types.NewLondonSigner(m.chainID), tx)
+	return types.MustSignNewTx(m.prvKey, types.NewCancunSigner(m.chainID), tx), nil
 }
 
 // Address returns the current wallet address
 func (m *inMemoryWallet) Address() common.Address {
 	return m.pubKeyAddr
+}
+
+func (m *inMemoryWallet) ChainID() *big.Int {
+	return big.NewInt(0).Set(m.chainID)
 }
 
 func (m *inMemoryWallet) GetNonceAndIncrement() uint64 {

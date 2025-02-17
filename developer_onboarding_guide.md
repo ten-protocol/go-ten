@@ -46,10 +46,10 @@ If you're making substantial changes that could affect E2E tests, you can manual
 
 To do so, follow these steps:
 
-- Go to the [obscuro-test](https://github.com/obscuronet/obscuro-test/actions) repository
-- Click on the `Run local tests` [link](https://github.com/obscuronet/obscuro-test/actions/workflows/run_local_tests.yml)
+- Go to the [ten-test](https://github.com/ten-protocol/ten-test/actions) repository
+- Click on the `Run local tests` [link](https://github.com/ten-protocol/ten-test/actions/workflows/run_local_tests.yml)
 - Click `Run workflow`, enter the name of your branch, and then click `Run workflow`
 
-## Obscuro smart contracts
+## TEN smart contracts
 
-Documentation for Obscuro smart contracts is available [here](https://github.com/obscuronet/go-obscuro/blob/main/contracts/README.md).
+Documentation for TEN smart contracts is available [here](https://github.com/ten-protocol/go-ten/blob/main/contracts/README.md).

@@ -1,175 +1,112 @@
 @startuml
-' avoid problems with angled crows feet
+
+!theme plain
+top to bottom direction
 skinparam linetype ortho
 
-package "Batch Execution" as BE  #LightYellow{
-
-note as N0
- This section is populated
- when a batch is processed.
-end note
-
-note as N1
- There can be multiple
- sibling batches, but
- they will always
- share a body.
-end note
-
-note as N2
- The same transaction can be part
- of multiple reorged sibling batches,
- and generate different receipts and events.
-end note
-
-note as N3
- Transactions can be bound
- to a batch body only.
-end note
-
+class attestation_key {
+   party: binary(20)
+   ky: binary(33)
+}
+class batch {
+   converted_hash: binary(32)
+   hash: binary(32)
+   height: int
+   is_canonical: boolean
+   header: blob
+   l1_proof_hash: binary(32)
+   l1_proof: integer
+   is_executed: boolean
+   sequence: int
+}
+class block {
+   hash: binary(32)
+   is_canonical: boolean
+   header: blob
+   height: int
+   id: integer
+}
+class config {
+   val: mediumblob
+   ky: varchar(64)
+}
+class contract {
+   address: binary(20)
+   owner: int
+   id: integer
+}
+class event_log {
+   event_type: integer
+   topic1: integer
+   topic2: integer
+   topic3: integer
+   datablob: mediumblob
+   log_idx: integer
+   receipt: integer
+   id: integer
+}
+class event_topic {
+   topic: binary(32)
+   rel_address: integer
+   id: integer
+}
+class event_type {
+   contract: integer
+   event_sig: binary(32)
+   public: boolean
+   id: integer
+}
+class externally_owned_account {
+   address: binary(20)
+   id: integer
+}
+class keyvalue {
+   ky: varbinary(64)
+   val: mediumblob
+   id: integer
+}
+class l1_msg {
+   message: varbinary(1024)
+   block: integer
+   is_transfer: boolean
+   id: integer
+}
+class receipt {
+   content: mediumblob
+   tx: integer
+   batch: integer
+   id: integer
+}
+class rollup {
+   hash: binary(32)
+   start_seq: int
+   end_seq: int
+   time_stamp: int
+   header: blob
+   compression_block: integer
+   id: integer
+}
+class tx {
+   hash: binary(32)
+   content: mediumblob
+   sender_address: int
+   idx: int
+   batch_height: int
+   id: integer
 }
 
-package "Block Submission" as BS  #LightBlue{
-note as N4
- This section is populated
- when an L1 block is processed.
- The logic will store the rollups
- and the cross chain messages.
- It will also mark "is_canonical"
- when there are reorgs.
-end note
-
-note as N6
-Add constraint on
-block(is_canonical, height)
-end note
-
-}
-
-package "Config" as C   #LightGreen{
-note as N5
- This table contains general
- information like the shared secret,
- the attestation, etc.
-end note
-
-}
-
-package "Key Value" as KV {
-note as N7
-This is where the stateDB lives.
-Maybe some stuff needed by the embedded geth.
-end note
-}
-
-entity "Batch" as BE.batch {
-  *batchHash : binary(32)
-  --
-  sequence : int
-  height : int
-  is_canonical : boolean
-  source : P2P/ROLLUP
-  header : string
-  *l1Proof : binary(32) <<FK>>
-  *bodyHash : binary(32) <<FK>>
-  *parentHash : binary(32) <<FK>>
-}
-
-entity "Batch Body" as BE.batch_body {
-  *bodyHash : binary(32)
-  --
-  content : mediumblob
-}
-
-entity "Transaction" as BE.tx {
-  *txHash : binary(32)
-  --
-  content : binary
-  senderAddress : binary(20)
-  nonce : int
-  idx : int
-  *bodyHash : binary(32) <<FK>>
-}
-
-entity "Executed Transaction" as BE.exec_tx {
-  *execTxId : number <<generated>>
-  --
-  createdContractAddress : binary(32)
-  receipt : mediumblob
-  *txHash : binary(32) <<FK>>
-  *batchHash : binary(32) <<FK>>
-}
-
-entity "Event" as BE.event {
-  --
-  topic0 : binary(32)
-  topic1 : binary(32)
-  topic2 : binary(32)
-  topic3 : binary(32)
-  topic4 : binary(32)
-  datablob : mediumblob
-  logIdx : int
-  address : binary(32)
-  lifecycleEvent : boolean
-  relAddress1 : binary(20)
-  relAddress2 : binary(20)
-  relAddress3 : binary(20)
-  relAddress4 : binary(20)
-  *execTxId : number <<FK>>
-}
-
-entity "Block" as BS.block {
-  *blockHash : binary(32)
-  --
-  *parentHash : binary(32) <<FK>>
-  is_canonical : boolean
-  height : int
-  header : string
-}
-
-entity "L1 Message" as BS.l1_msg{
-  __
-  message : mediumblob
-  *blockHash : binary(32) <<FK>>
-}
-
-entity "Rollup" as BS.rollup {
-  *rollupHash : binary(32)
-  --
-  start_seq : int
-  end_seq : int
-  *blockHash : binary(32) <<FK>>
-}
-
-entity "Config" as C.cfg{
- *key : string
- --
- value : binary
-}
-
-entity "KeyValue" as KV.kv{
- *key : binary
- --
- value : binary
-}
-
-
-
-batch_body ||..o{ tx : included in
-batch_body ||..|{ batch
-block ||..|{ batch : L1 proof
-block ||..|{ rollup : Published in
-exec_tx ||..|{ event
-batch ||..|{ exec_tx
-tx ||..|{ exec_tx
-block ||..o{ l1_msg
-block ||..|{ block
-batch ||..|{ batch
-
-
-batch_body .. N1
-exec_tx .. N2
-tx .. N3
-block .. N6
-
+batch                     -[#595959,plain]-^  block                    : "l1_proof:id"
+contract                  -[#595959,plain]-^  externally_owned_account : "owner:id"
+event_log                 -[#595959,plain]-^  event_topic              : "topic2:id"
+event_log                 -[#595959,plain]-^  event_topic              : "topic1:id"
+event_log                 -[#595959,plain]-^  event_topic              : "topic3:id"
+event_log                 -[#595959,plain]-^  event_type               : "event_type:id"
+event_log                 -[#595959,plain]-^  receipt                  : "receipt:id"
+event_topic               -[#595959,plain]-^  externally_owned_account : "rel_address:id"
+event_type                -[#595959,plain]-^  contract                 : "contract:id"
+l1_msg                    -[#595959,plain]-^  block                    : "block:id"
+receipt                   -[#595959,plain]-^  batch                    : "batch:sequence"
+receipt                   -[#595959,plain]-^  tx                       : "tx:id"
+rollup                    -[#595959,plain]-^  block                    : "compression_block:id"
+tx                        -[#595959,plain]-^  externally_owned_account : "sender_address:id"
 @enduml

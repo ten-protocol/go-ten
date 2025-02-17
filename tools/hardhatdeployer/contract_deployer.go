@@ -10,10 +10,11 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/obscuronet/go-obscuro/go/common/constants"
-	"github.com/obscuronet/go-obscuro/go/common/retry"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/erc20contract"
+	"github.com/ethereum/go-ethereum/params"
+	"github.com/ten-protocol/go-ten/go/common/constants"
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration/erc20contract"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
@@ -26,7 +27,7 @@ const (
 )
 
 const (
-	timeoutWait   = 80 * time.Second
+	timeoutWait   = 120 * time.Second
 	retryInterval = 2 * time.Second
 	Prealloc      = 2_050_000_000_000_000_000 // The amount preallocated to the contract deployer wallet.
 )
@@ -91,8 +92,8 @@ func (cd *contractDeployer) run() (string, error) {
 
 	deployContractTx := types.LegacyTx{
 		Nonce:    cd.wallet.GetNonceAndIncrement(),
-		GasPrice: big.NewInt(2000000000),
-		Gas:      uint64(1025_000_000),
+		GasPrice: big.NewInt(params.InitialBaseFee),
+		Gas:      uint64(5_000_000),
 		Data:     cd.contractCode,
 	}
 
@@ -142,7 +143,6 @@ func (cd *contractDeployer) signAndSendTxWithReceipt(wallet wallet.Wallet, deplo
 		receipt, err = deployer.TransactionReceipt(signedTx.Hash())
 		return err
 	}, retry.NewTimeoutStrategy(timeoutWait, retryInterval))
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy contract - %w", err)
 	}

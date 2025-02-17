@@ -6,7 +6,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 // RandomBatch - block is needed in order to pass the smart contract check
@@ -22,11 +22,6 @@ func RandomBatch(block *types.Block) common.ExtBatch {
 		},
 		TxHashes:        []gethcommon.Hash{randomHash()},
 		EncryptedTxBlob: RandomBytes(10),
-	}
-
-	if block != nil {
-		extBatch.Header.LatestInboundCrossChainHeight = block.Number()
-		extBatch.Header.LatestInboundCrossChainHash = block.Hash()
 	}
 
 	return extBatch

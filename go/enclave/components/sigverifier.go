@@ -1,45 +1,58 @@
 package components
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/common/signature"
+
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
 )
 
-type SignatureValidator struct {
-	SequencerID gethcommon.Address
-	attestedKey *ecdsa.PublicKey
-	storage     db.Storage
+// SequencerSignatureVerifier interface for signature validation
+type SequencerSignatureVerifier interface {
+	CheckSequencerSignature(hash gethcommon.Hash, sig []byte) error
 }
 
-func NewSignatureValidator(seqID gethcommon.Address, storage db.Storage) (*SignatureValidator, error) {
-	// todo (#718) - sequencer identities should be retrieved from the L1 management contract
+type SignatureValidator struct {
+	attestedKey *ecdsa.PublicKey
+	storage     storage.Storage
+}
+
+func NewSignatureValidator(storage storage.Storage) (*SignatureValidator, error) {
 	return &SignatureValidator{
-		SequencerID: seqID,
 		storage:     storage,
 		attestedKey: nil,
 	}, nil
 }
 
 // CheckSequencerSignature - verifies the signature against the registered sequencer
-func (sigChecker *SignatureValidator) CheckSequencerSignature(headerHash gethcommon.Hash, sigR *big.Int, sigS *big.Int) error {
-	if sigR == nil || sigS == nil {
+func (sigChecker *SignatureValidator) CheckSequencerSignature(hash gethcommon.Hash, sig []byte) error {
+	if sig == nil {
 		return fmt.Errorf("missing signature on batch")
 	}
 
-	if sigChecker.attestedKey == nil {
-		attestedKey, err := sigChecker.storage.FetchAttestedKey(sigChecker.SequencerID)
-		if err != nil {
-			return fmt.Errorf("could not retrieve attested key for aggregator %s. Cause: %w", sigChecker.SequencerID, err)
-		}
-		sigChecker.attestedKey = attestedKey
+	sequencerIDs, err := sigChecker.storage.GetSequencerEnclaveIDs(context.Background())
+	if err != nil {
+		return fmt.Errorf("could not fetch sequencer IDs: %w", err)
 	}
 
-	if !ecdsa.Verify(sigChecker.attestedKey, headerHash.Bytes(), sigR, sigS) {
-		return fmt.Errorf("could not verify ECDSA signature")
+	// loop through sequencer keys and exit early if one of them matches
+	for _, seqID := range sequencerIDs {
+		attestedEnclave, err := sigChecker.storage.GetEnclavePubKey(context.Background(), seqID)
+		if err != nil {
+			continue // skip if we can't get the public key for this sequencer
+		}
+
+		err = signature.VerifySignature(attestedEnclave.PubKey, hash.Bytes(), sig)
+		if err == nil {
+			// signature matches
+			return nil
+		}
 	}
-	return nil
+
+	return fmt.Errorf("could not verify the signature against any of the stored sequencer enclave keys")
 }

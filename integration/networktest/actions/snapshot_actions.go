@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 )
 
 // standard snapshots to use as reference points across all tests

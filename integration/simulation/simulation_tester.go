@@ -7,15 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 
-	simstats "github.com/obscuronet/go-obscuro/integration/simulation/stats"
+	simstats "github.com/ten-protocol/go-ten/integration/simulation/stats"
 
 	"github.com/google/uuid"
 )
@@ -39,7 +39,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	// Return early if the network was not created
 	if err != nil {
 		fmt.Printf("Could not run test: %s\n", err)
-		return
+		t.Fatal()
 	}
 
 	txInjector := NewTransactionInjector(
@@ -47,10 +47,11 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		stats,
 		networkClients,
 		params.Wallets,
-		&params.L1SetupData.MgmtContractAddress,
+		&params.L1TenData.MgmtContractAddress,
 		params.MgmtContractLib,
 		params.ERC20ContractLib,
 		0,
+		params,
 	)
 
 	simulation := Simulation{
@@ -60,7 +61,7 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 		SimulationTime:   params.SimulationTime,
 		Stats:            stats,
 		Params:           params,
-		LogChannels:      make(map[string][]chan common.IDAndLog),
+		LogChannels:      make(map[string][]chan types.Log),
 		Subscriptions:    []ethereum.Subscription{},
 	}
 
@@ -74,11 +75,11 @@ func testSimulation(t *testing.T, netw network.Network, params *params.SimParams
 	testlog.Logger().Info("Validating simulation results")
 	checkNetworkValidity(t, &simulation)
 
-	fmt.Printf("Stopping simulation\n")
-	testlog.Logger().Info("Stopping simulation")
-	simulation.Stop()
-
 	// generate and print the final stats
 	t.Logf("Simulation results:%+v", NewOutputStats(&simulation))
 	testlog.Logger().Info(fmt.Sprintf("Simulation results:%+v", NewOutputStats(&simulation)))
+
+	fmt.Printf("Stopping simulation\n")
+	testlog.Logger().Info("Stopping simulation")
+	simulation.Stop()
 }

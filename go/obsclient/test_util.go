@@ -3,7 +3,7 @@ package obsclient
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/stretchr/testify/mock"
 )
@@ -23,7 +23,7 @@ func (m *rpcClientMock) CallContext(ctx context.Context, result interface{}, met
 	return arguments.Error(0)
 }
 
-func (m *rpcClientMock) Subscribe(context.Context, interface{}, string, interface{}, ...interface{}) (*rpc.ClientSubscription, error) {
+func (m *rpcClientMock) Subscribe(context.Context, string, interface{}, ...interface{}) (*rpc.ClientSubscription, error) {
 	panic("not implemented")
 }
 

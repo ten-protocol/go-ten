@@ -4,11 +4,28 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./IMessageBus.sol";
 import "./Structs.sol";
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../system/Fees.sol";
 
-contract MessageBus is IMessageBus, Ownable {
-    function messageFee() internal virtual returns (uint256) {
-        return 0;
+contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
+
+    constructor() {
+        _transferOwnership(msg.sender);
+        _disableInitializers();
+    }
+
+    function initialize(address caller, address feesAddress) public initializer {
+        __Ownable_init(caller);
+        fees = IFees(feesAddress);
+    }
+
+    // Since this contract exists on the L2, when messages are added from the L1, we can have the from address be the same as self.
+    // This ensures no EOA collision can ever occur and no key is needed to be stored on the L2 or shared with validators.
+    modifier ownerOrSelf() {
+        address maskedSelf = address(uint160(address(this)) - 1);
+        require(msg.sender == owner() || msg.sender == maskedSelf, "Not owner or self");
+        _;
     }
 
     // This mapping contains the block timestamps where messages become valid
@@ -22,12 +39,45 @@ contract MessageBus is IMessageBus, Ownable {
     // Whenever a message is published, this sequence number increments.
     // This gives ordering to messages, guaranteed by us.
     mapping(address => uint64) addressSequences;
+    IFees fees;
 
     function incrementSequence(
         address sender
     ) internal returns (uint64 sequence) {
         sequence = addressSequences[sender];
         addressSequences[sender] += 1;
+    }
+
+    function sendValueToL2(
+        address receiver,
+        uint256 amount
+    ) external payable {
+        require(msg.value > 0 && msg.value == amount, "Attempting to send value without providing Ether");
+        
+        uint256 amountToBridge = msg.value;
+        if (address(fees) != address(0)) {
+            uint256 fee = getPublishFee();
+            require(msg.value >= fee, "Insufficient funds to send value");
+            amountToBridge = msg.value - fee;
+            (bool ok, ) = address(fees).call{value: fee}("");
+            require(ok, "Failed to send fees to fees contract");
+        }
+
+        uint64 sequence = incrementSequence(msg.sender);
+        emit ValueTransfer(msg.sender, receiver, amountToBridge, sequence);
+    }
+
+    function receiveValueFromL2(
+        address receiver,
+        uint256 amount
+    ) external onlyOwner {
+        require(address(this).balance >= amount, "Insufficient funds to send value");
+        (bool ok, ) = receiver.call{value: amount}("");
+        require(ok, "failed sending value");
+    }
+
+    function getPublishFee() public view returns (uint256) {
+        return fees.messageFee();
     }
 
     // This method is called from contracts to publish messages to the other linked message bus.
@@ -43,9 +93,13 @@ contract MessageBus is IMessageBus, Ownable {
         uint32 topic,
         bytes calldata payload,
         uint8 consistencyLevel
-    ) external override returns (uint64 sequence) {
-        //TODO: implement messageFee mechanism.
-        //require(msg.value >= messageFee());
+    ) external payable override returns (uint64 sequence) {
+        if (address(fees) != address(0)) { // No fee required for L1 to L2 messages.
+            uint256 fee = getPublishFee();
+            require(msg.value >= fee, "Insufficient funds to publish message");
+            (bool ok, ) = address(fees).call{value: fee}("");
+            require(ok, "Failed to send fees to fees contract");
+        }
 
         sequence = incrementSequence(msg.sender);
         emit LogMessagePublished(
@@ -89,7 +143,7 @@ contract MessageBus is IMessageBus, Ownable {
     function storeCrossChainMessage(
         Structs.CrossChainMessage calldata crossChainMessage,
         uint256 finalAfterTimestamp
-    ) external override onlyOwner {
+    ) external override ownerOrSelf {
         //Consider the message as verified after this period. Useful for having a challenge period.
         uint256 finalAtTimestamp = block.timestamp + finalAfterTimestamp;
         bytes32 msgHash = keccak256(abi.encode(crossChainMessage));
@@ -106,11 +160,25 @@ contract MessageBus is IMessageBus, Ownable {
         );
     }
 
+    function notifyDeposit(
+        address receiver,
+        uint256 amount
+    ) external ownerOrSelf {
+        emit NativeDeposit(receiver, amount);
+    }
+
+    function retrieveAllFunds(
+        address receiver
+    ) external onlyOwner {
+        (bool ok, ) = receiver.call{value: address(this).balance}("");
+        require(ok, "failed sending value");
+    }
+
     fallback() external payable {
         revert("unsupported");
     }
 
     receive() external payable {
-        revert("the Wormhole contract does not accept assets");
+        this.sendValueToL2{value: msg.value}(msg.sender, msg.value);
     }
 }

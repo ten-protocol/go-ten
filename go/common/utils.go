@@ -5,13 +5,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
-)
-
-type (
-	Latency func() time.Duration
 )
 
 func MaxInt(x, y uint32) uint32 {
@@ -19,21 +13,6 @@ func MaxInt(x, y uint32) uint32 {
 		return y
 	}
 	return x
-}
-
-// ShortHash converts the hash to a shorter uint64 for printing.
-func ShortHash(hash gethcommon.Hash) uint64 {
-	return hash.Big().Uint64()
-}
-
-// ShortAddress converts the address to a shorter uint64 for printing.
-func ShortAddress(address gethcommon.Address) uint64 {
-	return ShortHash(address.Hash())
-}
-
-// ShortNonce converts the nonce to a shorter uint64 for printing.
-func ShortNonce(nonce types.BlockNonce) uint64 {
-	return new(big.Int).SetBytes(nonce[4:]).Uint64()
 }
 
 // ExtractPotentialAddress - given a 32 byte hash , it checks whether it can be an address and extracts that
@@ -59,4 +38,11 @@ func RandomStr(n int) string {
 		suffix[i] = letters[randGen.Intn(len(letters))]
 	}
 	return string(suffix)
+}
+
+func BigMin(a, b *big.Int) *big.Int {
+	if a.Cmp(b) < 0 {
+		return a
+	}
+	return b
 }

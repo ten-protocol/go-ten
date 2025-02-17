@@ -1,59 +1,44 @@
 package components
 
 import (
+	"context"
 	"fmt"
+	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ethereum/go-ethereum/core/types"
+
+	"github.com/ten-protocol/go-ten/go/common/merkle"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/obscuronet/go-obscuro/contracts/generated/MessageBus"
-
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/limiters"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
-// rollupProducerImpl encapsulates the logic of decoding rollup transactions submitted to the L1 and resolving them
-// to rollups that the enclave can process.
 type rollupProducerImpl struct {
-	// TransactionBlobCrypto- This contains the required properties to encrypt rollups.
-	TransactionBlobCrypto crypto.DataEncryptionService
-
-	ObscuroChainID  int64
-	EthereumChainID int64
-
-	sequencerID gethcommon.Address
-
-	logger gethlog.Logger
-
-	storage db.Storage
-
-	batchRegistry  BatchRegistry
-	blockProcessor L1BlockProcessor
+	enclaveID     gethcommon.Address
+	storage       storage.Storage
+	batchRegistry BatchRegistry
+	logger        gethlog.Logger
 }
 
-func NewRollupProducer(sequencerID gethcommon.Address, transactionBlobCrypto crypto.DataEncryptionService, obscuroChainID int64, ethereumChainID int64, storage db.Storage, batchRegistry BatchRegistry, blockProcessor L1BlockProcessor, logger gethlog.Logger) RollupProducer {
+func NewRollupProducer(enclaveID gethcommon.Address, storage storage.Storage, batchRegistry BatchRegistry, logger gethlog.Logger) RollupProducer {
 	return &rollupProducerImpl{
-		TransactionBlobCrypto: transactionBlobCrypto,
-		ObscuroChainID:        obscuroChainID,
-		EthereumChainID:       ethereumChainID,
-		sequencerID:           sequencerID,
-		logger:                logger,
-		batchRegistry:         batchRegistry,
-		blockProcessor:        blockProcessor,
-		storage:               storage,
+		enclaveID:     enclaveID,
+		logger:        logger,
+		batchRegistry: batchRegistry,
+		storage:       storage,
 	}
 }
 
-func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, limiter limiters.RollupLimiter) (*core.Rollup, error) {
-	batches, err := re.batchRegistry.BatchesAfter(fromBatchNo, limiter)
+func (re *rollupProducerImpl) CreateInternalRollup(ctx context.Context, fromBatchNo uint64, upToL1Height uint64, limiter limiters.RollupLimiter) (*core.Rollup, error) {
+	batches, blocks, err := re.batchRegistry.BatchesAfter(ctx, fromBatchNo, upToL1Height, limiter)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not fetch 'from' batch (seqNo=%d) for rollup: %w", fromBatchNo, err)
 	}
 
 	hasBatches := len(batches) != 0
@@ -62,35 +47,52 @@ func (re *rollupProducerImpl) CreateRollup(fromBatchNo uint64, limiter limiters.
 		return nil, fmt.Errorf("no batches for rollup")
 	}
 
-	newRollup := re.createNextRollup(batches)
+	block, err := re.storage.FetchCanonicaBlockByHeight(ctx, big.NewInt(int64(upToL1Height)))
+	if err != nil {
+		return nil, err
+	}
 
-	re.logger.Info(fmt.Sprintf("Created new rollup %s with %d batches", newRollup.Hash(), len(newRollup.Batches)))
+	rh := common.RollupHeader{}
+	rh.CompressionL1Head = block.Hash()
+	rh.CompressionL1Number = block.Number
+
+	lastBatch := batches[len(batches)-1]
+	rh.LastBatchSeqNo = lastBatch.SeqNo().Uint64()
+	rh.LastBatchHash = lastBatch.Hash()
+
+	blockMap := map[common.L1BlockHash]*types.Header{}
+	for _, b := range blocks {
+		blockMap[b.Hash()] = b
+	}
+
+	exportedCrossChainRoot, err := exportCrossChainData(ctx, re.storage, batches[0].SeqNo().Uint64(), rh.LastBatchSeqNo)
+	if err != nil {
+		return nil, err
+	}
+
+	rh.CrossChainRoot = *exportedCrossChainRoot
+
+	newRollup := &core.Rollup{
+		Header:  &rh,
+		Blocks:  blockMap,
+		Batches: batches,
+	}
+
+	re.logger.Info(fmt.Sprintf("Created new rollup %s with %d batches. From %d to %d", newRollup.Hash(), len(newRollup.Batches), batches[0].SeqNo(), rh.LastBatchSeqNo))
 
 	return newRollup, nil
 }
 
-// createNextRollup - based on a previous rollup and batches will create a new rollup that encapsulate the state
-// transition from the old rollup to the new one's head batch.
-func (re *rollupProducerImpl) createNextRollup(batches []*core.Batch) *core.Rollup {
-	lastBatch := batches[len(batches)-1]
-
-	rh := common.RollupHeader{}
-	rh.L1Proof = lastBatch.Header.L1Proof
-	b, err := re.storage.FetchBlock(rh.L1Proof)
+func exportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqNo uint64, toSeqNo uint64) (*gethcommon.Hash, error) {
+	canonicalBatches, err := storage.FetchCanonicalBatchesBetween((ctx), fromSeqNo, toSeqNo)
 	if err != nil {
-		re.logger.Crit("Could not fetch block. Should not happen", log.ErrKey, err)
-	}
-	rh.L1ProofNumber = b.Number()
-	rh.Coinbase = re.sequencerID
-
-	rh.CrossChainMessages = make([]MessageBus.StructsCrossChainMessage, 0)
-	for _, b := range batches {
-		rh.CrossChainMessages = append(rh.CrossChainMessages, b.Header.CrossChainMessages...)
+		return nil, err
 	}
 
-	rh.LastBatchSeqNo = lastBatch.SeqNo().Uint64()
-	return &core.Rollup{
-		Header:  &rh,
-		Batches: batches,
+	root, _, err := merkle.ComputeCrossChainRootFromBatches(canonicalBatches)
+	if err != nil {
+		return nil, err
 	}
+
+	return &root, nil
 }

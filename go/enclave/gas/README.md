@@ -1,0 +1,2 @@
+The gas package contains the necessary code for estimating and pricing l1 gas.
+Currently it's mostly barebone placeholders, but will evolve into precompiled smart contracts and binders for accessing their state in order to fit it in the gas mechanics.  

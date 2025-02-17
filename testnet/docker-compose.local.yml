@@ -17,16 +17,16 @@ services:
     build:
       context: $ROOT_PATH
       dockerfile: ./dockerfiles/enclave.Dockerfile
-  enclave-debug:
-    image: "testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest"
+#  enclave-debug:
+#    image: "testnetobscuronet.azurecr.io/obscuronet/enclave_debug:latest"
+#    build:
+#      context: $ROOT_PATH
+#      dockerfile: ./dockerfiles/enclave.debug.Dockerfile
+  ten-scan:
+    image: "testnetobscuronet.azurecr.io/obscuronet/tenscan:latest"
     build:
       context: $ROOT_PATH
-      dockerfile: ./dockerfiles/enclave.debug.Dockerfile
-  obscuro-scan:
-    image: "testnetobscuronet.azurecr.io/obscuronet/obscuroscan:latest"
-    build:
-      context: $ROOT_PATH
-      dockerfile: ./tools/obscuroscan/Dockerfile
+      dockerfile: ./tools/tenscan/backend/Dockerfile
   hardhat-deployer:
     image: "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
     build:

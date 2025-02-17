@@ -2,19 +2,21 @@ package responses
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common/syserr"
-	"github.com/obscuronet/go-obscuro/go/enclave/vkhandler"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+
+	"github.com/ten-protocol/go-ten/go/common/syserr"
 )
 
 // InternalErrMsg is the common response returned to the user when an InternalError occurs
 var InternalErrMsg = "internal system error"
 
-// This is the encoded & encrypted form of a UserResponse[Type]
+// EncryptedUserResponse - This is the encoded & encrypted form of a UserResponse[Type]
 type EncryptedUserResponse []byte
 
-// The response that the enclave returns for sensitive API calls
+// EnclaveResponse - The response that the enclave returns for sensitive API calls
 // The user response is encrypted while the error is in plaintext
 type EnclaveResponse struct {
 	EncUserResponse EncryptedUserResponse
@@ -36,15 +38,6 @@ func (er *EnclaveResponse) Error() error {
 		return fmt.Errorf(*er.Err)
 	}
 	return nil
-}
-
-// AsPlaintextResponse - creates the plaintext part of the enclave response
-// It would be visible that there is an enclave response,
-// but the bytes in it will still be encrypted
-func AsPlaintextResponse(encResp EncryptedUserResponse) *EnclaveResponse {
-	return &EnclaveResponse{
-		EncUserResponse: encResp,
-	}
 }
 
 // AsEmptyResponse - Creates an empty enclave response. Useful for when no error
@@ -71,9 +64,13 @@ func AsPlaintextError(err error) *EnclaveResponse {
 	}
 }
 
+type Encryptor interface {
+	Encrypt(bytes []byte) ([]byte, error)
+}
+
 // AsEncryptedResponse - wraps the data passed into the proper format, serializes it and encrypts it.
 // It is then encoded in a plaintext response.
-func AsEncryptedResponse[T any](data *T, encryptHandler *vkhandler.VKHandler) *EnclaveResponse {
+func AsEncryptedResponse[T any](data *T, encryptHandler Encryptor) *EnclaveResponse {
 	userResp := UserResponse[T]{
 		Result: data,
 	}
@@ -88,14 +85,15 @@ func AsEncryptedResponse[T any](data *T, encryptHandler *vkhandler.VKHandler) *E
 		return AsPlaintextError(err)
 	}
 
-	return AsPlaintextResponse(encrypted)
+	return &EnclaveResponse{
+		EncUserResponse: encrypted,
+	}
 }
 
 // AsEncryptedError - Encodes and encrypts an error to be returned for a concrete user.
-func AsEncryptedError(err error, encrypt *vkhandler.VKHandler) *EnclaveResponse {
-	errStr := err.Error()
+func AsEncryptedError(err error, encrypt Encryptor) *EnclaveResponse {
 	userResp := UserResponse[string]{
-		ErrStr: &errStr,
+		Err: convertError(err),
 	}
 
 	encoded, err := json.Marshal(userResp)
@@ -108,17 +106,19 @@ func AsEncryptedError(err error, encrypt *vkhandler.VKHandler) *EnclaveResponse 
 		return AsPlaintextError(err)
 	}
 
-	return AsPlaintextResponse(encrypted)
+	return &EnclaveResponse{
+		EncUserResponse: encrypted,
+	}
 }
 
 // ToEnclaveResponse - Converts an encoded plaintext into an enclave response
-func ToEnclaveResponse(encoded []byte) *EnclaveResponse {
+func ToEnclaveResponse(encoded []byte) (*EnclaveResponse, error) {
 	resp := EnclaveResponse{}
 	err := json.Unmarshal(encoded, &resp)
 	if err != nil {
-		panic(err) // Todo change when stable.
+		return nil, err
 	}
-	return &resp
+	return &resp, nil
 }
 
 // ToInternalError - Converts an error to an InternalError
@@ -136,11 +136,20 @@ func DecodeResponse[T any](encoded []byte) (*T, error) {
 	resp := UserResponse[T]{}
 	err := json.Unmarshal(encoded, &resp)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not decode response. Cause: %w", err)
 	}
-	if resp.ErrStr != nil {
-		return nil, fmt.Errorf(*resp.ErrStr)
+	if resp.Err != nil {
+		return nil, resp.Err
 	}
 
 	return resp.Result, nil
+}
+
+func convertError(err error) *errutil.DataError {
+	// check if it's a serialized error and handle any error wrapping that might have occurred
+	var e *errutil.DataError
+	if ok := errors.As(err, &e); ok {
+		return e
+	}
+	return &errutil.DataError{Err: err.Error()}
 }

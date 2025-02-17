@@ -1,163 +1,240 @@
 package components
 
 import (
-	"errors"
+	"context"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/enclave/core"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
-	"github.com/obscuronet/go-obscuro/go/common/measure"
-
-	"github.com/obscuronet/go-obscuro/go/common/compression"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/common/merkle"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
-	"github.com/obscuronet/go-obscuro/go/enclave/db"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
 type rollupConsumerImpl struct {
 	MgmtContractLib mgmtcontractlib.MgmtContractLib
 
-	dataEncryptionService  crypto.DataEncryptionService
-	dataCompressionService compression.DataCompressionService
-	batchRegistry          BatchRegistry
-
-	ObscuroChainID  int64
-	EthereumChainID int64
+	rollupCompression *RollupCompression
+	batchRegistry     BatchRegistry
 
 	logger gethlog.Logger
 
-	storage      db.Storage
-	sigValidator *SignatureValidator
+	storage      storage.Storage
+	sigValidator SequencerSignatureVerifier
 }
 
 func NewRollupConsumer(
 	mgmtContractLib mgmtcontractlib.MgmtContractLib,
 	batchRegistry BatchRegistry,
-	dataEncryptionService crypto.DataEncryptionService,
-	dataCompressionService compression.DataCompressionService,
-	obscuroChainID int64,
-	ethereumChainID int64,
-	storage db.Storage,
+	rollupCompression *RollupCompression,
+	storage storage.Storage,
 	logger gethlog.Logger,
-	verifier *SignatureValidator,
+	verifier SequencerSignatureVerifier,
 ) RollupConsumer {
 	return &rollupConsumerImpl{
-		MgmtContractLib:        mgmtContractLib,
-		batchRegistry:          batchRegistry,
-		dataEncryptionService:  dataEncryptionService,
-		dataCompressionService: dataCompressionService,
-		ObscuroChainID:         obscuroChainID,
-		EthereumChainID:        ethereumChainID,
-		logger:                 logger,
-		storage:                storage,
-		sigValidator:           verifier,
+		MgmtContractLib:   mgmtContractLib,
+		batchRegistry:     batchRegistry,
+		rollupCompression: rollupCompression,
+		logger:            logger,
+		storage:           storage,
+		sigValidator:      verifier,
 	}
 }
 
-func (rc *rollupConsumerImpl) ProcessRollupsInBlock(b *common.BlockAndReceipts) error {
-	stopwatch := measure.NewStopwatch()
-	defer rc.logger.Info("Rollup consumer processed block", log.BlockHashKey, b.Block.Hash(), log.DurationKey, stopwatch)
+// ProcessRollups - processes the rollups found in the block, verifies the rollups and stores them
+func (rc *rollupConsumerImpl) ProcessRollups(ctx context.Context, rollups []*common.ExtRollup) ([]common.ExtRollupMetadata, error) {
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer processed blobs", &core.RelaxedThresholds)
 
-	rollups := rc.extractRollups(b)
-	if len(rollups) == 0 {
-		return nil
-	}
+	rollupMetadata := make([]common.ExtRollupMetadata, len(rollups))
+	for idx, rollup := range rollups {
+		l1CompressionBlock, err := rc.storage.FetchBlock(ctx, rollup.Header.CompressionL1Head)
+		if err != nil {
+			rc.logger.Warn("Can't process rollup because the l1 block used for compression is not available", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			continue
+		}
+		canonicalBlockByHeight, err := rc.storage.FetchCanonicaBlockByHeight(ctx, l1CompressionBlock.Number)
+		if err != nil {
+			return nil, err
+		}
+		if canonicalBlockByHeight.Hash() != l1CompressionBlock.Hash() {
+			rc.logger.Warn("Skipping rollup because it was compressed on top of a non-canonical block", "block_hash", rollup.Header.CompressionL1Head, log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			continue
+		}
+		// read batch data from rollup, verify and store it
+		internalHeader, err := rc.rollupCompression.ProcessExtRollup(ctx, rollup)
+		if err != nil {
+			rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			// todo - issue challenge as a validator
+			return nil, err
+		}
+		if err := rc.storage.StoreRollup(ctx, rollup, internalHeader); err != nil {
+			rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			return nil, err
+		}
 
-	rollups, err := rc.getSignedRollup(rollups)
-	if err != nil {
-		return err
-	}
-	if len(rollups) > 0 {
-		for _, rollup := range rollups {
-			// read batch data from rollup, verify and store it
-			if err := rc.ProcessRollup(rollup); err != nil {
-				rc.logger.Error("Failed processing rollup", log.ErrKey, err)
-				return err
-			}
+		serializedTree, err := rc.ExportAndVerifyCrossChainData(ctx, internalHeader.FirstBatchSequence.Uint64(), rollup.Header.LastBatchSeqNo, rollup.Header.CrossChainRoot)
+		if err != nil {
+			rc.logger.Error("Failed exporting and verifying cross chain data", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
+			return nil, err
+		}
+
+		rollupMetadata[idx] = common.ExtRollupMetadata{
+			CrossChainTree: serializedTree,
 		}
 	}
 
-	return nil
+	if len(rollupMetadata) < len(rollups) {
+		return nil, fmt.Errorf("missing metadata for some rollups")
+	}
+
+	return rollupMetadata, nil
 }
 
-func (rc *rollupConsumerImpl) getSignedRollup(rollups []*common.ExtRollup) ([]*common.ExtRollup, error) {
-	signedRollup := make([]*common.ExtRollup, 0)
+func (rc *rollupConsumerImpl) ExportAndVerifyCrossChainData(ctx context.Context, fromSeqNo uint64, toSeqNo uint64, publishedCrossChainRoot gethcommon.Hash) (common.SerializedCrossChainTree, error) {
+	batches, err := rc.storage.FetchCanonicalBatchesBetween(ctx, fromSeqNo, toSeqNo)
+	if err != nil {
+		return nil, err
+	}
 
-	// loop through the rollups, find the one that is signed, verify the signature, make sure it's the only one
-	for _, rollup := range rollups {
-		if err := rc.sigValidator.CheckSequencerSignature(rollup.Hash(), rollup.Header.R, rollup.Header.S); err != nil {
+	localCrossChainRoot, serializedTree, err := merkle.ComputeCrossChainRootFromBatches(batches)
+	if err != nil {
+		return nil, err
+	}
+
+	if localCrossChainRoot != publishedCrossChainRoot {
+		return nil, errutil.ErrCrossChainRootMismatch
+	}
+
+	return serializedTree, nil
+}
+
+// GetRollupsFromL1Data - extracts the rollups from the processed L1 data and checks sequencer signature on them
+func (rc *rollupConsumerImpl) GetRollupsFromL1Data(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error) {
+	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer get rollups from L1 data", log.BlockHashKey, processed.BlockHeader.Hash())
+
+	block := processed.BlockHeader
+	rollups, err := rc.extractAndVerifyRollups(processed)
+	if err != nil {
+		rc.logger.Error("Failed to extract rollups from block", log.BlockHashKey, block.Hash(), log.ErrKey, err)
+		return nil, err // if multiple rollups are found with the same tx hash we will return here
+	}
+	if len(rollups) == 0 {
+		rc.logger.Trace("No rollups found in block", log.BlockHashKey, block.Hash())
+		return nil, nil
+	}
+
+	if len(rollups) > 0 {
+		// this is allowed as long as they come from unique transactions
+		rc.logger.Trace(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), block.Hash()))
+	}
+	return rollups, nil
+}
+
+// extractAndVerifyRollups extracts rollups from L1 transactions in the processed block.
+// It verifies blob hashes match the rollup hashes and ensures each transaction only contains one rollup.
+// Returns an error if multiple rollups are found in the same transaction or if rollup reconstruction fails.
+func (rc *rollupConsumerImpl) extractAndVerifyRollups(processed *common.ProcessedL1Data) ([]*common.ExtRollup, error) {
+	rollupTxs := processed.GetEvents(common.RollupTx)
+	rollups := make([]*common.ExtRollup, 0, len(rollupTxs))
+
+	blobs, blobHashes, signatures, err := rc.extractBlobsAndHashes(rollupTxs)
+	if err != nil {
+		return nil, err
+	}
+
+	txsSeen := make(map[gethcommon.Hash]bool)
+
+	for i, tx := range rollupTxs {
+		t, err := rc.MgmtContractLib.DecodeTx(tx.Transaction)
+		if err != nil {
+			rc.logger.Warn(fmt.Sprintf("could not decode tx at index %d. Cause: %s", i, err))
+		}
+		if t == nil {
+			rc.logger.Warn("decoded transaction is nil")
+			continue
+		}
+
+		rollupHashes, ok := t.(*common.L1RollupHashes)
+		if !ok {
+			rc.logger.Error("could not cast decoded rollup tx to l1 rollup hashes")
+			continue
+		}
+
+		// prevent the case where someone pushes a blob to the same slot. multiple rollups can be found in a block,
+		// but they must come from unique transactions
+		if txsSeen[tx.Transaction.Hash()] {
+			return nil, fmt.Errorf("multiple rollups from same transaction: %s", tx.Transaction.Hash())
+		}
+
+		if err := verifyBlobHashes(rollupHashes, blobHashes); err != nil {
+			rc.logger.Warn(fmt.Sprintf("blob hashes in rollup at index %d do not match the rollup blob hashes. Cause: %s", i, err))
+			continue // Blob hashes don't match, skip this rollup
+		}
+
+		r, err := ethadapter.ReconstructRollup(blobs)
+		if err != nil {
+			// This is a critical error because we've already verified the blob hashes
+			// If we can't reconstruct the rollup at this point, something is seriously wrong
+			return nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
+		}
+
+		compositeHash := common.ComputeCompositeHash(r.Header, blobHashes[i])
+		if err := rc.sigValidator.CheckSequencerSignature(compositeHash, signatures[i]); err != nil {
 			return nil, fmt.Errorf("rollup signature was invalid. Cause: %w", err)
 		}
 
-		signedRollup = append(signedRollup, rollup)
-	}
-	return signedRollup, nil
-}
-
-// extractRollups - returns a list of the rollups published in this block
-func (rc *rollupConsumerImpl) extractRollups(br *common.BlockAndReceipts) []*common.ExtRollup {
-	rollups := make([]*common.ExtRollup, 0)
-	b := br.Block
-
-	for _, tx := range *br.SuccessfulTransactions() {
-		// go through all rollup transactions
-		t := rc.MgmtContractLib.DecodeTx(tx)
-		if t == nil {
-			continue
-		}
-
-		rolTx, ok := t.(*ethadapter.L1RollupTx)
-		if !ok {
-			continue
-		}
-
-		r, err := common.DecodeRollup(rolTx.Rollup)
-		if err != nil {
-			rc.logger.Crit("could not decode rollup.", log.ErrKey, err)
-			return nil
-		}
-
 		rollups = append(rollups, r)
-		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, b.Hash())
-	}
+		txsSeen[tx.Transaction.Hash()] = true
 
-	return rollups
+		rc.logger.Info("Extracted rollup from block", log.RollupHashKey, r.Hash(), log.BlockHashKey, processed.BlockHeader.Hash())
+	}
+	return rollups, nil
 }
 
-func (rc *rollupConsumerImpl) ProcessRollup(rollup *common.ExtRollup) error {
-	// todo logic to decompress the rollups on the fly
-	r, err := core.ToRollup(rollup, rc.dataEncryptionService, rc.dataCompressionService)
-	if err != nil {
-		return err
+// there may be many rollups in one block so the blobHashes array, so it is possible that the rollupHashes array is a
+// subset of the blobHashes array
+func verifyBlobHashes(rollupHashes *common.L1RollupHashes, blobHashes []gethcommon.Hash) error {
+	// more efficient lookup
+	blobHashSet := make(map[gethcommon.Hash]struct{}, len(blobHashes))
+	for _, h := range blobHashes {
+		blobHashSet[h] = struct{}{}
 	}
 
-	for _, batch := range r.Batches {
-		rc.logger.Info("Processing batch from rollup", log.BatchHashKey, batch.Hash(), "seqNo", batch.SeqNo())
-		_, batchFoundErr := rc.batchRegistry.GetBatch(batch.Hash())
-		// Process and store a batch only if it wasn't already processed via p2p.
-		if batchFoundErr != nil && !errors.Is(batchFoundErr, errutil.ErrNotFound) {
-			return batchFoundErr
-		}
-		receipts, err := rc.batchRegistry.ValidateBatch(batch)
-		if errors.Is(err, errutil.ErrBlockForBatchNotFound) {
-			rc.logger.Warn("Unable to validate batch due to it being on a different chain.", log.BatchHashKey, batch.Hash())
-			continue
-		}
-		if err != nil {
-			rc.logger.Error("Failed validating batch", log.BatchHashKey, batch.Hash(), log.ErrKey, err)
-			return fmt.Errorf("failed validating and storing batch. Cause: %w", err)
-		}
-
-		err = rc.batchRegistry.StoreBatch(batch, receipts)
-		if err != nil {
-			return err
+	for i, rollupHash := range rollupHashes.BlobHashes {
+		if _, exists := blobHashSet[rollupHash]; !exists {
+			return fmt.Errorf(
+				"rollupHash at index %d (%s) not found in blobHashes",
+				i,
+				rollupHash.Hex(),
+			)
 		}
 	}
 	return nil
+}
+
+func (rc *rollupConsumerImpl) extractBlobsAndHashes(rollupTxs []*common.L1TxData) ([]*kzg4844.Blob, []gethcommon.Hash, [][]byte, error) {
+	blobs := make([]*kzg4844.Blob, 0)
+	signatures := make([][]byte, 0)
+	for _, tx := range rollupTxs {
+		for _, blobWithSig := range tx.BlobsWithSignature {
+			blobs = append(blobs, blobWithSig.Blob)
+			signatures = append(signatures, blobWithSig.Signature)
+		}
+	}
+
+	_, blobHashes, err := ethadapter.MakeSidecar(blobs, rc.MgmtContractLib.BlobHasher())
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("could not create blob sidecar and blob hashes. Cause: %w", err)
+	}
+
+	return blobs, blobHashes, signatures, nil
 }

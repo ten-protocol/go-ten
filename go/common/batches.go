@@ -9,9 +9,9 @@ import (
 )
 
 // ExtBatch is an encrypted form of batch used when passing the batch around outside of an enclave.
-// todo (#718) - expand this structure to contain the required fields.
 type ExtBatch struct {
-	Header          *BatchHeader
+	Header *BatchHeader
+	// todo - remove and replace with enclave API
 	TxHashes        []TxHash // The hashes of the transactions included in the batch.
 	EncryptedTxBlob EncryptedTransactions
 	hash            atomic.Value
@@ -28,15 +28,10 @@ func (b *ExtBatch) Hash() L2BatchHash {
 	return v
 }
 
-func (b *ExtBatch) Size() (int, error) {
-	bytes, err := rlp.EncodeToBytes(b)
-	return len(bytes), err
-}
-
 func (b *ExtBatch) Encoded() ([]byte, error) {
 	return rlp.EncodeToBytes(b)
 }
-
+func (b *ExtBatch) SeqNo() *big.Int { return new(big.Int).Set(b.Header.SequencerOrderNo) }
 func DecodeExtBatch(encoded []byte) (*ExtBatch, error) {
 	var batch ExtBatch
 	if err := rlp.DecodeBytes(encoded, &batch); err != nil {

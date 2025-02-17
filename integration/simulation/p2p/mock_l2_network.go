@@ -1,19 +1,20 @@
 package p2p
 
 import (
+	"context"
 	"math/big"
 	"strconv"
 	"sync/atomic"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/subscription"
+	"github.com/ten-protocol/go-ten/go/common/subscription"
 
-	"github.com/obscuronet/go-obscuro/go/common/async"
+	"github.com/ten-protocol/go-ten/go/common/async"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/host"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/host"
 
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
 )
 
 const _sequencerID = "0"
@@ -21,21 +22,28 @@ const _sequencerID = "0"
 type MockP2PNetwork struct {
 	nodes map[string]*MockP2P
 
-	avgLatency       time.Duration
-	avgBlockDuration time.Duration
+	avgLatency                  time.Duration
+	avgBlockDuration            time.Duration
+	nodeWithIncomingP2PDisabled int
 }
 
-func NewMockP2PNetwork(avgBlockDuration time.Duration, avgLatency time.Duration) *MockP2PNetwork {
+type MockP2PNetworkIntf interface {
+	NewNode(id int) host.P2PHostService
+}
+
+func NewMockP2PNetwork(avgBlockDuration time.Duration, avgLatency time.Duration, nodeWithIncomingP2PDisabled int) MockP2PNetworkIntf {
 	return &MockP2PNetwork{
-		nodes:            make(map[string]*MockP2P),
-		avgBlockDuration: avgBlockDuration,
-		avgLatency:       avgLatency,
+		nodes:                       make(map[string]*MockP2P),
+		avgBlockDuration:            avgBlockDuration,
+		avgLatency:                  avgLatency,
+		nodeWithIncomingP2PDisabled: nodeWithIncomingP2PDisabled,
 	}
 }
 
-func (m *MockP2PNetwork) NewNode(id int) *MockP2P {
+func (m *MockP2PNetwork) NewNode(id int) host.P2PHostService {
 	idStr := strconv.Itoa(id)
-	node := NewMockP2P(idStr, m)
+	isIncomingP2PDisabled := m.nodeWithIncomingP2PDisabled != 0 && m.nodeWithIncomingP2PDisabled == id
+	node := NewMockP2P(m, idStr, isIncomingP2PDisabled)
 	m.nodes[idStr] = node
 	return node
 }
@@ -83,20 +91,22 @@ type MockP2P struct {
 	txSubscribers    *subscription.Manager[host.P2PTxHandler]
 	batchReqHandlers *subscription.Manager[host.P2PBatchRequestHandler]
 
-	listenerInterrupt *int32
+	listenerInterrupt     *int32
+	isIncomingP2PDisabled bool
 }
 
 // NewMockP2P returns an instance of a configured L2 Network (no nodes)
-func NewMockP2P(id string, network *MockP2PNetwork) *MockP2P {
+func NewMockP2P(network *MockP2PNetwork, id string, isIncomingP2PDisabled bool) *MockP2P {
 	i := int32(0)
 	return &MockP2P{
 		id:      id,
 		network: network,
 
-		batchSubscribers:  subscription.NewManager[host.P2PBatchHandler](),
-		txSubscribers:     subscription.NewManager[host.P2PTxHandler](),
-		batchReqHandlers:  subscription.NewManager[host.P2PBatchRequestHandler](),
-		listenerInterrupt: &i,
+		batchSubscribers:      subscription.NewManager[host.P2PBatchHandler](),
+		txSubscribers:         subscription.NewManager[host.P2PTxHandler](),
+		batchReqHandlers:      subscription.NewManager[host.P2PBatchRequestHandler](),
+		listenerInterrupt:     &i,
+		isIncomingP2PDisabled: isIncomingP2PDisabled,
 	}
 }
 
@@ -110,7 +120,7 @@ func (n *MockP2P) Stop() error {
 	return nil
 }
 
-func (n *MockP2P) HealthStatus() host.HealthStatus {
+func (n *MockP2P) HealthStatus(context.Context) host.HealthStatus {
 	return &host.BasicErrHealthStatus{ErrMsg: ""}
 }
 
@@ -127,6 +137,10 @@ func (n *MockP2P) SendTxToSequencer(tx common.EncryptedTx) error {
 }
 
 func (n *MockP2P) BroadcastBatches(batches []*common.ExtBatch) error {
+	if n.isIncomingP2PDisabled {
+		return nil
+	}
+
 	if atomic.LoadInt32(n.listenerInterrupt) == 1 {
 		return nil
 	}
@@ -137,18 +151,32 @@ func (n *MockP2P) BroadcastBatches(batches []*common.ExtBatch) error {
 }
 
 func (n *MockP2P) SubscribeForBatches(handler host.P2PBatchHandler) func() {
+	if n.isIncomingP2PDisabled {
+		return func() {}
+	}
 	return n.batchSubscribers.Subscribe(handler)
 }
 
 func (n *MockP2P) SubscribeForTx(handler host.P2PTxHandler) func() {
+	if n.isIncomingP2PDisabled {
+		return func() {}
+	}
 	return n.txSubscribers.Subscribe(handler)
 }
 
 func (n *MockP2P) SubscribeForBatchRequests(handler host.P2PBatchRequestHandler) func() {
+	if n.isIncomingP2PDisabled {
+		return func() {}
+	}
+
 	return n.batchReqHandlers.Subscribe(handler)
 }
 
 func (n *MockP2P) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
+	if n.isIncomingP2PDisabled {
+		return nil
+	}
+
 	if atomic.LoadInt32(n.listenerInterrupt) == 1 {
 		return nil
 	}
@@ -157,6 +185,10 @@ func (n *MockP2P) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
 }
 
 func (n *MockP2P) RespondToBatchRequest(requesterID string, batches []*common.ExtBatch) error {
+	if n.isIncomingP2PDisabled {
+		return nil
+	}
+
 	if atomic.LoadInt32(n.listenerInterrupt) == 1 {
 		return nil
 	}
@@ -173,6 +205,10 @@ func (n *MockP2P) ReceiveTransaction(tx common.EncryptedTx) {
 
 // ReceiveBatches is a mock method that simulates receiving a batch from a peer and then forwarding to all subscribers
 func (n *MockP2P) ReceiveBatches(batches []*common.ExtBatch, isLive bool) {
+	if n.isIncomingP2PDisabled {
+		return
+	}
+
 	for _, sub := range n.batchSubscribers.Subscribers() {
 		sub.HandleBatches(batches, isLive)
 	}
@@ -180,7 +216,15 @@ func (n *MockP2P) ReceiveBatches(batches []*common.ExtBatch, isLive bool) {
 
 // ReceiveBatchRequest is a mock method that simulates receiving a batch request from a peer and then forwarding to all subscribers
 func (n *MockP2P) ReceiveBatchRequest(requestID string, fromSeqNo *big.Int) {
+	if n.isIncomingP2PDisabled {
+		return
+	}
+
 	for _, sub := range n.batchReqHandlers.Subscribers() {
 		sub.HandleBatchRequest(requestID, fromSeqNo)
 	}
+}
+
+func (n *MockP2P) RefreshPeerList() {
+	// no-op
 }

@@ -5,11 +5,15 @@ package gethapi
 import (
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
+	"strings"
+
+	tencommon "github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/common/math"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 	"github.com/ethereum/go-ethereum/log"
@@ -36,6 +40,63 @@ type TransactionArgs struct {
 	// Introduced by AccessListTxType transaction.
 	AccessList *types.AccessList `json:"accessList,omitempty"`
 	ChainID    *hexutil.Big      `json:"chainId,omitempty"`
+}
+
+// String returns a human-readable representation of the transaction arguments.
+// This is necessary for printing the transaction arguments in SGX mode
+func (args TransactionArgs) String() string {
+	var parts []string
+	if args.From != nil {
+		parts = append(parts, fmt.Sprintf("From:%s", args.From.Hex()))
+	}
+	if args.To != nil {
+		parts = append(parts, fmt.Sprintf("To:%s", args.To.Hex()))
+	}
+	if args.Gas != nil {
+		parts = append(parts, fmt.Sprintf("Gas:%d", *args.Gas))
+	}
+	if args.GasPrice != nil {
+		parts = append(parts, fmt.Sprintf("GasPrice:%s", args.GasPrice.String()))
+	}
+	if args.MaxFeePerGas != nil {
+		parts = append(parts, fmt.Sprintf("MaxFeePerGas:%s", args.MaxFeePerGas.String()))
+	}
+	if args.MaxPriorityFeePerGas != nil {
+		parts = append(parts, fmt.Sprintf("MaxPriorityFeePerGas:%s", args.MaxPriorityFeePerGas.String()))
+	}
+	if args.Value != nil {
+		parts = append(parts, fmt.Sprintf("Value:%s", args.Value.String()))
+	}
+	if args.Nonce != nil {
+		parts = append(parts, fmt.Sprintf("Nonce:%d", *args.Nonce))
+	}
+	if args.Data != nil {
+		parts = append(parts, fmt.Sprintf("Data:0x%x", *args.Data))
+	}
+	if args.Input != nil {
+		parts = append(parts, fmt.Sprintf("Input:0x%x", *args.Input))
+	}
+	if args.AccessList != nil {
+		parts = append(parts, fmt.Sprintf("AccessList:%s", accessListToString(*args.AccessList)))
+	}
+	if args.ChainID != nil {
+		parts = append(parts, fmt.Sprintf("ChainID:%s", args.ChainID.String()))
+	}
+
+	return fmt.Sprintf("TransactionArgs{%s}", strings.Join(parts, " "))
+}
+
+// Helper function to convert AccessList to string
+func accessListToString(list types.AccessList) string {
+	var accessListParts []string
+	for _, tuple := range list {
+		storageKeys := make([]string, len(tuple.StorageKeys))
+		for i, key := range tuple.StorageKeys {
+			storageKeys[i] = key.Hex()
+		}
+		accessListParts = append(accessListParts, fmt.Sprintf("{%s: [%s]}", tuple.Address.Hex(), strings.Join(storageKeys, ", ")))
+	}
+	return fmt.Sprintf("[%s]", strings.Join(accessListParts, ", "))
 }
 
 // from retrieves the transaction sender address.
@@ -241,77 +302,6 @@ func FormatLogs(logs []logger.StructLog) []StructLogRes {
 //	return nil
 //}
 
-// ToMessage converts the transaction arguments to the Message type used by the
-// core evm. This method is used in calls and traces that do not require a real
-// live transaction.
-func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (types.Message, error) {
-	// Reject invalid combinations of pre- and post-1559 fee styles
-	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
-		return types.Message{}, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
-	}
-	// Set sender address or use zero address if none specified.
-	addr := args.from()
-
-	// Set default gas & gas price if none were set
-	gas := globalGasCap
-	if gas == 0 {
-		gas = uint64(math.MaxUint64 / 2)
-	}
-	if args.Gas != nil {
-		gas = uint64(*args.Gas)
-	}
-	if globalGasCap != 0 && globalGasCap < gas {
-		log.Warn("Caller gas above allowance, capping", "requested", gas, "cap", globalGasCap)
-		gas = globalGasCap
-	}
-	var (
-		gasPrice  *big.Int
-		gasFeeCap *big.Int
-		gasTipCap *big.Int
-	)
-	if baseFee == nil { //nolint:nestif
-		// If there's no basefee, then it must be a non-1559 execution
-		gasPrice = new(big.Int)
-		if args.GasPrice != nil {
-			gasPrice = args.GasPrice.ToInt()
-		}
-		gasFeeCap, gasTipCap = gasPrice, gasPrice
-	} else {
-		// A basefee is provided, necessitating 1559-type execution
-		if args.GasPrice != nil {
-			// User specified the legacy gas field, convert to 1559 gas typing
-			gasPrice = args.GasPrice.ToInt()
-			gasFeeCap, gasTipCap = gasPrice, gasPrice
-		} else {
-			// User specified 1559 gas fields (or none), use those
-			gasFeeCap = new(big.Int)
-			if args.MaxFeePerGas != nil {
-				gasFeeCap = args.MaxFeePerGas.ToInt()
-			}
-			gasTipCap = new(big.Int)
-			if args.MaxPriorityFeePerGas != nil {
-				gasTipCap = args.MaxPriorityFeePerGas.ToInt()
-			}
-			// Backfill the legacy gasPrice for EVM execution, unless we're all zeroes
-			gasPrice = new(big.Int)
-			if gasFeeCap.BitLen() > 0 || gasTipCap.BitLen() > 0 {
-				gasPrice = math.BigMin(new(big.Int).Add(gasTipCap, baseFee), gasFeeCap)
-			}
-		}
-	}
-	value := new(big.Int)
-	if args.Value != nil {
-		value = args.Value.ToInt()
-	}
-	data := args.data()
-	var accessList types.AccessList
-	if args.AccessList != nil {
-		accessList = *args.AccessList
-	}
-	msg := types.NewMessage(addr, args.To, 0, value, gas, gasPrice, gasFeeCap, gasTipCap, data, accessList, true)
-	return msg, nil
-}
-
 // toTransaction converts the arguments to a transaction.
 // This assumes that setDefaults has been called.
 func (args *TransactionArgs) toTransaction() *types.Transaction {
@@ -361,4 +351,92 @@ func (args *TransactionArgs) toTransaction() *types.Transaction {
 // This assumes that setDefaults has been called.
 func (args *TransactionArgs) ToTransaction() *types.Transaction {
 	return args.toTransaction()
+}
+
+func (args *TransactionArgs) ToMessage(globalGasCap uint64, baseFee *big.Int) (*core.Message, error) {
+	// Reject invalid combinations of pre- and post-1559 fee styles
+	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
+		return nil, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+	}
+	// Set sender address or use zero address if none specified.
+	addr := args.from()
+
+	// Set default gas & gas price if none were set
+	gas := globalGasCap
+	if gas == 0 {
+		gas = uint64(math.MaxUint64 / 2)
+	}
+	if args.Gas != nil {
+		gas = uint64(*args.Gas)
+	}
+	if globalGasCap != 0 && globalGasCap < gas {
+		log.Warn("Caller gas above allowance, capping", "requested", gas, "cap", globalGasCap)
+		gas = globalGasCap
+	}
+	var (
+		gasPrice  *big.Int
+		gasFeeCap *big.Int
+		gasTipCap *big.Int
+	)
+	if baseFee == nil { //nolint: nestif
+		// If there's no basefee, then it must be a non-1559 execution
+		gasPrice = new(big.Int)
+		if args.GasPrice != nil {
+			gasPrice = args.GasPrice.ToInt()
+		}
+		gasFeeCap, gasTipCap = gasPrice, gasPrice
+	} else {
+		// A basefee is provided, necessitating 1559-type execution
+		if args.GasPrice != nil {
+			// User specified the legacy gas field, convert to 1559 gas typing
+			gasPrice = args.GasPrice.ToInt()
+			gasFeeCap, gasTipCap = gasPrice, gasPrice
+		} else {
+			// User specified 1559 gas fields (or none), use those
+			gasFeeCap = new(big.Int)
+			if args.MaxFeePerGas != nil {
+				gasFeeCap = args.MaxFeePerGas.ToInt()
+			}
+			gasTipCap = new(big.Int)
+			if args.MaxPriorityFeePerGas != nil {
+				gasTipCap = args.MaxPriorityFeePerGas.ToInt()
+			}
+			// Backfill the legacy gasPrice for EVM execution, unless we're all zeroes
+			gasPrice = new(big.Int)
+			if gasFeeCap.BitLen() > 0 || gasTipCap.BitLen() > 0 {
+				gasPrice = tencommon.BigMin(new(big.Int).Add(gasTipCap, baseFee), gasFeeCap)
+			}
+		}
+	}
+	value := new(big.Int)
+	if args.Value != nil {
+		value = args.Value.ToInt()
+	}
+	data := args.data()
+	var accessList types.AccessList
+	if args.AccessList != nil {
+		accessList = *args.AccessList
+	}
+
+	nonce := uint64(0)
+	if args.Nonce != nil {
+		nonce = uint64(*args.Nonce)
+	}
+	msg := &core.Message{
+		To:               args.To,
+		From:             addr,
+		Nonce:            nonce,
+		Value:            value,
+		GasLimit:         gas,
+		GasPrice:         gasPrice,
+		GasFeeCap:        gasFeeCap,
+		GasTipCap:        gasTipCap,
+		Data:             data,
+		AccessList:       accessList,
+		BlobGasFeeCap:    nil,
+		BlobHashes:       nil,
+		SkipFromEOACheck: true,
+		SkipNonceChecks:  true,
+	}
+	return msg, nil
 }

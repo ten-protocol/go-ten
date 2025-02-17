@@ -1,0 +1,74 @@
+# Run script to retrieve funds from an existing testnet deployment
+
+name: '[M] Recover Testnet Funds'
+run-name: '[M] Recover Testnet Funds ( ${{ github.event.inputs.testnet_type }} )'
+on:
+  workflow_dispatch:
+    inputs:
+      testnet_type:
+        description: 'Testnet Type'
+        required: true
+        default: 'dev-testnet'
+        type: choice
+        options:
+          - 'dev-testnet'
+          - 'uat-testnet'
+          - 'sepolia-testnet'
+      mgmt_contract_addr:
+        description: 'Deployed management contract which will be used to request the funds'
+        required: true
+        type: string
+      acc_to_pay:
+        description: '(Ignored) Address which will receive the funds'
+        required: false
+        type: string
+
+jobs:
+  recover-network-funds:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
+
+      - uses: actions/checkout@v4
+
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Build and push docker image'
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} -f tools/hardhatdeployer/Dockerfile .
+          docker push ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }}
+
+      - name: 'Deploy L2 contracts'
+        id: deployL2Contracts
+        shell: bash
+        run: |
+          go run ./testnet/launcher/fundsrecovery/cmd \
+          -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
+          -mgmt_contract_addr=${{ github.event.inputs.mgmt_contract_addr }} \
+          -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
+          -acc_to_pay=${{ github.event.inputs.acc_to_pay }}
+
+      - name: 'Save container logs on failure'
+        if: failure()
+        run: |
+          docker logs `docker ps -aqf "name=recover-funds"` > recover-funds.out 2>&1
+
+      - name: 'Upload container logs on failure'
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: recover-funds
+          path: |
+            recover-funds.out
+          retention-days: 2

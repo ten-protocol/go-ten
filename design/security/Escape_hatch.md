@@ -1,7 +1,7 @@
 
 ## Handling catastrophic events
 
-Obscuro is facing more risk than a transparent network during unforeseen situations.
+TEN is facing more risk than a transparent network during unforeseen situations.
 With traditional software, if a bug prevents all nodes from starting up, the developers can quickly fix
 the bug, release the version, and the network will proceed. This works because there are no visibility restrictions on the existing data.
 As long as the data is not corrupted beyond recovery, there is always a path forward.
@@ -45,7 +45,7 @@ Ideally, a mechanism that relies on verifying digital signatures and Merkle Tree
 
 To reduce the scope of abuse, we propose that, during phase 1, only the sequencer can enter "Safe mode".
 
-Upgrade proof signed by an ad-hoc "upgrade oracle" composed of most of the Obscuro node operators at the time
+Upgrade proof signed by an ad-hoc "upgrade oracle" composed of most of the TEN node operators at the time
 of each version. The public keys of all these nodes will be included in the image.
 
 

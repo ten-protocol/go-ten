@@ -7,20 +7,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/host"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	hostcontainer "github.com/obscuronet/go-obscuro/go/host/container"
-	"github.com/obscuronet/go-obscuro/integration/simulation/p2p"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
 
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/common/host"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	hostcontainer "github.com/ten-protocol/go-ten/go/host/container"
+	"github.com/ten-protocol/go-ten/integration/simulation/p2p"
 
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/simulation/params"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/simulation/params"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -29,33 +31,35 @@ const (
 	networkTCP        = "tcp"
 )
 
-func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1Clients []ethadapter.EthClient) []rpc.Client {
-	// Create the in memory obscuro nodes, each connect each to a geth node
-	obscuroNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
-	obscuroHosts := make([]host.Host, params.NumberOfNodes)
-	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency)
+func startInMemoryTenNodes(params *params.SimParams, l1Clients []ethadapter.EthClient) []rpc.Client {
+	// Create the in memory TEN nodes, each connect each to a geth node
+	tenNodes := make([]*hostcontainer.HostContainer, params.NumberOfNodes)
+	tenHosts := make([]host.Host, params.NumberOfNodes)
+	mockP2PNetw := p2p.NewMockP2PNetwork(params.AvgBlockDuration, params.AvgNetworkLatency, params.NodeWithInboundP2PDisabled)
+	blobResolver := ethereummock.NewMockBlobResolver()
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
 
-		obscuroNodes[i] = createInMemObscuroNode(
+		tenNodes[i] = createInMemTenNode(
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
 			params.MgmtContractLib,
-			true,
-			genesisJSON,
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
 			mockP2PNetw.NewNode(i),
-			params.L1SetupData.MessageBusAddr,
-			params.L1SetupData.ObscuroStartBlock,
+			params.L1TenData.MessageBusAddr,
+			params.L1TenData.TenStartBlock,
 			params.AvgBlockDuration/3,
+			true,
+			params.AvgBlockDuration,
+			blobResolver,
 		)
-		obscuroHosts[i] = obscuroNodes[i].Host()
+		tenHosts[i] = tenNodes[i].Host()
 	}
 
-	// start each obscuro node
-	for _, m := range obscuroNodes {
+	// start each TEN node
+	for _, m := range tenNodes {
 		t := m
 		go func() {
 			err := t.Start()
@@ -66,29 +70,33 @@ func startInMemoryObscuroNodes(params *params.SimParams, genesisJSON []byte, l1C
 	}
 
 	// Create a handle to each node
-	obscuroClients := make([]rpc.Client, params.NumberOfNodes)
-	for i, node := range obscuroNodes {
-		obscuroClients[i] = p2p.NewInMemObscuroClient(node)
+	tenClients := make([]rpc.Client, params.NumberOfNodes)
+	for i, node := range tenNodes {
+		tenClients[i] = p2p.NewInMemTenClient(node)
 	}
 	time.Sleep(100 * time.Millisecond)
 
-	return obscuroClients
+	return tenClients
 }
 
 func createAuthClientsPerWallet(clients []rpc.Client, wallets *params.SimWallets) map[string][]*obsclient.AuthObsClient {
 	walletClients := make(map[string][]*obsclient.AuthObsClient)
 	// loop through all the L2 wallets we're using and round-robin allocate them the rpc clients we have for each host
 	for _, w := range append(wallets.SimObsWallets, wallets.L2FaucetWallet) {
-		walletClients[w.Address().String()] = createAuthClients(clients, w)
+		walletClients[w.Address().String()] = CreateAuthClients(clients, w)
 	}
 	for _, t := range wallets.Tokens {
 		w := t.L2Owner
-		walletClients[w.Address().String()] = createAuthClients(clients, w)
+		walletClients[w.Address().String()] = CreateAuthClients(clients, w)
 	}
 	return walletClients
 }
 
-func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.AuthObsClient {
+func CreateAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.AuthObsClient {
+	rpcKey, err := rpc.ReadEnclaveKey(clients[0])
+	if err != nil {
+		return nil
+	}
 	authClients := make([]*obsclient.AuthObsClient, len(clients))
 	for i, client := range clients {
 		vk, err := viewingkey.GenerateViewingKeyForWallet(wal)
@@ -96,7 +104,7 @@ func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 			panic(err)
 		}
 		// todo - use a child logger
-		encClient, err := rpc.NewEncRPCClient(client, vk, testlog.Logger())
+		encClient, err := rpc.NewEncRPCClient(client, vk, rpcKey, testlog.Logger())
 		if err != nil {
 			panic(err)
 		}
@@ -105,9 +113,9 @@ func createAuthClients(clients []rpc.Client, wal wallet.Wallet) []*obsclient.Aut
 	return authClients
 }
 
-// StopObscuroNodes stops the Obscuro nodes and their RPC clients.
-func StopObscuroNodes(clients []rpc.Client) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+// StopTenNodes stops the TEN nodes and their RPC clients.
+func StopTenNodes(clients []rpc.Client) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	eg, _ := errgroup.WithContext(ctx)
 
@@ -116,7 +124,7 @@ func StopObscuroNodes(clients []rpc.Client) {
 		eg.Go(func() error {
 			err := c.Call(nil, rpc.StopHost)
 			if err != nil {
-				testlog.Logger().Error("Could not stop Obscuro node.", log.ErrKey, err)
+				testlog.Logger().Error("Could not stop TEN node.", log.ErrKey, err)
 				return err
 			}
 			c.Stop()
@@ -126,26 +134,26 @@ func StopObscuroNodes(clients []rpc.Client) {
 
 	err := eg.Wait()
 	if err != nil {
-		testlog.Logger().Error(fmt.Sprintf("Error waiting for the Obscuro nodes to stop - %s", err))
+		testlog.Logger().Error(fmt.Sprintf("Error waiting for the TEN nodes to stop - %s", err))
 	}
 
-	testlog.Logger().Info("Obscuro nodes stopped")
+	testlog.Logger().Info("TEN nodes stopped")
 }
 
 // CheckHostRPCServersStopped checks whether the hosts' RPC server addresses have been freed up.
-func CheckHostRPCServersStopped(hostRPCAddresses []string) {
+func CheckHostRPCServersStopped(hostWSURLS []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	eg, _ := errgroup.WithContext(ctx)
 
-	for _, hostRPCAddress := range hostRPCAddresses {
-		rpcAddress := hostRPCAddress
+	for _, hostWSURL := range hostWSURLS {
+		url := hostWSURL
 		// We cannot stop the RPC server synchronously. This is because the host itself is being stopped by an RPC
 		// call, so there is a deadlock. The RPC server is waiting for all connections to close, but a single
 		// connection remains open, waiting for the RPC server to close. Instead, we check whether the RPC port
 		// becomes free.
 		eg.Go(func() error {
-			for !isAddressAvailable(rpcAddress) {
+			for !isAddressAvailable(url) {
 				time.Sleep(100 * time.Millisecond)
 			}
 			return nil
@@ -154,10 +162,10 @@ func CheckHostRPCServersStopped(hostRPCAddresses []string) {
 
 	err := eg.Wait()
 	if err != nil {
-		panic(fmt.Sprintf("Timed out waiting for the Obscuro host RPC addresses to become available - %s", err))
+		panic(fmt.Sprintf("Timed out waiting for the TEN host RPC addresses to become available - %s", err))
 	}
 
-	testlog.Logger().Info("Obscuro host RPC addresses freed")
+	testlog.Logger().Info("TEN host RPC addresses freed")
 }
 
 func isAddressAvailable(address string) bool {

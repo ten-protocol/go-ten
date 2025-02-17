@@ -1,15 +1,22 @@
 package host
 
-import gethcommon "github.com/ethereum/go-ethereum/common"
+import (
+	"github.com/ten-protocol/go-ten/go/common"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
+)
 
 type Identity struct {
-	ID               gethcommon.Address
+	ID               string
 	P2PPublicAddress string
+	IsGenesis        bool
+	IsSequencer      bool
 }
 
-func NewIdentity(id gethcommon.Address, p2pPublicAddress string) Identity {
+func NewIdentity(cfg *hostconfig.HostConfig) Identity {
 	return Identity{
-		ID:               id,
-		P2PPublicAddress: p2pPublicAddress,
+		ID:               cfg.ID,
+		P2PPublicAddress: cfg.P2PPublicAddress,
+		IsGenesis:        cfg.IsGenesis,
+		IsSequencer:      cfg.NodeType == common.Sequencer,
 	}
 }

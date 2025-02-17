@@ -4,7 +4,7 @@ import "math/big"
 
 // Analogous to denomination.go constants in geth
 
-// These are the multipliers for ERC20 and native OBX value denominations
+// These are the multipliers for ERC20 and native ETH value denominations
 // Example: To get the wei value of an amount in whole tokens, use
 //
 //	new(big.Int).Mul(value, big.NewInt(common.Token))

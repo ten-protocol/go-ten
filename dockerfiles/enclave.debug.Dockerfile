@@ -4,12 +4,12 @@
 # build-enclave = copies over the source and builds the enclave using a go compiler cache
 # final = using the base system copies over only the enclave executable and creates the final image without source and dependencies. 
 
-FROM golang:1.20-alpine as system
+FROM golang:1.22.11-alpine3.21 as system
 
 # install build utils
 RUN apk add build-base
 ENV CGO_ENABLED=1
-RUN go install github.com/go-delve/delve/cmd/dlv@v1.9.1
+RUN go install github.com/go-delve/delve/cmd/dlv@v1.20.2
 
 FROM system as get-dependencies
 # setup container data structure

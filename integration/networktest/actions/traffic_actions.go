@@ -7,8 +7,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/common"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/common"
+	"github.com/ten-protocol/go-ten/integration/networktest"
 )
 
 const _minTransferAmt = 1_000_000

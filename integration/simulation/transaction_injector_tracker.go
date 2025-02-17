@@ -3,32 +3,51 @@ package simulation
 import (
 	"sync"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ten-protocol/go-ten/go/wallet"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 type txInjectorTracker struct {
+	gasTransactionsLock               sync.RWMutex
 	l1TransactionsLock                sync.RWMutex
-	L1Transactions                    []ethadapter.L1Transaction
+	L1Transactions                    []common.L1TenTransaction
 	l2TransactionsLock                sync.RWMutex
 	TransferL2Transactions            []*common.L2Tx
 	NativeValueTransferL2Transactions []*common.L2Tx
 	WithdrawalL2Transactions          []*common.L2Tx
+	GasBridgeTransactions             []GasBridgingRecord
+}
+
+type GasBridgingRecord struct {
+	L1BridgeTx     *types.Transaction
+	ReceiverWallet wallet.Wallet
 }
 
 func newCounter() *txInjectorTracker {
 	return &txInjectorTracker{
-		l1TransactionsLock:       sync.RWMutex{},
-		L1Transactions:           []ethadapter.L1Transaction{},
-		l2TransactionsLock:       sync.RWMutex{},
-		TransferL2Transactions:   []*common.L2Tx{},
-		WithdrawalL2Transactions: []*common.L2Tx{},
+		l1TransactionsLock:                sync.RWMutex{},
+		L1Transactions:                    []common.L1TenTransaction{},
+		l2TransactionsLock:                sync.RWMutex{},
+		TransferL2Transactions:            []*common.L2Tx{},
+		WithdrawalL2Transactions:          []*common.L2Tx{},
+		NativeValueTransferL2Transactions: []*common.L2Tx{},
+		GasBridgeTransactions:             []GasBridgingRecord{},
 	}
 }
 
+func (m *txInjectorTracker) trackGasBridgingTx(tx *types.Transaction, receiverWallet wallet.Wallet) {
+	m.gasTransactionsLock.Lock()
+	defer m.gasTransactionsLock.Unlock()
+	m.GasBridgeTransactions = append(m.GasBridgeTransactions, GasBridgingRecord{
+		L1BridgeTx:     tx,
+		ReceiverWallet: receiverWallet,
+	})
+}
+
 // trackL1Tx adds an L1Tx to the internal list
-func (m *txInjectorTracker) trackL1Tx(tx ethadapter.L1Transaction) {
+func (m *txInjectorTracker) trackL1Tx(tx common.L1TenTransaction) {
 	m.l1TransactionsLock.Lock()
 	defer m.l1TransactionsLock.Unlock()
 	m.L1Transactions = append(m.L1Transactions, tx)
@@ -40,14 +59,20 @@ func (m *txInjectorTracker) trackTransferL2Tx(tx *common.L2Tx) {
 	m.TransferL2Transactions = append(m.TransferL2Transactions, tx)
 }
 
+func (m *txInjectorTracker) trackWithdrawalFromL2(tx *common.L2Tx) {
+	m.l2TransactionsLock.Lock()
+	defer m.l2TransactionsLock.Unlock()
+	m.WithdrawalL2Transactions = append(m.WithdrawalL2Transactions, tx)
+}
+
 func (m *txInjectorTracker) trackNativeValueTransferL2Tx(tx *common.L2Tx) {
 	m.l2TransactionsLock.Lock()
 	defer m.l2TransactionsLock.Unlock()
-	m.NativeValueTransferL2Transactions = append(m.TransferL2Transactions, tx)
+	m.NativeValueTransferL2Transactions = append(m.NativeValueTransferL2Transactions, tx)
 }
 
 // GetL1Transactions returns all generated L1 L2Txs
-func (m *txInjectorTracker) GetL1Transactions() []ethadapter.L1Transaction {
+func (m *txInjectorTracker) GetL1Transactions() []common.L1TenTransaction {
 	return m.L1Transactions
 }
 

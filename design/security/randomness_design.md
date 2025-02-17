@@ -1,8 +1,8 @@
-# Randomness in Obscuro design
+# Randomness in TEN design
 
 ## Scope
 
-The purpose of this document is to describe how randomness is generated and exposed to Obscuro smart contracts. 
+The purpose of this document is to describe how randomness is generated and exposed to TEN smart contracts. 
 
 ## Overview
 
@@ -10,7 +10,7 @@ In the latest version of Ethereum, smart contract developers generally use the `
 This randomness is visible and known to everyone, and somehow under the control of the miners.
 
 ## Requirements
-In Obscuro, our goal is to remove any control that the miners might have over randomness, while also keeping the randomness private per transaction.
+In Ten, our goal is to remove any control that the miners might have over randomness, while also keeping the randomness private per transaction.
 This enables use cases such as games with hidden state. 
 
 ## Solution

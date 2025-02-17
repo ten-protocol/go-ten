@@ -7,12 +7,15 @@
 # repository dispatch.
 #
 # The scheduled deployment runs at 03:05 on every day-of-week.
+#
+# This script uses GitHub Environments for variables (vars) and secrets - these are configured on GitHub and
+#  the environments match the input.testnet_type options
 
 name: '[M] Upgrade Testnet L2'
-
+run-name: '[M] Upgrade Testnet L2 ( ${{ github.event.inputs.testnet_type }} )'
 on:
-  schedule:
-    - cron: '05 3 * * *'
+#  schedule:
+#    - cron: '05 03 * * *'
   workflow_dispatch:
     inputs:
       testnet_type:
@@ -22,60 +25,44 @@ on:
         type: choice
         options:
           - 'dev-testnet'
-          - 'testnet'
+          - 'uat-testnet'
+          - 'sepolia-testnet'
+      log_level:
+        description: 'Log Level 1-Error 5-Trace'
+        required: true
+        default: 3
+        type: number
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
     # Map a step output to a job output
     outputs:
-      L2_ENCLAVE_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG }}
-      L2_HOST_DOCKER_BUILD_TAG: ${{ steps.outputVars.outputs.L2_HOST_DOCKER_BUILD_TAG }}
-      RESOURCE_TAG_NAME: ${{ steps.outputVars.outputs.RESOURCE_TAG_NAME }}
-      RESOURCE_STARTING_NAME: ${{ steps.outputVars.outputs.RESOURCE_STARTING_NAME }}
-      RESOURCE_TESTNET_NAME: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_NAME }}
-      RESOURCE_TESTNET_TYPE: ${{ steps.outputVars.outputs.RESOURCE_TESTNET_TYPE }}
-      L1_HOST: ${{ steps.outputVars.outputs.L1_HOST }}
       VM_BUILD_NUMBER: ${{ steps.outputVars.outputs.VM_BUILD_NUMBER }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v4
+      - uses: actions/setup-go@v5
         with:
-          go-version: 1.20.4
+          go-version: 1.22.11
+
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: 'Sets env vars for testnet'
-        if: ${{ github.event.inputs.testnet_type  == 'testnet' }}
-        run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/enclave:latest" >> $GITHUB_ENV
-          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/host:latest" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=testnetlatest" >> $GITHUB_ENV
-          echo "RESOURCE_STARTING_NAME=T" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_NAME=testnet" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_TYPE=testnet" >> $GITHUB_ENV
-          echo "L1_HOST=testnet-eth2network.uksouth.cloudapp.azure.com" >> $GITHUB_ENV
-          
-      - name: 'Sets env vars for dev-testnet'
-        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (github.event_name == 'schedule') }}
-        run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_enclave:latest" >> $GITHUB_ENV
-          echo "L2_HOST_DOCKER_BUILD_TAG=testnetobscuronet.azurecr.io/obscuronet/dev_host:latest" >> $GITHUB_ENV
-          echo "RESOURCE_TAG_NAME=devtestnetlatest" >> $GITHUB_ENV
-          echo "RESOURCE_STARTING_NAME=D" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_NAME=devtestnet" >> $GITHUB_ENV
-          echo "RESOURCE_TESTNET_TYPE=dev-testnet" >> $GITHUB_ENV
-          echo "L1_HOST=dev-testnet-eth2network.uksouth.cloudapp.azure.com" >> $GITHUB_ENV
-
       - name: 'Fetch latest VM hostnames by env tag and extract build number'
         id: fetch_hostnames
         run: |
-          VM_HOSTNAME=$(az vm list --query "[?tags.${{env.RESOURCE_TAG_NAME}}=='true'].{Name:name}[0]" -g Testnet -o tsv)
+          VM_HOSTNAME=$(az vm list --query "[?tags.\"${{ vars.AZURE_DEPLOY_GROUP_L2 }}\"=='true'].{Name:name}[0]" -g Testnet -o tsv)
           VM_BUILD_NUMBER=$(echo $VM_HOSTNAME | perl -ne 'if (/(-[0-9]{1}-)(\d+)/) { print $2 }') # Extract build number from VM hostname, e.g. D-0-321 -> 321
           echo "VM_BUILD_NUMBER=${VM_BUILD_NUMBER}" >> $GITHUB_ENV
           echo "VM_HOSTNAME: ${VM_HOSTNAME}"
@@ -88,14 +75,7 @@ jobs:
       - name: 'Output env vars'
         id: outputVars
         run: |
-          echo "L2_ENCLAVE_DOCKER_BUILD_TAG=${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "L2_HOST_DOCKER_BUILD_TAG=${{env.L2_HOST_DOCKER_BUILD_TAG}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_TAG_NAME=${{env.RESOURCE_TAG_NAME}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_STARTING_NAME=${{env.RESOURCE_STARTING_NAME}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_TESTNET_NAME=${{env.RESOURCE_TESTNET_NAME}}" >> $GITHUB_OUTPUT
-          echo "RESOURCE_TESTNET_TYPE=${{env.RESOURCE_TESTNET_TYPE}}" >> $GITHUB_OUTPUT
-          echo "L1_HOST=${{env.L1_HOST}}" >> $GITHUB_OUTPUT
-          echo "VM_BUILD_NUMBER=${{env.VM_BUILD_NUMBER}}" >> $GITHUB_OUTPUT
+          echo "VM_BUILD_NUMBER=${{ env.VM_BUILD_NUMBER }}" >> $GITHUB_OUTPUT
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
@@ -106,43 +86,61 @@ jobs:
 
       - name: 'Build and push obscuro node images'
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}} -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{env.L2_ENCLAVE_DOCKER_BUILD_TAG}}
-          DOCKER_BUILDKIT=1 docker build -t ${{env.L2_HOST_DOCKER_BUILD_TAG}} -f dockerfiles/host.Dockerfile .
-          docker push ${{env.L2_HOST_DOCKER_BUILD_TAG}}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_HOST_DOCKER_BUILD_TAG }} -f dockerfiles/host.Dockerfile .
+          docker push ${{ vars.L2_HOST_DOCKER_BUILD_TAG }}
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
 
     strategy:
       matrix:
-        host_id: [ 0,1 ]
+        host_id: [ 0,1,2 ]
         include:
-          # Hardcoded host addresses
-          - host_addr: 0x0000000000000000000000000000000000000000
-            host_id: 0
-          - host_addr: 0x0000000000000000000000000000000000000001
-            host_id: 1
-          # Hardcoded host prefunded keys
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_0
-            host_id: 0
-          - node_pk_str: GETHNETWORK_PREFUNDED_PKSTR_1
-            host_id: 1
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_0
-            host_id: 0
-          - node_pk_addr: GETHNETWORK_PREFUNDED_ADDR_1
-            host_id: 1
           # Ensure there is a single genesis node
           - is_genesis: true
             host_id: 0
           - is_genesis: false
             host_id: 1
+          - is_genesis: false
+            host_id: 2
           # Ensure there is a single sequencer
           - node_type: sequencer
             host_id: 0
           - node_type: validator
             host_id: 1
+          - node_type: validator
+            host_id: 2
+          # Hardcoded lookup keys because GH actions doesn't let you build them inline with the host_id
+          - node_pk_lookup: ACCOUNT_PK_NODE_0
+            host_id: 0
+          - node_pk_lookup: ACCOUNT_PK_NODE_1
+            host_id: 1
+          - node_pk_lookup: ACCOUNT_PK_NODE_2
+            host_id: 2
+          - node_addr_lookup: ACCOUNT_ADDR_NODE_0
+            host_id: 0
+          - node_addr_lookup: ACCOUNT_ADDR_NODE_1
+            host_id: 1
+          - node_addr_lookup: ACCOUNT_ADDR_NODE_2
+            host_id: 2
+          - node_l1_ws_lookup: L1_WS_URL_0
+            host_id: 0
+          - node_l1_ws_lookup: L1_WS_URL_1
+            host_id: 1
+          - node_l1_ws_lookup: L1_WS_URL_2
+            host_id: 2
+          # sequencer has an HA setup with 2 enclaves
+          - num_enclaves: 2
+            host_id: 0
+          - num_enclaves: 1
+            host_id: 1
+          - num_enclaves: 1
+            host_id: 2
 
     steps:
       - name: 'Extract branch name'
@@ -160,26 +158,36 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{needs.build.outputs.RESOURCE_STARTING_NAME}}-${{ matrix.host_id }}-${{needs.build.outputs.VM_BUILD_NUMBER}}"  \
+            az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ needs.build.outputs.VM_BUILD_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts '
-               docker pull ${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
-            && docker pull ${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
+               docker pull ${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
+            && docker pull ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
             && rm -rf /home/obscuro/go-obscuro \
-            && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/obscuronet/go-obscuro.git /home/obscuro/go-obscuro \
+            && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
             && cd /home/obscuro/go-obscuro/ \
             && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
               -is_genesis=${{ matrix.is_genesis }} \
               -node_type=${{ matrix.node_type }} \
+              -num_enclaves=${{ matrix.num_enclaves }} \
               -is_sgx_enabled=true \
-              -host_id=${{ secrets[matrix.node_pk_addr] }} \
-              -l1_host=${{needs.build.outputs.L1_HOST}} \
-              -private_key=${{ secrets[matrix.node_pk_str] }} \
-              -sequencer_id=${{ secrets.GETHNETWORK_PREFUNDED_ADDR_0 }} \
-              -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com:10000 \
+              -host_id=${{ vars[matrix.node_addr_lookup] }} \
+              -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
+              -private_key=${{ secrets[matrix.node_pk_lookup] }} \
+              -sequencer_addr=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
+              -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
               -host_p2p_port=10000 \
-              -enclave_docker_image=${{needs.build.outputs.L2_ENCLAVE_DOCKER_BUILD_TAG}} \
-              -host_docker_image=${{needs.build.outputs.L2_HOST_DOCKER_BUILD_TAG}} \
+              -enclave_docker_image=${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
+              -host_docker_image=${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
+              -is_debug_namespace_enabled=true \
+              -log_level=${{ github.event.inputs.log_level }} \
+              -batch_interval=${{ vars.L2_BATCH_INTERVAL }} \
+              -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
+              -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
+              -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
+              -l1_beacon_url=${{ vars.L1_BEACON_URL }} \
+              -l1_blob_archive_url=${{ vars.L1_BLOB_ARCHIVE_URL }} \
+              -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
               upgrade'
 
   check-obscuro-is-healthy:
@@ -187,35 +195,59 @@ jobs:
       - build
       - deploy
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{needs.build.outputs.RESOURCE_TESTNET_NAME}}-${{needs.build.outputs.VM_BUILD_NUMBER}}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
 
-  deploy-faucet:
-    name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
+  deploy-faucet-on-dispatch:
     uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     with:
-      testnet_type: ${{needs.build.outputs.RESOURCE_TESTNET_TYPE}}
+      testnet_type:  ${{ github.event.inputs.testnet_type }}
     secrets: inherit
     needs:
       - check-obscuro-is-healthy
 
-  obscuro-test-repository-dispatch:
-    runs-on: ubuntu-latest
+  deploy-faucet-on-schedule:
+    uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
+    if: ${{ github.event_name == 'schedule' }}
+    with:
+      testnet_type:  'dev-testnet'
+    secrets: inherit
     needs:
-      - deploy-faucet
+      - check-obscuro-is-healthy
+
+  obscuro-test-signal-on-dispatch:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    needs:
+      - deploy-faucet-on-dispatch
     steps:
       - name: 'Send a repository dispatch to obscuro-test on upgrade of dev-testnet'
-        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') || (github.event_name == 'schedule') }}
+        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
         run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
 
-      - name: 'Send a repository dispatch to obscuro-test on upgrade of testnet'
-        if: ${{ (github.event.inputs.testnet_type == 'testnet') }}
+      - name: 'Send a repository dispatch to obscuro-test on upgrade of uat-testnet'
+        if: ${{ github.event.inputs.testnet_type == 'uat-testnet' }}
         run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/obscuronet/obscuro-test/dispatches --data '{ "event_type": "testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "uat_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
+
+  obscuro-test-signal-on-schedule:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    needs:
+      - deploy-faucet-on-schedule
+    steps:
+      - name: 'Send a repository dispatch to obscuro-test on upgrade of dev-testnet'
+        run: |
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'

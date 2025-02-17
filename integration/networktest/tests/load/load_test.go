@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/networktest"
-	"github.com/obscuronet/go-obscuro/integration/networktest/actions"
-	"github.com/obscuronet/go-obscuro/integration/networktest/env"
+	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest/actions"
+	"github.com/ten-protocol/go-ten/integration/networktest/env"
 )
 
 func TestNativeTransfers(t *testing.T) {

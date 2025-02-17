@@ -41,8 +41,8 @@ type StructsCrossChainMessage struct {
 
 // CrossChainMessengerMetaData contains all meta data concerning the CrossChainMessenger contract.
 var CrossChainMessengerMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"messageBusAddr\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"error\",\"type\":\"bytes\"}],\"name\":\"CallFailed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"crossChainSender\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"}],\"name\":\"encodeCall\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"messageBus\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"message\",\"type\":\"tuple\"}],\"name\":\"relayMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
-	Bin: "0x6080604052600180546001600160a01b031916905534801561002057600080fd5b506040516109ad3803806109ad83398101604081905261003f91610064565b600080546001600160a01b0319166001600160a01b0392909216919091179055610094565b60006020828403121561007657600080fd5b81516001600160a01b038116811461008d57600080fd5b9392505050565b61090a806100a36000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c80635b76f28b1461005157806363012de51461007a5780639b7cf1ee146100a5578063a1a227fa146100ba575b600080fd5b61006461005f366004610425565b6100cb565b6040516100719190610504565b60405180910390f35b60015461008d906001600160a01b031681565b6040516001600160a01b039091168152602001610071565b6100b86100b336600461051e565b61014b565b005b6000546001600160a01b031661008d565b60606040518060600160405280856001600160a01b0316815260200184848080601f0160208091040260200160405190810160405280939291908181526020018383808284376000920182905250938552505050602091820152604051610133929101610559565b60405160208183030381529060405290509392505050565b6101548161027d565b610161602082018261059e565b6001805473ffffffffffffffffffffffffffffffffffffffff19166001600160a01b0392909216919091179055600061019d60808301836105b9565b8101906101aa9190610690565b905060008082600001516001600160a01b03165a84602001516040516101d09190610764565b60006040518083038160008787f1925050503d806000811461020e576040519150601f19603f3d011682016040523d82523d6000602084013e610213565b606091505b50915091508161025a57806040517fa5fa8d2b0000000000000000000000000000000000000000000000000000000081526004016102519190610504565b60405180910390fd5b50506001805473ffffffffffffffffffffffffffffffffffffffff191690555050565b6000546040517f33a88c720000000000000000000000000000000000000000000000000000000081526001600160a01b03909116906333a88c72906102c69084906004016107ce565b60206040518083038186803b1580156102de57600080fd5b505afa1580156102f2573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061031691906108b2565b6103625760405162461bcd60e51b815260206004820152601f60248201527f4d657373616765206e6f7420666f756e64206f722066696e616c697a65642e006044820152606401610251565b60008160405160200161037591906107ce565b60408051601f1981840301815291815281516020928301206000818152600290935291205490915060ff16156103ed5760405162461bcd60e51b815260206004820152601960248201527f4d65737361676520616c726561647920636f6e73756d65642e000000000000006044820152606401610251565b6000908152600260205260409020805460ff1916600117905550565b80356001600160a01b038116811461042057600080fd5b919050565b60008060006040848603121561043a57600080fd5b61044384610409565b9250602084013567ffffffffffffffff8082111561046057600080fd5b818601915086601f83011261047457600080fd5b81358181111561048357600080fd5b87602082850101111561049557600080fd5b6020830194508093505050509250925092565b60005b838110156104c35781810151838201526020016104ab565b838111156104d2576000848401525b50505050565b600081518084526104f08160208601602086016104a8565b601f01601f19169290920160200192915050565b60208152600061051760208301846104d8565b9392505050565b60006020828403121561053057600080fd5b813567ffffffffffffffff81111561054757600080fd5b820160c0818503121561051757600080fd5b602081526001600160a01b038251166020820152600060208301516060604084015261058860808401826104d8565b9050604084015160608401528091505092915050565b6000602082840312156105b057600080fd5b61051782610409565b6000808335601e198436030181126105d057600080fd5b83018035915067ffffffffffffffff8211156105eb57600080fd5b60200191503681900382131561060057600080fd5b9250929050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b6040516060810167ffffffffffffffff8111828210171561065957610659610607565b60405290565b604051601f8201601f1916810167ffffffffffffffff8111828210171561068857610688610607565b604052919050565b600060208083850312156106a357600080fd5b823567ffffffffffffffff808211156106bb57600080fd5b90840190606082870312156106cf57600080fd5b6106d7610636565b6106e083610409565b815283830135828111156106f357600080fd5b8301601f8101881361070457600080fd5b80358381111561071657610716610607565b610728601f8201601f1916870161065f565b9350808452888682840101111561073e57600080fd5b808683018786013760009084018601525092830152604090810135908201529392505050565b600082516107768184602087016104a8565b9190910192915050565b803563ffffffff8116811461042057600080fd5b81835281816020850137506000828201602090810191909152601f909101601f19169091010190565b803560ff8116811461042057600080fd5b602081526001600160a01b036107e383610409565b1660208201526000602083013567ffffffffffffffff80821680831461080857600080fd5b8060408601525061081b60408601610780565b915063ffffffff80831660608601528061083760608801610780565b1660808601525060808501359150601e1985360301821261085757600080fd5b9084019081358181111561086a57600080fd5b80360386131561087957600080fd5b60c060a086015261089160e086018260208601610794565b925050506108a160a085016107bd565b60ff811660c0850152509392505050565b6000602082840312156108c457600080fd5b8151801515811461051757600080fdfea264697066735822122071fa1493675e54327867ea735dcb5aade210e1ddfbd9c82187a8baab562a574064736f6c63430008090033",
+	ABI: "[{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"error\",\"type\":\"bytes\"}],\"name\":\"CallFailed\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"crossChainSender\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"}],\"name\":\"encodeCall\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"messageBusAddr\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"messageBus\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"message\",\"type\":\"tuple\"}],\"name\":\"relayMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"message\",\"type\":\"tuple\"},{\"internalType\":\"bytes32[]\",\"name\":\"proof\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes32\",\"name\":\"root\",\"type\":\"bytes32\"}],\"name\":\"relayMessageWithProof\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	Bin: "0x6080604052348015600e575f5ffd5b50610f688061001c5f395ff3fe608060405234801561000f575f5ffd5b506004361061006f575f3560e01c80639b7cf1ee1161004d5780639b7cf1ee146100d1578063a1a227fa146100e4578063c4d66de8146100f4575f5ffd5b80630671b22e146100735780635b76f28b1461008857806363012de5146100b1575b5f5ffd5b610086610081366004610760565b610107565b005b61009b61009636600461084e565b610205565b6040516100a891906108df565b60405180910390f35b6001546100c4906001600160a01b031681565b6040516100a891906108ff565b6100866100df36600461090d565b610285565b5f546001600160a01b03166100c4565b61008661010236600461094d565b610374565b610113848484846104d1565b610120602085018561094d565b600180546001600160a01b0319166001600160a01b03929092169190911790555f61014e608086018661096a565b81019061015b9190610b2d565b90505f5f825f01516001600160a01b03165a846020015160405161017f9190610b86565b5f604051808303815f8787f1925050503d805f81146101b9576040519150601f19603f3d011682016040523d82523d5f602084013e6101be565b606091505b5091509150816101ec578060405163a5fa8d2b60e01b81526004016101e391906108df565b60405180910390fd5b5050600180546001600160a01b03191690555050505050565b60606040518060600160405280856001600160a01b0316815260200184848080601f0160208091040260200160405190810160405280939291908181526020018383808284375f92018290525093855250505060209182015260405161026c929101610bde565b60405160208183030381529060405290505b9392505050565b61028e816105c2565b61029b602082018261094d565b600180546001600160a01b0319166001600160a01b03929092169190911790555f6102c9608083018361096a565b8101906102d69190610b2d565b90505f5f825f01516001600160a01b03165a84602001516040516102fa9190610b86565b5f604051808303815f8787f1925050503d805f8114610334576040519150601f19603f3d011682016040523d82523d5f602084013e610339565b606091505b50915091508161035e578060405163a5fa8d2b60e01b81526004016101e391906108df565b5050600180546001600160a01b03191690555050565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000810460ff16159067ffffffffffffffff165f811580156103be5750825b90505f8267ffffffffffffffff1660011480156103da5750303b155b9050811580156103e8575080155b1561041f576040517ff92ee8a900000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b845467ffffffffffffffff19166001178555831561045357845468ff00000000000000001916680100000000000000001785555b5f80546001600160a01b0388166001600160a01b03199182161790915560018054909116905583156104c957845468ff0000000000000000191685556040517fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2906104c090600190610c09565b60405180910390a15b505050505050565b5f546040517fe138a8d20000000000000000000000000000000000000000000000000000000081526001600160a01b039091169063e138a8d29061051f908790879087908790600401610e2d565b5f6040518083038186803b158015610535575f5ffd5b505afa158015610547573d5f5f3e3d5ffd5b505050505f8460405160200161055d9190610e6b565b60408051601f1981840301815291815281516020928301205f818152600290935291205490915060ff16156105a45760405162461bcd60e51b81526004016101e390610eb0565b5f908152600260205260409020805460ff1916600117905550505050565b5f546040517f33a88c720000000000000000000000000000000000000000000000000000000081526001600160a01b03909116906333a88c729061060a908490600401610e6b565b602060405180830381865afa158015610625573d5f5f3e3d5ffd5b505050506040513d601f19601f820116820180604052508101906106499190610ed3565b6106655760405162461bcd60e51b81526004016101e390610f22565b5f816040516020016106779190610e6b565b60408051601f1981840301815291815281516020928301205f818152600290935291205490915060ff16156106be5760405162461bcd60e51b81526004016101e390610eb0565b5f908152600260205260409020805460ff1916600117905550565b5f60c082840312156106ec576106ec5f5ffd5b50919050565b5f5f83601f840112610705576107055f5ffd5b50813567ffffffffffffffff81111561071f5761071f5f5ffd5b602083019150836020820283011115610739576107395f5ffd5b9250929050565b805b811461074c575f5ffd5b50565b803561075a81610740565b92915050565b5f5f5f5f60608587031215610776576107765f5ffd5b843567ffffffffffffffff81111561078f5761078f5f5ffd5b61079b878288016106d9565b945050602085013567ffffffffffffffff8111156107ba576107ba5f5ffd5b6107c6878288016106f2565b93509350506107d8866040870161074f565b905092959194509250565b5f6001600160a01b03821661075a565b610742816107e3565b803561075a816107f3565b5f5f83601f84011261081a5761081a5f5ffd5b50813567ffffffffffffffff811115610834576108345f5ffd5b602083019150836001820283011115610739576107395f5ffd5b5f5f5f60408486031215610863576108635f5ffd5b61086d85856107fc565b9250602084013567ffffffffffffffff81111561088b5761088b5f5ffd5b61089786828701610807565b92509250509250925092565b8281835e505f910152565b5f6108b7825190565b8084526020840193506108ce8185602086016108a3565b601f01601f19169290920192915050565b6020808252810161027e81846108ae565b6108f9816107e3565b82525050565b6020810161075a82846108f0565b5f60208284031215610920576109205f5ffd5b813567ffffffffffffffff811115610939576109395f5ffd5b610945848285016106d9565b949350505050565b5f60208284031215610960576109605f5ffd5b61027e83836107fc565b5f808335601e1936859003018112610983576109835f5ffd5b8301915050803567ffffffffffffffff8111156109a1576109a15f5ffd5b602082019150600181023603821315610739576107395f5ffd5b7f4e487b71000000000000000000000000000000000000000000000000000000005f52604160045260245ffd5b601f19601f830116810181811067ffffffffffffffff82111715610a0e57610a0e6109bb565b6040525050565b5f610a1f60405190565b9050610a2b82826109e8565b919050565b5f67ffffffffffffffff821115610a4957610a496109bb565b601f19601f83011660200192915050565b82818337505f910152565b5f610a77610a7284610a30565b610a15565b9050828152838383011115610a8d57610a8d5f5ffd5b61027e836020830184610a5a565b5f82601f830112610aad57610aad5f5ffd5b61027e83833560208501610a65565b5f60608284031215610acf57610acf5f5ffd5b610ad96060610a15565b9050610ae583836107fc565b8152602082013567ffffffffffffffff811115610b0357610b035f5ffd5b610b0f84828501610a9b565b602083015250610b22836040840161074f565b604082015292915050565b5f60208284031215610b4057610b405f5ffd5b813567ffffffffffffffff811115610b5957610b595f5ffd5b61094584828501610abc565b5f610b6e825190565b610b7c8185602086016108a3565b9290920192915050565b61075a8183610b65565b806108f9565b80515f906060840190610ba985826108f0565b5060208301518482036020860152610bc182826108ae565b9150506040830151610bd66040860182610b90565b509392505050565b6020808252810161027e8184610b96565b5f67ffffffffffffffff821661075a565b6108f981610bef565b6020810161075a8284610c00565b505f61075a60208301836107fc565b67ffffffffffffffff8116610742565b803561075a81610c26565b505f61075a6020830183610c36565b67ffffffffffffffff81166108f9565b63ffffffff8116610742565b803561075a81610c60565b505f61075a6020830183610c6c565b63ffffffff81166108f9565b5f808335601e1936859003018112610cab57610cab5f5ffd5b830160208101925035905067ffffffffffffffff811115610ccd57610ccd5f5ffd5b36819003821315610739576107395f5ffd5b818352602083019250610cf3828483610a5a565b50601f01601f19160190565b60ff8116610742565b803561075a81610cff565b505f61075a6020830183610d08565b60ff81166108f9565b5f60c08301610d3a8380610c17565b610d4485826108f0565b50610d526020840184610c41565b610d5f6020860182610c50565b50610d6d6040840184610c77565b610d7a6040860182610c86565b50610d886060840184610c77565b610d956060860182610c86565b50610da36080840184610c92565b8583036080870152610db6838284610cdf565b92505050610dc760a0840184610d13565b610bd660a0860182610d22565b82818337505050565b8183526020830192505f7f07ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff831115610e1657610e165f5ffd5b602083029250610e27838584610dd4565b50500190565b60608082528101610e3e8187610d2b565b90508181036020830152610e53818587610ddd565b9050610e626040830184610b90565b95945050505050565b6020808252810161027e8184610d2b565b60198152602081017f4d65737361676520616c726561647920636f6e73756d65642e00000000000000815290505b60200190565b6020808252810161075a81610e7c565b801515610742565b805161075a81610ec0565b5f60208284031215610ee657610ee65f5ffd5b61027e8383610ec8565b601f8152602081017f4d657373616765206e6f7420666f756e64206f722066696e616c697a65642e0081529050610eaa565b6020808252810161075a81610ef056fea26469706673582212200ef313e498f1ccf9950e7937600660c957919b356919d078cc067380b4e1b4ef64736f6c634300081c0033",
 }
 
 // CrossChainMessengerABI is the input ABI used to generate the binding from.
@@ -54,7 +54,7 @@ var CrossChainMessengerABI = CrossChainMessengerMetaData.ABI
 var CrossChainMessengerBin = CrossChainMessengerMetaData.Bin
 
 // DeployCrossChainMessenger deploys a new Ethereum contract, binding an instance of CrossChainMessenger to it.
-func DeployCrossChainMessenger(auth *bind.TransactOpts, backend bind.ContractBackend, messageBusAddr common.Address) (common.Address, *types.Transaction, *CrossChainMessenger, error) {
+func DeployCrossChainMessenger(auth *bind.TransactOpts, backend bind.ContractBackend) (common.Address, *types.Transaction, *CrossChainMessenger, error) {
 	parsed, err := CrossChainMessengerMetaData.GetAbi()
 	if err != nil {
 		return common.Address{}, nil, nil, err
@@ -63,7 +63,7 @@ func DeployCrossChainMessenger(auth *bind.TransactOpts, backend bind.ContractBac
 		return common.Address{}, nil, nil, errors.New("GetABI returned nil")
 	}
 
-	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(CrossChainMessengerBin), backend, messageBusAddr)
+	address, tx, contract, err := bind.DeployContract(auth, *parsed, common.FromHex(CrossChainMessengerBin), backend)
 	if err != nil {
 		return common.Address{}, nil, nil, err
 	}
@@ -305,6 +305,27 @@ func (_CrossChainMessenger *CrossChainMessengerCallerSession) MessageBus() (comm
 	return _CrossChainMessenger.Contract.MessageBus(&_CrossChainMessenger.CallOpts)
 }
 
+// Initialize is a paid mutator transaction binding the contract method 0xc4d66de8.
+//
+// Solidity: function initialize(address messageBusAddr) returns()
+func (_CrossChainMessenger *CrossChainMessengerTransactor) Initialize(opts *bind.TransactOpts, messageBusAddr common.Address) (*types.Transaction, error) {
+	return _CrossChainMessenger.contract.Transact(opts, "initialize", messageBusAddr)
+}
+
+// Initialize is a paid mutator transaction binding the contract method 0xc4d66de8.
+//
+// Solidity: function initialize(address messageBusAddr) returns()
+func (_CrossChainMessenger *CrossChainMessengerSession) Initialize(messageBusAddr common.Address) (*types.Transaction, error) {
+	return _CrossChainMessenger.Contract.Initialize(&_CrossChainMessenger.TransactOpts, messageBusAddr)
+}
+
+// Initialize is a paid mutator transaction binding the contract method 0xc4d66de8.
+//
+// Solidity: function initialize(address messageBusAddr) returns()
+func (_CrossChainMessenger *CrossChainMessengerTransactorSession) Initialize(messageBusAddr common.Address) (*types.Transaction, error) {
+	return _CrossChainMessenger.Contract.Initialize(&_CrossChainMessenger.TransactOpts, messageBusAddr)
+}
+
 // RelayMessage is a paid mutator transaction binding the contract method 0x9b7cf1ee.
 //
 // Solidity: function relayMessage((address,uint64,uint32,uint32,bytes,uint8) message) returns()
@@ -324,4 +345,159 @@ func (_CrossChainMessenger *CrossChainMessengerSession) RelayMessage(message Str
 // Solidity: function relayMessage((address,uint64,uint32,uint32,bytes,uint8) message) returns()
 func (_CrossChainMessenger *CrossChainMessengerTransactorSession) RelayMessage(message StructsCrossChainMessage) (*types.Transaction, error) {
 	return _CrossChainMessenger.Contract.RelayMessage(&_CrossChainMessenger.TransactOpts, message)
+}
+
+// RelayMessageWithProof is a paid mutator transaction binding the contract method 0x0671b22e.
+//
+// Solidity: function relayMessageWithProof((address,uint64,uint32,uint32,bytes,uint8) message, bytes32[] proof, bytes32 root) returns()
+func (_CrossChainMessenger *CrossChainMessengerTransactor) RelayMessageWithProof(opts *bind.TransactOpts, message StructsCrossChainMessage, proof [][32]byte, root [32]byte) (*types.Transaction, error) {
+	return _CrossChainMessenger.contract.Transact(opts, "relayMessageWithProof", message, proof, root)
+}
+
+// RelayMessageWithProof is a paid mutator transaction binding the contract method 0x0671b22e.
+//
+// Solidity: function relayMessageWithProof((address,uint64,uint32,uint32,bytes,uint8) message, bytes32[] proof, bytes32 root) returns()
+func (_CrossChainMessenger *CrossChainMessengerSession) RelayMessageWithProof(message StructsCrossChainMessage, proof [][32]byte, root [32]byte) (*types.Transaction, error) {
+	return _CrossChainMessenger.Contract.RelayMessageWithProof(&_CrossChainMessenger.TransactOpts, message, proof, root)
+}
+
+// RelayMessageWithProof is a paid mutator transaction binding the contract method 0x0671b22e.
+//
+// Solidity: function relayMessageWithProof((address,uint64,uint32,uint32,bytes,uint8) message, bytes32[] proof, bytes32 root) returns()
+func (_CrossChainMessenger *CrossChainMessengerTransactorSession) RelayMessageWithProof(message StructsCrossChainMessage, proof [][32]byte, root [32]byte) (*types.Transaction, error) {
+	return _CrossChainMessenger.Contract.RelayMessageWithProof(&_CrossChainMessenger.TransactOpts, message, proof, root)
+}
+
+// CrossChainMessengerInitializedIterator is returned from FilterInitialized and is used to iterate over the raw logs and unpacked data for Initialized events raised by the CrossChainMessenger contract.
+type CrossChainMessengerInitializedIterator struct {
+	Event *CrossChainMessengerInitialized // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *CrossChainMessengerInitializedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(CrossChainMessengerInitialized)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(CrossChainMessengerInitialized)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *CrossChainMessengerInitializedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *CrossChainMessengerInitializedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// CrossChainMessengerInitialized represents a Initialized event raised by the CrossChainMessenger contract.
+type CrossChainMessengerInitialized struct {
+	Version uint64
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterInitialized is a free log retrieval operation binding the contract event 0xc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2.
+//
+// Solidity: event Initialized(uint64 version)
+func (_CrossChainMessenger *CrossChainMessengerFilterer) FilterInitialized(opts *bind.FilterOpts) (*CrossChainMessengerInitializedIterator, error) {
+
+	logs, sub, err := _CrossChainMessenger.contract.FilterLogs(opts, "Initialized")
+	if err != nil {
+		return nil, err
+	}
+	return &CrossChainMessengerInitializedIterator{contract: _CrossChainMessenger.contract, event: "Initialized", logs: logs, sub: sub}, nil
+}
+
+// WatchInitialized is a free log subscription operation binding the contract event 0xc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2.
+//
+// Solidity: event Initialized(uint64 version)
+func (_CrossChainMessenger *CrossChainMessengerFilterer) WatchInitialized(opts *bind.WatchOpts, sink chan<- *CrossChainMessengerInitialized) (event.Subscription, error) {
+
+	logs, sub, err := _CrossChainMessenger.contract.WatchLogs(opts, "Initialized")
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(CrossChainMessengerInitialized)
+				if err := _CrossChainMessenger.contract.UnpackLog(event, "Initialized", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseInitialized is a log parse operation binding the contract event 0xc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2.
+//
+// Solidity: event Initialized(uint64 version)
+func (_CrossChainMessenger *CrossChainMessengerFilterer) ParseInitialized(log types.Log) (*CrossChainMessengerInitialized, error) {
+	event := new(CrossChainMessengerInitialized)
+	if err := _CrossChainMessenger.contract.UnpackLog(event, "Initialized", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
 }

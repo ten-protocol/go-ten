@@ -1,20 +1,19 @@
 package limiters
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-var ErrFailedToEncode = errors.New("failed to encode data")
-
-// MaxTransactionSizeLimiter - configured to be close to what the ethereum clients
-// have configured as the maximum size a transaction can have. Note that this isn't
-// a protocol limit, but a miner imposed limit and it might be hard to find someone
-// to include a transaction if it goes above it
-// todo - figure out the best number, optimism uses 132KB
-const MaxTransactionSize = 64 * 1024
+const (
+	// 85% is a very conservative number. It will most likely be 66% in practice.
+	// We can lower it, once we have a mechanism in place to handle batches that don't actually compress to that.
+	txCompressionFactor  = 0.85
+	compressedHeaderSize = 1
+)
 
 type rollupLimiter struct {
 	remainingSize uint64
@@ -27,13 +26,14 @@ func NewRollupLimiter(size uint64) RollupLimiter {
 }
 
 // todo (@stefan) figure out how to optimize the serialization out of the limiter
-func (rl *rollupLimiter) AcceptBatch(encodable interface{}) (bool, error) {
-	encodedData, err := rlp.EncodeToBytes(encodable)
+func (rl *rollupLimiter) AcceptBatch(batch *core.Batch) (bool, error) {
+	encodedData, err := rlp.EncodeToBytes(batch.Transactions)
 	if err != nil {
-		return false, fmt.Errorf("%w: %s", ErrFailedToEncode, err.Error())
+		return false, fmt.Errorf("failed to encode data. Cause: %w", err)
 	}
 
-	encodedSize := uint64(len(encodedData))
+	// adjust with a compression factor and add the size of a compressed batch header
+	encodedSize := uint64(float64(len(encodedData))*txCompressionFactor) + compressedHeaderSize
 	if encodedSize > rl.remainingSize {
 		return false, nil
 	}

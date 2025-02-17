@@ -4,15 +4,17 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/integration"
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
-	"github.com/obscuronet/go-obscuro/integration/networktest"
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 )
 
 type CreateTestUser struct {
-	UserID int
+	UserID     int
+	UseGateway bool
 }
 
 func (c *CreateTestUser) String() string {
@@ -21,9 +23,26 @@ func (c *CreateTestUser) String() string {
 
 func (c *CreateTestUser) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 	logger := testlog.Logger()
-	wal := datagenerator.RandomWallet(integration.ObscuroChainID)
-	// traffic sim users are round robin-ed onto the validators for now (todo (@matt) - make that overridable)
-	user := userwallet.NewUserWallet(wal.PrivateKey(), network.ValidatorRPCAddress(c.UserID%network.NumValidators()), logger)
+
+	wal := datagenerator.RandomWallet(integration.TenChainID)
+	var user userwallet.User
+	if c.UseGateway {
+		gwURL, err := network.GetGatewayURL()
+		if err != nil {
+			return ctx, fmt.Errorf("failed to get required gateway URL: %w", err)
+		}
+		gwWSURL, err := network.GetGatewayWSURL()
+		if err != nil {
+			return ctx, fmt.Errorf("failed to get required gateway WS URL: %w", err)
+		}
+		user, err = userwallet.NewGatewayUser(wal, gwURL, gwWSURL, logger)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to create gateway user: %w", err)
+		}
+	} else {
+		// traffic sim users are round robin-ed onto the validators for now (todo (@matt) - make that overridable)
+		user = userwallet.NewUserWallet(wal, network.ValidatorRPCAddress(c.UserID%network.NumValidators()), logger)
+	}
 	return storeTestUser(ctx, c.UserID, user), nil
 }
 
@@ -31,8 +50,11 @@ func (c *CreateTestUser) Verify(_ context.Context, _ networktest.NetworkConnecto
 	return nil
 }
 
+// AllocateFaucetFunds is an action that allocates funds from the network faucet to a user,
+// either UserID or Account must be set (not both) to fund a test user or a specific account respectively
 type AllocateFaucetFunds struct {
-	UserID int
+	UserID  int
+	Account *common.Address
 }
 
 func (a *AllocateFaucetFunds) String() string {
@@ -40,11 +62,17 @@ func (a *AllocateFaucetFunds) String() string {
 }
 
 func (a *AllocateFaucetFunds) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
-	user, err := FetchTestUser(ctx, a.UserID)
-	if err != nil {
-		return ctx, err
+	var acc common.Address
+	if a.Account != nil {
+		acc = *a.Account
+	} else {
+		user, err := FetchTestUser(ctx, a.UserID)
+		if err != nil {
+			return ctx, err
+		}
+		acc = user.Wallet().Address()
 	}
-	return ctx, network.AllocateFaucetFunds(ctx, user.Address())
+	return ctx, network.AllocateFaucetFunds(ctx, acc)
 }
 
 func (a *AllocateFaucetFunds) Verify(_ context.Context, _ networktest.NetworkConnector) error {
@@ -64,24 +92,4 @@ func CreateAndFundTestUsers(numUsers int) *MultiAction {
 	newUserActions = append(newUserActions, SetContextValue(KeyNumberOfTestUsers, numUsers))
 	newUserActions = append(newUserActions, SnapshotUserBalances(SnapAfterAllocation))
 	return Series(newUserActions...)
-}
-
-func AuthenticateAllUsers() networktest.Action {
-	return RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
-		numUsers, err := FetchNumberOfTestUsers(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("expected number of test users to be set on the context")
-		}
-		for i := 0; i < numUsers; i++ {
-			user, err := FetchTestUser(ctx, i)
-			if err != nil {
-				return nil, err
-			}
-			err = user.ResetClient(ctx)
-			if err != nil {
-				return nil, fmt.Errorf("unable to (re)authenticate client %d - %w", i, err)
-			}
-		}
-		return ctx, nil
-	})
 }

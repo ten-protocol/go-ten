@@ -1,21 +1,27 @@
 package crosschain
 
 import (
+	"context"
+
+	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/system"
 )
 
 type (
 	EVMExecutorResponse = map[common.TxHash]interface{}
 	EVMExecutorFunc     = func(common.L2Transactions) map[common.TxHash]interface{}
-	ObsCallEVMFunc      = func(types.Message) (*core.ExecutionResult, error)
+	ObsCallEVMFunc      = func(core.Message) (*core.ExecutionResult, error)
 )
 
 type BlockMessageExtractor interface {
 	// StoreCrossChainMessages - Verifies receipts belong to block and saves the relevant cross chain messages from the receipts
-	StoreCrossChainMessages(block *common.L1Block, receipts common.L1Receipts) error
+	StoreCrossChainMessages(ctx context.Context, block *types.Header, processed *common.ProcessedL1Data) error
+
+	StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, processed *common.ProcessedL1Data) error
 
 	// GetBusAddress - Returns the L1 message bus address.
 	GetBusAddress() *common.L1Address
@@ -25,26 +31,22 @@ type BlockMessageExtractor interface {
 }
 
 type Manager interface {
-	// IsSyntheticTransaction - Determines if a given L2 transaction is coming from the synthetic owner address.
-	IsSyntheticTransaction(transaction common.L2Tx) bool
-
-	// GetOwner - Returns the address of the identity owning the message bus.
-	GetOwner() common.L2Address
-
 	// GetBusAddress - Returns the L2 address of the message bus contract.
 	GetBusAddress() *common.L2Address
 
-	// DeriveOwner - Generates the key pair that will be used to transact with the L2 message bus.
-	// todo (#1549) - implement with cryptography epic.
-	DeriveOwner(seed []byte) (*common.L2Address, error)
-
-	// GenerateMessageBusDeployTx - Returns a signed message bus deployment transaction.
-	GenerateMessageBusDeployTx() (*common.L2Tx, error)
+	// Initialize - Derives the address of the message bus contract.
+	Initialize(systemAddresses common.SystemContractAddresses) error
 
 	// ExtractOutboundMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
-	ExtractOutboundMessages(receipts common.L2Receipts) (common.CrossChainMessages, error)
+	ExtractOutboundMessages(ctx context.Context, receipts common.L2Receipts) (common.CrossChainMessages, error)
 
-	CreateSyntheticTransactions(messages common.CrossChainMessages, rollupState *state.StateDB) common.L2Transactions
+	ExtractOutboundTransfers(ctx context.Context, receipts common.L2Receipts) (common.ValueTransferEvents, error)
 
-	RetrieveInboundMessages(fromBlock *common.L1Block, toBlock *common.L1Block, rollupState *state.StateDB) common.CrossChainMessages
+	CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, stateDB *state.StateDB) (common.L2Transactions, error)
+
+	ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, stateDB *state.StateDB)
+
+	RetrieveInboundMessages(ctx context.Context, fromBlock *types.Header, toBlock *types.Header) (common.CrossChainMessages, common.ValueTransferEvents, error)
+
+	system.SystemContractsInitializable
 }

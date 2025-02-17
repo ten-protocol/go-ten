@@ -14,11 +14,16 @@ jobs:
   build:
     runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.20.4
+          go-version: 1.22.11
+
+      # Set the initial build number environment variable
+      - name: Set Build Number
+        run: |
+          echo "BUILD_NUMBER=1" >> $GITHUB_ENV
 
       # Makes sure the artifacts are built correctly
       - name: Build
@@ -28,12 +33,42 @@ jobs:
       - name: Download eth2network binaries
         run: go test ./... -v -count=1 -run TestEnsureBinariesAreAvail
 
-      - name: Test
-        run: go test --failfast -v ./... -count=1
+      # Close specified ports using lsof before testing / local port list compiled from ./integration/constants.go
+      - name: Close Integration Test Ports
+        run: |
+          pkill -9 geth || true
+          pkill -9 beacon-chain || true
+          pkill -9 validator || true
+          
+          lowest_port=8000  # Lowest starting port
+          highest_port=58000 # Highest port considering the offset
+          additional_ports=(80 81 99)  # Additional specific ports
+          
+          # Find processes listening on ports within the range and kill them
+          for pid in $(lsof -iTCP:$lowest_port-$highest_port -sTCP:LISTEN -t); do
+            echo "Killing process $pid on one of the ports from $lowest_port to $highest_port"
+            kill $pid || true
+          done
+          
+          # Find processes listening on ports within the range and kill them
+          for pid in $(lsof -iUDP:$lowest_port-$highest_port -t); do
+            echo "Killing process $pid on one of the ports from $lowest_port to $highest_port"
+            kill $pid || true
+          done
 
+          # Close additional specific ports
+          for port in "${additional_ports[@]}"; do
+            for pid in $(lsof -ti TCP:$port); do
+              echo "Killing process $pid on port $port"
+              kill $pid || true
+            done
+          done
+
+      - name: Test
+        run: go test --failfast -v ./... -count=1 -timeout 15m
       - name: Store simulation logs
-        uses: actions/upload-artifact@v3
-        if: always()
+        uses: actions/upload-artifact@v4
+        if: failure()
         with:
           name: ci-logs
           path: |
@@ -41,6 +76,12 @@ jobs:
             integration/.build/noderunner/noderunner-*.txt
             integration/.build/wallet_extension/wal-ext-*.txt
             integration/.build/eth2/*
-          retention-days: 2
+            !integration/.build/eth2/**/geth.ipc
+            integration/.build/faucet/*
+            integration/.build/tenscan/*
+            integration/.build/tengateway/*
+            integration/.build/contractdeployer/*
+            integration/.build/smartcontracts/*
+          retention-days: 1
 
 

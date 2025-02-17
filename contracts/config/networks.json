@@ -1,10 +1,8 @@
 {
     "localGeth": {
-      "url": "http://127.0.0.1:8025",
+      "url": "http://127.0.0.1:25400",
       "deploy": [
-        "deployment_scripts/core/layer1/",
-        "deployment_scripts/testnet/layer1/",
-        "deployment_scripts/bridge/layer1/"
+        "deployment_scripts/core"
       ],
       "accounts": [
         "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
@@ -12,18 +10,36 @@
       ]
     },
     "localObscuro": {
-      "chainId": 777,
-      "url": "http://127.0.0.1:3000",
-      "obscuroEncRpcUrl": "ws://127.0.0.1:13001",
-      "gasPrice": 2000000000,
+      "chainId": 443,
+      "url": "http://127.0.0.1:11180/v1/",
+      "useGateway": true,
       "companionNetworks" : {
         "layer1" : "localGeth"
       },
       "deploy": [
-        "deployment_scripts/core/layer2/",
-        "deployment_scripts/bridge/layer2/",
+        "deployment_scripts/funding/layer1",
+        "deployment_scripts/messenger/layer1",
+        "deployment_scripts/messenger/layer2",
+        "deployment_scripts/bridge/",
+        "deployment_scripts/testnet/layer1/",
         "deployment_scripts/testnet/layer2/"
       ],
+      "accounts": [
+        "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b",
+        "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682",
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
+      ]
+    },
+    "testObscuro": {
+      "chainId": 443,
+      "url": "http://127.0.0.1:11180/v1/",
+      "useGateway": true,
+      "companionNetworks" : {
+        "layer1" : "localGeth"
+      },
+      "deploy": [
+        "deployment_scripts/testing"
+       ],
       "accounts": [
         "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b",
         "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682",
@@ -40,12 +56,88 @@
       "accounts": [
         {
           "privateKey": "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
-          "balance": "174165200000000000"
+          "balance": "1741652000000000000"
         },
         {
           "privateKey" : "8ead642ca80dadb0f346a66cd6aa13e08a8ac7b5c6f7578d4bac96f5db01ac99",
-          "balance": "174165200000000000"
+          "balance": "1741652000000000000"
         }
+      ]
+    },
+    "uatGeth": {
+      "url": "http://uat-testnet-eth2network.uksouth.cloudapp.azure.com:8025",
+      "deploy": [
+        "deployment_scripts/core"
+      ],
+      "accounts": [
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f1"
+      ]
+    },
+    "testUatObscuro": {
+      "chainId": 443,
+      "url": "https://uat-testnet.ten.xyz/v1/",
+      "useGateway": true,
+      "companionNetworks" : {
+        "layer1" : "uatGeth"
+      },
+      "deploy": [
+        "deployment_scripts/testing"
+       ],
+      "accounts": [
+        "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b",
+        "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682",
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
+      ]
+    },
+    "devGeth": {
+      "url": "http://dev-testnet-eth2network.uksouth.cloudapp.azure.com:8025",
+      "deploy": [
+        "deployment_scripts/core"
+      ],
+      "accounts": [
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f1"
+      ]
+    },
+    "testDevObscuro": {
+      "chainId": 443,
+      "url": "https://dev-testnet.ten.xyz/v1/",
+      "useGateway": true,
+      "companionNetworks" : {
+        "layer1" : "devGeth"
+      },
+      "deploy": [
+        "deployment_scripts/testing"
+       ],
+      "accounts": [
+        "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b",
+        "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682",
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
+      ]
+    },
+    "localTestnetGeth": {
+      "url": "http://127.0.0.1:8025",
+      "deploy": [
+        "deployment_scripts/core"
+      ],
+      "accounts": [
+        "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f1"
+      ]
+    },
+    "localTestnetTen": {
+      "chainId": 443,
+      "url": "http://127.0.0.1:3000/v1/",
+      "useGateway": true,
+      "companionNetworks" : {
+        "layer1" : "localTestnetGeth"
+      },
+      "deploy": [
+        "deployment_scripts/testing"
+       ],
+      "accounts": [
+        "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b",
+        "6e384a07a01263518a09a5424c7b6bbfc3604ba7d93f47e3a455cbdd7f9f0682",
+        "4bfe14725e685901c062ccd4e220c61cf9c189897b6c78bd18d7f51291b2b8f8"
       ]
     }
   }

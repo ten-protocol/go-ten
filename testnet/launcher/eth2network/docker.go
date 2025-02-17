@@ -3,13 +3,14 @@ package eth2network
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/obscuronet/go-obscuro/go/common/docker"
-	"github.com/obscuronet/go-obscuro/go/common/retry"
 	"github.com/sanity-io/litter"
+	"github.com/ten-protocol/go-ten/go/common/docker"
+	"github.com/ten-protocol/go-ten/go/common/retry"
 )
 
 type Eth2Network struct {
@@ -27,7 +28,6 @@ func (n *Eth2Network) Start() error {
 
 	cmds := []string{
 		"/home/obscuro/go-obscuro/integration/eth2network/main/main",
-		"--numNodes", "1",
 	}
 
 	if len(n.cfg.prefundedAddrs) > 1 {
@@ -45,19 +45,28 @@ func (n *Eth2Network) Start() error {
 		exposedPorts = append(exposedPorts, n.cfg.gethWSPort)
 	}
 
-	_, err := docker.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil, nil, nil)
+	// keep a volume of binaries to avoid downloading
+	volume := map[string]string{"eth2_bin": "/home/obscuro/go-obscuro/integration/.build/eth2_bin/"}
+
+	_, err := docker.StartNewContainer("eth2network", "testnetobscuronet.azurecr.io/obscuronet/eth2network:latest", cmds, exposedPorts, nil, nil, volume, false)
 	return err
 }
 
 func (n *Eth2Network) IsReady() error {
-	timeout := 10 * time.Minute
+	timeout := 10 * time.Minute // this can be reduced when we no longer download the ethereum binaries
 	interval := 2 * time.Second
 	var dial *ethclient.Client
 	var err error
 
 	// retry the connection
 	err = retry.Do(func() error {
-		dial, err = ethclient.Dial(fmt.Sprintf("http://127.0.0.1:%d", n.cfg.gethHTTPPort))
+		host := os.Getenv("LOCALHOST_URL")
+		if host == "" {
+			host = "http://127.0.0.1"
+		}
+		url := fmt.Sprintf("%s:%d", host, n.cfg.gethHTTPPort)
+
+		dial, err = ethclient.Dial(url)
 		if err != nil {
 			return err
 		}

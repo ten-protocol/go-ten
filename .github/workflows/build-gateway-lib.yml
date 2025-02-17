@@ -1,0 +1,39 @@
+name: Build JS libs
+
+on:
+  pull_request:
+    paths:
+      - '.github/'
+      - 'tools/gateway-js/'
+    branches:
+      - main
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Check out the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18'
+
+      # Install dependencies
+      - name: Install Dependencies
+        run: npm install
+
+      # Build the project (assuming you have a script named "build" in package.json)
+      - name: Build
+        run: npm run lint && npm run test
+
+      # Deploy to GitHub Pages using the 'gh-pages' branch
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@4.1.5
+        with:
+          branch: gh-pages
+          folder: dist

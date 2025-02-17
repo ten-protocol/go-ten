@@ -2,53 +2,59 @@ package rpc
 
 import (
 	"context"
-	"errors"
 
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
+// these are public RPC methods exposed by a TEN node
 const (
-	BatchNumber           = "eth_blockNumber"
-	Call                  = "eth_call"
-	ChainID               = "eth_chainId"
-	GetBalance            = "eth_getBalance"
-	GetBatchByHash        = "eth_getBlockByHash"
-	GetBatchByNumber      = "eth_getBlockByNumber"
-	GetCode               = "eth_getCode"
-	GetTransactionByHash  = "eth_getTransactionByHash"
-	GetTransactionCount   = "eth_getTransactionCount"
-	GetTransactionReceipt = "eth_getTransactionReceipt"
-	SendRawTransaction    = "eth_sendRawTransaction"
-	EstimateGas           = "eth_estimateGas"
-	GetLogs               = "eth_getLogs"
-	Health                = "obscuro_health"
-	GetBlockHeaderByHash  = "obscuroscan_getBlockHeaderByHash"
-	GetBatch              = "obscuroscan_getBatch"
-	GetBatchForTx         = "obscuroscan_getBatchForTx"
-	GetLatestTxs          = "obscuroscan_getLatestTransactions"
-	GetTotalTxs           = "obscuroscan_getTotalTransactions"
-	Attestation           = "obscuroscan_attestation"
-	StopHost              = "test_stopHost"
-	Subscribe             = "eth_subscribe"
-	SubscribeNamespace    = "eth"
-	SubscriptionTypeLogs  = "logs"
+	BatchNumber        = "ten_batchNumber"
+	ChainID            = "ten_chainId"
+	GetBatchByHash     = "ten_getBatchByHash"
+	GetBatchByNumber   = "ten_getBatchByNumber"
+	GetCode            = "ten_getCode"
+	GasPrice           = "ten_gasPrice"
+	GetCrossChainProof = "ten_getCrossChainProof"
 
-	// GetL1RollupHeaderByHash  = "scan_getL1RollupHeaderByHash"
-	// GetActiveNodeCount       = "scan_getActiveNodeCount"
-	// GetTotalTransactionCount = "scan_getTotalTransactionCount"
-	GetTotalContractCount = "scan_getTotalContractCount"
+	Health = "ten_health"
+	Config = "ten_config"
+	RPCKey = "ten_rpcKey"
+
+	StopHost                 = "test_stopHost"
+	SubscribeNamespace       = "ten"
+	SubscriptionTypeLogs     = "logs"
+	SubscriptionTypeNewHeads = "newHeads"
+
+	GetBatchByTx             = "scan_getBatchByTx"
+	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
+	GetTotalTxCount          = "scan_getTotalTransactionCount"
+	GetTotalTxsQuery         = "scan_getTotalTransactionsQuery"
+	GetTotalContractCount    = "scan_getTotalContractCount"
+	GetPublicTransactionData = "scan_getPublicTransactionData"
+	GetBatchListing          = "scan_getBatchListing"
+	GetBlockListing          = "scan_getBlockListing"
+	GetBatch                 = "scan_getBatch"
+	GetLatestBatch           = "scan_getLatestBatch"
+	GetBatchByHeight         = "scan_getBatchByHeight"
+	GetTransaction           = "scan_getTransaction"
+
+	GetRollupListing        = "scan_getRollupListing"
+	GetBatchListingNew      = "scan_getBatchListingNew"
+	GetRollupByHash         = "scan_getRollupByHash"
+	GetRollupBatches        = "scan_getRollupBatches"
+	GetRollupBySeqNo        = "scan_getRollupBySeqNo"
+	GetBatchTransactions    = "scan_getBatchTransactions"
+	GetPersonalTransactions = "scan_getPersonalTransactions"
 )
 
-var ErrNilResponse = errors.New("nil response received from Obscuro node")
-
-// Client is used by client applications to interact with the Obscuro node
+// Client is used by client applications to interact with the TEN node
 type Client interface {
-	// Call executes the named method via RPC. (Returns `ErrNilResponse` on nil response from Node, this is used as "not found" for some method calls)
+	// Call executes the named method via RPC.
 	Call(result interface{}, method string, args ...interface{}) error
 	// CallContext If the context is canceled before the call has successfully returned, CallContext returns immediately.
 	CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error
 	// Subscribe creates a subscription to the Obscuro host.
-	Subscribe(ctx context.Context, result interface{}, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error)
+	Subscribe(ctx context.Context, namespace string, channel interface{}, args ...interface{}) (*rpc.ClientSubscription, error)
 	// Stop closes the client.
 	Stop()
 }

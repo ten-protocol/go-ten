@@ -6,25 +6,26 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"os"
 	"sync"
 	"time"
+
+	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
-	"github.com/obscuronet/go-obscuro/go/rpc"
-	"github.com/obscuronet/go-obscuro/go/wallet"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 const (
-	_timeout       = 60 * time.Second
-	OBXNativeToken = "obx"
-	WrappedOBX     = "wobx"
-	WrappedEth     = "weth"
-	WrappedUSDC    = "usdc"
+	_timeout    = 60 * time.Second
+	NativeToken = "eth"
+	// DeprecatedNativeToken is left in temporarily for tooling that is getting native funds using `/ten` URL
+	DeprecatedNativeToken = "ten" // todo (@matt) remove this once we have fixed the /ten usages
+	WrappedOBX            = "wobx"
+	WrappedEth            = "weth"
+	WrappedUSDC           = "usdc"
 )
 
 type Faucet struct {
@@ -36,7 +37,6 @@ type Faucet struct {
 
 func NewFaucet(rpcURL string, chainID int64, pkString string) (*Faucet, error) {
 	logger := log.New()
-	logger.SetHandler(log.StreamHandler(os.Stdout, log.TerminalFormat(false)))
 	w := wallet.NewInMemoryWalletFromConfig(pkString, chainID, logger)
 	obsClient, err := obsclient.DialWithAuth(rpcURL, w, logger)
 	if err != nil {
@@ -50,45 +50,46 @@ func NewFaucet(rpcURL string, chainID int64, pkString string) (*Faucet, error) {
 	}, nil
 }
 
-func (f *Faucet) Fund(address *common.Address, token string, amount int64) error {
+func (f *Faucet) Fund(address *common.Address, token string, amount *big.Int) (string, error) {
 	var err error
 	var signedTx *types.Transaction
 
-	if token == OBXNativeToken {
+	if token == NativeToken || token == DeprecatedNativeToken {
 		signedTx, err = f.fundNativeToken(address, amount)
 	} else {
-		return fmt.Errorf("token not fundable atm")
-		// signedTx, err = f.fundERC20Token(address, token)
+		return "", fmt.Errorf("token not fundable atm")
 		// todo implement this when contracts are deployable somewhere
 	}
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// the faucet should be the only user of the faucet pk
 	txMarshal, err := json.Marshal(signedTx)
 	if err != nil {
-		return err
+		return "", err
 	}
 	f.Logger.Info(fmt.Sprintf("Funded address: %s - tx: %+v\n", address.Hex(), string(txMarshal)))
 	// todo handle tx receipt
 
 	if err := f.validateTx(signedTx); err != nil {
-		return fmt.Errorf("unable to validate tx %s: %w", signedTx.Hash(), err)
+		return "", fmt.Errorf("unable to validate tx %s: %w", signedTx.Hash(), err)
 	}
 
-	return nil
+	return signedTx.Hash().Hex(), nil
 }
 
 func (f *Faucet) validateTx(tx *types.Transaction) error {
 	for now := time.Now(); time.Since(now) < _timeout; time.Sleep(time.Second) {
 		receipt, err := f.client.TransactionReceipt(context.Background(), tx.Hash())
-		if err != nil {
-			if errors.Is(err, rpc.ErrNilResponse) {
-				// tx receipt is not available yet
-				continue
-			}
+		// end eagerly for unexpected errors
+		if err != nil && !errors.Is(err, ethereum.NotFound) {
 			return fmt.Errorf("could not retrieve transaction receipt in eth_getTransactionReceipt request. Cause: %w", err)
+		}
+
+		// try again until timeout
+		if receipt == nil {
+			continue
 		}
 
 		txReceiptBytes, err := receipt.MarshalJSON()
@@ -105,7 +106,7 @@ func (f *Faucet) validateTx(tx *types.Transaction) error {
 	return fmt.Errorf("unable to fetch tx receipt after %s", _timeout)
 }
 
-func (f *Faucet) fundNativeToken(address *common.Address, amount int64) (*types.Transaction, error) {
+func (f *Faucet) fundNativeToken(address *common.Address, amount *big.Int) (*types.Transaction, error) {
 	// only one funding at the time
 	f.fundMutex.Lock()
 	defer f.fundMutex.Unlock()
@@ -117,18 +118,16 @@ func (f *Faucet) fundNativeToken(address *common.Address, amount int64) (*types.
 	// this isn't great as the tx count might be incremented in between calls
 	// but only after removing the pk from other apps can we use a proper counter
 
-	// todo remove hardcoded gas values
-	gas := uint64(21000)
-
 	tx := &types.LegacyTx{
 		Nonce:    nonce,
 		GasPrice: big.NewInt(225),
-		Gas:      gas,
 		To:       address,
-		Value:    new(big.Int).Mul(big.NewInt(amount), big.NewInt(params.Ether)),
+		Value:    amount,
 	}
 
-	signedTx, err := f.wallet.SignTransaction(tx)
+	estimatedTx := f.client.EstimateGasAndGasPrice(tx)
+
+	signedTx, err := f.wallet.SignTransaction(estimatedTx)
 	if err != nil {
 		return nil, err
 	}
@@ -138,4 +137,8 @@ func (f *Faucet) fundNativeToken(address *common.Address, amount int64) (*types.
 	}
 
 	return signedTx, nil
+}
+
+func (f *Faucet) Balance(ctx context.Context) (*big.Int, error) {
+	return f.client.BalanceAt(ctx, nil)
 }

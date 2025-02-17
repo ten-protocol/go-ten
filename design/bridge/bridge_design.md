@@ -1,10 +1,10 @@
-# Obscuro Cross Chain Messaging And Initial Bridge - Design Document
+# TEN Cross Chain Messaging And Initial Bridge - Design Document
 
-We want to expose a system API that allows any developer to come and build a bridge on Obscuro. We also want this API to support all types of well known bridges - wrapping assets, liquidity bridges, etc. And ideally we want the system API to further allow even more exotic type of apps - providing randomness to the L1, hidden game state and anything other that can be enabled as a cross chain application!
+We want to expose a system API that allows any developer to come and build a bridge on Ten. We also want this API to support all types of well known bridges - wrapping assets, liquidity bridges, etc. And ideally we want the system API to further allow even more exotic type of apps - providing randomness to the L1, hidden game state and anything other that can be enabled as a cross chain application!
 
 With the API we will build an initial bridge that wraps assets and might progress this further.
 
-The API design proposal is inspired by the [Wormhole protocol](https://wormhole.com/). The idea is we would allow for authenticated messaging between Layer 1 and Layer 2 on Obscuro through a smart contract API available on both layers.
+The API design proposal is inspired by the [Wormhole protocol](https://wormhole.com/). The idea is we would allow for authenticated messaging between Layer 1 and Layer 2 on TEN through a smart contract API available on both layers.
 It will be provided by two smart contracts deployed on network creation on both layers. 
 These contracts will be owned by the ManagementContract and the enclave on their respective layers.
 
@@ -13,7 +13,7 @@ These contracts will be owned by the ManagementContract and the enclave on their
 ## Requirements
 
 1. **High Level Requirements**
-  * The Obscuro platform provides On-Chain system APIs that allow dApp developers to build cross-chain bridges and applications.
+  * The TEN platform provides On-Chain system APIs that allow dApp developers to build cross-chain bridges and applications.
   * Users should be able to transmit authenticated data between L1 & L2. Example Message:
     ```json
     { 
@@ -23,32 +23,32 @@ These contracts will be owned by the ManagementContract and the enclave on their
     }
     ```
   * As an L2 developer I want to be able to query specific message topics coming from specific addresses.
-  * The Obscuro gas calculation should include the L1 fees of submitting a message that originates on the L2. Users should fully cover the storage fees and the Rollup publisher should not incur any financial loss.
+  * The TEN gas calculation should include the L1 fees of submitting a message that originates on the L2. Users should fully cover the storage fees and the Rollup publisher should not incur any financial loss.
   * The messaging and bridge are decentralized as much as possible.
   * Block reorganizations should have no impact on the security of the messaging protocol and the downstream apps that use this protocol.
 
 
 2. **Bridge Requirements**
-  * The reference bridge contracts should be completely ordinary and separate from the management contract; The API should expose all the messaging pieces of information required in order to build the bridge independently from Obscuro
-  * The bridge will have an asset whitelist controlled and configured by the management contract. Later this will be managed by the Obscuro DAO.
+  * The reference bridge contracts should be completely ordinary and separate from the management contract; The API should expose all the messaging pieces of information required in order to build the bridge independently from Ten
+  * The bridge will have an asset whitelist controlled and configured by the management contract. Later this will be managed by the TEN DAO.
   * Assets and their wrapped L2 counterparts should be mapped and exposed for querying.
   * Bridge functionality should be able to use the [pull payment](https://docs.openzeppelin.com/contracts/2.x/api/payment#PullPayment) design. 
-   > If any current dApps want to extend or port their functionality on Obscuro then it should be possible for them to do it without collaborating with anyone else 
+   > If any current dApps want to extend or port their functionality on TEN then it should be possible for them to do it without collaborating with anyone else 
 
 ## Scope
-* Messaging architecture between Obscuro and Mainnet Ethereum.
+* Messaging architecture between TEN and Mainnet Ethereum.
 * Basic Bridge that wraps assets
 * Primitive fees implementation
 
 ## Assumptions
 
 1. Fees
-   * Big assumption - there will be a way to pay for bridge services/messaging in OBX without incurring losses in ETH on the layer 1 side.
-   * The Obscuro DAO will be able to configure properties for the messaging part of the protocol and accurately estimate the `gas costs` of storing data without losing too much on `gas price` spikes.
+   * Big assumption - there will be a way to pay for bridge services/messaging in TEN without incurring losses in ETH on the layer 1 side.
+   * The TEN DAO will be able to configure properties for the messaging part of the protocol and accurately estimate the `gas costs` of storing data without losing too much on `gas price` spikes.
 2. Finality
    * The management contract will be responsible for not exposing data that has not been finalized. This means that it should have first gone through the challenge period.
    * The Rollup protocol will ensure the L1 blocks being consumed by the enclave and the resulting synthetic transactions are always bound to the blocks generating them.
-   * Obscuro has fast finality over the transaction ordering rather than the results. When a deposit gets reorganized the results on Obscuro L2 should reorganize too if depending on it. 
+   * TEN has fast finality over the transaction ordering rather than the results. When a deposit gets reorganized the results on TEN L2 should reorganize too if depending on it. 
 
 ## Modifications
 
@@ -57,9 +57,9 @@ The Rollup headers right now are assumed to include withdrawal instructions. The
 
 ## Definitions
 
-* `System contract` - A contract that is deployed by the Obscuro protocol when the Layer 2 network is created. System contracts serve the purpose of providing system API access on-chain. 
+* `System contract` - A contract that is deployed by the TEN protocol when the Layer 2 network is created. System contracts serve the purpose of providing system API access on-chain. 
 
-## MessageBus Design - Obscuro cross-chain data transmission 
+## MessageBus Design - TEN cross-chain data transmission 
 
 The `MessageBus` will be deployed as a [`Proxy`](https://docs.openzeppelin.com/contracts/4.x/api/proxy)
 
@@ -129,7 +129,7 @@ Any contract or user can call the `publishMessage` function. Any message passed 
 
 `consistencyLevel` is a mechanism to introduce delay before the message is considered valid. The platform will only expose the message after the block producing it is confirmed by blocks equal to the `consistencyLevel`
 
-> **_NOTE:_**  `consistencyLevel` is only required if Obscuro does not reorganize when L1 deposits reorganize. In other instances it can be set to 0 or 1. There is however another use case for it described in [Security](#MessageBusSecurity).
+> **_NOTE:_**  `consistencyLevel` is only required if TEN does not reorganize when L1 deposits reorganize. In other instances it can be set to 0 or 1. There is however another use case for it described in [Security](#MessageBusSecurity).
 
 
 ### Verify Message
@@ -152,7 +152,7 @@ Internally, the function will hash the message and compare it with the result of
 
 ### Submit Out Of Network Messages
 
-This is the smart contract function which is used to store messages sent from the other linked layer. The function will be called by the `ManagementContract` on L1 and the `enclave` on L2. It should be access controlled and called according to the `consistencyLevel` and Obscuro platform rules.
+This is the smart contract function which is used to store messages sent from the other linked layer. The function will be called by the `ManagementContract` on L1 and the `enclave` on L2. It should be access controlled and called according to the `consistencyLevel` and TEN platform rules.
 
 ```solidity 
 function submitOutOfNetworkMessage(
@@ -164,7 +164,7 @@ function submitOutOfNetworkMessage(
 ) public onlyRole(ADMINISTRATOR|OWNER)
 ```
 
-This function should not be callable by any users or contracts unless they have the `ADMINISTRATOR` role or are the `Owner` of the `MessageBus` contract. Along with those requirements, on the Obscuro layer 2, there is an additional security measure - Any incoming transaction to this function is blocked, even if it is coming from an address that has the correct role. The protocol will block transactions that do not originate from inside of the enclave due to consuming L1 blocks. This means that even if the enclave gets hacked and the keys leak the verifiers will block withdraws.
+This function should not be callable by any users or contracts unless they have the `ADMINISTRATOR` role or are the `Owner` of the `MessageBus` contract. Along with those requirements, on the TEN layer 2, there is an additional security measure - Any incoming transaction to this function is blocked, even if it is coming from an address that has the correct role. The protocol will block transactions that do not originate from inside of the enclave due to consuming L1 blocks. This means that even if the enclave gets hacked and the keys leak the verifiers will block withdraws.
 
 When called, the function should store the message indexed in storage - map of `senders` that contains a map of `topics` which points to array of `messages` should be sufficient. 
 Along with it, the hash of the whole message should be used as a key to store a message received flag inside the map `receivedMessages`. This map enables quick verification that a message is valid and received.
@@ -196,37 +196,37 @@ When a block from `L1` is processed by the `enclave` and transactions inside of 
 
 When a transaction on the `L2` results in `LogMessagePublished`, the event will automatically be added to the `Rollup header` by the `enclave`. Then the management contract will submit them to the `MessageBus` or they will directly be.
 
-![Diagram not found](./resources/PublishFromObscuro.svg)
+![Diagram not found](./resources/PublishFromTen.svg)
 
-> **_NOTE:_** **The messages must not be accessible unless** the challenge period has passed! On top of that the block where the message is submitted to L1 must have confirmations equal to `consistencyLevel` before the message is released. Those are simply counted on-chain as "confirmations" is meaningless for Obscuro L2.  
+> **_NOTE:_** **The messages must not be accessible unless** the challenge period has passed! On top of that the block where the message is submitted to L1 must have confirmations equal to `consistencyLevel` before the message is released. Those are simply counted on-chain as "confirmations" is meaningless for TEN L2.  
 
 ### Alternative approaches
 
-1. Obscuro only ever pushes the hash of the message. The user has the responsibility of providing the full message which will only be accepted if it matches one of the hashes, if neccessary.
+1. TEN only ever pushes the hash of the message. The user has the responsibility of providing the full message which will only be accepted if it matches one of the hashes, if necessary.
   * This simplifies gas cost calculations, but the problem described in the `Fees` section remains.
   * Contracts can hash their messages before passing them to the `MessageBus` and achieve nearly the same outcome if they want to. 
-2. Obscuro only pushes to L2. Messages on L1 are provided signed by the enclave through an RPC and the MessageBus contract verifies that they have been signed by a correct enclave-owned key. 
+2. TEN only pushes to L2. Messages on L1 are provided signed by the enclave through an RPC and the MessageBus contract verifies that they have been signed by a correct enclave-owned key. 
   * This disabled the option to read messages and ordering becomes problematic.
   * The API is different between layers, which might end up being a bad UX.
 ### Fees
 
-When publishing a message on the Obscuro L2, storing the message will have a direct cost to the `Sequencer` who is publishing the Rollup in the form of gas. In order to channel this cost to the user who is publishing the message we would need some configurable properties.
+When publishing a message on the TEN L2, storing the message will have a direct cost to the `Sequencer` who is publishing the Rollup in the form of gas. In order to channel this cost to the user who is publishing the message we would need some configurable properties.
 
-**Assumption: Obscuro DAO** will vote and set the following properties:
+**Assumption: TEN DAO** will vote and set the following properties:
 * `fixedMessageStoringCost` - this is the gas cost for storing the fixed-size properties of the message
 * `dynamicCostPerByte` - this is the gas cost per byte for storing the dinamically sized data - `bytes payload`, `bytes topic` 
 
-> **_NOTE:_** This whole section might change based on the outcome of the Obscuro fees & rewards design. It only outlines a potential solution.
+> **_NOTE:_** This whole section might change based on the outcome of the TEN fees & rewards design. It only outlines a potential solution.
 
-The wormhole implementation requires that a fee is paid for each published message. This is something we should implement exactly as is to prevent people from spamming huge messages on L2 for a little gas cost that results in Obscuro having to pay for them being submitted to the L1!
+The wormhole implementation requires that a fee is paid for each published message. This is something we should implement exactly as is to prevent people from spamming huge messages on L2 for a little gas cost that results in TEN having to pay for them being submitted to the L1!
 
-The problem we will experience is that the native currency on Obscuro L2 will be different from the native currency on L1 - ETH. This means `ETH : OBX` pair volatility might result in losing money on gas costs.
+The problem we will experience is that the native currency on TEN L2 will be different from the native currency on L1 - ETH. This means `ETH : TEN` pair volatility might result in losing money on gas costs.
 
 I see a couple of possible solutions to this:
 1. Collect the fees in `WETH` when calling `publishMessage`.
     * This is a bad user experience. Anytime we want to withdraw we must source `WETH`
     * It does protect us from losing money when publishing rollups, however.
-2. Using a DEX when it becomes available on Obscuro's L2 we can exchange OBX tokens for the required amount of `WETH`.
+2. Using a DEX when it becomes available on Ten's L2 we can exchange TEN tokens for the required amount of `WETH`.
 
 An additional insurance fee might be required. It is described in [Security](#MessageBusSecurity)
 
@@ -234,7 +234,7 @@ An additional insurance fee might be required. It is described in [Security](#Me
 
 ### <a name="MessageBusSecurity"></a> Security 
 
-The security of the `MessageBus` is maintained by the `ManagementContract` and the enclave. When the `MessageBus` is secure, then all the downstream apps are secure too. **The maximum achievable security depends on the type of finality the Obscuro L2 has.** 
+The security of the `MessageBus` is maintained by the `ManagementContract` and the enclave. When the `MessageBus` is secure, then all the downstream apps are secure too. **The maximum achievable security depends on the type of finality the TEN L2 has.** 
 
  * For probabilistic finality - We can be fully secure as L1 block reorgs will reorganize us too.
  * Fast & hard finality - Block reorgs can lead to instances of the enclave having delivered a message that got thrown away, even when accounting for confirmations.
@@ -265,7 +265,7 @@ This diagrams should help illustrate the control flow:
 
 We can also engineer a mechanism to insure delivered messages:
 * When fees are collected for `publishMessage`, part of those fees is funneled to an insurance pool.
-* When a message that has been published gets reorganized the ObscuroDAO can pay for the financial loss from the insurance pool.
+* When a message that has been published gets reorganized the TenDAO can pay for the financial loss from the insurance pool.
 
 > **_NOTE:_** The maximum possible payout should always be less than the penalty for PoS slashing on MainNet. This ensures there is no profit to attacking and claiming insurance.  
 
@@ -310,11 +310,11 @@ There will be the following topics initially:
 
 ---
 
-**Diagram of the bridge process that happens on Obscuro's Layer 2 when a deposit is created**
-![Sequence Diagram not available](./resources/ObscuroL2_MessageBus_deposit_Diagram.svg)
+**Diagram of the bridge process that happens on Ten's Layer 2 when a deposit is created**
+![Sequence Diagram not available](./resources/TenL2_MessageBus_deposit_Diagram.svg)
 
-**Diagram of the process to withdraw the assets from the bridge contract on Obscuro's Layer 2**
-![Sequence Diagram not available](./resources/ObscuroL2_Bridge_withdraw_Diagram.svg)
+**Diagram of the process to withdraw the assets from the bridge contract on Ten's Layer 2**
+![Sequence Diagram not available](./resources/TenL2_Bridge_withdraw_Diagram.svg)
 
 The API to transfer assets from the perspective of the user is the same on both layers. The process is as follows:
 
@@ -360,5 +360,5 @@ The security of the `MessageBus` guarantees that downstream dApps using it are a
 
 ## Decentralization
 
-The `MessageBus` and `Bridge` contracts sit on-chain and inherit the least common denominator properties of both Obscuro and Eth. If Obscuro is decentralized then the Bridge and MessageBus will be too.
+The `MessageBus` and `Bridge` contracts sit on-chain and inherit the least common denominator properties of both TEN and Eth. If TEN is decentralized then the Bridge and MessageBus will be too.
 

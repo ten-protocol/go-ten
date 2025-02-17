@@ -1,8 +1,8 @@
-# Events in Obscuro - Design document
+# Events in TEN - Design document
 
 ## Scope
 
-This is a design proposal for how to handle events in Obscuro.
+This is a design proposal for how to handle events in TEN.
 
 It covers two aspects:
 
@@ -23,7 +23,7 @@ It covers two aspects:
 
 ## Event visibility design
 
-In Obscuro, we aim to maintain the same events APIs that are found in Ethereum, and will try to implement privacy 
+In Ten, we aim to maintain the same events APIs that are found in Ethereum, and will try to implement privacy 
 concerns with as few changes as possible. For background on how Ethereum handles events, see the section 
 "Background - Ethereum Events Design", below.
 
@@ -38,7 +38,7 @@ To decide whether a user Alice is entitled to view an event, we must consider th
 
 ### Event visibility rules
 
-Each event contains an array of 32-byte hex strings, called topics. In Obscuro, as in Ethereum, end-users are 
+Each event contains an array of 32-byte hex strings, called topics. In Ten, as in Ethereum, end-users are 
 identified by one or more account addresses. Since we are reusing Ethereum's API without modifications, our goal is to 
 use an event's topics to ascertain who the event is relevant to, with users able to see an event if and only if the 
 event is considered relevant to them.
@@ -77,10 +77,10 @@ be used for subscribing.
 As the ultimate flexible mechanism we propose a programmatic way to determine whether a requester is allowed to view an event. 
 
 If the implicit rules are not satisfactory, the smart contract developer can define a view function called 
-``eventVisibility``, which will be called by the Obscuro VM behind the scenes.
+``eventVisibility``, which will be called by the TEN VM behind the scenes.
 
 ```solidity
-   // If declared in a smart contract, this function will be called by the Obscuro VM to determine whether the requester
+   // If declared in a smart contract, this function will be called by the TEN VM to determine whether the requester
    // address is allowed to view the event. 
    function eventVisibility(address requester, bytes32[] memory topics,  bytes32[] memory data) external view returns (bool){
        // based on the data from the event, passed in as an array of topic and data (which is the internal VM representation) 
@@ -91,7 +91,7 @@ If the implicit rules are not satisfactory, the smart contract developer can def
     }
 ```    
 
-To determine the visibility of an event, the Obscuro VM will do the following:
+To determine the visibility of an event, the TEN VM will do the following:
 
 1. call the `eventVisibility` with the event being requested and the requester.
 2. If the function exists and returns 'true', then return the event. If it returns `false`, then the event is invisible.
@@ -109,12 +109,12 @@ public, privacy-leaking `Transfer` event.
 This rule adds another dimension to the reasoning process, because there is an implicit user to whom the event is relevant.
 It also reduces flexibility in sending lifecycle events to administrators.
 
-## Obscuro events implementation
+## TEN events implementation
 
 Our goal is to implement the visibility rules described above without modifying the Ethereum events API. We will look 
 first at the changes to the enclave, then those to the host, and finally those to the RPC client.
 
-### Obscuro enclave
+### TEN enclave
 
 #### Creating and deleting logs subscriptions
 
@@ -160,7 +160,7 @@ the log filter and the address the logs are for. It then crawls the chain, extra
 and are relevant based on the address provided. It returns these logs encrypted with the viewing key corresponding to 
 the address provided.
 
-### Obscuro host
+### TEN host
 
 #### Logs subscriptions
 
@@ -185,7 +185,7 @@ on to the corresponding Geth `rpc.Subscription`.
 For log snapshot requests, it is again forwarded blindly to the enclave, with the host unable to learn anything about 
 the request or response.
 
-### Obscuro encrypted RPC client
+### TEN encrypted RPC client
 
 Due to their sensitive nature, logs requests and log subscriptions must pass through the encrypted RPC client.
 
@@ -193,7 +193,7 @@ Due to their sensitive nature, logs requests and log subscriptions must pass thr
 
 The encrypted RPC client only handles logs subscriptions via the `eth_subscribe` and `eth_unsubscribe` APIs (see 
 [here](https://ethereum.org/en/developers/tutorials/using-websockets/#eth-subscribe)). A consequence of this is that 
-events are only available in Obscuro over a websocket connection.
+events are only available in TEN over a websocket connection.
 
 In response to the incoming `eth_subscribe` request, the client creates a `logs` subscription to the host by making a
 `rpc.Client.Subscribe` call via the embedded Geth client. It passes as a parameter a `LogSubscription` object encrypted 

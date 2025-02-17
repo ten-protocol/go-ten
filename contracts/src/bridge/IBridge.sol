@@ -7,7 +7,8 @@ pragma solidity >=0.7.0 <0.9.0;
 interface IBridge {
     enum Topics {
         TRANSFER,
-        MANAGEMENT
+        MANAGEMENT,
+        VALUE
     }
 
     // Sends the native currency to the other layer. On Layer 1 the native currency is ETH, while on Layer 2 it is OBX.
@@ -19,13 +20,13 @@ interface IBridge {
     // before calling this function for more or equal to the amount being bridged over. 
     // This can be done using IERC20(asset).approve(bridge, amount); 
     // asset - the address of the smart contract of the ERC20 token.
-    // amount - the number of tokens being transfered.
+    // amount - the number of tokens being transferred.
     // receiver - the L2 address receiving the assets.
     function sendERC20(
         address asset,
         uint256 amount,
         address receiver
-    ) external;
+    ) external payable;
 
     // This function is called to retrieve assets that have been sent on the other layer.
     // In the basic implementation it is only callable from the CrossChainMessenger when a message is
@@ -35,4 +36,9 @@ interface IBridge {
         uint256 amount,
         address receiver
     ) external;
+
+    struct ValueTransfer {
+        uint256 amount;
+        address recipient;
+    }
 }

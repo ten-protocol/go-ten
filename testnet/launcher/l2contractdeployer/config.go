@@ -5,20 +5,22 @@ type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1Host            string
-	l1privateKey      string
-	l1Port            int
-	l2Port            int
-	l2Host            string
-	l2PrivateKey      string
-	hocPKString       string
-	pocPKString       string
-	messageBusAddress string
-	dockerImage       string
+	l1HTTPURL                 string
+	l1privateKey              string
+	l2Port                    int
+	l2Host                    string
+	l2PrivateKey              string
+	managementContractAddress string
+	messageBusAddress         string
+	dockerImage               string
+	faucetPrefundAmount       string
+	debugEnabled              bool
 }
 
 func NewContractDeployerConfig(opts ...Option) *Config {
-	defaultConfig := &Config{}
+	defaultConfig := &Config{
+		faucetPrefundAmount: "10000",
+	}
 
 	for _, opt := range opts {
 		opt(defaultConfig)
@@ -27,15 +29,9 @@ func NewContractDeployerConfig(opts ...Option) *Config {
 	return defaultConfig
 }
 
-func WithL1Host(s string) Option {
+func WithL1HTTPURL(s string) Option {
 	return func(c *Config) {
-		c.l1Host = s
-	}
-}
-
-func WithL1Port(i int) Option {
-	return func(c *Config) {
-		c.l1Port = i
+		c.l1HTTPURL = s
 	}
 }
 
@@ -57,6 +53,12 @@ func WithL2Host(s string) Option {
 	}
 }
 
+func WithManagementContractAddress(s string) Option {
+	return func(c *Config) {
+		c.managementContractAddress = s
+	}
+}
+
 func WithMessageBusContractAddress(s string) Option {
 	return func(c *Config) {
 		c.messageBusAddress = s
@@ -75,14 +77,14 @@ func WithDockerImage(s string) Option {
 	}
 }
 
-func WithHocPKString(s string) Option {
+func WithFaucetFunds(f string) Option {
 	return func(c *Config) {
-		c.hocPKString = s
+		c.faucetPrefundAmount = f
 	}
 }
 
-func WithPocPKString(s string) Option {
+func WithDebugEnabled(b bool) Option {
 	return func(c *Config) {
-		c.pocPKString = s
+		c.debugEnabled = b
 	}
 }

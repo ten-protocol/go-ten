@@ -1,68 +1,146 @@
 package vkhandler
 
 import (
+	"crypto/ecdsa"
+	"fmt"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
 	"github.com/stretchr/testify/assert"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
 
-func TestVKHandler(t *testing.T) {
-	// generate user private Key
-	userPrivKey, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	userAddr := crypto.PubkeyToAddress(userPrivKey.PublicKey)
+const chainID = 443
 
-	// generate ViewingKey private Key
-	vkPrivKey, err := crypto.GenerateKey()
+// generateRandomUserKeys -
+// generates a random user private key and a random viewing key private key and returns the user private key,
+// the viewing key private key, the userID and the user address
+func generateRandomUserKeys() (*ecdsa.PrivateKey, *ecdsa.PrivateKey, []byte, gethcommon.Address) {
+	userPrivKey, err := crypto.GenerateKey() // user private key
 	if err != nil {
-		t.Fatalf(err.Error())
+		return nil, nil, nil, gethcommon.Address{}
 	}
+	vkPrivKey, _ := crypto.GenerateKey() // viewingkey generated in the gateway
+	if err != nil {
+		return nil, nil, nil, gethcommon.Address{}
+	}
+
+	// get the address from userPrivKey
+	userAddress := crypto.PubkeyToAddress(userPrivKey.PublicKey)
+
+	// get userID from viewingKey public key
 	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
+	userID := viewingkey.CalculateUserID(vkPubKeyBytes)
 
-	// Sign key
-	signature, err := viewingkey.Sign(userPrivKey, vkPubKeyBytes)
-	assert.NoError(t, err)
-
-	// Create a new vk Handler
-	_, err = New(&userAddr, vkPubKeyBytes, signature)
-	assert.NoError(t, err)
+	return userPrivKey, vkPrivKey, userID, userAddress
 }
 
-func TestSignAndCheckSignature(t *testing.T) {
-	// generate user private Key
-	userPrivKey, err := crypto.GenerateKey()
+// MessageWithSignatureType - struct to hold the message hash and the signature type for testing purposes
+type MessageWithSignatureType struct {
+	Hash          []byte
+	SignatureType viewingkey.SignatureType
+}
+
+func TestCheckSignature(t *testing.T) {
+	userPrivKey, _, userID, userAddress := generateRandomUserKeys()
+
+	// Generate all message types and create map with the corresponding signature type
+	EIP712Message, err := viewingkey.GenerateMessage(userID, chainID, 0, viewingkey.EIP712Signature)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	userAddr := crypto.PubkeyToAddress(userPrivKey.PublicKey)
-
-	// generate ViewingKey private Key
-	vkPrivKey, err := crypto.GenerateKey()
+	EIP712MessageHash, err := viewingkey.GetMessageHash(EIP712Message, viewingkey.EIP712Signature)
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	vkPubKeyByte := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
 
-	// sign the message
-	msgToSign := viewingkey.SignedMsgPrefix + string(vkPubKeyByte)
-	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), userPrivKey)
-	assert.NoError(t, err)
-
-	// Recover the key based on the signed message and the signature.
-	recoveredAccountPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), signature)
-	assert.NoError(t, err)
-	recoveredAccountAddress := crypto.PubkeyToAddress(*recoveredAccountPublicKey)
-
-	if recoveredAccountAddress.Hex() != userAddr.Hex() {
-		t.Errorf("unable to recover user address from signature")
+	PersonalSignMessage, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
+	if err != nil {
+		t.Fatalf(err.Error())
 	}
 
-	_, err = crypto.DecompressPubkey(vkPubKeyByte)
-	assert.NoError(t, err)
+	PersonalSignMessageHash, err := viewingkey.GetMessageHash(PersonalSignMessage, viewingkey.PersonalSign)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	messages := map[string]MessageWithSignatureType{
+		"EIP712MessageHash": {
+			Hash:          EIP712MessageHash,
+			SignatureType: viewingkey.EIP712Signature,
+		},
+		"PersonalSignMessageHash": {
+			Hash:          PersonalSignMessageHash,
+			SignatureType: viewingkey.PersonalSign,
+		},
+	}
+	// sign each message hash with the user private key and check the signature with the corresponding signature type
+	for testName, message := range messages {
+		fmt.Println(testName)
+		t.Run(testName, func(t *testing.T) {
+			signature, err := crypto.Sign(message.Hash, userPrivKey)
+			assert.NoError(t, err)
+
+			addr, err := viewingkey.CheckSignature(userID, signature, chainID, message.SignatureType)
+			assert.NoError(t, err)
+
+			assert.Equal(t, userAddress.Hex(), addr.Hex())
+		})
+	}
+}
+
+func TestVerifyViewingKey(t *testing.T) {
+	userPrivKey, vkPrivKey, userID, userAddress := generateRandomUserKeys()
+	// Generate all message types and create map with the corresponding signature type
+	// Test EIP712 message format
+
+	EIP712Message, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.EIP712Signature)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	EIP712MessageHash, err := viewingkey.GetMessageHash(EIP712Message, viewingkey.EIP712Signature)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	PersonalSignMessage, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	PersonalSignMessageHash, err := viewingkey.GetMessageHash(PersonalSignMessage, viewingkey.PersonalSign)
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+
+	messages := map[string]MessageWithSignatureType{
+		"EIP712MessageHash": {
+			Hash:          EIP712MessageHash,
+			SignatureType: viewingkey.EIP712Signature,
+		},
+		"PersonalSignMessageHash": {
+			Hash:          PersonalSignMessageHash,
+			SignatureType: viewingkey.PersonalSign,
+		},
+	}
+
+	for testName, message := range messages {
+		t.Run(testName, func(t *testing.T) {
+			signature, err := crypto.Sign(message.Hash, userPrivKey)
+			assert.NoError(t, err)
+
+			vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&vkPrivKey.PublicKey).ExportECDSA())
+			// Create a new vk Handler
+			rpcSignedVK, err := VerifyViewingKey(&viewingkey.RPCSignedViewingKey{
+				PublicKey:               vkPubKeyBytes,
+				SignatureWithAccountKey: signature,
+				SignatureType:           message.SignatureType,
+			}, chainID)
+			assert.NoError(t, err)
+			assert.Equal(t, rpcSignedVK.UserID, userID)
+			assert.Equal(t, rpcSignedVK.AccountAddress.Hex(), userAddress.Hex())
+		})
+	}
 }

@@ -1,7 +1,7 @@
-# Obscuro Upgrades
+# TEN Upgrades
 
-This design covers the operational aspects of upgrading Obscuro.
-The mechanism by which the community validates an upgrade is covered in the [Obscuro source of truth](./Source_of_truth.md) document.
+This design covers the operational aspects of upgrading Ten.
+The mechanism by which the community validates an upgrade is covered in the [TEN source of truth](./Source_of_truth.md) document.
 
 We'll start by identifying the types of scenarios that will require a software upgrade, and next, we'll propose the
 procedures and the technical changes required to achieve them.
@@ -10,16 +10,16 @@ Note: This document is written with the single aggregator model, but it also app
 
 ## Prerequisites
 
-Upgradeability is a very complex topic. We'll start by listing the concerns specific to Obscuro and by creating
+Upgradeability is a very complex topic. We'll start by listing the concerns specific to TEN and by creating
 some useful classifications to be able to reason about the problems.
 
-### Obscuro secrets
+### TEN secrets
 
-There are two main secrets on an Obscuro node :
+There are two main secrets on an TEN node :
 
 1. The master seed, aka "the shared secret", is the basis of all communication between enclaves, users and enclaves, and data availability on Ethereum.
 2. The key for connecting to the local database, which lives in its enclave.
-   - Note: Obscuro uses EdgelessDB, a modified MySQL running inside an enclave. The connection to the database is made using a key generated during the setup phase of the enclave. The EdgelessDB enclave ensures that only the owner of that key can read data.
+   - Note: TEN uses EdgelessDB, a modified MySQL running inside an enclave. The connection to the database is made using a key generated during the setup phase of the enclave. The EdgelessDB enclave ensures that only the owner of that key can read data.
 
 Access to these secrets will allow attackers to read private user data.
 Both secrets are sealed locally with a key derived from the current measurement of the enclave.
@@ -36,11 +36,11 @@ can connect to the same database if it passes the attestation requirements it ha
 - The privacy of the ledger data is guaranteed by the security of the local secrets.
 - The main reason for a "privacy" upgrade is the discovery of a vulnerability that can leak data.
 - Most upgrades will hopefully be for mundane reasons such as new features or general improvements.
-- Obscuro is an L2 with a governance mechanism on the Ethereum Management Contract (MC). The decisions made by
+- TEN is an L2 with a governance mechanism on the Ethereum Management Contract (MC). The decisions made by
   the governance contract must be understood and enforced by the enclave. See more details in the "Source_of_truth.md" document.
 
 
-## Upgrade reasons for Obscuro
+## Upgrade reasons for Ten
 
 1. To fix security bugs which can impact the integrity of the ledger.
 1. To fix security bugs that can impact the ledger's privacy.
@@ -87,7 +87,7 @@ They can implement the change such that the previous version does not crash when
 There are multiple issues with this option. It was used mostly in the early days, but currently, the "hard fork" approach
 with a block number activation date is the preferred option.
 
-In Obscuro, we'll use the preferred Ethereum approach.
+In Ten, we'll use the preferred Ethereum approach.
 
 
 ### 2. Local only upgrades
@@ -99,7 +99,7 @@ This version can be installed by a node operator at any time and is optional.
 
 ### 3. Privacy related upgrades
 
-This type of upgrade specific to Obscuro (or other privacy networks) is necessary to remove a side channel or another avenue where data can be leaked.
+This type of upgrade specific to TEN (or other privacy networks) is necessary to remove a side channel or another avenue where data can be leaked.
 
 This is not a "consensus upgrade" in the traditional sense, but it has to be treated equally because if there is a single
 node operator with a vulnerable version on the network, then privacy is considered compromised.
@@ -110,7 +110,7 @@ After the rollout of such an upgrade, it is mandatory to change the secrets.
 Upgrading the SGX firmware or completely changing hardware falls under the same category.
 
 
-## Obscuro architecture
+## TEN architecture
 
 In this section, we'll look at the architecture and analyse how upgrading different components fits into the above categories.
 
@@ -122,7 +122,7 @@ Any change to this codebase must go through the attestation whitelisting process
 
 Note that some changes can be "local only", such as a release containing only a performance improvement.
 
-Note that Obscuro will allow multiple approved versions in the period between two block heights.
+Note that TEN will allow multiple approved versions in the period between two block heights.
 
 ### Host
 
@@ -131,8 +131,8 @@ Some upgrades could also be consensus upgrades, for example, on a change of prot
 
 ### The Wallet extension
 
-End users install this component that communicates with Obscuro nodes via RPC.
-For a good UX, Obscuro nodes must be backwards compatible and support even older versions of the Wallet extension.
+End users install this component that communicates with TEN nodes via RPC.
+For a good UX, TEN nodes must be backwards compatible and support even older versions of the Wallet extension.
 There must be warnings and mechanisms to help users upgrade to the latest version.
 
 
@@ -247,7 +247,7 @@ this luxury.
 Without a mechanism put in place in the initial release, the enclave cannot be upgraded at all because any other version will
 not be able to read the data.
 
-Upgradability in phase 1 is only a concern for the Obscuro enclave, as upgrading the "Host" component can be designed afterwards.
+Upgradability in phase 1 is only a concern for the TEN enclave, as upgrading the "Host" component can be designed afterwards.
 
 ### High-level tasks
 
@@ -350,7 +350,7 @@ further reduce the chance of the same error happening everywhere.
 
 ### Joining the network 
 
-There will be mechanisms in place to prevent users from starting a non-current version of an Obscuro Node.
+There will be mechanisms in place to prevent users from starting a non-current version of an TEN Node.
 These mechanisms are necessary to prevent exploiting of already fixed privacy vulnerabilities. 
 
 This means that a node joining the network must do so with the latest version which must contain all the compatibility modes

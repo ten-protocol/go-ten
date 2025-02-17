@@ -2,80 +2,61 @@ package smartcontract
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-)
+	"github.com/ten-protocol/go-ten/go/common/retry"
 
-var _timeout = 30 * time.Second
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/wallet"
+)
 
 // debugWallet is a wrapper around the wallet that simplifies commonly used functions
 type debugWallet struct {
 	wallet.Wallet
+	receiptTimeout time.Duration
 }
 
-// newDebugWallet returns a new debug wrapped wallet
-func newDebugWallet(w wallet.Wallet) *debugWallet {
-	return &debugWallet{w}
+func newDebugWallet(w wallet.Wallet, timeout time.Duration) *debugWallet {
+	return &debugWallet{
+		Wallet:         w,
+		receiptTimeout: timeout,
+	}
 }
 
 // AwaitedSignAndSendTransaction signs a tx, issues the tx and awaits the tx to be minted into a block
 func (w *debugWallet) AwaitedSignAndSendTransaction(client ethadapter.EthClient, txData types.TxData) (*types.Transaction, *types.Receipt, error) {
-	var err error
-
-	txData, err = client.EstimateGasAndGasPrice(txData, w.Address())
+	txData, err := ethadapter.SetTxGasPrice(context.Background(), client, txData, w.Address(), w.GetNonceAndIncrement(), 0)
 	if err != nil {
 		w.SetNonce(w.GetNonce() - 1)
 		return nil, nil, err
 	}
-	signedTx, err := w.SignAndSendTransaction(client, txData)
-	if err != nil {
-		return nil, nil, err
-	}
-	receipt, err := waitTxResult(client, signedTx)
-	if err != nil {
-		return nil, nil, err
-	}
-	return signedTx, receipt, nil
-}
 
-// SignAndSendTransaction signs and sends a tx
-func (w *debugWallet) SignAndSendTransaction(client ethadapter.EthClient, txData types.TxData) (*types.Transaction, error) {
 	signedTx, err := w.SignTransaction(txData)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	err = client.SendTransaction(signedTx)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return signedTx, nil
-}
-
-// waitTxResult waits for a tx to be minted into a block
-func waitTxResult(client ethadapter.EthClient, tx *types.Transaction) (*types.Receipt, error) {
 	var receipt *types.Receipt
-	var err error
-	for start := time.Now(); time.Since(start) < _timeout; time.Sleep(time.Second) {
-		receipt, err = client.TransactionReceipt(tx.Hash())
-
+	err = retry.Do(func() error {
+		receipt, err = client.TransactionReceipt(signedTx.Hash())
 		if err != nil {
-			if errors.Is(err, ethereum.NotFound) {
-				continue
-			}
-			return nil, err
+			return err
 		}
+		if receipt == nil {
+			return fmt.Errorf("no receipt yet")
+		}
+		return nil
+	}, retry.NewTimeoutStrategy(w.receiptTimeout, time.Second))
 
-		return receipt, nil
-	}
-	return nil, fmt.Errorf("transaction not minted after timeout")
+	return signedTx, receipt, err
 }
 
 func (w *debugWallet) debugTransaction(client ethadapter.EthClient, tx *types.Transaction) ([]byte, error) {

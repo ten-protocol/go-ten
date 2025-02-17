@@ -9,7 +9,7 @@ Please provide a high level list of the changes made
 ### PR checks pre-merging
 
 Please indicate below by ticking the checkbox that you have read and performed the required
-[PR checks](https://github.com/obscuronet/obscuro-internal/blob/main/dev-ops-docs/dev-pr-checks.md)
+[PR checks](https://github.com/ten-protocol/ten-internal/blob/main/dev-ops-docs/dev-pr-checks.md)
 
 - [ ] PR checks reviewed and performed 
 

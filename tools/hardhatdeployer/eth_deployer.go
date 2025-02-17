@@ -7,11 +7,11 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
 func prepareEthDeployer(cfg *Config, logger gethlog.Logger) (contractDeployerClient, error) {
-	client, err := ethadapter.NewEthClient(cfg.NodeHost, cfg.NodePort, 30*time.Second, common.HexToAddress("0x0"), logger)
+	client, err := ethadapter.NewEthClient(cfg.NodeHost, cfg.NodePort, 30*time.Second, logger)
 	if err != nil {
 		return nil, err
 	}

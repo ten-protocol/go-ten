@@ -7,16 +7,16 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 )
 
 const (
@@ -52,7 +52,7 @@ func getHeadBatchHeader(client *obsclient.ObsClient) (*common.BatchHeader, error
 		return nil, fmt.Errorf("simulation failed due to failed attempt to retrieve head rollup height. Cause: %w", err)
 	}
 
-	headBatchHeader, err := client.BatchHeaderByNumber(big.NewInt(int64(headBatchHeight)))
+	headBatchHeader, err := client.GetBatchHeaderByNumber(big.NewInt(int64(headBatchHeight)))
 	if err != nil {
 		return nil, fmt.Errorf("simulation failed due to failed attempt to retrieve rollup with height %d. Cause: %w", headBatchHeight, err)
 	}
@@ -60,7 +60,7 @@ func getHeadBatchHeader(client *obsclient.ObsClient) (*common.BatchHeader, error
 }
 
 // Uses the client to retrieve the balance of the wallet with the given address.
-func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethcommon.Address, l2ContractAddress *gethcommon.Address) *big.Int {
+func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethcommon.Address, l2ContractAddress *gethcommon.Address, idx int) *big.Int {
 	balanceData := erc20contractlib.CreateBalanceOfData(address)
 
 	callMsg := ethereum.CallMsg{
@@ -71,7 +71,7 @@ func balance(ctx context.Context, client *obsclient.AuthObsClient, address gethc
 
 	response, err := client.CallContract(ctx, callMsg, nil)
 	if err != nil {
-		panic(fmt.Errorf("simulation failed due to failed RPC call. Cause: %w", err))
+		panic(fmt.Errorf("node: %d - simulation failed due to failed RPC call. Cause: %w", idx, err))
 	}
 	b := new(big.Int)
 	// remove the "0x" prefix (we already confirmed it is present), convert the remaining hex value (base 16) to a balance number
@@ -103,8 +103,8 @@ func findHashDups(list []gethcommon.Hash) map[gethcommon.Hash]int {
 }
 
 // FindRollupDups - returns a map of all L2 root hashes that appear multiple times, and how many times
-func findRollupDups(list []*common.ExtRollup) map[common.L2BatchHash]int {
-	elementCount := make(map[common.L2BatchHash]int)
+func findRollupDups(list []*common.ExtRollup) map[common.L2RollupHash]int {
+	elementCount := make(map[common.L2RollupHash]int)
 
 	for _, item := range list {
 		// check if the item/element exist in the duplicate_frequency map
@@ -115,11 +115,11 @@ func findRollupDups(list []*common.ExtRollup) map[common.L2BatchHash]int {
 			elementCount[item.Hash()] = 1 // else start counting from 1
 		}
 	}
-	dups := make(map[common.L2BatchHash]int)
+	dups := make(map[common.L2RollupHash]int)
 	for u, i := range elementCount {
 		if i > 1 {
 			dups[u] = i
-			fmt.Printf("Dup: r_%d\n", common.ShortHash(u))
+			fmt.Printf("Dup: r_%s\n", u.Hex())
 		}
 	}
 	return dups

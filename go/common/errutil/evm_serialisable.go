@@ -1,20 +1,26 @@
 package errutil
 
-// EVMSerialisableError is an API error that encompasses an EVM error with a code and a reason
-type EVMSerialisableError struct {
-	Err    string
-	Reason interface{}
-	Code   int
+import "fmt"
+
+// DataError is an API error that encompasses an EVM error with a code and a reason
+type DataError struct {
+	Code   int         `json:"code"`
+	Err    string      `json:"message"`
+	Reason interface{} `json:"data,omitempty"`
 }
 
-func (e EVMSerialisableError) Error() string {
+func (e DataError) Error() string {
 	return e.Err
 }
 
-func (e EVMSerialisableError) ErrorCode() int {
+func (e DataError) ErrorCode() int {
 	return e.Code
 }
 
-func (e EVMSerialisableError) ErrorData() interface{} {
+func (e DataError) ErrorData() interface{} {
 	return e.Reason
+}
+
+func (e DataError) String() string {
+	return fmt.Sprintf("Data Error. Message: %s, Data: %v", e.Err, e.Reason)
 }

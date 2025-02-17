@@ -2,7 +2,7 @@
 
 ## Scope
 
-The design for the Obscuro block explorers, tools to allow users to make sense of the contents of the Obscuro chain. 
+The design for the TEN block explorers, tools to allow users to make sense of the contents of the TEN chain. 
 There will be two tools - a public block explorer that only displays public information, and a private block explorer 
 that also displays private information belonging to that user.
  
@@ -56,7 +56,7 @@ useful view to the customer. For example, a user may wish to view all the transf
 contract, which requires walking the chain and storing the results locally so that they don't have to be continuously 
 recomputed.
 
-However, a decisive upside of building our own block explorers is that Obscuro's rules about data visibility mean that 
+However, a decisive upside of building our own block explorers is that Ten's rules about data visibility mean that 
 an off-the-shelf block explorer is unlikely to be fit for purpose in various ways, and will require extensive 
 customisation. We talk about that in section `Fork an existing block explorer for the public block explorer`, below.
 
@@ -75,12 +75,12 @@ BlockScout is an open-source block explorer, used by Secret Network among others
 In theory, this would give us a block explorer "for free". In practice, we'd need to customise BlockScout to a large  
 extent, even for the public block explorer, for two reasons:
 
-* It cannot handle the fact that some information about the Obscuro chain is returned in an encrypted form. For 
-  example, if vanilla BlockScout is connected to an Obscuro host, it correctly displays the number of Obscuro blocks, 
+* It cannot handle the fact that some information about the TEN chain is returned in an encrypted form. For 
+  example, if vanilla BlockScout is connected to an TEN host, it correctly displays the number of TEN blocks, 
   but it considers every block to have zero transactions, because it chokes on the encrypted transaction contents being 
   returned
 * Every advanced block explorer has some customised handling of standard contracts. For example, for ERC-20, it will 
-  process the chain to allow a given address to see its entire holdings of various tokens. In Obscuro, this processing 
+  process the chain to allow a given address to see its entire holdings of various tokens. In Ten, this processing 
   would have to happen inside the enclave, since the block explorer would not have access to the transaction contents. 
   Since BlockScout is not written with this in mind, it would entail a large amount of custom code. This is especially
   true since the logical place to do this sensitive processing is inside the enclave, but BlockScout is not written in 
@@ -92,4 +92,4 @@ of viewing keys.
 Forking BlockScout would require us to develop skills we don't have currently (e.g. it is written in Elixir).
 
 Once BlockScout was forked, we'd have to maintain the fork. Blockscout is currently c. 270k lines of code, 20% larger 
-than the Obscuro codebase as of this writing.
+than the TEN codebase as of this writing.

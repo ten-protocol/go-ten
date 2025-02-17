@@ -3,16 +3,18 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "./ICrossChainMessenger.sol";
+import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+
 
 // TODO: We need to upgrade the open zeppelin version to the 4.x that adds cross chain enabled
-abstract contract CrossChainEnabledObscuro {
+abstract contract CrossChainEnabledObscuro is Initializable {
     ICrossChainMessenger messenger;
     IMessageBus messageBus;
     uint32 nonce = 0;
 
     // The messenger contract passed will be the authority that we trust to tell us
     // who has sent the cross chain message and that the message is indeed cross chain.
-    constructor(address messengerAddress) {
+    function configure(address messengerAddress) public onlyInitializing {
         messenger = ICrossChainMessenger(messengerAddress);
         messageBus = IMessageBus(messenger.messageBus());
     }
@@ -20,6 +22,10 @@ abstract contract CrossChainEnabledObscuro {
     // Returns if the message is considered to be a cross chain one.
     function _isCrossChain() internal view returns (bool) {
         return msg.sender == address(messenger);
+    }
+
+    function _messageBus() internal view returns (IMessageBus) {
+        return messageBus;
     }
 
     // Returns the address of the sender of the current cross chain message.
@@ -57,11 +63,12 @@ abstract contract CrossChainEnabledObscuro {
         bytes memory message,
         uint32 topic,
         uint256 gas,
-        uint8 consistencyLevel
+        uint8 consistencyLevel, 
+        uint256 value
     ) internal {
         bytes memory payload = abi.encode(
             ICrossChainMessenger.CrossChainCall(target, message, gas)
         );
-        messageBus.publishMessage(nonce++, topic, payload, consistencyLevel);
+        messageBus.publishMessage{value: value}(nonce++, topic, payload, consistencyLevel);
     }
 }

@@ -4,14 +4,14 @@ import (
 	"math/big"
 	"sync/atomic"
 
-	"github.com/obscuronet/go-obscuro/go/common/compression"
+	"github.com/ten-protocol/go-ten/go/common/compression"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 // Batch Data structure only for the internal use of the enclave since transactions are in clear
@@ -32,6 +32,10 @@ func (b *Batch) Hash() common.L2BatchHash {
 	return v
 }
 
+func (b *Batch) ResetHash() {
+	b.hash = atomic.Value{}
+}
+
 func (b *Batch) Size() (int, error) {
 	bytes, err := rlp.EncodeToBytes(b)
 	return len(bytes), err
@@ -45,13 +49,7 @@ func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }
 func (b *Batch) Number() *big.Int  { return new(big.Int).Set(b.Header.Number) }
 func (b *Batch) SeqNo() *big.Int   { return new(big.Int).Set(b.Header.SequencerOrderNo) }
 
-// IsGenesis indicates whether the batch is the genesis batch.
-// todo (#718) - Change this to a check against a hardcoded genesis hash.
-func (b *Batch) IsGenesis() bool {
-	return b.Header.Number.Cmp(big.NewInt(int64(common.L2GenesisHeight))) == 0
-}
-
-func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*common.ExtBatch, error) {
+func (b *Batch) ToExtBatch(transactionBlobCrypto *crypto.DAEncryptionService, compression compression.DataCompressionService) (*common.ExtBatch, error) {
 	txHashes := make([]gethcommon.Hash, len(b.Transactions))
 	for idx, tx := range b.Transactions {
 		txHashes[idx] = tx.Hash()
@@ -65,15 +63,22 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto crypto.DataEncryptionService, c
 	if err != nil {
 		return nil, err
 	}
+	enc, err := transactionBlobCrypto.Encrypt(compressed)
+	if err != nil {
+		return nil, err
+	}
 	return &common.ExtBatch{
 		Header:          b.Header,
 		TxHashes:        txHashes,
-		EncryptedTxBlob: transactionBlobCrypto.Encrypt(compressed),
+		EncryptedTxBlob: enc,
 	}, nil
 }
 
-func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncryptionService, compression compression.DataCompressionService) (*Batch, error) {
-	compressed := transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob)
+func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto *crypto.DAEncryptionService, compression compression.DataCompressionService) (*Batch, error) {
+	compressed, err := transactionBlobCrypto.Decrypt(extBatch.EncryptedTxBlob)
+	if err != nil {
+		return nil, err
+	}
 	encoded, err := compression.Decompress(compressed)
 	if err != nil {
 		return nil, err
@@ -91,9 +96,11 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto crypto.DataEncrypt
 
 func DeterministicEmptyBatch(
 	parent *common.BatchHeader,
-	block *types.Block,
+	block *types.Header,
 	time uint64,
 	sequencerNo *big.Int,
+	baseFee *big.Int,
+	coinbase gethcommon.Address,
 ) *Batch {
 	h := common.BatchHeader{
 		ParentHash:       parent.Hash(),
@@ -101,7 +108,10 @@ func DeterministicEmptyBatch(
 		Number:           big.NewInt(0).Add(parent.Number, big.NewInt(1)),
 		SequencerOrderNo: sequencerNo,
 		// todo (#1548) - Consider how this time should align with the time of the L1 block used as proof.
-		Time: time,
+		Time:     time,
+		BaseFee:  baseFee,
+		Coinbase: coinbase,
+		GasLimit: parent.GasLimit,
 	}
 	b := Batch{
 		Header: &h,

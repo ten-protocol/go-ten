@@ -64,7 +64,7 @@ func (m *Service) Stop() {
 // CollectProcessMetrics collect process and system metrics
 // this method is an adapted copy of eth/metrics/metrics.go@CollectProcessMetrics method
 func (m *Service) CollectProcessMetrics() {
-	refreshFreq := int64(_collectProcessMetricsRefreshDuration / time.Second)
+	refreshFreq := float64(_collectProcessMetricsRefreshDuration / time.Second)
 
 	// Create the various data collectors
 	cpuStats := make([]*gethmetrics.CPUStats, 2)
@@ -102,9 +102,9 @@ func (m *Service) CollectProcessMetrics() {
 		location2 := (i - 1) % 2
 
 		gethmetrics.ReadCPUStats(cpuStats[location1])
-		cpuSysLoad.Update((cpuStats[location1].GlobalTime - cpuStats[location2].GlobalTime) / refreshFreq)
-		cpuSysWait.Update((cpuStats[location1].GlobalWait - cpuStats[location2].GlobalWait) / refreshFreq)
-		cpuProcLoad.Update((cpuStats[location1].LocalTime - cpuStats[location2].LocalTime) / refreshFreq)
+		cpuSysLoad.Update(int64((cpuStats[location1].GlobalTime - cpuStats[location2].GlobalTime) / refreshFreq))
+		cpuSysWait.Update(int64((cpuStats[location1].GlobalWait - cpuStats[location2].GlobalWait) / refreshFreq))
+		cpuProcLoad.Update(int64((cpuStats[location1].LocalTime - cpuStats[location2].LocalTime) / refreshFreq))
 		cpuThreads.Update(int64(_threadCreateProfile.Count()))
 		cpuGoroutines.Update(int64(runtime.NumGoroutine()))
 

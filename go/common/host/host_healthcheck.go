@@ -1,38 +1,23 @@
 package host
 
+import (
+	"github.com/ten-protocol/go-ten/go/common"
+)
+
 // HealthStatus is an interface supported by all Services on the host
 type HealthStatus interface {
 	OK() bool
 	Message() string
 }
 
-// HealthCheck is the object returned by the API with the Health and Status of the Node
+// HealthCheck is the object returned by the host API with the Health of the Node
 type HealthCheck struct {
 	OverallHealth bool
-	*HealthCheckHost
-	*HealthCheckEnclave
+	Errors        []string
+	Enclaves      []common.Status
 }
 
-// HealthCheckEnclave is the representation of the Health and Status of the Enclave
-type HealthCheckEnclave struct {
-	EnclaveHealthy bool
-}
-
-// HealthCheckHost is the representation of the Health and Status of the Host
-type HealthCheckHost struct {
-	P2PStatus *P2PStatus
-	L1Repo    bool
-	L1Synced  bool
-}
-
-// P2PStatus is the representation of the Status of the P2P layer
-type P2PStatus struct {
-	FailedReceivedMessages int64
-	FailedSendMessage      int64
-	ReceivedMessages       int64
-}
-
-// BasicErrHealthStatus represents the status of a service, if the ErrMsg is non-empty then it reports as "not OK"
+// BasicErrHealthStatus is a simple health status implementation, if the ErrMsg is non-empty then OK() returns false
 type BasicErrHealthStatus struct {
 	ErrMsg string
 }
@@ -43,4 +28,23 @@ func (l *BasicErrHealthStatus) OK() bool {
 
 func (l *BasicErrHealthStatus) Message() string {
 	return l.ErrMsg
+}
+
+type GroupErrsHealthStatus struct {
+	Errors []error
+}
+
+func (g *GroupErrsHealthStatus) OK() bool {
+	return len(g.Errors) == 0
+}
+
+func (g *GroupErrsHealthStatus) Message() string {
+	msg := ""
+	for i, err := range g.Errors {
+		if i > 0 {
+			msg += ", "
+		}
+		msg += err.Error()
+	}
+	return msg
 }

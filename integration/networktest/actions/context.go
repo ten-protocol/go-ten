@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/integration/networktest/userwallet"
+	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 )
 
 // KeyNumberOfTestUsers key to an int representing number of test users created/available
@@ -16,18 +16,18 @@ var KeyNumberOfTestUsers = ActionKey("numberOfTestUsers")
 // ActionKey is the type for all test data stored in the context. Go documentation recommends using a typed key rather than string to avoid conflicts.
 type ActionKey string
 
-func storeTestUser(ctx context.Context, userNumber int, user *userwallet.UserWallet) context.Context {
+func storeTestUser(ctx context.Context, userNumber int, user userwallet.User) context.Context {
 	return context.WithValue(ctx, userKey(userNumber), user)
 }
 
-func FetchTestUser(ctx context.Context, userNumber int) (*userwallet.UserWallet, error) {
+func FetchTestUser(ctx context.Context, userNumber int) (userwallet.User, error) {
 	u := ctx.Value(userKey(userNumber))
 	if u == nil {
-		return nil, fmt.Errorf("no UserWallet found in context for userNumber=%d", userNumber)
+		return nil, fmt.Errorf("no userWallet found in context for userNumber=%d", userNumber)
 	}
-	user, ok := u.(*userwallet.UserWallet)
+	user, ok := u.(userwallet.User)
 	if !ok {
-		return nil, fmt.Errorf("user retrieved from context was not of expected type UserWallet for userNumber=%d type=%T", userNumber, u)
+		return nil, fmt.Errorf("user retrieved from context was not of expected type userWallet for userNumber=%d type=%T", userNumber, u)
 	}
 	return user, nil
 }

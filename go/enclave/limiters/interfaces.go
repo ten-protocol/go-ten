@@ -3,6 +3,8 @@ package limiters
 import (
 	"errors"
 
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -14,5 +16,5 @@ type BatchSizeLimiter interface {
 var ErrInsufficientSpace = errors.New("insufficient space in BatchSizeLimiter")
 
 type RollupLimiter interface {
-	AcceptBatch(encodable interface{}) (bool, error)
+	AcceptBatch(batch *core.Batch) (bool, error)
 }

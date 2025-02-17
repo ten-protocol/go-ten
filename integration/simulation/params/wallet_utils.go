@@ -3,17 +3,15 @@ package params
 import (
 	"math/big"
 
-	"github.com/obscuronet/go-obscuro/go/enclave/genesis"
-
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/go-obscuro/go/wallet"
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-	"github.com/obscuronet/go-obscuro/integration/datagenerator"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+	"github.com/ten-protocol/go-ten/integration/datagenerator"
 )
 
 // SimToken - mapping between the ERC20s on Ethereum and Obscuro. This holds both the contract addresses and the keys of the contract owners,
@@ -29,6 +27,12 @@ type SimToken struct {
 	L2ContractAddress *common.Address
 }
 
+type L1PrefundWallets struct {
+	HOC    wallet.Wallet
+	POC    wallet.Wallet
+	Faucet wallet.Wallet
+}
+
 type SimWallets struct {
 	MCOwnerWallet wallet.Wallet   // owner of the management contract deployed on Ethereum
 	NodeWallets   []wallet.Wallet // the keys used by the obscuro nodes to submit rollups to Eth
@@ -36,8 +40,14 @@ type SimWallets struct {
 	SimEthWallets []wallet.Wallet // the wallets of the simulated users on the Ethereum side
 	SimObsWallets []wallet.Wallet // and their equivalents on the obscuro side (with a different chainId)
 
-	L2FaucetWallet wallet.Wallet                  // the wallet of the L2 faucet
+	GasBridgeWallet     wallet.Wallet
+	GasWithdrawalWallet wallet.Wallet
+
+	L2FaucetWallet wallet.Wallet // the wallet of the L2 faucet
+	L2FeesWallet   wallet.Wallet
 	Tokens         map[testcommon.ERC20]*SimToken // The supported tokens
+
+	PrefundedEthWallets L1PrefundWallets
 }
 
 func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroChainID int64) *SimWallets {
@@ -60,11 +70,19 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	mcOwnerWallet := datagenerator.RandomWallet(ethereumChainID)
 
 	// create the L2 faucet wallet
-	l2FaucetPrivKey, err := crypto.HexToECDSA(genesis.TestnetPrefundedPK)
+	l2FaucetPrivKey, err := crypto.HexToECDSA(testcommon.TestnetPrefundedPK)
 	if err != nil {
 		panic("could not initialise L2 faucet private key")
 	}
 	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), l2FaucetPrivKey, testlog.Logger())
+
+	GasBridgingKeys, _ := crypto.GenerateKey()
+	GasWithdrawalKeys, _ := crypto.GenerateKey()
+	gasWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(ethereumChainID), GasBridgingKeys, testlog.Logger())
+	withdrawalWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(ethereumChainID), GasWithdrawalKeys, testlog.Logger())
+
+	sequencerGasKeys, _ := crypto.GenerateKey()
+	sequencerFeeWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(obscuroChainID), sequencerGasKeys, testlog.Logger())
 
 	// create the L1 addresses of the two tokens, and connect them to the hardcoded addresses from the enclave
 	hoc := SimToken{
@@ -81,14 +99,22 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	}
 
 	return &SimWallets{
-		MCOwnerWallet:  mcOwnerWallet,
-		NodeWallets:    nodeWallets,
-		SimEthWallets:  simEthWallets,
-		SimObsWallets:  simObsWallets,
-		L2FaucetWallet: l2FaucetWallet,
+		MCOwnerWallet:       mcOwnerWallet,
+		NodeWallets:         nodeWallets,
+		SimEthWallets:       simEthWallets,
+		SimObsWallets:       simObsWallets,
+		L2FaucetWallet:      l2FaucetWallet,
+		L2FeesWallet:        sequencerFeeWallet,
+		GasBridgeWallet:     gasWallet,
+		GasWithdrawalWallet: withdrawalWallet,
 		Tokens: map[testcommon.ERC20]*SimToken{
 			testcommon.HOC: &hoc,
 			testcommon.POC: &poc,
+		},
+		PrefundedEthWallets: L1PrefundWallets{
+			HOC:    datagenerator.RandomWallet(ethereumChainID),
+			POC:    datagenerator.RandomWallet(ethereumChainID),
+			Faucet: datagenerator.RandomWallet(ethereumChainID),
 		},
 	}
 }
@@ -98,14 +124,12 @@ func (w *SimWallets) AllEthWallets() []wallet.Wallet {
 	for _, token := range w.Tokens {
 		ethWallets = append(ethWallets, token.L1Owner)
 	}
+	ethWallets = append(ethWallets, w.GasBridgeWallet)
+	ethWallets = append(ethWallets, w.GasWithdrawalWallet)
+	ethWallets = append(ethWallets, w.PrefundedEthWallets.POC)
+	ethWallets = append(ethWallets, w.PrefundedEthWallets.HOC)
+	ethWallets = append(ethWallets, w.PrefundedEthWallets.Faucet)
 	return append(append(append(w.NodeWallets, w.SimEthWallets...), w.MCOwnerWallet), ethWallets...)
-}
-
-func (w *SimWallets) AllEthAddresses() []*common.Address {
-	addresses := make([]*common.Address, 0)
-	addresses = append(addresses, w.Tokens[testcommon.HOC].L1ContractAddress)
-	addresses = append(addresses, w.Tokens[testcommon.POC].L1ContractAddress)
-	return addresses
 }
 
 func (w *SimWallets) AllObsWallets() []wallet.Wallet {

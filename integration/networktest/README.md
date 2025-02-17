@@ -29,8 +29,8 @@ These tests require a network that provides access to its nodes through the `Nod
 
 They can be used to test scenarios such as rejoining the network after a restart, sequencer failover, nodes losing connectivity.
 
-### `/ci` (coming soon)
-These are the only ones that will run during the CI builds by default, they should be quick and not fragile.
+### `/ci`
+These are the only tests that will run during the CI builds by default, they should be quick and not fragile.
 
 ## UserWallet
 In `/userwallet` is a high-level client that bundles a simulated user's private key, an RPC client and manages the nonce and viewing key.

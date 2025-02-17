@@ -1,8 +1,8 @@
-This package contains library code to allow client applications to connect to Obscuro nodes via RPC.
+This package contains library code to allow client applications to connect to TEN nodes via RPC.
 
 ### Viewing keys
 
-Viewing keys are generated inside the wallet extension (or other users of the obscuro rpc client), and then signed by the wallet (e.g. MetaMask)
+Viewing keys are generated inside the wallet extension (or other users of the TEN rpc client), and then signed by the wallet (e.g. MetaMask)
 to which the keys relate.
 The keys are then are sent to the enclave via RPC and processed by:
 - checking the validity of the signature over the viewing key

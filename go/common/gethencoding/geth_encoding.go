@@ -1,81 +1,69 @@
 package gethencoding
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
+	"sync/atomic"
+	"time"
+	"unsafe"
+
+	"github.com/ten-protocol/go-ten/go/common/gethutil"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/enclave/crypto"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/gethapi"
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 const (
 	// The relevant fields in an eth_call request's params.
 	callFieldTo                   = "to"
 	CallFieldFrom                 = "from"
-	callFieldData                 = "data"
+	callFieldData                 = "data" // this field was renamed in geth CallMsg to 'input' but we need to support both
+	callFieldInput                = "input"
 	callFieldValue                = "value"
 	callFieldGas                  = "gas"
+	callFieldNonce                = "nonce"
 	callFieldGasPrice             = "gasprice"
 	callFieldMaxFeePerGas         = "maxfeepergas"
 	callFieldMaxPriorityFeePerGas = "maxpriorityfeepergas"
+	callFieldAccessList           = "accesslist"
 )
 
-// ExtractEthCallMapString extracts the eth_call gethapi.TransactionArgs from an interface{}
-// it ensures that :
-// - All types are string
-// - All keys are lowercase
-// - There is only one key per value
-// - From field is set by default
-func ExtractEthCallMapString(paramBytes interface{}) (map[string]string, error) {
-	// geth lowercase the field name and uses the last seen value
-	var valString string
-	var ok bool
-	callMsg := map[string]string{
-		// From field is set by default
-		"from": gethcommon.HexToAddress("0x0").Hex(),
-	}
-	for field, val := range paramBytes.(map[string]interface{}) {
-		if val == nil {
-			continue
-		}
-		valString, ok = val.(string)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type supplied in `%s` field", field)
-		}
-		if len(strings.TrimSpace(valString)) == 0 {
-			continue
-		}
-		switch strings.ToLower(field) {
-		case callFieldTo:
-			callMsg[callFieldTo] = valString
-		case CallFieldFrom:
-			callMsg[CallFieldFrom] = valString
-		case callFieldData:
-			callMsg[callFieldData] = valString
-		case callFieldValue:
-			callMsg[callFieldValue] = valString
-		case callFieldGas:
-			callMsg[callFieldGas] = valString
-		case callFieldMaxFeePerGas:
-			callMsg[callFieldMaxFeePerGas] = valString
-		case callFieldMaxPriorityFeePerGas:
-			callMsg[callFieldMaxPriorityFeePerGas] = valString
-		default:
-			callMsg[field] = valString
-		}
-	}
+// EncodingService handles conversion to Geth data structures
+type EncodingService interface {
+	CreateEthHeaderForBatch(ctx context.Context, h *common.BatchHeader) (*types.Header, error)
+	CreateEthBlockFromBatch(ctx context.Context, b *core.Batch) (*types.Block, error)
+}
 
-	return callMsg, nil
+type gethEncodingServiceImpl struct {
+	storage        storage.Storage
+	logger         gethlog.Logger
+	cachingService *storage.CacheService
+	entropyService *crypto.EvmEntropyService
+}
+
+func NewGethEncodingService(storage storage.Storage, cachingService *storage.CacheService, entropyService *crypto.EvmEntropyService, logger gethlog.Logger) EncodingService {
+	return &gethEncodingServiceImpl{
+		storage:        storage,
+		logger:         logger,
+		entropyService: entropyService,
+		cachingService: cachingService,
+	}
 }
 
 // ExtractAddress returns a gethcommon.Address given an interface{}, errors if unexpected values are used
@@ -93,38 +81,82 @@ func ExtractAddress(param interface{}) (*gethcommon.Address, error) {
 		return nil, fmt.Errorf("no address specified")
 	}
 
-	addr := gethcommon.HexToAddress(param.(string))
+	addr := gethcommon.HexToAddress(paramStr)
 	return &addr, nil
 }
 
 // ExtractOptionalBlockNumber defaults nil or empty block number params to latest block number
-func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNumber, error) {
+func ExtractOptionalBlockNumber(params []interface{}, idx int) (*gethrpc.BlockNumberOrHash, error) {
+	latest := gethrpc.BlockNumberOrHashWithNumber(gethrpc.LatestBlockNumber)
 	if len(params) <= idx {
-		return ExtractBlockNumber("latest")
+		return &latest, nil
 	}
 	if params[idx] == nil {
-		return ExtractBlockNumber("latest")
+		return &latest, nil
 	}
 	if emptyStr, ok := params[idx].(string); ok && len(strings.TrimSpace(emptyStr)) == 0 {
-		return ExtractBlockNumber("latest")
+		return &latest, nil
 	}
 
 	return ExtractBlockNumber(params[idx])
 }
 
-// ExtractBlockNumber returns a gethrpc.BlockNumber given an interface{}, errors if unexpected values are used
-func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumber, error) {
+func ExtractBlockNumber(param interface{}) (*gethrpc.BlockNumberOrHash, error) {
 	if param == nil {
-		return nil, errutil.ErrNotFound
+		latest := gethrpc.BlockNumberOrHashWithNumber(gethrpc.LatestBlockNumber)
+		return &latest, nil
 	}
 
-	blockNumber := gethrpc.BlockNumber(0)
-	err := blockNumber.UnmarshalJSON([]byte(param.(string)))
-	if err != nil {
-		return nil, fmt.Errorf("could not parse requested rollup number %s - %w", param.(string), err)
+	// when the param is a single string we try to convert it to a block number
+	blockString, ok := param.(string)
+	if ok {
+		blockNumber := gethrpc.BlockNumber(0)
+		err := blockNumber.UnmarshalJSON([]byte(blockString))
+		if err != nil {
+			return nil, fmt.Errorf("invalid block number %s - %w", blockString, err)
+		}
+		return &gethrpc.BlockNumberOrHash{BlockNumber: &blockNumber}, nil
 	}
 
-	return &blockNumber, err
+	var blockNo *gethrpc.BlockNumber
+	var blockHa *gethcommon.Hash
+	var reqCanon bool
+
+	blockAndHash, ok := param.(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("invalid block or hash parameter")
+	}
+	if blockAndHash["blockNumber"] != nil {
+		b, ok := blockAndHash["blockNumber"].(string)
+		if !ok {
+			return nil, fmt.Errorf("invalid blockNumber parameter")
+		}
+		blockNumber := gethrpc.BlockNumber(0)
+		err := blockNumber.UnmarshalJSON([]byte(b))
+		if err != nil {
+			return nil, fmt.Errorf("invalid block number %s - %w", b, err)
+		}
+		blockNo = &blockNumber
+	}
+	if blockAndHash["blockHash"] != nil {
+		bh, ok := blockAndHash["blockHash"].(gethcommon.Hash)
+		if !ok {
+			return nil, fmt.Errorf("invalid blockhash parameter")
+		}
+		blockHa = &bh
+	}
+	if blockAndHash["RequireCanonical"] != nil {
+		reqCanon, ok = blockAndHash["RequireCanonical"].(bool)
+		if !ok {
+			return nil, fmt.Errorf("invalid RequireCanonical parameter")
+		}
+	}
+
+	return &gethrpc.BlockNumberOrHash{
+		BlockNumber:      blockNo,
+		BlockHash:        blockHa,
+		RequireCanonical: reqCanon,
+	}, nil
 }
 
 // ExtractEthCall extracts the eth_call gethapi.TransactionArgs from an interface{}
@@ -135,9 +167,17 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 	var data *hexutil.Bytes
 	var value, gasPrice, maxFeePerGas, maxPriorityFeePerGas *hexutil.Big
 	var ok bool
-	var gas *hexutil.Uint64
+	zeroUint := hexutil.Uint64(0)
+	nonce := &zeroUint
+	// if gas is not set it should be null
+	gas := (*hexutil.Uint64)(nil)
 
-	for field, val := range param.(map[string]interface{}) {
+	ethCallMap, ok := param.(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid eth call parameter")
+	}
+
+	for field, val := range ethCallMap {
 		if val == nil {
 			continue
 		}
@@ -155,7 +195,7 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 		case CallFieldFrom:
 			fromVal := gethcommon.HexToAddress(valString)
 			from = &fromVal
-		case callFieldData:
+		case callFieldData, callFieldInput:
 			dataVal, err := hexutil.Decode(valString)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode data in CallMsg - %w", err)
@@ -167,6 +207,12 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
 			}
 			value = (*hexutil.Big)(valueVal)
+		case callFieldNonce:
+			nonceVal, err := hexutil.DecodeUint64(valString)
+			if err != nil {
+				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
+			}
+			nonce = (*hexutil.Uint64)(&nonceVal)
 		case callFieldGas:
 			gasVal, err := hexutil.DecodeUint64(valString)
 			if err != nil {
@@ -175,11 +221,11 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 			gas = (*hexutil.Uint64)(&gasVal)
 
 		case callFieldGasPrice:
-			valueVal, err := hexutil.DecodeBig(valString)
+			gasPriceVal, err := hexutil.DecodeBig(valString)
 			if err != nil {
 				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
 			}
-			value = (*hexutil.Big)(valueVal)
+			gasPrice = (*hexutil.Big)(gasPriceVal)
 
 		case callFieldMaxFeePerGas:
 			maxFeePerGasVal, err := hexutil.DecodeBig(valString)
@@ -194,6 +240,8 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 				return nil, fmt.Errorf("could not decode value in CallMsg - %w", err)
 			}
 			maxPriorityFeePerGas = (*hexutil.Big)(maxPriorityFeePerGasVal)
+		case callFieldAccessList:
+			// ignore access list for now
 		}
 	}
 
@@ -207,65 +255,125 @@ func ExtractEthCall(param interface{}) (*gethapi.TransactionArgs, error) {
 		MaxPriorityFeePerGas: maxPriorityFeePerGas,
 		Value:                value,
 		Data:                 data,
+		Nonce:                nonce,
 		AccessList:           nil,
 	}
 
 	return callMsg, nil
 }
 
-// CreateEthHeaderForBatch - the EVM requires an Ethereum "block" header.
-// In this function we are creating one from the Batch Header
-func CreateEthHeaderForBatch(h *common.BatchHeader, secret []byte) (*types.Header, error) {
-	// deterministically calculate private randomness that will be exposed to the evm
-	randomness := crypto.CalculateRootBatchEntropy(secret, h.Number)
+// CreateEthHeaderForBatch - the EVM requires an Ethereum header.
+// We convert the Batch headers to Ethereum headers to be able to use the Geth EVM.
+// Special care must be taken to maintain a valid chain of these converted headers.
+func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context, h *common.BatchHeader) (*types.Header, error) {
+	// wrap in a caching layer
+	return enc.cachingService.ReadConvertedHeader(ctx, h.Hash(), func() (*types.Header, error) {
+		// deterministically calculate the private randomness that will be exposed to the EVM
+		perBatchRandomness := enc.entropyService.BatchEntropy(h)
 
-	return &types.Header{
-		ParentHash:  h.ParentHash,
-		Root:        h.Root,
-		TxHash:      h.TxHash,
-		ReceiptHash: h.ReceiptHash,
-		Difficulty:  big.NewInt(0),
-		Number:      h.Number,
-		GasLimit:    1_000_000_000,   // todo (@stefan) - gas
-		GasUsed:     0,               // todo (@stefan) - gas
-		BaseFee:     gethcommon.Big0, // todo (@stefan) - gas
-		Time:        h.Time,
-		MixDigest:   randomness,
-		Nonce:       types.BlockNonce{},
-	}, nil
+		// calculate the converted hash of the parent, for a correct converted chain
+		// default to the genesis
+		convertedParentHash := common.GethGenesisParentHash
+		var err error
+		if h.SequencerOrderNo.Uint64() > common.L2GenesisSeqNo {
+			convertedParentHash, err = enc.storage.FetchConvertedHash(ctx, h.ParentHash)
+			if err != nil {
+				enc.logger.Error("Cannot find the converted value for the parent of", log.BatchSeqNoKey, h.SequencerOrderNo)
+				return nil, err
+			}
+		}
+
+		baseFee := uint64(0)
+		if h.BaseFee != nil {
+			baseFee = h.BaseFee.Uint64()
+		}
+
+		gethHeader := types.Header{
+			ParentHash:      convertedParentHash,
+			UncleHash:       gethutil.EmptyHash,
+			Root:            h.Root,
+			TxHash:          h.TxHash,
+			ReceiptHash:     h.ReceiptHash,
+			Difficulty:      big.NewInt(0),
+			Number:          h.Number,
+			GasLimit:        h.GasLimit,
+			GasUsed:         h.GasUsed,
+			BaseFee:         big.NewInt(0).SetUint64(baseFee),
+			Coinbase:        h.Coinbase,
+			Time:            h.Time,
+			MixDigest:       perBatchRandomness,
+			Nonce:           types.BlockNonce{},
+			Extra:           h.SequencerOrderNo.Bytes(),
+			WithdrawalsHash: nil,
+			BlobGasUsed:     nil,
+			ExcessBlobGas:   nil,
+			Bloom:           types.Bloom{},
+		}
+		enc.cachingService.CacheConvertedHash(ctx, h.Hash(), gethHeader.Hash())
+		return &gethHeader, nil
+	})
 }
 
-// DecodeParamBytes decodes the parameters byte array into a slice of interfaces
-// Helps each calling method to manage the positional data
-func DecodeParamBytes(paramBytes []byte) ([]interface{}, error) {
-	var paramList []interface{}
+// The Geth "Block" type doesn't expose the header directly.
+// This type is required for adjusting the header.
+type localBlock struct {
+	header       *types.Header
+	uncles       []*types.Header
+	transactions types.Transactions
+	withdrawals  types.Withdrawals
 
-	if err := json.Unmarshal(paramBytes, &paramList); err != nil {
-		return nil, fmt.Errorf("unable to unmarshal params - %w", err)
+	// caches
+	hash atomic.Value
+	size atomic.Value
+
+	// These fields are used by package eth to track
+	// inter-peer block relay.
+	ReceivedAt   time.Time
+	ReceivedFrom interface{}
+}
+
+func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context, b *core.Batch) (*types.Block, error) {
+	blockHeader, err := enc.CreateEthHeaderForBatch(ctx, b.Header)
+	if err != nil {
+		return nil, fmt.Errorf("unable to create eth block from batch - %w", err)
 	}
-	return paramList, nil
+
+	// adjust the header of the returned block to make sure the hashes align
+	lb := localBlock{
+		header:       blockHeader,
+		uncles:       nil,
+		transactions: b.Transactions,
+		withdrawals:  nil,
+	}
+	// cast the correct local structure to the standard geth block.
+	return (*types.Block)(unsafe.Pointer(&lb)), nil
 }
 
-// ExtractViewingKey returns the viewingkey pubkey and the signature from the request
-func ExtractViewingKey(vkBytesIntf interface{}) ([]byte, []byte, error) {
-	vkBytesList, ok := vkBytesIntf.([]interface{})
+// ExtractPrivateTransactionsQuery is designed to support a wide range of custom TEN queries.
+// The first parameter here is the method name, which is used to determine the query type.
+// The second parameter is the query parameters.
+func ExtractPrivateTransactionsQuery(queryParams any) (*common.ListPrivateTransactionsQueryParams, error) {
+	// we expect second param to be a json string
+	queryParamsStr, ok := queryParams.(string)
 	if !ok {
-		return nil, nil, fmt.Errorf("unable to cast the vk to []interface")
+		return nil, fmt.Errorf("expected queryParams as string but was type %T", queryParams)
 	}
 
-	if len(vkBytesList) != 2 {
-		return nil, nil, fmt.Errorf("wrong size of viewing key params")
-	}
-
-	vkPubkeyHexBytes, err := hexutil.Decode(vkBytesList[0].(string))
+	var privateQueryParams common.ListPrivateTransactionsQueryParams
+	err := json.Unmarshal([]byte(queryParamsStr), &privateQueryParams)
 	if err != nil {
-		return nil, nil, fmt.Errorf("could not decode data in vk pub key - %w", err)
+		// if it fails, check if the string was base64 encoded
+		bytesStr, err64 := base64.StdEncoding.DecodeString(queryParamsStr)
+		if err64 != nil {
+			// was not base64 encoded, give up
+			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
+		// was base64 encoded, try to unmarshal
+		err = json.Unmarshal(bytesStr, &privateQueryParams)
+		if err != nil {
+			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
 	}
 
-	accountSignatureHexBytes, err := hexutil.Decode(vkBytesList[1].(string))
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not decode data in vk signature - %w", err)
-	}
-
-	return vkPubkeyHexBytes, accountSignatureHexBytes, nil
+	return &privateQueryParams, nil
 }

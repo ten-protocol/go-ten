@@ -1,64 +1,87 @@
-package vkhandler
+package vkhandler //nolint:typecheck
 
 import (
 	"crypto/rand"
 	"fmt"
-
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
+	"io"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-)
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"gitlab.com/NebulousLabs/fastrand"
 
-var ErrInvalidAddressSignature = fmt.Errorf("invalid viewing key signature for requested address")
+	"github.com/ethereum/go-ethereum/crypto/ecies"
+)
 
 // Used when the result to an eth_call is equal to nil. Attempting to encrypt then decrypt nil using ECIES throws an exception.
 var placeholderResult = []byte("0x")
 
-// VKHandler handles encryption and validation of viewing keys
-type VKHandler struct {
-	publicViewingKey *ecies.PublicKey
+// AuthenticatedViewingKey - the enclave side of the viewing key. Used for authenticating requests and for encryption
+type AuthenticatedViewingKey struct {
+	rpcVK          *viewingkey.RPCSignedViewingKey
+	AccountAddress *gethcommon.Address
+	ecdsaKey       *ecies.PublicKey
+	UserID         []byte
 }
 
-// New creates a new viewing key handler
-// checks if the signature is valid
-// as well if signature matches account address
-func New(requestedAddr *gethcommon.Address, vkPubKeyBytes, accountSignatureHexBytes []byte) (*VKHandler, error) {
-	// Recalculate the message signed by MetaMask.
-	msgToSign := viewingkey.GenerateSignMessage(vkPubKeyBytes)
-
-	// We recover the key based on the signed message and the signature.
-	recoveredAccountPublicKey, err := crypto.SigToPub(accounts.TextHash([]byte(msgToSign)), accountSignatureHexBytes)
+func VerifyViewingKey(rpcVK *viewingkey.RPCSignedViewingKey, chainID int64) (*AuthenticatedViewingKey, error) {
+	err := rpcVK.Validate()
 	if err != nil {
-		return nil, fmt.Errorf("viewing key but could not validate its signature - %w", err)
-	}
-	recoveredAccountAddress := crypto.PubkeyToAddress(*recoveredAccountPublicKey)
-
-	// is the requested account address the same as the address recovered from the signature
-	if requestedAddr.Hash() != recoveredAccountAddress.Hash() {
-		return nil, ErrInvalidAddressSignature
+		return nil, err
 	}
 
-	// We decompress the viewing key and create the corresponding ECIES key.
-	viewingKey, err := crypto.DecompressPubkey(vkPubKeyBytes)
+	vkPubKey, err := crypto.DecompressPubkey(rpcVK.PublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("could not decompress viewing key bytes - %w", err)
 	}
 
-	return &VKHandler{
-		publicViewingKey: ecies.ImportECDSAPublic(viewingKey),
-	}, nil
+	rvk := &AuthenticatedViewingKey{
+		rpcVK:    rpcVK,
+		ecdsaKey: ecies.ImportECDSAPublic(vkPubKey),
+	}
+
+	// 2. Authenticate
+	recoveredAccountAddress, err := checkViewingKeyAndRecoverAddress(rvk, chainID)
+	if err != nil {
+		return nil, err
+	}
+
+	rvk.AccountAddress = recoveredAccountAddress
+	return rvk, nil
+}
+
+// checkViewingKeyAndRecoverAddress checks the signature and recovers the address from the viewing key
+func checkViewingKeyAndRecoverAddress(vk *AuthenticatedViewingKey, chainID int64) (*gethcommon.Address, error) {
+	// get userID from viewingKey public key
+	userID := viewingkey.CalculateUserID(vk.rpcVK.PublicKey)
+	vk.UserID = userID
+
+	// check the signature and recover the address assuming the message was signed with EIP712
+	recoveredSignerAddress, err := viewingkey.CheckSignature(userID, vk.rpcVK.SignatureWithAccountKey, chainID, vk.rpcVK.SignatureType)
+	if err != nil {
+		return nil, fmt.Errorf("signature verification failed %w", err)
+	}
+
+	return recoveredSignerAddress, err
+}
+
+// crypto.rand is quite slow. When this variable is true, we will use a fast CSPRNG algorithm
+const useFastRand = true
+
+func rndSource() io.Reader {
+	rndSource := rand.Reader
+	if useFastRand {
+		rndSource = fastrand.Reader
+	}
+	return rndSource
 }
 
 // Encrypt returns the payload encrypted with the viewingKey
-func (m *VKHandler) Encrypt(bytes []byte) ([]byte, error) {
+func (vk *AuthenticatedViewingKey) Encrypt(bytes []byte) ([]byte, error) {
 	if len(bytes) == 0 {
 		bytes = placeholderResult
 	}
-
-	encryptedBytes, err := ecies.Encrypt(rand.Reader, m.publicViewingKey, bytes, nil, nil)
+	encryptedBytes, err := ecies.Encrypt(rndSource(), vk.ecdsaKey, bytes, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("unable to encrypt with given public VK - %w", err)
 	}

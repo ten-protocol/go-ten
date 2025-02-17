@@ -9,11 +9,11 @@ help_and_exit() {
     echo ""
     echo "Usage: "
     echo "   ex: "
-    echo "      -  $(basename "${0}") --host=testnet.obscu.ro --port=13000"
+    echo "      -  $(basename "${0}") --host=erpc.uat-testnet.ten.xyz --port=80"
     echo ""
     echo "  node             *Required* Set the host address"
     echo ""
-    echo "  port             *Optional* Set the host port. Defaults to 13000"
+    echo "  port             *Optional* Set the host port. Defaults to 80"
     echo ""
     echo "  timeout          *Optional* Set timeout in seconds. Defaults to 5*60 seconds"
     echo ""
@@ -27,7 +27,7 @@ start_path="$(cd "$(dirname "${0}")" && pwd)"
 testnet_path="${start_path}"
 
 # Defaults
-port=13000
+port=80
 timeout=5*60
 
 # Fetch options
@@ -60,7 +60,7 @@ while ! [[ $net_status = *\"OverallHealth\":true* ]]
 do
     net_status=$(curl --request POST "http://${host}:${port}" \
                  --header 'Content-Type: application/json' \
-                 --data-raw '{ "method":"obscuro_health", "params":null, "id":1, "jsonrpc":"2.0" }') || true
+                 --data-raw '{ "method":"ten_health", "params":null, "id":1, "jsonrpc":"2.0" }') || true
     echo $net_status
 
     sleep 2

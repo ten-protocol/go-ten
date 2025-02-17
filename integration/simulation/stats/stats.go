@@ -7,7 +7,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 // Stats - collects information during the simulation. It can be checked programmatically.
@@ -27,6 +27,7 @@ type Stats struct {
 	TotalWithdrawalRequestedAmount *big.Int
 	RollupWithMoreRecentProofCount uint64
 	NrTransferTransactions         int
+	NrNativeTransferTransactions   int
 	statsMu                        *sync.RWMutex
 }
 
@@ -73,6 +74,12 @@ func (s *Stats) Deposit(v *big.Int) {
 func (s *Stats) Transfer() {
 	s.statsMu.Lock()
 	s.NrTransferTransactions++
+	s.statsMu.Unlock()
+}
+
+func (s *Stats) NativeTransfer() {
+	s.statsMu.Lock()
+	s.NrNativeTransferTransactions++
 	s.statsMu.Unlock()
 }
 

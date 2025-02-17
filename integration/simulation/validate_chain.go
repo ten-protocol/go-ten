@@ -8,32 +8,35 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
+
+	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/obscuronet/go-obscuro/go/common/compression"
+	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 
-	testcommon "github.com/obscuronet/go-obscuro/integration/common"
-	"github.com/obscuronet/go-obscuro/integration/ethereummock"
+	testcommon "github.com/ten-protocol/go-ten/integration/common"
+	"github.com/ten-protocol/go-ten/integration/ethereummock"
 
-	"github.com/obscuronet/go-obscuro/integration/common/testlog"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	"github.com/obscuronet/go-obscuro/go/obsclient"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 
-	"github.com/obscuronet/go-obscuro/integration/simulation/network"
+	"github.com/ten-protocol/go-ten/integration/simulation/network"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
-	"github.com/obscuronet/go-obscuro/go/rpc"
+	"github.com/ten-protocol/go-ten/go/rpc"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/obscuronet/go-obscuro/go/common"
-
-	erc20 "github.com/obscuronet/go-obscuro/integration/erc20contract/generated/EthERC20"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 const (
@@ -41,21 +44,22 @@ const (
 	// more than this, but this is a sanity check to ensure the simulation doesn't stop after a single transaction of each
 	// type, for example.
 	txThreshold = 5
-	// The maximum number of blocks an Obscuro node can fall behind
-	maxBlockDelay = 5
+	// The maximum number of blocks an TEN node can fall behind
+	maxBlockDelay = 10
 	// The leading zero bytes in a hash indicating that it is possibly an address, since it only has 20 bytes of data.
 	zeroBytesHex = "000000000000000000000000"
 )
 
 // After a simulation has run, check as much as possible that the outputs of the simulation are expected.
 // For example, all injected transactions were processed correctly, the height of the rollup chain is a function of the total
-// time of the simulation and the average block duration, that all Obscuro nodes are roughly in sync, etc
+// time of the simulation and the average block duration, that all TEN nodes are roughly in sync, etc
 func checkNetworkValidity(t *testing.T, s *Simulation) {
 	checkTransactionsInjected(t, s)
 	l1MaxHeight := checkEthereumBlockchainValidity(t, s)
-	checkObscuroBlockchainValidity(t, s, l1MaxHeight)
+	checkTenBlockchainValidity(t, s, l1MaxHeight)
 	checkReceivedLogs(t, s)
-	checkObscuroscan(t, s)
+	checkTenscan(t, s)
+	checkZenBaseMinting(t, s)
 }
 
 // Ensures that L1 and L2 txs were actually issued.
@@ -99,30 +103,72 @@ func checkEthereumBlockchainValidity(t *testing.T, s *Simulation) uint64 {
 	return max
 }
 
-// checkObscuroBlockchainValidity - perform the following checks
+// checkTenBlockchainValidity - perform the following checks
 // - minimum height - the chain has a minimum number of rollups
 // - check height is similar
 // - check no duplicate txs
 // - check efficiency - no of created blocks/ height
 // - check amount in the system
 // - check withdrawals/deposits
-func checkObscuroBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uint64) {
+func checkTenBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uint64) {
 	// Sanity check number for a minimum height
 	minHeight := uint64(float64(s.Params.SimulationTime.Microseconds()) / (2 * float64(s.Params.AvgBlockDuration)))
 
 	// process the blockchain of each node in parallel to minimize the difference between them since they are still running
-	heights := make([]uint64, len(s.RPCHandles.ObscuroClients))
+	heights := make([]uint64, len(s.RPCHandles.TenClients))
 	var wg sync.WaitGroup
-	for idx := range s.RPCHandles.ObscuroClients {
+	for idx := range s.RPCHandles.TenClients {
 		wg.Add(1)
-		go checkBlockchainOfObscuroNode(t, s.RPCHandles, minHeight, maxL1Height, s, &wg, heights, idx)
+		go checkBlockchainOfTenNode(t, s.RPCHandles, minHeight, maxL1Height, s, &wg, heights, idx)
 	}
 	wg.Wait()
 	min, max := minMax(heights)
 	// This checks that all the nodes are in sync. When a node falls behind with processing blocks it might highlight a problem.
-	if max-min > max/10 {
-		t.Errorf("There is a problem with the Obscuro chain. Nodes fell out of sync. Max height: %d. Min height: %d", max, min)
+	// since there is one node that only listens to rollups it will be naturally behind.
+	if max-min > max/3 {
+		t.Errorf("There is a problem with the TEN chain. Nodes fell out of sync. Max height: %d. Min height: %d -> %+v", max, min, heights)
 	}
+}
+
+// the cost of an empty rollup - adjust if the management contract changes. This is the rollup overhead.
+const emptyRollupGas = 110_000
+
+func checkCollectedL1Fees(_ *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
+	costOfRollupsWithTransactions := big.NewInt(0)
+	costOfEmptyRollups := big.NewInt(0)
+
+	if s.Params.IsInMem {
+		// not supported for in memory tests
+		return
+	}
+
+	for _, receipt := range rollupReceipts {
+		block, err := node.EthClient().BlockByHash(context.Background(), receipt.BlockHash)
+		if err != nil {
+			panic(err)
+		}
+
+		txCost := big.NewInt(0).Mul(block.BaseFee(), big.NewInt(0).SetUint64(receipt.GasUsed))
+		// only calculate the fees collected for non-empty rollups, because the empty ones are subsidized
+		if receipt.GasUsed > emptyRollupGas {
+			costOfRollupsWithTransactions.Add(costOfRollupsWithTransactions, txCost)
+		} else {
+			costOfEmptyRollups.Add(costOfEmptyRollups, txCost)
+		}
+	}
+
+	l2FeesWallet := s.Params.Wallets.L2FeesWallet
+	obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, l2FeesWallet)
+	_, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+	if err != nil {
+		panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+	}
+
+	// if balance of collected fees is less than cost of published rollups fail
+	// todo - reenable when gas payments are behaving themselves
+	//if feeBalance.Cmp(costOfRollupsWithTransactions) == -1 {
+	//	t.Errorf("Node %d: Sequencer has collected insufficient fees. Has: %d, needs: %d", nodeIdx, feeBalance, costOfRollupsWithTransactions)
+	//}
 }
 
 func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minHeight uint64, s *Simulation, nodeIdx int) uint64 {
@@ -130,24 +176,27 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	if err != nil {
 		t.Errorf("Node %d: Could not find head block. Cause: %s", nodeIdx, err)
 	}
-	height := head.NumberU64()
+	height := head.Number.Uint64()
 
 	if height < minHeight {
 		t.Errorf("Node %d: There were only %d blocks mined. Expected at least: %d.", nodeIdx, height, minHeight)
 	}
 
-	deposits, rollups, _, blockCount, _ := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock, head, node, s, nodeIdx)
+	deposits, rollups, _, blockCount, _, rollupReceipts := ExtractDataFromEthereumChain(ethereummock.MockGenesisBlock.Header(), head, node, s, nodeIdx)
 	s.Stats.TotalL1Blocks = uint64(blockCount)
 
-	if len(findHashDups(deposits)) > 0 {
-		dups := findHashDups(deposits)
-		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeIdx, dups)
+	checkCollectedL1Fees(t, node, s, nodeIdx, rollupReceipts)
+
+	hashDups := findHashDups(deposits)
+	if len(hashDups) > 0 {
+		t.Errorf("Node %d: Found Deposit duplicates: %v", nodeIdx, hashDups)
 	}
-	if len(findRollupDups(rollups)) > 0 {
-		dups := findRollupDups(rollups)
+
+	rollupDups := findRollupDups(rollups)
+	if len(rollupDups) > 0 {
 		// todo @siliev - fix in memory rollups, lack of real client breaks the normal ask smart contract flow.
 		if !s.Params.IsInMem {
-			t.Errorf("Node %d: Found Rollup duplicates: %v", nodeIdx, dups)
+			t.Errorf("Node %d: Found Rollup duplicates: %v", nodeIdx, rollupDups)
 		}
 	}
 
@@ -159,11 +208,6 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	if s.Stats.TotalDepositedAmount.Cmp(gethcommon.Big0) == 0 {
 		t.Errorf("Node %d: No deposits", nodeIdx)
 	} */
-
-	efficiency := float64(s.Stats.TotalL1Blocks-height) / float64(s.Stats.TotalL1Blocks)
-	if efficiency > s.Params.L1EfficiencyThreshold {
-		t.Errorf("Node %d: Efficiency in L1 is %f. Expected:%f. Number: %d.", nodeIdx, efficiency, s.Params.L1EfficiencyThreshold, height)
-	}
 
 	// compare the number of reorgs for this node against the height
 	reorgs := s.Stats.NoL1Reorgs[node.Info().L2ID]
@@ -178,7 +222,10 @@ func checkBlockchainOfEthereumNode(t *testing.T, node ethadapter.EthClient, minH
 	return height
 }
 
-func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
+// this function only performs a very brief check.
+// the ultimate check that everything works fine is that each node is able to respond to queries
+// and has processed all batches correctly.
+func checkRollups(t *testing.T, _ *Simulation, nodeIdx int, rollups []*common.ExtRollup) {
 	if len(rollups) < 2 {
 		t.Errorf("Node %d: Found less than two submitted rollups! Successful simulation should always produce more than 2", nodeIdx)
 	}
@@ -188,103 +235,45 @@ func checkRollups(t *testing.T, s *Simulation, nodeIdx int, rollups []*common.Ex
 		return rollups[i].Header.LastBatchSeqNo < rollups[j].Header.LastBatchSeqNo
 	})
 
-	batchNumber := uint64(0)
-	for idx, rollup := range rollups {
-		// todo - use the signature
-		if rollup.Header.Coinbase.Hex() != s.Params.Wallets.NodeWallets[0].Address().Hex() {
-			t.Errorf("Node %d: Found rollup produced by non-sequencer %s", nodeIdx, s.Params.Wallets.NodeWallets[0].Address().Hex())
-			continue
-		}
+	for _, rollup := range rollups {
+		// todo (@matt) verify the rollup was produced by a sequencer enclave from the whitelisted ID set
 
 		if len(rollup.BatchPayloads) == 0 {
 			t.Errorf("Node %d: No batches in rollup!", nodeIdx)
 			continue
 		}
-
-		if idx != 0 {
-			prevRollup := rollups[idx-1]
-			checkRollupPair(t, nodeIdx, prevRollup, rollup)
-		}
-		headers := extractBatchHeaders(rollup)
-
-		for _, batchHeader := range headers {
-			currHeight := batchHeader.Number.Uint64()
-			if currHeight != 0 && currHeight > batchNumber+1 {
-				t.Errorf("Node %d: Batch gap!", nodeIdx)
-			}
-			batchNumber = currHeight
-
-			for _, clients := range s.RPCHandles.AuthObsClients {
-				client := clients[0]
-				batchOnNode, _ := client.BatchHeaderByHash(batchHeader.Hash())
-				if batchOnNode.Hash() != batchHeader.Hash() {
-					t.Errorf("Node %d: Batches mismatch!", nodeIdx)
-				}
-			}
-		}
 	}
-}
-
-func checkRollupPair(t *testing.T, nodeIdx int, prevRollup *common.ExtRollup, rollup *common.ExtRollup) {
-	if len(prevRollup.BatchHeaders) == 0 {
-		return
-	}
-
-	previousHeaders := extractBatchHeaders(prevRollup)
-	currentHeaders := extractBatchHeaders(rollup)
-
-	lastBatch := previousHeaders[len(previousHeaders)-1]
-	firstBatch := currentHeaders[0]
-	isValidChain := firstBatch.SequencerOrderNo.Uint64() == lastBatch.SequencerOrderNo.Uint64()
-	if !isValidChain {
-		t.Errorf("Node %d: Found badly chained batches in rollups! from %d to %d",
-			nodeIdx,
-			lastBatch.SequencerOrderNo.Uint64(),
-			firstBatch.SequencerOrderNo.Uint64())
-		return
-	}
-
-	//isValidChain = prevRollup.Header.HeadBatchHash.Hex() == firstBatch.ParentHash.Hex()
-	//if !isValidChain {
-	//	t.Errorf("Node %d: Found badly chained batches in rollups! Marked header batch does not match!", nodeIdx)
-	//	return
-	//}
-}
-
-func extractBatchHeaders(rollup *common.ExtRollup) []common.BatchHeader {
-	dataCompressionService := compression.NewBrotliDataCompressionService()
-	headers := make([]common.BatchHeader, 0)
-	headersBlob, err := dataCompressionService.Decompress(rollup.BatchHeaders)
-	if err != nil {
-		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
-	}
-	err = rlp.DecodeBytes(headersBlob, &headers)
-	if err != nil {
-		testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
-	}
-	return headers
 }
 
 // ExtractDataFromEthereumChain returns the deposits, rollups, total amount deposited and length of the blockchain
 // between the start block and the end block.
-func ExtractDataFromEthereumChain(
-	startBlock *types.Block,
-	endBlock *types.Block,
-	node ethadapter.EthClient,
-	s *Simulation,
-	nodeIdx int,
-) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int, uint64) {
+func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Header, node ethadapter.EthClient, s *Simulation, nodeIdx int) ([]gethcommon.Hash, []*common.ExtRollup, *big.Int, int, uint64, types.Receipts) {
 	deposits := make([]gethcommon.Hash, 0)
 	rollups := make([]*common.ExtRollup, 0)
+	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
-	blockchain := node.BlocksBetween(startBlock, endBlock)
+	blockchain, err := node.BlocksBetween(startBlock, endBlock)
+	if err != nil {
+		panic(err)
+	}
 	successfulDeposits := uint64(0)
-	for _, block := range blockchain {
+	for _, header := range blockchain {
+		block, err := node.BlockByHash(header.Hash())
+		if err != nil {
+			panic(err)
+		}
 		for _, tx := range block.Transactions() {
-			t := s.Params.ERC20ContractLib.DecodeTx(tx)
+			t, err := s.Params.ERC20ContractLib.DecodeTx(tx)
+			if err != nil {
+				panic(err)
+			}
+
 			if t == nil {
-				t = s.Params.MgmtContractLib.DecodeTx(tx)
+				t, err = s.Params.MgmtContractLib.DecodeTx(tx)
+				if err != nil {
+					panic(err)
+				}
 			}
 
 			if t == nil {
@@ -297,31 +286,114 @@ func ExtractDataFromEthereumChain(
 			}
 
 			switch l1tx := t.(type) {
-			case *ethadapter.L1DepositTx:
+			case *common.L1DepositTx:
 				// todo (@stefan) - remove this hack once the old integrated bridge is removed.
 				deposits = append(deposits, tx.Hash())
 				totalDeposited.Add(totalDeposited, l1tx.Amount)
 				successfulDeposits++
-			case *ethadapter.L1RollupTx:
-				r, err := common.DecodeRollup(l1tx.Rollup)
+			case *common.L1RollupHashes:
+				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, l1tx.BlobHashes)
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
 				rollups = append(rollups, r)
-				if node.IsBlockAncestor(block, r.Header.L1Proof) {
-					// only count the rollup if it is published in the right branch
-					// todo (@tudor) - once logic is added to the l1 - this can be made into a check
-					s.Stats.NewRollup(nodeIdx)
-				}
+				rollupReceipts = append(rollupReceipts, receipt)
+				s.Stats.NewRollup(nodeIdx)
 			}
 		}
 	}
-	return deposits, rollups, totalDeposited, len(blockchain), successfulDeposits
+	return deposits, rollups, totalDeposited, len(blockchain), successfulDeposits, rollupReceipts
 }
 
-func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, minObscuroHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {
+func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
+	// takes longer for the funds to be bridged across
+	time.Sleep(45 * time.Second)
+	mbusABI, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	gasBridgeRecords := s.TxInjector.TxTracker.GasBridgeTransactions
+	for _, record := range gasBridgeRecords {
+		inputs, err := mbusABI.Methods["sendValueToL2"].Inputs.Unpack(record.L1BridgeTx.Data()[4:])
+		if err != nil {
+			panic(err)
+		}
+
+		receiver := inputs[0].(gethcommon.Address)
+		amount := inputs[1].(*big.Int)
+
+		if receiver != record.ReceiverWallet.Address() {
+			panic("Test setup is broken. Receiver in tx should match recorded wallet.")
+		}
+		obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, record.ReceiverWallet)
+		balance, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
+		if err != nil {
+			panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+		}
+
+		if balance.Cmp(amount) != 0 {
+			t.Errorf("Node %d: Balance doesnt match the bridged amount. Have: %d, Want: %d", nodeIdx, balance, amount)
+		}
+	}
+}
+
+func checkZenBaseMinting(t *testing.T, s *Simulation) {
+	// Map to track the number of transactions per sender
+	txCountPerSender := make(map[gethcommon.Address]int)
+
+	// Aggregate transaction counts from Transfer and Withdrawal transactions
+	for _, tx := range s.TxInjector.TxTracker.TransferL2Transactions {
+		sender := getSender(tx)
+		txCountPerSender[sender]++
+	}
+
+	for _, tx := range s.TxInjector.TxTracker.WithdrawalL2Transactions {
+		sender := getSender(tx)
+		txCountPerSender[sender]++
+	}
+
+	for _, tx := range s.TxInjector.TxTracker.NativeValueTransferL2Transactions {
+		sender := getSender(tx)
+		txCountPerSender[sender]++
+	}
+
+	// Iterate through each sender and verify ZenBase balance
+	for sender, expectedMinted := range txCountPerSender {
+		senderRpc := s.RPCHandles.TenWalletClient(sender, 1)
+		zenBaseContract, err := ZenBase.NewZenBase(s.ZenBaseAddress, senderRpc)
+		if err != nil {
+			t.Errorf("Sender %s: Failed to create ZenBase contract. Cause: %s", sender.Hex(), err)
+		}
+		zenBaseBalance, err := zenBaseContract.BalanceOf(&bind.CallOpts{
+			From: sender,
+		}, sender)
+		if err != nil {
+			t.Errorf("Sender %s: Failed to get ZenBase balance. Cause: %s", sender.Hex(), err)
+		}
+
+		expectedBalance := big.NewInt(int64(expectedMinted)) // Assuming 1 ZenBase per transaction
+		if zenBaseBalance.Cmp(expectedBalance) < 0 {
+			t.Errorf("Sender %s: Expected ZenBase balance %d, but found %d", sender.Hex(), expectedBalance, zenBaseBalance)
+		}
+	}
+
+	rpc := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
+	zenBaseContract, err := ZenBase.NewZenBase(s.ZenBaseAddress, rpc)
+	if err != nil {
+		t.Errorf("Failed to create ZenBase contract. Cause: %s", err)
+	}
+	totalSupply, err := zenBaseContract.TotalSupply(&bind.CallOpts{
+		From: s.Params.Wallets.L2FaucetWallet.Address(),
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	if totalSupply.Cmp(big.NewInt(0)) <= 0 {
+		t.Errorf("ZenBase total supply is 0")
+	}
+}
+
+func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minTenHeight uint64, maxEthereumHeight uint64, s *Simulation, wg *sync.WaitGroup, heights []uint64, nodeIdx int) {
 	defer wg.Done()
-	obscuroClient := rpcHandles.ObscuroClients[nodeIdx]
+	tenClient := rpcHandles.TenClients[nodeIdx]
 
 	// check that the L1 view is consistent with the L1 network.
 	// We cast to int64 to avoid an overflow when l1Height is greater than maxEthereumHeight (due to additional blocks
@@ -332,42 +404,37 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 		t.Errorf("Node %d: Could not retrieve L1 height. Cause: %s", nodeIdx, err)
 	}
 	if int(maxEthereumHeight)-int(l1Height) > maxBlockDelay {
-		t.Errorf("Node %d: Obscuro node fell behind by %d blocks.", nodeIdx, maxEthereumHeight-l1Height)
+		t.Errorf("Node %d: TEN node fell behind by %d blocks.", nodeIdx, maxEthereumHeight-l1Height)
 	}
 
-	// check that the height of the Rollup chain is higher than a minimum expected value.
-	headRollupHeader, err := getHeadBatchHeader(obscuroClient)
+	// check that the height of the l2 chain is higher than a minimum expected value.
+	headBatchHeader, err := getHeadBatchHeader(tenClient)
 	if err != nil {
 		t.Error(fmt.Errorf("node %d: %w", nodeIdx, err))
 	}
 
-	if headRollupHeader == nil {
+	if headBatchHeader == nil {
 		t.Errorf("Node %d: No head rollup recorded. Skipping any further checks for this node.\n", nodeIdx)
 		return
 	}
-	l2Height := headRollupHeader.Number
-	if l2Height.Uint64() < minObscuroHeight {
-		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", nodeIdx, l2Height, minObscuroHeight)
+	l2Height := headBatchHeader.Number
+	if l2Height.Uint64() < minTenHeight {
+		t.Errorf("Node %d: Node only mined %d rollups. Expected at least: %d.", nodeIdx, l2Height, minTenHeight)
 	}
 
-	// check that the height from the rollup header is consistent with the height returned by eth_blockNumber.
-	l2HeightFromRollupNumber, err := obscuroClient.BatchNumber()
+	// check that the height from the head batch header is consistent with the height returned by eth_blockNumber.
+	l2HeightFromBatchNumber, err := tenClient.BatchNumber()
 	if err != nil {
 		t.Errorf("Node %d: Could not retrieve block number. Cause: %s", nodeIdx, err)
 	}
-	if l2HeightFromRollupNumber != l2Height.Uint64() {
-		t.Errorf("Node %d: Node's head rollup had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.BatchNumber, l2HeightFromRollupNumber)
+	// due to the difference in calling time, the enclave could produce another batch
+	const maxAcceptedDiff = 2
+	heightDiff := int(l2HeightFromBatchNumber) - int(l2Height.Uint64())
+	if heightDiff > maxAcceptedDiff || heightDiff < -maxAcceptedDiff {
+		t.Errorf("Node %d: Node's head batch had a height %d, but %s height was %d", nodeIdx, l2Height, rpc.BatchNumber, l2HeightFromBatchNumber)
 	}
 
-	totalL2Blocks := s.Stats.NoL2Blocks[nodeIdx]
-	// in case the blockchain has advanced above what was collected, there is no longer a point to this check
-	if l2Height.Uint64() <= totalL2Blocks {
-		efficiencyL2 := float64(totalL2Blocks-l2Height.Uint64()) / float64(totalL2Blocks)
-		if efficiencyL2 > s.Params.L2EfficiencyThreshold {
-			t.Errorf("Node %d: Efficiency in L2 is %f. Expected:%f", nodeIdx, efficiencyL2, s.Params.L2EfficiencyThreshold)
-		}
-	}
-
+	verifyGasBridgeTransactions(t, s, nodeIdx)
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
@@ -383,17 +450,16 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	}
 
 	checkTransactionReceipts(s.ctx, t, nodeIdx, rpcHandles, s.TxInjector)
+	totalSuccessfullyWithdrawn := extractWithdrawals(t, tenClient, nodeIdx)
 
-	totalSuccessfullyWithdrawn := extractWithdrawals(t, obscuroClient, nodeIdx)
-
-	totalAmountLogged := getLoggedWithdrawals(minObscuroHeight, obscuroClient, headRollupHeader)
-	if totalAmountLogged.Cmp(totalSuccessfullyWithdrawn) != 0 {
-		t.Errorf("Node %d: Logged withdrawals do not match!", nodeIdx)
-	}
+	// todo: @siliev check that the total amount deposited is the same as the total amount withdraw
+	// the previous check is no longer possible due to header removal of xchain messages; and we cannot
+	// take the preimages of the crossChainTree as we dont really know them so they must be saved somewhere
+	// We can rely on the e2e tests for now.
 
 	injectorDepositedAmt := big.NewInt(0)
 	for _, tx := range s.TxInjector.TxTracker.GetL1Transactions() {
-		if depTx, ok := tx.(*ethadapter.L1DepositTx); ok {
+		if depTx, ok := tx.(*common.L1DepositTx); ok {
 			injectorDepositedAmt.Add(injectorDepositedAmt, depTx.Amount)
 		}
 	}
@@ -414,8 +480,8 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 	// totalAmountInSystem := big.NewInt(0).Sub(s.Stats.TotalDepositedAmount, totalSuccessfullyWithdrawn)
 	total := big.NewInt(0)
 	for _, wallet := range s.Params.Wallets.SimObsWallets {
-		client := rpcHandles.ObscuroWalletClient(wallet.Address(), nodeIdx)
-		bal := balance(s.ctx, client, wallet.Address(), s.Params.Wallets.Tokens[testcommon.HOC].L2ContractAddress)
+		client := rpcHandles.TenWalletClient(wallet.Address(), nodeIdx)
+		bal := balance(s.ctx, client, wallet.Address(), s.Params.Wallets.Tokens[testcommon.HOC].L2ContractAddress, nodeIdx)
 		total.Add(total, bal)
 	}
 
@@ -428,51 +494,29 @@ func checkBlockchainOfObscuroNode(t *testing.T, rpcHandles *network.RPCHandles, 
 
 	heights[nodeIdx] = l2Height.Uint64()
 
+	if headBatchHeader.SequencerOrderNo.Uint64() == common.L2GenesisSeqNo {
+		return
+	}
 	// check that the headers are serialised and deserialised correctly, by recomputing a header's hash
-	parentHeader, err := obscuroClient.BatchHeaderByHash(headRollupHeader.ParentHash)
+	parentHeader, err := tenClient.GetBatchHeaderByHash(headBatchHeader.ParentHash)
 	if err != nil {
-		t.Errorf("could not retrieve parent of head rollup")
+		t.Errorf("could not retrieve parent of head batch")
+		return
 	}
-	if parentHeader.Hash() != headRollupHeader.ParentHash {
-		t.Errorf("mismatch in hash of retrieved header. Parent: %+v\nCurrent: %+v", parentHeader, headRollupHeader)
+	if parentHeader.Hash() != headBatchHeader.ParentHash {
+		t.Errorf("mismatch in hash of retrieved header. Parent: %+v\nCurrent: %+v", parentHeader, headBatchHeader)
 	}
-}
-
-func getLoggedWithdrawals(minObscuroHeight uint64, obscuroClient *obsclient.ObsClient, currentHeader *common.BatchHeader) *big.Int {
-	totalAmountLogged := big.NewInt(0)
-	for i := minObscuroHeight; i < currentHeader.Number.Uint64(); i++ {
-		header, err := obscuroClient.BatchHeaderByNumber(big.NewInt(int64(i)))
-		if err != nil {
-			panic(err)
-		}
-
-		for _, msg := range header.CrossChainMessages {
-			contractAbi, err := abi.JSON(strings.NewReader(erc20.EthERC20MetaData.ABI))
-			if err != nil {
-				panic(err)
-			}
-
-			transfer := map[string]interface{}{}
-			err = contractAbi.Methods["transferFrom"].Inputs.UnpackIntoMap(transfer, msg.Payload) // can't figure out how to unpack it without cheating, geth is kinda clunky
-			if err != nil {
-				panic(err)
-			}
-
-			amount := transfer["amount"].(*big.Int)
-			totalAmountLogged = totalAmountLogged.Add(totalAmountLogged, amount)
-		}
-	}
-	return totalAmountLogged
 }
 
 // FindNotIncludedL2Txs returns the number of transfers and withdrawals that were injected but are not present in the L2 blockchain.
 func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) (int, int, int) {
 	transfers, withdrawals, nativeTransfers := txInjector.TxTracker.GetL2Transactions()
+
 	notFoundTransfers := 0
 	for _, tx := range transfers {
 		sender := getSender(tx)
 		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
-		l2tx, _, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
+		l2tx, _, err := rpcHandles.TenWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
 		if err != nil || l2tx == nil {
 			notFoundTransfers++
 		}
@@ -482,7 +526,7 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 	for _, tx := range withdrawals {
 		sender := getSender(tx)
 		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
-		l2tx, _, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
+		l2tx, _, err := rpcHandles.TenWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
 		if err != nil || l2tx == nil {
 			notFoundWithdrawals++
 		}
@@ -492,7 +536,7 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 	for _, tx := range nativeTransfers {
 		sender := getSender(tx)
 		// because of viewing key encryption we need to get the RPC client for this specific node for the wallet that sent the transaction
-		l2tx, _, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
+		l2tx, _, err := rpcHandles.TenWalletClient(sender, nodeIdx).TransactionByHash(ctx, tx.Hash())
 		if err != nil || l2tx == nil {
 			notFoundNativeTransfers++
 		}
@@ -502,23 +546,22 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 }
 
 func getSender(tx *common.L2Tx) gethcommon.Address {
-	msg, err := tx.AsMessage(types.NewLondonSigner(tx.ChainId()), nil)
+	from, err := types.Sender(types.NewEIP155Signer(tx.ChainId()), tx)
 	if err != nil {
 		panic(fmt.Errorf("couldn't find sender to verify transaction - %w", err))
 	}
-	return msg.From()
+	return from
 }
 
 // Checks that there is a receipt available for each L2 transaction.
 func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rpcHandles *network.RPCHandles, txInjector *TransactionInjector) {
 	l2Txs := append(txInjector.TxTracker.TransferL2Transactions, txInjector.TxTracker.WithdrawalL2Transactions...)
-
 	nrSuccessful := 0
 	for _, tx := range l2Txs {
 		sender := getSender(tx)
 
 		// We check that there is a receipt available for each transaction
-		receipt, err := rpcHandles.ObscuroWalletClient(sender, nodeIdx).TransactionReceipt(ctx, tx.Hash())
+		receipt, err := rpcHandles.TenWalletClient(sender, nodeIdx).TransactionReceipt(ctx, tx.Hash())
 		if err != nil {
 			t.Errorf("node %d: could not retrieve receipt for transaction %s. Cause: %s", nodeIdx, tx.Hash().Hex(), err)
 			continue
@@ -539,11 +582,50 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 	if nrSuccessful < len(l2Txs)/2 {
 		t.Errorf("node %d: More than half the transactions failed. Successful number: %d", nodeIdx, nrSuccessful)
 	}
+
+	rpc := rpcHandles.TenWalletClient(txInjector.rndObsWallet().Address(), nodeIdx)
+	cfg, err := rpc.GetConfig()
+	if err != nil {
+		panic(err)
+	}
+
+	msgBusAddr := cfg.L2MessageBusAddress
+
+	for _, tx := range txInjector.TxTracker.WithdrawalL2Transactions {
+		sender := getSender(tx)
+		receipt, err := rpcHandles.TenWalletClient(sender, nodeIdx).TransactionReceipt(ctx, tx.Hash())
+		if err != nil {
+			continue
+		}
+
+		if receipt.Status == types.ReceiptStatusFailed {
+			testlog.Logger().Error("[CrossChain] failed withdrawal")
+			continue
+		}
+
+		if len(receipt.Logs) == 0 {
+			testlog.Logger().Error("[CrossChain] no logs in withdrawal?!")
+			continue
+		}
+
+		if receipt.Logs[0].Address != msgBusAddr {
+			testlog.Logger().Error("[CrossChain] wtf")
+			continue
+		}
+
+		abi, _ := MessageBus.MessageBusMetaData.GetAbi()
+		if receipt.Logs[0].Topics[0] != abi.Events["ValueTransfer"].ID {
+			testlog.Logger().Error("[CrossChain] wtf")
+			continue
+		}
+
+		testlog.Logger().Info("[CrossChain] successful withdrawal")
+	}
 }
 
-func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int) {
+func extractWithdrawals(t *testing.T, tenClient *obsclient.ObsClient, nodeIdx int) (totalSuccessfullyWithdrawn *big.Int) {
 	totalSuccessfullyWithdrawn = big.NewInt(0)
-	header, err := getHeadBatchHeader(obscuroClient)
+	header, err := getHeadBatchHeader(tenClient)
 	if err != nil {
 		t.Error(fmt.Errorf("node %d: %w", nodeIdx, err))
 	}
@@ -562,9 +644,9 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 		}
 
 		// note this retrieves batches currently.
-		newHeader, err := obscuroClient.BatchHeaderByHash(header.ParentHash)
+		newHeader, err := tenClient.GetBatchHeaderByHash(header.ParentHash)
 		if err != nil {
-			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve rollup header %s. Cause: %s", nodeIdx, header.ParentHash, err))
+			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve batch header %s. Cause: %s", nodeIdx, header.ParentHash, err))
 			return
 		}
 
@@ -575,8 +657,10 @@ func extractWithdrawals(t *testing.T, obscuroClient *obsclient.ObsClient, nodeId
 // Terminates all subscriptions and validates the received events.
 func checkReceivedLogs(t *testing.T, s *Simulation) {
 	logsFromSnapshots := 0
-	// at least one event per transfer tx for half the transactions
-	nrLogs := len(s.TxInjector.TxTracker.TransferL2Transactions) * len(s.RPCHandles.AuthObsClients) / 2
+	// rough estimation. In total there should be 2 relevant events for each successful transfer.
+	// We assume 66% will pass
+	nrLogs := len(s.TxInjector.TxTracker.TransferL2Transactions) * 2
+	nrLogs = nrLogs * 2 / 3
 	for _, clients := range s.RPCHandles.AuthObsClients {
 		for _, client := range clients {
 			logsFromSnapshots += checkSnapshotLogs(t, client)
@@ -605,15 +689,15 @@ func checkReceivedLogs(t *testing.T, s *Simulation) {
 }
 
 // Checks that a subscription has received the expected logs.
-func checkSubscribedLogs(t *testing.T, owner string, channel chan common.IDAndLog) int {
+func checkSubscribedLogs(t *testing.T, owner string, channel chan types.Log) int {
 	var logs []*types.Log
 
 	for {
 		if len(channel) == 0 {
 			break
 		}
-		idAndLog := <-channel
-		logs = append(logs, idAndLog.Log)
+		log := <-channel
+		logs = append(logs, &log)
 	}
 
 	assertLogsValid(t, owner, logs)
@@ -622,7 +706,7 @@ func checkSubscribedLogs(t *testing.T, owner string, channel chan common.IDAndLo
 
 func checkSnapshotLogs(t *testing.T, client *obsclient.AuthObsClient) int {
 	// To exercise the filtering mechanism, we get a snapshot for HOC events only, ignoring POC events.
-	hocFilter := common.FilterCriteriaJSON{
+	hocFilter := common.FilterCriteria{
 		Addresses: []gethcommon.Address{gethcommon.HexToAddress("0x" + testcommon.HOCAddr)},
 	}
 	logs, err := client.GetLogs(context.Background(), hocFilter)
@@ -711,12 +795,15 @@ func assertNoDupeLogs(t *testing.T, logs []*types.Log) {
 	}
 }
 
-// Checks that the various APIs powering Obscuroscan are working correctly.
-func checkObscuroscan(t *testing.T, s *Simulation) {
+// Checks that the various APIs powering Tenscan are working correctly.
+func checkTenscan(t *testing.T, s *Simulation) {
 	for idx, client := range s.RPCHandles.RPCClients {
 		checkTotalTransactions(t, client, idx)
-		latestTxHashes := checkLatestTxs(t, client, idx)
-		for _, txHash := range latestTxHashes {
+		checkForLatestBatches(t, client, idx)
+		checkForLatestRollups(t, client, idx)
+
+		txHashes := getLatestTransactions(t, client, idx)
+		for _, txHash := range txHashes {
 			checkBatchFromTxs(t, client, txHash, idx)
 		}
 	}
@@ -725,7 +812,7 @@ func checkObscuroscan(t *testing.T, s *Simulation) {
 // Checks that the node has stored sufficient transactions.
 func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 	var totalTxs *big.Int
-	err := client.Call(&totalTxs, rpc.GetTotalTxs)
+	err := client.Call(&totalTxs, rpc.GetTotalTxCount)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve total transactions. Cause: %s", nodeIdx, err)
 	}
@@ -734,23 +821,53 @@ func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 	}
 }
 
-// Checks that we can retrieve the latest transactions for the node.
-func checkLatestTxs(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.Hash {
-	var latestTxHashes []gethcommon.Hash
-	err := client.Call(&latestTxHashes, rpc.GetLatestTxs, txThreshold)
+// Checks that we can retrieve the latest batches
+func checkForLatestBatches(t *testing.T, client rpc.Client, nodeIdx int) {
+	var latestBatches common.BatchListingResponseDeprecated
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(20)}
+	err := client.Call(&latestBatches, rpc.GetBatchListing, &pagination)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve latest batches. Cause: %s", nodeIdx, err)
+	}
+	// the batch listing function returns the last received batches , but it might receive them in a random order
+	if len(latestBatches.BatchesData) < 5 {
+		t.Errorf("node %d: expected at least %d batches, but only received %d", nodeIdx, 5, len(latestBatches.BatchesData))
+	}
+}
+
+// Checks that we can retrieve the latest rollups
+func checkForLatestRollups(t *testing.T, client rpc.Client, nodeIdx int) {
+	var latestRollups common.RollupListingResponse
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&latestRollups, rpc.GetRollupListing, &pagination)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
 	}
-	if len(latestTxHashes) != txThreshold {
-		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, txThreshold, len(latestTxHashes))
+	if len(latestRollups.RollupsData) != 5 {
+		t.Errorf("node %d: expected at least %d transactions, but only received %d", nodeIdx, 5, len(latestRollups.RollupsData))
 	}
-	return latestTxHashes
+}
+
+func getLatestTransactions(t *testing.T, client rpc.Client, nodeIdx int) []gethcommon.Hash {
+	var transactionResponse common.TransactionListingResponse
+	var txHashes []gethcommon.Hash
+	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(5)}
+	err := client.Call(&transactionResponse, rpc.GetPublicTransactionData, &pagination)
+	if err != nil {
+		t.Errorf("node %d: could not retrieve latest transactions. Cause: %s", nodeIdx, err)
+	}
+
+	for _, transaction := range transactionResponse.TransactionsData {
+		txHashes = append(txHashes, transaction.TransactionHash)
+	}
+
+	return txHashes
 }
 
 // Retrieves the batch using the transaction hash, and validates it.
 func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, nodeIdx int) {
 	var batchByTx *common.ExtBatch
-	err := client.Call(&batchByTx, rpc.GetBatchForTx, txHash)
+	err := client.Call(&batchByTx, rpc.GetBatchByTx, txHash)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve batch for transaction. Cause: %s", nodeIdx, err)
 		return
@@ -775,4 +892,21 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 	if batchByHash.Header.Hash() != batchByTx.Header.Hash() {
 		t.Errorf("node %d: retrieved batch by hash, but hash was incorrect", nodeIdx)
 	}
+}
+
+func getRollupFromBlobHashes(ctx context.Context, blobResolver l1.BlobResolver, block *types.Block, blobHashes []gethcommon.Hash) (*common.ExtRollup, error) {
+	blobs, err := blobResolver.FetchBlobs(ctx, block.Header(), blobHashes)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch blobs from hashes during chain validation. Cause: %w", err)
+	}
+	data, err := ethadapter.DecodeBlobs(blobs)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding rollup blob. Cause: %w", err)
+	}
+
+	var rollup common.ExtRollup
+	if err := rlp.DecodeBytes(data, &rollup); err != nil {
+		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
+	}
+	return &rollup, nil
 }

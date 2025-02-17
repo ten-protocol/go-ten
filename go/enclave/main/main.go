@@ -2,18 +2,24 @@ package main
 
 import (
 	"fmt"
+	"os"
 
-	"github.com/obscuronet/go-obscuro/go/common/container"
-	enclavecontainer "github.com/obscuronet/go-obscuro/go/enclave/container"
+	"github.com/ten-protocol/go-ten/go/common/container"
+	"github.com/ten-protocol/go-ten/go/config"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
+	enclavecontainer "github.com/ten-protocol/go-ten/go/enclave/container"
 )
 
 // Runs an Obscuro enclave as a standalone process.
 func main() {
-	config, err := enclavecontainer.ParseConfig()
+	tenCfg, err := config.LoadTenConfig()
 	if err != nil {
-		panic(fmt.Errorf("could not parse config. Cause: %w", err))
+		fmt.Println("Error loading ten config:", err)
+		os.Exit(1)
 	}
 
-	enclaveContainer := enclavecontainer.NewEnclaveContainerFromConfig(config)
+	enclaveConfig := enclaveconfig.EnclaveConfigFromTenConfig(tenCfg)
+
+	enclaveContainer := enclavecontainer.NewEnclaveContainerFromConfig(enclaveConfig)
 	container.Serve(enclaveContainer)
 }

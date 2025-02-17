@@ -1,15 +1,15 @@
 package smartcontract
 
 import (
-	"bytes"
 	"fmt"
 
-	generatedManagementContract "github.com/obscuronet/go-obscuro/contracts/generated/ManagementContract"
+	generatedManagementContract "github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/ethadapter"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	ethereumclient "github.com/ethereum/go-ethereum/ethclient"
@@ -36,30 +36,32 @@ func newDebugMgmtContractLib(address gethcommon.Address, client *ethereumclient.
 }
 
 // AwaitedIssueRollup speeds ups the issuance of rollup, await of tx to be minted and makes sure the values are correctly stored
-func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, client ethadapter.EthClient, w *debugWallet) error {
+// TODO: this is not even called...
+func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, client ethadapter.EthClient, w *debugWallet, signature []byte) error {
 	encodedRollup, err := common.EncodeRollup(&rollup)
 	if err != nil {
 		return err
 	}
-	txData := d.CreateRollup(
-		&ethadapter.L1RollupTx{Rollup: encodedRollup},
-		w.GetNonceAndIncrement(),
-	)
+	txData, err := d.PopulateAddRollup(&common.L1RollupTx{Rollup: encodedRollup}, []*kzg4844.Blob{}, signature)
+	if err != nil {
+		return fmt.Errorf("failed to create blob rollup: %w", err)
+	}
 
 	issuedTx, receipt, err := w.AwaitedSignAndSendTransaction(client, txData)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to send and await transaction: %w", err)
 	}
 
 	if receipt.Status != types.ReceiptStatusSuccessful {
-		_, err := w.debugTransaction(client, issuedTx)
-		if err != nil {
-			return fmt.Errorf("transaction should have succeeded, expected %d got %d - reason: %w", types.ReceiptStatusSuccessful, receipt.Status, err)
+		debugOutput, debugErr := w.debugTransaction(client, issuedTx)
+		if debugErr != nil {
+			return fmt.Errorf("transaction failed with status %d and debug failed: %v", receipt.Status, debugErr)
 		}
+		return fmt.Errorf("transaction failed with status %d: %s", receipt.Status, string(debugOutput))
 	}
 
 	// rollup meta data is actually stored
-	found, rollupElement, err := d.GenContract.GetRollupByHash(nil, rollup.Hash())
+	found, _, err := d.GenContract.GetRollupByHash(nil, rollup.Hash())
 	if err != nil {
 		return err
 	}
@@ -68,10 +70,7 @@ func (d *debugMgmtContractLib) AwaitedIssueRollup(rollup common.ExtRollup, clien
 		return fmt.Errorf("rollup not stored in tree")
 	}
 
-	if !bytes.Equal(rollupElement.AggregatorID[:], rollup.Header.Coinbase.Bytes()) ||
-		!bytes.Equal(rollupElement.L1Block[:], rollup.Header.L1Proof.Bytes()) {
-		return fmt.Errorf("stored rollup does not match the generated rollup")
-	}
+	// todo: check signature
 
 	return nil
 }

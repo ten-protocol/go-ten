@@ -9,7 +9,7 @@ import "./Structs.sol";
 interface IMessageBus {
 
     // The event emitted whenever a message is published. 
-    // The enclave listens for it on the deployed message bus addreses.
+    // The enclave listens for it on the deployed message bus addresses.
     event LogMessagePublished
     (
         address sender, 
@@ -18,6 +18,19 @@ interface IMessageBus {
         uint32 topic, 
         bytes payload, 
         uint8 consistencyLevel
+    );
+
+    event ValueTransfer
+    (
+        address indexed sender,
+        address indexed receiver,
+        uint256 amount,
+        uint64 sequence
+    );
+
+    event NativeDeposit(
+        address indexed receiver,
+        uint256 amount
     );
 
     // This method is called from contracts to publish messages to the other linked message bus.
@@ -33,7 +46,17 @@ interface IMessageBus {
         uint32 topic,
         bytes calldata payload, 
         uint8 consistencyLevel
-    ) external returns (uint64 sequence);
+    ) external payable returns (uint64 sequence);
+
+    function sendValueToL2(
+        address receiver,
+        uint256 amount
+    ) external payable;
+
+    function receiveValueFromL2(
+        address receiver,
+        uint256 amount
+    ) external;
 
     // This function verifies that a cross chain message provided by the caller has indeed been submitted from the other network
     // and returns true only if the challenge period for the message has passed.
@@ -46,4 +69,10 @@ interface IMessageBus {
     // The function will be called by the ManagementContract on L1 and the enclave on L2. 
     // It should be access controlled and called according to the consistencyLevel and Obscuro platform rules.
     function storeCrossChainMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) external;
+
+    // This is a testnet function which allows the bridge owner to retrieve all funds from the message bus.
+    function retrieveAllFunds(address receiver) external;
+
+    // the fee needed to be paid in msg.value to publish the value transfer
+    function getPublishFee() external view returns (uint256);
 }

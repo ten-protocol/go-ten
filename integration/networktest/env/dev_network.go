@@ -1,34 +1,82 @@
 package env
 
 import (
+	"fmt"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/integration/networktest"
-	"github.com/obscuronet/go-obscuro/integration/simulation/devnetwork"
+	"github.com/ten-protocol/go-ten/go/common"
+
+	"github.com/ten-protocol/go-ten/go/wallet"
+
+	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/obsclient"
+	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/simulation/devnetwork"
 )
 
-type devNetworkEnv struct{}
+type devNetworkEnv struct {
+	inMemDevNetwork *devnetwork.InMemDevNetwork
+}
 
 func (d *devNetworkEnv) Prepare() (networktest.NetworkConnector, func(), error) {
-	devNet := devnetwork.DefaultDevNetwork()
-	devNet.Start()
+	d.inMemDevNetwork.Start()
 
-	err := awaitNodesAvailable(devNet)
+	err := awaitNodesAvailable(d.inMemDevNetwork)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return devNet, devNet.CleanUp, nil
+	return d.inMemDevNetwork, d.inMemDevNetwork.CleanUp, nil
 }
 
-func awaitNodesAvailable(_ networktest.NetworkConnector) error { //nolint:unparam
-	// todo (@matt) - create RPC clients for all the nodes and wait until their health checks pass
-
-	// for now we just sleep
-	time.Sleep(15 * time.Second)
+func awaitNodesAvailable(nc networktest.NetworkConnector) error {
+	err := awaitHealthStatus(nc.GetSequencerNode().HostRPCWSAddress(), 90*time.Second)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < nc.NumValidators(); i++ {
+		err := awaitHealthStatus(nc.GetValidatorNode(i).HostRPCWSAddress(), 60*time.Second)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func LocalDevNetwork() networktest.Environment {
-	return &devNetworkEnv{}
+// awaitHealthStatus waits for the host to be healthy until timeout
+func awaitHealthStatus(rpcAddress string, timeout time.Duration) error {
+	fmt.Println("Awaiting health status:", rpcAddress)
+	return retry.Do(func() error {
+		c, err := obsclient.Dial(rpcAddress)
+		if err != nil {
+			return fmt.Errorf("failed dial host (%s): %w", rpcAddress, err)
+		}
+		defer c.Close()
+		healthy, err := c.Health()
+		if err != nil {
+			return fmt.Errorf("failed to get host health (%s): %w", rpcAddress, err)
+		}
+		if !healthy.OverallHealth {
+			return fmt.Errorf("host is not healthy (%s)", rpcAddress)
+		}
+		// wait until the node has
+		height, err := c.BatchNumber()
+		if err != nil {
+			return fmt.Errorf("failed to get host batch number (%s): %w", rpcAddress, err)
+		}
+		if height <= common.L2SysContractGenesisSeqNo+1 {
+			return fmt.Errorf("host is not initialised (%s): %d", rpcAddress, height)
+		}
+		return nil
+	}, retry.NewTimeoutStrategy(timeout, 200*time.Millisecond))
+}
+
+func LocalDevNetwork(opts ...devnetwork.TenConfigOption) networktest.Environment {
+	return &devNetworkEnv{inMemDevNetwork: devnetwork.LocalDevNetwork(opts...)}
+}
+
+// LocalNetworkLiveL1 creates a local network that points to a live running L1.
+// Note: seqWallet and validatorWallets need funds. seqWallet is used to deploy the L1 contracts
+func LocalNetworkLiveL1(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet, l1RPCURLs []string) networktest.Environment {
+	return &devNetworkEnv{inMemDevNetwork: devnetwork.LiveL1DevNetwork(seqWallet, validatorWallets, l1RPCURLs)}
 }

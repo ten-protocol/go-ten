@@ -1,3 +1,4 @@
+import 'ten-hardhat-plugin';
 import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 
@@ -9,7 +10,6 @@ import 'hardhat-deploy';
 // Hardhat ignore warnings plugin - https://www.npmjs.com/package/hardhat-ignore-warnings
 import 'hardhat-ignore-warnings';
 
-import './tasks/wallet-extension';
 import * as abigen from './tasks/abigen';
 import './tasks/obscuro-deploy';
 
@@ -20,12 +20,18 @@ const config: HardhatUserConfig = {
     sources: "src"
   },
   solidity: {
-    version: "0.8.9",
+    version: "0.8.28",
     settings: {
       optimizer: {
         enabled: true,
         runs: 1000,
+        details: {
+          yulDetails: {
+            optimizerSteps: "u",
+          },
+        },  
       },
+      evmVersion: "cancun",
       outputSelection: { "*": { "*": [ "*" ], "": [ "*" ] } }
     },
   },
@@ -44,17 +50,14 @@ const config: HardhatUserConfig = {
     deployer: { // Addressed used for deploying.
         default: 0,
     },
-    hocowner: {
-        default: 1,
-    },
-    pocowner: {
-        default: 2,
-    },
   },
   // For help configuring - https://www.npmjs.com/package/hardhat-ignore-warnings
   warnings : {
     '*' : {
       default: 'error'
+    },
+    'src/testing/**/*': {
+      default: 'off'
     }
   }
 };

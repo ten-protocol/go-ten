@@ -5,7 +5,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )

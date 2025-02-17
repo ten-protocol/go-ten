@@ -3,8 +3,8 @@ package container
 import (
 	"fmt"
 
-	"github.com/obscuronet/go-obscuro/tools/faucet/faucet"
-	"github.com/obscuronet/go-obscuro/tools/faucet/webserver"
+	"github.com/ten-protocol/go-ten/tools/faucet/faucet"
+	"github.com/ten-protocol/go-ten/tools/faucet/webserver"
 )
 
 type FaucetContainer struct {
@@ -21,7 +21,7 @@ func NewFaucetContainerFromConfig(cfg *faucet.Config) (*FaucetContainer, error) 
 		return nil, err
 	}
 	bindAddress := fmt.Sprintf(":%d", cfg.ServerPort)
-	server := webserver.NewWebServer(f, bindAddress, []byte(cfg.JWTSecret))
+	server := webserver.NewWebServer(f, bindAddress, []byte(cfg.JWTSecret), cfg.DefaultFundAmount)
 
 	return NewFaucetContainer(f, server)
 }

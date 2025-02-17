@@ -5,12 +5,14 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
+
 	"github.com/docker/docker/client"
-	"github.com/obscuronet/go-obscuro/go/common/docker"
 	"github.com/sanity-io/litter"
+	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
 type ContractDeployer struct {
@@ -27,17 +29,27 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 func (n *ContractDeployer) Start() error {
 	fmt.Printf("Starting L2 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
 
-	cmds := []string{
-		"npx", "hardhat", "obscuro:deploy",
-		"--network", "layer2",
+	cmds := []string{"/bin/sh"}
+	var ports []int
+
+	// inspect stops operation until debugger is hooked on port 9229 if debug is enabled
+	if n.cfg.debugEnabled {
+		cmds = append(cmds, "--node-options=\"--inspect-brk=0.0.0.0:9229\"")
+		ports = append(ports, 9229)
 	}
 
+	cmds = append(cmds, "/home/obscuro/go-obscuro/entrypoint.sh", "obscuro:deploy", "--network", "layer2")
+
 	envs := map[string]string{
-		"MESSAGE_BUS_ADDRESS": n.cfg.messageBusAddress,
+		"L2_HOST":               n.cfg.l2Host,
+		"L2_PORT":               strconv.Itoa(n.cfg.l2Port),
+		"PREFUND_FAUCET_AMOUNT": n.cfg.faucetPrefundAmount,
+		"MGMT_CONTRACT_ADDRESS": n.cfg.managementContractAddress,
+		"MESSAGE_BUS_ADDRESS":   n.cfg.messageBusAddress,
 		"NETWORK_JSON": fmt.Sprintf(`
 {
         "layer1" : {
-            "url" : "http://%s:%d",
+            "url" : "%s",
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
@@ -48,12 +60,13 @@ func (n *ContractDeployer) Start() error {
             ]
         },
         "layer2" : {
-            "obscuroEncRpcUrl" : "ws://%s:%d",
-            "url": "http://127.0.0.1:3000",
+            "url": "http://127.0.0.1:3000/v1/",
+			"useGateway": true,
             "live" : false,
             "saveDeployments" : true,
             "companionNetworks" : { "layer1" : "layer1" },
             "deploy": [ 
+				"deployment_scripts/funding/layer1",
                 "deployment_scripts/messenger/layer1",
                 "deployment_scripts/messenger/layer2",
                 "deployment_scripts/bridge/",
@@ -61,16 +74,14 @@ func (n *ContractDeployer) Start() error {
                 "deployment_scripts/testnet/layer2/"
             ],
             "accounts": [ 
-                "%s",
-                "%s",
                 "%s"
             ]
         }
     }
-`, n.cfg.l1Host, n.cfg.l1Port, n.cfg.l1privateKey, n.cfg.l2Host, n.cfg.l2Port, n.cfg.l2PrivateKey, n.cfg.hocPKString, n.cfg.pocPKString),
+`, n.cfg.l1HTTPURL, n.cfg.l1privateKey, n.cfg.l2PrivateKey),
 	}
 
-	containerID, err := docker.StartNewContainer("hh-l2-deployer", n.cfg.dockerImage, cmds, nil, envs, nil, nil)
+	containerID, err := docker.StartNewContainer("hh-l2-deployer", n.cfg.dockerImage, cmds, ports, envs, nil, nil, false)
 	if err != nil {
 		return err
 	}
@@ -90,7 +101,7 @@ func (n *ContractDeployer) WaitForFinish() error {
 	defer cli.Close()
 
 	// make sure the container has finished execution
-	err = docker.WaitForContainerToFinish(n.containerID, 3*time.Minute)
+	err = docker.WaitForContainerToFinish(n.containerID, 15*time.Minute)
 	if err != nil {
 		n.PrintLogs(cli)
 		return err
@@ -102,7 +113,7 @@ func (n *ContractDeployer) WaitForFinish() error {
 }
 
 func (n *ContractDeployer) PrintLogs(cli *client.Client) {
-	logsOptions := types.ContainerLogsOptions{
+	logsOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
 	}

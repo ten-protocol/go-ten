@@ -4,43 +4,27 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
+	"sync/atomic"
+	"time"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ten-protocol/go-ten/go/common/rpc"
+	"github.com/ten-protocol/go-ten/go/common/subscription"
+
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/ethereum/go-ethereum/eth/filters"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/obscuronet/go-obscuro/go/common"
-	"github.com/obscuronet/go-obscuro/go/common/errutil"
-	"github.com/obscuronet/go-obscuro/go/common/log"
-	"github.com/obscuronet/go-obscuro/go/common/viewingkey"
-	"github.com/obscuronet/go-obscuro/go/responses"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/viewingkey"
+	"github.com/ten-protocol/go-ten/go/responses"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
-
-const (
-	// todo: this is a convenience for testnet testing and will eventually be retrieved from the L1
-	enclavePublicKeyHex = "034d3b7e63a8bcd532ee3d1d6ecad9d67fca7821981a044551f0f0cbec74d0bc5e"
-	emptyFilterCriteria = "[]" // This is the value that gets passed for an empty filter criteria.
-)
-
-// SensitiveMethods for which the RPC requests and responses should be encrypted
-var SensitiveMethods = []string{
-	Call,
-	GetBalance,
-	GetTransactionByHash,
-	GetTransactionCount,
-	GetTransactionReceipt,
-	SendRawTransaction,
-	EstimateGas,
-	GetLogs,
-}
 
 // EncRPCClient is a Client wrapper that implements Client but also has extra functionality for managing viewing key registration and decryption
 type EncRPCClient struct {
@@ -50,10 +34,9 @@ type EncRPCClient struct {
 	logger           gethlog.Logger
 }
 
-// NewEncRPCClient sets up a client with a viewing key for encrypted communication
-func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, logger gethlog.Logger) (*EncRPCClient, error) {
-	// todo: this is a convenience for testnet but needs to replaced by a parameter and/or retrieved from the target host
-	enclPubECDSA, err := crypto.DecompressPubkey(gethcommon.Hex2Bytes(enclavePublicKeyHex))
+// NewEncRPCClient wrapper over rpc clients with a viewing key for encrypted communication
+func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, enclavePublicKeyBytes []byte, logger gethlog.Logger) (*EncRPCClient, error) {
+	enclPubECDSA, err := crypto.DecompressPubkey(enclavePublicKeyBytes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decompress key for RPC client: %w", err)
 	}
@@ -69,6 +52,10 @@ func NewEncRPCClient(client Client, viewingKey *viewingkey.ViewingKey, logger ge
 	return encClient, nil
 }
 
+func (c *EncRPCClient) BackingClient() Client {
+	return c.obscuroClient
+}
+
 // Call handles JSON rpc requests without a context - see CallContext for details
 func (c *EncRPCClient) Call(result interface{}, method string, args ...interface{}) error {
 	return c.CallContext(nil, result, method, args...) //nolint:staticcheck
@@ -79,169 +66,62 @@ func (c *EncRPCClient) Call(result interface{}, method string, args ...interface
 // - result must be a pointer so that package json can unmarshal into it. You can also pass nil, in which case the result is ignored.
 // - callExec handles the delegated call, allows EncClient to use the same code for calling with or without a context
 func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, method string, args ...interface{}) error {
-	assertResultIsPointer(result)
-	if !IsSensitiveMethod(method) {
-		// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
-		return c.executeRPCCall(ctx, result, method, args...)
+	// borrowed from geth
+	if result != nil && reflect.TypeOf(result).Kind() != reflect.Ptr {
+		return fmt.Errorf("call result parameter must be pointer or nil interface: %v", result)
 	}
 
-	return c.executeSensitiveCall(ctx, result, method, args...)
+	if rpc.IsEncryptedMethod(method) {
+		err := c.executeEncryptedCall(ctx, result, method, args...)
+		// this should only be triggered during testing
+		if err != nil && errors.Is(err, common.FailedDecryptErr) {
+			c.logger.Warn("Reconnecting to new backend. Reading the enclave key.")
+			newKey, err := ReadEnclaveKey(c.obscuroClient)
+			if err != nil {
+				return fmt.Errorf("could not refresh enclave key: %w", err)
+			}
+			enclPubECDSA, err := crypto.DecompressPubkey(newKey)
+			if err != nil {
+				return fmt.Errorf("failed to decompress key for RPC client: %w", err)
+			}
+			c.enclavePublicKey = ecies.ImportECDSAPublic(enclPubECDSA)
+			// retry with the updated key
+			return c.executeEncryptedCall(ctx, result, method, args...)
+		}
+		return err
+	}
+
+	// for non-sensitive methods or when viewing keys are disabled we just delegate directly to the geth RPC client
+	return c.executeRPCCall(ctx, result, method, args...)
 }
 
-func (c *EncRPCClient) Subscribe(ctx context.Context, result interface{}, namespace string, ch interface{}, args ...interface{}) (*rpc.ClientSubscription, error) {
+func (c *EncRPCClient) Subscribe(ctx context.Context, namespace string, ch interface{}, args ...interface{}) (*gethrpc.ClientSubscription, error) {
 	if len(args) == 0 {
-		return nil, fmt.Errorf("subscription did not specify its type")
+		return nil, fmt.Errorf("missing subscription type")
 	}
 
-	subscriptionType := args[0]
-	if subscriptionType != SubscriptionTypeLogs {
-		return nil, fmt.Errorf("only subscriptions of type %s are supported", SubscriptionTypeLogs)
-	}
-
-	logSubscription, err := c.createAuthenticatedLogSubscription(args)
-	if err != nil {
-		return nil, err
-	}
-
-	// We use RLP instead of JSON marshaling here, as for some reason the filter criteria doesn't unmarshal correctly from JSON.
-	encodedLogSubscription, err := rlp.EncodeToBytes(logSubscription)
-	if err != nil {
-		return nil, err
-	}
-
-	encryptedParams, err := c.encryptParamBytes(encodedLogSubscription)
-	if err != nil {
-		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
-	}
-
-	logCh, ok := ch.(chan common.IDAndLog)
-	if !ok {
-		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
-	}
-	clientChannel := make(chan common.IDAndEncLog)
-	subscription, err := c.obscuroClient.Subscribe(ctx, nil, namespace, clientChannel, subscriptionType, encryptedParams)
-	if err != nil {
-		return nil, err
-	}
-
-	// We need to return the subscription ID, to allow unsubscribing. However, the client API has already converted
-	// from a subscription ID to a subscription object under the hood, so we can't retrieve the subscription ID.
-	// To hack around this, we always return the subscription ID as the first message on the newly-created subscription.
-	err = c.setResultToSubID(clientChannel, result, subscription)
-	if err != nil {
-		subscription.Unsubscribe()
-		return nil, err
-	}
-
-	go c.forwardLogs(clientChannel, logCh, subscription)
-
-	return subscription, nil
-}
-
-func (c *EncRPCClient) forwardLogs(clientChannel chan common.IDAndEncLog, logCh chan common.IDAndLog, subscription *rpc.ClientSubscription) {
-	for {
-		select {
-		case idAndEncLog := <-clientChannel:
-			jsonLogs, err := c.decryptResponse(idAndEncLog.EncLog)
-			if err != nil {
-				c.logger.Error("could not decrypt logs received from subscription.", log.ErrKey, err)
-				continue
-			}
-
-			var logs []*types.Log
-			err = json.Unmarshal(jsonLogs, &logs)
-			if err != nil {
-				c.logger.Error(fmt.Sprintf("could not unmarshal log from JSON. Received data: %s.", string(jsonLogs)), log.ErrKey, err)
-				continue
-			}
-
-			for _, decryptedLog := range logs {
-				idAndLog := common.IDAndLog{
-					SubID: idAndEncLog.SubID,
-					Log:   decryptedLog,
-				}
-				c.logger.Info(fmt.Sprintf("Received log. Subscription %v. Log: %v", idAndLog.SubID, idAndLog.Log))
-				logCh <- idAndLog
-			}
-
-		case err := <-subscription.Err():
-			if err != nil {
-				c.logger.Error("subscription closed", log.ErrKey, err)
-			} else {
-				c.logger.Trace("subscription closed")
-			}
-			return
-		}
+	switch args[0] {
+	case SubscriptionTypeLogs:
+		return c.logSubscription(ctx, namespace, ch, args...)
+	case SubscriptionTypeNewHeads:
+		return c.newHeadSubscription(ctx, namespace, ch, args...)
+	default:
+		return nil, fmt.Errorf("only subscriptions of type %s and %s are supported", SubscriptionTypeLogs, SubscriptionTypeNewHeads)
 	}
 }
 
-func (c *EncRPCClient) createAuthenticatedLogSubscription(args []interface{}) (*common.LogSubscription, error) {
-	logSubscription := &common.LogSubscription{
-		Account:          c.Account(),
-		Signature:        c.viewingKey.Signature,
-		PublicViewingKey: c.viewingKey.PublicKey,
-	}
-
-	// If there are less than two arguments, it means no filter criteria was passed.
-	if len(args) < 2 {
-		logSubscription.Filter = &filters.FilterCriteria{}
-		return logSubscription, nil
-	}
-
-	// TODO - Consider switching to using the common.FilterCriteriaJSON type. Should allow us to avoid RLP serialisation.
-	// We marshal the filter criteria from a map to JSON, then back from JSON into a FilterCriteria. This is
-	// because the filter criteria arrives as a map, and there is no way to convert it from a map directly into a
-	// FilterCriteria.
-	filterCriteriaJSON, err := json.Marshal(args[1])
-	if err != nil {
-		return nil, fmt.Errorf("could not marshal filter criteria to JSON. Cause: %w", err)
-	}
-
-	filterCriteria := filters.FilterCriteria{}
-	if string(filterCriteriaJSON) != emptyFilterCriteria {
-		err = filterCriteria.UnmarshalJSON(filterCriteriaJSON)
-		if err != nil {
-			return nil, fmt.Errorf("could not unmarshal filter criteria from the following JSON: `%s`. Cause: %w", string(filterCriteriaJSON), err)
-		}
-	}
-
-	// If we do not override a nil block hash to an empty one, RLP decoding will fail on the enclave side.
-	if filterCriteria.BlockHash == nil {
-		filterCriteria.BlockHash = &gethcommon.Hash{}
-	}
-
-	logSubscription.Filter = &filterCriteria
-	return logSubscription, nil
-}
-
-func (c *EncRPCClient) setResultToSubID(clientChannel chan common.IDAndEncLog, result interface{}, subscription *rpc.ClientSubscription) error {
-	select {
-	case idAndEncLog := <-clientChannel:
-		if idAndEncLog.SubID == "" || idAndEncLog.EncLog != nil {
-			return fmt.Errorf("expected an initial subscription response with the subscription ID only")
-		}
-		if result != nil {
-			err := c.setResult([]byte(idAndEncLog.SubID), result)
-			if err != nil {
-				return fmt.Errorf("failed to extract result from subscription response: %w", err)
-			}
-		}
-	case <-subscription.Err():
-		return fmt.Errorf("did not receive the initial subscription response with the subscription ID")
-	}
-	return nil
-}
-
-func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
+func (c *EncRPCClient) executeEncryptedCall(ctx context.Context, result interface{}, method string, args ...interface{}) error {
 	// encode the params into a json blob and encrypt them
-	encryptedParams, err := c.encryptArgs(args...)
+	encryptedParams, err := c.encryptArgs(method, args...)
 	if err != nil {
 		return fmt.Errorf("failed to encrypt args for %s call - %w", method, err)
 	}
 
-	// We setup the rawResult to receive an EnclaveResponse. All sensitive methods should return this
+	// we need to inform the TEN node that the call is a transaction because it needs to broadcast it
+	isTx := method == rpc.ERPCSendRawTransaction
+
 	var rawResult responses.EnclaveResponse
-	err = c.executeRPCCall(ctx, &rawResult, method, encryptedParams)
+	err = c.executeRPCCall(ctx, &rawResult, rpc.EncRPC, common.EncryptedRPCRequest{Req: encryptedParams, IsTx: isTx})
 	if err != nil {
 		return err
 	}
@@ -258,8 +138,8 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 	}
 
 	// If there is no encrypted response then this is equivalent to nil response
-	if rawResult.EncUserResponse == nil || len(rawResult.EncUserResponse) == 0 {
-		return ErrNilResponse
+	if len(rawResult.EncUserResponse) == 0 {
+		return nil
 	}
 
 	// We decrypt the user response from the enclave response.
@@ -274,26 +154,23 @@ func (c *EncRPCClient) executeSensitiveCall(ctx context.Context, result interfac
 
 	// If there is a user error that was decrypted we return it
 	if decodedError != nil {
-		// EstimateGas and Call methods return EVM Errors that are json objects
-		// and contain multiple keys that normally do not get serialized
-		if method == EstimateGas || method == Call {
-			var result errutil.EVMSerialisableError
-			err = json.Unmarshal([]byte(decodedError.Error()), &result)
-			if err != nil {
-				return err
-			}
-			// Return the evm user error.
-			return result
-		}
-
-		// Return the user error.
 		return decodedError
+	}
+
+	if decodedResult == nil {
+		return nil
 	}
 
 	// We get the bytes behind the raw json object.
 	// note that RawJson messages simply return the bytes
 	// and never error.
 	resultBytes, _ := decodedResult.MarshalJSON()
+
+	// if expected result type is bytes, we return the bytes
+	if _, ok := result.(*[]byte); ok {
+		*result.(*[]byte) = resultBytes
+		return nil
+	}
 
 	// We put the raw json in the passed result object.
 	// This works for structs, strings, integers and interface types.
@@ -320,18 +197,16 @@ func (c *EncRPCClient) Account() *gethcommon.Address {
 	return c.viewingKey.Account
 }
 
-func (c *EncRPCClient) encryptArgs(args ...interface{}) ([]byte, error) {
+func (c *EncRPCClient) encryptArgs(method string, args ...interface{}) ([]byte, error) {
 	if len(args) == 0 {
 		return nil, nil
 	}
-
-	argsWithVK := append([]interface{}{
-		[]interface{}{
-			hexutil.Encode(c.viewingKey.PublicKey),
-			hexutil.Encode(c.viewingKey.Signature),
-		},
-	},
-		args...)
+	vk := viewingkey.RPCSignedViewingKey{
+		PublicKey:               c.viewingKey.PublicKey,
+		SignatureWithAccountKey: c.viewingKey.SignatureWithAccountKey,
+		SignatureType:           c.viewingKey.SignatureType,
+	}
+	argsWithVK := &rpc.RequestWithVk{VK: &vk, Method: method, Params: args}
 
 	paramsJSON, err := json.Marshal(argsWithVK)
 	if err != nil {
@@ -357,49 +232,74 @@ func (c *EncRPCClient) decryptResponse(encryptedBytes []byte) ([]byte, error) {
 	return decryptedResult, nil
 }
 
-// setResult tries to cast/unmarshal data into the result pointer, based on its type
-func (c *EncRPCClient) setResult(data []byte, result interface{}) error {
-	switch result := result.(type) {
-	case *string:
-		*result = string(data)
-		return nil
-
-	case *interface{}:
-		err := json.Unmarshal(data, result)
-		if err != nil {
-			// if unmarshal failed with generic return we can try to send it back as a string
-			*result = string(data)
-		}
-		return nil
-
-	default:
-		// for any other type we attempt to json unmarshal it
-		return json.Unmarshal(data, result)
+// creates a subscription to the TEN node, but decrypts the messages from that channel and forwards them to the `ch`
+func (c *EncRPCClient) logSubscription(ctx context.Context, namespace string, ch interface{}, args ...any) (*gethrpc.ClientSubscription, error) {
+	outboundChannel, ok := ch.(chan types.Log)
+	if !ok {
+		return nil, fmt.Errorf("expected a channel of type `chan types.Log`, got %T", ch)
 	}
+
+	logSubscription, err := common.CreateAuthenticatedLogSubscriptionPayload(args, c.viewingKey)
+	if err != nil {
+		return nil, err
+	}
+
+	encodedLogSubscription, err := json.Marshal(logSubscription)
+	if err != nil {
+		return nil, err
+	}
+
+	encryptedParams, err := c.encryptParamBytes(encodedLogSubscription)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encrypt args for subscription in namespace %s - %w", namespace, err)
+	}
+
+	// the node sends encrypted logs
+	inboundChannel := make(chan []byte)
+	backendSub, err := c.obscuroClient.Subscribe(ctx, namespace, inboundChannel, SubscriptionTypeLogs, encryptedParams)
+	if err != nil {
+		return nil, err
+	}
+
+	backendDisconnected := &atomic.Bool{}
+	go subscription.HandleUnsubscribeErrChan([]<-chan error{backendSub.Err()}, func() {
+		backendDisconnected.Store(true)
+	})
+	go subscription.ForwardFromChannels(
+		[]chan []byte{inboundChannel},
+		func(encLog []byte) error {
+			return c.onMessage(encLog, outboundChannel)
+		},
+		nil,
+		backendDisconnected,
+		nil,
+		12*time.Hour,
+		c.logger,
+	)
+
+	return backendSub, nil
 }
 
-// IsSensitiveMethod indicates whether the RPC method's requests and responses should be encrypted.
-func IsSensitiveMethod(method string) bool {
-	for _, m := range SensitiveMethods {
-		if m == method {
-			return true
-		}
+func (c *EncRPCClient) onMessage(encLog []byte, outboundChannel chan types.Log) error {
+	jsonLogs, err := c.decryptResponse(encLog)
+	if err != nil {
+		c.logger.Error("could not decrypt logs received from subscription.", log.ErrKey, err)
+		return err
 	}
-	return false
+
+	var logs []*types.Log
+	err = json.Unmarshal(jsonLogs, &logs)
+	if err != nil {
+		c.logger.Error(fmt.Sprintf("could not unmarshal log from JSON. Received data: %s.", string(jsonLogs)), log.ErrKey, err)
+		return err
+	}
+
+	for _, decryptedLog := range logs {
+		outboundChannel <- *decryptedLog
+	}
+	return nil
 }
 
-func assertResultIsPointer(result interface{}) {
-	// result MUST be an initialized pointer else call won't be able to return it
-	if result != nil {
-		// todo: replace these panics with an error for invalid usage (same behaviour as json.Unmarshal())
-		if reflect.ValueOf(result).Kind() != reflect.Ptr {
-			// we panic if result is not a pointer, this is a coding mistake and we want to fail fast during development
-			panic("result MUST be a pointer else Call cannot populate it")
-		}
-		if reflect.ValueOf(result).IsNil() {
-			// we panic if result is a nil pointer, cannot unmarshal json to it. Pointer must be initialized.
-			// if you see this then the calling code probably used: `var resObj *ResType` instead of: `var resObj ResType`
-			panic("result pointer must be initialized else Call cannot populate it")
-		}
-	}
+func (c *EncRPCClient) newHeadSubscription(ctx context.Context, namespace string, ch interface{}, args ...any) (*gethrpc.ClientSubscription, error) {
+	return nil, fmt.Errorf("not implemented")
 }

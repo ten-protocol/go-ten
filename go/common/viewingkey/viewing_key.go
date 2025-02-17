@@ -5,64 +5,87 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/accounts"
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
-	"github.com/obscuronet/go-obscuro/go/wallet"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
-// SignedMsgPrefix is the prefix added when signing the viewing key in MetaMask using the personal_sign
-// API. Why is this needed? MetaMask has a security feature whereby if you ask it to sign something that looks like
-// a transaction using the personal_sign API, it modifies the data being signed. The goal is to prevent hackers
-// from asking a visitor to their website to personal_sign something that is actually a malicious transaction (e.g.
-// theft of funds). By adding a prefix, the viewing key bytes no longer looks like a transaction hash, and thus get
-// signed as-is.
-const SignedMsgPrefix = "vk"
-
-// ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave
+// ViewingKey encapsulates the signed viewing key for an account for use in encrypted communication with an enclave.
+// It is the client-side perspective of the viewing key used for decrypting incoming traffic.
 type ViewingKey struct {
-	Account    *gethcommon.Address // Account address that this Viewing Key is bound to - Users Pubkey address
-	PrivateKey *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave
-	PublicKey  []byte              // ViewingKey public key in decrypt data from the enclave
-	Signature  []byte              // ViewingKey public key signed by the Accounts Private key - Allows to retrieve the Account address
+	Account                 *gethcommon.Address // Account address that this Viewing Key is bound to - Users Pubkey address
+	PrivateKey              *ecies.PrivateKey   // ViewingKey private key to encrypt data to the enclave
+	PublicKey               []byte              // ViewingKey public key in decrypt data from the enclave
+	SignatureWithAccountKey []byte              // ViewingKey public key signed by the Accounts Private key - Allows to retrieve the Account address
+	SignatureType           SignatureType       // Type of signature used to sign the public key
+}
+
+// RPCSignedViewingKey - used for transporting a minimalist viewing key via
+// every RPC request to a sensitive method, including Log subscriptions.
+// only the public key and the signature are required
+// the account address is sent as well to aid validation
+type RPCSignedViewingKey struct {
+	PublicKey               []byte
+	SignatureWithAccountKey []byte
+	SignatureType           SignatureType
+}
+
+const (
+	pubKeyLen = 33
+	sigLen    = 65
+)
+
+func (vk RPCSignedViewingKey) Validate() error {
+	if len(vk.PublicKey) != pubKeyLen {
+		return fmt.Errorf("invalid viewing key")
+	}
+	if len(vk.SignatureWithAccountKey) != sigLen {
+		return fmt.Errorf("invalid viewing key signature")
+	}
+	return nil
 }
 
 // GenerateViewingKeyForWallet takes an account wallet, generates a viewing key and signs the key with the acc's private key
-// uses the same method of signature handling as Metamask/geth
 func GenerateViewingKeyForWallet(wal wallet.Wallet) (*ViewingKey, error) {
-	// generate an ECDSA key pair to encrypt sensitive communications with the obscuro enclave
-	vk, err := crypto.GenerateKey()
+	chainID := wal.ChainID().Int64()
+	messageType := PersonalSign
+
+	// simulate what the gateway would do to generate the viewing key
+	viewingKeyPrivate, err := crypto.GenerateKey()
+	viewingPrivateKeyECIES := ecies.ImportECDSA(viewingKeyPrivate)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate viewing key for RPC client: %w", err)
+		return nil, err
 	}
-
-	// get key in ECIES format
-	viewingPrivateKeyECIES := ecies.ImportECDSA(vk)
-
-	// encode public key as bytes
-	viewingPubKeyBytes := crypto.CompressPubkey(&vk.PublicKey)
-
-	// sign public key bytes with the wallet's private key
-	signature, err := mmSignViewingKey(viewingPubKeyBytes, wal.PrivateKey())
+	encryptionToken := CalculateUserID(crypto.CompressPubkey(viewingPrivateKeyECIES.PublicKey.ExportECDSA()))
+	messageToSign, err := GenerateMessage(encryptionToken, chainID, PersonalSignVersion, messageType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate message for viewing key: %w", err)
+	}
+	msgHash, err := GetMessageHash(messageToSign, messageType)
 	if err != nil {
 		return nil, err
 	}
 
+	signature, err := mmSignViewingKey(msgHash, wal.PrivateKey())
+	if err != nil {
+		return nil, err
+	}
+	vkPubKeyBytes := crypto.CompressPubkey(ecies.ImportECDSAPublic(&viewingKeyPrivate.PublicKey).ExportECDSA())
 	accAddress := wal.Address()
 	return &ViewingKey{
-		Account:    &accAddress,
-		PrivateKey: viewingPrivateKeyECIES,
-		PublicKey:  viewingPubKeyBytes,
-		Signature:  signature,
+		Account:                 &accAddress,
+		PrivateKey:              viewingPrivateKeyECIES,
+		PublicKey:               vkPubKeyBytes,
+		SignatureWithAccountKey: signature,
+		SignatureType:           PersonalSign,
 	}, nil
 }
 
 // mmSignViewingKey takes a public key bytes as hex and the private key for a wallet, it simulates the back-and-forth to
 // MetaMask and returns the signature bytes to register with the enclave
-func mmSignViewingKey(viewingPubKeyBytes []byte, signerKey *ecdsa.PrivateKey) ([]byte, error) {
-	signature, err := Sign(signerKey, viewingPubKeyBytes)
+func mmSignViewingKey(messageHash []byte, signerKey *ecdsa.PrivateKey) ([]byte, error) {
+	signature, err := crypto.Sign(messageHash, signerKey)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign viewing key: %w", err)
 	}
@@ -83,20 +106,4 @@ func mmSignViewingKey(viewingPubKeyBytes []byte, signerKey *ecdsa.PrivateKey) ([
 	outputSig[64] -= 27
 
 	return outputSig, nil
-}
-
-// Sign takes a users Private key and signs the public viewingKey hex
-func Sign(userPrivKey *ecdsa.PrivateKey, vkPubKey []byte) ([]byte, error) {
-	msgToSign := GenerateSignMessage(vkPubKey)
-	signature, err := crypto.Sign(accounts.TextHash([]byte(msgToSign)), userPrivKey)
-	if err != nil {
-		return nil, fmt.Errorf("unable to sign messages - %w", err)
-	}
-	return signature, nil
-}
-
-// GenerateSignMessage creates the message to be signed
-// vkPubKey is expected to be a []byte("0x....") to create the signing message
-func GenerateSignMessage(vkPubKey []byte) string {
-	return SignedMsgPrefix + hex.EncodeToString(vkPubKey)
 }

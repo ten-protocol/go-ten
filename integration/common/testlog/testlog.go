@@ -2,10 +2,11 @@ package testlog
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"time"
 
-	"github.com/obscuronet/go-obscuro/go/common/log"
+	"github.com/ten-protocol/go-ten/lib/gethfork/debug"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
@@ -28,7 +29,7 @@ type Cfg struct {
 	LogDir      string // directory for the log file
 	TestType    string // type of test (comes before timestamp in filename so sorted file list will block these together)
 	TestSubtype string // test subtype (comes after timestamp in filename so sorted file list will show latest of different subtypes together)
-	LogLevel    gethlog.Lvl
+	LogLevel    slog.Level
 }
 
 // Setup will direct logs to a timestamped log file with a standard naming pattern, useful for simulations etc.
@@ -44,8 +45,21 @@ func Setup(cfg *Cfg) *os.File {
 		panic(err)
 	}
 	logFile = f.Name()
-	// hardcode geth log level to error only
-	gethlog.Root().SetHandler(gethlog.LvlFilterHandler(cfg.LogLevel, gethlog.StreamHandler(f, gethlog.TerminalFormat(false))))
-	testlog = gethlog.Root().New(log.CmpKey, log.TestLogCmp)
+
+	err = debug.Setup("terminal", logFile, false, 10000000, 0, 0, false, false, cfg.LogLevel, "")
+	if err != nil {
+		panic(err)
+	}
+
+	testlog = gethlog.New()
 	return f
+}
+
+// SetupSysOut will direct the test logs to stdout
+func SetupSysOut() {
+	err := debug.Setup("terminal", "", false, 10000000, 0, 0, false, false, slog.LevelDebug, "")
+	if err != nil {
+		panic(err)
+	}
+	testlog = gethlog.New()
 }

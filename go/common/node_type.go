@@ -30,6 +30,15 @@ func (n NodeType) String() string {
 	}
 }
 
+func (n *NodeType) UnmarshalText(text []byte) error {
+	nodeType, err := ToNodeType(string(text))
+	if err != nil {
+		return err
+	}
+	*n = nodeType
+	return nil
+}
+
 func ToNodeType(s string) (NodeType, error) {
 	switch s {
 	case sequencer:

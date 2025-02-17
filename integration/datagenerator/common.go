@@ -9,7 +9,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/obscuronet/go-obscuro/go/common"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
@@ -49,7 +49,7 @@ func CreateL2TxData() *types.LegacyTx {
 	nonce, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
 	encodedTxData := make([]byte, 0)
 	return &types.LegacyTx{
-		Nonce: nonce.Uint64(), Value: big.NewInt(1), Gas: 1, GasPrice: big.NewInt(1), Data: encodedTxData,
+		Nonce: nonce.Uint64(), Value: big.NewInt(1), Gas: 1, GasPrice: gethcommon.Big1, Data: encodedTxData,
 	}
 }
 

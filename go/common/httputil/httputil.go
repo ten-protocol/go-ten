@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/valyala/fasthttp"
 )
 
 const (
@@ -64,7 +66,7 @@ func ExecuteHTTPReq(client *http.Client, req *http.Request) ([]byte, error) {
 	return body, nil
 }
 
-// EnableCORS Allows Obscuroscan and WalletExtension APIs to serve other web apps via CORS.
+// EnableCORS Allows Tenscan and WalletExtension APIs to serve other web apps via CORS.
 func EnableCORS(resp http.ResponseWriter, req *http.Request) bool {
 	resp.Header().Set(CorsAllowOrigin, OriginAll)
 	if (*req).Method == ReqOptions {
@@ -74,4 +76,24 @@ func EnableCORS(resp http.ResponseWriter, req *http.Request) bool {
 		return true
 	}
 	return false
+}
+
+// PostDataJSON sends a JSON payload to the given URL and returns the status, response body, and any error encountered.
+func PostDataJSON(url string, data []byte) (int, []byte, error) {
+	req := fasthttp.AcquireRequest()
+	defer fasthttp.ReleaseRequest(req)
+
+	req.SetRequestURI(url)
+	req.Header.SetMethod("POST")
+	req.Header.SetContentType("application/json")
+	req.SetBody(data)
+
+	resp := fasthttp.AcquireResponse()
+	defer fasthttp.ReleaseResponse(resp)
+
+	if err := fasthttp.Do(req, resp); err != nil {
+		return 0, nil, fmt.Errorf("error while sending request: %w", err)
+	}
+
+	return resp.StatusCode(), resp.Body(), nil
 }

@@ -3,10 +3,12 @@ package params
 import (
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/host/l1"
+
 	"github.com/ethereum/go-ethereum/common"
 
-	"github.com/obscuronet/go-obscuro/go/ethadapter/erc20contractlib"
-	"github.com/obscuronet/go-obscuro/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
+	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
 // SimParams are the parameters for setting up the simulation.
@@ -19,19 +21,16 @@ type SimParams struct {
 
 	SimulationTime time.Duration // how long the simulations should run for
 
-	// EfficiencyThresholds represents an acceptable "dead blocks" percentage for this simulation.
-	// dead blocks - Blocks that are produced and gossiped, but don't make it into the canonical chain.
-	// We test the results against this threshold to catch eventual protocol errors.
-	L1EfficiencyThreshold     float64
-	L2EfficiencyThreshold     float64 // number of dead obscuro blocks
-	L2ToL1EfficiencyThreshold float64 // number of ethereum blocks that don't include an obscuro node
+	L1EfficiencyThreshold float64
+	L1BeaconPort          int
 
 	// MgmtContractLib allows parsing MgmtContract txs to and from the eth txs
 	MgmtContractLib mgmtcontractlib.MgmtContractLib
 	// ERC20ContractLib allows parsing ERC20Contract txs to and from the eth txs
 	ERC20ContractLib erc20contractlib.ERC20ContractLib
 
-	L1SetupData *L1SetupData
+	BlobResolver l1.BlobResolver
+	L1TenData    *L1TenData
 
 	// Contains all the wallets required by the simulation
 	Wallets *SimWallets
@@ -41,18 +40,20 @@ type SimParams struct {
 
 	ReceiptTimeout time.Duration // How long to wait for transactions to be confirmed.
 
-	StoppingDelay time.Duration // How long to wait between injection and verification
+	StoppingDelay              time.Duration // How long to wait between injection and verification
+	NodeWithInboundP2PDisabled int
+	WithPrefunding             bool
 }
 
-type L1SetupData struct {
-	// ObscuroStartBlock is the L1 block hash where the Obscuro network activity begins (e.g. mgmt contract deployment)
-	ObscuroStartBlock common.Hash
+type L1TenData struct {
+	// TenStartBlock is the L1 block hash where the TEN network activity begins (e.g. mgmt contract deployment)
+	TenStartBlock common.Hash
 	// MgmtContractAddr defines the management contract address
 	MgmtContractAddress common.Address
-	// ObxErc20Address - the address of the "OBX" ERC20
+	// ObxErc20Address - the address of the "TEN" ERC20
 	ObxErc20Address common.Address
 	// EthErc20Address - the address of the "ETH" ERC20
 	EthErc20Address common.Address
 	// MessageBusAddr - the address of the L1 message bus.
-	MessageBusAddr *common.Address
+	MessageBusAddr common.Address
 }

@@ -1,0 +1,13 @@
+{
+  "name": "@repo/shared",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {},
+  "dependencies": {
+    "ramda": "^0.29.1"
+  },
+  "devDependencies": {
+    "@types/ramda": "^0.29.10",
+    "typescript": "5.4.3"
+  }
+}
