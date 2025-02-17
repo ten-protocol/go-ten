@@ -28,9 +28,9 @@ Ethereum has developed to accommodate several [transaction types](https://docs.i
 1) Regular transactions - they work based on a gas auction.
 2) Access list transactions - same as previous ones, but they also announce what storage access they are supposed to perform when executed.
 3) EIP-1559 - the new transactions that burn the gas fee and work with tips in order to achieve a fair system.
+4) Blob transactions - we do not support this. 
 
-Usually layer 2's support EIP-1559 so there is a pending question of what we would need to support. Normally all support EIP-1559, but not all support gas auction (or mention if they do). As most wallets have moved over to EIP-1559 it is preferable to start with support for it and add the support for the gas auction later on after everything else is finished.
-Note that Binance for example still uses Type 1 transactions and has not migrated to EIP-1559. 
+We support all except blob transactions. Blob transactions have a different purpose and it is not just about gas, thus the decision to not support them at this time.
 
 ## Requirements
 
@@ -48,23 +48,24 @@ Metamask can disassemble the cost components for layer 1 and layer 2 for specifi
 
 ## Design for Gas Deposit
 
-Given that Ethereum as a currency operates on the layer 1 protocol, it needs to be bridged to Obscuro for usage. This transition mechanism will be facilitated by the standard Obscuro bridge. The deposited value will produce a cross-chain message indicating the Ethereum recipient through the bridge smart contract.
+Given that Ethereum as a currency operates on the layer 1 protocol, it needs to be bridged to Obscuro for usage. This transition mechanism will be facilitated by the standard Obscuro bridge. The deposited value will produce a cross-chain message indicating the Ethereum recipient through the bridge smart contract. Here is the event emitted on the message bus: 
 
-```EthereumDeposited(address receiver, uint256 amount)```
+```ValueTransfer(address receiver, uint256 amount, ...)```
 
-The enclave will automatically pick up this message, along with other cross-chain messages, but it will be treated specially. Upon detection, the enclave will increase the balance of the receiver account by the amount specified in the message. This automatic relaying is needed in order to avoid the chicken and egg problem one would have initially where no relayer has any gas to relay the gas deposit messages. It would also ensure relayers who run out of gas can easily recharge without relying on other relayers if we were to use a different bootstrap mechanism. Note that those deposits will not call the fallback function of the address if it is a smart contract and any deposits to such contracts would later on need a message relayed to verify the message as they would normally.
+The enclave will automatically pick up this message, along with other cross-chain messages, but it will be treated specially. Upon detection, the enclave will increase the balance of the receiver account by the amount specified in the message. This automatic relaying is needed in order to avoid the chicken and egg problem one would have initially where no relayer has any gas to relay the gas deposit messages. It would also ensure relayers who run out of gas can easily recharge without relying on other relayers if we were to use a different bootstrap mechanism. Note that those deposits will not call the fallback function of the address if it is a smart contract and any deposits to such contracts would later on need a message relayed to verify the message as they would normally. Note that any breach can go through the message bus and move native value.
 
 ## Gas Estimation
 
-When an RPC call for gas estimation is made to Obscuro, the returned estimate should include the expected layer 1 calldata cost alongside the usual execution-based gas estimation. This can be achieved by taking an estimation for layer 1 minFee per gas, determining the calldata cost of the transaction, and adding this to the standard gas estimate.
+When an RPC call for gas estimation is made to Obscuro, the returned estimate should include the expected layer 1 blob cost for transaction size alongside the usual execution-based gas estimation. This can be achieved by taking an estimation for layer 1 blob market, determining the blob cost of the transaction, and adding this to the standard gas estimate.
 
-`Gas estimate = L1_gas_fee * calldata_gas + estimated_l2_gas`
+`Gas estimate = L1_blob_fee * txSize + estimated_l2_gas`
 
 ## Gas Expenditure
 
-Before executing a transaction at Obscuro, we must automatically deduct the layer 1 costs for the transaction from the sender's balance. This can be done directly through the stateDB before processing. Ideally, the remaining balance will be refunded, simulating a scenario where the gas limit has been spent. However, potential overruns of execution costs could result in transactions exceeding their set gas limit.
+ // Start of Selection
+Before executing a transaction at Obscuro, we first automatically deduct the layer 1 costs from the sender's balance through the stateDB. After this deduction, the transaction's gas limit is adjusted downward to account for the layer 1 fees, based on the estimate from the `eth_estimateGas` call.
 
-The best approach would be to both decrease the balance and reduce the transaction's gas limit, assuming that layer 1 prices will be factored into this gas limit, given that the limit is set based on the eth_estimateGas call.
+If the transaction executes successfully and a receipt is generated, the layer 1 costs remain deducted. However, if the transaction fails without producing a receipt, the deducted layer 1 costs are refunded to the sender. This mechanism ensures that only successfully processed transactions incur layer 1 costs, while failed transactions do not charge the sender.
 
 
 ## Monitoring and Adjusting the L1 Fee
@@ -82,8 +83,12 @@ This leaves us with two options:
 
 Upon the production of a batch, all transactions enclosed within it would have made payments for gas. The aggregate sum, encompassing both layer 1 and layer 2 costs, will subsequently be debited to the address denoted as coinbase within the batch. It would be more practical for this address to be configurable. The reason being that the sequencer's address is derived from a key that must be safeguarded, and implementing any logic for fund transfer from it would necessitate code development.
 
-This entire logic can happen in the `evm_facade.go`.
+This entire logic happens in the `evm_facade.go`.
 
 ## Batch gas limit
 
 In order to prevent denial of service attacks we need to have a batch gas limit. This would lend itself well to Obscuro being EIP-1559 complaint making us able to dynamically price L2 fees based on congestion. For the initial version of the gas mechanics we can use a fixed L2 gas price and later on migrate to EIP-1559 compliancy. Taking cue from Optimism's approach to modifying the parameters, we should divide the parameters for Obscuro proportionally to L1 block creation time vs Obscuro L2 batch creation time. This should yield approximately identical behaviour.
+
+## L2 Fee Calculation
+
+The L2 fee is going to be fixed for phase 1. Later on it will move on to be dynamic.
