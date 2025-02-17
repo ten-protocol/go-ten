@@ -5,13 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/lib/gethfork/log"
 	"io"
 	"math/big"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ten-protocol/go-ten/lib/gethfork/log"
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
