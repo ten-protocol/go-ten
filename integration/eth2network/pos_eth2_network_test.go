@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/lib/gethfork/log"
 	"io"
 	"math/big"
 	"net/http"
@@ -34,6 +35,12 @@ func TestEnsureBinariesAreAvail(t *testing.T) {
 }
 
 func TestStartPosEth2Network(t *testing.T) {
+	testlog.Setup(&testlog.Cfg{
+		LogDir:      "../.build/noderunner/",
+		TestType:    "TestStartPosEth2Network",
+		TestSubtype: "test",
+		LogLevel:    log.LvlInfo,
+	})
 	binDir, err := EnsureBinariesExist()
 	assert.Nil(t, err)
 
