@@ -2,7 +2,7 @@
 ---
 # Ten Testnet Change Log
 
-# December 2024-12-12 (v1.0.0)
+# December 2025-02-14 (v1.0.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
     * `f501d11e` Update readme.md (#2302)

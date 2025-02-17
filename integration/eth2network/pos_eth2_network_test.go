@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -129,7 +131,7 @@ func txsAreMinted(t *testing.T, startPort int, w wallet.Wallet) {
 	estimatedTx, err := ethadapter.SetTxGasPrice(context.Background(), ethClient, &types.LegacyTx{
 		To:    &toAddr,
 		Value: big.NewInt(100),
-	}, w.Address(), w.GetNonceAndIncrement(), 0)
+	}, w.Address(), w.GetNonceAndIncrement(), 0, testlog.Logger())
 	assert.Nil(t, err)
 
 	signedTx, err := w.SignTransaction(estimatedTx)
