@@ -153,9 +153,9 @@ type RollupProducer interface {
 }
 
 type RollupConsumer interface {
-	// ProcessRollups - extracts the blob hashes from the block's transactions and builds the blob hashes from the blobs,
+	// ProcessRollup - extracts the blob hashes from the block's transactions and builds the blob hashes from the blobs,
 	// compares this with the hashes seen in the block.
-	ProcessRollups(ctx context.Context, rollups []*common.ExtRollup) ([]common.ExtRollupMetadata, error)
-
-	ProcessRollupData(ctx context.Context, data *common.ProcessedL1Data) ([]common.ExtRollupMetadata, error)
+	ProcessRollup(ctx context.Context, rollup *common.ExtRollup) (*common.ExtRollupMetadata, error)
+	// VerifyRollupData - TODO
+	VerifyRollupData(rollupTx *common.L1TxData) (*common.ExtRollup, error)
 }
