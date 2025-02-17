@@ -6,6 +6,8 @@ import (
 	"math"
 	"math/big"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
@@ -20,7 +22,7 @@ const (
 
 // SetTxGasPrice takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
-func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int) (types.TxData, error) {
+func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int, logger gethlog.Logger) (types.TxData, error) {
 	rawTx := types.NewTx(txData)
 	to := rawTx.To()
 	value := rawTx.Value()
@@ -60,6 +62,8 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 
 	baseFee := head.BaseFee
 	gasFeeCap := big.NewInt(0).Add(baseFee, gasTipCap)
+
+	logger.Info("Sending tx with gas price", "retry", retryNumber, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap, "estimatedGas", estimatedGas, "to", to)
 
 	if blobTx, ok := txData.(*types.BlobTx); ok {
 		var blobBaseFee *big.Int
