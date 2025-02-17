@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/lib/gethfork/log"
 	"io"
 	"math/big"
 	"net/http"
