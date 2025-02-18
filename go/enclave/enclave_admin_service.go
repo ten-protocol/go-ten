@@ -555,8 +555,10 @@ func (e *enclaveAdminService) processRollups(ctx context.Context, processed *com
 			// critical error as the sequencer has signed this rollup
 			return nil, fmt.Errorf("failed to process rollup: %w", errutil.ErrCriticalRollupProcessing)
 		}
-		// rollupMetadata can never be nil here so derefencing _should_ be safe
-		rollupMetadataList = append(rollupMetadataList, *rollupMetadata)
+
+		if rollupMetadata != nil {
+			rollupMetadataList = append(rollupMetadataList, *rollupMetadata)
+		}
 		txsSeen[rHash] = true
 	}
 	if len(rollupMetadataList) == 0 {
