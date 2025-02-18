@@ -57,6 +57,7 @@ func (rc *rollupConsumerImpl) VerifyRollupData(rollupTx *common.L1TxData) (*comm
 	if err != nil {
 		return nil, err
 	}
+	
 	err = rc.verifySequencerSignature(rollup, *compositeHash, signatures)
 	if err != nil {
 		return nil, fmt.Errorf("invalid sequencer signature: %w", err)
