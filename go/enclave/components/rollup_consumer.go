@@ -53,38 +53,20 @@ func NewRollupConsumer(
 func (rc *rollupConsumerImpl) VerifyRollupData(rollupTx *common.L1TxData) (*common.ExtRollup, error) {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer verified rollup data", &core.RelaxedThresholds)
 	// extract blob hashes, signatures and recreate rollup
-	rollup, hashes, signatures, err := rc.extractRollupAndHash(rollupTx)
+	rollup, compositeHash, blobHashes, signatures, err := rc.extractRollupAndHash(rollupTx)
 	if err != nil {
 		return nil, err
 	}
-	err = rc.verifySequencerSignature(rollup, hashes, signatures)
+	err = rc.verifySequencerSignature(rollup, *compositeHash, signatures)
 	if err != nil {
 		return nil, fmt.Errorf("invalid sequencer signature: %w", err)
 	}
 
-	err = rc.verifyBlobHashes(rollupTx, hashes)
+	err = rc.verifyBlobHashes(rollupTx, blobHashes)
 	if err != nil {
 		// critical error as the sequencer has signed this rollup
 		return nil, fmt.Errorf("rollup hash verification failed: %w", errutil.ErrCriticalRollupProcessing)
 	}
-	//rollups = append(rollups, r)
-	//txsSeen[rollupTx.Transaction.Hash()] = true
-
-	//if len(rollups) == 0 {
-	//	rc.logger.Warn("No rollups found in block when rollupTxs present", log.BlockHashKey, rollupTx.Receipt.BlockHash)
-	//	return nil, nil
-	//}
-	//
-	//if len(rollups) > 1 {
-	//	// this is allowed as long as they come from unique transactions
-	//	rc.logger.Trace(fmt.Sprintf("Multiple rollups %d in block %s", len(rollups), rollupTx.Receipt.BlockHash))
-	//}
-
-	//metadata, err := rc.ProcessRollup(ctx, r)
-	//if err != nil {
-	//	// critical error as the sequencer has signed this rollup
-	//	return nil, fmt.Errorf("failed to process rollup: %w", errutil.ErrCriticalRollupProcessing)
-	//}
 
 	return rollup, nil
 }
@@ -150,17 +132,15 @@ func (rc *rollupConsumerImpl) ExportAndVerifyCrossChainData(ctx context.Context,
 	return serializedTree, nil
 }
 
-// verifySequencerSignature - verifies that a rollup transaction was properly signed by the sequencer.
-//
+// extractRollupAndHash - extracts the data required to verify and process the rollup transaction.
 // 1. Extracts blobs and signatures from the transaction
 // 2. Computes blob hashes using KZG commitments
 // 3. Reconstructs the rollup from blob data
-// 4. Verifies the sequencer signature using a composite hash of the rollup header and blob hash
 //
 // Note: All errors are considered non-critical as they occur prior to signature verification
 // and could be due to malformed or invalid input data. We don't want to prevent blocks from being processed if this is
 // the case.
-func (rc *rollupConsumerImpl) extractRollupAndHash(rollupTx *common.L1TxData) (*common.ExtRollup, *gethcommon.Hash, [][]byte, error) {
+func (rc *rollupConsumerImpl) extractRollupAndHash(rollupTx *common.L1TxData) (*common.ExtRollup, *gethcommon.Hash, []gethcommon.Hash, [][]byte, error) {
 	blobs := make([]*kzg4844.Blob, 0)
 	signatures := make([][]byte, 0)
 	for _, blobWithSig := range rollupTx.BlobsWithSignature {
@@ -171,22 +151,22 @@ func (rc *rollupConsumerImpl) extractRollupAndHash(rollupTx *common.L1TxData) (*
 	_, blobHashes, err := ethadapter.MakeSidecar(blobs, rc.MgmtContractLib.BlobHasher())
 	if err != nil {
 		// non-critical as signature not verified - could be bad data
-		return nil, nil, nil, fmt.Errorf("could not get blob hashes from blobs. Cause: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("could not get blob hashes from blobs. Cause: %w", err)
 	}
 
 	rollup, err := ethadapter.ReconstructRollup(blobs)
 	if err != nil {
 		// non-critical as signature not verified - could be bad data
-		return nil, nil, nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
+		return nil, nil, nil, nil, fmt.Errorf("could not recreate rollup from blobs. Cause: %w", err)
 	}
 
 	// TODO would there ever be more than one blob hash and signature?
 	compositeHash := common.ComputeCompositeHash(rollup.Header, blobHashes[0])
-	return rollup, &compositeHash, signatures, nil
+	return rollup, &compositeHash, blobHashes, signatures, nil
 }
 
 // verifySequencerSignature - verifies the sequencer signature using a composite hash of the rollup header and blob hash
-func (rc *rollupConsumerImpl) verifySequencerSignature(rollup *common.ExtRollup, compositeHash *gethcommon.Hash, signatures [][]byte) error {
+func (rc *rollupConsumerImpl) verifySequencerSignature(rollup *common.ExtRollup, compositeHash gethcommon.Hash, signatures [][]byte) error {
 	if err := rc.sigValidator.CheckSequencerSignature(compositeHash, signatures[0]); err != nil {
 		// non-critical as signature not verified
 		return fmt.Errorf("rollup signature was invalid. Cause: %w", err)
