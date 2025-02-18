@@ -71,7 +71,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 		}
 	}
 	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, sharedSecretService, logger)
-	sigVerifier, err := getSignatureValidator(config.UseInMemoryDB, storage)
+	sigVerifier, err := getSignatureValidator(config.UseInMemoryDB, storage, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
 	}
@@ -623,9 +623,9 @@ func exportCrossChainData(ctx context.Context, storage storage.Storage, fromSeqN
 	return bundle, nil
 }
 
-func getSignatureValidator(useInMemDB bool, storage storage.Storage) (components.SequencerSignatureVerifier, error) {
+func getSignatureValidator(useInMemDB bool, storage storage.Storage, logger gethlog.Logger) (components.SequencerSignatureVerifier, error) {
 	if useInMemDB {
 		return ethereummock.NewMockSignatureValidator(), nil
 	}
-	return components.NewSignatureValidator(storage)
+	return components.NewSignatureValidator(storage, logger)
 }
