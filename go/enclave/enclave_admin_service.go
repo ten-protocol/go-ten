@@ -513,41 +513,12 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		return nil, nil, err
 	}
 
-	var rollupMetadataList []*common.ExtRollupMetadata
+	var rollupMetadataList []common.ExtRollupMetadata
 	if processed.HasEvents(common.RollupTx) {
-		rollupTxs := processed.GetEvents(common.RollupTx)
-		txsSeen := make(map[gethcommon.Hash]bool)
-		for _, rollupTx := range rollupTxs {
-			extRollup, err := e.rollupConsumer.VerifyRollupData(rollupTx)
-			if err != nil {
-				e.logger.Error("Error processing rollups from L1 data", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
-				// check critical error is passed up properly
-				return nil, nil, err
-			}
-			rHash := rollupTx.Transaction.Hash()
-			// prevent the case where someone pushes a blob to the same slot. multiple rollups can be found in a block,
-			// but they must come from unique transactions
-			if txsSeen[rHash] {
-				return nil, nil, fmt.Errorf("multiple rollups from same transaction: %s. Err: %w", rHash, errutil.ErrCriticalRollupProcessing)
-			}
-
-			rollupMetadata, err := e.rollupConsumer.ProcessRollup(ctx, extRollup)
-			if err != nil {
-				// critical error as the sequencer has signed this rollup
-				return nil, nil, fmt.Errorf("failed to process rollup: %w", errutil.ErrCriticalRollupProcessing)
-			}
-			rollupMetadataList = append(rollupMetadataList, rollupMetadata)
-			txsSeen[rHash] = true
+		rollupMetadataList, err = e.processRollups(ctx, processed, rollupMetadataList)
+		if err != nil {
+			return nil, nil, err
 		}
-		if len(rollupMetadataList) == 0 {
-			e.logger.Warn("No rollups found in block when rollupTxs present", log.BlockHashKey, processed.BlockHeader.Hash())
-			return nil, nil, nil
-		}
-		if len(rollupMetadataList) > 1 {
-			// this is allowed as long as they come from unique transactions
-			e.logger.Trace(fmt.Sprintf("Multiple rollups %d in block %s", len(rollupMetadataList), processed.BlockHeader.Hash()))
-		}
-
 	}
 
 	// Handle any L1 fork events
@@ -558,6 +529,45 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		}
 	}
 	return ingestion, rollupMetadataList, nil
+}
+
+func (e *enclaveAdminService) processRollups(ctx context.Context, processed *common.ProcessedL1Data, rollupMetadataList []common.ExtRollupMetadata) ([]common.ExtRollupMetadata, error) {
+	rollupTxs := processed.GetEvents(common.RollupTx)
+	txsSeen := make(map[gethcommon.Hash]bool)
+
+	// verify and process each rollup one by one
+	for _, rollupTx := range rollupTxs {
+		extRollup, err := e.rollupConsumer.VerifyRollupData(rollupTx)
+		if err != nil {
+			e.logger.Error("Error processing rollups from L1 data", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
+			// check critical error is passed up properly
+			return nil, err
+		}
+		rHash := rollupTx.Transaction.Hash()
+		// prevent the case where someone pushes a blob to the same slot. multiple rollups can be found in a block,
+		// but they must come from unique transactions
+		if txsSeen[rHash] {
+			return nil, fmt.Errorf("multiple rollups from same transaction: %s. Err: %w", rHash, errutil.ErrCriticalRollupProcessing)
+		}
+
+		rollupMetadata, err := e.rollupConsumer.ProcessRollup(ctx, extRollup)
+		if err != nil {
+			// critical error as the sequencer has signed this rollup
+			return nil, fmt.Errorf("failed to process rollup: %w", errutil.ErrCriticalRollupProcessing)
+		}
+		// rollupMetadata can never be nil here so derefencing _should_ be safe
+		rollupMetadataList = append(rollupMetadataList, *rollupMetadata)
+		txsSeen[rHash] = true
+	}
+	if len(rollupMetadataList) == 0 {
+		e.logger.Warn("No rollups found in block when rollupTxs present", log.BlockHashKey, processed.BlockHeader.Hash())
+		return nil, nil
+	}
+	if len(rollupMetadataList) > 1 {
+		// this is allowed as long as they come from unique transactions
+		e.logger.Trace(fmt.Sprintf("Multiple rollups %d in block %s", len(rollupMetadataList), processed.BlockHeader.Hash()))
+	}
+	return rollupMetadataList, nil
 }
 
 func (e *enclaveAdminService) rejectBlockErr(ctx context.Context, cause error) *errutil.BlockRejectError {

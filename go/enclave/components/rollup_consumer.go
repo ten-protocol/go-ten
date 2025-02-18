@@ -53,7 +53,7 @@ func NewRollupConsumer(
 func (rc *rollupConsumerImpl) VerifyRollupData(rollupTx *common.L1TxData) (*common.ExtRollup, error) {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer verified rollup data", &core.RelaxedThresholds)
 	// extract blob hashes, signatures and recreate rollup
-	rollup, compositeHash, blobHashes, signatures, err := rc.extractRollupAndHash(rollupTx)
+	rollup, compositeHash, blobHashes, signatures, err := rc.extractRollupData(rollupTx)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (rc *rollupConsumerImpl) ExportAndVerifyCrossChainData(ctx context.Context,
 	return serializedTree, nil
 }
 
-// extractRollupAndHash - extracts the data required to verify and process the rollup transaction.
+// extractRollupData - extracts the data required to verify and process the rollup transaction.
 // 1. Extracts blobs and signatures from the transaction
 // 2. Computes blob hashes using KZG commitments
 // 3. Reconstructs the rollup from blob data
@@ -140,7 +140,7 @@ func (rc *rollupConsumerImpl) ExportAndVerifyCrossChainData(ctx context.Context,
 // Note: All errors are considered non-critical as they occur prior to signature verification
 // and could be due to malformed or invalid input data. We don't want to prevent blocks from being processed if this is
 // the case.
-func (rc *rollupConsumerImpl) extractRollupAndHash(rollupTx *common.L1TxData) (*common.ExtRollup, *gethcommon.Hash, []gethcommon.Hash, [][]byte, error) {
+func (rc *rollupConsumerImpl) extractRollupData(rollupTx *common.L1TxData) (*common.ExtRollup, *gethcommon.Hash, []gethcommon.Hash, [][]byte, error) {
 	blobs := make([]*kzg4844.Blob, 0)
 	signatures := make([][]byte, 0)
 	for _, blobWithSig := range rollupTx.BlobsWithSignature {
