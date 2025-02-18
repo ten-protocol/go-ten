@@ -19,7 +19,6 @@ import (
 
 const (
 	_retryPriceMultiplier     = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
-	_blobPriceMultiplier      = 2.0 // stricter replacement requirements for blobpool
 	_maxTxRetryPriceIncreases = 5
 )
 
@@ -54,8 +53,10 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
 	// we apply a 30% gas price increase for each retry (retrying with similar price gets rejected by mempool)
 	// Retry '0' is the first attempt, gives multiplier of 1.0
+
 	retryMultiplier := calculateRetryMultiplier(_retryPriceMultiplier, retryNumber)
-	gasTipCap = big.NewInt(0).Mul(gasTipCap, big.NewInt(int64(retryMultiplier)))
+	gasTipCap = big.NewInt(0).SetUint64(uint64(retryMultiplier * float64(gasTipCap.Uint64())))
+
 
 	// calculate the gas fee cap
 	head, err := ethClient.HeaderByNumber(nil)
@@ -66,8 +67,6 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	baseFee := head.BaseFee
 	gasFeeCap := big.NewInt(0).Add(baseFee, gasTipCap)
 
-	logger.Info("Sending tx with gas price", "retry", retryNumber, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap, "estimatedGas", estimatedGas, "to", to)
-
 	if blobTx, ok := txData.(*types.BlobTx); ok {
 		if head.ExcessBlobGas == nil {
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
@@ -76,9 +75,9 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		blobMultiplier := calculateRetryMultiplier(_blobPriceMultiplier, retryNumber)
 		blobFeeCap := new(uint256.Int).Mul(
 			uint256.MustFromBig(blobBaseFee),
-			uint256.NewInt(uint64(math.Ceil(blobMultiplier)))) // Double base fee with retry multiplier),
+			uint256.NewInt(uint64(math.Ceil(blobMultiplier)))) // double base fee with retry multiplier,
 
-		// Even if we hit the minimum, we should still increase for retries
+		// even if we hit the minimum, we should still increase for retries
 		if blobFeeCap.Lt(uint256.NewInt(params.GWei)) {
 			blobFeeCap = new(uint256.Int).Mul(
 				uint256.NewInt(params.GWei),
@@ -103,7 +102,9 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		}, nil
 	}
 
-	// For non-blob transactions, just use the latest suggested values without multiplier
+	logger.Info("Sending tx with gas price", "retry", retryNumber, "nonce", nonce, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap, "estimatedGas", estimatedGas, "to", to)
+
+	// For non-blob transactions, just use the latest suggested values with multiplier
 	return &types.DynamicFeeTx{
 		Nonce:     nonce,
 		GasTipCap: gasTipCap,
