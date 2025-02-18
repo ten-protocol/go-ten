@@ -19,7 +19,6 @@ import (
 
 const (
 	_retryPriceMultiplier     = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
-	_blobPriceMultiplier      = 2.0 // stricter replacement requirements for blobpool
 	_maxTxRetryPriceIncreases = 5
 )
 
@@ -71,11 +70,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
 		blobBaseFee := eip4844.CalcBlobFee(*head.ExcessBlobGas)
-		multiplierInt := uint64(math.Ceil(math.Pow(_blobPriceMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))))
-		blobFeeCap := new(uint256.Int).Mul(
-			uint256.NewInt(multiplierInt),
-			uint256.MustFromBig(blobBaseFee),
-		)
+		blobFeeCap := new(uint256.Int).Mul(uint256.NewInt(2), uint256.MustFromBig(blobBaseFee))
 		if blobFeeCap.Lt(uint256.NewInt(params.GWei)) { // ensure we meet 1 gwei geth tx-pool minimum
 			blobFeeCap = uint256.NewInt(params.GWei)
 		}
