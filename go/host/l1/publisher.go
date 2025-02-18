@@ -478,6 +478,6 @@ type MaxRetriesError struct {
 }
 
 func (e *MaxRetriesError) Error() string {
-	return fmt.Sprintf("max retries reached for nonce %d  with tx hash: %s, BlobFeeCap: %d, GasTipCap: %d, GasFeeCap: %d, Gas: %d",
+	return fmt.Sprintf("max retries reached for nonce %d  with BlobFeeCap: %d, GasTipCap: %d, GasFeeCap: %d, Gas: %d",
 		e.BlobTx.Nonce, e.BlobTx.BlobFeeCap, e.BlobTx.GasTipCap, e.BlobTx.GasFeeCap, e.BlobTx.Gas)
 }
