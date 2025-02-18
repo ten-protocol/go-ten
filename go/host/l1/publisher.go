@@ -280,7 +280,8 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 func (p *Publisher) handleMaxRetriesFailure(err *MaxRetriesError, rollup *common.ExtRollup) {
 	p.logger.Error("Blob transaction failed after max retries",
 		"nonce", err.BlobTx.Nonce,
-		log.RollupHashKey, err.Error())
+		log.RollupHashKey, rollup.Hash(),
+		log.ErrKey, err.Error())
 	// TODO store failed rollup details so we can easily remediate? ie send new tx with the same nonce
 }
 
