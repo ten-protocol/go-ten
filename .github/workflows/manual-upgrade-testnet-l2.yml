@@ -164,7 +164,7 @@ jobs:
             --command-id RunShellScript \
             --scripts '
                export DOCKER_API_VERSION=1.45 \
-               docker pull ${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
+            && docker pull ${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
             && docker pull ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
             && rm -rf /home/obscuro/go-obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
