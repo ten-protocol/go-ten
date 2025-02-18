@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ten-protocol/go-ten/lib/gethfork/log"
+
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ethereum/go-ethereum"
@@ -34,6 +36,12 @@ func TestEnsureBinariesAreAvail(t *testing.T) {
 }
 
 func TestStartPosEth2Network(t *testing.T) {
+	testlog.Setup(&testlog.Cfg{
+		LogDir:      "../.build/noderunner/",
+		TestType:    "TestStartPosEth2Network",
+		TestSubtype: "test",
+		LogLevel:    log.LvlInfo,
+	})
 	binDir, err := EnsureBinariesExist()
 	assert.Nil(t, err)
 
