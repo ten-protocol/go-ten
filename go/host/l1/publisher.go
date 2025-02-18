@@ -264,11 +264,6 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 	if err != nil {
 		var maxRetriesErr *MaxRetriesError
 		if errors.As(err, &maxRetriesErr) {
-			p.logger.Error("Blob transaction failed after max retries",
-				"nonce", maxRetriesErr.BlobTx.Nonce,
-				"txHash", maxRetriesErr.TxHash,
-				log.RollupHashKey, extRollup.Hash())
-
 			p.handleMaxRetriesFailure(maxRetriesErr, extRollup)
 			return
 		}
@@ -283,9 +278,10 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 }
 
 func (p *Publisher) handleMaxRetriesFailure(err *MaxRetriesError, rollup *common.ExtRollup) {
+	p.logger.Error("Blob transaction failed after max retries",
+		"nonce", err.BlobTx.Nonce,
+		log.RollupHashKey, err.Error())
 	// TODO store failed rollup details so we can easily remediate? ie send new tx with the same nonce
-	// tx hash, rollup hash, nonce & gas price?
-	p.logger.Error("failed max retries: ", log.RollupHashKey, rollup.Hash(), log.TxKey, err.TxHash, "nonce", err.BlobTx.Nonce)
 }
 
 func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *big.Int, _ gethcommon.Hash) error {
@@ -380,7 +376,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 			if retries >= maxRetries-1 {
 				blobTx := tx.(*types.BlobTx)
 				return &MaxRetriesError{
-					TxHash: err.Error(), // Pass the failed tx hash through error
+					Err:    err.Error(),
 					BlobTx: blobTx,
 				}
 			}
@@ -476,11 +472,11 @@ func (p *Publisher) waitForBlockAfter(targetBlock uint64) error {
 
 // MaxRetriesError is a specific error type for handling max retries
 type MaxRetriesError struct {
-	TxHash string
+	Err    string
 	BlobTx *types.BlobTx
 }
 
 func (e *MaxRetriesError) Error() string {
 	return fmt.Sprintf("max retries reached for nonce %d  with tx hash: %s, BlobFeeCap: %d, GasTipCap: %d, GasFeeCap: %d, Gas: %d",
-		e.BlobTx.Nonce, e.TxHash, e.BlobTx.BlobFeeCap, e.BlobTx.GasTipCap, e.BlobTx.GasFeeCap, e.BlobTx.Gas)
+		e.BlobTx.Nonce, e.BlobTx.BlobFeeCap, e.BlobTx.GasTipCap, e.BlobTx.GasFeeCap, e.BlobTx.Gas)
 }
