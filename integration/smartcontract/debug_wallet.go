@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 
@@ -28,7 +30,7 @@ func newDebugWallet(w wallet.Wallet, timeout time.Duration) *debugWallet {
 
 // AwaitedSignAndSendTransaction signs a tx, issues the tx and awaits the tx to be minted into a block
 func (w *debugWallet) AwaitedSignAndSendTransaction(client ethadapter.EthClient, txData types.TxData) (*types.Transaction, *types.Receipt, error) {
-	txData, err := ethadapter.SetTxGasPrice(context.Background(), client, txData, w.Address(), w.GetNonceAndIncrement(), 0)
+	txData, err := ethadapter.SetTxGasPrice(context.Background(), client, txData, w.Address(), w.GetNonceAndIncrement(), 0, testlog.Logger())
 	if err != nil {
 		w.SetNonce(w.GetNonce() - 1)
 		return nil, nil, err
