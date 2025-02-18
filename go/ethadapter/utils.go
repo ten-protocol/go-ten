@@ -19,6 +19,7 @@ import (
 
 const (
 	_retryPriceMultiplier     = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
+	_blobPriceMultiplier      = 2.0
 	_maxTxRetryPriceIncreases = 5
 )
 
@@ -56,7 +57,6 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 
 	retryMultiplier := calculateRetryMultiplier(_retryPriceMultiplier, retryNumber)
 	gasTipCap = big.NewInt(0).SetUint64(uint64(retryMultiplier * float64(gasTipCap.Uint64())))
-
 
 	// calculate the gas fee cap
 	head, err := ethClient.HeaderByNumber(nil)
