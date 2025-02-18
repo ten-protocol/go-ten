@@ -393,7 +393,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 // executeTransaction handles the common flow of pricing, signing, sending and waiting for receipt
 func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) error {
 	// Set gas prices and create transaction
-	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum)
+	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, p.logger)
 	if err != nil {
 		return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 	}
