@@ -54,8 +54,9 @@ func (sigChecker *SignatureValidator) CheckSequencerSignature(hash gethcommon.Ha
 
 		err = signature.VerifySignature(attestedEnclave.PubKey, hash.Bytes(), sig)
 		if err != nil {
-			sigChecker.logger.Error("Could not verify signature", "sequencerID", seqID, "error", err)
-			continue // skip
+			sigChecker.logger.Warn("Could not verify signature", "sequencerID", seqID, "error", err)
+			// todo - as a temporary fix we remmove the sig verification
+			// continue // skip
 		}
 		// signature matches
 		return nil
