@@ -3,6 +3,7 @@ package ethadapter
 import (
 	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/params"
 	"math"
 	"math/big"
 
@@ -17,6 +18,7 @@ import (
 
 const (
 	_retryPriceMultiplier     = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
+	_blobPriceMultiplier      = 2.0 // stricter replacement requirements for blobpool
 	_maxTxRetryPriceIncreases = 5
 )
 
@@ -69,6 +71,11 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		var blobBaseFee *big.Int
 		if head.ExcessBlobGas != nil {
 			blobBaseFee = eip4844.CalcBlobFee(*head.ExcessBlobGas)
+			blobRetryMultiplier := math.Pow(_blobPriceMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
+			blobFeeCap := new(uint256.Int).Mul(uint256.NewInt(uint64(blobRetryMultiplier)), uint256.MustFromBig(blobBaseFee))
+			if blobFeeCap.Lt(uint256.NewInt(params.GWei)) { // ensure we meet 1 gwei geth tx-pool minimum
+				blobFeeCap = uint256.NewInt(params.GWei)
+			}
 		} else {
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
