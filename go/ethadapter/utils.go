@@ -20,7 +20,8 @@ import (
 const (
 	_retryPriceMultiplier     = 1.7
 	_blobPriceMultiplier      = 2.0
-	_maxTxRetryPriceIncreases = 7
+	_maxTxRetryPriceIncreases = 5
+	_baseFeeIncreaseFactor    = 1.2 // increase the base fee by 20%
 )
 
 // SetTxGasPrice takes a txData type and overrides the From, Gas and Gas Price field with current values
@@ -64,7 +65,8 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		return nil, fmt.Errorf("failed to get the latest block header: %w", err)
 	}
 
-	baseFee := head.BaseFee
+	// increase the baseFee by a factor
+	baseFee := big.NewInt(0).SetInt64(int64(float64(head.BaseFee.Uint64()) * _baseFeeIncreaseFactor))
 	gasFeeCap := big.NewInt(0).Add(baseFee, gasTipCap)
 
 	if blobTx, ok := txData.(*types.BlobTx); ok {
