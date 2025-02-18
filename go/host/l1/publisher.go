@@ -359,7 +359,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData, nonce uint64) error {
 	retries := 0
 	for !p.hostStopper.IsStopping() {
-		if err := p.executeTransaction(tx, nonce, retries); err != nil {
+		if _, err := p.executeTransaction(tx, nonce, retries); err != nil {
 			retries++
 			continue
 		}
@@ -373,9 +373,9 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 	retries := 0
 
 	for !p.hostStopper.IsStopping() && retries < maxRetries {
-		if err := p.executeTransaction(tx, nonce, retries); err != nil {
+		if pricedTx, err := p.executeTransaction(tx, nonce, retries); err != nil {
 			if retries >= maxRetries-1 {
-				blobTx := tx.(*types.BlobTx)
+				blobTx := pricedTx.(*types.BlobTx)
 				return &MaxRetriesError{
 					Err:    err.Error(),
 					BlobTx: blobTx,
@@ -389,18 +389,19 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 	return errors.New("stopped while retrying transaction")
 }
 
-// executeTransaction handles the common flow of pricing, signing, sending and waiting for receipt
-func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) error {
+// executeTransaction handles the common flow of pricing, signing, sending and waiting for receipt. Returns the priced
+// transaction so we can log the values in the event we exceed the maximum number of retries.
+func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) (types.TxData, error) {
 	// Set gas prices and create transaction
 	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, p.logger)
 	if err != nil {
-		return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
+		return pricedTx, errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 	}
 
 	// Sign and send
 	signedTx, err := p.hostWallet.SignTransaction(pricedTx)
 	if err != nil {
-		return errors.Wrap(err, "could not sign L1 tx")
+		return pricedTx, errors.Wrap(err, "could not sign L1 tx")
 	}
 
 	err = p.ethClient.SendTransaction(signedTx)
@@ -409,18 +410,18 @@ func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum i
 			"error", err,
 			"nonce", signedTx.Nonce(),
 			"txHash", signedTx.Hash())
-		return errors.Wrap(err, "could not broadcast L1 tx")
+		return pricedTx, errors.Wrap(err, "could not broadcast L1 tx")
 	}
 
 	// Wait for receipt
 	receipt, err := p.waitForReceipt(signedTx)
 	if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
-		return fmt.Errorf(signedTx.Hash().Hex()) // Return hash for MaxRetriesError
+		return pricedTx, fmt.Errorf(signedTx.Hash().Hex()) // Return hash for MaxRetriesError
 	}
 
 	p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),
 		log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
-	return nil
+	return pricedTx, nil
 }
 
 // Helper functions to reduce duplication
