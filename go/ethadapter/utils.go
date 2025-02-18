@@ -18,9 +18,9 @@ import (
 )
 
 const (
-	_retryPriceMultiplier     = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
+	_retryPriceMultiplier     = 1.7
 	_blobPriceMultiplier      = 2.0
-	_maxTxRetryPriceIncreases = 5
+	_maxTxRetryPriceIncreases = 7
 )
 
 // SetTxGasPrice takes a txData type and overrides the From, Gas and Gas Price field with current values
