@@ -19,7 +19,6 @@ import (
 
 const (
 	_retryPriceMultiplier     = 1.3 // over five attempts will give multipliers of 1.3, 1.7, 2.2, 2.8, 3.7
-	_blobPriceMultiplier      = 2.0 // stricter replacement requirements for blobpool
 	_maxTxRetryPriceIncreases = 5
 )
 
@@ -66,18 +65,18 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	baseFee := head.BaseFee
 	gasFeeCap := big.NewInt(0).Add(baseFee, gasTipCap)
 
-	logger.Info("Sending tx with gas price", "retry", retryNumber, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap, "estimatedGas", estimatedGas, "to", to)
-
 	if blobTx, ok := txData.(*types.BlobTx); ok {
 		if head.ExcessBlobGas == nil {
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
 		blobBaseFee := eip4844.CalcBlobFee(*head.ExcessBlobGas)
-		blobRetryMultiplier := math.Pow(_blobPriceMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
-		blobFeeCap := new(uint256.Int).Mul(uint256.NewInt(uint64(blobRetryMultiplier)), uint256.MustFromBig(blobBaseFee))
+		blobFeeCap := new(uint256.Int).Mul(uint256.NewInt(2), uint256.MustFromBig(blobBaseFee))
 		if blobFeeCap.Lt(uint256.NewInt(params.GWei)) { // ensure we meet 1 gwei geth tx-pool minimum
 			blobFeeCap = uint256.NewInt(params.GWei)
 		}
+
+		logger.Info("Sending blob tx with gas price", "retry", retryNumber, "nonce", nonce, "blobFeeCap",
+			blobFeeCap, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap, "estimatedGas", estimatedGas, "to", to)
 
 		return &types.BlobTx{
 			Nonce:      nonce,
@@ -93,7 +92,9 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		}, nil
 	}
 
-	// For non-blob transactions, just use the latest suggested values without multiplier
+	logger.Info("Sending tx with gas price", "retry", retryNumber, "nonce", nonce, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap, "estimatedGas", estimatedGas, "to", to)
+
+	// For non-blob transactions, just use the latest suggested values with multiplier
 	return &types.DynamicFeeTx{
 		Nonce:     nonce,
 		GasTipCap: gasTipCap,
