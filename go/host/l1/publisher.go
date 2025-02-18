@@ -285,7 +285,7 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 func (p *Publisher) handleMaxRetriesFailure(err *MaxRetriesError, rollup *common.ExtRollup) {
 	// TODO store failed rollup details so we can easily remediate? ie send new tx with the same nonce
 	// tx hash, rollup hash, nonce & gas price?
-	p.logger.Error("failed max retries: ", rollup.Hash().Hex(), err.TxHash, err.BlobTx.Nonce)
+	p.logger.Error("failed max retries: ", log.RollupHashKey, rollup.Hash(), log.TxKey, err.TxHash, "nonce", err.BlobTx.Nonce)
 }
 
 func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *big.Int, _ gethcommon.Hash) error {
@@ -395,7 +395,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 // executeTransaction handles the common flow of pricing, signing, sending and waiting for receipt
 func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) error {
 	// Set gas prices and create transaction
-	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum)
+	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, p.logger)
 	if err != nil {
 		return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 	}

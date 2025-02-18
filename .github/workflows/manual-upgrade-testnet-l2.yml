@@ -156,17 +156,20 @@ jobs:
 
       - name: 'Update Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
+        env:
+          DOCKER_API_VERSION: "1.45"
         with:
           inlineScript: |
             az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ needs.build.outputs.VM_BUILD_NUMBER }}"  \
             --command-id RunShellScript \
             --scripts '
-               docker pull ${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
+               export DOCKER_API_VERSION=1.45 \
+            && docker pull ${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
             && docker pull ${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
             && rm -rf /home/obscuro/go-obscuro \
             && git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro \
             && cd /home/obscuro/go-obscuro/ \
-            && sudo go run /home/obscuro/go-obscuro/go/node/cmd  \
+            && sudo DOCKER_API_VERSION=1.45 go run /home/obscuro/go-obscuro/go/node/cmd  \
               -is_genesis=${{ matrix.is_genesis }} \
               -node_type=${{ matrix.node_type }} \
               -num_enclaves=${{ matrix.num_enclaves }} \
