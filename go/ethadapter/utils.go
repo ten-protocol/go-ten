@@ -54,7 +54,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	// we apply a 30% gas price increase for each retry (retrying with similar price gets rejected by mempool)
 	// Retry '0' is the first attempt, gives multiplier of 1.0
 	retryMultiplier := math.Pow(_retryPriceMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
-	gasTipCap = big.NewInt(0).Mul(gasTipCap, big.NewInt(int64(retryMultiplier)))
+	gasTipCap = big.NewInt(0).SetUint64(uint64(retryMultiplier * float64(gasTipCap.Uint64())))
 
 	// calculate the gas fee cap
 	head, err := ethClient.HeaderByNumber(nil)
