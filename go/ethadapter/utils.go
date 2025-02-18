@@ -69,16 +69,14 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	logger.Info("Sending tx with gas price", "retry", retryNumber, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap, "estimatedGas", estimatedGas, "to", to)
 
 	if blobTx, ok := txData.(*types.BlobTx); ok {
-		blobFeeCap := uint256.NewInt(1)
-		if head.ExcessBlobGas != nil {
-			blobBaseFee := eip4844.CalcBlobFee(*head.ExcessBlobGas)
-			blobRetryMultiplier := math.Pow(_blobPriceMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
-			blobFeeCap = new(uint256.Int).Mul(uint256.NewInt(uint64(blobRetryMultiplier)), uint256.MustFromBig(blobBaseFee))
-			if blobFeeCap.Lt(uint256.NewInt(params.GWei)) { // ensure we meet 1 gwei geth tx-pool minimum
-				blobFeeCap = uint256.NewInt(params.GWei)
-			}
-		} else {
+		if head.ExcessBlobGas == nil {
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
+		}
+		blobBaseFee := eip4844.CalcBlobFee(*head.ExcessBlobGas)
+		blobRetryMultiplier := math.Pow(_blobPriceMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
+		blobFeeCap := new(uint256.Int).Mul(uint256.NewInt(uint64(blobRetryMultiplier)), uint256.MustFromBig(blobBaseFee))
+		if blobFeeCap.Lt(uint256.NewInt(params.GWei)) { // ensure we meet 1 gwei geth tx-pool minimum
+			blobFeeCap = uint256.NewInt(params.GWei)
 		}
 
 		return &types.BlobTx{
