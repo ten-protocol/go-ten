@@ -60,8 +60,8 @@ func (sigChecker *SignatureValidator) CheckSequencerSignature(hash gethcommon.Ha
 			continue // skip
 		}
 		// signature matches
-		// return nil - commenting out to ensure all enclaves are iterated
 		sigChecker.logger.Info("Signature verified successfully")
+		return nil
 	}
 
 	sigChecker.logger.Error("Could not verify the signature against any of the stored sequencer enclave keys")
