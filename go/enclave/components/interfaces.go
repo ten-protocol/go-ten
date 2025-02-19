@@ -155,8 +155,8 @@ type RollupProducer interface {
 type RollupConsumer interface {
 	// ProcessRollup - processes the rollup found in the block and stores it.
 	ProcessRollup(ctx context.Context, rollup *common.ExtRollup) (*common.ExtRollupMetadata, error)
-	// VerifyRollupData - extracts the blob hashes from the block's transactions and builds the blob hashes from the
+	// ExtractAndVerifyRollupData - extracts the blob hashes from the block's transactions and builds the blob hashes from the
 	// blobs, compares this with the hashes seen in the block. Checks the sequencer signature over the composite hash of
 	// the rollup components.
-	VerifyRollupData(rollupTx *common.L1TxData) (*common.ExtRollup, error)
+	ExtractAndVerifyRollupData(rollupTx *common.L1TxData) (*common.ExtRollup, error)
 }

@@ -537,11 +537,15 @@ func (e *enclaveAdminService) processRollups(ctx context.Context, processed *com
 
 	// verify and process each rollup one by one
 	for _, rollupTx := range rollupTxs {
-		extRollup, err := e.rollupConsumer.VerifyRollupData(rollupTx)
+		extRollup, err := e.rollupConsumer.ExtractAndVerifyRollupData(rollupTx)
 		if err != nil {
+			// this will only be returned once we've verified the sequencer signature
+			if errors.Is(err, errutil.ErrCriticalRollupProcessing) {
+				return nil, err
+			}
+			// anything non-critical we skip the processing
 			e.logger.Error("Error processing rollups from L1 data", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
-			// check critical error is passed up properly
-			return nil, err
+			continue
 		}
 		rHash := rollupTx.Transaction.Hash()
 		// prevent the case where someone pushes a blob to the same slot. multiple rollups can be found in a block,

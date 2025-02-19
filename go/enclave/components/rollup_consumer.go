@@ -50,7 +50,7 @@ func NewRollupConsumer(
 	}
 }
 
-func (rc *rollupConsumerImpl) VerifyRollupData(rollupTx *common.L1TxData) (*common.ExtRollup, error) {
+func (rc *rollupConsumerImpl) ExtractAndVerifyRollupData(rollupTx *common.L1TxData) (*common.ExtRollup, error) {
 	defer core.LogMethodDuration(rc.logger, measure.NewStopwatch(), "Rollup consumer verified rollup data", &core.RelaxedThresholds)
 	// extract blob hashes, signatures and recreate rollup
 	rollup, compositeHash, blobHashes, signatures, err := rc.extractRollupData(rollupTx)
