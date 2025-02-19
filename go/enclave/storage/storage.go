@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -51,6 +53,10 @@ type AttestedEnclave struct {
 	PubKey    *ecdsa.PublicKey
 	EnclaveID *common.EnclaveID
 	Type      common.NodeType
+}
+
+func (a *AttestedEnclave) String() string {
+	return fmt.Sprintf("Enclave %s with public key %s", a.EnclaveID, hex.EncodeToString(elliptic.Marshal(a.PubKey.Curve, a.PubKey.X, a.PubKey.Y)))
 }
 
 // todo - this file needs splitting up based on concerns
@@ -521,7 +527,9 @@ func (s *storageImpl) GetEnclavePubKey(ctx context.Context, enclaveId common.Enc
 			return nil, fmt.Errorf("could not parse key from db. Cause: %w", err)
 		}
 
-		return &AttestedEnclave{PubKey: publicKey, Type: nodeType, EnclaveID: &enclaveId}, nil
+		attestedEnclave := &AttestedEnclave{PubKey: publicKey, Type: nodeType, EnclaveID: &enclaveId}
+		s.logger.Info(fmt.Sprintf("Retrieved from database attestation: %s", attestedEnclave.String()))
+		return attestedEnclave, nil
 	})
 }
 
