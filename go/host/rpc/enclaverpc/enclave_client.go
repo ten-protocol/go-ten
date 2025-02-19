@@ -345,7 +345,8 @@ func (c *Client) CreateBatch(ctx context.Context, skipIfEmpty bool) common.Syste
 }
 
 func (c *Client) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.CreateRollupResult, common.SystemError) {
-	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
+	// rollup creation can take much longer than normal calls
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout*10)
 	defer cancel()
 
 	response, err := c.protoClient.CreateRollup(timeoutCtx, &generated.CreateRollupRequest{
