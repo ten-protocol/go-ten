@@ -2,6 +2,8 @@ package components
 
 import (
 	"context"
+	"crypto/elliptic"
+	"encoding/hex"
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -149,5 +151,8 @@ func (ssp *SharedSecretProcessor) storeAttestation(ctx context.Context, att *com
 	if err != nil {
 		return fmt.Errorf("could not store attested key. Cause: %w", err)
 	}
+
+	bytes := elliptic.Marshal(key.Curve, key.X, key.Y)
+	ssp.logger.Info(fmt.Sprintf("Stored attested key for enclave %s: %s", att.EnclaveID, hex.EncodeToString(bytes)))
 	return nil
 }
