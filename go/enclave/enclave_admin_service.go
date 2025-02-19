@@ -580,6 +580,7 @@ func (e *enclaveAdminService) getNodeType(ctx context.Context) common.NodeType {
 		e.logger.Trace("could not read enclave pub key. Defaulting to validator type", log.ErrKey, err)
 		return common.Validator
 	}
+	e.logger.Info(fmt.Sprintf("getNodeType: Retrieved pubKey for %s: %s", id.Hex(), attestedEnclave.String()))
 	return attestedEnclave.Type
 }
 
