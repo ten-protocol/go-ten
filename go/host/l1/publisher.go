@@ -264,11 +264,6 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 	if err != nil {
 		var maxRetriesErr *MaxRetriesError
 		if errors.As(err, &maxRetriesErr) {
-			p.logger.Error("Blob transaction failed after max retries",
-				"nonce", maxRetriesErr.BlobTx.Nonce,
-				"txHash", maxRetriesErr.TxHash,
-				log.RollupHashKey, extRollup.Hash())
-
 			p.handleMaxRetriesFailure(maxRetriesErr, extRollup)
 			return
 		}
@@ -282,8 +277,11 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 }
 
 func (p *Publisher) handleMaxRetriesFailure(err *MaxRetriesError, rollup *common.ExtRollup) {
+	p.logger.Error("Blob transaction failed after max retries",
+		"nonce", err.BlobTx.Nonce,
+		log.RollupHashKey, rollup.Hash(),
+		log.ErrKey, err.Error())
 	// TODO store failed rollup details so we can easily remediate? ie send new tx with the same nonce
-	p.logger.Error("failed max retries: ", rollup.Hash().Hex(), err.TxHash, err.BlobTx.Nonce)
 }
 
 func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *big.Int, _ gethcommon.Hash) error {
@@ -360,7 +358,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData, nonce uint64) error {
 	retries := 0
 	for !p.hostStopper.IsStopping() {
-		if err := p.executeTransaction(tx, nonce, retries); err != nil {
+		if _, err := p.executeTransaction(tx, nonce, retries); err != nil {
 			retries++
 			continue
 		}
@@ -374,11 +372,11 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 	retries := 0
 
 	for !p.hostStopper.IsStopping() && retries < maxRetries {
-		if err := p.executeTransaction(tx, nonce, retries); err != nil {
+		if pricedTx, err := p.executeTransaction(tx, nonce, retries); err != nil {
 			if retries >= maxRetries-1 {
-				blobTx := tx.(*types.BlobTx)
+				blobTx := pricedTx.(*types.BlobTx)
 				return &MaxRetriesError{
-					TxHash: err.Error(), // Pass the failed tx hash through error
+					Err:    err.Error(),
 					BlobTx: blobTx,
 				}
 			}
@@ -390,18 +388,19 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 	return errors.New("stopped while retrying transaction")
 }
 
-// executeTransaction handles the common flow of pricing, signing, sending and waiting for receipt
-func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) error {
+// executeTransaction handles the common flow of pricing, signing, sending and waiting for receipt. Returns the priced
+// transaction so we can log the values in the event we exceed the maximum number of retries.
+func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) (types.TxData, error) {
 	// Set gas prices and create transaction
 	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, p.logger)
 	if err != nil {
-		return errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
+		return pricedTx, errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 	}
 
 	// Sign and send
 	signedTx, err := p.hostWallet.SignTransaction(pricedTx)
 	if err != nil {
-		return errors.Wrap(err, "could not sign L1 tx")
+		return pricedTx, errors.Wrap(err, "could not sign L1 tx")
 	}
 
 	err = p.ethClient.SendTransaction(signedTx)
@@ -410,18 +409,18 @@ func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum i
 			"error", err,
 			"nonce", signedTx.Nonce(),
 			"txHash", signedTx.Hash())
-		return errors.Wrap(err, "could not broadcast L1 tx")
+		return pricedTx, errors.Wrap(err, "could not broadcast L1 tx")
 	}
 
 	// Wait for receipt
 	receipt, err := p.waitForReceipt(signedTx)
 	if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
-		return fmt.Errorf(signedTx.Hash().Hex()) // Return hash for MaxRetriesError
+		return pricedTx, fmt.Errorf(signedTx.Hash().Hex()) // Return hash for MaxRetriesError
 	}
 
 	p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),
 		log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
-	return nil
+	return pricedTx, nil
 }
 
 // Helper functions to reduce duplication
@@ -474,11 +473,11 @@ func (p *Publisher) waitForBlockAfter(targetBlock uint64) error {
 
 // MaxRetriesError is a specific error type for handling max retries
 type MaxRetriesError struct {
-	TxHash string
+	Err    string
 	BlobTx *types.BlobTx
 }
 
 func (e *MaxRetriesError) Error() string {
-	return fmt.Sprintf("max retries reached for nonce %d  with tx hash: %s, BlobFeeCap: %d, GasTipCap: %d, GasFeeCap: %d, Gas: %d",
-		e.BlobTx.Nonce, e.TxHash, e.BlobTx.BlobFeeCap, e.BlobTx.GasTipCap, e.BlobTx.GasFeeCap, e.BlobTx.Gas)
+	return fmt.Sprintf("max retries reached for nonce %d  with BlobFeeCap: %d, GasTipCap: %d, GasFeeCap: %d, Gas: %d",
+		e.BlobTx.Nonce, e.BlobTx.BlobFeeCap, e.BlobTx.GasTipCap, e.BlobTx.GasFeeCap, e.BlobTx.Gas)
 }
