@@ -36,7 +36,7 @@ func UATTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		"http://erpc.uat-testnet.ten.xyz:80", // this is actually a validator...
 		[]string{"http://erpc.uat-testnet.ten.xyz:80"},
 		"http://uat-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
-		"ws://uat-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
+		"https://rpc.sepolia.org/",
 		"https://rpc.uat-testnet.ten.xyz",
 		"wss://rpc.uat-testnet.ten.xyz:81",
 	)
