@@ -21,8 +21,10 @@ const (
 	_retryPriceMultiplier     = 1.7
 	_blobPriceMultiplier      = 2.0
 	_maxTxRetryPriceIncreases = 5
-	_baseFeeIncreaseFactor    = 1.2 // increase the base fee by 20%
+	_baseFeeIncreaseFactor    = 2 // increase the base fee by 20%
 )
+
+var minGasTipCap = big.NewInt(2 * params.GWei)
 
 // SetTxGasPrice takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
@@ -49,6 +51,11 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	gasTipCap, err := ethClient.SuggestGasTipCap(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("could not suggest gas price - %w", err)
+	}
+
+	// make sure the gas tip is always greater than the minimum
+	if gasTipCap.Cmp(minGasTipCap) < 0 {
+		gasTipCap = minGasTipCap
 	}
 
 	// adjust the gasTipCap if we have to retry
