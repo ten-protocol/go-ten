@@ -199,7 +199,8 @@ jobs:
          run: |
            if [[ ${{ matrix.host_id }} -eq 0 ]]; then
              echo "VM_SIZE=Standard_DC8s_v3" >> $GITHUB_ENV
-             echo "NUM_ENCLAVES=2" >> $GITHUB_ENV
+             # HA disabled, only 1 enclave for now
+             echo "NUM_ENCLAVES=1" >> $GITHUB_ENV 
            else
              echo "VM_SIZE=Standard_DC8_v2" >> $GITHUB_ENV
              echo "NUM_ENCLAVES=1" >> $GITHUB_ENV
