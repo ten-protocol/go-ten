@@ -177,7 +177,7 @@ func (s *systemContractCallbacks) CreatePublicCallbackHandlerTransaction(ctx con
 	}
 
 	formedTx := types.NewTx(tx)
-	s.logger.Info("CreatePublicCallbackHandlerTransaction: Successfully created transaction", "transactionHash", formedTx.Hash().Hex())
+	s.logger.Debug("CreatePublicCallbackHandlerTransaction: Successfully created transaction", "transactionHash", formedTx.Hash().Hex())
 	return formedTx, nil
 }
 
@@ -236,7 +236,7 @@ func (s *systemContractCallbacks) CreateOnBatchEndTransaction(_ context.Context,
 	}
 
 	formedTx := types.NewTx(tx)
-	s.logger.Info("CreateOnBatchEndTransaction: Successfully created synthetic transaction", log.TxKey, formedTx.Hash())
+	s.logger.Debug("CreateOnBatchEndTransaction: Successfully created synthetic transaction", log.TxKey, formedTx.Hash())
 	return formedTx, nil
 }
 
