@@ -19,15 +19,13 @@ var (
 
 	// Standard errors that can be returned from block submission
 
-	ErrBlockAlreadyProcessed       = errors.New("block already processed")
-	ErrBlockAncestorNotFound       = errors.New("block ancestor not found")
-	ErrBlockForBatchNotFound       = errors.New("block for batch not found")
-	ErrAncestorBatchNotFound       = errors.New("parent for batch not found")
-	ErrCrossChainBundleRepublished = errors.New("root already added to the message bus")
-	ErrCrossChainBundleNoBatches   = errors.New("no batches for cross chain bundle")
-	ErrNoNextRollup                = errors.New("no next rollup")
-	ErrRollupForkMismatch          = errors.New("rollup fork mismatch")
-	ErrCrossChainRootMismatch      = errors.New("cross chain root mismatch")
+	ErrBlockAlreadyProcessed     = errors.New("block already processed")
+	ErrBlockAncestorNotFound     = errors.New("block ancestor not found")
+	ErrBlockForBatchNotFound     = errors.New("block for batch not found")
+	ErrAncestorBatchNotFound     = errors.New("parent for batch not found")
+	ErrCrossChainBundleNoBatches = errors.New("no batches for cross chain bundle")
+	ErrCrossChainRootMismatch    = errors.New("cross chain root mismatch")
+	ErrCriticalRollupProcessing  = errors.New("critical error during rollup processing")
 )
 
 // BlockRejectError is used as a standard format for error response from enclave for block submission errors
