@@ -49,7 +49,7 @@ jobs:
           docker push ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }}
 
       - name: 'Run the funds recovery'
-        id: deployL2Contracts
+        id: runFundsRecovery
         shell: bash
         run: |
           DOCKER_API_VERSION=1.45 go run ./testnet/launcher/fundsrecovery/cmd \
