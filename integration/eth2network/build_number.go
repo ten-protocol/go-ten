@@ -31,7 +31,7 @@ func getBuildNumber() (int, error) {
 		}
 		buildNumber++
 		if buildNumber > 99 {
-			buildNumber = 1
+			return 0, fmt.Errorf("Error: no available build number from 1-99. Delete some build folders!\n")
 		}
 	}
 
