@@ -10,15 +10,15 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
-    // Storage for rollups
     Structs.RollupStorage private rollups;
-    mapping(bytes32 => bool) private rollupExists;
     uint256 private lastBatchSeqNo;
 
-    // Dependencies
-    
     MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;
     INetworkEnclaveRegistry public enclaveRegistry;
+
+    constructor() {
+        _transferOwnership(msg.sender);
+    }
 
     function initialize(
         address _merkleMessageBus,
@@ -30,16 +30,6 @@ contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
         lastBatchSeqNo = 0;
     }
 
-    function addRollup(Structs.MetaRollup calldata r) external verifyRollupIntegrity(r){
-        AppendRollup(r);
-
-        if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
-            merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
-        }
-
-        emit RollupAdded(blobhash(0), r.Signature);
-    }
-
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
 
@@ -47,6 +37,7 @@ contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
             lastBatchSeqNo = _r.LastSequenceNumber;
         }
     }
+
 
     modifier verifyRollupIntegrity(Structs.MetaRollup calldata r) {
         // Block binding checks
@@ -74,6 +65,17 @@ contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
         require(enclaveRegistry.isSequencer(enclaveID), "enclaveID not a sequencer");
         _;
     }
+
+    function addRollup(Structs.MetaRollup calldata r) external verifyRollupIntegrity(r){
+        AppendRollup(r);
+
+        if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
+            merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
+        }
+
+        emit RollupAdded(blobhash(0), r.Signature);
+    }
+
 
     function getRollupByHash(bytes32 rollupHash) external view returns (bool, Structs.MetaRollup memory) {
         Structs.MetaRollup memory rol = rollups.byHash[rollupHash];

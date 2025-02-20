@@ -5,7 +5,6 @@ interface INetworkEnclaveRegistry {
     event NetworkSecretInitialized(address initializer);
     event NetworkSecretRequested(address indexed requester, string requestReport);
     event NetworkSecretResponded(address indexed attester, address indexed requester);
-    event EnclaveAttested(address indexed enclaveID);
     event SequencerEnclaveGranted(address enclaveID);
     event SequencerEnclaveRevoked(address enclaveID);
 

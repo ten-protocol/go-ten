@@ -8,7 +8,7 @@ import "../messaging/messenger/ICrossChainMessenger.sol";
 import "./ICrossChain.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract CrossChainMessenger is ICrossChain, Initializable, OwnableUpgradeable {
+contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable {
     bool private paused;
     uint256 private challengePeriod;
     IMessageBus public messageBus;
@@ -16,15 +16,17 @@ contract CrossChainMessenger is ICrossChain, Initializable, OwnableUpgradeable {
     mapping(bytes32 => bool) public isWithdrawalSpent;
     mapping(bytes32 =>bool) public isBundleSaved;
 
+    event LogManagementContractCreated(address messageBusAddress);
+
+    constructor() {
+        _transferOwnership(msg.sender);
+    }
+
     function initialize(address _messageBus) public initializer {
         __Ownable_init(msg.sender);
         messageBus = IMessageBus(_messageBus);
         paused = false; // Default to withdrawals enabled
-    }
-
-    function pauseWithdrawals(bool _pause) external onlyOwner {
-        paused = _pause;
-        emit WithdrawalsPaused(_pause);
+        emit LogManagementContractCreated(address(messageBus));
     }
 
     function extractNativeValue(
@@ -39,6 +41,16 @@ contract CrossChainMessenger is ICrossChain, Initializable, OwnableUpgradeable {
         isWithdrawalSpent[keccak256(abi.encode(_msg))] = true;
 
         messageBus.receiveValueFromL2(_msg.receiver, _msg.amount);
+    }
+
+    // Testnet function to allow the contract owner to retrieve **all** funds from the network bridge.
+    function RetrieveAllBridgeFunds() external onlyOwner {
+        messageBus.retrieveAllFunds(msg.sender);
+    }
+
+    function pauseWithdrawals(bool _pause) external onlyOwner {
+        paused = _pause;
+        emit WithdrawalsPaused(_pause);
     }
 
     function isBundleAvailable(bytes[] memory crossChainHashes) external view returns (bool) {
