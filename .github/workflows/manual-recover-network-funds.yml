@@ -48,7 +48,7 @@ jobs:
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} -f tools/hardhatdeployer/Dockerfile .
           docker push ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }}
 
-      - name: 'Deploy L2 contracts'
+      - name: 'Run the funds recovery'
         id: deployL2Contracts
         shell: bash
         run: |
