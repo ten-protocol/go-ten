@@ -52,7 +52,7 @@ jobs:
         id: deployL2Contracts
         shell: bash
         run: |
-          go DOCKER_API_VERSION=1.45 run ./testnet/launcher/fundsrecovery/cmd \
+          DOCKER_API_VERSION=1.45 go run ./testnet/launcher/fundsrecovery/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -mgmt_contract_addr=${{ github.event.inputs.mgmt_contract_addr }} \
