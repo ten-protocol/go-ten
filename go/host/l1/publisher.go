@@ -274,7 +274,6 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 	} else {
 		p.logger.Info("Rollup included in L1", log.RollupHashKey, extRollup.Hash())
 	}
-	// TODO publish rollup to archive service if not already done
 }
 
 func (p *Publisher) handleMaxRetriesFailure(err *MaxRetriesError, rollup *common.ExtRollup) {
