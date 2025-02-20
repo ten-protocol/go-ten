@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../messaging/IMerkleTreeMessageBus.sol";
-import "../messaging/IMessageBus.sol";
-import "../messaging/Structs.sol";
-import "../messaging/messenger/ICrossChainMessenger.sol";
 import "./ICrossChain.sol";
+import "../messaging/MessageBus.sol";
+import "../messaging/IMerkleTreeMessageBus.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable {
     bool private paused;
     uint256 private challengePeriod;
     IMessageBus public messageBus;
-    MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;
+    IMerkleTreeMessageBus public merkleMessageBus;
     mapping(bytes32 => bool) public isWithdrawalSpent;
     mapping(bytes32 =>bool) public isBundleSaved;
 
@@ -30,7 +28,7 @@ contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable {
     }
 
     function extractNativeValue(
-        MessageStructs.Structs.ValueTransferMessage calldata msg,
+        Structs.ValueTransferMessage calldata _msg,
         bytes32[] calldata proof,
         bytes32 root
     ) external {
@@ -44,7 +42,7 @@ contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable {
     }
 
     // Testnet function to allow the contract owner to retrieve **all** funds from the network bridge.
-    function RetrieveAllBridgeFunds() external onlyOwner {
+    function retrieveAllBridgeFunds() external onlyOwner {
         messageBus.retrieveAllFunds(msg.sender);
     }
 

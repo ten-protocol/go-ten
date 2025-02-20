@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../messaging/Structs.sol" as MessageStructs;
+import "../common/Structs.sol";
 
 interface ICrossChain {
     event WithdrawalsPaused(bool paused);
 
     function extractNativeValue(
-        MessageStructs.Structs.ValueTransferMessage calldata msg,
+        Structs.ValueTransferMessage calldata msg,
         bytes32[] calldata proof,
         bytes32 root
     ) external;

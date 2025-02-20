@@ -8,12 +8,9 @@ interface INetworkEnclaveRegistry {
     event SequencerEnclaveGranted(address enclaveID);
     event SequencerEnclaveRevoked(address enclaveID);
 
-    function initializeNetworkSecret(
-        address enclaveID,
-        bytes calldata initSecret,
-        string calldata genesisAttestation
-    ) external;
-    function isInitialized() external view returns (bool);
+    // FIXME - can we delete these unused params?
+    // solc-ignore-next-line unused-param
+    function initializeNetworkSecret(address enclaveID, bytes calldata _initSecret, string calldata _genesisAttestation) external;
     function requestNetworkSecret(string calldata requestReport) external;
     function respondNetworkSecret(
         address attesterID,
@@ -25,5 +22,5 @@ interface INetworkEnclaveRegistry {
     function isAttested(address enclaveID) external view returns (bool);
     function isSequencer(address enclaveID) external view returns (bool);
     function grantSequencerEnclave(address _addr) external;
-    function RevokeSequencerEnclave(address _addr) external;
+    function revokeSequencerEnclave(address _addr) external;
 }

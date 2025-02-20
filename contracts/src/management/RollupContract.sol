@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../messaging/IMerkleTreeMessageBus.sol";
 import "./INetworkEnclaveRegistry.sol";
 import "./IRollupContract.sol";
-import "./Structs.sol";
+import "../messaging/IMerkleTreeMessageBus.sol";
+import "../common/Structs.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -13,7 +13,7 @@ contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
     Structs.RollupStorage private rollups;
     uint256 private lastBatchSeqNo;
 
-    MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;
+    IMerkleTreeMessageBus public merkleMessageBus;
     INetworkEnclaveRegistry public enclaveRegistry;
 
     constructor() {
@@ -25,7 +25,7 @@ contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
         address _enclaveRegistry
     ) public initializer {
         __Ownable_init(msg.sender);
-        merkleMessageBus = MerkleTreeMessageBus.IMerkleTreeMessageBus(_merkleMessageBus);
+        merkleMessageBus = IMerkleTreeMessageBus(_merkleMessageBus);
         enclaveRegistry = INetworkEnclaveRegistry(_enclaveRegistry);
         lastBatchSeqNo = 0;
     }

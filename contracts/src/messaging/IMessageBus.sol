@@ -2,7 +2,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./Structs.sol";
+import "../common/Structs.sol";
 
 // This represents the smart contract API that allows dApps and accounts to send and verify received messages 
 // between layer 1 and layer 2.

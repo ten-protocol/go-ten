@@ -31,11 +31,7 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Ownab
 
     // initializeNetworkSecret kickstarts the network secret, can only be called once
     // solc-ignore-next-line unused-param
-    function initializeNetworkSecret(
-        address enclaveID,
-        bytes calldata initSecret,
-        string calldata genesisAttestation
-    ) external {
+    function initializeNetworkSecret(address enclaveID, bytes calldata _initSecret, string calldata _genesisAttestation) external {
         require(!networkSecretInitialized, "network secret already initialized");
         require(enclaveID != address(0), "invalid enclave address");
 
@@ -50,9 +46,6 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Ownab
         emit NetworkSecretInitialized(enclaveID);
     }
 
-    function isInitialized() external view returns (bool) {
-        return networkSecretInitialized;
-    }
     // Enclaves can request the Network Secret given an attestation request report
     function requestNetworkSecret(string calldata requestReport) external {
         // once an enclave has been attested there is no need for them to request this again

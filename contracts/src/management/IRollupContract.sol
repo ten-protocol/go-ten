@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../management/Structs.sol";
+import "../common/Structs.sol";
 
 interface IRollupContract {
     event RollupAdded(bytes32 rollupHash, bytes signature);

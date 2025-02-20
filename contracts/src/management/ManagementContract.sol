@@ -5,8 +5,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 
-import "./Structs.sol";
-import * as MessageStructs from "../messaging/Structs.sol";
+import "../common/Structs.sol";
 import * as MessageBus from "../messaging/MessageBus.sol";
 import * as MerkleTreeMessageBus from "../messaging/MerkleTreeMessageBus.sol";
 
