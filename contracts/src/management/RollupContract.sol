@@ -66,7 +66,8 @@ contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
         _;
     }
 
-    function addRollup(Structs.MetaRollup calldata r) external verifyRollupIntegrity(r){
+    // TODO sequencer address must be contract owner
+    function addRollup(Structs.MetaRollup calldata r) external verifyRollupIntegrity(r) onlyOwner{
         AppendRollup(r);
 
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {

@@ -11,7 +11,6 @@ interface ICrossChain {
         bytes32[] calldata proof,
         bytes32 root
     ) external;
-    function retrieveAllBridgeFunds() external;
     function pauseWithdrawals(bool pause) external;
     function isWithdrawalSpent(bytes32 messageHash) external view returns (bool);
     function isBundleAvailable(bytes[] memory crossChainHashes) external view returns (bool);
