@@ -12,7 +12,7 @@ import (
 )
 
 // L1TxGas - a crude estimation of the cost of publishing an L1 tx
-const L1TxGas = 300_000
+const L1TxGas = 150_000
 
 // TxsPerBatch - the number of transactions in a batch. A conservative estimation.
 const TxsPerBatch = 50
@@ -61,7 +61,7 @@ func (o *oracle) calculateL1Cost(l1Block *types.Header, l2Batch *common.BatchHea
 	// price in Wei for a single unit of blob
 	blobFeePerByte := eip4844.CalcBlobFee(*l1Block.ExcessBlobGas)
 
-	// Calculate teh cost of including the tx in a blob
+	// Calculate the cost of including the tx in a blob
 	txL1Size := CalculateL1Size(encodedTx)
 	shareOfBlobCost := big.NewInt(0).Mul(txL1Size, blobFeePerByte)
 
