@@ -50,6 +50,7 @@ func (o *oracle) EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *type
 }
 
 // calculateL1Cost - Calculates the L1 cost as a multiple of the L2 base fee.
+// it takes into account the share of the blob cost and the share of the L1 TX cost - which submits and stores the rollup header.
 func (o *oracle) calculateL1Cost(l1Block *types.Header, l2Batch *common.BatchHeader, encodedTx []byte) (*big.Int, error) {
 	totalCost := big.NewInt(0)
 
@@ -58,20 +59,22 @@ func (o *oracle) calculateL1Cost(l1Block *types.Header, l2Batch *common.BatchHea
 		return totalCost, nil
 	}
 
+	// 1. Calculate the cost of including the tx in a blob
 	// price in Wei for a single unit of blob
+	// todo - use a moving average for the L1 blob fee
 	blobFeePerByte := eip4844.CalcBlobFee(*l1Block.ExcessBlobGas)
-
-	// Calculate the cost of including the tx in a blob
 	txL1Size := CalculateL1Size(encodedTx)
 	shareOfBlobCost := big.NewInt(0).Mul(txL1Size, blobFeePerByte)
 
-	// Add a value to the shareOfBlobCost to account for the cost of the transaction itself
+	// 2. Estimate how much this tx should absorb from the L1 tx cost that submits the rollup
 	shareOfL1TxGas := big.NewInt(L1TxGas / TxsPerBatch)
+	// todo - use a moving average for the L1 base fee
 	shareOfL1TxCost := big.NewInt(0).Mul(shareOfL1TxGas, l1Block.BaseFee)
 
+	// 3. The total cost is the sum of the share of the blob cost and the share of the L1 tx cost
 	totalCost.Add(shareOfBlobCost, shareOfL1TxCost)
 
-	// round the shareOfBlobCost up to the nearest multiple of l2Batch.BaseFee
+	// 4. round the shareOfBlobCost up to the nearest multiple of l2Batch.BaseFee
 	remainder := new(big.Int).Mod(totalCost, l2Batch.BaseFee)
 	if remainder.Sign() > 0 {
 		totalCost.Add(totalCost, new(big.Int).Sub(l2Batch.BaseFee, remainder))
