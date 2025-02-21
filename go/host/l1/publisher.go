@@ -373,9 +373,19 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 	retries := 0
 
 	for !p.hostStopper.IsStopping() && retries < maxRetries {
-		if pricedTx, err := p.executeTransaction(tx, nonce, retries); err != nil {
+		pricedTx, err := p.executeTransaction(tx, nonce, retries)
+		if pricedTx == nil {
+			return fmt.Errorf("could not price transaction")
+		}
+		if err != nil {
 			if retries >= maxRetries-1 {
-				blobTx := pricedTx.(*types.BlobTx)
+				blobTx, ok := pricedTx.(*types.BlobTx)
+				if !ok {
+					return &MaxRetriesError{
+						Err:    fmt.Sprintf("unexpected tx type: %T", pricedTx),
+						BlobTx: nil,
+					}
+				}
 				return &MaxRetriesError{
 					Err:    err.Error(),
 					BlobTx: blobTx,
