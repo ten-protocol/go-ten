@@ -21,6 +21,8 @@ import (
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
+var adjustPublishingGas = gethcommon.Big3
+
 func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], _ *EncryptionManager) error {
 	// Parameters are [callMsg, BlockHeader number (optional)]
 	if len(reqParams) < 1 {
@@ -86,14 +88,11 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// todo @siliev - add overhead when the base fee becomes dynamic.
 	publishingGas := big.NewInt(0).Div(l1Cost, batch.BaseFee)
 
-	// The one additional gas captures the modulo leftover in some edge cases
-	// where BaseFee is bigger than the l1cost.
-	publishingGas = big.NewInt(0).Add(publishingGas, gethcommon.Big1)
-
 	// Overestimate the publishing cost in case of spikes.
+	// given that we publish in a blob, the amount will be very low.
 	// Batch execution still deducts normally.
 	// TODO: Change to fixed time period quotes, rather than this.
-	publishingGas = publishingGas.Mul(publishingGas, gethcommon.Big2)
+	publishingGas = publishingGas.Mul(publishingGas, adjustPublishingGas)
 
 	// Run the execution simulation based on stateDB after head batch.
 	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.
