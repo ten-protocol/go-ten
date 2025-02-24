@@ -79,6 +79,17 @@ func NewBatchRepository(cfg *hostconfig.HostConfig, hostService batchRepoService
 func (r *Repository) Start() error {
 	r.running.Store(true)
 
+	// load the latest batch sequence number from the db so restarted host can pick up where it left off
+	// (note: we don't need to set latestValidatedSeqNo here, it will be set when the enclave next validates a batch)
+	latestBatch, err := r.storage.FetchLatestBatch()
+	if err != nil {
+		r.logger.Info("unable to fetch latest batch from storage, starting from 0", log.ErrKey, err)
+		// no batch found, so we start from 0
+		r.latestBatchSeqNo = big.NewInt(0)
+	} else {
+		r.latestBatchSeqNo = latestBatch.SequencerOrderNo
+	}
+
 	// register ourselves for new batches from p2p
 	r.sl.P2P().SubscribeForBatches(r)
 	r.sl.P2P().SubscribeForBatchRequests(r)
