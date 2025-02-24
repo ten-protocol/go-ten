@@ -2,8 +2,8 @@ package rpc
 
 import (
 	"fmt"
-
 	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
@@ -52,22 +52,27 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 		rpc.logger.Debug("Failed eth_call.", log.ErrKey, sysErr)
 		return sysErr
 	}
-	// If the result contains a revert reason, try to unpack and return it.
-	if len(execResult.Revert()) > 0 {
-		builder.Err = newRevertError(execResult.Revert())
+
+	if execResult != nil {
+		// If the result contains a revert reason, try to unpack and return it.
+		if len(execResult.Revert()) > 0 {
+			builder.Err = newRevertError(execResult.Revert())
+			return nil
+		} else if execResult.Err != nil {
+			builder.Err = execResult.Err
+		}
+		if len(execResult.ReturnData) != 0 {
+			encodedResult := hexutil.Encode(execResult.ReturnData)
+			builder.ReturnValue = &encodedResult
+		}
 		return nil
-	} else if execResult.Err != nil {
-		builder.Err = execResult.Err
-	} else if userErr != nil {
-		builder.Err = userErr
 	}
 
-	var encodedResult string
-	if len(execResult.ReturnData) != 0 {
-		encodedResult = hexutil.Encode(execResult.ReturnData)
-		builder.ReturnValue = &encodedResult
-	} else {
-		builder.ReturnValue = nil
+	if userErr != nil {
+		builder.Err = userErr
+		return nil
 	}
+
+	rpc.logger.Error("should not get here. No error and no result for eth_call")
 	return nil
 }
