@@ -47,18 +47,20 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 
 	apiArgs := builder.Param.callParams
 	blkNumber := builder.Param.block
-	execResult, err := rpc.chain.Call(builder.ctx, apiArgs, blkNumber)
-	if err != nil {
-		rpc.logger.Debug("Failed eth_call.", log.ErrKey, err)
-		return err
+	execResult, userErr, sysErr := rpc.chain.Call(builder.ctx, apiArgs, blkNumber)
+	if sysErr != nil {
+		rpc.logger.Debug("Failed eth_call.", log.ErrKey, sysErr)
+		return sysErr
 	}
 	// If the result contains a revert reason, try to unpack and return it.
 	if len(execResult.Revert()) > 0 {
 		builder.Err = newRevertError(execResult.Revert())
 		return nil
+	} else if execResult.Err != nil {
+		builder.Err = execResult.Err
+	} else if userErr != nil {
+		builder.Err = userErr
 	}
-
-	builder.Err = execResult.Err
 
 	var encodedResult string
 	if len(execResult.ReturnData) != 0 {
