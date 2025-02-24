@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/common"
+
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -66,34 +68,34 @@ func (oc *tenChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommo
 	return (*hexutil.Big)(chainState.GetBalance(accountAddr).ToBig()), nil
 }
 
-func (oc *tenChain) Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
-	result, err := oc.ObsCallAtBlock(ctx, apiArgs, blockNumber)
-	if err != nil {
-		oc.logger.Debug(fmt.Sprintf("Obs_Call: failed to execute contract %s.", apiArgs.To), log.CtrErrKey, err.Error())
-		return nil, err
+func (oc *tenChain) Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError) {
+	result, userErr, sysErr := oc.ObsCallAtBlock(ctx, apiArgs, blockNumber)
+	if sysErr != nil {
+		oc.logger.Debug(fmt.Sprintf("Obs_Call: failed to execute contract %s.", apiArgs.To), log.CtrErrKey, sysErr.Error())
+		return nil, userErr, sysErr
 	}
 
 	if oc.logger.Enabled(context.Background(), gethlog.LevelTrace) {
 		oc.logger.Trace("Obs_Call successful", "result", hexutils.BytesToHex(result.ReturnData))
 	}
-	return result, nil
+	return result, userErr, sysErr
 }
 
-func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error) {
+func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError) {
 	// fetch the chain state at given batch
 	blockState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	batch, err := oc.Registry.GetBatchAtHeight(ctx, *blockNumber)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
+		return nil, nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
 
 	callMsg, err := apiArgs.ToMessage(batch.Header.GasLimit-1, batch.Header.BaseFee)
 	if err != nil {
-		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err)
+		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err), nil
 	}
 
 	if oc.logger.Enabled(context.Background(), gethlog.LevelTrace) {
