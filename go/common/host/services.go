@@ -106,7 +106,6 @@ type L1Publisher interface {
 	// FindSecretResponseTx will return the secret response tx from an L1 block
 	FindSecretResponseTx(responseTxs []*common.L1TxData) []*common.L1RespondSecretTx
 	// PublishBlob will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
-	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
 	PublishBlob(result common.CreateRollupResult)
 	// PublishSecretResponse will create and publish a secret response tx to the management contract - fire and forget we don't wait for receipt
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error

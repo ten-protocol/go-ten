@@ -182,6 +182,7 @@ func (c *contractLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, veri
 		tx.Secret,
 		verifyAttester,
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
@@ -198,6 +199,7 @@ func (c *contractLibImpl) CreateInitializeSecret(tx *common.L1InitializeSecretTx
 		tx.InitialSecret,
 		base64EncodeToString(tx.Attestation),
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
@@ -334,7 +336,6 @@ func (c *contractLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.
 		return nil, err
 	}
 
-	// todo (#1275) - add the other fields
 	return &common.L1InitializeSecretTx{
 		Attestation: att,
 	}, nil
