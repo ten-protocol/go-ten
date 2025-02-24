@@ -24,7 +24,7 @@ func SepoliaTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		"http://erpc.sepolia-testnet.ten.xyz:80", // this is actually a validator...
 		[]string{"http://erpc.sepolia-testnet.ten.xyz:80"},
 		"http://sepolia-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
-		"https://rpc.sepolia.org/",
+		"wss://ethereum-sepolia-rpc.publicnode.com",
 		"https://rpc.testnet.ten.xyz",
 		"wss://rpc.testnet.ten.xyz:81",
 	)
@@ -36,7 +36,7 @@ func UATTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		"http://erpc.uat-testnet.ten.xyz:80", // this is actually a validator...
 		[]string{"http://erpc.uat-testnet.ten.xyz:80"},
 		"http://uat-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
-		"ws://uat-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
+		"wss://ethereum-sepolia-rpc.publicnode.com",
 		"https://rpc.uat-testnet.ten.xyz",
 		"wss://rpc.uat-testnet.ten.xyz:81",
 	)
