@@ -136,13 +136,8 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	snapshot := s.Snapshot()
 	defer s.RevertToSnapshot(snapshot) // Always revert after simulation
 
-	// todo - figure out the noBaseFee logic
-	noBaseFee := true
-	if header.BaseFee != nil && header.BaseFee.Cmp(gethcommon.Big0) != 0 && msg.GasPrice.Cmp(gethcommon.Big0) != 0 {
-		noBaseFee = false
-	}
 	vmCfg := vm.Config{
-		NoBaseFee: noBaseFee,
+		NoBaseFee: true,
 	}
 
 	ethHeader, err := exec.gethEncodingService.CreateEthHeaderForBatch(ctx, header)
