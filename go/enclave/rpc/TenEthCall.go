@@ -59,9 +59,9 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 		if len(execResult.Revert()) > 0 {
 			builder.Err = newRevertError(execResult.Revert())
 			return nil
-		} else if execResult.Err != nil {
-			builder.Err = execResult.Err
 		}
+
+		builder.Err = execResult.Err
 		if len(execResult.ReturnData) != 0 {
 			encodedResult := hexutil.Encode(execResult.ReturnData)
 			builder.ReturnValue = &encodedResult
