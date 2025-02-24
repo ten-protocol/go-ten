@@ -3,6 +3,8 @@ package l2chain
 import (
 	"context"
 
+	"github.com/ten-protocol/go-ten/go/common"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethcore "github.com/ethereum/go-ethereum/core"
@@ -16,9 +18,9 @@ type ObscuroChain interface {
 	// GetBalanceAtBlock - will return the balance of a specific address at the specific given block number (batch number).
 	GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error)
 
-	// ObsCall - The interface for executing eth_call RPC commands against obscuro.
-	Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error)
+	// Call - The interface for executing eth_call RPC commands against obscuro.
+	Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError)
 
 	// ObsCallAtBlock - Execute eth_call RPC against obscuro for a specific block (batch) number.
-	ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error)
+	ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError)
 }
