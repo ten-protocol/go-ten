@@ -228,7 +228,7 @@ func TestGetLatestBatch(t *testing.T) {
 	}
 	dbtx.Write()
 
-	batch, err := GetLatestBatch(db)
+	batch, err := GetHeadBatchHeader(db)
 	if err != nil {
 		t.Errorf("was not able to read total number of transactions. Cause: %s", err)
 	}

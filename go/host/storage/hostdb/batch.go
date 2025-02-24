@@ -258,15 +258,6 @@ func GetBatchByHash(db HostDB, hash common.L2BatchHash) (*common.ExtBatch, error
 	return fetchFullBatch(db.GetSQLDB(), whereQuery, hash.Bytes())
 }
 
-// GetLatestBatch returns the head batch header
-func GetLatestBatch(db HostDB) (*common.BatchHeader, error) {
-	headBatch, err := fetchHeadBatch(db.GetSQLDB())
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch head batch: %w", err)
-	}
-	return headBatch.Header, nil
-}
-
 // GetBatchHeaderByHeight returns the batch header given the height
 func GetBatchHeaderByHeight(db HostDB, height *big.Int) (*common.BatchHeader, error) {
 	whereQuery := " WHERE height=" + db.GetSQLStatement().Placeholder

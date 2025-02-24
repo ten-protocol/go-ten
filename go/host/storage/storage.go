@@ -174,7 +174,7 @@ func (s *storageImpl) FetchBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, 
 }
 
 func (s *storageImpl) FetchLatestBatch() (*common.BatchHeader, error) {
-	return hostdb.GetLatestBatch(s.db)
+	return hostdb.GetHeadBatchHeader(s.db)
 }
 
 func (s *storageImpl) FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error) {
