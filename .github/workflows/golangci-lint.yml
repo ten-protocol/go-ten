@@ -8,8 +8,8 @@ on:
     tags:
       - v*
     branches:
-      - master
       - main
+      - releases/v1.0
   pull_request:
 permissions:
   contents: read
