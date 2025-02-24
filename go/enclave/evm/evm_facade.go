@@ -133,6 +133,9 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader) (*gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(exec.logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
+	snapshot := s.Snapshot()
+	defer s.RevertToSnapshot(snapshot) // Always revert after simulation
+
 	vmCfg := vm.Config{
 		NoBaseFee: true,
 	}
@@ -146,8 +149,6 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	gp.SetGas(exec.gasEstimationCap)
 
 	cleanState := createCleanState(s, msg, ethHeader, exec.cc)
-	snapshot := cleanState.Snapshot()
-	defer cleanState.RevertToSnapshot(snapshot) // Always revert after simulation
 
 	blockContext := gethcore.NewEVMBlockContext(ethHeader, exec.chain, nil)
 	// sets TxKey.origin
