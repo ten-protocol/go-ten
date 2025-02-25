@@ -36,11 +36,9 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 	if err != nil {
 		return err
 	}
+	defer dbtx.Rollback()
 
 	if err := hostdb.AddBatch(dbtx, s.db.GetSQLStatement(), batch); err != nil {
-		if err1 := dbtx.Rollback(); err1 != nil {
-			return err1
-		}
 		if errors.Is(err, errutil.ErrAlreadyExists) {
 			return nil
 		}
@@ -67,11 +65,9 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, extMetadata *common.Ex
 	if err != nil {
 		return err
 	}
+	defer dbtx.Rollback()
 
 	if err := hostdb.AddRollup(dbtx, s.db.GetSQLStatement(), rollup, extMetadata, metadata, block); err != nil {
-		if err1 := dbtx.Rollback(); err1 != nil {
-			return err1
-		}
 		if errors.Is(err, errutil.ErrAlreadyExists) {
 			return nil
 		}
