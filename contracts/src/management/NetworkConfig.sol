@@ -33,28 +33,28 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
 //        emit LogManagementContractCreated(address(messageBus));
     }
 
-    function crossChain() public view returns (address addr_) {
+    function crossChainContractAddress() public view returns (address addr_) {
         addr_ = Storage.getAddress(CROSS_CHAIN_SLOT);
     }
 
-    function messageBus() public view returns (address addr_) {
+    function messageBusContractAddress() public view returns (address addr_) {
         addr_ = Storage.getAddress(MESSAGE_BUS_SLOT);
     }
 
-    function networkEnclaveRegistry() public view returns (address addr_) {
+    function networkEnclaveRegistryContractAddress() public view returns (address addr_) {
         addr_ = Storage.getAddress(NETWORK_ENCLAVE_REGISTRY_SLOT);
     }
 
-    function rollupContract() public view returns (address addr_) {
+    function rollupContractAddress() public view returns (address addr_) {
         addr_ = Storage.getAddress(ROLLUP_CONTRACT_SLOT);
     }
 
     function addresses() external view returns (Addresses memory) {
         return Addresses({
-            crossChain: crossChain(),
-            messageBus: messageBus(),
-            networkEnclaveRegistry: networkEnclaveRegistry(),
-            rollupContract: rollupContract()
+            crossChain: crossChainContractAddress(),
+            messageBus: messageBusContractAddress(),
+            networkEnclaveRegistry: networkEnclaveRegistryContractAddress(),
+            rollupContract: rollupContractAddress()
         });
     }
 }

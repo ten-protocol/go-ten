@@ -170,6 +170,7 @@ func getContractCode(cfg *Config) ([]byte, error) {
 		tokenSymbol := cfg.ConstructorParams[1]
 		supply := cfg.ConstructorParams[2]
 		mgmtAddr := common.HexToAddress(cfg.ConstructorParams[3])
+
 		return erc20contract.L1Bytecode(tokenName, tokenSymbol, supply, mgmtAddr), nil
 
 	default:

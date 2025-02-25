@@ -32,6 +32,7 @@ func L1BytecodeWithDefaultSupply(tokenName string, managementAddress common.Addr
 	return L1Bytecode(tokenName, tokenName, "1000000000000000000000000000000000000000", managementAddress)
 }
 
+// FIXME what does managment addr do here?
 func L1Bytecode(tokenName string, tokenSymbol string, initialSupply string, managementAddress common.Address) []byte {
 	parsed, err := EthERC20.EthERC20MetaData.GetAbi()
 	if err != nil {

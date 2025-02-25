@@ -4,18 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sync/atomic"
 	"time"
-
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	"github.com/ten-protocol/go-ten/go/common/subscription"
 
@@ -49,11 +48,11 @@ const (
 type DataService struct {
 	blockSubscribers *subscription.Manager[host.L1BlockHandler]
 	// this eth client should only be used by the repository, the repository may "reconnect" it at any time and don't want to interfere with other processes
-	ethClient       ethadapter.EthClient
-	logger          gethlog.Logger
-	mgmtContractLib mgmtcontractlib.MgmtContractLib
-	blobResolver    BlobResolver
-	blockResolver   storage.BlockResolver
+	ethClient                 ethadapter.EthClient
+	logger                    gethlog.Logger
+	networkEnclaveRegistryLib contractlib.NetworkEnclaveRegistryLib
+	blobResolver              BlobResolver
+	blockResolver             storage.BlockResolver
 
 	running           atomic.Bool
 	head              gethcommon.Hash
@@ -63,18 +62,18 @@ type DataService struct {
 func NewL1DataService(
 	ethClient ethadapter.EthClient,
 	logger gethlog.Logger,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	networkEnclaveRegistryLib contractlib.NetworkEnclaveRegistryLib,
 	blobResolver BlobResolver,
 	contractAddresses map[ContractType][]gethcommon.Address,
 ) *DataService {
 	return &DataService{
-		blockSubscribers:  subscription.NewManager[host.L1BlockHandler](),
-		ethClient:         ethClient,
-		running:           atomic.Bool{},
-		logger:            logger,
-		mgmtContractLib:   mgmtContractLib,
-		blobResolver:      blobResolver,
-		contractAddresses: contractAddresses,
+		blockSubscribers:          subscription.NewManager[host.L1BlockHandler](),
+		ethClient:                 ethClient,
+		running:                   atomic.Bool{},
+		logger:                    logger,
+		networkEnclaveRegistryLib: networkEnclaveRegistryLib,
+		blobResolver:              blobResolver,
+		contractAddresses:         contractAddresses,
 	}
 }
 
@@ -206,11 +205,11 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			r.processValueTransferLogs(l, txData, processed)
 		case crosschain.SequencerEnclaveGrantedEventID:
 			r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
-			r.processManagementContractTx(txData, processed) // we need to decode the InitialiseSecretTx
+			r.processEnclaveRegistrationTx(txData, processed) // we need to decode the InitialiseSecretTx
 		case crosschain.SequencerEnclaveRevokedEventID:
 			r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
 		case crosschain.ImportantContractAddressUpdatedID:
-			r.processManagementContractTx(txData, processed)
+			r.processEnclaveRegistrationTx(txData, processed)
 		case crosschain.RollupAddedID:
 			r.processRollupLogs(l, txData, processed)
 		case crosschain.NetworkSecretRequestedID:
@@ -284,12 +283,12 @@ func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData,
 }
 
 func (r *DataService) processRollupLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	abi, err := ManagementContract.ManagementContractMetaData.GetAbi()
+	abi, err := RollupContract.RollupContractMetaData.GetAbi()
 	if err != nil {
 		r.logger.Error("Error getting ManagementContract ABI", log.ErrKey, err)
 		return
 	}
-	var event ManagementContract.ManagementContractRollupAdded
+	var event RollupContract.RollupContractRollupAdded
 	err = abi.UnpackIntoInterface(&event, "RollupAdded", l.Data)
 	if err != nil {
 		r.logger.Error("Error unpacking RollupAdded event", log.ErrKey, err)
@@ -310,14 +309,14 @@ func (r *DataService) processRollupLogs(l types.Log, txData *common.L1TxData, pr
 }
 
 // processManagementContractTx handles decoded transaction types
-func (r *DataService) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	decodedTx, _ := r.mgmtContractLib.DecodeTx(txData.Transaction)
+func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
+	decodedTx, _ := r.networkEnclaveRegistryLib.DecodeTx(txData.Transaction)
 	if decodedTx != nil {
 		switch decodedTx.(type) {
 		case *common.L1InitializeSecretTx:
 			processed.AddEvent(common.InitialiseSecretTx, txData)
-		case *common.L1SetImportantContractsTx:
-			processed.AddEvent(common.SetImportantContractsTx, txData)
+		//case *common.L1SetImportantContractsTx:
+		//	processed.AddEvent(common.SetImportantContractsTx, txData)
 		case *common.L1PermissionSeqTx:
 			return // no-op as it was processed in the previous processSequencerLogs call
 		default:
