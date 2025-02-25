@@ -375,11 +375,7 @@ func BatchWasExecuted(ctx context.Context, db *sql.DB, hash common.L2BatchHash) 
 }
 
 func GetTransactionsPerAddress(ctx context.Context, db *sql.DB, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
-	receipts, err := loadReceiptList(ctx, db, address, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
-	if err != nil {
-		return nil, err
-	}
-	return receipts, nil
+	return loadReceiptList(ctx, db, address, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
 }
 
 func CountTransactionsPerAddress(ctx context.Context, db *sql.DB, address *gethcommon.Address) (uint64, error) {
