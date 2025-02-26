@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
@@ -38,6 +39,7 @@ type Publisher struct {
 	importantContractAddresses map[string]gethcommon.Address
 	// lock for the important contract addresses map
 	importantAddressesMutex sync.RWMutex
+	importantAddresses      *contractlib.NetworkAddresses
 
 	repository host.L1DataService
 	logger     gethlog.Logger
@@ -81,8 +83,8 @@ func NewL1Publisher(
 		retryIntervalForL1Receipt: retryIntervalForL1Receipt,
 		storage:                   storage,
 
-		importantContractAddresses: map[string]gethcommon.Address{},
-		importantAddressesMutex:    sync.RWMutex{},
+		importantAddressesMutex: sync.RWMutex{},
+		importantAddresses:      &contractlib.NetworkAddresses{},
 
 		sendingLock:      sync.Mutex{},
 		sendingContext:   sendingCtx,
@@ -288,51 +290,24 @@ func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *bi
 	return nil
 }
 
-func (p *Publisher) GetImportantContracts() map[string]gethcommon.Address {
+func (p *Publisher) GetImportantContracts() *contractlib.NetworkAddresses {
 	p.importantAddressesMutex.RLock()
 	defer p.importantAddressesMutex.RUnlock()
-	return p.importantContractAddresses
+	return p.importantAddresses
 }
 
 // ResyncImportantContracts will fetch the latest important contracts from the management contract and update the cached map
 // Note: this should be run in a goroutine as it makes L1 transactions in series and will block.
 // Cache is not overwritten until it completes.
 func (p *Publisher) ResyncImportantContracts() error {
-	getKeysCallMsg, err := p.mgmtContractLib.GetImportantContractKeysMsg()
+	addresses, err := p.contractRegistry.NetworkConfigLib().GetContractAddresses()
 	if err != nil {
-		return fmt.Errorf("could not build callMsg for important contracts: %w", err)
-	}
-	keysResp, err := p.ethClient.CallContract(getKeysCallMsg)
-	if err != nil {
-		return fmt.Errorf("could not fetch important contracts: %w", err)
-	}
-
-	importantContracts, err := p.mgmtContractLib.DecodeImportantContractKeysResponse(keysResp)
-	if err != nil {
-		return fmt.Errorf("could not decode important contracts resp: %w", err)
-	}
-
-	contractsMap := make(map[string]gethcommon.Address)
-
-	for _, contract := range importantContracts {
-		getAddressCallMsg, err := p.mgmtContractLib.GetImportantAddressCallMsg(contract)
-		if err != nil {
-			return fmt.Errorf("could not build callMsg for important contract=%s: %w", contract, err)
-		}
-		addrResp, err := p.ethClient.CallContract(getAddressCallMsg)
-		if err != nil {
-			return fmt.Errorf("could not fetch important contract=%s: %w", contract, err)
-		}
-		contractAddress, err := p.mgmtContractLib.DecodeImportantAddressResponse(addrResp)
-		if err != nil {
-			return fmt.Errorf("could not decode important contract=%s resp: %w", contract, err)
-		}
-		contractsMap[contract] = contractAddress
+		return fmt.Errorf("could not get contract addresses: %w", err)
 	}
 
 	p.importantAddressesMutex.Lock()
 	defer p.importantAddressesMutex.Unlock()
-	p.importantContractAddresses = contractsMap
+	p.importantAddresses = addresses
 
 	return nil
 }

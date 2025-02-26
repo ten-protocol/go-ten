@@ -31,7 +31,7 @@ type EnclaveConfig struct {
 	//TODO
 	RollupContractAddress gethcommon.Address
 	//TODO
-	NetworkEnclaveRegistry gethcommon.Address
+	EnclaveRegistryAddress gethcommon.Address
 	// MessageBus L1 Address
 	MessageBusAddress gethcommon.Address
 	// SystemContractOwner is the address that owns the system contracts
@@ -109,7 +109,7 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 		L1ChainID:              tenCfg.Network.L1.ChainID,
 		NetworkConfigAddress:   tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
 		RollupContractAddress:  tenCfg.Network.L1.L1Contracts.RollupContract,
-		NetworkEnclaveRegistry: tenCfg.Network.L1.L1Contracts.EnclaveRegistry,
+		EnclaveRegistryAddress: tenCfg.Network.L1.L1Contracts.EnclaveRegistry,
 		MessageBusAddress:      tenCfg.Network.L1.L1Contracts.MessageBusContract,
 		SystemContractOwner:    tenCfg.Network.Sequencer.SystemContractsUpgrader,
 		LogLevel:               tenCfg.Enclave.Log.Level,

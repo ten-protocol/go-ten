@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math"
 	"math/big"
 	"time"
@@ -52,7 +53,7 @@ func createInMemTenNode(
 	id int64,
 	isGenesis bool,
 	nodeType common.NodeType,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	networkConfig contractlib.NetworkConfigLib,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	mockP2P hostcommon.P2PHostService,
@@ -63,22 +64,26 @@ func createInMemTenNode(
 	l1BlockTime time.Duration,
 	blobResolver l1.BlobResolver,
 ) *hostcontainer.HostContainer {
-	mgtContractAddress := mgmtContractLib.GetContractAddr()
+	networkConfigAddr := networkConfig.GetContractAddr()
 
 	hostConfig := &hostconfig.HostConfig{
-		ID:                        fmt.Sprintf("%d", id),
-		IsGenesis:                 isGenesis,
-		NodeType:                  nodeType,
-		HasClientRPCHTTP:          false,
-		P2PPublicAddress:          fmt.Sprintf("%d", id),
-		L1StartHash:               l1StartBlk,
-		ManagementContractAddress: *mgtContractAddress,
-		MessageBusAddress:         l1BusAddress,
-		BatchInterval:             batchInterval,
-		CrossChainInterval:        11 * time.Second, // todo @matt fix where this default comes from
-		IsInboundP2PDisabled:      incomingP2PDisabled,
-		L1BlockTime:               l1BlockTime,
-		UseInMemoryDB:             true,
+		ID:                   fmt.Sprintf("%d", id),
+		IsGenesis:            isGenesis,
+		NodeType:             nodeType,
+		HasClientRPCHTTP:     false,
+		P2PPublicAddress:     fmt.Sprintf("%d", id),
+		L1StartHash:          l1StartBlk,
+		NetworkConfigAddress: *networkConfigAddr,
+		BatchInterval:        batchInterval,
+		CrossChainInterval:   11 * time.Second, // todo @matt fix where this default comes from
+		IsInboundP2PDisabled: incomingP2PDisabled,
+		L1BlockTime:          l1BlockTime,
+		UseInMemoryDB:        true,
+	}
+
+	contracts, err := networkConfig.GetContractAddresses()
+	if err != nil {
+		panic(err)
 	}
 
 	enclaveConfig := &enclaveconfig.EnclaveConfig{
@@ -89,7 +94,8 @@ func createInMemTenNode(
 		UseInMemoryDB:             true,
 		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         l1BusAddress,
-		ManagementContractAddress: *mgtContractAddress,
+		RollupContractAddress:     contracts.RollupContract,
+		EnclaveRegistryAddress:    contracts.NetworkEnclaveRegistry,
 		SystemContractOwner:       gethcommon.BigToAddress(big.NewInt(1)), // Irrelevant for in-mem nodes
 		MaxBatchSize:              1024 * 55,
 		MaxRollupSize:             1024 * 128,
@@ -102,13 +108,16 @@ func createInMemTenNode(
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
-	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &TestnetGenesis, mgmtContractLib, enclaveLogger)}
+	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &TestnetGenesis, enclaveLogger)}
 
-	// create an in memory TEN node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
+	rollupContractLib := contractlib.NewRollupContractLib(&contracts.RollupContract, hostLogger)
+	enclaveRegistryLib := contractlib.NewNetworkEnclaveRegistryLib(&contracts.NetworkEnclaveRegistry, hostLogger)
+	contractRegistry := contractlib.NewContractRegistryFromLibs(rollupContractLib, enclaveRegistryLib, hostLogger)
+	// create an in memory TEN node
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-	l1Data := l1.NewL1DataService(ethClient, hostLogger, mgmtContractLib, blobResolver, ethereummock.ContractAddresses)
-	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Data, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService, blobResolver)
+	l1Data := l1.NewL1DataService(ethClient, hostLogger, contractRegistry, blobResolver)
+	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Data, enclaveClients, ethWallet, nil, hostLogger, metricsService, blobResolver, contractRegistry)
 
 	return currentContainer
 }

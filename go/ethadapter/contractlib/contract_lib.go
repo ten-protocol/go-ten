@@ -20,6 +20,7 @@ type ContractRegistry interface {
 	GetContractByAddress(addr gethcommon.Address) ContractLib
 	RollupLib() RollupContractLib
 	NetworkEnclaveLib() NetworkEnclaveRegistryLib
+	NetworkConfigLib() *NetworkConfigLib
 }
 
 type contractRegistryImpl struct {
@@ -37,7 +38,7 @@ func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadap
 		return nil, fmt.Errorf("failed to create NetworkConfig: %w", err)
 	}
 
-	addresses, err := networkConfig.GetAddresses()
+	addresses, err := networkConfig.GetContractAddresses()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get contract addresses: %w", err)
 	}
@@ -61,7 +62,7 @@ func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadap
 	return registry, nil
 }
 
-// NewContractRegistryFromLibs - helper function when creating the contract registry on the enclave as we don't want to make eth calls
+// NewContractRegistryFromLibs - helper function when creating the contract registry on the enclave
 func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib NetworkEnclaveRegistryLib, logger gethlog.Logger) *contractRegistryImpl {
 	registry := &contractRegistryImpl{
 		rollupLib:          rolluplib,
