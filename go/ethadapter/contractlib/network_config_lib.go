@@ -2,6 +2,7 @@ package contractlib
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -10,8 +11,9 @@ import (
 )
 
 type NetworkConfigLib struct {
-	address   gethcommon.Address
-	ethClient ethadapter.EthClient
+	addr        gethcommon.Address
+	ethClient   ethadapter.EthClient
+	contractABI abi.ABI
 }
 
 type NetworkAddresses struct {

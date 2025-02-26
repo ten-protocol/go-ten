@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
@@ -176,10 +177,37 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 		BlockHeader: block,
 		Events:      []common.L1Event{},
 	}
+	addresses := r.contractRegistry.GetContractAddresses()
 
-	logs, err := r.fetchMessageBusMgmtContractLogs(block)
-	if err != nil {
+	if err := r.processMessageBusLogs(block, addresses.MessageBus, processed); err != nil {
 		return nil, err
+	}
+	if err := r.processEnclaveRegistryLogs(block, addresses.NetworkEnclaveRegistry, processed); err != nil {
+		return nil, err
+	}
+	if err := r.processRollupLogs(block, addresses.RollupContract, processed); err != nil {
+		return nil, err
+	}
+
+	return processed, nil
+}
+
+func (r *DataService) getContractLogs(block *types.Header, contractAddr gethcommon.Address) ([]types.Log, error) {
+	blkHash := block.Hash()
+	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{
+		BlockHash: &blkHash,
+		Addresses: []gethcommon.Address{contractAddr},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch logs for contract %s: %w", contractAddr.Hex(), err)
+	}
+	return logs, nil
+}
+
+func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
+	logs, err := r.getContractLogs(block, contractAddr)
+	if err != nil {
+		return err
 	}
 
 	for _, l := range logs {
@@ -187,28 +215,42 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			r.logger.Warn("Log has no topics", "txHash", l.TxHash)
 			continue
 		}
-
 		txData, err := r.fetchTxAndReceipt(l.TxHash)
 		if err != nil {
 			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 			continue
 		}
-
-		// first topic is always the event signature
 		switch l.Topics[0] {
 		case crosschain.CrossChainEventID:
 			r.processCrossChainLogs(l, txData, processed)
 		case crosschain.ValueTransferEventID:
 			r.processValueTransferLogs(l, txData, processed)
+		}
+	}
+	return nil
+}
+
+func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
+	logs, err := r.getContractLogs(block, contractAddr)
+	if err != nil {
+		return err
+	}
+
+	for _, l := range logs {
+		if len(l.Topics) == 0 {
+			continue
+		}
+		txData, err := r.fetchTxAndReceipt(l.TxHash)
+		if err != nil {
+			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
+			continue
+		}
+		switch l.Topics[0] {
 		case crosschain.SequencerEnclaveGrantedEventID:
 			r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
-			r.processEnclaveRegistrationTx(txData, processed) // we need to decode the InitialiseSecretTx
+			r.processEnclaveRegistrationTx(txData, processed)
 		case crosschain.SequencerEnclaveRevokedEventID:
 			r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
-		case crosschain.ImportantContractAddressUpdatedID:
-			r.processEnclaveRegistrationTx(txData, processed)
-		case crosschain.RollupAddedID:
-			r.processRollupLogs(l, txData, processed)
 		case crosschain.NetworkSecretRequestedID:
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case crosschain.NetworkSecretRespondedID:
@@ -218,21 +260,56 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			r.logger.Debug("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
 		}
 	}
-	return processed, nil
+	return nil
 }
 
-// fetchMessageBusMgmtContractLogs retrieves all logs from management contract and message bus addresses
-func (r *DataService) fetchMessageBusMgmtContractLogs(block *types.Header) ([]types.Log, error) {
-	blkHash := block.Hash()
-	var allAddresses []gethcommon.Address
-	allAddresses = append(allAddresses, r.contractAddresses[MgmtContract]...)
-	allAddresses = append(allAddresses, r.contractAddresses[MsgBus]...)
-
-	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{BlockHash: &blkHash, Addresses: allAddresses})
+func (r *DataService) processRollupLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
+	rollupLogs, err := r.getContractLogs(block, contractAddr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch logs for L1 block - %w", err)
+		return err
 	}
-	return logs, nil
+
+	for _, l := range rollupLogs {
+		if len(l.Topics) == 0 {
+			continue
+		}
+		txData, err := r.fetchTxAndReceipt(l.TxHash)
+		if err != nil {
+			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
+			continue
+		}
+		switch l.Topics[0] {
+		case crosschain.RollupAddedID:
+			r.processRollupLog(l, txData, processed)
+		}
+	}
+	return nil
+}
+
+func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+	abi, err := RollupContract.RollupContractMetaData.GetAbi()
+	if err != nil {
+		r.logger.Error("Error getting ManagementContract ABI", log.ErrKey, err)
+		return
+	}
+	var event RollupContract.RollupContractRollupAdded
+	err = abi.UnpackIntoInterface(&event, "RollupAdded", l.Data)
+	if err != nil {
+		r.logger.Error("Error unpacking RollupAdded event", log.ErrKey, err)
+		return
+	}
+	blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash})
+	if err != nil {
+		r.logger.Error(fmt.Sprintf("error while fetching blobs. Cause: %s", err))
+		return
+	}
+	txData.BlobsWithSignature = []common.BlobAndSignature{
+		{
+			Blob:      blobs[0],
+			Signature: event.Signature,
+		},
+	}
+	processed.AddEvent(common.RollupTx, txData)
 }
 
 // fetchTxAndReceipt creates a new L1TxData instance for a transaction
@@ -279,35 +356,9 @@ func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData,
 	}
 }
 
-func (r *DataService) processRollupLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	abi, err := RollupContract.RollupContractMetaData.GetAbi()
-	if err != nil {
-		r.logger.Error("Error getting ManagementContract ABI", log.ErrKey, err)
-		return
-	}
-	var event RollupContract.RollupContractRollupAdded
-	err = abi.UnpackIntoInterface(&event, "RollupAdded", l.Data)
-	if err != nil {
-		r.logger.Error("Error unpacking RollupAdded event", log.ErrKey, err)
-		return
-	}
-	blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash})
-	if err != nil {
-		r.logger.Error(fmt.Sprintf("error while fetching blobs. Cause: %s", err))
-		return
-	}
-	txData.BlobsWithSignature = []common.BlobAndSignature{
-		{
-			Blob:      blobs[0],
-			Signature: event.Signature,
-		},
-	}
-	processed.AddEvent(common.RollupTx, txData)
-}
-
 // processManagementContractTx handles decoded transaction types
 func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	decodedTx, _ := r.networkEnclaveRegistryLib.DecodeTx(txData.Transaction)
+	decodedTx, _ := r.contractRegistry.NetworkEnclaveLib().DecodeTx(txData.Transaction)
 	if decodedTx != nil {
 		switch decodedTx.(type) {
 		case *common.L1InitializeSecretTx:

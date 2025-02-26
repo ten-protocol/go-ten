@@ -14,7 +14,6 @@ import (
 	"strings"
 )
 
-// Specific interfaces embed the base interface
 type RollupContractLib interface {
 	ContractLib
 	PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob, signature common.RollupSignature) (types.TxData, error)

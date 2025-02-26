@@ -17,21 +17,21 @@ type ContractLib interface {
 }
 
 type ContractRegistry interface {
-	GetContractByAddress(addr gethcommon.Address) ContractLib
 	RollupLib() RollupContractLib
 	NetworkEnclaveLib() NetworkEnclaveRegistryLib
 	NetworkConfigLib() *NetworkConfigLib
+	GetContractAddresses() *NetworkAddresses
 }
 
 type contractRegistryImpl struct {
-	rollupLib          RollupContractLib
-	networkEnclaveLib  NetworkEnclaveRegistryLib
-	networkConfig      *NetworkConfigLib
-	contractsByAddress map[gethcommon.Address]ContractLib
-	logger             gethlog.Logger
+	rollupLib         RollupContractLib
+	networkEnclaveLib NetworkEnclaveRegistryLib
+	networkConfig     *NetworkConfigLib
+	addresses         *NetworkAddresses
+	logger            gethlog.Logger
 }
 
-func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadapter.EthClient, logger gethlog.Logger) (*contractRegistryImpl, error) {
+func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadapter.EthClient, logger gethlog.Logger) (ContractRegistry, error) {
 	// First create NetworkConfig instance to get addresses
 	networkConfig, err := NewNetworkConfigLib(networkConfigAddr, ethClient)
 	if err != nil {
@@ -48,16 +48,12 @@ func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadap
 	networkEnclaveLib := NewNetworkEnclaveRegistryLib(&addresses.NetworkEnclaveRegistry, logger)
 
 	registry := &contractRegistryImpl{
-		rollupLib:          rollupLib,
-		networkEnclaveLib:  networkEnclaveLib,
-		networkConfig:      networkConfig,
-		contractsByAddress: make(map[gethcommon.Address]ContractLib),
-		logger:             logger,
+		rollupLib:         rollupLib,
+		networkEnclaveLib: networkEnclaveLib,
+		networkConfig:     networkConfig,
+		addresses:         addresses,
+		logger:            logger,
 	}
-
-	// Register contracts by their addresses
-	registry.contractsByAddress[addresses.RollupContract] = rollupLib
-	registry.contractsByAddress[addresses.NetworkEnclaveRegistry] = networkEnclaveLib
 
 	return registry, nil
 }
@@ -65,20 +61,16 @@ func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadap
 // NewContractRegistryFromLibs - helper function when creating the contract registry on the enclave
 func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib NetworkEnclaveRegistryLib, logger gethlog.Logger) *contractRegistryImpl {
 	registry := &contractRegistryImpl{
-		rollupLib:          rolluplib,
-		networkEnclaveLib:  enclaveRegistryLib,
-		contractsByAddress: make(map[gethcommon.Address]ContractLib),
-		logger:             logger,
+		rollupLib:         rolluplib,
+		networkEnclaveLib: enclaveRegistryLib,
+		logger:            logger,
 	}
-
-	registry.contractsByAddress[*rolluplib.GetContractAddr()] = rolluplib
-	registry.contractsByAddress[*enclaveRegistryLib.GetContractAddr()] = enclaveRegistryLib
 
 	return registry
 }
 
-func (r *contractRegistryImpl) GetContractByAddress(addr gethcommon.Address) ContractLib {
-	return r.contractsByAddress[addr]
+func (r *contractRegistryImpl) GetContractAddresses() *NetworkAddresses {
+	return r.addresses
 }
 
 func (r *contractRegistryImpl) RollupLib() RollupContractLib {
@@ -87,4 +79,8 @@ func (r *contractRegistryImpl) RollupLib() RollupContractLib {
 
 func (r *contractRegistryImpl) NetworkEnclaveLib() NetworkEnclaveRegistryLib {
 	return r.networkEnclaveLib
+}
+
+func (r *contractRegistryImpl) NetworkConfigLib() *NetworkConfigLib {
+	return r.networkConfig
 }
