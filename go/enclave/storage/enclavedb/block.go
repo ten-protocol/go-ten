@@ -284,17 +284,17 @@ func SelectUnprocessedBlocks(ctx context.Context, dbtx *sql.Tx) ([]uint64, error
 	return ids, rows.Err()
 }
 
-func DeleteRollupsForBlock(ctx context.Context, tx *sql.Tx, blockId uint64) error {
-	_, err := tx.ExecContext(ctx, "delete from rollup where compression_block=?", blockId)
+func DeleteUnprocessedRollups(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, "delete from rollup where compression_block in (select id from block where processed=false)")
 	return err
 }
 
-func DeleteL1MessagesForBlock(ctx context.Context, tx *sql.Tx, blockId uint64) error {
-	_, err := tx.ExecContext(ctx, "delete from l1_msg where block=?", blockId)
+func DeleteUnprocessedL1Messages(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, "delete from l1_msg where block in (select id from block where processed=false)")
 	return err
 }
 
-func DeleteBlock(ctx context.Context, tx *sql.Tx, blockId uint64) error {
-	_, err := tx.ExecContext(ctx, "delete from block where id=?", blockId)
+func DeleteUnProcessedBlock(ctx context.Context, tx *sql.Tx) error {
+	_, err := tx.ExecContext(ctx, "delete from block where processed=false")
 	return err
 }
