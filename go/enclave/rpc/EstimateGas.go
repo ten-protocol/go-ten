@@ -58,31 +58,33 @@ func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlo
 
 // EstimateGasExecute - performs the gas estimation based on the provided parameters and the local environment configuration.
 // Will accommodate l1 gas cost and stretch the final gas estimation.
+// Note that setting gas price on the external call affects behaviour - this is due to a change geth implemented; If the account has
+// no balance with the gas price the estimation might zero out.
 func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], rpc *EncryptionManager) error {
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
 		builder.Err = err
-		return nil //nolint:nilerr
+		return nil
 	}
 
 	txArgs := builder.Param.callParams
 	blockNumber := builder.Param.block
 	block, err := rpc.l1BlockProcessor.GetHead(builder.ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get head block from L1: %w", err)
 	}
 
 	headBatchSeq := rpc.registry.HeadBatchSeq()
 	batch, err := rpc.storage.FetchBatchHeaderBySeqNo(builder.ctx, headBatchSeq.Uint64())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to fetch batch header: %w", err)
 	}
 
 	// The message is run through the l1 publishing cost estimation for the current
 	// known head BlockHeader.
 	l1Cost, err := rpc.gasOracle.EstimateL1CostForMsg(txArgs, block, batch)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to estimate L1 cost: %w", err)
 	}
 
 	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
@@ -100,7 +102,11 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.
 	// The single pass will run once at the highest gas cap and return gas used. Not completely reliable,
 	// but is quick.
-	executionGasEstimate, revert, gasPrice, userErr, err := estimateGasSinglePass(builder.ctx, rpc, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
+	executionGasEstimate, revert, gasPrice, userErr, sysErr := estimateGasSinglePass(builder.ctx, rpc, txArgs, blockNumber, rpc.config.GasLocalExecutionCapFlag)
+	if sysErr != nil {
+		return fmt.Errorf("system error during gas estimation: %w", sysErr)
+	}
+
 	if len(revert) > 0 {
 		builder.Err = newRevertError(revert)
 		rpc.logger.Debug("revert error", "err", builder.Err)
@@ -112,20 +118,15 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 		return nil
 	}
 
-	// if there was a system error return it
-	if err != nil {
-		return err
-	}
-
 	totalGasEstimateUint64 := publishingGas.Uint64() + uint64(executionGasEstimate)
 	totalGasEstimate := hexutil.Uint64(totalGasEstimateUint64)
 	balance, err := rpc.chain.GetBalanceAtBlock(builder.ctx, *txArgs.From, blockNumber)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get account balance: %w", err)
 	}
 
 	if balance.ToInt().Cmp(big.NewInt(0).Mul(gasPrice, big.NewInt(0).SetUint64(totalGasEstimateUint64))) < 0 {
-		builder.Err = fmt.Errorf("insufficient funds for gas estimate")
+		builder.Err = errors.New("insufficient funds for gas estimate")
 		return nil
 	}
 	rpc.logger.Debug("Estimation breakdown", "gasPrice", gasPrice, "executionGasEstimate", uint64(executionGasEstimate), "publishingGas", publishingGas, "totalGasEstimate", uint64(totalGasEstimate))
@@ -133,12 +134,11 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	return nil
 }
 
-func calculateMaxGasCap(ctx context.Context, rpc *EncryptionManager, gasCap uint64, argsGas *hexutil.Uint64) uint64 {
+func calculateMaxGasCap(ctx context.Context, rpc *EncryptionManager, gasCap uint64, argsGas *hexutil.Uint64) (uint64, error) {
 	// Fetch the current batch header to get the batch gas limit
 	batchHeader, err := rpc.storage.FetchHeadBatchHeader(ctx)
 	if err != nil {
-		rpc.logger.Error("Failed to fetch batch header", "error", err)
-		return gasCap
+		return 0, fmt.Errorf("failed to fetch batch header: %w", err)
 	}
 
 	// Determine the gas limit based on the batch header
@@ -160,7 +160,7 @@ func calculateMaxGasCap(ctx context.Context, rpc *EncryptionManager, gasCap uint
 		}
 	}
 
-	return gasCap
+	return gasCap, nil
 }
 
 // This adds a bit of an overhead to gas estimation. Fixes issues when calling proxies, but needs more investigation.
@@ -196,19 +196,27 @@ func calculateProxyOverhead(txArgs *gethapi.TransactionArgs) uint64 {
 // for the head batch might not be fully clean in terms of the running call. Cold storage slots cost far more than warm ones to
 // read and write.
 func estimateGasSinglePass(ctx context.Context, rpc *EncryptionManager, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, globalGasCap uint64) (hexutil.Uint64, []byte, *big.Int, error, common.SystemError) {
-	maxGasCap := calculateMaxGasCap(ctx, rpc, globalGasCap, args.Gas)
-	// allowance will either be the maxGasCap or the balance allowance.
-	// If the users funds are floaty, this might cause issues combined with the l1 pricing.
-	allowance, feeCap, err := normalizeFeeCapAndAdjustGasLimit(ctx, rpc, args, blkNumber, maxGasCap)
+	maxGasCap, err := calculateMaxGasCap(ctx, rpc, globalGasCap, args.Gas)
 	if err != nil {
 		return 0, nil, nil, nil, err
 	}
 
+	// allowance will either be the maxGasCap or the balance allowance.
+	// If the users funds are floaty, this might cause issues combined with the l1 pricing.
+	allowance, feeCap, userErr, sysErr := normalizeFeeCapAndAdjustGasLimit(ctx, rpc, args, blkNumber, maxGasCap)
+	if sysErr != nil {
+		return 0, nil, nil, nil, sysErr
+	}
+
+	if userErr != nil {
+		return 0, nil, nil, userErr, nil
+	}
+
 	// Perform a single gas estimation pass using isGasEnough
-	failed, result, userErr, err := isGasEnough(ctx, rpc, args, allowance, blkNumber)
-	if err != nil {
+	failed, result, userErr, sysErr := isGasEnough(ctx, rpc, args, allowance, blkNumber)
+	if sysErr != nil {
 		// Return zero values and the encountered error if estimation fails
-		return 0, nil, nil, nil, err
+		return 0, nil, nil, nil, sysErr
 	}
 
 	if failed {
@@ -242,11 +250,11 @@ func estimateGasSinglePass(ctx context.Context, rpc *EncryptionManager, args *ge
 	return gasUsed, nil, feeCap, nil, nil
 }
 
-func normalizeFeeCapAndAdjustGasLimit(ctx context.Context, rpc *EncryptionManager, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, hi uint64) (uint64, *big.Int, error) {
+func normalizeFeeCapAndAdjustGasLimit(ctx context.Context, rpc *EncryptionManager, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, hi uint64) (uint64, *big.Int, error, common.SystemError) {
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int
 	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
-		return 0, gethcommon.Big0, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified")
+		return 0, gethcommon.Big0, errors.New("both gasPrice and (maxFeePerGas or maxPriorityFeePerGas) specified"), nil
 	} else if args.GasPrice != nil {
 		feeCap = args.GasPrice.ToInt()
 	} else if args.MaxFeePerGas != nil {
@@ -259,13 +267,13 @@ func normalizeFeeCapAndAdjustGasLimit(ctx context.Context, rpc *EncryptionManage
 	if feeCap.BitLen() != 0 { //nolint:nestif
 		balance, err := rpc.chain.GetBalanceAtBlock(ctx, *args.From, blkNumber)
 		if err != nil {
-			return 0, gethcommon.Big0, fmt.Errorf("unable to fetch account balance - %w", err)
+			return 0, gethcommon.Big0, nil, fmt.Errorf("unable to fetch account balance: %w", err)
 		}
 
 		available := new(big.Int).Set(balance.ToInt())
 		if args.Value != nil {
 			if args.Value.ToInt().Cmp(available) >= 0 {
-				return 0, gethcommon.Big0, errors.New("insufficient funds for transfer")
+				return 0, gethcommon.Big0, errors.New("insufficient funds for transfer"), nil
 			}
 			available.Sub(available, args.Value.ToInt())
 		}
@@ -287,8 +295,7 @@ func normalizeFeeCapAndAdjustGasLimit(ctx context.Context, rpc *EncryptionManage
 			hi = allowance.Uint64()
 		}
 	}
-
-	return hi, feeCap, nil
+	return hi, feeCap, nil, nil
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction
@@ -297,9 +304,13 @@ func isGasEnough(ctx context.Context, rpc *EncryptionManager, args *gethapi.Tran
 	defer core.LogMethodDuration(rpc.logger, measure.NewStopwatch(), "enclave.go:IsGasEnough")
 	args.Gas = (*hexutil.Uint64)(&gas)
 	result, userErr, sysErr := rpc.chain.ObsCallAtBlock(ctx, args, blkNumber)
-	if sysErr != nil || userErr != nil {
-		// since we estimate gas in a single pass, any error is just returned
-		return true, nil, userErr, sysErr // Bail out
+	if sysErr != nil {
+		return true, nil, nil, sysErr
 	}
+
+	if userErr != nil {
+		return true, nil, userErr, nil
+	}
+
 	return result.Failed(), result, nil, nil
 }

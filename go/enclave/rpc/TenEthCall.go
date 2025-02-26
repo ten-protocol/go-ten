@@ -39,6 +39,9 @@ func TenCallValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, 
 	return nil
 }
 
+// TenCallExecute - executes the eth_call call according to the new geth specifications; Balance is checked and gas price affects behaviour.
+// When gas price is zero the sender does not need to be funded as gas would be free, but otherwise eth call would accurately represent what a transaction
+// would be doing and potentially fail due to insufficient balance.
 func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *EncryptionManager) error {
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
