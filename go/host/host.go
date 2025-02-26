@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
@@ -18,7 +19,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/profiler"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/host/events"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 	"github.com/ten-protocol/go-ten/go/responses"
@@ -48,6 +48,7 @@ type host struct {
 	transactionPostProcessorAddress gethcommon.Address
 	publicSystemContracts           map[string]gethcommon.Address
 	newHeads                        chan *common.BatchHeader
+	contractRegistry                contractlib.ContractRegistry
 }
 
 type batchListener struct {
@@ -58,7 +59,7 @@ func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
 	bl.newHeads <- batch.Header
 }
 
-func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
+func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, contractRegistry contractlib.ContractRegistry, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
 	hostStorage := storage.NewHostStorageFromConfig(config, logger)
 	l1Repo.SetBlockResolver(hostStorage)
 	hostIdentity := hostcommon.NewIdentity(config)
@@ -78,6 +79,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		stopControl:           stopcontrol.New(),
 		newHeads:              make(chan *common.BatchHeader),
 		publicSystemContracts: make(map[string]gethcommon.Address),
+		contractRegistry:      contractRegistry,
 	}
 
 	enclGuardians := make([]*enclave.Guardian, 0, len(enclaveClients))
@@ -104,7 +106,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		hostIdentity,
 		ethWallet,
 		ethClient,
-		mgmtContractLib,
+		contractRegistry,
 		l1Repo,
 		blobResolver,
 		host.stopControl,
@@ -255,14 +257,16 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		if err != nil {
 			return nil, responses.ToInternalError(fmt.Errorf("unable to get L2 message bus address - %w", err))
 		}
+
 		h.l2MessageBusAddress = &publicCfg.L2MessageBusAddress
 		h.transactionPostProcessorAddress = publicCfg.TransactionPostProcessorAddress
 		h.publicSystemContracts = publicCfg.PublicSystemContracts
 	}
 
+	h.contractRegistry.RollupLib().GetContractAddr()
 	return &common.TenNetworkInfo{
-		ManagementContractAddress: h.config.ManagementContractAddress,
-		L1StartHash:               h.config.L1StartHash,
+		RollupContractAddress: h.config.ManagementContractAddress,
+		L1StartHash:           h.config.L1StartHash,
 
 		MessageBusAddress:               h.config.MessageBusAddress,
 		L2MessageBusAddress:             *h.l2MessageBusAddress,

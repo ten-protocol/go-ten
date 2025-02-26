@@ -3,13 +3,10 @@ package container
 import (
 	"context"
 	"fmt"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave"
-
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	obscuroGenesis "github.com/ten-protocol/go-ten/go/enclave/genesis"
@@ -50,15 +47,13 @@ func NewEnclaveContainerFromConfig(config *enclaveconfig.EnclaveConfig) *Enclave
 
 // NewEnclaveContainerWithLogger is useful for testing etc.
 func NewEnclaveContainerWithLogger(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) *EnclaveContainer {
-	contractAddr := config.ManagementContractAddress
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)
 
 	genesis, err := obscuroGenesis.New(config.TenGenesis)
 	if err != nil {
 		logger.Crit("unable to parse obscuro genesis", log.ErrKey, err)
 	}
 
-	encl := enclave.NewEnclave(config, genesis, mgmtContractLib, logger)
+	encl := enclave.NewEnclave(config, genesis, logger)
 	rpcServer := enclave.NewEnclaveRPCServer(config.RPCAddress, encl, logger)
 
 	return &EnclaveContainer{

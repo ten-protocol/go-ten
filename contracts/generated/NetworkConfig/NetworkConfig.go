@@ -39,8 +39,8 @@ type NetworkConfigAddresses struct {
 
 // NetworkConfigMetaData contains all meta data concerning the NetworkConfig contract.
 var NetworkConfigMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"OwnableInvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"OwnableUnauthorizedAccount\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"CROSS_CHAIN_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MESSAGE_BUS_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"NETWORK_ENCLAVE_REGISTRY_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"ROLLUP_CONTRACT_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"addresses\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"crossChain\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"messageBus\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"networkEnclaveRegistry\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rollupContract\",\"type\":\"address\"}],\"internalType\":\"structNetworkConfig.Addresses\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"crossChain\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"crossChain\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"messageBus\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"networkEnclaveRegistry\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rollupContract\",\"type\":\"address\"}],\"internalType\":\"structNetworkConfig.Addresses\",\"name\":\"_addresses\",\"type\":\"tuple\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"messageBus\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"networkEnclaveRegistry\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"rollupContract\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
-	Bin: "0x6080604052348015600e575f5ffd5b506109f78061001c5f395ff3fe608060405234801561000f575f5ffd5b50600436106100da575f3560e01c80638da5cb5b11610088578063da0321cd11610063578063da0321cd1461017e578063f2fde38b14610193578063fbfd6d91146101a6578063fdcd4e99146101ae575f5ffd5b80638da5cb5b1461013e578063a1a227fa1461016e578063bfa02ba914610176575f5ffd5b8063715018a6116100b8578063715018a61461012657806372bad9121461012e57806385a7805a14610136575f5ffd5b80630415cc15146100de57806348d87239146100f35780634917db6614610111575b5f5ffd5b6100f16100ec3660046108ac565b6101b6565b005b6100fb6103cf565b60405161010891906108d8565b60405180910390f35b6101196103fd565b60405161010891906108ef565b6100f1610435565b6100fb610448565b6100fb610473565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b0316610119565b61011961049e565b6101196104cd565b6101866104fc565b6040516101089190610947565b6100f16101a1366004610955565b610584565b6100fb6105e3565b61011961060e565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000810460ff16159067ffffffffffffffff165f811580156102005750825b90505f8267ffffffffffffffff16600114801561021c5750303b155b90508115801561022a575080155b15610261576040517ff92ee8a900000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b845467ffffffffffffffff19166001178555831561029557845468ff00000000000000001916680100000000000000001785555b61029e3361063d565b6102d26102cc60017fa508d09e1d1c531b763d64886006a2907e36a4e174a478e71c5c12a783071958610986565b87519055565b61030961030060017f83a6e12707c3cce2dda8a0b6be6d727d0c7e3f872360a29f026e5f6fb65eff2c610986565b60208801519055565b61034061033760017fa8dc982740f2c3c626e5e571dc05dd1658ff80318c0fb06acc8b264b5ed7ebba610986565b60408801519055565b61037761036e60017f11991024cba012d71648dba5812a933585fbe131af1382f6830696bff498c6fc610986565b60608801519055565b83156103c757845468ff0000000000000000191685556040517fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2906103be906001906109b3565b60405180910390a15b505050505050565b6103fa60017f83a6e12707c3cce2dda8a0b6be6d727d0c7e3f872360a29f026e5f6fb65eff2c610986565b81565b5f61043061042c60017fa508d09e1d1c531b763d64886006a2907e36a4e174a478e71c5c12a783071958610986565b5490565b905090565b61043d61064e565b6104465f6106c2565b565b6103fa60017fa8dc982740f2c3c626e5e571dc05dd1658ff80318c0fb06acc8b264b5ed7ebba610986565b6103fa60017f11991024cba012d71648dba5812a933585fbe131af1382f6830696bff498c6fc610986565b5f61043061042c60017f83a6e12707c3cce2dda8a0b6be6d727d0c7e3f872360a29f026e5f6fb65eff2c610986565b5f61043061042c60017f11991024cba012d71648dba5812a933585fbe131af1382f6830696bff498c6fc610986565b604080516080810182525f80825260208201819052918101829052606081019190915260405180608001604052806105326103fd565b6001600160a01b0316815260200161054861049e565b6001600160a01b0316815260200161055e61060e565b6001600160a01b031681526020016105746104cd565b6001600160a01b03169052919050565b61058c61064e565b6001600160a01b0381166105d7575f6040517f1e4fbdf70000000000000000000000000000000000000000000000000000000081526004016105ce91906108ef565b60405180910390fd5b6105e0816106c2565b50565b6103fa60017fa508d09e1d1c531b763d64886006a2907e36a4e174a478e71c5c12a783071958610986565b5f61043061042c60017fa8dc982740f2c3c626e5e571dc05dd1658ff80318c0fb06acc8b264b5ed7ebba610986565b61064561074a565b6105e0816107b1565b336106807f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031690565b6001600160a01b03161461044657336040517f118cdaa70000000000000000000000000000000000000000000000000000000081526004016105ce91906108ef565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c19930080547fffffffffffffffffffffffff000000000000000000000000000000000000000081166001600160a01b03848116918217845560405192169182907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a3505050565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a005468010000000000000000900460ff16610446576040517fd7e6bcf800000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b61058c61074a565b634e487b7160e01b5f52604160045260245ffd5b601f19601f830116810181811067ffffffffffffffff821117156107f3576107f36107b9565b6040525050565b5f61080460405190565b905061081082826107cd565b919050565b5f6001600160a01b0382165b92915050565b61083081610815565b81146105e0575f5ffd5b803561082181610827565b5f60808284031215610858576108585f5ffd5b61086260806107fa565b905061086e838361083a565b815261087d836020840161083a565b602082015261088f836040840161083a565b60408201526108a1836060840161083a565b606082015292915050565b5f608082840312156108bf576108bf5f5ffd5b6108c98383610845565b9392505050565b805b82525050565b6020810161082182846108d0565b6108d281610815565b6020810161082182846108e6565b805161090983826108e6565b50602081015161091c60208401826108e6565b50604081015161092f60408401826108e6565b50606081015161094260608401826108e6565b505050565b6080810161082182846108fd565b5f60208284031215610968576109685f5ffd5b6108c9838361083a565b634e487b7160e01b5f52601160045260245ffd5b8181038181111561082157610821610972565b5f67ffffffffffffffff8216610821565b6108d281610999565b6020810161082182846109aa56fea26469706673582212209cad0f686c6fabb5e9e93d3d209e6dbf9e28e77e8e75578c35734237155b978264736f6c634300081c0033",
+	ABI: "[{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"OwnableInvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"OwnableUnauthorizedAccount\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"CROSS_CHAIN_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"MESSAGE_BUS_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"NETWORK_ENCLAVE_REGISTRY_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"ROLLUP_CONTRACT_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"addresses\",\"outputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"crossChain\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"messageBus\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"networkEnclaveRegistry\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rollupContract\",\"type\":\"address\"}],\"internalType\":\"structNetworkConfig.Addresses\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"crossChainContractAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"crossChain\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"messageBus\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"networkEnclaveRegistry\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"rollupContract\",\"type\":\"address\"}],\"internalType\":\"structNetworkConfig.Addresses\",\"name\":\"_addresses\",\"type\":\"tuple\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"messageBusContractAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"networkEnclaveRegistryContractAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"rollupContractAddress\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	Bin: "0x6080604052348015600e575f5ffd5b506109fb8061001c5f395ff3fe608060405234801561000f575f5ffd5b50600436106100da575f3560e01c806385a7805a11610088578063da0321cd11610063578063da0321cd1461017e578063f2fde38b14610193578063f5e9f286146101a6578063fbfd6d91146101ae575f5ffd5b806385a7805a1461013e5780638da5cb5b14610146578063a1b918d614610176575f5ffd5b80634e027271116100b85780634e02727114610126578063715018a61461012e57806372bad91214610136575f5ffd5b80630415cc15146100de5780632fc00c76146100f357806348d8723914610111575b5f5ffd5b6100f16100ec3660046108ac565b6101b6565b005b6100fb6103cf565b60405161010891906108df565b60405180910390f35b610119610407565b60405161010891906108f3565b6100fb610435565b6100f1610464565b610119610477565b6101196104a2565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b03166100fb565b6100fb6104cd565b6101866104fc565b604051610108919061094b565b6100f16101a1366004610959565b610584565b6100fb6105e3565b610119610612565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000810460ff16159067ffffffffffffffff165f811580156102005750825b90505f8267ffffffffffffffff16600114801561021c5750303b155b90508115801561022a575080155b15610261576040517ff92ee8a900000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b845467ffffffffffffffff19166001178555831561029557845468ff00000000000000001916680100000000000000001785555b61029e3361063d565b6102d26102cc60017fa508d09e1d1c531b763d64886006a2907e36a4e174a478e71c5c12a78307195861098a565b87519055565b61030961030060017f83a6e12707c3cce2dda8a0b6be6d727d0c7e3f872360a29f026e5f6fb65eff2c61098a565b60208801519055565b61034061033760017fa8dc982740f2c3c626e5e571dc05dd1658ff80318c0fb06acc8b264b5ed7ebba61098a565b60408801519055565b61037761036e60017f11991024cba012d71648dba5812a933585fbe131af1382f6830696bff498c6fc61098a565b60608801519055565b83156103c757845468ff0000000000000000191685556040517fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d2906103be906001906109b7565b60405180910390a15b505050505050565b5f6104026103fe60017fa8dc982740f2c3c626e5e571dc05dd1658ff80318c0fb06acc8b264b5ed7ebba61098a565b5490565b905090565b61043260017f83a6e12707c3cce2dda8a0b6be6d727d0c7e3f872360a29f026e5f6fb65eff2c61098a565b81565b5f6104026103fe60017f11991024cba012d71648dba5812a933585fbe131af1382f6830696bff498c6fc61098a565b61046c61064e565b6104755f6106c2565b565b61043260017fa8dc982740f2c3c626e5e571dc05dd1658ff80318c0fb06acc8b264b5ed7ebba61098a565b61043260017f11991024cba012d71648dba5812a933585fbe131af1382f6830696bff498c6fc61098a565b5f6104026103fe60017fa508d09e1d1c531b763d64886006a2907e36a4e174a478e71c5c12a78307195861098a565b604080516080810182525f80825260208201819052918101829052606081019190915260405180608001604052806105326104cd565b6001600160a01b031681526020016105486105e3565b6001600160a01b0316815260200161055e6103cf565b6001600160a01b03168152602001610574610435565b6001600160a01b03169052919050565b61058c61064e565b6001600160a01b0381166105d7575f6040517f1e4fbdf70000000000000000000000000000000000000000000000000000000081526004016105ce91906108df565b60405180910390fd5b6105e0816106c2565b50565b5f6104026103fe60017f83a6e12707c3cce2dda8a0b6be6d727d0c7e3f872360a29f026e5f6fb65eff2c61098a565b61043260017fa508d09e1d1c531b763d64886006a2907e36a4e174a478e71c5c12a78307195861098a565b61064561074a565b6105e0816107b1565b336106807f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031690565b6001600160a01b03161461047557336040517f118cdaa70000000000000000000000000000000000000000000000000000000081526004016105ce91906108df565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c19930080547fffffffffffffffffffffffff000000000000000000000000000000000000000081166001600160a01b03848116918217845560405192169182907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a3505050565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a005468010000000000000000900460ff16610475576040517fd7e6bcf800000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b61058c61074a565b634e487b7160e01b5f52604160045260245ffd5b601f19601f830116810181811067ffffffffffffffff821117156107f3576107f36107b9565b6040525050565b5f61080460405190565b905061081082826107cd565b919050565b5f6001600160a01b0382165b92915050565b61083081610815565b81146105e0575f5ffd5b803561082181610827565b5f60808284031215610858576108585f5ffd5b61086260806107fa565b905061086e838361083a565b815261087d836020840161083a565b602082015261088f836040840161083a565b60408201526108a1836060840161083a565b606082015292915050565b5f608082840312156108bf576108bf5f5ffd5b6108c98383610845565b9392505050565b6108d981610815565b82525050565b6020810161082182846108d0565b806108d9565b6020810161082182846108ed565b805161090d83826108d0565b50602081015161092060208401826108d0565b50604081015161093360408401826108d0565b50606081015161094660608401826108d0565b505050565b608081016108218284610901565b5f6020828403121561096c5761096c5f5ffd5b6108c9838361083a565b634e487b7160e01b5f52601160045260245ffd5b8181038181111561082157610821610976565b5f67ffffffffffffffff8216610821565b6108d98161099d565b6020810161082182846109ae56fea2646970667358221220ebfec208873fdc6923d769cf7314cb2e1d25d5ff24112fdd8b87915d41bdd74764736f6c634300081c0033",
 }
 
 // NetworkConfigABI is the input ABI used to generate the binding from.
@@ -365,12 +365,12 @@ func (_NetworkConfig *NetworkConfigCallerSession) Addresses() (NetworkConfigAddr
 	return _NetworkConfig.Contract.Addresses(&_NetworkConfig.CallOpts)
 }
 
-// CrossChain is a free data retrieval call binding the contract method 0x4917db66.
+// CrossChainContractAddress is a free data retrieval call binding the contract method 0xa1b918d6.
 //
-// Solidity: function crossChain() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigCaller) CrossChain(opts *bind.CallOpts) (common.Address, error) {
+// Solidity: function crossChainContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigCaller) CrossChainContractAddress(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
-	err := _NetworkConfig.contract.Call(opts, &out, "crossChain")
+	err := _NetworkConfig.contract.Call(opts, &out, "crossChainContractAddress")
 
 	if err != nil {
 		return *new(common.Address), err
@@ -382,26 +382,26 @@ func (_NetworkConfig *NetworkConfigCaller) CrossChain(opts *bind.CallOpts) (comm
 
 }
 
-// CrossChain is a free data retrieval call binding the contract method 0x4917db66.
+// CrossChainContractAddress is a free data retrieval call binding the contract method 0xa1b918d6.
 //
-// Solidity: function crossChain() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigSession) CrossChain() (common.Address, error) {
-	return _NetworkConfig.Contract.CrossChain(&_NetworkConfig.CallOpts)
+// Solidity: function crossChainContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigSession) CrossChainContractAddress() (common.Address, error) {
+	return _NetworkConfig.Contract.CrossChainContractAddress(&_NetworkConfig.CallOpts)
 }
 
-// CrossChain is a free data retrieval call binding the contract method 0x4917db66.
+// CrossChainContractAddress is a free data retrieval call binding the contract method 0xa1b918d6.
 //
-// Solidity: function crossChain() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigCallerSession) CrossChain() (common.Address, error) {
-	return _NetworkConfig.Contract.CrossChain(&_NetworkConfig.CallOpts)
+// Solidity: function crossChainContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigCallerSession) CrossChainContractAddress() (common.Address, error) {
+	return _NetworkConfig.Contract.CrossChainContractAddress(&_NetworkConfig.CallOpts)
 }
 
-// MessageBus is a free data retrieval call binding the contract method 0xa1a227fa.
+// MessageBusContractAddress is a free data retrieval call binding the contract method 0xf5e9f286.
 //
-// Solidity: function messageBus() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigCaller) MessageBus(opts *bind.CallOpts) (common.Address, error) {
+// Solidity: function messageBusContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigCaller) MessageBusContractAddress(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
-	err := _NetworkConfig.contract.Call(opts, &out, "messageBus")
+	err := _NetworkConfig.contract.Call(opts, &out, "messageBusContractAddress")
 
 	if err != nil {
 		return *new(common.Address), err
@@ -413,26 +413,26 @@ func (_NetworkConfig *NetworkConfigCaller) MessageBus(opts *bind.CallOpts) (comm
 
 }
 
-// MessageBus is a free data retrieval call binding the contract method 0xa1a227fa.
+// MessageBusContractAddress is a free data retrieval call binding the contract method 0xf5e9f286.
 //
-// Solidity: function messageBus() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigSession) MessageBus() (common.Address, error) {
-	return _NetworkConfig.Contract.MessageBus(&_NetworkConfig.CallOpts)
+// Solidity: function messageBusContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigSession) MessageBusContractAddress() (common.Address, error) {
+	return _NetworkConfig.Contract.MessageBusContractAddress(&_NetworkConfig.CallOpts)
 }
 
-// MessageBus is a free data retrieval call binding the contract method 0xa1a227fa.
+// MessageBusContractAddress is a free data retrieval call binding the contract method 0xf5e9f286.
 //
-// Solidity: function messageBus() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigCallerSession) MessageBus() (common.Address, error) {
-	return _NetworkConfig.Contract.MessageBus(&_NetworkConfig.CallOpts)
+// Solidity: function messageBusContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigCallerSession) MessageBusContractAddress() (common.Address, error) {
+	return _NetworkConfig.Contract.MessageBusContractAddress(&_NetworkConfig.CallOpts)
 }
 
-// NetworkEnclaveRegistry is a free data retrieval call binding the contract method 0xfdcd4e99.
+// NetworkEnclaveRegistryContractAddress is a free data retrieval call binding the contract method 0x2fc00c76.
 //
-// Solidity: function networkEnclaveRegistry() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigCaller) NetworkEnclaveRegistry(opts *bind.CallOpts) (common.Address, error) {
+// Solidity: function networkEnclaveRegistryContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigCaller) NetworkEnclaveRegistryContractAddress(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
-	err := _NetworkConfig.contract.Call(opts, &out, "networkEnclaveRegistry")
+	err := _NetworkConfig.contract.Call(opts, &out, "networkEnclaveRegistryContractAddress")
 
 	if err != nil {
 		return *new(common.Address), err
@@ -444,18 +444,18 @@ func (_NetworkConfig *NetworkConfigCaller) NetworkEnclaveRegistry(opts *bind.Cal
 
 }
 
-// NetworkEnclaveRegistry is a free data retrieval call binding the contract method 0xfdcd4e99.
+// NetworkEnclaveRegistryContractAddress is a free data retrieval call binding the contract method 0x2fc00c76.
 //
-// Solidity: function networkEnclaveRegistry() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigSession) NetworkEnclaveRegistry() (common.Address, error) {
-	return _NetworkConfig.Contract.NetworkEnclaveRegistry(&_NetworkConfig.CallOpts)
+// Solidity: function networkEnclaveRegistryContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigSession) NetworkEnclaveRegistryContractAddress() (common.Address, error) {
+	return _NetworkConfig.Contract.NetworkEnclaveRegistryContractAddress(&_NetworkConfig.CallOpts)
 }
 
-// NetworkEnclaveRegistry is a free data retrieval call binding the contract method 0xfdcd4e99.
+// NetworkEnclaveRegistryContractAddress is a free data retrieval call binding the contract method 0x2fc00c76.
 //
-// Solidity: function networkEnclaveRegistry() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigCallerSession) NetworkEnclaveRegistry() (common.Address, error) {
-	return _NetworkConfig.Contract.NetworkEnclaveRegistry(&_NetworkConfig.CallOpts)
+// Solidity: function networkEnclaveRegistryContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigCallerSession) NetworkEnclaveRegistryContractAddress() (common.Address, error) {
+	return _NetworkConfig.Contract.NetworkEnclaveRegistryContractAddress(&_NetworkConfig.CallOpts)
 }
 
 // Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
@@ -489,12 +489,12 @@ func (_NetworkConfig *NetworkConfigCallerSession) Owner() (common.Address, error
 	return _NetworkConfig.Contract.Owner(&_NetworkConfig.CallOpts)
 }
 
-// RollupContract is a free data retrieval call binding the contract method 0xbfa02ba9.
+// RollupContractAddress is a free data retrieval call binding the contract method 0x4e027271.
 //
-// Solidity: function rollupContract() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigCaller) RollupContract(opts *bind.CallOpts) (common.Address, error) {
+// Solidity: function rollupContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigCaller) RollupContractAddress(opts *bind.CallOpts) (common.Address, error) {
 	var out []interface{}
-	err := _NetworkConfig.contract.Call(opts, &out, "rollupContract")
+	err := _NetworkConfig.contract.Call(opts, &out, "rollupContractAddress")
 
 	if err != nil {
 		return *new(common.Address), err
@@ -506,18 +506,18 @@ func (_NetworkConfig *NetworkConfigCaller) RollupContract(opts *bind.CallOpts) (
 
 }
 
-// RollupContract is a free data retrieval call binding the contract method 0xbfa02ba9.
+// RollupContractAddress is a free data retrieval call binding the contract method 0x4e027271.
 //
-// Solidity: function rollupContract() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigSession) RollupContract() (common.Address, error) {
-	return _NetworkConfig.Contract.RollupContract(&_NetworkConfig.CallOpts)
+// Solidity: function rollupContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigSession) RollupContractAddress() (common.Address, error) {
+	return _NetworkConfig.Contract.RollupContractAddress(&_NetworkConfig.CallOpts)
 }
 
-// RollupContract is a free data retrieval call binding the contract method 0xbfa02ba9.
+// RollupContractAddress is a free data retrieval call binding the contract method 0x4e027271.
 //
-// Solidity: function rollupContract() view returns(address addr_)
-func (_NetworkConfig *NetworkConfigCallerSession) RollupContract() (common.Address, error) {
-	return _NetworkConfig.Contract.RollupContract(&_NetworkConfig.CallOpts)
+// Solidity: function rollupContractAddress() view returns(address addr_)
+func (_NetworkConfig *NetworkConfigCallerSession) RollupContractAddress() (common.Address, error) {
+	return _NetworkConfig.Contract.RollupContractAddress(&_NetworkConfig.CallOpts)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0x0415cc15.

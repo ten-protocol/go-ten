@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -11,11 +12,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
 type SharedSecretProcessor struct {
-	mgmtContractLib     mgmtcontractlib.MgmtContractLib
+	enclaveRegistryLib  contractlib.NetworkEnclaveRegistryLib
 	sharedSecretService *crypto.SharedSecretService
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
 	enclaveID           gethcommon.Address
@@ -23,9 +23,9 @@ type SharedSecretProcessor struct {
 	logger              gethlog.Logger
 }
 
-func NewSharedSecretProcessor(mgmtcontractlib mgmtcontractlib.MgmtContractLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger) *SharedSecretProcessor {
+func NewSharedSecretProcessor(enclaveRegistryLib contractlib.NetworkEnclaveRegistryLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger) *SharedSecretProcessor {
 	return &SharedSecretProcessor{
-		mgmtContractLib:     mgmtcontractlib,
+		enclaveRegistryLib:  enclaveRegistryLib,
 		attestationProvider: attestationProvider,
 		enclaveID:           enclaveID,
 		storage:             storage,
@@ -41,7 +41,7 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 
 	// process initialize secret events
 	for _, txData := range processed.GetEvents(common.InitialiseSecretTx) {
-		t, err := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		t, err := ssp.enclaveRegistryLib.DecodeTx(txData.Transaction)
 		if err != nil {
 			ssp.logger.Warn("Could not decode transaction", log.ErrKey, err)
 			continue
@@ -64,7 +64,7 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 
 	// process secret requests
 	for _, txData := range processed.GetEvents(common.SecretRequestTx) {
-		t, err := ssp.mgmtContractLib.DecodeTx(txData.Transaction)
+		t, err := ssp.enclaveRegistryLib.DecodeTx(txData.Transaction)
 		if err != nil {
 			ssp.logger.Warn("Could not decode transaction", log.ErrKey, err)
 			continue

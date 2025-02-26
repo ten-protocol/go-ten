@@ -12,12 +12,10 @@ import (
 )
 
 type NetworkEnclaveRegistryLib interface {
+	ContractLib
 	CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error)
 	CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error)
 	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) (types.TxData, error)
-	DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error)
-	GetContractAddr() *gethcommon.Address
-	IsMock() bool
 }
 
 type networkEnclaveRegistryLibImpl struct {

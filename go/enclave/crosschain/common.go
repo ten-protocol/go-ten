@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -18,14 +19,13 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
 var (
 	MessageBusABI, _                  = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	MgmtContractABI, _                = abi.JSON(strings.NewReader(ManagementContract.ManagementContractMetaData.ABI))
+	NetworkConfigABI, _               = abi.JSON(strings.NewReader(NetworkConfig.NetworkConfigMetaData.ABI))
 	CrossChainEventName               = "LogMessagePublished"
 	CrossChainEventID                 = MessageBusABI.Events[CrossChainEventName].ID
 	ValueTransferEventName            = "ValueTransfer"

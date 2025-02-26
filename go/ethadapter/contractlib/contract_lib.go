@@ -1,0 +1,89 @@
+package contractlib
+
+import (
+	"fmt"
+	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+)
+
+// ContractLib - common functions between contract libs
+type ContractLib interface {
+	DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error)
+	GetContractAddr() *gethcommon.Address
+	IsMock() bool
+}
+
+type ContractRegistry interface {
+	GetContractByAddress(addr gethcommon.Address) ContractLib
+	RollupLib() RollupContractLib
+	NetworkEnclaveLib() NetworkEnclaveRegistryLib
+}
+
+type contractRegistryImpl struct {
+	rollupLib          RollupContractLib
+	networkEnclaveLib  NetworkEnclaveRegistryLib
+	networkConfig      *NetworkConfigLib
+	contractsByAddress map[gethcommon.Address]ContractLib
+	logger             gethlog.Logger
+}
+
+func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadapter.EthClient, logger gethlog.Logger) (*contractRegistryImpl, error) {
+	// First create NetworkConfig instance to get addresses
+	networkConfig, err := NewNetworkConfigLib(networkConfigAddr, ethClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create NetworkConfig: %w", err)
+	}
+
+	addresses, err := networkConfig.GetAddresses()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get contract addresses: %w", err)
+	}
+
+	// Create contract libs using addresses from NetworkConfig
+	rollupLib := NewRollupContractLib(&addresses.RollupContract, logger)
+	networkEnclaveLib := NewNetworkEnclaveRegistryLib(&addresses.NetworkEnclaveRegistry, logger)
+
+	registry := &contractRegistryImpl{
+		rollupLib:          rollupLib,
+		networkEnclaveLib:  networkEnclaveLib,
+		networkConfig:      networkConfig,
+		contractsByAddress: make(map[gethcommon.Address]ContractLib),
+		logger:             logger,
+	}
+
+	// Register contracts by their addresses
+	registry.contractsByAddress[addresses.RollupContract] = rollupLib
+	registry.contractsByAddress[addresses.NetworkEnclaveRegistry] = networkEnclaveLib
+
+	return registry, nil
+}
+
+// NewContractRegistryFromLibs - helper function when creating the contract registry on the enclave as we don't want to make eth calls
+func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib NetworkEnclaveRegistryLib, logger gethlog.Logger) *contractRegistryImpl {
+	registry := &contractRegistryImpl{
+		rollupLib:          rolluplib,
+		networkEnclaveLib:  enclaveRegistryLib,
+		contractsByAddress: make(map[gethcommon.Address]ContractLib),
+		logger:             logger,
+	}
+
+	registry.contractsByAddress[*rolluplib.GetContractAddr()] = rolluplib
+	registry.contractsByAddress[*enclaveRegistryLib.GetContractAddr()] = enclaveRegistryLib
+
+	return registry
+}
+
+func (r *contractRegistryImpl) GetContractByAddress(addr gethcommon.Address) ContractLib {
+	return r.contractsByAddress[addr]
+}
+
+func (r *contractRegistryImpl) RollupLib() RollupContractLib {
+	return r.rollupLib
+}
+
+func (r *contractRegistryImpl) NetworkEnclaveLib() NetworkEnclaveRegistryLib {
+	return r.networkEnclaveLib
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sync"
 	"time"
@@ -11,7 +12,6 @@ import (
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
 
 	"github.com/ethereum/go-ethereum/params"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
@@ -60,7 +60,7 @@ type enclaveAdminService struct {
 	activeSequencer        bool
 }
 
-func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *components.TxPool, chainConfig *params.ChainConfig, mgmtContractLib mgmtcontractlib.MgmtContractLib, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService) common.EnclaveAdmin {
+func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *components.TxPool, chainConfig *params.ChainConfig, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService, contractRegistry contractlib.ContractRegistry) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -70,7 +70,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 			logger.Crit("unable to start the profiler", log.ErrKey, err)
 		}
 	}
-	sharedSecretProcessor := components.NewSharedSecretProcessor(mgmtContractLib, attestationProvider, enclaveKeyService.EnclaveID(), storage, sharedSecretService, logger)
+	sharedSecretProcessor := components.NewSharedSecretProcessor(contractRegistry.NetworkEnclaveLib(), attestationProvider, enclaveKeyService.EnclaveID(), storage, sharedSecretService, logger)
 	sigVerifier, err := getSignatureValidator(config.UseInMemoryDB, storage, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
@@ -79,7 +79,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 
 	rollupCompression := components.NewRollupCompression(registry, batchExecutor, daEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, config, logger)
 	rollupProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
-	rollupConsumer := components.NewRollupConsumer(mgmtContractLib, registry, rollupCompression, storage, logger, sigVerifier)
+	rollupConsumer := components.NewRollupConsumer(contractRegistry.RollupLib(), registry, rollupCompression, storage, logger, sigVerifier)
 
 	seqSettings := nodetype.SequencerSettings{
 		MaxBatchSize:      config.MaxBatchSize,

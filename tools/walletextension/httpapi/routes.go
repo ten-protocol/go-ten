@@ -366,11 +366,12 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 
 	// Define a struct to represent the response
 	type NetworkConfigResponse struct {
-		ManagementContractAddress string            `json:"ManagementContractAddress"`
-		L1StartHash               string            `json:"L1StartHash"`
-		MessageBusAddress         string            `json:"MessageBusAddress"`
-		L2MessageBusAddress       string            `json:"L2MessageBusAddress"`
-		ImportantContracts        map[string]string `json:"ImportantContracts"`
+		RollupContractAddress          string            `json:"RollupContractAddress"`
+		EnclaveRegistryContractAddress string            `json:"EnclaveRegistryContractAddress"`
+		L1StartHash                    string            `json:"L1StartHash"`
+		MessageBusAddress              string            `json:"MessageBusAddress"`
+		L2MessageBusAddress            string            `json:"L2MessageBusAddress"`
+		ImportantContracts             map[string]string `json:"ImportantContracts"`
 	}
 
 	// Convert the TenNetworkInfo fields to strings
@@ -380,11 +381,12 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 	}
 
 	networkConfigResponse := NetworkConfigResponse{
-		ManagementContractAddress: networkConfig.ManagementContractAddress.Hex(),
-		L1StartHash:               networkConfig.L1StartHash.Hex(),
-		MessageBusAddress:         networkConfig.MessageBusAddress.Hex(),
-		L2MessageBusAddress:       networkConfig.L2MessageBusAddress.Hex(),
-		ImportantContracts:        importantContracts,
+		RollupContractAddress:          networkConfig.RollupContractAddress.Hex(),
+		EnclaveRegistryContractAddress: networkConfig.EnclaveRegistryContractAddress.Hex(),
+		L1StartHash:                    networkConfig.L1StartHash.Hex(),
+		MessageBusAddress:              networkConfig.MessageBusAddress.Hex(),
+		L2MessageBusAddress:            networkConfig.L2MessageBusAddress.Hex(),
+		ImportantContracts:             importantContracts,
 	}
 
 	// Marshal the response into JSON format

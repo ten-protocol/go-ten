@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
@@ -34,8 +35,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/enclave/events"
 
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
-
 	_ "github.com/ten-protocol/go-ten/go/common/tracers/native" // make sure the tracers are loaded
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -55,7 +54,7 @@ type enclaveImpl struct {
 //
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) common.Enclave {
+func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, logger gethlog.Logger) common.Enclave {
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Creating enclave service with following config", log.CfgKey, string(jsonConfig))
 
@@ -91,7 +90,10 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		logger.Crit("failed to load system contracts", log.ErrKey, err)
 	}
-
+	// FIXME figure out addresses
+	enclaveRegistryLib := contractlib.NewNetworkEnclaveRegistryLib(&config.NetworkConfigAddress, logger)
+	rollupContractLib := contractlib.NewRollupContractLib(&config.RollupContractAddress, logger)
+	contractRegistry := contractlib.NewContractRegistryFromLibs(rollupContractLib, enclaveRegistryLib, logger)
 	// start the mempool in validate only. Based on the config, it might become sequencer
 	evmEntropyService := crypto.NewEvmEntropyService(sharedSecretService, logger)
 	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, evmEntropyService, logger)
@@ -131,7 +133,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	// these services are directly exposed as the API of the Enclave
 	initAPI := NewEnclaveInitAPI(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider, sharedSecretService, daEncryptionService, rpcKeyService)
-	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, mgmtContractLib, attestationProvider, sharedSecretService, daEncryptionService)
+	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, attestationProvider, sharedSecretService, daEncryptionService, contractRegistry)
 	rpcAPI := NewEnclaveRPCAPI(config, storage, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, rpcKeyService, evmFacade)
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())

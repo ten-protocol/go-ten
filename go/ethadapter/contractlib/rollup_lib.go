@@ -14,12 +14,11 @@ import (
 	"strings"
 )
 
+// Specific interfaces embed the base interface
 type RollupContractLib interface {
+	ContractLib
 	PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob, signature common.RollupSignature) (types.TxData, error)
 	BlobHasher() ethadapter.BlobHasher
-	DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error)
-	GetContractAddr() *gethcommon.Address
-	IsMock() bool
 }
 
 type rollupContractLibImpl struct {

@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
     Structs.RollupStorage private rollups;
-    uint256 private lastBatchSeqNo;
+    uint256 public lastBatchSeqNo;
 
     IMerkleTreeMessageBus public merkleMessageBus;
     INetworkEnclaveRegistry public enclaveRegistry;

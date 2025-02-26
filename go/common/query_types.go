@@ -111,7 +111,9 @@ func (p *QueryPagination) UnmarshalJSON(data []byte) error {
 }
 
 type TenNetworkInfo struct {
-	ManagementContractAddress       common.Address
+	MessageBus                      common.Address
+	RollupContractAddress           common.Address
+	EnclaveRegistryContractAddress  common.Address
 	L1StartHash                     common.Hash
 	MessageBusAddress               common.Address
 	L2MessageBusAddress             common.Address

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sync"
 	"time"
@@ -22,17 +23,16 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 type Publisher struct {
-	hostData        host.Identity
-	hostWallet      wallet.Wallet // Wallet used to issue ethereum transactions
-	ethClient       ethadapter.EthClient
-	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
-	storage         storage.Storage
-	blobResolver    BlobResolver
+	hostData         host.Identity
+	hostWallet       wallet.Wallet // Wallet used to issue ethereum transactions
+	ethClient        ethadapter.EthClient
+	contractRegistry contractlib.ContractRegistry // Library to handle Management Contract lib operations
+	storage          storage.Storage
+	blobResolver     BlobResolver
 
 	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
 	importantContractAddresses map[string]gethcommon.Address
@@ -58,7 +58,7 @@ func NewL1Publisher(
 	hostData host.Identity,
 	hostWallet wallet.Wallet,
 	client ethadapter.EthClient,
-	mgmtContract mgmtcontractlib.MgmtContractLib,
+	contractRegistry contractlib.ContractRegistry,
 	repository host.L1DataService,
 	blobResolver BlobResolver,
 	hostStopper *stopcontrol.StopControl,
@@ -72,7 +72,7 @@ func NewL1Publisher(
 		hostData:                  hostData,
 		hostWallet:                hostWallet,
 		ethClient:                 client,
-		mgmtContractLib:           mgmtContract,
+		contractRegistry:          contractRegistry,
 		repository:                repository,
 		blobResolver:              blobResolver,
 		hostStopper:               hostStopper,
@@ -125,7 +125,7 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
 	}
-	initialiseSecretTx, err := p.mgmtContractLib.CreateInitializeSecret(l1tx)
+	initialiseSecretTx, err := p.contractRegistry.NetworkEnclaveLib().CreateInitializeSecret(l1tx)
 	if err != nil {
 		return err
 	}
@@ -153,7 +153,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 			panic(errors.Wrap(err, "could not fetch head block"))
 		}
 	}
-	requestSecretTx, err := p.mgmtContractLib.CreateRequestSecret(l1tx)
+	requestSecretTx, err := p.contractRegistry.NetworkEnclaveLib().CreateRequestSecret(l1tx)
 	if err != nil {
 		return gethutil.EmptyHash, err
 	}
@@ -174,7 +174,7 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 		AttesterID:  secretResponse.AttesterID,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	respondSecretTx, err := p.mgmtContractLib.CreateRespondSecret(l1tx, false)
+	respondSecretTx, err := p.contractRegistry.NetworkEnclaveLib().CreateRespondSecret(l1tx, false)
 	if err != nil {
 		return err
 	}
@@ -196,7 +196,7 @@ func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common
 	secretRespTxs := make([]*common.L1RespondSecretTx, 0)
 
 	for _, tx := range processed {
-		t, err := p.mgmtContractLib.DecodeTx(tx.Transaction)
+		t, err := p.contractRegistry.NetworkEnclaveLib().DecodeTx(tx.Transaction)
 		if err != nil {
 			p.logger.Error("Could not decode transaction", log.ErrKey, err)
 			continue
@@ -213,7 +213,7 @@ func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
-	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
+	return p.ethClient.FetchLastBatchSeqNo(*p.contractRegistry.RollupLib().GetContractAddr())
 }
 
 func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
@@ -246,7 +246,7 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, extRollup.Header.Hash(), "batches_len", len(extRollup.BatchPayloads))
 	}
 
-	rollupBlobTx, err := p.mgmtContractLib.PopulateAddRollup(tx, result.Blobs, result.Signature)
+	rollupBlobTx, err := p.contractRegistry.RollupLib().PopulateAddRollup(tx, result.Blobs, result.Signature)
 	if err != nil {
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, extRollup.Hash(), log.ErrKey, err)
 	}

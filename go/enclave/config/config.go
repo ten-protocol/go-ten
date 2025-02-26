@@ -23,9 +23,15 @@ type EnclaveConfig struct {
 	// The ID of the Obscuro chain
 	TenChainID int64
 
-	// These L1 contracts must be already deployed before the TEN network is created
-	// The management contract address on the L1 network
-	ManagementContractAddress gethcommon.Address
+	//// These L1 contracts must be already deployed before the TEN network is created
+	//// The management contract address on the L1 network
+	//ManagementContractAddress gethcommon.Address
+	// TODO
+	NetworkConfigAddress gethcommon.Address
+	//TODO
+	RollupContractAddress gethcommon.Address
+	//TODO
+	NetworkEnclaveRegistry gethcommon.Address
 	// MessageBus L1 Address
 	MessageBusAddress gethcommon.Address
 	// SystemContractOwner is the address that owns the system contracts
@@ -100,12 +106,14 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 		RPCAddress: tenCfg.Enclave.RPC.BindAddress,
 		RPCTimeout: tenCfg.Enclave.RPC.Timeout,
 
-		L1ChainID:                 tenCfg.Network.L1.ChainID,
-		ManagementContractAddress: tenCfg.Network.L1.L1Contracts.ManagementContract,
-		MessageBusAddress:         tenCfg.Network.L1.L1Contracts.MessageBusContract,
-		SystemContractOwner:       tenCfg.Network.Sequencer.SystemContractsUpgrader,
-		LogLevel:                  tenCfg.Enclave.Log.Level,
-		LogPath:                   tenCfg.Enclave.Log.Path,
+		L1ChainID:              tenCfg.Network.L1.ChainID,
+		NetworkConfigAddress:   tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
+		RollupContractAddress:  tenCfg.Network.L1.L1Contracts.RollupContract,
+		NetworkEnclaveRegistry: tenCfg.Network.L1.L1Contracts.EnclaveRegistry,
+		MessageBusAddress:      tenCfg.Network.L1.L1Contracts.MessageBusContract,
+		SystemContractOwner:    tenCfg.Network.Sequencer.SystemContractsUpgrader,
+		LogLevel:               tenCfg.Enclave.Log.Level,
+		LogPath:                tenCfg.Enclave.Log.Path,
 
 		UseInMemoryDB:  tenCfg.Enclave.DB.UseInMemory,
 		EdgelessDBHost: tenCfg.Enclave.DB.EdgelessDBHost,

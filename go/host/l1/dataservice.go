@@ -48,32 +48,29 @@ const (
 type DataService struct {
 	blockSubscribers *subscription.Manager[host.L1BlockHandler]
 	// this eth client should only be used by the repository, the repository may "reconnect" it at any time and don't want to interfere with other processes
-	ethClient                 ethadapter.EthClient
-	logger                    gethlog.Logger
-	networkEnclaveRegistryLib contractlib.NetworkEnclaveRegistryLib
-	blobResolver              BlobResolver
-	blockResolver             storage.BlockResolver
+	ethClient        ethadapter.EthClient
+	logger           gethlog.Logger
+	contractRegistry contractlib.ContractRegistry
+	blobResolver     BlobResolver
+	blockResolver    storage.BlockResolver
 
-	running           atomic.Bool
-	head              gethcommon.Hash
-	contractAddresses map[ContractType][]gethcommon.Address
+	running atomic.Bool
+	head    gethcommon.Hash
 }
 
 func NewL1DataService(
 	ethClient ethadapter.EthClient,
 	logger gethlog.Logger,
-	networkEnclaveRegistryLib contractlib.NetworkEnclaveRegistryLib,
+	contractRegistry contractlib.ContractRegistry,
 	blobResolver BlobResolver,
-	contractAddresses map[ContractType][]gethcommon.Address,
 ) *DataService {
 	return &DataService{
-		blockSubscribers:          subscription.NewManager[host.L1BlockHandler](),
-		ethClient:                 ethClient,
-		running:                   atomic.Bool{},
-		logger:                    logger,
-		networkEnclaveRegistryLib: networkEnclaveRegistryLib,
-		blobResolver:              blobResolver,
-		contractAddresses:         contractAddresses,
+		blockSubscribers: subscription.NewManager[host.L1BlockHandler](),
+		ethClient:        ethClient,
+		running:          atomic.Bool{},
+		logger:           logger,
+		contractRegistry: contractRegistry,
+		blobResolver:     blobResolver,
 	}
 }
 

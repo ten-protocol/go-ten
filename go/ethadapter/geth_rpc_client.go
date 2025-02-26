@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 	"math/big"
 	"time"
 
@@ -263,7 +264,7 @@ func (e *gethRPCClient) Stop() {
 }
 
 func (e *gethRPCClient) FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error) {
-	contract, err := ManagementContract.NewManagementContract(address, e.EthClient())
+	contract, err := RollupContract.NewRollupContract(address, e.EthClient())
 	if err != nil {
 		return nil, err
 	}

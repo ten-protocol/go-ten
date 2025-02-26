@@ -64,7 +64,11 @@ type L1Config struct {
 //
 //	yaml: `network.l1.contracts`
 type L1Contracts struct {
-	ManagementContract gethcommon.Address `mapstructure:"management"`
+	//FIXME add to yamls
+	NetworkConfigContract gethcommon.Address `mapstructure:"networkConfig"`
+	RollupContract        gethcommon.Address `mapstructure:"rollup"`
+	EnclaveRegistry       gethcommon.Address `mapstructure:"enclaveRegistry"`
+	//ManagementContract gethcommon.Address `mapstructure:"management"`
 	MessageBusContract gethcommon.Address `mapstructure:"messageBus"`
 	BridgeContract     gethcommon.Address `mapstructure:"bridge"`
 }
