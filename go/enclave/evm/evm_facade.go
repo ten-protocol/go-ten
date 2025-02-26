@@ -144,6 +144,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	if err != nil {
 		return nil, nil, err
 	}
+	msg.SkipFromEOACheck = true
 
 	gp := gethcore.GasPool(exec.gasEstimationCap)
 	gp.SetGas(exec.gasEstimationCap)
