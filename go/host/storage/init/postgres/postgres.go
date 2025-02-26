@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
@@ -47,10 +48,13 @@ func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) 
 	dbURL = fmt.Sprintf("%s%s", baseURL, dbName)
 
 	db, err = sql.Open("postgres", dbURL)
-	db.SetMaxOpenConns(maxDBConnections)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
+	db.SetMaxOpenConns(maxDBConnections)
+	db.SetMaxIdleConns(maxDBConnections / 2)
+	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
