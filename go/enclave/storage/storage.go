@@ -334,31 +334,26 @@ func (s *storageImpl) DeleteDirtyBlocks(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("could not select unprocessed blocks - %w", err)
 	}
-	if len(dirtyBlocks) > 1 {
-		return fmt.Errorf("more than one dirty block found. Should not happen")
-	}
-
 	if len(dirtyBlocks) == 0 {
 		// nothing to do
 		return nil
 	}
-
-	blockId := dirtyBlocks[0]
+	s.logger.Warn("Found unprocessed blocks", "count", len(dirtyBlocks))
 
 	// delete rollups
-	err = enclavedb.DeleteRollupsForBlock(ctx, dbTx, blockId)
+	err = enclavedb.DeleteUnprocessedRollups(ctx, dbTx)
 	if err != nil {
-		return fmt.Errorf("could not delete rollups for block %d. Cause: %w", blockId, err)
+		return fmt.Errorf("could not delete unprocessed rollups. Cause: %w", err)
 	}
 	// delete cross chain messages
-	err = enclavedb.DeleteL1MessagesForBlock(ctx, dbTx, blockId)
+	err = enclavedb.DeleteUnprocessedL1Messages(ctx, dbTx)
 	if err != nil {
-		return fmt.Errorf("could not delete cross chain messages for block %d. Cause: %w", blockId, err)
+		return fmt.Errorf("could not delete unprocessed cross chain messages. Cause: %w", err)
 	}
 	// delete block
-	err = enclavedb.DeleteBlock(ctx, dbTx, blockId)
+	err = enclavedb.DeleteUnProcessedBlock(ctx, dbTx)
 	if err != nil {
-		return fmt.Errorf("could not delete block %d. Cause: %w", blockId, err)
+		return fmt.Errorf("could not delete unprocessed blocks. Cause: %w", err)
 	}
 
 	if err := dbTx.Commit(); err != nil {
