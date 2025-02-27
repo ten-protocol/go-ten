@@ -296,7 +296,7 @@ func (p *Publisher) GetImportantContracts() *contractlib.NetworkAddresses {
 	return p.importantAddresses
 }
 
-// ResyncImportantContracts will fetch the latest important contracts from the management contract and update the cached map
+// ResyncImportantContracts will fetch the latest contract addresses from the network config contract and update the cached map
 // Note: this should be run in a goroutine as it makes L1 transactions in series and will block.
 // Cache is not overwritten until it completes.
 func (p *Publisher) ResyncImportantContracts() error {

@@ -1,14 +1,22 @@
 package contractlib
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 )
 
 type mockContractRegistry struct {
 	rollupLib         mockRollupContractLib
 	networkEnclaveLib MockNetworkEnclaveRegistryLib
-	networkConfigLib  *contractlib.NetworkConfigLib
+	networkConfigLib  contractlib.NetworkConfigLib
+}
+
+func (m *mockContractRegistry) GetContractAddresses() *contractlib.NetworkAddresses {
+	return &contractlib.NetworkAddresses{
+		CrossChain:             RollupTxAddr,
+		MessageBus:             MessageBusAddr,
+		NetworkEnclaveRegistry: StoreSecretTxAddr,
+		RollupContract:         RollupTxAddr,
+	}
 }
 
 func NewContractRegistryMock() contractlib.ContractRegistry {
@@ -23,23 +31,6 @@ func (m *mockContractRegistry) NetworkEnclaveLib() contractlib.NetworkEnclaveReg
 	return NewNetworkEnclaveRegistryLibMock()
 }
 
-func (m *mockContractRegistry) NetworkConfigLib() *contractlib.NetworkConfigLib {
-	networkConfigMock := NewNetworkConfigLibMock()
-	return &networkConfigMock
-}
-
-func (m *mockContractRegistry) GetContractAddresses() *contractlib.NetworkAddresses {
-	addresses, _ := m.networkConfigLib.GetContractAddresses()
-	return &addresses
-}
-
-func (m *mockContractRegistry) GetContractByAddress(addr gethcommon.Address) contractlib.ContractLib {
-	switch addr {
-	case RollupTxAddr:
-		return m.rollupLib
-	case StoreSecretTxAddr, RequestSecretTxAddr, InitializeSecretTxAddr:
-		return m.networkEnclaveLib
-	default:
-		return nil
-	}
+func (m *mockContractRegistry) NetworkConfigLib() contractlib.NetworkConfigLib {
+	return NewNetworkConfigLibMock()
 }

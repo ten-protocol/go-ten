@@ -11,7 +11,6 @@ import (
 
 var (
 	NetworkConfigAddr      = datagenerator.RandomAddress()
-	CrossChainAddr         = datagenerator.RandomAddress()
 	MessageBusAddr         = datagenerator.RandomAddress()
 	DepositTxAddr          = datagenerator.RandomAddress()
 	RollupTxAddr           = datagenerator.RandomAddress()
@@ -19,6 +18,7 @@ var (
 	RequestSecretTxAddr    = datagenerator.RandomAddress()
 	InitializeSecretTxAddr = datagenerator.RandomAddress()
 	GrantSeqTxAddr         = datagenerator.RandomAddress()
+	CrossChainAddr         = datagenerator.RandomAddress()
 )
 
 func DecodeTx(tx *types.Transaction) common.L1TenTransaction {

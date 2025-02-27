@@ -19,14 +19,14 @@ type ContractLib interface {
 type ContractRegistry interface {
 	RollupLib() RollupContractLib
 	NetworkEnclaveLib() NetworkEnclaveRegistryLib
-	NetworkConfigLib() *NetworkConfigLib
+	NetworkConfigLib() NetworkConfigLib
 	GetContractAddresses() *NetworkAddresses
 }
 
 type contractRegistryImpl struct {
 	rollupLib         RollupContractLib
 	networkEnclaveLib NetworkEnclaveRegistryLib
-	networkConfig     *NetworkConfigLib
+	networkConfig     NetworkConfigLib
 	addresses         *NetworkAddresses
 	logger            gethlog.Logger
 }
@@ -48,7 +48,7 @@ func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadap
 	registry := &contractRegistryImpl{
 		rollupLib:         rollupLib,
 		networkEnclaveLib: networkEnclaveLib,
-		networkConfig:     &networkConfig,
+		networkConfig:     networkConfig,
 		addresses:         addresses,
 		logger:            logger,
 	}
@@ -79,6 +79,6 @@ func (r *contractRegistryImpl) NetworkEnclaveLib() NetworkEnclaveRegistryLib {
 	return r.networkEnclaveLib
 }
 
-func (r *contractRegistryImpl) NetworkConfigLib() *NetworkConfigLib {
+func (r *contractRegistryImpl) NetworkConfigLib() NetworkConfigLib {
 	return r.networkConfig
 }
