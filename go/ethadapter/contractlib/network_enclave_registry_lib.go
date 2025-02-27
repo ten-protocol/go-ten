@@ -7,7 +7,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
@@ -27,7 +26,7 @@ type networkEnclaveRegistryLibImpl struct {
 func NewNetworkEnclaveRegistryLib(addr *gethcommon.Address, logger gethlog.Logger) NetworkEnclaveRegistryLib {
 	return &networkEnclaveRegistryLibImpl{
 		addr:        addr,
-		contractABI: crosschain.EnclaveRegistryABI,
+		contractABI: ethadapter.EnclaveRegistryABI,
 		logger:      logger,
 	}
 }

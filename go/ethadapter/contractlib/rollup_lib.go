@@ -9,7 +9,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
 )
@@ -29,7 +28,7 @@ type rollupContractLibImpl struct {
 func NewRollupContractLib(addr *gethcommon.Address, logger gethlog.Logger) RollupContractLib {
 	return &rollupContractLibImpl{
 		addr:        addr,
-		contractABI: crosschain.RollupContractABI,
+		contractABI: ethadapter.RollupContractABI,
 		logger:      logger,
 	}
 }

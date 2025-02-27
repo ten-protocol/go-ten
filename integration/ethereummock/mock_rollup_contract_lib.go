@@ -1,10 +1,10 @@
-package contractlib
+package ethereummock
 
 import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/ten-protocol/go-ten/integration/ethereummock"
+	"github.com/ten-protocol/go-ten/integration"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -26,15 +26,15 @@ func (m *mockRollupContractLib) IsMock() bool {
 }
 
 func (m *mockRollupContractLib) BlobHasher() ethadapter.BlobHasher {
-	return ethereummock.MockBlobHasher{}
+	return MockBlobHasher{}
 }
 
 func (m *mockRollupContractLib) GetContractAddr() *gethcommon.Address {
-	return &RollupTxAddr
+	return &integration.RollupTxAddr
 }
 
 func (m *mockRollupContractLib) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
-	if tx.To() == nil || tx.To().Hex() != RollupTxAddr.Hex() {
+	if tx.To() == nil || tx.To().Hex() != integration.RollupTxAddr.Hex() {
 		return nil, nil
 	}
 
@@ -46,11 +46,11 @@ func (m *mockRollupContractLib) DecodeTx(tx *types.Transaction) (common.L1TenTra
 	return nil, nil
 }
 
-func (m *mockRollupContractLib) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob, signature common.RollupSignature) (types.TxData, error) {
+func (m *mockRollupContractLib) PopulateAddRollup(_ *common.L1RollupTx, blobs []*kzg4844.Blob, _ common.RollupSignature) (types.TxData, error) {
 	var err error
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
-	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, ethereummock.MockBlobHasher{}); err != nil {
+	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, MockBlobHasher{}); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}
 
@@ -63,7 +63,7 @@ func (m *mockRollupContractLib) PopulateAddRollup(t *common.L1RollupTx, blobs []
 		panic(err)
 	}
 	blobTx := types.BlobTx{
-		To:         RollupTxAddr,
+		To:         integration.RollupTxAddr,
 		Data:       buf.Bytes(),
 		BlobHashes: blobHashes,
 		Sidecar:    sidecar,

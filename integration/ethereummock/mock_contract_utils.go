@@ -1,4 +1,4 @@
-package contractlib
+package ethereummock
 
 import (
 	"bytes"

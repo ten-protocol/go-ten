@@ -3,7 +3,9 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"math/rand"
@@ -235,11 +237,10 @@ func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 	ethClient := ti.rpcHandles.RndEthClient()
 
 	networkCtrAddr := ti.networkConfigAddr
-	networkConfCtr, err := NetworkConfig.NewNetworkConfigCaller(*networkCtrAddr, ethClient.EthClient())
+	networkConfCtr, err := NetworkConfig.NewNetworkConfig(*networkCtrAddr, ethClient.EthClient())
 	if err != nil {
 		panic(fmt.Sprintf("could not create network config contract. Cause: %s", err))
 	}
-	//FIXME here
 	busAddr, err := networkConfCtr.MessageBusContractAddress(&bind.CallOpts{})
 	if err != nil {
 		panic(err)
@@ -327,7 +328,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		logs[i] = *log
 	}
 
-	transfers, err := crosschain.ConvertLogsToValueTransfers(logs, crosschain.ValueTransferEventName, crosschain.MessageBusABI)
+	transfers, err := crosschain.ConvertLogsToValueTransfers(logs, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI)
 	if err != nil {
 		panic(err)
 	}
@@ -366,14 +367,19 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	// In mem sim does not support the l1 interaction required for the rest of the function.
-	if ti.mgmtContractLib.IsMock() {
+	if ti.contractRegistryLib.IsMock() {
 		return
 	}
 
-	mCtr, err := ManagementContract.NewManagementContract(*ti.mgmtContractAddr, ti.rpcHandles.RndEthClient().EthClient())
+	ethClient := ti.rpcHandles.RndEthClient()
+	networkCtrAddr := ti.networkConfigAddr
+	networkConfCtr, err := NetworkConfig.NewNetworkConfig(*networkCtrAddr, ethClient.EthClient())
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("could not create network config contract. Cause: %s", err))
 	}
+	crossChainAddr, err := networkConfCtr.CrossChainContractAddress(&bind.CallOpts{})
+
+	crosschainCtr, err := CrossChain.NewCrossChain(crossChainAddr, ethClient.EthClient())
 
 	opts, err := bind.NewKeyedTransactorWithChainID(ti.wallets.GasWithdrawalWallet.PrivateKey(), ti.wallets.GasWithdrawalWallet.ChainID())
 	if err != nil {
@@ -393,9 +399,9 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	withdrawalTx, err := mCtr.ExtractNativeValue(
+	withdrawalTx, err := crosschainCtr.ExtractNativeValue(
 		opts,
-		ManagementContract.StructsValueTransferMessage(vTransfers[0]),
+		CrossChain.StructsValueTransferMessage(vTransfers[0]),
 		proof32,
 		proof.Root,
 	)
