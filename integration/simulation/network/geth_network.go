@@ -3,7 +3,6 @@ package network
 import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"

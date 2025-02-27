@@ -3,6 +3,8 @@ package network
 import (
 	"bufio"
 	"fmt"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"net/http"
 	"os/exec"
 	"regexp"
@@ -20,7 +22,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/node"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -43,6 +44,16 @@ type networkOfSocketNodes struct {
 	tenClients  []*obsclient.ObsClient
 }
 
+func (n networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (n networkOfSocketNodes) TearDown() {
+	//TODO implement me
+	panic("implement me")
+}
+
 func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
 	return &networkOfSocketNodes{
 		wallets: wallets,
@@ -56,10 +67,13 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		simParams.StartPort,
 		simParams.NumberOfNodes,
 	)
-
-	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1TenData.MgmtContractAddress, testlog.Logger())
+	networkContractConfig, err := contractlib.NewNetworkConfigLib(simParams.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient())
+	if err != nil {
+		return nil, err
+	}
+	println(networkContractConfig.GetContractAddr().Hex())
 	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(
-		&simParams.L1TenData.MgmtContractAddress,
+		&simParams.L1TenData.NetworkConfigAddress,
 		&simParams.L1TenData.ObxErc20Address,
 		&simParams.L1TenData.EthErc20Address,
 	)
@@ -74,7 +88,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 
 	// create the nodes
 	nodes := make([]node.Node, simParams.NumberOfNodes)
-	var err error
 	for i := 0; i < simParams.NumberOfNodes; i++ {
 		privateKey := seqPrivKey
 		hostAddress := seqHostAddress

@@ -151,7 +151,7 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 					panic(err)
 				}
 				for _, tx := range b.Transactions() {
-					t, err := s.Params.MgmtContractLib.DecodeTx(tx)
+					t, err := s.Params.ContractRegistryLib.RollupLib().DecodeTx(tx)
 					if err != nil {
 						panic(err)
 					}

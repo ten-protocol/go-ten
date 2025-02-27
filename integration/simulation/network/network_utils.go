@@ -21,7 +21,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/metrics"
 	"github.com/ten-protocol/go-ten/go/enclave"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -111,9 +110,10 @@ func createInMemTenNode(
 	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &TestnetGenesis, enclaveLogger)}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
-	rollupContractLib := contractlib.NewRollupContractLib(&contracts.RollupContract, hostLogger)
-	enclaveRegistryLib := contractlib.NewNetworkEnclaveRegistryLib(&contracts.NetworkEnclaveRegistry, hostLogger)
-	contractRegistry := contractlib.NewContractRegistryFromLibs(rollupContractLib, enclaveRegistryLib, hostLogger)
+	contractRegistry, err := contractlib.NewContractRegistry(*networkConfig.GetContractAddr(), *ethClient.EthClient(), hostLogger)
+	if err != nil {
+		panic(err)
+	}
 	// create an in memory TEN node
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
 	l1Data := l1.NewL1DataService(ethClient, hostLogger, contractRegistry, blobResolver)

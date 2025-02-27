@@ -15,7 +15,7 @@ type ContractRegistryLib interface {
 	IsMock() bool
 }
 
-type contractRegistryImpl struct {
+type ContractRegistryImpl struct {
 	rollupLib         RollupContractLib
 	networkEnclaveLib NetworkEnclaveRegistryLib
 	networkConfig     NetworkConfigLib
@@ -37,7 +37,7 @@ func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethclie
 	rollupLib := NewRollupContractLib(&addresses.RollupContract, logger)
 	networkEnclaveLib := NewNetworkEnclaveRegistryLib(&addresses.NetworkEnclaveRegistry, logger)
 
-	registry := &contractRegistryImpl{
+	registry := &ContractRegistryImpl{
 		rollupLib:         rollupLib,
 		networkEnclaveLib: networkEnclaveLib,
 		networkConfig:     networkConfig,
@@ -49,8 +49,8 @@ func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethclie
 }
 
 // NewContractRegistryFromLibs - helper function when creating the contract registry on the enclave
-func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib NetworkEnclaveRegistryLib, logger gethlog.Logger) *contractRegistryImpl {
-	registry := &contractRegistryImpl{
+func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib NetworkEnclaveRegistryLib, logger gethlog.Logger) *ContractRegistryImpl {
+	registry := &ContractRegistryImpl{
 		rollupLib:         rolluplib,
 		networkEnclaveLib: enclaveRegistryLib,
 		logger:            logger,
@@ -59,20 +59,20 @@ func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib
 	return registry
 }
 
-func (r *contractRegistryImpl) GetContractAddresses() *NetworkAddresses {
+func (r *ContractRegistryImpl) GetContractAddresses() *NetworkAddresses {
 	return r.addresses
 }
 
-func (r *contractRegistryImpl) RollupLib() RollupContractLib {
+func (r *ContractRegistryImpl) RollupLib() RollupContractLib {
 	return r.rollupLib
 }
 
-func (r *contractRegistryImpl) NetworkEnclaveLib() NetworkEnclaveRegistryLib {
+func (r *ContractRegistryImpl) NetworkEnclaveLib() NetworkEnclaveRegistryLib {
 	return r.networkEnclaveLib
 }
 
-func (r *contractRegistryImpl) NetworkConfigLib() NetworkConfigLib {
+func (r *ContractRegistryImpl) NetworkConfigLib() NetworkConfigLib {
 	return r.networkConfig
 }
 
-func (r *contractRegistryImpl) IsMock() bool { return false }
+func (r *ContractRegistryImpl) IsMock() bool { return false }

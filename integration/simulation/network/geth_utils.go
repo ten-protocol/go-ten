@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common/constants"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -84,16 +84,16 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 }
 
 func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1TenData, error) {
-	bytecode, err := constants.Bytecode()
+	networkConfigBytecode, err := constants.NetworkConfigBytecode()
 	if err != nil {
 		return nil, err
 	}
-	mgmtContractReceipt, err := DeployContract(client, wallets.MCOwnerWallet, bytecode)
+	networkConfigReceipt, err := DeployContract(client, wallets.MCOwnerWallet, networkConfigBytecode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy management contract from %s. Cause: %w", wallets.MCOwnerWallet.Address(), err)
 	}
 
-	managementContract, err := ManagementContract.NewManagementContract(mgmtContractReceipt.ContractAddress, client.EthClient())
+	networkConfigContract, err := NetworkConfig.NewNetworkConfig(networkConfigReceipt.ContractAddress, client.EthClient())
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate management contract. Cause: %w", err)
 	}

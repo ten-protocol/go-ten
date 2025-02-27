@@ -1,6 +1,7 @@
 package params
 
 import (
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/host/l1"
@@ -8,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
 // SimParams are the parameters for setting up the simulation.
@@ -24,8 +24,7 @@ type SimParams struct {
 	L1EfficiencyThreshold float64
 	L1BeaconPort          int
 
-	// MgmtContractLib allows parsing MgmtContract txs to and from the eth txs
-	MgmtContractLib mgmtcontractlib.MgmtContractLib
+	NetworkContractConfig contractlib.NetworkConfigLib
 	// ERC20ContractLib allows parsing ERC20Contract txs to and from the eth txs
 	ERC20ContractLib erc20contractlib.ERC20ContractLib
 
@@ -48,8 +47,8 @@ type SimParams struct {
 type L1TenData struct {
 	// TenStartBlock is the L1 block hash where the TEN network activity begins (e.g. mgmt contract deployment)
 	TenStartBlock common.Hash
-	// MgmtContractAddr defines the management contract address
-	MgmtContractAddress common.Address
+	// NetworkConfigAddress defines the network config contract address
+	NetworkConfigAddress common.Address
 	// ObxErc20Address - the address of the "TEN" ERC20
 	ObxErc20Address common.Address
 	// EthErc20Address - the address of the "ETH" ERC20

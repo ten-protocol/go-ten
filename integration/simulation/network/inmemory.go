@@ -60,7 +60,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
-			params.MgmtContractLib,
+			params.NetworkContractConfig,
 			params.Wallets.NodeWallets[i],
 			miner,
 			p2pNetw.NewNode(i),

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/ten-protocol/go-ten/integration"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -30,11 +29,11 @@ func (m *mockRollupContractLib) BlobHasher() ethadapter.BlobHasher {
 }
 
 func (m *mockRollupContractLib) GetContractAddr() *gethcommon.Address {
-	return &integration.RollupTxAddr
+	return &RollupTxAddr
 }
 
 func (m *mockRollupContractLib) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
-	if tx.To() == nil || tx.To().Hex() != integration.RollupTxAddr.Hex() {
+	if tx.To() == nil || tx.To().Hex() != RollupTxAddr.Hex() {
 		return nil, nil
 	}
 
@@ -63,7 +62,7 @@ func (m *mockRollupContractLib) PopulateAddRollup(_ *common.L1RollupTx, blobs []
 		panic(err)
 	}
 	blobTx := types.BlobTx{
-		To:         integration.RollupTxAddr,
+		To:         RollupTxAddr,
 		Data:       buf.Bytes(),
 		BlobHashes: blobHashes,
 		Sidecar:    sidecar,

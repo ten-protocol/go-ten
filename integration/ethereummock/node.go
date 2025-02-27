@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
-	"github.com/ten-protocol/go-ten/integration"
-	"github.com/ten-protocol/go-ten/integration/ethereummock/mockcontractlib"
 	"math/big"
 	"sync"
 	"sync/atomic"
@@ -308,7 +306,7 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 		var topic gethcommon.Hash
 		var data []byte
 		switch tx.To().Hex() {
-		case integration.RollupTxAddr.Hex():
+		case RollupTxAddr.Hex():
 			topic = ethadapter.RollupAddedID
 			blobHashes := tx.BlobHashes()
 			if len(blobHashes) > 0 {
@@ -330,17 +328,17 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 
 				copy(data[96:], signature)
 			}
-		case integration.MessageBusAddr.Hex():
+		case MessageBusAddr.Hex():
 			topic = ethadapter.CrossChainEventID
-		case integration.DepositTxAddr.Hex():
+		case DepositTxAddr.Hex():
 			topic = ethadapter.ValueTransferEventID
-		case integration.StoreSecretTxAddr.Hex():
+		case StoreSecretTxAddr.Hex():
 			topic = ethadapter.NetworkSecretRespondedID
-		case integration.RequestSecretTxAddr.Hex():
+		case RequestSecretTxAddr.Hex():
 			topic = ethadapter.NetworkSecretRequestedID
-		case integration.InitializeSecretTxAddr.Hex():
+		case InitializeSecretTxAddr.Hex():
 			topic = ethadapter.SequencerEnclaveGrantedEventID
-		case integration.GrantSeqTxAddr.Hex():
+		case GrantSeqTxAddr.Hex():
 			topic = ethadapter.SequencerEnclaveGrantedEventID
 			// enclave ID address, padded out to 32 bytes to match standard eth fields
 			data = make([]byte, 32)
@@ -691,7 +689,7 @@ func NewMiner(
 		canonicalCh:         make(chan *types.Header),
 		mempoolCh:           make(chan *types.Transaction),
 		erc20ContractLib:    NewERC20ContractLibMock(),
-		contractRegistryLib: mockcontractlib.NewContractRegistryLibMock(),
+		contractRegistryLib: NewContractRegistryLibMock(),
 		logger:              logger,
 		subs:                map[uuid.UUID]*mockSubscription{},
 		subMu:               sync.Mutex{},
