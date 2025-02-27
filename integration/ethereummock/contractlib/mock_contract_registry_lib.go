@@ -19,7 +19,7 @@ func (m *mockContractRegistry) GetContractAddresses() *contractlib.NetworkAddres
 	}
 }
 
-func NewContractRegistryMock() contractlib.ContractRegistry {
+func NewContractRegistryMock() contractlib.ContractRegistryLib {
 	return &mockContractRegistry{}
 }
 

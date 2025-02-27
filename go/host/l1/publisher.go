@@ -31,7 +31,7 @@ type Publisher struct {
 	hostData         host.Identity
 	hostWallet       wallet.Wallet // Wallet used to issue ethereum transactions
 	ethClient        ethadapter.EthClient
-	contractRegistry contractlib.ContractRegistry // Library to handle Management Contract lib operations
+	contractRegistry contractlib.ContractRegistryLib // Library to handle Management Contract lib operations
 	storage          storage.Storage
 	blobResolver     BlobResolver
 
@@ -60,7 +60,7 @@ func NewL1Publisher(
 	hostData host.Identity,
 	hostWallet wallet.Wallet,
 	client ethadapter.EthClient,
-	contractRegistry contractlib.ContractRegistry,
+	contractRegistry contractlib.ContractRegistryLib,
 	repository host.L1DataService,
 	blobResolver BlobResolver,
 	hostStopper *stopcontrol.StopControl,

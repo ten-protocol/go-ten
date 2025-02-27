@@ -1,13 +1,14 @@
 package contractlib
 
 import (
+	"context"
 	"fmt"
+	"github.com/ethereum/go-ethereum/ethclient"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
@@ -18,7 +19,7 @@ type NetworkConfigLib interface {
 
 type networkConfigLibImpl struct {
 	addr        gethcommon.Address
-	ethClient   ethadapter.EthClient
+	ethClient   ethclient.Client
 	contractABI abi.ABI
 }
 
@@ -29,11 +30,11 @@ type NetworkAddresses struct {
 	RollupContract         gethcommon.Address
 }
 
-func NewNetworkConfigLib(address gethcommon.Address, ethClient ethadapter.EthClient) (NetworkConfigLib, error) {
+func NewNetworkConfigLib(address gethcommon.Address, ethClient ethclient.Client) (NetworkConfigLib, error) {
 	return &networkConfigLibImpl{
 		addr:        address,
 		ethClient:   ethClient,
-		contractABI: crosschain.NetworkConfigABI,
+		contractABI: ethadapter.NetworkConfigABI,
 	}, nil
 }
 
@@ -43,10 +44,10 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*NetworkAddresses, error
 		return nil, fmt.Errorf("failed to encode addresses() call: %w", err)
 	}
 
-	result, err := nc.ethClient.CallContract(ethereum.CallMsg{
+	result, err := nc.ethClient.CallContract(context.Background(), ethereum.CallMsg{
 		To:   &nc.addr,
 		Data: data,
-	})
+	}, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call addresses(): %w", err)
 	}

@@ -48,7 +48,7 @@ type host struct {
 	transactionPostProcessorAddress gethcommon.Address
 	publicSystemContracts           map[string]gethcommon.Address
 	newHeads                        chan *common.BatchHeader
-	contractRegistry                contractlib.ContractRegistry
+	contractRegistry                contractlib.ContractRegistryLib
 }
 
 type batchListener struct {
@@ -59,7 +59,7 @@ func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
 	bl.newHeads <- batch.Header
 }
 
-func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, contractRegistry contractlib.ContractRegistry, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
+func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, contractRegistry contractlib.ContractRegistryLib, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
 	hostStorage := storage.NewHostStorageFromConfig(config, logger)
 	l1Repo.SetBlockResolver(hostStorage)
 	hostIdentity := hostcommon.NewIdentity(config)

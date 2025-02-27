@@ -5,11 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
-	"github.com/ten-protocol/go-ten/contracts/generated/NetworkEnclaveRegistry"
-	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
-	"strings"
-
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -23,22 +18,6 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
-)
-
-var (
-	MessageBusABI, _               = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	NetworkConfigABI, _            = abi.JSON(strings.NewReader(NetworkConfig.NetworkConfigMetaData.ABI))
-	RollupContractABI, _           = abi.JSON(strings.NewReader(RollupContract.RollupContractMetaData.ABI))
-	EnclaveRegistryABI, _          = abi.JSON(strings.NewReader(NetworkEnclaveRegistry.NetworkEnclaveRegistryMetaData.ABI))
-	CrossChainEventName            = "LogMessagePublished"
-	CrossChainEventID              = MessageBusABI.Events[CrossChainEventName].ID
-	ValueTransferEventName         = "ValueTransfer"
-	ValueTransferEventID           = MessageBusABI.Events["ValueTransfer"].ID
-	SequencerEnclaveGrantedEventID = EnclaveRegistryABI.Events["SequencerEnclaveGranted"].ID
-	SequencerEnclaveRevokedEventID = EnclaveRegistryABI.Events["SequencerEnclaveRevoked"].ID
-	NetworkSecretRequestedID       = EnclaveRegistryABI.Events["NetworkSecretRequested"].ID
-	NetworkSecretRespondedID       = EnclaveRegistryABI.Events["NetworkSecretResponded"].ID
-	RollupAddedID                  = RollupContractABI.Events["RollupAdded"].ID
 )
 
 func lazilyLogReceiptChecksum(block *types.Header, receipts types.Receipts, logger gethlog.Logger) {

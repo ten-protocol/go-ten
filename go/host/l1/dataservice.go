@@ -38,20 +38,13 @@ var (
 	ErrNoNextBlock   = errors.New("no next block")
 )
 
-type ContractType int
-
-const (
-	MgmtContract ContractType = iota
-	MsgBus
-)
-
 // DataService is a host service for subscribing to new blocks and looking up L1 data
 type DataService struct {
 	blockSubscribers *subscription.Manager[host.L1BlockHandler]
 	// this eth client should only be used by the repository, the repository may "reconnect" it at any time and don't want to interfere with other processes
 	ethClient        ethadapter.EthClient
 	logger           gethlog.Logger
-	contractRegistry contractlib.ContractRegistry
+	contractRegistry contractlib.ContractRegistryLib
 	blobResolver     BlobResolver
 	blockResolver    storage.BlockResolver
 
@@ -62,7 +55,7 @@ type DataService struct {
 func NewL1DataService(
 	ethClient ethadapter.EthClient,
 	logger gethlog.Logger,
-	contractRegistry contractlib.ContractRegistry,
+	contractRegistry contractlib.ContractRegistryLib,
 	blobResolver BlobResolver,
 ) *DataService {
 	return &DataService{
@@ -221,9 +214,9 @@ func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr ge
 			continue
 		}
 		switch l.Topics[0] {
-		case crosschain.CrossChainEventID:
+		case ethadapter.CrossChainEventID:
 			r.processCrossChainLogs(l, txData, processed)
-		case crosschain.ValueTransferEventID:
+		case ethadapter.ValueTransferEventID:
 			r.processValueTransferLogs(l, txData, processed)
 		}
 	}
@@ -246,14 +239,14 @@ func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAd
 			continue
 		}
 		switch l.Topics[0] {
-		case crosschain.SequencerEnclaveGrantedEventID:
+		case ethadapter.SequencerEnclaveGrantedEventID:
 			r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
 			r.processEnclaveRegistrationTx(txData, processed)
-		case crosschain.SequencerEnclaveRevokedEventID:
+		case ethadapter.SequencerEnclaveRevokedEventID:
 			r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
-		case crosschain.NetworkSecretRequestedID:
+		case ethadapter.NetworkSecretRequestedID:
 			processed.AddEvent(common.SecretRequestTx, txData)
-		case crosschain.NetworkSecretRespondedID:
+		case ethadapter.NetworkSecretRespondedID:
 			processed.AddEvent(common.SecretResponseTx, txData)
 		default:
 			// there are known events that we don't care about here
@@ -279,7 +272,7 @@ func (r *DataService) processRollupLogs(block *types.Header, contractAddr gethco
 			continue
 		}
 		switch l.Topics[0] {
-		case crosschain.RollupAddedID:
+		case ethadapter.RollupAddedID:
 			r.processRollupLog(l, txData, processed)
 		}
 	}
@@ -334,7 +327,7 @@ func (r *DataService) fetchTxAndReceipt(txHash gethcommon.Hash) (*common.L1TxDat
 
 // processCrossChainLogs handles cross-chain message logs
 func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	if messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, crosschain.CrossChainEventName, crosschain.MessageBusABI); err == nil {
+	if messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, ethadapter.CrossChainEventName, ethadapter.MessageBusABI); err == nil {
 		txData.CrossChainMessages = messages
 		processed.AddEvent(common.CrossChainMessageTx, txData)
 	}
@@ -342,7 +335,7 @@ func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData
 
 // processValueTransferLogs handles value transfer logs
 func (r *DataService) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	if transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, crosschain.ValueTransferEventName, crosschain.MessageBusABI); err == nil {
+	if transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI); err == nil {
 		txData.ValueTransfers = transfers
 		processed.AddEvent(common.CrossChainValueTranserTx, txData)
 	}

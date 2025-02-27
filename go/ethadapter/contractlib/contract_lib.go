@@ -16,7 +16,7 @@ type ContractLib interface {
 	IsMock() bool
 }
 
-type ContractRegistry interface {
+type ContractRegistryLib interface {
 	RollupLib() RollupContractLib
 	NetworkEnclaveLib() NetworkEnclaveRegistryLib
 	NetworkConfigLib() NetworkConfigLib
@@ -31,7 +31,7 @@ type contractRegistryImpl struct {
 	logger            gethlog.Logger
 }
 
-func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadapter.EthClient, logger gethlog.Logger) (ContractRegistry, error) {
+func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadapter.EthClient, logger gethlog.Logger) (ContractRegistryLib, error) {
 	networkConfig, err := NewNetworkConfigLib(networkConfigAddr, ethClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create NetworkConfig: %w", err)
