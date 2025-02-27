@@ -32,7 +32,6 @@ type contractRegistryImpl struct {
 }
 
 func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadapter.EthClient, logger gethlog.Logger) (ContractRegistry, error) {
-	// First create NetworkConfig instance to get addresses
 	networkConfig, err := NewNetworkConfigLib(networkConfigAddr, ethClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create NetworkConfig: %w", err)
@@ -43,14 +42,13 @@ func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethadap
 		return nil, fmt.Errorf("failed to get contract addresses: %w", err)
 	}
 
-	// Create contract libs using addresses from NetworkConfig
 	rollupLib := NewRollupContractLib(&addresses.RollupContract, logger)
 	networkEnclaveLib := NewNetworkEnclaveRegistryLib(&addresses.NetworkEnclaveRegistry, logger)
 
 	registry := &contractRegistryImpl{
 		rollupLib:         rollupLib,
 		networkEnclaveLib: networkEnclaveLib,
-		networkConfig:     networkConfig,
+		networkConfig:     &networkConfig,
 		addresses:         addresses,
 		logger:            logger,
 	}
