@@ -57,10 +57,9 @@ type guardianServiceLocator interface {
 // - if it is an active sequencer then the guardian will trigger batch/rollup creation
 // - guardian provides access to the enclave data and reports the enclave status for other services - acting as a gatekeeper
 type Guardian struct {
-	hostData          host.Identity
-	isActiveSequencer bool
-	state             *StateTracker // state machine that tracks our view of the enclave's state
-	enclaveClient     common.Enclave
+	hostData      host.Identity
+	stateTracker  *StateTracker // state machine that tracks our view of the enclave's state, do not read/modify props directly
+	enclaveClient common.Enclave
 
 	sl      guardianServiceLocator
 	storage storage.Storage
@@ -88,7 +87,7 @@ type Guardian struct {
 func NewGuardian(cfg *hostconfig.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
 		hostData:           hostData,
-		state:              NewStateTracker(logger),
+		stateTracker:       NewStateTracker(logger),
 		enclaveClient:      enclaveClient,
 		sl:                 serviceLocator,
 		batchInterval:      cfg.BatchInterval,
@@ -129,12 +128,18 @@ func (g *Guardian) Start() error {
 		// include the enclave ID in guardian log messages (for multi-enclave nodes)
 		g.logger = g.logger.New(log.EnclaveIDKey, g.enclaveID)
 		// recreate status with new logger
-		g.state = NewStateTracker(g.logger)
-		g.state.OnReceivedBatch(g.sl.L2Repo().FetchLatestBatchSeqNo())
+		g.stateTracker = NewStateTracker(g.logger)
+		g.stateTracker.OnReceivedBatch(g.sl.L2Repo().FetchLatestBatchSeqNo())
 		g.logger.Info("Starting guardian process.")
 	}
 
 	go g.mainLoop()
+
+	if g.hostData.IsSequencer {
+		// if host is a sequencer then start the sequencer processes, but they will not do anything unless the enclave becomes an active sequencer
+		go g.periodicBatchProduction()
+		go g.periodicRollupProduction()
+	}
 
 	// subscribe for L1 and P2P data
 	txUnsub := g.sl.P2P().SubscribeForTx(g)
@@ -180,10 +185,6 @@ func (g *Guardian) HealthStatus(context.Context) host.HealthStatus {
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
-func (g *Guardian) GetEnclaveState() *StateTracker {
-	return g.state
-}
-
 // GetEnclaveClient returns the enclave client for use by other services
 // todo (@matt) avoid exposing client directly and return errors if enclave is not ready for requests
 func (g *Guardian) GetEnclaveClient() common.Enclave {
@@ -195,12 +196,13 @@ func (g *Guardian) GetEnclaveID() *common.EnclaveID {
 }
 
 func (g *Guardian) PromoteToActiveSequencer() error {
-	if g.isActiveSequencer {
+	state := g.StateSnapshot()
+	if state.Enclave.IsActiveSequencer {
 		// this shouldn't happen and shouldn't be an issue if it does, but good to have visibility on it
 		g.logger.Error("Unable to promote to active sequencer, already active")
 		return nil
 	}
-	if g.state.enclaveL2Head != nil && g.state.enclaveL2Head.Cmp(big.NewInt(0)) > 0 && !g.state.IsLive() {
+	if state.Enclave.L2Head != nil && state.Enclave.L2Head.Cmp(big.NewInt(0)) > 0 && state.Status != Live {
 		// enclave has an L2 head so it's not just starting up, it can't be promoted to active sequencer until it is
 		// up-to-date with the L2 head according to the host's database.
 		return errors.New("cannot promote to active sequencer while behind the L2 head, it must finish syncing first")
@@ -209,8 +211,7 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 	if err != nil {
 		return errors.Wrap(err, "could not promote enclave to active sequencer")
 	}
-	g.isActiveSequencer = true
-	g.startSequencerProcesses()
+	g.stateTracker.SequencerPromoted()
 	return nil
 }
 
@@ -224,9 +225,10 @@ func (g *Guardian) HandleBlock(block *types.Header) {
 	}
 
 	g.logger.Debug("Received L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
+	state := g.StateSnapshot()
 	// record the newest block we've seen
-	g.state.OnReceivedBlock(block.Hash())
-	if !g.state.InSyncWithL1() {
+	g.stateTracker.OnReceivedBlock(block.Hash())
+	if !state.InSyncWithL1() {
 		// the enclave is still catching up with the L1 chain, it won't be able to process this new head block yet so return
 		return
 	}
@@ -244,11 +246,13 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	}
 
 	g.logger.Debug("Host received L2 batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
+	state := g.StateSnapshot()
 	// record the newest batch we've seen
-	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
-	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
-	if g.isActiveSequencer || !g.state.IsLive() {
-		return // ignore batches until we're up-to-date
+	g.stateTracker.OnReceivedBatch(batch.Header.SequencerOrderNo)
+	if state.Enclave.IsActiveSequencer || state.Status != Live {
+		// Sequencer enclaves produce batches, they cannot receive them.
+		// Also, enclave will reject new batches if it is not up-to-date
+		return
 	}
 	// todo - @matt - does it make sense to use a timeout context?
 	err := g.submitL2Batch(context.Background(), batch)
@@ -262,9 +266,11 @@ func (g *Guardian) HandleTransaction(tx common.EncryptedTx) {
 		return
 	}
 
-	if g.GetEnclaveState().status == Disconnected ||
-		g.GetEnclaveState().status == Unavailable ||
-		g.GetEnclaveState().status == AwaitingSecret {
+	state := g.StateSnapshot()
+
+	if state.Status == Disconnected ||
+		state.Status == Unavailable ||
+		state.Status == AwaitingSecret {
 		g.logger.Info("Enclave is not ready yet, dropping transaction.")
 		return // ignore transactions when enclave unavailable
 	}
@@ -278,8 +284,8 @@ func (g *Guardian) HandleTransaction(tx common.EncryptedTx) {
 	}
 }
 
-// mainLoop runs until the enclave guardian is stopped. It checks the state of the enclave and takes action as
-// required to improve the state (e.g. provide a secret, catch up with L1, etc.)
+// mainLoop runs until the enclave guardian is stopped. It checks the stateTracker of the enclave and takes action as
+// required to improve the stateTracker (e.g. provide a secret, catch up with L1, etc.)
 func (g *Guardian) mainLoop() {
 	g.logger.Debug("starting guardian main loop")
 	unavailableCounter := 0
@@ -287,8 +293,8 @@ func (g *Guardian) mainLoop() {
 		// check enclave status on every loop (this will happen whenever we hit an error while trying to resolve a state,
 		// or after the monitoring interval if we are healthy)
 		g.checkEnclaveStatus()
-		g.logger.Trace("mainLoop - enclave status", "status", g.state.GetStatus())
-		switch g.state.GetStatus() {
+		g.logger.Trace("mainLoop - enclave status", "status", g.stateTracker.GetStatus())
+		switch g.stateTracker.GetStatus() {
 		case Disconnected, Unavailable:
 			// todo make this eviction trigger configurable once we've settled on how it should work
 			if unavailableCounter > 10 {
@@ -337,10 +343,10 @@ func (g *Guardian) checkEnclaveStatus() {
 	if err != nil {
 		g.logger.Error("Could not get enclave status", log.ErrKey, err)
 		// we record this as a disconnection, we can't get any more info from the enclave about status currently
-		g.state.OnDisconnected()
+		g.stateTracker.OnDisconnected()
 		return
 	}
-	g.state.OnEnclaveStatus(s)
+	g.stateTracker.OnEnclaveStatus(s)
 }
 
 // This method implements the procedure by which a node obtains the secret
@@ -396,7 +402,7 @@ func (g *Guardian) provideSecret() error {
 	}
 
 	g.logger.Info("Secret received")
-	g.state.OnSecretProvided()
+	g.stateTracker.OnSecretProvided()
 
 	return nil
 }
@@ -422,15 +428,20 @@ func (g *Guardian) generateAndBroadcastSecret() error {
 		return errors.Wrap(err, "failed to publish generated enclave secret")
 	}
 	g.logger.Info("Node is genesis node. Secret generation was published to L1.")
-	g.state.OnSecretProvided()
+	g.stateTracker.OnSecretProvided()
 	return nil
 }
 
 func (g *Guardian) catchupWithL1() error {
 	// while we are behind the L1 head and still running, fetch and submit L1 blocks
-	for g.running.Load() && g.state.GetStatus() == L1Catchup {
+	for g.running.Load() {
+		state := g.StateSnapshot()
+		if state.Status != L1Catchup {
+			// we have changed state since we started the loop, exit
+			return nil
+		}
 		// generally we will be feeding the block after the enclave's current head
-		enclaveHead := g.state.GetEnclaveL1Head()
+		enclaveHead := state.Enclave.L1Head
 		if enclaveHead == gethutil.EmptyHash {
 			// but if enclave has no current head, then we use the configured hash to find the first block to feed
 			enclaveHead = g.l1StartHash
@@ -442,7 +453,7 @@ func (g *Guardian) catchupWithL1() error {
 				g.logger.Error("should not happen. Chain fork cannot be calculated because there are missing blocks")
 			}
 			if errors.Is(err, l1.ErrNoNextBlock) {
-				if g.state.hostL1Head == gethutil.EmptyHash {
+				if state.Host.L1Head == gethutil.EmptyHash {
 					return fmt.Errorf("no L1 blocks found in repository")
 				}
 				return nil // we are up-to-date
@@ -459,12 +470,17 @@ func (g *Guardian) catchupWithL1() error {
 
 func (g *Guardian) catchupWithL2() error {
 	// while we are behind the L2 head and still running:
-	for g.running.Load() && g.state.GetStatus() == L2Catchup {
-		if g.hostData.IsSequencer && g.isActiveSequencer {
+	for g.running.Load() {
+		state := g.StateSnapshot()
+		if state.Status != L2Catchup {
+			// we have changed state since we started the loop, exit
+			return nil
+		}
+		if g.hostData.IsSequencer && state.Enclave.IsActiveSequencer {
 			return errors.New("l2 catchup is not supported for active sequencer")
 		}
 		// request the next batch by sequence number (based on what the enclave has been fed so far)
-		prevHead := g.state.GetEnclaveL2Head()
+		prevHead := state.Enclave.L2Head
 		nextHead := prevHead.Add(prevHead, big.NewInt(1))
 
 		g.logger.Trace("fetching next batch", log.BatchSeqNoKey, nextHead)
@@ -517,7 +533,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 		return false, errors.Wrap(err, "could not submit L1 block to enclave")
 	}
 	// successfully processed block, update the state
-	g.state.OnProcessedBlock(block.Hash())
+	g.stateTracker.OnProcessedBlock(block.Hash())
 	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, syncContracts)
 
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
@@ -592,7 +608,7 @@ func (g *Guardian) submitL2Batch(ctx context.Context, batch *common.ExtBatch) er
 		return errors.Wrap(err, "could not submit L2 batch to enclave")
 	}
 	// successfully processed batch, update the state
-	g.state.OnProcessedBatch(batch.Header.SequencerOrderNo)
+	g.stateTracker.OnProcessedBatch(batch.Header.SequencerOrderNo)
 	return nil
 }
 
@@ -612,7 +628,12 @@ func (g *Guardian) periodicBatchProduction() {
 		}
 		select {
 		case <-batchProdTicker.C:
-			if !g.state.InSyncWithL1() {
+			state := g.StateSnapshot()
+			if !state.Enclave.IsActiveSequencer {
+				// not currently active sequencer, skip producing batches
+				continue
+			}
+			if !state.InSyncWithL1() {
 				// if we're behind the L1, we don't want to produce batches
 				g.logger.Debug("Skipping batch production because L1 is not up to date")
 				continue
@@ -646,9 +667,10 @@ func (g *Guardian) periodicRollupProduction() {
 	for {
 		select {
 		case <-rollupCheckTicker.C:
-			if !g.state.IsLive() {
+			state := g.StateSnapshot()
+			if !state.IsLive() {
 				// if we're behind the L1, we don't want to produce rollups
-				g.logger.Debug("Skipping rollup production because L1 is not up to date", "state", g.state)
+				g.logger.Debug("Skipping rollup production because L1 is not up to date", "state", state)
 				continue
 			}
 
@@ -752,7 +774,7 @@ func (g *Guardian) streamEnclaveData() {
 				}
 				// Notify the L2 repo that an enclave has validated a batch, so it can update its validated head and notify subscribers
 				g.sl.L2Repo().NotifyNewValidatedHead(resp.Batch)
-				g.state.OnProcessedBatch(resp.Batch.Header.SequencerOrderNo)
+				g.stateTracker.OnProcessedBatch(resp.Batch.Header.SequencerOrderNo)
 			}
 
 			if resp.Logs != nil {
@@ -803,11 +825,6 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 	return fromBatch, nil
 }
 
-func (g *Guardian) startSequencerProcesses() {
-	go g.periodicBatchProduction()
-	go g.periodicRollupProduction()
-}
-
 // evictEnclaveFromHAPool evicts a failing enclave from the HA pool if appropriate
 // This is called when the enclave is unrecoverable and we want to notify the host that it should failover if an
 // alternative enclave is available.
@@ -839,4 +856,8 @@ func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data
 		syncContracts = true
 	}
 	return rollupTxs, syncContracts
+}
+
+func (g *Guardian) StateSnapshot() StateSnapshot {
+	return g.stateTracker.Snapshot()
 }
