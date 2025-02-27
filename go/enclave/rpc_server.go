@@ -74,11 +74,12 @@ func (s *RPCServer) Status(ctx context.Context, _ *generated.StatusRequest) (*ge
 		l2Head = status.L2Head.Bytes()
 	}
 	return &generated.StatusResponse{
-		StatusCode:  int32(status.StatusCode),
-		L1Head:      status.L1Head.Bytes(),
-		L2Head:      l2Head,
-		EnclaveID:   status.EnclaveID.Bytes(),
-		SystemError: toRPCError(sysError),
+		StatusCode:        int32(status.StatusCode),
+		L1Head:            status.L1Head.Bytes(),
+		L2Head:            l2Head,
+		EnclaveID:         status.EnclaveID.Bytes(),
+		IsActiveSequencer: status.IsActiveSequencer,
+		SystemError:       toRPCError(sysError),
 	}, nil
 }
 

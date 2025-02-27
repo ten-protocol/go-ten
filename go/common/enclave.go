@@ -23,10 +23,11 @@ type StatusCode int
 // Status represents the enclave's current state - whether the enclave is healthy and ready to process requests, as well
 // as its latest known heads for the L1 and L2 chains and enclave ID derived from the public key
 type Status struct {
-	StatusCode StatusCode
-	L1Head     gethcommon.Hash
-	L2Head     *big.Int
-	EnclaveID  EnclaveID
+	StatusCode        StatusCode
+	L1Head            gethcommon.Hash
+	L2Head            *big.Int
+	EnclaveID         EnclaveID
+	IsActiveSequencer bool
 }
 
 type TxAndReceiptAndBlobs struct {
@@ -43,9 +44,6 @@ const (
 
 // EnclaveInit defines methods for initializing and managing the state of an enclave.
 type EnclaveInit interface {
-	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
-	Status(context.Context) (Status, SystemError)
-
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(context.Context) (*AttestationReport, SystemError)
 
@@ -80,6 +78,9 @@ type EnclaveAdmin interface {
 
 	// HealthCheck returns whether the enclave is in a healthy state
 	HealthCheck(context.Context) (bool, SystemError)
+
+	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
+	Status(context.Context) (Status, SystemError)
 
 	// GetBatch - retrieve a batch if existing within the enclave db.
 	GetBatch(ctx context.Context, hash L2BatchHash) (*ExtBatch, SystemError)
