@@ -93,8 +93,9 @@ func (e *Service) HealthStatus(ctx context.Context) host.HealthStatus {
 			errors = append(errors, fmt.Errorf("enclave[%d] reported itself not healthy", i))
 		}
 
-		if !guardian.GetEnclaveState().InSyncWithL1() {
-			errors = append(errors, fmt.Errorf("enclave[%d - %s] not in sync with L1 - %s", i, guardian.GetEnclaveID(), guardian.GetEnclaveState()))
+		guardianState := guardian.StateSnapshot()
+		if !guardianState.InSyncWithL1() {
+			errors = append(errors, fmt.Errorf("enclave[%d - %s] not in sync with L1 - %s", i, guardian.GetEnclaveID(), guardianState.String()))
 		}
 	}
 
@@ -107,8 +108,8 @@ func (e *Service) HealthStatus(ctx context.Context) host.HealthStatus {
 func (e *Service) LookupBatchBySeqNo(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error) {
 	// todo (@matt) revisit this flow to make sure it handles HA scenarios properly
 	hg := e.enclaveGuardians[0]
-	state := hg.GetEnclaveState()
-	if state.GetEnclaveL2Head().Cmp(seqNo) < 0 {
+	state := hg.StateSnapshot()
+	if state.Enclave.L2Head.Cmp(seqNo) < 0 {
 		return nil, errutil.ErrNotFound
 	}
 	client := hg.GetEnclaveClient()

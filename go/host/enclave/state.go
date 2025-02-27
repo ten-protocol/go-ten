@@ -57,6 +57,7 @@ type StateTracker struct {
 	enclaveStatusCode common.StatusCode // this is the status code reported by the enclave (Running/AwaitingSecret/Unavailable)
 	enclaveL1Head     gethcommon.Hash
 	enclaveL2Head     *big.Int
+	isActiveSequencer bool
 
 	// latest seen heads of L1 and L2 chains from external sources
 	hostL1Head gethcommon.Hash
@@ -64,6 +65,35 @@ type StateTracker struct {
 
 	m      *sync.RWMutex
 	logger gethlog.Logger
+}
+
+// StateSnapshot is a snapshot of the state of the enclave, used to ensure a consistent, thread-safe view of the state
+type StateSnapshot struct {
+	Status  Status
+	Enclave struct {
+		StatusCode        common.StatusCode
+		L1Head            gethcommon.Hash
+		L2Head            *big.Int
+		IsActiveSequencer bool
+	}
+	Host struct {
+		L1Head gethcommon.Hash
+		L2Head *big.Int
+	}
+}
+
+// InSyncWithL1 returns true if the enclave is up-to-date with L1 data so guardian can process L1 blocks as they arrive
+func (s *StateSnapshot) InSyncWithL1() bool {
+	return s.Status == Live || s.Status == L2Catchup
+}
+
+func (s *StateSnapshot) IsLive() bool {
+	return s.Status == Live
+}
+
+func (s *StateSnapshot) String() string {
+	return fmt.Sprintf("StateSnapshot: [%s] enclave(StatusCode=%d, L1Head=%s, L2Head=%s IsActive=%v), Host(L1Head=%s, L2Head=%s)",
+		s.Status, s.Enclave.StatusCode, s.Enclave.L1Head, s.Enclave.L2Head, s.Enclave.IsActiveSequencer, s.Host.L1Head, s.Host.L2Head)
 }
 
 func NewStateTracker(logger gethlog.Logger) *StateTracker {
@@ -79,6 +109,20 @@ func (s *StateTracker) GetStatus() Status {
 	s.m.RLock()
 	defer s.m.RUnlock()
 	return s.status
+}
+
+func (s *StateTracker) Snapshot() StateSnapshot {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	var snap StateSnapshot
+	snap.Status = s.status
+	snap.Enclave.StatusCode = s.enclaveStatusCode
+	snap.Enclave.L1Head = s.enclaveL1Head
+	snap.Enclave.L2Head = s.enclaveL2Head
+	snap.Enclave.IsActiveSequencer = s.isActiveSequencer
+	snap.Host.L1Head = s.hostL1Head
+	snap.Host.L2Head = s.hostL2Head
+	return snap
 }
 
 func (s *StateTracker) OnProcessedBlock(enclL1Head gethcommon.Hash) {
@@ -125,7 +169,14 @@ func (s *StateTracker) OnEnclaveStatus(es common.Status) {
 		s.enclaveL1Head = es.L1Head
 	}
 	s.enclaveL2Head = es.L2Head
-
+	if s.isActiveSequencer != es.IsActiveSequencer {
+		if es.IsActiveSequencer {
+			s.logger.Info("Enclave is now active sequencer")
+		} else {
+			s.logger.Info("Enclave is no longer active sequencer")
+		}
+	}
+	s.isActiveSequencer = es.IsActiveSequencer
 	s.setStatus(s.calculateStatus())
 }
 
@@ -137,6 +188,7 @@ func (s *StateTracker) OnDisconnected() {
 }
 
 // when enclave is operational, this method will calculate the status based on comparison of current chain heads with enclave heads
+// for consistency, this should be called within a lock
 func (s *StateTracker) calculateStatus() Status {
 	switch s.enclaveStatusCode {
 	case common.AwaitingSecret:
@@ -158,32 +210,6 @@ func (s *StateTracker) calculateStatus() Status {
 	}
 }
 
-// InSyncWithL1 returns true if the enclave is up-to-date with L1 data so guardian can process L1 blocks as they arrive
-func (s *StateTracker) InSyncWithL1() bool {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	return s.status == Live || s.status == L2Catchup
-}
-
-func (s *StateTracker) IsLive() bool {
-	return s.status == Live
-}
-
-func (s *StateTracker) GetEnclaveL1Head() gethcommon.Hash {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	return s.enclaveL1Head
-}
-
-func (s *StateTracker) GetEnclaveL2Head() *big.Int {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if s.enclaveL2Head == nil {
-		return nil
-	}
-	return big.NewInt(0).SetBytes(s.enclaveL2Head.Bytes())
-}
-
 // this must be called from within write-lock
 func (s *StateTracker) setStatus(newStatus Status) {
 	if s.status == newStatus {
@@ -191,4 +217,10 @@ func (s *StateTracker) setStatus(newStatus Status) {
 	}
 	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus), "state", s)
 	s.status = newStatus
+}
+
+func (s *StateTracker) SequencerPromoted() {
+	s.m.Lock()
+	defer s.m.Unlock()
+	s.isActiveSequencer = true
 }
