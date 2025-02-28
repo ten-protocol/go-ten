@@ -363,13 +363,13 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		case errors.Is(txExecResult.Err, evm.ErrGasNotEnoughForL1):
 			// the l1 cost spiked and the gas limit is not enough to cover it
 			// this should not really happen.
-			executor.logger.Warn("Gas can't pay for l1 storage", log.TxKey, ltx.Hash, "acct", txExecResult.TxWithSender.Sender, log.ErrKey, err)
+			executor.logger.Warn("Gas can't pay for l1 storage", log.TxKey, ltx.Hash, "acct", txExecResult.TxWithSender.Sender, log.ErrKey, txExecResult.Err)
 			mempoolTxs.Pop()
 
 		default:
 			// Transaction is regarded as invalid, drop all consecutive transactions from
 			// the same sender because of `nonce-too-high` clause.
-			executor.logger.Debug("Transaction failed, account skipped", log.TxKey, ltx.Hash, "acct", txExecResult.TxWithSender.Sender, log.ErrKey, err)
+			executor.logger.Debug("Transaction failed, account skipped", log.TxKey, ltx.Hash, "acct", txExecResult.TxWithSender.Sender, log.ErrKey, txExecResult.Err)
 			mempoolTxs.Pop()
 		}
 	}

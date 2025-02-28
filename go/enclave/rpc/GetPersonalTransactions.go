@@ -1,7 +1,10 @@
 package rpc
 
 import (
+	"errors"
 	"fmt"
+
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -35,11 +38,18 @@ func GetPersonalTransactionsExecute(builder *CallBuilder[common.ListPrivateTrans
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
 		builder.Err = err
-		return nil //nolint:nilerr
+		return nil
 	}
 	addr := builder.Param.Address
 	internalReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &addr, &builder.Param.Pagination)
 	if err != nil {
+		if errors.Is(err, errutil.ErrNotFound) {
+			builder.ReturnValue = &common.PrivateTransactionsQueryResponse{
+				Receipts: types.Receipts{},
+				Total:    0,
+			}
+			return nil
+		}
 		return fmt.Errorf("GetTransactionsPerAddress - %w", err)
 	}
 

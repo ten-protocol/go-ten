@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
@@ -38,6 +39,9 @@ func TenCallValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, 
 	return nil
 }
 
+// TenCallExecute - executes the eth_call call according to the new geth specifications; Balance is checked and gas price affects behaviour.
+// When gas price is zero the sender does not need to be funded as gas would be free, but otherwise eth call would accurately represent what a transaction
+// would be doing and potentially fail due to insufficient balance.
 func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *EncryptionManager) error {
 	err := authenticateFrom(builder.VK, builder.From)
 	if err != nil {
@@ -47,25 +51,32 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 
 	apiArgs := builder.Param.callParams
 	blkNumber := builder.Param.block
-	execResult, err := rpc.chain.Call(builder.ctx, apiArgs, blkNumber)
-	if err != nil {
-		rpc.logger.Debug("Failed eth_call.", log.ErrKey, err)
-		return err
+	execResult, userErr, sysErr := rpc.chain.Call(builder.ctx, apiArgs, blkNumber)
+	if sysErr != nil {
+		rpc.logger.Debug("Failed eth_call.", log.ErrKey, sysErr)
+		return sysErr
 	}
-	// If the result contains a revert reason, try to unpack and return it.
-	if len(execResult.Revert()) > 0 {
-		builder.Err = newRevertError(execResult.Revert())
+
+	if execResult != nil {
+		// If the result contains a revert reason, try to unpack and return it.
+		if len(execResult.Revert()) > 0 {
+			builder.Err = newRevertError(execResult.Revert())
+			return nil
+		}
+
+		builder.Err = execResult.Err
+		if len(execResult.ReturnData) != 0 {
+			encodedResult := hexutil.Encode(execResult.ReturnData)
+			builder.ReturnValue = &encodedResult
+		}
 		return nil
 	}
 
-	builder.Err = execResult.Err
-
-	var encodedResult string
-	if len(execResult.ReturnData) != 0 {
-		encodedResult = hexutil.Encode(execResult.ReturnData)
-		builder.ReturnValue = &encodedResult
-	} else {
-		builder.ReturnValue = nil
+	if userErr != nil {
+		builder.Err = userErr
+		return nil
 	}
+
+	rpc.logger.Error("should not get here. No error and no result for eth_call")
 	return nil
 }

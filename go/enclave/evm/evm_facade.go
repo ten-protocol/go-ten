@@ -130,23 +130,19 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 }
 
 // ExecuteCall - executes the eth_call call
-func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader) (*gethcore.ExecutionResult, error) {
+func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader) (*gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(exec.logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
 	snapshot := s.Snapshot()
 	defer s.RevertToSnapshot(snapshot) // Always revert after simulation
 
-	noBaseFee := true
-	if header.BaseFee != nil && header.BaseFee.Cmp(gethcommon.Big0) != 0 && msg.GasPrice.Cmp(gethcommon.Big0) != 0 {
-		noBaseFee = false
-	}
 	vmCfg := vm.Config{
-		NoBaseFee: noBaseFee,
+		NoBaseFee: true,
 	}
 
 	ethHeader, err := exec.gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	gp := gethcore.GasPool(exec.gasEstimationCap)
@@ -166,16 +162,16 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 
 	// Read the error stored in the database.
 	if vmerr := cleanState.Error(); vmerr != nil {
-		return nil, vmerr
+		return nil, vmerr, nil
 	}
 
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		exec.logger.Debug(fmt.Sprintf("Error applying msg %v:", msg), log.CtrErrKey, err)
-		return result, fmt.Errorf("err: %w (supplied gas %d)", err, msg.GasLimit)
+		return result, fmt.Errorf("err: %w (supplied gas %d)", err, msg.GasLimit), nil
 	}
 
-	return result, nil
+	return result, nil, nil
 }
 
 func createCleanState(s *state.StateDB, msg *gethcore.Message, ethHeader *types.Header, chainConfig *params.ChainConfig) *state.StateDB {
