@@ -41,9 +41,9 @@ func (o *oracle) EstimateL1StorageGasCost(tx *types.Transaction, block *types.He
 }
 
 func (o *oracle) EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *types.Header, header *common.BatchHeader) (*big.Int, error) {
-	encoded := make([]byte, 0)
-	if args.Data != nil {
-		encoded = append(encoded, *args.Data...)
+	encoded, err := rlp.EncodeToBytes(args)
+	if err != nil {
+		return nil, err
 	}
 
 	return o.calculateL1Cost(block, header, encoded)

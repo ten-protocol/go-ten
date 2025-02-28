@@ -23,7 +23,7 @@ import (
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-var adjustPublishingGas = gethcommon.Big3
+var adjustPublishingGas = gethcommon.Big2
 
 func EstimateGasValidate(reqParams []any, builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64], _ *EncryptionManager) error {
 	// Parameters are [callMsg, BlockHeader number (optional)]
