@@ -27,6 +27,7 @@ func (s *SendNativeFunds) String() string {
 }
 
 func (s *SendNativeFunds) Run(ctx context.Context, _ networktest.NetworkConnector) (context.Context, error) {
+	fmt.Println("Sending native funds transaction")
 	user, err := FetchTestUser(ctx, s.FromUser)
 	if err != nil {
 		return ctx, err
