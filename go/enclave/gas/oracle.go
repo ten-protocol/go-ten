@@ -14,8 +14,8 @@ import (
 // L1TxGas - a crude estimation of the cost of publishing an L1 tx
 const L1TxGas = 150_000
 
-// TxsPerBatch - the number of transactions in a batch. A conservative estimation.
-const TxsPerBatch = 50
+// TxsPerRollup - the number of transactions in a rollup. A conservative estimation.
+const TxsPerRollup = 200
 
 // Oracle - the interface for the future precompiled gas oracle contract
 // which will expose necessary l1 information.
@@ -41,9 +41,9 @@ func (o *oracle) EstimateL1StorageGasCost(tx *types.Transaction, block *types.He
 }
 
 func (o *oracle) EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *types.Header, header *common.BatchHeader) (*big.Int, error) {
-	encoded := make([]byte, 0)
-	if args.Data != nil {
-		encoded = append(encoded, *args.Data...)
+	encoded, err := rlp.EncodeToBytes(args)
+	if err != nil {
+		return nil, err
 	}
 
 	return o.calculateL1Cost(block, header, encoded)
@@ -67,7 +67,7 @@ func (o *oracle) calculateL1Cost(l1Block *types.Header, l2Batch *common.BatchHea
 	shareOfBlobCost := big.NewInt(0).Mul(txL1Size, blobFeePerByte)
 
 	// 2. Estimate how much this tx should absorb from the L1 tx cost that submits the rollup
-	shareOfL1TxGas := big.NewInt(L1TxGas / TxsPerBatch)
+	shareOfL1TxGas := big.NewInt(L1TxGas / TxsPerRollup)
 	// todo - use a moving average for the L1 base fee
 	shareOfL1TxCost := big.NewInt(0).Mul(shareOfL1TxGas, l1Block.BaseFee)
 
