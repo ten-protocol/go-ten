@@ -205,7 +205,7 @@ func (executor *batchExecutor) verifyContext(ec *BatchExecutionContext) error {
 func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 	var err error
 	// Create a new batch based on the provided context
-	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator)
+	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator, executor.batchGasLimit)
 	ec.stateDB, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
 	if err != nil {
 		return fmt.Errorf("could not create stateDB. Cause: %w", err)

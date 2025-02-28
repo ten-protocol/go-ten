@@ -94,14 +94,7 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto *crypto.DAEncrypti
 	}, nil
 }
 
-func DeterministicEmptyBatch(
-	parent *common.BatchHeader,
-	block *types.Header,
-	time uint64,
-	sequencerNo *big.Int,
-	baseFee *big.Int,
-	coinbase gethcommon.Address,
-) *Batch {
+func DeterministicEmptyBatch(parent *common.BatchHeader, block *types.Header, time uint64, sequencerNo *big.Int, baseFee *big.Int, coinbase gethcommon.Address, gasLimit uint64) *Batch {
 	h := common.BatchHeader{
 		ParentHash:       parent.Hash(),
 		L1Proof:          block.Hash(),
@@ -111,7 +104,7 @@ func DeterministicEmptyBatch(
 		Time:     time,
 		BaseFee:  baseFee,
 		Coinbase: coinbase,
-		GasLimit: parent.GasLimit,
+		GasLimit: gasLimit,
 	}
 	b := Batch{
 		Header: &h,
