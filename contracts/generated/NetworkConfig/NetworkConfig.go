@@ -137,7 +137,7 @@ func NewNetworkConfig(address common.Address, backend bind.ContractBackend) (*Ne
 }
 
 // NewNetworkConfigCaller creates a new read-only instance of NetworkConfig, bound to a specific deployed contract.
-func 	NewNetworkConfigCaller(address common.Address, caller bind.ContractCaller) (*NetworkConfigCaller, error) {
+func NewNetworkConfigCaller(address common.Address, caller bind.ContractCaller) (*NetworkConfigCaller, error) {
 	contract, err := bindNetworkConfig(address, caller, nil, nil)
 	if err != nil {
 		return nil, err

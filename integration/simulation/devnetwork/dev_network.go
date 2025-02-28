@@ -80,7 +80,7 @@ func (s *InMemDevNetwork) GetGatewayWSURL() (string, error) {
 }
 
 func (s *InMemDevNetwork) GetMCOwnerWallet() (wallet.Wallet, error) {
-	return s.networkWallets.MCOwnerWallet, nil
+	return s.networkWallets.ContractOwnerWallet, nil
 }
 
 func (s *InMemDevNetwork) ChainID() int64 {
@@ -168,7 +168,7 @@ func (s *InMemDevNetwork) Start() {
 		panic("no enclaves available to promote on sequencer")
 	}
 	for _, e := range h.Enclaves {
-		err = network.PermissionTenSequencerEnclave(s.networkWallets.MCOwnerWallet, s.l1Network.GetClient(0), s.l1SetupData.MgmtContractAddress, e.EnclaveID)
+		err = network.PermissionTenSequencerEnclave(s.networkWallets.ContractOwnerWallet, s.l1Network.GetClient(0), s.l1SetupData.MgmtContractAddress, e.EnclaveID)
 		if err != nil {
 			panic(err)
 		}

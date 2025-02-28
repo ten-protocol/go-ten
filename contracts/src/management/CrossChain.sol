@@ -1,32 +1,34 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../messaging/IMerkleTreeMessageBus.sol";
-import "../messaging/MessageBus.sol";
-import "./ICrossChain.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+
+import "./ICrossChain.sol";
+import * as MessageBus from "../messaging/MessageBus.sol";
+import * as MerkleTreeMessageBus from "../messaging/MerkleTreeMessageBus.sol";
 
 contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
     bool private paused;
     uint256 private challengePeriod;
-    IMessageBus public messageBus;
-    IMerkleTreeMessageBus public merkleMessageBus;
+    MessageBus.IMessageBus public messageBus;
+    MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;
     mapping(bytes32 => bool) public isWithdrawalSpent;
     mapping(bytes32 =>bool) public isBundleSaved;
 
-    event LogManagementContractCreated(address messageBusAddress);
+    event LogCrossChainContractCreated(address messageBusAddress);
 
     constructor() {
         _transferOwnership(msg.sender);
     }
 
-    function initialize(address _messageBus) public initializer {
+    function initialize() public initializer {
         __Ownable_init(msg.sender);
         __ReentrancyGuard_init();
-        messageBus = IMessageBus(_messageBus);
+        merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus();
+        messageBus = MessageBus.IMessageBus(address(merkleMessageBus));
         paused = false; // Default to withdrawals enabled
-        emit LogManagementContractCreated(address(messageBus));
+        emit LogCrossChainContractCreated(address(messageBus));
     }
 
     function extractNativeValue(
