@@ -5,13 +5,14 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common"
 )
 
 type ContractRegistryLib interface {
 	RollupLib() RollupContractLib
 	NetworkEnclaveLib() NetworkEnclaveRegistryLib
 	NetworkConfigLib() NetworkConfigLib
-	GetContractAddresses() *NetworkAddresses
+	GetContractAddresses() *common.NetworkAddresses
 	IsMock() bool
 }
 
@@ -19,7 +20,7 @@ type ContractRegistryImpl struct {
 	rollupLib         RollupContractLib
 	networkEnclaveLib NetworkEnclaveRegistryLib
 	networkConfig     NetworkConfigLib
-	addresses         *NetworkAddresses
+	addresses         *common.NetworkAddresses
 	logger            gethlog.Logger
 }
 
@@ -59,7 +60,7 @@ func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib
 	return registry
 }
 
-func (r *ContractRegistryImpl) GetContractAddresses() *NetworkAddresses {
+func (r *ContractRegistryImpl) GetContractAddresses() *common.NetworkAddresses {
 	return r.addresses
 }
 

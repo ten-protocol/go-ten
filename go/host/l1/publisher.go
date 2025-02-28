@@ -39,7 +39,7 @@ type Publisher struct {
 	importantContractAddresses map[string]gethcommon.Address
 	// lock for the important contract addresses map
 	importantAddressesMutex sync.RWMutex
-	importantAddresses      *contractlib.NetworkAddresses
+	importantAddresses      *common.NetworkAddresses
 
 	repository host.L1DataService
 	logger     gethlog.Logger
@@ -84,7 +84,7 @@ func NewL1Publisher(
 		storage:                   storage,
 
 		importantAddressesMutex: sync.RWMutex{},
-		importantAddresses:      &contractlib.NetworkAddresses{},
+		importantAddresses:      &common.NetworkAddresses{},
 
 		sendingLock:      sync.Mutex{},
 		sendingContext:   sendingCtx,
@@ -290,7 +290,7 @@ func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *bi
 	return nil
 }
 
-func (p *Publisher) GetImportantContracts() *contractlib.NetworkAddresses {
+func (p *Publisher) GetImportantContracts() *common.NetworkAddresses {
 	p.importantAddressesMutex.RLock()
 	defer p.importantAddressesMutex.RUnlock()
 	return p.importantAddresses

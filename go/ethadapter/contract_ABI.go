@@ -28,21 +28,18 @@ const (
 	MethodBytesLen = 4
 )
 
-//var NetworkConfigABI = NetworkConfig.NetworkConfigMetaData.ABI
-//var MessageBusABI = MessageBus.MessageBusMetaData.ABI
-//var CrossChainABI = CrossChain.CrossChainMetaData.ABI
-//var NetworkEnclaveRegistryABI = NetworkEnclaveRegistry.NetworkEnclaveRegistryMetaData.ABI
-//var RollupContractABI = RollupContract.RollupContractMetaData.ABI
-
 var (
-	MessageBusABI, _               = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	NetworkConfigABI, _            = abi.JSON(strings.NewReader(NetworkConfig.NetworkConfigMetaData.ABI))
-	RollupContractABI, _           = abi.JSON(strings.NewReader(RollupContract.RollupContractMetaData.ABI))
-	EnclaveRegistryABI, _          = abi.JSON(strings.NewReader(NetworkEnclaveRegistry.NetworkEnclaveRegistryMetaData.ABI))
-	CrossChainEventName            = "LogMessagePublished"
+	MessageBusABI, _      = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	NetworkConfigABI, _   = abi.JSON(strings.NewReader(NetworkConfig.NetworkConfigMetaData.ABI))
+	RollupContractABI, _  = abi.JSON(strings.NewReader(RollupContract.RollupContractMetaData.ABI))
+	EnclaveRegistryABI, _ = abi.JSON(strings.NewReader(NetworkEnclaveRegistry.NetworkEnclaveRegistryMetaData.ABI))
+
+	CrossChainEventName    = "LogMessagePublished"
+	ValueTransferEventName = "ValueTransfer"
+	//TODO add all names
+	
 	CrossChainEventID              = MessageBusABI.Events[CrossChainEventName].ID
-	ValueTransferEventName         = "ValueTransfer"
-	ValueTransferEventID           = MessageBusABI.Events["ValueTransfer"].ID
+	ValueTransferEventID           = MessageBusABI.Events[ValueTransferEventName].ID
 	SequencerEnclaveGrantedEventID = EnclaveRegistryABI.Events["SequencerEnclaveGranted"].ID
 	SequencerEnclaveRevokedEventID = EnclaveRegistryABI.Events["SequencerEnclaveRevoked"].ID
 	NetworkSecretRequestedID       = EnclaveRegistryABI.Events["NetworkSecretRequested"].ID

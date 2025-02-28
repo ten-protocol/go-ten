@@ -1,8 +1,8 @@
 package ethereummock
 
 import (
+	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
-	"github.com/ten-protocol/go-ten/integration"
 )
 
 type mockContractRegistryLib struct {
@@ -11,12 +11,12 @@ type mockContractRegistryLib struct {
 	networkConfigLib  contractlib.NetworkConfigLib
 }
 
-func (m *mockContractRegistryLib) GetContractAddresses() *contractlib.NetworkAddresses {
-	return &contractlib.NetworkAddresses{
-		CrossChain:             integration.RollupTxAddr,
-		MessageBus:             integration.MessageBusAddr,
-		NetworkEnclaveRegistry: integration.StoreSecretTxAddr,
-		RollupContract:         integration.RollupTxAddr,
+func (m *mockContractRegistryLib) GetContractAddresses() *common.NetworkAddresses {
+	return &common.NetworkAddresses{
+		CrossChain:             RollupTxAddr,
+		MessageBus:             MessageBusAddr,
+		NetworkEnclaveRegistry: StoreSecretTxAddr,
+		RollupContract:         RollupTxAddr,
 	}
 }
 

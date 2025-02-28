@@ -140,7 +140,7 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 		Host:       cfg.ClientRPCHost,
 	}, logger)
 
-	contractRegistry, err := contractlib.NewContractRegistry(cfg.NetworkConfigAddress, l1Client, logger)
+	contractRegistry, err := contractlib.NewContractRegistry(cfg.NetworkConfigAddress, *l1Client.EthClient(), logger)
 	if err != nil {
 		logger.Crit("could not create contract lib registry.", log.ErrKey, err)
 	}

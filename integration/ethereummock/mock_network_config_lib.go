@@ -2,6 +2,7 @@ package ethereummock
 
 import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 )
 
@@ -15,8 +16,8 @@ func (m *mockNetworkConfigLib) GetContractAddr() *gethcommon.Address {
 	return &NetworkConfigAddr
 }
 
-func (m *mockNetworkConfigLib) GetContractAddresses() (*contractlib.NetworkAddresses, error) {
-	return &contractlib.NetworkAddresses{
+func (m *mockNetworkConfigLib) GetContractAddresses() (*common.NetworkAddresses, error) {
+	return &common.NetworkAddresses{
 		CrossChain:             CrossChainAddr,
 		MessageBus:             MessageBusAddr,
 		NetworkEnclaveRegistry: StoreSecretTxAddr,

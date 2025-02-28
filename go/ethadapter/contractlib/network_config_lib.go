@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
@@ -14,20 +15,13 @@ import (
 
 type NetworkConfigLib interface {
 	GetContractAddr() *gethcommon.Address
-	GetContractAddresses() (*NetworkAddresses, error)
+	GetContractAddresses() (*common.NetworkAddresses, error)
 }
 
 type networkConfigLibImpl struct {
 	addr        gethcommon.Address
 	ethClient   ethclient.Client
 	contractABI abi.ABI
-}
-
-type NetworkAddresses struct {
-	CrossChain             gethcommon.Address
-	MessageBus             gethcommon.Address
-	NetworkEnclaveRegistry gethcommon.Address
-	RollupContract         gethcommon.Address
 }
 
 func NewNetworkConfigLib(address gethcommon.Address, ethClient ethclient.Client) (NetworkConfigLib, error) {
@@ -38,7 +32,7 @@ func NewNetworkConfigLib(address gethcommon.Address, ethClient ethclient.Client)
 	}, nil
 }
 
-func (nc *networkConfigLibImpl) GetContractAddresses() (*NetworkAddresses, error) {
+func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkAddresses, error) {
 	data, err := nc.contractABI.Pack("addresses")
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode addresses() call: %w", err)
@@ -52,7 +46,7 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*NetworkAddresses, error
 		return nil, fmt.Errorf("failed to call addresses(): %w", err)
 	}
 
-	addresses := new(NetworkAddresses)
+	addresses := new(common.NetworkAddresses)
 	err = nc.contractABI.UnpackIntoInterface(addresses, "addresses", result)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode addresses response: %w", err)

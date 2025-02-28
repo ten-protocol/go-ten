@@ -366,10 +366,12 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 
 	// Define a struct to represent the response
 	type NetworkConfigResponse struct {
-		RollupContractAddress          string            `json:"RollupContractAddress"`
+		NetworkConfigAddress           string            `json:"NetworkConfigContractAddress"`
 		EnclaveRegistryContractAddress string            `json:"EnclaveRegistryContractAddress"`
-		L1StartHash                    string            `json:"L1StartHash"`
+		RollupContractAddress          string            `json:"RollupContractAddress"`
+		CrossChainAddress              string            `json:"CrossChainContractAddress"`
 		MessageBusAddress              string            `json:"MessageBusAddress"`
+		L1StartHash                    string            `json:"L1StartHash"`
 		L2MessageBusAddress            string            `json:"L2MessageBusAddress"`
 		ImportantContracts             map[string]string `json:"ImportantContracts"`
 	}
@@ -381,8 +383,10 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 	}
 
 	networkConfigResponse := NetworkConfigResponse{
+		NetworkConfigAddress:           networkConfig.NetworkConfigAddress.Hex(),
+		EnclaveRegistryContractAddress: networkConfig.EnclaveRegistryAddress.Hex(),
 		RollupContractAddress:          networkConfig.RollupContractAddress.Hex(),
-		EnclaveRegistryContractAddress: networkConfig.EnclaveRegistryContractAddress.Hex(),
+		CrossChainAddress:              networkConfig.CrossChainAddress.Hex(),
 		L1StartHash:                    networkConfig.L1StartHash.Hex(),
 		MessageBusAddress:              networkConfig.MessageBusAddress.Hex(),
 		L2MessageBusAddress:            networkConfig.L2MessageBusAddress.Hex(),

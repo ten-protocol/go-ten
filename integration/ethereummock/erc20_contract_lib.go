@@ -12,13 +12,13 @@ import (
 type contractLib struct{}
 
 func (c *contractLib) CreateDepositTx(tx *common.L1DepositTx) (types.TxData, error) {
-	return encodeTx(tx, depositTxAddr), nil
+	return EncodeTx(tx, DepositTxAddr), nil
 }
 
 // DecodeTx returns only deposit transactions to the management contract
 func (c *contractLib) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
-	if bytes.Equal(tx.To().Bytes(), depositTxAddr.Bytes()) {
-		depositTx, ok := decodeTx(tx).(*common.L1DepositTx)
+	if bytes.Equal(tx.To().Bytes(), DepositTxAddr.Bytes()) {
+		depositTx, ok := DecodeTx(tx).(*common.L1DepositTx)
 		if !ok {
 			return nil, nil
 		}

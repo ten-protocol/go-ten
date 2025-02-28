@@ -265,10 +265,8 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 
 	h.contractRegistry.RollupLib().GetContractAddr()
 	return &common.TenNetworkInfo{
-		RollupContractAddress: h.config.ManagementContractAddress,
-		L1StartHash:           h.config.L1StartHash,
-
-		MessageBusAddress:               h.config.MessageBusAddress,
+		NetworkConfigAddress:            h.config.NetworkConfigAddress,
+		L1StartHash:                     h.config.L1StartHash,
 		L2MessageBusAddress:             *h.l2MessageBusAddress,
 		ImportantContracts:              h.services.L1Publisher().GetImportantContracts(),
 		TransactionPostProcessorAddress: h.transactionPostProcessorAddress,
