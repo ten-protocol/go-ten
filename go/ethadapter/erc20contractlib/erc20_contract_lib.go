@@ -27,21 +27,21 @@ type ERC20ContractLib interface {
 // erc20ContractLibImpl takes a mgmtContractAddr and processes multiple erc20ContractAddrs
 // Watches for contract executions that might be deposits towards the Management Contract
 type erc20ContractLibImpl struct {
-	mgmtContractAddr   *gethcommon.Address
-	erc20ContractAddrs []*gethcommon.Address
-	contractABI        abi.ABI
+	crossChainContractAddr *gethcommon.Address
+	erc20ContractAddrs     []*gethcommon.Address
+	contractABI            abi.ABI
 }
 
-func NewERC20ContractLib(mgmtContractAddr *gethcommon.Address, contractAddrs ...*gethcommon.Address) ERC20ContractLib {
+func NewERC20ContractLib(crossChainContractAddr *gethcommon.Address, contractAddrs ...*gethcommon.Address) ERC20ContractLib {
 	contractABI, err := abi.JSON(strings.NewReader(ERC20ContractABI))
 	if err != nil {
 		panic(err)
 	}
 
 	return &erc20ContractLibImpl{
-		mgmtContractAddr:   mgmtContractAddr,
-		erc20ContractAddrs: contractAddrs,
-		contractABI:        contractABI,
+		crossChainContractAddr: crossChainContractAddr,
+		erc20ContractAddrs:     contractAddrs,
+		contractABI:            contractABI,
 	}
 }
 
@@ -78,7 +78,8 @@ func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTran
 
 	// only process transfers made to the management contract
 	toAddr, ok := to.(gethcommon.Address)
-	if !ok || toAddr.Hex() != c.mgmtContractAddr.Hex() {
+	//FIXME not sure if this is correct
+	if !ok || toAddr.Hex() != c.crossChainContractAddr.Hex() {
 		return nil, nil
 	}
 
