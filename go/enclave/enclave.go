@@ -92,11 +92,14 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 		logger.Crit("failed to load system contracts", log.ErrKey, err)
 	}
 
+	gasOracle := gas.NewGasOracle()
+	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
+
 	// start the mempool in validate only. Based on the config, it might become sequencer
 	evmEntropyService := crypto.NewEvmEntropyService(sharedSecretService, logger)
 	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, evmEntropyService, logger)
 	batchRegistry := components.NewBatchRegistry(storage, config, gethEncodingService, logger)
-	mempool, err := components.NewTxPool(batchRegistry.EthChain(), config.MinGasPrice, true, logger)
+	mempool, err := components.NewTxPool(batchRegistry.EthChain(), storage, batchRegistry, blockProcessor, gasOracle, config.MinGasPrice, true, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
@@ -105,8 +108,6 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	visibilityReader := evm.NewContractVisibilityReader(logger)
 	evmFacade := evm.NewEVMExecutor(chainContext, chainConfig, config, config.GasLocalExecutionCapFlag, storage, gethEncodingService, visibilityReader, logger)
 
-	gasOracle := gas.NewGasOracle()
-	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, evmFacade, config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, logger)
 

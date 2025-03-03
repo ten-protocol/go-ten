@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -9,6 +10,9 @@ import (
 	"sync/atomic"
 	"time"
 	"unsafe"
+
+	"github.com/ten-protocol/go-ten/go/enclave/gas"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/params"
@@ -46,20 +50,24 @@ var startMempoolTimeout = 90 * time.Second
 
 // TxPool is an obscuro wrapper around geths transaction pool
 type TxPool struct {
-	txPoolConfig legacypool.Config
-	chainconfig  *params.ChainConfig
-	legacyPool   *legacypool.LegacyPool
-	pool         *gethtxpool.TxPool
-	Chain        *EthChainAdapter
-	gasTip       *big.Int
-	running      atomic.Bool
-	stateMutex   sync.Mutex
-	logger       gethlog.Logger
-	validateOnly atomic.Bool
+	txPoolConfig     legacypool.Config
+	chainconfig      *params.ChainConfig
+	legacyPool       *legacypool.LegacyPool
+	pool             *gethtxpool.TxPool
+	Chain            *EthChainAdapter
+	gasOracle        gas.Oracle
+	batchRegistry    BatchRegistry
+	storage          storage.Storage
+	l1BlockProcessor L1BlockProcessor
+	gasTip           *big.Int
+	running          atomic.Bool
+	stateMutex       sync.Mutex
+	logger           gethlog.Logger
+	validateOnly     atomic.Bool
 }
 
 // NewTxPool returns a new instance of the tx pool
-func NewTxPool(blockchain *EthChainAdapter, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
+func NewTxPool(blockchain *EthChainAdapter, storage storage.Storage, batchRegistry BatchRegistry, l1BlockProcessor L1BlockProcessor, gasOracle gas.Oracle, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
 	txPoolConfig := legacypool.Config{
 		Locals:       nil,
 		NoLocals:     false,
@@ -76,14 +84,18 @@ func NewTxPool(blockchain *EthChainAdapter, gasTip *big.Int, validateOnly bool, 
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
 
 	txp := &TxPool{
-		Chain:        blockchain,
-		chainconfig:  blockchain.Config(),
-		txPoolConfig: txPoolConfig,
-		legacyPool:   legacyPool,
-		gasTip:       gasTip,
-		stateMutex:   sync.Mutex{},
-		validateOnly: atomic.Bool{},
-		logger:       logger,
+		Chain:            blockchain,
+		chainconfig:      blockchain.Config(),
+		txPoolConfig:     txPoolConfig,
+		storage:          storage,
+		gasOracle:        gasOracle,
+		batchRegistry:    batchRegistry,
+		l1BlockProcessor: l1BlockProcessor,
+		legacyPool:       legacyPool,
+		gasTip:           gasTip,
+		stateMutex:       sync.Mutex{},
+		validateOnly:     atomic.Bool{},
+		logger:           logger,
 	}
 	txp.validateOnly.Store(validateOnly)
 	go txp.start()
@@ -245,9 +257,14 @@ func (t *TxPool) validate(tx *common.L2Tx) error {
 	}
 
 	t.stateMutex.Lock()
-	defer t.stateMutex.Unlock()
 	// validate against the state. Things like nonce, balance, etc
-	return validateTx(t.legacyPool, tx, false)
+	err = validateTx(t.legacyPool, tx, false)
+	if err != nil {
+		t.stateMutex.Unlock()
+		return err
+	}
+	t.stateMutex.Unlock()
+	return t.validateL1Gas(tx)
 }
 
 func (t *TxPool) Stats() (int, int) {
@@ -289,5 +306,47 @@ func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 	if err := gethtxpool.ValidateTransaction(tx, ch.Load(), sig, opts); err != nil {
 		return err
 	}
+	return nil
+}
+
+// check that the tx gas can pay for the l1
+func (t *TxPool) validateL1Gas(tx *common.L2Tx) error {
+	headBatchSeq := t.batchRegistry.HeadBatchSeq()
+
+	// don't perform the check while the network is initialising
+	if headBatchSeq == nil {
+		return nil
+	}
+
+	headBatch, err := t.storage.FetchBatchHeaderBySeqNo(context.Background(), headBatchSeq.Uint64())
+	if err != nil {
+		return fmt.Errorf("could not retrieve head batch. Cause: %w", err)
+	}
+	headBlock, err := t.l1BlockProcessor.GetHead(context.Background())
+	if err != nil {
+		return fmt.Errorf("could not retrieve head block. Cause: %w", err)
+	}
+
+	l1Cost, err := t.gasOracle.EstimateL1StorageGasCost(tx, headBlock, headBatch)
+	if err != nil {
+		t.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
+		return fmt.Errorf("unable to get gas cost for tx. Cause: %w", err)
+	}
+
+	// calculate the cost in l2 gas
+	l2Gas := big.NewInt(0).Div(l1Cost, headBatch.BaseFee)
+
+	intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, true, true, true)
+	if err != nil {
+		return err
+	}
+
+	leastGas := l2Gas.Uint64() + intrGas
+	// The gas limit of the transaction (evm message) should always be higher than the gas overhead
+	// used to cover the l1 cost
+	if tx.Gas() < leastGas {
+		return fmt.Errorf("insufficient gas. Want at least: %d have: %d", leastGas, tx.Gas())
+	}
+
 	return nil
 }
