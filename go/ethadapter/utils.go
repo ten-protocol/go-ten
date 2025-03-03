@@ -2,6 +2,7 @@ package ethadapter
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"math"
 	"math/big"
@@ -127,4 +128,14 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 
 func calculateRetryMultiplier(baseMultiplier float64, retryNumber int) float64 {
 	return math.Pow(baseMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
+}
+
+// Base64EncodeToString encodes a byte array to a string
+func Base64EncodeToString(bytes []byte) string {
+	return base64.StdEncoding.EncodeToString(bytes)
+}
+
+// Base64DecodeFromString decodes a string to a byte array
+func Base64DecodeFromString(in string) ([]byte, error) {
+	return base64.StdEncoding.DecodeString(in)
 }

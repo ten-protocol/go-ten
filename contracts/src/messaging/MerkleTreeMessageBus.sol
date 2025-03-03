@@ -4,7 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
-import "./Structs.sol";
+import "../common/Structs.sol";
 import "./IMerkleTreeMessageBus.sol";
 import "./MessageBus.sol";
 

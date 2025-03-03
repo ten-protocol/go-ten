@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 	"math/big"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	gethlog "github.com/ethereum/go-ethereum/log"
 
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
@@ -263,7 +263,7 @@ func (e *gethRPCClient) Stop() {
 }
 
 func (e *gethRPCClient) FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error) {
-	contract, err := ManagementContract.NewManagementContract(address, e.EthClient())
+	contract, err := RollupContract.NewRollupContract(address, e.EthClient())
 	if err != nil {
 		return nil, err
 	}
