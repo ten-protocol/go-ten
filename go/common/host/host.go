@@ -35,6 +35,9 @@ type Host interface {
 	// NewHeadsChan returns live batch headers
 	// Note - do not use directly. This is meant only for the NewHeadsManager, which multiplexes the headers
 	NewHeadsChan() chan *common.BatchHeader
+
+	// ConfirmedHeadBatch retrieves the most recent batch processed by the enclave
+	ConfirmedHeadBatch() (*common.BatchHeader, error)
 }
 
 type BatchMsg struct {
