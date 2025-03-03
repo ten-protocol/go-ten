@@ -552,6 +552,15 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 	}
 
 	batch.ResetHash()
+
+	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
+	for _, receipt := range allResults.Receipts() {
+		receipt.BlockHash = batch.Hash()
+		for _, l := range receipt.Logs {
+			l.BlockHash = batch.Hash()
+		}
+	}
+
 	return &ComputedBatch{
 		Batch:         batch,
 		TxExecResults: allResults,
@@ -580,14 +589,6 @@ func (executor *batchExecutor) createBatch(ec *BatchExecutionContext) (*core.Bat
 		batch.Header.TxHash = types.EmptyTxsHash
 	} else {
 		batch.Header.TxHash = types.DeriveSha(types.Transactions(batch.Transactions), trie.NewStackTrie(nil))
-	}
-
-	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
-	for _, receipt := range receipts {
-		receipt.BlockHash = batch.Hash()
-		for _, l := range receipt.Logs {
-			l.BlockHash = batch.Hash()
-		}
 	}
 
 	return &batch, allResults, nil
