@@ -205,7 +205,7 @@ func (executor *batchExecutor) verifyContext(ec *BatchExecutionContext) error {
 func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 	var err error
 	// Create a new batch based on the provided context
-	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator, executor.batchGasLimit)
+	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator, ec.BatchGasLimit)
 	ec.stateDB, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
 	if err != nil {
 		return fmt.Errorf("could not create stateDB. Cause: %w", err)
@@ -220,7 +220,7 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 
 	zero := uint64(0)
 	ec.usedGas = &zero
-	gp := gethcore.GasPool(executor.batchGasLimit)
+	gp := gethcore.GasPool(ec.BatchGasLimit)
 	ec.GasPool = &gp
 	return nil
 }
@@ -601,15 +601,16 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	// If the sequencer has tampered with something the hash will not add up and validation will
 	// produce an error.
 	cb, err := executor.ComputeBatch(ctx, &BatchExecutionContext{
-		BlockPtr:     batch.Header.L1Proof,
-		ParentPtr:    batch.Header.ParentHash,
-		UseMempool:   false,
-		Transactions: batch.Transactions,
-		AtTime:       batch.Header.Time,
-		ChainConfig:  executor.chainConfig,
-		SequencerNo:  batch.Header.SequencerOrderNo,
-		Creator:      batch.Header.Coinbase,
-		BaseFee:      batch.Header.BaseFee,
+		BlockPtr:      batch.Header.L1Proof,
+		ParentPtr:     batch.Header.ParentHash,
+		UseMempool:    false,
+		BatchGasLimit: batch.Header.GasLimit,
+		Transactions:  batch.Transactions,
+		AtTime:        batch.Header.Time,
+		ChainConfig:   executor.chainConfig,
+		SequencerNo:   batch.Header.SequencerOrderNo,
+		Creator:       batch.Header.Coinbase,
+		BaseFee:       batch.Header.BaseFee,
 	}, false) // this execution is not used when first producing a batch, we never want to fail for empty batches
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
