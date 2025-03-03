@@ -227,15 +227,16 @@ func (s *sequencer) produceBatch(
 ) (*components.ComputedBatch, error) {
 	cb, err := s.batchProducer.ComputeBatch(ctx,
 		&components.BatchExecutionContext{
-			BlockPtr:     l1Hash,
-			ParentPtr:    headBatch,
-			UseMempool:   useMempool,
-			Transactions: transactions,
-			AtTime:       batchTime,
-			Creator:      s.settings.GasPaymentAddress,
-			BaseFee:      s.settings.BaseFee,
-			ChainConfig:  s.chainConfig,
-			SequencerNo:  sequencerNo,
+			BlockPtr:      l1Hash,
+			ParentPtr:     headBatch,
+			UseMempool:    useMempool,
+			BatchGasLimit: s.settings.BatchGasLimit,
+			Transactions:  transactions,
+			AtTime:        batchTime,
+			Creator:       s.settings.GasPaymentAddress,
+			BaseFee:       s.settings.BaseFee,
+			ChainConfig:   s.chainConfig,
+			SequencerNo:   sequencerNo,
 		}, failForEmptyBatch)
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch. Cause: %w", err)
