@@ -8,8 +8,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ten-protocol/go-ten/go/common/gethutil"
-
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
@@ -374,8 +372,6 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		}
 	}
 
-	ec.stateDB.Finalise(true)
-
 	ec.Transactions = results.BatchTransactions()
 	ec.batchTxResults = results
 
@@ -396,7 +392,6 @@ func (executor *batchExecutor) executeExistingBatch(ec *BatchExecutionContext) e
 		return fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 	ec.batchTxResults = txResults
-	ec.stateDB.Finalise(true)
 	return nil
 }
 
@@ -521,47 +516,61 @@ func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error
 }
 
 func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedBatch, error) {
+	executor.stateDBMutex.Lock()
+	defer executor.stateDBMutex.Unlock()
+
 	batch, allResults, err := executor.createBatch(ec)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating batch. Cause: %w", err)
 	}
 
-	commitFunc := func(deleteEmptyObjects bool) (gethcommon.Hash, error) {
-		executor.stateDBMutex.Lock()
-		defer executor.stateDBMutex.Unlock()
-		h, err := ec.stateDB.Commit(batch.Number().Uint64(), deleteEmptyObjects)
+	rootHash, err := ec.stateDB.Commit(batch.Number().Uint64(), true)
+	if err != nil {
+		return nil, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
+	}
+
+	trieDB := executor.storage.TrieDB()
+	err = trieDB.Commit(rootHash, false)
+	if err != nil {
+		executor.logger.Error("Failed to commit trieDB", "error", err)
+		return nil, fmt.Errorf("failed to commit trieDB. Cause: %w", err)
+	}
+	batch.Header.Root = rootHash
+
+	// When system contract deployment genesis batch is committed, initialize executor's addresses for the hooks.
+	// Further restarts will call into Load() which will take the receipts for batch number 2 (which should never be deleted)
+	// and reinitialize them.
+	if ec.currentBatch.Header.SequencerOrderNo.Uint64() == common.L2SysContractGenesisSeqNo {
+		if len(ec.genesisSysCtrResult) == 0 {
+			return nil, fmt.Errorf("failed to instantiate system contracts: expected receipt for system deployer transaction, but no receipts found in batch")
+		}
+
+		err := executor.systemContracts.Initialize(batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
 		if err != nil {
-			return gethutil.EmptyHash, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
+			return nil, fmt.Errorf("failed to initialize system contracts: %w", err)
 		}
-		trieDB := executor.storage.TrieDB()
-		err = trieDB.Commit(h, false)
+	}
 
-		// When system contract deployment genesis batch is committed, initialize executor's addresses for the hooks.
-		// Further restarts will call into Load() which will take the receipts for batch number 2 (which should never be deleted)
-		// and reinitialize them.
-		if err == nil && ec.currentBatch.Header.SequencerOrderNo.Uint64() == common.L2SysContractGenesisSeqNo {
-			if len(ec.genesisSysCtrResult) == 0 {
-				return h, fmt.Errorf("failed to instantiate system contracts: expected receipt for system deployer transaction, but no receipts found in batch")
-			}
+	batch.ResetHash()
 
-			return h, executor.systemContracts.Initialize(batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
+	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
+	for _, receipt := range allResults.Receipts() {
+		receipt.BlockHash = batch.Hash()
+		for _, l := range receipt.Logs {
+			l.BlockHash = batch.Hash()
 		}
-		return h, err
 	}
 
 	return &ComputedBatch{
 		Batch:         batch,
 		TxExecResults: allResults,
-		Commit:        commitFunc,
 	}, nil
 }
 
 func (executor *batchExecutor) createBatch(ec *BatchExecutionContext) (*core.Batch, core.TxExecResults, error) {
 	// we need to copy the batch to reset the internal hash cache
 	batch := *ec.currentBatch
-	batch.Header.Root = ec.stateDB.IntermediateRoot(false)
 	batch.Transactions = ec.batchTxResults.BatchTransactions()
-	batch.ResetHash()
 
 	txReceipts := ec.batchTxResults.Receipts()
 	if err := executor.populateOutboundCrossChainData(ec.ctx, &batch, ec.l1block, txReceipts); err != nil {
@@ -571,24 +580,17 @@ func (executor *batchExecutor) createBatch(ec *BatchExecutionContext) (*core.Bat
 	allResults := append(append(append(append(ec.batchTxResults, ec.xChainResults...), ec.callbackTxResults...), ec.blockEndResult...), ec.genesisSysCtrResult...)
 	receipts := allResults.Receipts()
 	if len(receipts) == 0 {
-		batch.Header.ReceiptHash = types.EmptyRootHash
+		batch.Header.ReceiptHash = types.EmptyReceiptsHash
 	} else {
 		batch.Header.ReceiptHash = types.DeriveSha(receipts, trie.NewStackTrie(nil))
 	}
 
 	if len(batch.Transactions) == 0 {
-		batch.Header.TxHash = types.EmptyRootHash
+		batch.Header.TxHash = types.EmptyTxsHash
 	} else {
 		batch.Header.TxHash = types.DeriveSha(types.Transactions(batch.Transactions), trie.NewStackTrie(nil))
 	}
 
-	// the logs and receipts produced by the EVM have the wrong hash which must be adjusted
-	for _, receipt := range receipts {
-		receipt.BlockHash = batch.Hash()
-		for _, l := range receipt.Logs {
-			l.BlockHash = batch.Hash()
-		}
-	}
 	return &batch, allResults, nil
 }
 
@@ -619,10 +621,6 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 		// todo @stefan - generate a validator challenge here and return it
 		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
 		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
-	}
-
-	if _, err := cb.Commit(true); err != nil {
-		return nil, fmt.Errorf("cannot commit stateDB for incoming valid batch %s. Cause: %w", batch.Hash(), err)
 	}
 
 	return cb.TxExecResults, nil
