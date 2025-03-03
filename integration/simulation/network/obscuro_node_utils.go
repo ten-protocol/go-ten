@@ -44,7 +44,7 @@ func startInMemoryTenNodes(params *params.SimParams, l1Clients []ethadapter.EthC
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
-			params.NetworkContractConfig,
+			params.NetworkContractConfigLib,
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
 			mockP2PNetw.NewNode(i),

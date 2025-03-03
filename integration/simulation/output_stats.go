@@ -3,6 +3,7 @@ package simulation
 import (
 	"bytes"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -90,8 +91,21 @@ func (o *OutputStats) countBlockChain() {
 }
 
 func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient) {
+	contractAddresses, err := o.simulation.Params.NetworkContractConfigLib.GetContractAddresses()
+	if err != nil {
+		panic(err)
+	}
+
+	rollupLib := contractlib.NewRollupContractLib(&contractAddresses.RollupContract, testlog.Logger())
+	enclaveRegistryLib := contractlib.NewNetworkEnclaveRegistryLib(&contractAddresses.NetworkEnclaveRegistry, testlog.Logger())
+
+	//FIXMEdd .
 	for _, tx := range block.Transactions() {
-		t, err := o.simulation.Params.MgmtContractLib.DecodeTx(tx)
+		t, err := rollupLib.DecodeTx(tx)
+		if err != nil {
+			panic(err)
+		}
+		t, err = enclaveRegistryLib.DecodeTx(tx)
 		if err != nil {
 			panic(err)
 		}

@@ -56,9 +56,9 @@ type TransactionInjector struct {
 	rpcHandles *network.RPCHandles
 
 	// addrs and libs
-	networkConfigAddr   *gethcommon.Address
-	contractRegistryLib contractlib.ContractRegistryLib
-	erc20ContractLib    erc20contractlib.ERC20ContractLib
+	networkConfigAddr *gethcommon.Address
+	networkConfigLib  contractlib.NetworkConfigLib
+	erc20ContractLib  erc20contractlib.ERC20ContractLib
 
 	// controls
 	interruptRun     *int32
@@ -82,7 +82,7 @@ func NewTransactionInjector(
 	rpcHandles *network.RPCHandles,
 	wallets *params.SimWallets,
 	networkConfigAddr *gethcommon.Address,
-	contractRegistryLib contractlib.ContractRegistryLib,
+	networkConfigLib contractlib.NetworkConfigLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	txsToIssue int,
 	params *params.SimParams,
@@ -90,20 +90,20 @@ func NewTransactionInjector(
 	interrupt := int32(0)
 
 	return &TransactionInjector{
-		avgBlockDuration:    avgBlockDuration,
-		stats:               stats,
-		rpcHandles:          rpcHandles,
-		interruptRun:        &interrupt,
-		fullyStoppedChan:    make(chan bool, 1),
-		networkConfigAddr:   networkConfigAddr,
-		contractRegistryLib: contractRegistryLib,
-		erc20ContractLib:    erc20ContractLib,
-		wallets:             wallets,
-		TxTracker:           newCounter(),
-		txsToIssue:          txsToIssue,
-		params:              params,
-		ctx:                 context.Background(), // for now we create a new context here, should allow it to be passed in
-		logger:              testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
+		avgBlockDuration:  avgBlockDuration,
+		stats:             stats,
+		rpcHandles:        rpcHandles,
+		interruptRun:      &interrupt,
+		fullyStoppedChan:  make(chan bool, 1),
+		networkConfigAddr: networkConfigAddr,
+		networkConfigLib:  networkConfigLib,
+		erc20ContractLib:  erc20ContractLib,
+		wallets:           wallets,
+		TxTracker:         newCounter(),
+		txsToIssue:        txsToIssue,
+		params:            params,
+		ctx:               context.Background(), // for now we create a new context here, should allow it to be passed in
+		logger:            testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
 	}
 }
 
@@ -367,7 +367,8 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	// In mem sim does not support the l1 interaction required for the rest of the function.
-	if ti.contractRegistryLib.IsMock() {
+
+	if ti.networkConfigLib.IsMock() {
 		return
 	}
 

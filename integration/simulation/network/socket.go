@@ -3,7 +3,6 @@ package network
 import (
 	"bufio"
 	"fmt"
-	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"net/http"
 	"os/exec"
@@ -42,16 +41,6 @@ type networkOfSocketNodes struct {
 	gethClients []ethadapter.EthClient
 	wallets     *params.SimWallets
 	tenClients  []*obsclient.ObsClient
-}
-
-func (n networkOfSocketNodes) Create(params *params.SimParams, stats *stats.Stats) (*RPCHandles, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (n networkOfSocketNodes) TearDown() {
-	//TODO implement me
-	panic("implement me")
 }
 
 func NewNetworkOfSocketNodes(wallets *params.SimWallets) Network {
@@ -120,7 +109,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Network.GenesisJSON = genesis
 		tenCfg.Network.Sequencer.P2PAddress = fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset)
 		tenCfg.Network.L1.BlockTime = simParams.AvgBlockDuration
-		tenCfg.Network.L1.L1Contracts.ManagementContract = simParams.L1TenData.MgmtContractAddress
+		tenCfg.Network.L1.L1Contracts.NetworkConfigContract = simParams.L1TenData.NetworkConfigAddress
 		tenCfg.Network.L1.L1Contracts.MessageBusContract = simParams.L1TenData.MessageBusAddr
 		tenCfg.Network.Gas.PaymentAddress = simParams.Wallets.L2FeesWallet.Address()
 
@@ -180,7 +169,12 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	}
 
 	// permission the sequencer enclaveID (also requires retries as the enclaveID may not be attested yet)
-	err = PermissionTenSequencerEnclave(n.wallets.ContractOwnerWallet, n.gethClients[0], simParams.L1TenData.MgmtContractAddress, *seqEnclaveID)
+	addresses, err := networkContractConfig.GetContractAddresses()
+	if err != nil {
+		//FIXME
+		return nil, err
+	}
+	err = PermissionTenSequencerEnclave(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.NetworkEnclaveRegistry, *seqEnclaveID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
 	}

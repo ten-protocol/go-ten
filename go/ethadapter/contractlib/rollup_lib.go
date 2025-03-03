@@ -90,9 +90,11 @@ func (r *rollupContractLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTra
 		return &common.L1RollupHashes{
 			BlobHashes: tx.BlobHashes(),
 		}, nil
-	} else {
-		return nil, fmt.Errorf("invalid transaction type: %v", tx.Type())
 	}
+	//else {
+	//	return nil, fmt.Errorf("invalid transaction type: %v", tx.Type())
+	//}
+	return nil, nil
 }
 
 func (r *rollupContractLibImpl) GetContractAddr() *gethcommon.Address {

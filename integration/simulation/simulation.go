@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sync"
 	"time"
@@ -133,6 +134,12 @@ func (s *Simulation) Stop() {
 func (s *Simulation) waitForTenGenesisOnL1() {
 	// grab an L1 client
 	client := s.RPCHandles.EthClients[0]
+	//FIXME
+	contractLib, err := s.Params.NetworkContractConfigLib.GetContractAddresses()
+	if err != nil {
+		panic(err)
+	}
+	rollupLib := contractlib.NewRollupContractLib(&contractLib.RollupContract, testlog.Logger())
 
 	for {
 		// spin through the L1 blocks periodically to see if the genesis rollup has arrived
@@ -151,7 +158,7 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 					panic(err)
 				}
 				for _, tx := range b.Transactions() {
-					t, err := s.Params.ContractRegistryLib.RollupLib().DecodeTx(tx)
+					t, err := rollupLib.DecodeTx(tx)
 					if err != nil {
 						panic(err)
 					}

@@ -24,3 +24,7 @@ func (m *mockNetworkConfigLib) GetContractAddresses() (*common.NetworkAddresses,
 		RollupContract:         RollupTxAddr,
 	}, nil
 }
+
+func (m *mockNetworkConfigLib) IsMock() bool {
+	return true
+}

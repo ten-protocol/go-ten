@@ -3,6 +3,7 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sort"
 	"strings"
@@ -253,7 +254,16 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
+	contractAddresses, err := s.Params.NetworkContractConfigLib.GetContractAddresses()
+	if err != nil {
+		panic(err)
+	}
+
+	rollupLib := contractlib.NewRollupContractLib(&contractAddresses.RollupContract, testlog.Logger())
+	enclaveRegistryLib := contractlib.NewNetworkEnclaveRegistryLib(&contractAddresses.NetworkEnclaveRegistry, testlog.Logger())
+
 	blockchain, err := node.BlocksBetween(startBlock, endBlock)
+
 	if err != nil {
 		panic(err)
 	}
@@ -270,7 +280,12 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 			}
 
 			if t == nil {
-				t, err = s.Params.MgmtContractLib.DecodeTx(tx)
+				//FIXME
+				t, err = rollupLib.DecodeTx(tx)
+				if err != nil {
+					panic(err)
+				}
+				t, err = enclaveRegistryLib.DecodeTx(tx)
 				if err != nil {
 					panic(err)
 				}

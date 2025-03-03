@@ -16,6 +16,7 @@ import (
 type NetworkConfigLib interface {
 	GetContractAddr() *gethcommon.Address
 	GetContractAddresses() (*common.NetworkAddresses, error)
+	IsMock() bool
 }
 
 type networkConfigLibImpl struct {
@@ -57,4 +58,8 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkAddresses
 
 func (nc *networkConfigLibImpl) GetContractAddr() *gethcommon.Address {
 	return &nc.addr
+}
+
+func (nc *networkConfigLibImpl) IsMock() bool {
+	return false
 }

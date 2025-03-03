@@ -2,10 +2,10 @@ package network
 
 import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
-	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/eth2network"
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
@@ -35,10 +35,6 @@ func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RP
 		params.NumberOfNodes,
 	)
 
-	params.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&params.L1TenData.MgmtContractAddress, testlog.Logger())
-	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(&params.L1TenData.MgmtContractAddress,
-		&params.L1TenData.ObxErc20Address, &params.L1TenData.EthErc20Address)
-
 	// Start the TEN nodes and return the handles
 	n.l2Clients = startInMemoryTenNodes(params, n.gethClients)
 
@@ -47,6 +43,14 @@ func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RP
 		tenClients[idx] = obsclient.NewObsClient(l2Client)
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
+
+	contractLib, err := contractlib.NewNetworkConfigLib(params.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient())
+	if err != nil {
+		panic(err)
+	}
+	params.NetworkContractConfigLib = contractLib
+	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(&params.L1TenData.NetworkConfigAddress,
+		&params.L1TenData.ObxErc20Address, &params.L1TenData.EthErc20Address)
 
 	return &RPCHandles{
 		EthClients:     n.gethClients,
