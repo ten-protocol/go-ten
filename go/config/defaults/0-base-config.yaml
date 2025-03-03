@@ -17,7 +17,7 @@ network:
     baseFee: 100000000
     minGasPrice: 100000000
     paymentAddress: 0xd6C9230053f45F873Cb66D8A02439380a37A4fbF
-    batchExecutionLimit: 30000000 # same as Ethereum blocks
+    batchExecutionLimit: 300000000
     localExecutionCap: 300000000000 # 300 gwei
   l1:
     chainId: 1337
