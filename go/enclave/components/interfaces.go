@@ -95,7 +95,6 @@ type BatchExecutionContext struct {
 type ComputedBatch struct {
 	Batch         *core.Batch
 	TxExecResults []*core.TxExecResult
-	Commit        func(bool) (gethcommon.Hash, error)
 }
 
 type BatchExecutor interface {

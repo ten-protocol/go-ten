@@ -513,10 +513,6 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 					rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
 				}*/
 
-			if _, err := computedBatch.Commit(true); err != nil {
-				return fmt.Errorf("cannot commit stateDB for incoming valid batch seq=%d. Cause: %w", incompleteBatch.seqNo, err)
-			}
-
 			convertedHeader, err := rc.gethEncodingService.CreateEthHeaderForBatch(ctx, computedBatch.Batch.Header)
 			if err != nil {
 				return err

@@ -241,10 +241,6 @@ func (s *sequencer) produceBatch(
 		return nil, fmt.Errorf("failed computing batch. Cause: %w", err)
 	}
 
-	if _, err := cb.Commit(true); err != nil {
-		return nil, fmt.Errorf("failed committing batch state. Cause: %w", err)
-	}
-
 	if err := s.signBatch(cb.Batch); err != nil {
 		return nil, fmt.Errorf("failed signing created batch. Cause: %w", err)
 	}

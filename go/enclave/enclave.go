@@ -110,8 +110,8 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, evmFacade, config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, logger)
 
-	// ensure cached chain state data is up-to-date using the persisted batch data
-	err = restoreStateDBCache(context.Background(), storage, batchRegistry, batchExecutor, genesis, logger)
+	// ensure EVM state data is up-to-date using the persisted batch data
+	err = syncExecutedBatchesWithEVMStateDB(context.Background(), storage, batchRegistry, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
