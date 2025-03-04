@@ -193,6 +193,10 @@ func (r *Repository) FetchLatestBatchSeqNo() *big.Int {
 	return r.latestBatchSeqNo
 }
 
+func (r *Repository) FetchLatestValidatedBatchSeqNo() *big.Int {
+	return r.latestValidatedSeqNo
+}
+
 // AddBatch allows the host to add a batch to the repository, this is used:
 // - when the node is a sequencer to store newly produced batches (the only way the sequencer host receives batches)
 // - when the node is a validator to store batches read from roll-ups

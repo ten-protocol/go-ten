@@ -502,6 +502,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 				incompleteBatch.seqNo,
 				incompleteBatch.coinbase,
 				incompleteBatch.baseFee,
+				incompleteBatch.gasLimit,
 			)
 			if err != nil {
 				return err
@@ -511,10 +512,6 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 					rc.logger.Info(fmt.Sprintf("Good %+v\nCalc %+v", calldataRollupHeader.BatchHeaders[i], computedBatch.Batch.Header))
 					rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
 				}*/
-
-			if _, err := computedBatch.Commit(true); err != nil {
-				return fmt.Errorf("cannot commit stateDB for incoming valid batch seq=%d. Cause: %w", incompleteBatch.seqNo, err)
-			}
 
 			convertedHeader, err := rc.gethEncodingService.CreateEthHeaderForBatch(ctx, computedBatch.Batch.Header)
 			if err != nil {
@@ -572,28 +569,20 @@ func (rc *RollupCompression) decryptDecompressAndDeserialise(blob []byte, obj an
 	return nil
 }
 
-func (rc *RollupCompression) computeBatch(
-	ctx context.Context,
-	BlockPtr common.L1BlockHash,
-	ParentPtr common.L2BatchHash,
-	Transactions common.L2Transactions,
-	AtTime uint64,
-	SequencerNo *big.Int,
-	Coinbase gethcommon.Address,
-	BaseFee *big.Int,
-) (*ComputedBatch, error) {
+func (rc *RollupCompression) computeBatch(ctx context.Context, BlockPtr common.L1BlockHash, ParentPtr common.L2BatchHash, Transactions common.L2Transactions, AtTime uint64, SequencerNo *big.Int, Coinbase gethcommon.Address, BaseFee *big.Int, gasLimit uint64) (*ComputedBatch, error) {
 	return rc.batchExecutor.ComputeBatch(
 		ctx,
 		&BatchExecutionContext{
-			BlockPtr:     BlockPtr,
-			ParentPtr:    ParentPtr,
-			UseMempool:   false,
-			Transactions: Transactions,
-			AtTime:       AtTime,
-			Creator:      Coinbase,
-			ChainConfig:  rc.chainConfig,
-			SequencerNo:  SequencerNo,
-			BaseFee:      big.NewInt(0).Set(BaseFee),
+			BlockPtr:      BlockPtr,
+			ParentPtr:     ParentPtr,
+			UseMempool:    false,
+			BatchGasLimit: gasLimit,
+			Transactions:  Transactions,
+			AtTime:        AtTime,
+			Creator:       Coinbase,
+			ChainConfig:   rc.chainConfig,
+			SequencerNo:   SequencerNo,
+			BaseFee:       big.NewInt(0).Set(BaseFee),
 		}, false)
 }
 

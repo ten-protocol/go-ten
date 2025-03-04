@@ -79,7 +79,7 @@ var defaultCacheConfig = &gethcore.CacheConfig{
 	TrieTimeLimit:  5 * time.Minute,
 	SnapshotLimit:  256,
 	SnapshotWait:   true,
-	StateScheme:    rawdb.HashScheme,
+	StateScheme:    rawdb.HashScheme, // todo - change to rawdb.PathScheme for next release
 }
 
 var trieDBConfig = &triedb.Config{
@@ -900,6 +900,21 @@ func (s *storageImpl) FetchCanonicalUnexecutedBatches(ctx context.Context, from 
 func (s *storageImpl) BatchWasExecuted(ctx context.Context, hash common.L2BatchHash) (bool, error) {
 	defer s.logDuration("BatchWasExecuted", measure.NewStopwatch())
 	return enclavedb.BatchWasExecuted(ctx, s.db.GetSQLDB(), hash)
+}
+
+func (s *storageImpl) MarkBatchAsUnexecuted(ctx context.Context, seqNo *big.Int) error {
+	defer s.logDuration("MarkBatchAsUnexecuted", measure.NewStopwatch())
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+
+	err = enclavedb.MarkBatchAsUnexecuted(ctx, dbTx, seqNo)
+	if err != nil {
+		return fmt.Errorf("could not mark batch as unexecuted. Cause: %w", err)
+	}
+	return dbTx.Commit()
 }
 
 func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
