@@ -43,7 +43,7 @@ func (sigChecker *SignatureValidator) CheckSequencerSignature(hash gethcommon.Ha
 	if err != nil {
 		return fmt.Errorf("could not fetch sequencer IDs: %w", err)
 	}
-
+	sigChecker.logger.Info("sequencer IDs to verify against", "ids", sequencerIDs)
 	// loop through sequencer keys and exit early if one of them matches
 	for _, seqID := range sequencerIDs {
 		attestedEnclave, err := sigChecker.storage.GetEnclavePubKey(context.Background(), seqID)
