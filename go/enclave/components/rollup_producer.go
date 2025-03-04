@@ -57,6 +57,7 @@ func (re *rollupProducerImpl) CreateInternalRollup(ctx context.Context, fromBatc
 	rh.CompressionL1Number = block.Number
 
 	lastBatch := batches[len(batches)-1]
+	rh.FirstBatchSeqNo = batches[0].SeqNo().Uint64()
 	rh.LastBatchSeqNo = lastBatch.SeqNo().Uint64()
 	rh.LastBatchHash = lastBatch.Hash()
 

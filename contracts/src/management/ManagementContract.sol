@@ -41,10 +41,10 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     // TODO - this is probably not appropriate long term but currently useful for testnets. Look to remove.
     // We store the keys as well as the mapping for the key-value store for important contract addresses for convenience
     string[] public importantContractKeys;
-    mapping (string => address) public importantContractAddresses;
+    mapping(string => address) public importantContractAddresses;
 
     // networkSecretNotInitialized marks if the network secret has been initialized
-    bool private networkSecretInitialized ;
+    bool private networkSecretInitialized;
 
     // isWithdrawalAvailable marks if the contract allows withdrawals or not
     bool private isWithdrawalAvailable;
@@ -55,8 +55,8 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     //The messageBus where messages can be sent to Obscuro
     MessageBus.IMessageBus public messageBus;
     MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;
-    mapping(bytes32 =>bool) public isWithdrawalSpent;
-    mapping(bytes32 =>bool) public isBundleSaved;
+    mapping(bytes32 => bool) public isWithdrawalSpent;
+    mapping(bytes32 => bool) public isBundleSaved;
 
     bytes32 public lastBatchHash;
 
@@ -71,15 +71,17 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         emit LogManagementContractCreated(address(messageBus));
     }
 
-    function GetRollupByHash(bytes32 rollupHash) view public returns(bool, Structs.MetaRollup memory) {
+    function GetRollupByHash(bytes32 rollupHash) view public returns (bool, Structs.MetaRollup memory) {
         Structs.MetaRollup memory rol = rollups.byHash[rollupHash];
-        return (rol.Hash == rollupHash , rol);
+        return (rol.Hash == rollupHash, rol);
     }
 
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
-       
-        if (_r.LastSequenceNumber > lastBatchSeqNo) {
+
+        if (lastBatchSeqNo == 0) {
+            lastBatchSeqNo = _r.LastSequenceNumber;
+        } else if ((_r.FirstSequenceNumber <= lastBatchSeqNo + 2) && (_r.LastSequenceNumber > lastBatchSeqNo)) {
             lastBatchSeqNo = _r.LastSequenceNumber;
         }
     }
@@ -87,7 +89,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     function isBundleAvailable(bytes[] memory crossChainHashes) public view returns (bool) {
         bytes32 bundleHash = bytes32(0);
 
-        for(uint256 i = 0; i < crossChainHashes.length; i++) {
+        for (uint256 i = 0; i < crossChainHashes.length; i++) {
             bundleHash = keccak256(abi.encode(bundleHash, bytes32(crossChainHashes[i])));
         }
 
@@ -139,10 +141,9 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         emit RollupAdded(blobhash(0), r.Signature);
     }
 
-
     // InitializeNetworkSecret kickstarts the network secret, can only be called once
     // solc-ignore-next-line unused-param
-    function InitializeNetworkSecret(address _enclaveID, bytes calldata  _initSecret, string calldata _genesisAttestation) public {
+    function InitializeNetworkSecret(address _enclaveID, bytes calldata _initSecret, string calldata _genesisAttestation) public {
         require(!networkSecretInitialized, "network secret already initialized");
 
         // network can no longer be initialized
@@ -197,7 +198,6 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         emit NetworkSecretResponded(attesterID, requesterID);
     }
 
-
     // Accessor to check if the contract is locked or not
     function IsWithdrawalAvailable() view public returns (bool) {
         return isWithdrawalAvailable;
@@ -242,7 +242,7 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
         emit ImportantContractAddressUpdated(key, newAddress);
     }
 
-    function GetImportantContractKeys() public view returns(string[] memory) {
+    function GetImportantContractKeys() public view returns (string[] memory) {
         return importantContractKeys;
     }
 
