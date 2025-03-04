@@ -79,9 +79,10 @@ contract ManagementContract is Initializable, OwnableUpgradeable {
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
 
+        // only progress the DA sequence if there are no gaps (missing batches) in the current rollup
         if (lastBatchSeqNo == 0) {
             lastBatchSeqNo = _r.LastSequenceNumber;
-        } else if ((_r.FirstSequenceNumber <= lastBatchSeqNo + 2) && (_r.LastSequenceNumber > lastBatchSeqNo)) {
+        } else if ((_r.FirstSequenceNumber <= lastBatchSeqNo + 1) && (_r.LastSequenceNumber > lastBatchSeqNo)) {
             lastBatchSeqNo = _r.LastSequenceNumber;
         }
     }
