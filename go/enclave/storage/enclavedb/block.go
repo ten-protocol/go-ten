@@ -170,7 +170,7 @@ func WriteRollup(ctx context.Context, dbtx *sql.Tx, rollup *common.RollupHeader,
 	}
 	_, err = dbtx.ExecContext(ctx, "replace into rollup (hash, start_seq, end_seq, time_stamp, header, compression_block) values (?,?,?,?,?,?)",
 		rollup.Hash().Bytes(),
-		internalHeader.FirstBatchSequence.Uint64(),
+		rollup.FirstBatchSeqNo,
 		rollup.LastBatchSeqNo,
 		internalHeader.StartTime,
 		data,

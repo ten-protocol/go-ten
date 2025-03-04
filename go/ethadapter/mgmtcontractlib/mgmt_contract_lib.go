@@ -128,13 +128,14 @@ func (c *contractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg48
 	}
 
 	metaRollup := ManagementContract.StructsMetaRollup{
-		Hash:               decodedRollup.Hash(),
-		Signature:          signature,
-		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
-		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,
-		BlockBindingNumber: decodedRollup.Header.CompressionL1Number,
-		CrossChainRoot:     decodedRollup.Header.CrossChainRoot,
-		LastBatchHash:      decodedRollup.Header.LastBatchHash,
+		Hash:                decodedRollup.Hash(),
+		Signature:           signature,
+		FirstSequenceNumber: big.NewInt(int64(decodedRollup.Header.FirstBatchSeqNo)),
+		LastSequenceNumber:  big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
+		BlockBindingHash:    decodedRollup.Header.CompressionL1Head,
+		BlockBindingNumber:  decodedRollup.Header.CompressionL1Number,
+		CrossChainRoot:      decodedRollup.Header.CrossChainRoot,
+		LastBatchHash:       decodedRollup.Header.LastBatchHash,
 	}
 
 	data, err := c.contractABI.Pack(

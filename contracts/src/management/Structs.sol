@@ -6,6 +6,7 @@ import * as MessageBusStructs from "../messaging/Structs.sol";
 interface Structs {
     struct MetaRollup{
         bytes32 Hash;
+        uint256 FirstSequenceNumber;
         uint256 LastSequenceNumber;
 
         bytes32 BlockBindingHash;
@@ -16,7 +17,7 @@ interface Structs {
     }
 
     struct RollupStorage {
-        mapping(bytes32=>MetaRollup) byHash;
+        mapping(bytes32 => MetaRollup) byHash;
         uint256 nextFreeSequenceNumber;
     }
 

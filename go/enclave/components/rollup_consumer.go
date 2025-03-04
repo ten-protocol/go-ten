@@ -102,7 +102,7 @@ func (rc *rollupConsumerImpl) ProcessRollup(ctx context.Context, rollup *common.
 		return nil, err
 	}
 
-	serializedTree, err := rc.ExportAndVerifyCrossChainData(ctx, internalHeader.FirstBatchSequence.Uint64(), rollup.Header.LastBatchSeqNo, rollup.Header.CrossChainRoot)
+	serializedTree, err := rc.ExportAndVerifyCrossChainData(ctx, rollup.Header.FirstBatchSeqNo, rollup.Header.LastBatchSeqNo, rollup.Header.CrossChainRoot)
 	if err != nil {
 		rc.logger.Error("Failed exporting and verifying cross chain data", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 		return nil, err
