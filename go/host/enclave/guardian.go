@@ -293,7 +293,7 @@ func (g *Guardian) mainLoop() {
 		// check enclave status on every loop (this will happen whenever we hit an error while trying to resolve a state,
 		// or after the monitoring interval if we are healthy)
 		g.checkEnclaveStatus()
-		g.logger.Trace("mainLoop - enclave status", "status", g.stateTracker.GetStatus())
+		g.logger.Trace("mainLoop - enclave status", "status", g.StateSnapshot().String())
 		switch g.stateTracker.GetStatus() {
 		case Disconnected, Unavailable:
 			// todo make this eviction trigger configurable once we've settled on how it should work
@@ -668,6 +668,10 @@ func (g *Guardian) periodicRollupProduction() {
 		select {
 		case <-rollupCheckTicker.C:
 			state := g.StateSnapshot()
+			if !state.Enclave.IsActiveSequencer {
+				// not currently active sequencer, skip producing rollups
+				continue
+			}
 			if !state.IsLive() {
 				// if we're behind the L1, we don't want to produce rollups
 				g.logger.Debug("Skipping rollup production because L1 is not up to date", "state", state)
