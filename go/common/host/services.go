@@ -116,7 +116,7 @@ type L1Publisher interface {
 	FetchLatestSeqNo() (*big.Int, error)
 
 	// GetImportantContracts returns a (cached) record of addresses of the important network contracts
-	GetImportantContracts() *common.NetworkAddresses
+	GetImportantContracts() *common.NetworkConfigAddresses
 	// ResyncImportantContracts will fetch the latest important contracts from the management contract, update the cache
 	ResyncImportantContracts() error
 }

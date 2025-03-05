@@ -107,7 +107,7 @@ type ChecksumFormattedTenNetworkConfig struct {
 	MessageBusAddress               gethcommon.AddressEIP55
 	L2MessageBusAddress             gethcommon.AddressEIP55
 	TransactionPostProcessorAddress gethcommon.AddressEIP55
-	ImportantContracts              *common.NetworkAddresses
+	ImportantContracts              *common.NetworkConfigAddresses
 	PublicSystemContracts           map[string]gethcommon.AddressEIP55
 }
 

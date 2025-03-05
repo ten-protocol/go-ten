@@ -16,8 +16,8 @@ func (m *mockNetworkConfigLib) GetContractAddr() *gethcommon.Address {
 	return &NetworkConfigAddr
 }
 
-func (m *mockNetworkConfigLib) GetContractAddresses() (*common.NetworkAddresses, error) {
-	return &common.NetworkAddresses{
+func (m *mockNetworkConfigLib) GetContractAddresses() (*common.NetworkConfigAddresses, error) {
+	return &common.NetworkConfigAddresses{
 		CrossChain:             CrossChainAddr,
 		MessageBus:             MessageBusAddr,
 		NetworkEnclaveRegistry: StoreSecretTxAddr,

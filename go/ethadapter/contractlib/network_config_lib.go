@@ -1,21 +1,22 @@
 package contractlib
 
 import (
-	"context"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/go/common"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 
-	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
 type NetworkConfigLib interface {
 	GetContractAddr() *gethcommon.Address
-	GetContractAddresses() (*common.NetworkAddresses, error)
+	GetContractAddresses() (*common.NetworkConfigAddresses, error)
 	IsMock() bool
 }
 
@@ -33,27 +34,25 @@ func NewNetworkConfigLib(address gethcommon.Address, ethClient ethclient.Client)
 	}, nil
 }
 
-func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkAddresses, error) {
-	data, err := nc.contractABI.Pack("addresses")
+func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkConfigAddresses, error) {
+	networkConfigContract, err := NetworkConfig.NewNetworkConfigCaller(nc.addr, &nc.ethClient)
 	if err != nil {
-		return nil, fmt.Errorf("failed to encode addresses() call: %w", err)
+		return nil, fmt.Errorf("failed to create NetworkConfig caller: %w", err)
 	}
 
-	result, err := nc.ethClient.CallContract(context.Background(), ethereum.CallMsg{
-		To:   &nc.addr,
-		Data: data,
-	}, nil)
+	// Call the Addresses method using the generated binding
+	addresses, err := networkConfigContract.Addresses(&bind.CallOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to call addresses(): %w", err)
 	}
 
-	addresses := new(common.NetworkAddresses)
-	err = nc.contractABI.UnpackIntoInterface(addresses, "addresses", result)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode addresses response: %w", err)
-	}
-
-	return addresses, nil
+	// Convert to your NetworkAddresses type
+	return &common.NetworkConfigAddresses{
+		CrossChain:             addresses.CrossChain,
+		MessageBus:             addresses.MessageBus,
+		NetworkEnclaveRegistry: addresses.NetworkEnclaveRegistry,
+		RollupContract:         addresses.RollupContract,
+	}, nil
 }
 
 func (nc *networkConfigLibImpl) GetContractAddr() *gethcommon.Address {

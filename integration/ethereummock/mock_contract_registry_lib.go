@@ -11,8 +11,8 @@ type mockContractRegistryLib struct {
 	networkConfigLib  contractlib.NetworkConfigLib
 }
 
-func (m *mockContractRegistryLib) GetContractAddresses() *common.NetworkAddresses {
-	return &common.NetworkAddresses{
+func (m *mockContractRegistryLib) GetContractAddresses() *common.NetworkConfigAddresses {
+	return &common.NetworkConfigAddresses{
 		CrossChain:             RollupTxAddr,
 		MessageBus:             MessageBusAddr,
 		NetworkEnclaveRegistry: StoreSecretTxAddr,

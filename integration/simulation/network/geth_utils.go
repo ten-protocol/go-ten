@@ -40,7 +40,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*
 
 	l1Data, err := DeployTenNetworkContracts(tmpEthClient, wallets, true)
 	if err != nil {
-		panic(fmt.Errorf("error deploying obscuro contract. Cause: %w", err))
+		panic(fmt.Errorf("error deploying contracts. Cause: %w", err))
 	}
 
 	ethClients := make([]ethadapter.EthClient, nrNodes)
@@ -137,7 +137,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 
 	erc20ContractAddr := make([]common.Address, 0)
 	for _, token := range wallets.Tokens {
-		erc20receipt, err := DeployContract(client, token.L1Owner, erc20contract.L1BytecodeWithDefaultSupply(string(token.Name), networkConfigReceipt.ContractAddress))
+		erc20receipt, err := DeployContract(client, token.L1Owner, erc20contract.L1BytecodeWithDefaultSupply(string(token.Name), crossChainReceipt.ContractAddress))
 		if err != nil {
 			return nil, fmt.Errorf("failed to deploy ERC20 contract. Cause: %w", err)
 		}
@@ -357,9 +357,7 @@ func InitializeContract(workerClient ethadapter.EthClient, w wallet.Wallet, cont
 // DeployContract returns receipt of deployment
 // todo (@matt) - this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
-	nonce := w.GetNonceAndIncrement()
-	println("Sending TX with wallet nonce: ", nonce)
-	deployContractTx, err := ethadapter.SetTxGasPrice(context.Background(), workerClient, &types.LegacyTx{Data: contractBytes}, w.Address(), nonce, 0, testlog.Logger())
+	deployContractTx, err := ethadapter.SetTxGasPrice(context.Background(), workerClient, &types.LegacyTx{Data: contractBytes}, w.Address(), w.GetNonceAndIncrement(), 0, testlog.Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -374,11 +372,10 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 		return nil, err
 	}
 
-	println("Sent TX with hash: ", signedTx.Hash().Hex())
 	var start time.Time
 	var receipt *types.Receipt
 
-	time.Sleep(1 * time.Second)
+	time.Sleep(1 * time.Millisecond)
 
 	// todo (@matt) these timings should be driven by the L2 batch times and L1 block times
 	for start = time.Now(); time.Since(start) < 50*time.Second; time.Sleep(1 * time.Second) {

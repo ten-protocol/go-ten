@@ -12,7 +12,7 @@ type ContractRegistryLib interface {
 	RollupLib() RollupContractLib
 	NetworkEnclaveLib() NetworkEnclaveRegistryLib
 	NetworkConfigLib() NetworkConfigLib
-	GetContractAddresses() *common.NetworkAddresses
+	GetContractAddresses() *common.NetworkConfigAddresses
 	IsMock() bool
 }
 
@@ -20,7 +20,7 @@ type ContractRegistryImpl struct {
 	rollupLib         RollupContractLib
 	networkEnclaveLib NetworkEnclaveRegistryLib
 	networkConfig     NetworkConfigLib
-	addresses         *common.NetworkAddresses
+	addresses         *common.NetworkConfigAddresses
 	logger            gethlog.Logger
 }
 
@@ -60,7 +60,7 @@ func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib
 	return registry
 }
 
-func (r *ContractRegistryImpl) GetContractAddresses() *common.NetworkAddresses {
+func (r *ContractRegistryImpl) GetContractAddresses() *common.NetworkConfigAddresses {
 	return r.addresses
 }
 

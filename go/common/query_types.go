@@ -119,12 +119,12 @@ type TenNetworkInfo struct {
 	MessageBusAddress               common.Address
 	L2MessageBusAddress             common.Address
 	TransactionPostProcessorAddress common.Address
-	ImportantContracts              *NetworkAddresses
+	ImportantContracts              *NetworkConfigAddresses
 	L1StartHash                     common.Hash
 	PublicSystemContracts           map[string]common.Address
 }
 
-type NetworkAddresses struct {
+type NetworkConfigAddresses struct {
 	CrossChain             common.Address
 	MessageBus             common.Address
 	NetworkEnclaveRegistry common.Address
