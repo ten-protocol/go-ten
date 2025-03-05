@@ -172,11 +172,8 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 
 	result, rollupMetadata, err := e.ingestL1Block(ctx, blockData)
 	if err != nil {
-		// only reject the block if it's a critical error ie duplicate block or signed rollup error
-		if e.isCriticalError(err) {
-			return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
-		}
-		e.logger.Warn("Continuing block processing despite non-critical rollup error", log.BlockHashKey, blockHeader.Hash(), log.ErrKey, err)
+		// only critical errors ie duplicate block or signed rollup error are returned so we can continue processing if non-critical
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
 	if result.IsFork() {
@@ -504,8 +501,7 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	e.logger.Info("Start ingesting block", log.BlockHashKey, processed.BlockHeader.Hash())
 	ingestion, err := e.l1BlockProcessor.Process(ctx, processed)
 	if err != nil {
-		// only warn for unexpected errors
-		if errors.Is(err, errutil.ErrBlockAncestorNotFound) || errors.Is(err, errutil.ErrBlockAlreadyProcessed) {
+		if e.isCriticalError(err) {
 			e.logger.Debug("Did not ingest block", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
 		} else {
 			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
@@ -516,7 +512,8 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	var rollupMetadataList []common.ExtRollupMetadata
 	if processed.HasEvents(common.RollupTx) {
 		rollupMetadataList, err = e.processRollups(ctx, processed, rollupMetadataList)
-		if err != nil {
+		if err != nil && e.isCriticalError(err) {
+			// only propagate the error if we encounter a critical error on a sequencer signed rollup
 			return nil, nil, err
 		}
 	}
