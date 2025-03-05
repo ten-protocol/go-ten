@@ -327,7 +327,11 @@ func (s *RPCServer) ExportCrossChainData(ctx context.Context, request *generated
 func (s *RPCServer) GetRollupData(ctx context.Context, request *generated.GetRollupDataRequest) (*generated.GetRollupDataResponse, error) {
 	rollupMetadata, sysError := s.enclave.GetRollupData(ctx, gethcommon.BytesToHash(request.Hash))
 	if sysError != nil {
-		s.logger.Error("Error fetching rollup metadata", log.ErrKey, sysError)
+		if errors.Is(sysError, errutil.ErrNotFound) {
+			s.logger.Debug("Error fetching rollup metadata", log.ErrKey, sysError)
+		} else {
+			s.logger.Error("Error fetching rollup metadata", log.ErrKey, sysError)
+		}
 		return nil, sysError
 	}
 
@@ -386,7 +390,7 @@ func (s *RPCServer) GetTotalContractCount(ctx context.Context, _ *generated.GetT
 func (s *RPCServer) EncryptedRPC(ctx context.Context, req *generated.EncCallRequest) (*generated.EncCallResponse, error) {
 	enclaveResp, sysError := s.enclave.EncryptedRPC(ctx, req.EncryptedParams)
 	if sysError != nil {
-		s.logger.Error("Error getting receipt", log.ErrKey, sysError)
+		s.logger.Error("Failed encrypted RPC", log.ErrKey, sysError)
 		return &generated.EncCallResponse{SystemError: toRPCError(sysError)}, nil
 	}
 	return &generated.EncCallResponse{EncodedEnclaveResponse: enclaveResp.Encode()}, nil

@@ -282,6 +282,18 @@ func (h *host) NewHeadsChan() chan *common.BatchHeader {
 	return h.newHeads
 }
 
+func (h *host) ConfirmedHeadBatch() (*common.BatchHeader, error) {
+	seqNo := h.services.L2Repo().FetchLatestValidatedBatchSeqNo()
+	if seqNo == nil {
+		return nil, responses.ToInternalError(fmt.Errorf("no confirmed head batch found"))
+	}
+	b, err := h.storage.FetchBatchBySeqNo(seqNo.Uint64())
+	if err != nil {
+		return nil, err
+	}
+	return b.Header, nil
+}
+
 // Checks the host config is valid.
 func (h *host) validateConfig() {
 	if h.config.IsGenesis && h.config.NodeType != common.Sequencer {

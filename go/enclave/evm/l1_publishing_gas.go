@@ -34,7 +34,6 @@ func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Messa
 
 		// The gas limit of the transaction (evm message) should always be higher than the gas overhead
 		// used to cover the l1 cost
-		// todo - this check has to be added to the mempool as well
 		if msg.GasLimit < l1Gas.Uint64() {
 			return nil, fmt.Errorf("%w. Want at least: %d have: %d", ErrGasNotEnoughForL1, l1Gas, msg.GasLimit)
 		}

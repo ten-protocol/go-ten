@@ -51,8 +51,9 @@ type BatchExecutionContext struct {
 	ParentPtr common.L2BatchHash
 
 	// either use the transactions from an existing batch, or fetch transactions from the mempool
-	UseMempool   bool
-	Transactions common.L2Transactions
+	UseMempool    bool
+	Transactions  common.L2Transactions
+	BatchGasLimit uint64
 
 	AtTime      uint64
 	Creator     gethcommon.Address
@@ -95,7 +96,6 @@ type BatchExecutionContext struct {
 type ComputedBatch struct {
 	Batch         *core.Batch
 	TxExecResults []*core.TxExecResult
-	Commit        func(bool) (gethcommon.Hash, error)
 }
 
 type BatchExecutor interface {

@@ -315,8 +315,9 @@ message RollupHeaderMsg {
   uint64 Time = 6;
   bytes EnclaveID = 7;
   bytes LastBatchHash = 8;
-  uint64 LastBatchSeqNo = 9;
-  bytes CrossChainRoot = 10;
+  uint64 FirstBatchSeqNo = 9;
+  uint64 LastBatchSeqNo = 10;
+  bytes CrossChainRoot = 11;
 }
 
 message SecretResponseMsg {

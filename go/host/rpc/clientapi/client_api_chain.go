@@ -37,13 +37,12 @@ func (api *ChainAPI) ChainId() (*hexutil.Big, error) { //nolint:stylecheck,reviv
 
 // BatchNumber returns the height of the current head batch.
 func (api *ChainAPI) BatchNumber() hexutil.Uint64 {
-	header, err := api.host.Storage().FetchHeadBatchHeader()
+	enclaveHeadBatch, err := api.host.ConfirmedHeadBatch()
 	if err != nil {
-		// This error may be nefarious, but unfortunately the Eth API doesn't allow us to return an error.
 		api.logger.Error("could not retrieve head batch header", log.ErrKey, err)
 		return 0
 	}
-	return hexutil.Uint64(header.Number.Uint64())
+	return hexutil.Uint64(enclaveHeadBatch.Number.Uint64())
 }
 
 // GetBatchByNumber returns the header of the batch with the given height.

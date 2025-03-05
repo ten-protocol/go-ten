@@ -79,7 +79,7 @@ var defaultCacheConfig = &gethcore.CacheConfig{
 	TrieTimeLimit:  5 * time.Minute,
 	SnapshotLimit:  256,
 	SnapshotWait:   true,
-	StateScheme:    rawdb.HashScheme,
+	StateScheme:    rawdb.HashScheme, // todo - change to rawdb.PathScheme for next release
 }
 
 var trieDBConfig = &triedb.Config{
@@ -334,31 +334,26 @@ func (s *storageImpl) DeleteDirtyBlocks(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("could not select unprocessed blocks - %w", err)
 	}
-	if len(dirtyBlocks) > 1 {
-		return fmt.Errorf("more than one dirty block found. Should not happen")
-	}
-
 	if len(dirtyBlocks) == 0 {
 		// nothing to do
 		return nil
 	}
-
-	blockId := dirtyBlocks[0]
+	s.logger.Warn("Found unprocessed blocks", "count", len(dirtyBlocks))
 
 	// delete rollups
-	err = enclavedb.DeleteRollupsForBlock(ctx, dbTx, blockId)
+	err = enclavedb.DeleteUnprocessedRollups(ctx, dbTx)
 	if err != nil {
-		return fmt.Errorf("could not delete rollups for block %d. Cause: %w", blockId, err)
+		return fmt.Errorf("could not delete unprocessed rollups. Cause: %w", err)
 	}
 	// delete cross chain messages
-	err = enclavedb.DeleteL1MessagesForBlock(ctx, dbTx, blockId)
+	err = enclavedb.DeleteUnprocessedL1Messages(ctx, dbTx)
 	if err != nil {
-		return fmt.Errorf("could not delete cross chain messages for block %d. Cause: %w", blockId, err)
+		return fmt.Errorf("could not delete unprocessed cross chain messages. Cause: %w", err)
 	}
 	// delete block
-	err = enclavedb.DeleteBlock(ctx, dbTx, blockId)
+	err = enclavedb.DeleteUnProcessedBlock(ctx, dbTx)
 	if err != nil {
-		return fmt.Errorf("could not delete block %d. Cause: %w", blockId, err)
+		return fmt.Errorf("could not delete unprocessed blocks. Cause: %w", err)
 	}
 
 	if err := dbTx.Commit(); err != nil {
@@ -905,6 +900,21 @@ func (s *storageImpl) FetchCanonicalUnexecutedBatches(ctx context.Context, from 
 func (s *storageImpl) BatchWasExecuted(ctx context.Context, hash common.L2BatchHash) (bool, error) {
 	defer s.logDuration("BatchWasExecuted", measure.NewStopwatch())
 	return enclavedb.BatchWasExecuted(ctx, s.db.GetSQLDB(), hash)
+}
+
+func (s *storageImpl) MarkBatchAsUnexecuted(ctx context.Context, seqNo *big.Int) error {
+	defer s.logDuration("MarkBatchAsUnexecuted", measure.NewStopwatch())
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+
+	err = enclavedb.MarkBatchAsUnexecuted(ctx, dbTx, seqNo)
+	if err != nil {
+		return fmt.Errorf("could not mark batch as unexecuted. Cause: %w", err)
+	}
+	return dbTx.Commit()
 }
 
 func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {

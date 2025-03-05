@@ -7,7 +7,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/syserr"
@@ -62,9 +61,7 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWit
 }
 
 func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], rpc *EncryptionManager) error {
-	var err error
-	var stateDb *state.StateDB
-	stateDb, err = rpc.registry.GetBatchState(builder.ctx, *builder.Param.block)
+	stateDb, err := rpc.registry.GetBatchState(builder.ctx, *builder.Param.block)
 	if err != nil {
 		builder.Err = fmt.Errorf("unable to read block number - %w", err)
 		return nil

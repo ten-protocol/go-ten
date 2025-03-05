@@ -166,9 +166,10 @@ type RollupHeader struct {
 	CompressionL1Head   L1BlockHash
 	CompressionL1Number *big.Int
 
-	CrossChainRoot common.Hash // The root hash of the cross chain tree.
-	LastBatchSeqNo uint64
-	LastBatchHash  common.Hash
+	CrossChainRoot  common.Hash // The root hash of the cross chain tree.
+	FirstBatchSeqNo uint64
+	LastBatchSeqNo  uint64
+	LastBatchHash   common.Hash
 }
 
 // ComputeCompositeHash creates a composite hash matching the contract's expectations.
@@ -190,7 +191,6 @@ func ComputeCompositeHash(
 // CalldataRollupHeader contains all information necessary to reconstruct the batches included in the rollup.
 // This data structure is serialised, compressed, and encrypted, before being serialised again in the rollup.
 type CalldataRollupHeader struct {
-	FirstBatchSequence    *big.Int
 	FirstCanonBatchHeight *big.Int
 	FirstCanonParentHash  L2BatchHash
 

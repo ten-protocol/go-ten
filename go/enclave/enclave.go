@@ -90,6 +90,10 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, l
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		logger.Crit("failed to load system contracts", log.ErrKey, err)
 	}
+
+	gasOracle := gas.NewGasOracle()
+	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
+
 	// FIXME figure out addresses
 	enclaveRegistryLib := contractlib.NewNetworkEnclaveRegistryLib(&config.NetworkConfigAddress, logger)
 	rollupContractLib := contractlib.NewRollupContractLib(&config.RollupContractAddress, logger)
@@ -98,7 +102,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, l
 	evmEntropyService := crypto.NewEvmEntropyService(sharedSecretService, logger)
 	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, evmEntropyService, logger)
 	batchRegistry := components.NewBatchRegistry(storage, config, gethEncodingService, logger)
-	mempool, err := components.NewTxPool(batchRegistry.EthChain(), config.MinGasPrice, true, logger)
+	mempool, err := components.NewTxPool(batchRegistry.EthChain(), storage, batchRegistry, blockProcessor, gasOracle, config.MinGasPrice, true, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
@@ -107,13 +111,11 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, l
 	visibilityReader := evm.NewContractVisibilityReader(logger)
 	evmFacade := evm.NewEVMExecutor(chainContext, chainConfig, config, config.GasLocalExecutionCapFlag, storage, gethEncodingService, visibilityReader, logger)
 
-	gasOracle := gas.NewGasOracle()
-	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, evmFacade, config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, logger)
 
-	// ensure cached chain state data is up-to-date using the persisted batch data
-	err = restoreStateDBCache(context.Background(), storage, batchRegistry, batchExecutor, genesis, logger)
+	// ensure EVM state data is up-to-date using the persisted batch data
+	err = syncExecutedBatchesWithEVMStateDB(context.Background(), storage, batchRegistry, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
