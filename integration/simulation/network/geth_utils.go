@@ -39,7 +39,7 @@ func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*
 
 	l1Data, err := DeployTenNetworkContracts(tmpEthClient, wallets, true)
 	if err != nil {
-		panic(fmt.Errorf("error deploying obscuro contract %w", err))
+		panic(fmt.Errorf("error deploying obscuro contract. Cause: %w", err))
 	}
 
 	ethClients := make([]ethadapter.EthClient, nrNodes)
@@ -165,20 +165,20 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.
 	}
 	networkEnclaveRegistryReceipt, err := DeployContract(client, ownerKey, bytecode)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to deploy management contract from %s. Cause: %w", ownerKey.Address(), err)
+		return nil, nil, fmt.Errorf("failed to deploy NetworkEnclaveRegistry contract from %s. Cause: %w", ownerKey.Address(), err)
 	}
 	networkEnclaveRegistryContract, err := NetworkEnclaveRegistry.NewNetworkEnclaveRegistry(networkEnclaveRegistryReceipt.ContractAddress, client.EthClient())
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to instantiate management contract. Cause: %w", err)
+		return nil, nil, fmt.Errorf("failed to instantiate NetworkEnclaveRegistry contract. Cause: %w", err)
 	}
 	tx, err := networkEnclaveRegistryContract.Initialize(opts)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize cross chain contract. Cause: %w", err)
+		return nil, nil, fmt.Errorf("unable to initialize NetworkEnclaveRegistry contract. Cause: %w", err)
 	}
 
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
 	if err != nil {
-		return nil, nil, fmt.Errorf("no receipt for enclave registry contract initialization")
+		return nil, nil, fmt.Errorf("no receipt for NetworkEnclaveRegistry contract initialization")
 	}
 	return networkEnclaveRegistryContract, networkEnclaveRegistryReceipt, nil
 }
@@ -200,12 +200,12 @@ func deployNetworkConfigContract(client ethadapter.EthClient, ownerKey wallet.Wa
 
 	tx, err := networkConfigContract.Initialize(opts, addresses)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize cross chain contract. Cause: %w", err)
+		return nil, nil, fmt.Errorf("unable to initialize NetworkConfig contract. Cause: %w", err)
 	}
 
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
 	if err != nil {
-		return nil, nil, fmt.Errorf("no receipt for network config contract initialization")
+		return nil, nil, fmt.Errorf("no receipt for NetworkConfig contract initialization")
 	}
 	return networkConfigContract, networkConfigReceipt, nil
 }
@@ -226,12 +226,12 @@ func deployRollupContract(client ethadapter.EthClient, ownerKey wallet.Wallet, o
 
 	tx, err := rollupContract.Initialize(opts, messageBus, enclaveRegistryAddress)
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize cross chain contract. Cause: %w", err)
+		return nil, nil, fmt.Errorf("unable to initialize RollupContract. Cause: %w", err)
 	}
 
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
 	if err != nil {
-		return nil, nil, fmt.Errorf("no receipt for rollup contract initialization")
+		return nil, nil, fmt.Errorf("no receipt for RollupContract initialization")
 	}
 	return rollupContract, rollupContractReceipt, nil
 }
@@ -249,6 +249,16 @@ func deployCrossChainContract(client ethadapter.EthClient, ownerKey wallet.Walle
 	crossChainContract, err := CrossChain.NewCrossChain(crossChainReceipt.ContractAddress, client.EthClient())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to instantiate CrossChain contract. Cause: %w", err)
+	}
+
+	tx, err := crossChainContract.Initialize(opts)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to initialize CrossChain contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, nil, fmt.Errorf("no receipt for CrossChain initialization")
 	}
 	return crossChainContract, crossChainReceipt, nil
 }
@@ -330,7 +340,9 @@ func InitializeContract(workerClient ethadapter.EthClient, w wallet.Wallet, cont
 // DeployContract returns receipt of deployment
 // todo (@matt) - this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
-	deployContractTx, err := ethadapter.SetTxGasPrice(context.Background(), workerClient, &types.LegacyTx{Data: contractBytes}, w.Address(), w.GetNonceAndIncrement(), 0, testlog.Logger())
+	nonce := w.GetNonceAndIncrement()
+	println("Sending TX with wallet nonce: ", nonce)
+	deployContractTx, err := ethadapter.SetTxGasPrice(context.Background(), workerClient, &types.LegacyTx{Data: contractBytes}, w.Address(), nonce, 0, testlog.Logger())
 	if err != nil {
 		return nil, err
 	}
@@ -345,8 +357,12 @@ func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contract
 		return nil, err
 	}
 
+	println("Sent TX with hash: ", signedTx.Hash().Hex())
 	var start time.Time
 	var receipt *types.Receipt
+
+	time.Sleep(1 * time.Second)
+
 	// todo (@matt) these timings should be driven by the L2 batch times and L1 block times
 	for start = time.Now(); time.Since(start) < 50*time.Second; time.Sleep(1 * time.Second) {
 		receipt, err = workerClient.TransactionReceipt(signedTx.Hash())

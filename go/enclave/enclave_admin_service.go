@@ -517,7 +517,7 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	if processed.HasEvents(common.RollupTx) {
 		rollupMetadataList, err = e.processRollups(ctx, processed, rollupMetadataList)
 		if err != nil {
-			return nil, nil, err
+			return ingestion, nil, err
 		}
 	}
 
