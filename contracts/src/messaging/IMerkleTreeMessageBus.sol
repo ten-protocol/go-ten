@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./Structs.sol";
+import "../common/Structs.sol";
 
 interface IMerkleTreeMessageBus {
     // This function is called to add a cross chain state root to the message bus.

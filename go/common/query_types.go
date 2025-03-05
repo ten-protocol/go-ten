@@ -111,11 +111,22 @@ func (p *QueryPagination) UnmarshalJSON(data []byte) error {
 }
 
 type TenNetworkInfo struct {
-	ManagementContractAddress       common.Address
-	L1StartHash                     common.Hash
+	NetworkConfigAddress            common.Address
+	EnclaveRegistryAddress          common.Address
+	RollupContractAddress           common.Address
+	CrossChainAddress               common.Address
+	MessageBus                      common.Address
 	MessageBusAddress               common.Address
 	L2MessageBusAddress             common.Address
-	ImportantContracts              map[string]common.Address // map of contract name to address
 	TransactionPostProcessorAddress common.Address
+	ImportantContracts              *NetworkConfigAddresses
+	L1StartHash                     common.Hash
 	PublicSystemContracts           map[string]common.Address
+}
+
+type NetworkConfigAddresses struct {
+	CrossChain             common.Address
+	MessageBus             common.Address
+	NetworkEnclaveRegistry common.Address
+	RollupContract         common.Address
 }

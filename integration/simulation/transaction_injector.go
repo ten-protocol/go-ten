@@ -3,6 +3,10 @@ package simulation
 import (
 	"context"
 	"fmt"
+	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
+	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"math/rand"
 	"strings"
@@ -12,13 +16,11 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
@@ -54,9 +56,9 @@ type TransactionInjector struct {
 	rpcHandles *network.RPCHandles
 
 	// addrs and libs
-	mgmtContractAddr *gethcommon.Address
-	mgmtContractLib  mgmtcontractlib.MgmtContractLib
-	erc20ContractLib erc20contractlib.ERC20ContractLib
+	networkConfigAddr *gethcommon.Address
+	networkConfigLib  contractlib.NetworkConfigLib
+	erc20ContractLib  erc20contractlib.ERC20ContractLib
 
 	// controls
 	interruptRun     *int32
@@ -79,8 +81,8 @@ func NewTransactionInjector(
 	stats *simstats.Stats,
 	rpcHandles *network.RPCHandles,
 	wallets *params.SimWallets,
-	mgmtContractAddr *gethcommon.Address,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	networkConfigAddr *gethcommon.Address,
+	networkConfigLib contractlib.NetworkConfigLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	txsToIssue int,
 	params *params.SimParams,
@@ -88,20 +90,20 @@ func NewTransactionInjector(
 	interrupt := int32(0)
 
 	return &TransactionInjector{
-		avgBlockDuration: avgBlockDuration,
-		stats:            stats,
-		rpcHandles:       rpcHandles,
-		interruptRun:     &interrupt,
-		fullyStoppedChan: make(chan bool, 1),
-		mgmtContractAddr: mgmtContractAddr,
-		mgmtContractLib:  mgmtContractLib,
-		erc20ContractLib: erc20ContractLib,
-		wallets:          wallets,
-		TxTracker:        newCounter(),
-		txsToIssue:       txsToIssue,
-		params:           params,
-		ctx:              context.Background(), // for now we create a new context here, should allow it to be passed in
-		logger:           testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
+		avgBlockDuration:  avgBlockDuration,
+		stats:             stats,
+		rpcHandles:        rpcHandles,
+		interruptRun:      &interrupt,
+		fullyStoppedChan:  make(chan bool, 1),
+		networkConfigAddr: networkConfigAddr,
+		networkConfigLib:  networkConfigLib,
+		erc20ContractLib:  erc20ContractLib,
+		wallets:           wallets,
+		TxTracker:         newCounter(),
+		txsToIssue:        txsToIssue,
+		params:            params,
+		ctx:               context.Background(), // for now we create a new context here, should allow it to be passed in
+		logger:            testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
 	}
 }
 
@@ -234,11 +236,12 @@ func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 
 	ethClient := ti.rpcHandles.RndEthClient()
 
-	mgmtCtr, err := ManagementContract.NewManagementContract(*ti.mgmtContractAddr, ethClient.EthClient())
+	networkCtrAddr := ti.networkConfigAddr
+	networkConfCtr, err := NetworkConfig.NewNetworkConfig(*networkCtrAddr, ethClient.EthClient())
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("could not create network config contract. Cause: %s", err))
 	}
-	busAddr, err := mgmtCtr.MessageBus(&bind.CallOpts{})
+	busAddr, err := networkConfCtr.MessageBusContractAddress(&bind.CallOpts{})
 	if err != nil {
 		panic(err)
 	}
@@ -325,7 +328,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		logs[i] = *log
 	}
 
-	transfers, err := crosschain.ConvertLogsToValueTransfers(logs, crosschain.ValueTransferEventName, crosschain.MessageBusABI)
+	transfers, err := crosschain.ConvertLogsToValueTransfers(logs, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI)
 	if err != nil {
 		panic(err)
 	}
@@ -364,14 +367,20 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	// In mem sim does not support the l1 interaction required for the rest of the function.
-	if ti.mgmtContractLib.IsMock() {
+
+	if ti.networkConfigLib.IsMock() {
 		return
 	}
 
-	mCtr, err := ManagementContract.NewManagementContract(*ti.mgmtContractAddr, ti.rpcHandles.RndEthClient().EthClient())
+	ethClient := ti.rpcHandles.RndEthClient()
+	networkCtrAddr := ti.networkConfigAddr
+	networkConfCtr, err := NetworkConfig.NewNetworkConfig(*networkCtrAddr, ethClient.EthClient())
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("could not create network config contract. Cause: %s", err))
 	}
+	crossChainAddr, err := networkConfCtr.CrossChainContractAddress(&bind.CallOpts{})
+
+	crosschainCtr, err := CrossChain.NewCrossChain(crossChainAddr, ethClient.EthClient())
 
 	opts, err := bind.NewKeyedTransactorWithChainID(ti.wallets.GasWithdrawalWallet.PrivateKey(), ti.wallets.GasWithdrawalWallet.ChainID())
 	if err != nil {
@@ -391,9 +400,9 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	withdrawalTx, err := mCtr.ExtractNativeValue(
+	withdrawalTx, err := crosschainCtr.ExtractNativeValue(
 		opts,
-		ManagementContract.StructsValueTransferMessage(vTransfers[0]),
+		CrossChain.StructsValueTransferMessage(vTransfers[0]),
 		proof32,
 		proof.Root,
 	)
