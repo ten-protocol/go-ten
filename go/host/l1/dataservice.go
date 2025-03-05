@@ -334,9 +334,11 @@ func (r *DataService) streamLiveBlocks() {
 	for r.running.Load() {
 		select {
 		case blockHeader := <-liveStream:
+			r.logger.Info(fmt.Sprintf("received block from l1 stream: %v", blockHeader))
 			block, err := r.ethClient.HeaderByHash(blockHeader.Hash())
 			if err != nil {
-				r.logger.Error("Could not read block head.", log.ErrKey, err)
+				r.logger.Error("Could not read block head.", log.BlockHashKey, blockHeader.Hash(), log.ErrKey, err)
+				continue
 			}
 			err = r.blockResolver.AddBlock(block)
 			if err != nil {
