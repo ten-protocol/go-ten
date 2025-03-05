@@ -303,6 +303,11 @@ func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
 		return fmt.Errorf("unable to start l1 grant sequencers - %w", err)
 	}
 
+	err = l1grantsequencers.WaitForFinish()
+	if err != nil {
+		return fmt.Errorf("unable to wait for l1 grant sequencers to finish - %w", err)
+	}
+
 	fmt.Println("Enclaves were successfully granted sequencer roles...")
 
 	return nil
