@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
@@ -88,17 +89,12 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 }
 
 func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1TenData, error) {
-	opts, err := bind.NewKeyedTransactorWithChainID(wallets.ContractOwnerWallet.PrivateKey(), wallets.ContractOwnerWallet.ChainID())
-	if err != nil {
-		return nil, fmt.Errorf("unable to create a keyed transactor for initializing the contracts. Cause: %w", err)
-	}
-
-	_, enclaveRegistryReceipt, err := deployEnclaveRegistryContract(client, wallets.ContractOwnerWallet, opts)
+	_, enclaveRegistryReceipt, err := deployEnclaveRegistryContract(client, wallets.ContractOwnerWallet)
 	if err != nil {
 		return nil, err
 	}
 
-	crossChainContract, crossChainReceipt, err := deployCrossChainContract(client, wallets.ContractOwnerWallet, opts)
+	crossChainContract, crossChainReceipt, err := deployCrossChainContract(client, wallets.ContractOwnerWallet)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +105,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		return nil, fmt.Errorf("failed to fetch MessageBus address. Cause: %w", err)
 	}
 
-	_, rollupReceipt, err := deployRollupContract(client, wallets.ContractOwnerWallet, opts, messageBusAddr, enclaveRegistryReceipt.ContractAddress)
+	_, rollupReceipt, err := deployRollupContract(client, wallets.ContractOwnerWallet, messageBusAddr, enclaveRegistryReceipt.ContractAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +118,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		RollupContract:         rollupReceipt.ContractAddress,
 	}
 
-	_, networkConfigReceipt, err := deployNetworkConfigContract(client, wallets.ContractOwnerWallet, addresses, opts)
+	_, networkConfigReceipt, err := deployNetworkConfigContract(client, wallets.ContractOwnerWallet, addresses)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +154,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}, nil
 }
 
-func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.Wallet, opts *bind.TransactOpts) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
+func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
 	bytecode, err := constants.NetworkEnclaveRegistryBytecode()
 	if err != nil {
 		return nil, nil, err
@@ -171,6 +167,13 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to instantiate NetworkEnclaveRegistry contract. Cause: %w", err)
 	}
+
+	// Create a fresh transactor for initialization
+	opts, err := createTransactor(ownerKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	tx, err := networkEnclaveRegistryContract.Initialize(opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize NetworkEnclaveRegistry contract. Cause: %w", err)
@@ -183,7 +186,7 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.
 	return networkEnclaveRegistryContract, networkEnclaveRegistryReceipt, nil
 }
 
-func deployNetworkConfigContract(client ethadapter.EthClient, ownerKey wallet.Wallet, addresses NetworkConfig.NetworkConfigAddresses, opts *bind.TransactOpts) (*NetworkConfig.NetworkConfig, *types.Receipt, error) {
+func deployNetworkConfigContract(client ethadapter.EthClient, ownerKey wallet.Wallet, addresses NetworkConfig.NetworkConfigAddresses) (*NetworkConfig.NetworkConfig, *types.Receipt, error) {
 	// Deploy NetworkConfig contract
 	bytecode, err := constants.NetworkConfigBytecode()
 	if err != nil {
@@ -198,6 +201,10 @@ func deployNetworkConfigContract(client ethadapter.EthClient, ownerKey wallet.Wa
 		return nil, nil, fmt.Errorf("failed to instantiate NetworkConfig contract. Cause: %w", err)
 	}
 
+	opts, err := createTransactor(ownerKey)
+	if err != nil {
+		return nil, nil, err
+	}
 	tx, err := networkConfigContract.Initialize(opts, addresses)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize NetworkConfig contract. Cause: %w", err)
@@ -210,7 +217,7 @@ func deployNetworkConfigContract(client ethadapter.EthClient, ownerKey wallet.Wa
 	return networkConfigContract, networkConfigReceipt, nil
 }
 
-func deployRollupContract(client ethadapter.EthClient, ownerKey wallet.Wallet, opts *bind.TransactOpts, messageBus common.Address, enclaveRegistryAddress common.Address) (*RollupContract.RollupContract, *types.Receipt, error) {
+func deployRollupContract(client ethadapter.EthClient, ownerKey wallet.Wallet, messageBus common.Address, enclaveRegistryAddress common.Address) (*RollupContract.RollupContract, *types.Receipt, error) {
 	bytecode, err := constants.RollupContractBytecode()
 	if err != nil {
 		return nil, nil, err
@@ -224,6 +231,11 @@ func deployRollupContract(client ethadapter.EthClient, ownerKey wallet.Wallet, o
 		return nil, nil, fmt.Errorf("failed to instantiate RollupContract. Cause: %w", err)
 	}
 
+	// Create a fresh transactor for initialization
+	opts, err := createTransactor(ownerKey)
+	if err != nil {
+		return nil, nil, err
+	}
 	tx, err := rollupContract.Initialize(opts, messageBus, enclaveRegistryAddress)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize RollupContract. Cause: %w", err)
@@ -236,7 +248,7 @@ func deployRollupContract(client ethadapter.EthClient, ownerKey wallet.Wallet, o
 	return rollupContract, rollupContractReceipt, nil
 }
 
-func deployCrossChainContract(client ethadapter.EthClient, ownerKey wallet.Wallet, opts *bind.TransactOpts) (*CrossChain.CrossChain, *types.Receipt, error) {
+func deployCrossChainContract(client ethadapter.EthClient, ownerKey wallet.Wallet) (*CrossChain.CrossChain, *types.Receipt, error) {
 	// Deploy CrossChain contract
 	bytecode, err := constants.CrossChainBytecode()
 	if err != nil {
@@ -249,6 +261,11 @@ func deployCrossChainContract(client ethadapter.EthClient, ownerKey wallet.Walle
 	crossChainContract, err := CrossChain.NewCrossChain(crossChainReceipt.ContractAddress, client.EthClient())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to instantiate CrossChain contract. Cause: %w", err)
+	}
+
+	opts, err := createTransactor(ownerKey)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	tx, err := crossChainContract.Initialize(opts)
@@ -386,4 +403,14 @@ func CreateEthClientConnection(port uint) ethadapter.EthClient {
 		panic(err)
 	}
 	return ethnode
+}
+
+// createTransactor creates a new transactor with the current nonce from the wallet
+func createTransactor(wallet wallet.Wallet) (*bind.TransactOpts, error) {
+	opts, err := bind.NewKeyedTransactorWithChainID(wallet.PrivateKey(), wallet.ChainID())
+	if err != nil {
+		return nil, err
+	}
+	opts.Nonce = big.NewInt(int64(wallet.GetNonceAndIncrement()))
+	return opts, nil
 }
