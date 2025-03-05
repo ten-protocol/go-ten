@@ -697,7 +697,7 @@ func (g *Guardian) periodicRollupProduction() {
 				// only publish if the block used for compression is canonical
 				if canonBlock.Hash() == rollup.Header.CompressionL1Head {
 					// this method waits until the receipt is received
-					g.sl.L1Publisher().PublishBlob(*result)
+					g.sl.L1Publisher().PublishBlob(*result, *g.enclaveID)
 					lastSuccessfulRollup = time.Now()
 				} else {
 					g.logger.Info("Skipping rollup publication because compression block is not canonical", "block", canonBlock.Hash())
