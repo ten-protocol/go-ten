@@ -407,5 +407,5 @@ func getEnclaveIdFromLog(log types.Log) (gethcommon.Address, error) {
 }
 
 func increment(i *big.Int) *big.Int {
-	return i.Add(i, one)
+	return big.NewInt(0).Add(i, one)
 }
