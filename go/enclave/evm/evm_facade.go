@@ -94,8 +94,10 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 		},
 	}
 
+	hookedStateDb := state.NewHookedState(s, cfg.Tracer)
+
 	blockContext := gethcore.NewEVMBlockContext(header, exec.chain, nil)
-	evmEnv := vm.NewEVM(blockContext, s, exec.cc, cfg)
+	evmEnv := vm.NewEVM(blockContext, hookedStateDb, exec.cc, cfg)
 
 	msg, err := TransactionToMessageWithOverrides(tx, exec.cc, header)
 	if err != nil {

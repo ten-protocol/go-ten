@@ -138,8 +138,8 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 
 		err = executor.systemContracts.Initialize(cb.Batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
 		if err != nil {
-			fmt.Printf("Failed to initialize system contracts: %v\n", err)
-			// return nil, fmt.Errorf("failed to initialize system contracts: %w", err)
+			fmt.Printf("nd%s: Failed to initialize system contracts: %v\n", executor.config.NodeID, err)
+			return nil, fmt.Errorf("failed to initialize system contracts: %w", err)
 		}
 	}
 
