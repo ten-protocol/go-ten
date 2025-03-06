@@ -83,15 +83,15 @@ type StateSnapshot struct {
 }
 
 // InSyncWithL1 returns true if the enclave is up-to-date with L1 data so guardian can process L1 blocks as they arrive
-func (s *StateSnapshot) InSyncWithL1() bool {
+func (s StateSnapshot) InSyncWithL1() bool {
 	return s.Status == Live || s.Status == L2Catchup
 }
 
-func (s *StateSnapshot) IsLive() bool {
+func (s StateSnapshot) IsLive() bool {
 	return s.Status == Live
 }
 
-func (s *StateSnapshot) String() string {
+func (s StateSnapshot) String() string {
 	return fmt.Sprintf("StateSnapshot: [%s] enclave(StatusCode=%d, L1Head=%s, L2Head=%s IsActive=%v), Host(L1Head=%s, L2Head=%s)",
 		s.Status, s.Enclave.StatusCode, s.Enclave.L1Head, s.Enclave.L2Head, s.Enclave.IsActiveSequencer, s.Host.L1Head, s.Host.L2Head)
 }
