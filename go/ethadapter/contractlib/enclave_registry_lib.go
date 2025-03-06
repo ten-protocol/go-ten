@@ -10,36 +10,36 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
-type NetworkEnclaveRegistryLib interface {
+type EnclaveRegistryLib interface {
 	ContractLib
 	CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error)
 	CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error)
 	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) (types.TxData, error)
 }
 
-type networkEnclaveRegistryLibImpl struct {
+type enclaveRegistryLibImpl struct {
 	addr        *gethcommon.Address
 	contractABI abi.ABI
 	logger      gethlog.Logger
 }
 
-func NewNetworkEnclaveRegistryLib(addr *gethcommon.Address, logger gethlog.Logger) NetworkEnclaveRegistryLib {
-	return &networkEnclaveRegistryLibImpl{
+func NewEnclaveRegistryLib(addr *gethcommon.Address, logger gethlog.Logger) EnclaveRegistryLib {
+	return &enclaveRegistryLibImpl{
 		addr:        addr,
 		contractABI: ethadapter.EnclaveRegistryABI,
 		logger:      logger,
 	}
 }
 
-func (n *networkEnclaveRegistryLibImpl) IsMock() bool {
+func (n *enclaveRegistryLibImpl) IsMock() bool {
 	return false
 }
 
-func (n *networkEnclaveRegistryLibImpl) GetContractAddr() *gethcommon.Address {
+func (n *enclaveRegistryLibImpl) GetContractAddr() *gethcommon.Address {
 	return n.addr
 }
 
-func (n *networkEnclaveRegistryLibImpl) CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error) {
+func (n *enclaveRegistryLibImpl) CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error) {
 	data, err := n.contractABI.Pack(
 		ethadapter.InitializeSecretMethod,
 		tx.EnclaveID,
@@ -56,7 +56,7 @@ func (n *networkEnclaveRegistryLibImpl) CreateInitializeSecret(tx *common.L1Init
 	}, nil
 }
 
-func (n *networkEnclaveRegistryLibImpl) CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error) {
+func (n *enclaveRegistryLibImpl) CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error) {
 	data, err := n.contractABI.Pack(ethadapter.RequestSecretMethod, ethadapter.Base64EncodeToString(tx.Attestation))
 	if err != nil {
 		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)
@@ -68,7 +68,7 @@ func (n *networkEnclaveRegistryLibImpl) CreateRequestSecret(tx *common.L1Request
 	}, nil
 }
 
-func (n *networkEnclaveRegistryLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) (types.TxData, error) {
+func (n *enclaveRegistryLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) (types.TxData, error) {
 	data, err := n.contractABI.Pack(
 		ethadapter.RespondSecretMethod,
 		tx.AttesterID,
@@ -87,7 +87,12 @@ func (n *networkEnclaveRegistryLibImpl) CreateRespondSecret(tx *common.L1Respond
 	}, nil
 }
 
-func (n *networkEnclaveRegistryLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
+func (n *enclaveRegistryLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
+	println("-----Start-----")
+	println("tx.To().Hex() ", tx.To().Hex())
+	println("n.addr.Hex() ", n.addr.Hex())
+	println("len(tx.Data()) ", len(tx.Data()))
+	println("-----End-----")
 	if tx.To() == nil || tx.To().Hex() != n.addr.Hex() || len(tx.Data()) == 0 {
 		return nil, nil
 	}
@@ -110,7 +115,7 @@ func (n *networkEnclaveRegistryLibImpl) DecodeTx(tx *types.Transaction) (common.
 	return nil, nil
 }
 
-func (n *networkEnclaveRegistryLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1InitializeSecretTx, error) {
+func (n *enclaveRegistryLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1InitializeSecretTx, error) {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[ethadapter.MethodBytesLen:])
 	if err != nil {
 		return nil, fmt.Errorf("could not unpack transaction. Cause: %w", err)
@@ -130,7 +135,7 @@ func (n *networkEnclaveRegistryLibImpl) unpackInitSecretTx(tx *types.Transaction
 	}, nil
 }
 
-func (n *networkEnclaveRegistryLibImpl) unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1RequestSecretTx, error) {
+func (n *enclaveRegistryLibImpl) unpackRequestSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1RequestSecretTx, error) {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[ethadapter.MethodBytesLen:])
 	if err != nil {
 		return nil, fmt.Errorf("could not unpack transaction. Cause: %w", err)
@@ -149,7 +154,7 @@ func (n *networkEnclaveRegistryLibImpl) unpackRequestSecretTx(tx *types.Transact
 	}, nil
 }
 
-func (n *networkEnclaveRegistryLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1RespondSecretTx, error) {
+func (n *enclaveRegistryLibImpl) unpackRespondSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1RespondSecretTx, error) {
 	err := method.Inputs.UnpackIntoMap(contractCallData, tx.Data()[ethadapter.MethodBytesLen:])
 	if err != nil {
 		return nil, fmt.Errorf("could not unpack transaction. Cause: %w", err)

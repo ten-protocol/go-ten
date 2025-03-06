@@ -97,7 +97,7 @@ func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient)
 	}
 
 	rollupLib := contractlib.NewRollupContractLib(&contractAddresses.RollupContract, testlog.Logger())
-	enclaveRegistryLib := contractlib.NewNetworkEnclaveRegistryLib(&contractAddresses.NetworkEnclaveRegistry, testlog.Logger())
+	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&contractAddresses.NetworkEnclaveRegistry, testlog.Logger())
 
 	//FIXME
 	for _, tx := range block.Transactions() {

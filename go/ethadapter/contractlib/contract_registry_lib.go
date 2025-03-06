@@ -10,7 +10,7 @@ import (
 
 type ContractRegistryLib interface {
 	RollupLib() RollupContractLib
-	NetworkEnclaveLib() NetworkEnclaveRegistryLib
+	NetworkEnclaveLib() EnclaveRegistryLib
 	NetworkConfigLib() NetworkConfigLib
 	GetContractAddresses() *common.NetworkConfigAddresses
 	IsMock() bool
@@ -18,7 +18,7 @@ type ContractRegistryLib interface {
 
 type ContractRegistryImpl struct {
 	rollupLib         RollupContractLib
-	networkEnclaveLib NetworkEnclaveRegistryLib
+	networkEnclaveLib EnclaveRegistryLib
 	networkConfig     NetworkConfigLib
 	addresses         *common.NetworkConfigAddresses
 	logger            gethlog.Logger
@@ -36,7 +36,7 @@ func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethclie
 	}
 
 	rollupLib := NewRollupContractLib(&addresses.RollupContract, logger)
-	networkEnclaveLib := NewNetworkEnclaveRegistryLib(&addresses.NetworkEnclaveRegistry, logger)
+	networkEnclaveLib := NewEnclaveRegistryLib(&addresses.NetworkEnclaveRegistry, logger)
 
 	registry := &ContractRegistryImpl{
 		rollupLib:         rollupLib,
@@ -50,7 +50,7 @@ func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethclie
 }
 
 // NewContractRegistryFromLibs - helper function when creating the contract registry on the enclave
-func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib NetworkEnclaveRegistryLib, logger gethlog.Logger) *ContractRegistryImpl {
+func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib EnclaveRegistryLib, logger gethlog.Logger) *ContractRegistryImpl {
 	registry := &ContractRegistryImpl{
 		rollupLib:         rolluplib,
 		networkEnclaveLib: enclaveRegistryLib,
@@ -68,7 +68,7 @@ func (r *ContractRegistryImpl) RollupLib() RollupContractLib {
 	return r.rollupLib
 }
 
-func (r *ContractRegistryImpl) NetworkEnclaveLib() NetworkEnclaveRegistryLib {
+func (r *ContractRegistryImpl) NetworkEnclaveLib() EnclaveRegistryLib {
 	return r.networkEnclaveLib
 }
 

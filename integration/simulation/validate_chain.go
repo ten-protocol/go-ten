@@ -260,7 +260,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 	}
 
 	rollupLib := contractlib.NewRollupContractLib(&contractAddresses.RollupContract, testlog.Logger())
-	enclaveRegistryLib := contractlib.NewNetworkEnclaveRegistryLib(&contractAddresses.NetworkEnclaveRegistry, testlog.Logger())
+	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&contractAddresses.NetworkEnclaveRegistry, testlog.Logger())
 
 	blockchain, err := node.BlocksBetween(startBlock, endBlock)
 

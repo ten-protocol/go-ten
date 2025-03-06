@@ -9,7 +9,7 @@ import (
 
 type MockNetworkEnclaveRegistryLib struct{}
 
-func NewNetworkEnclaveRegistryLibMock() contractlib.NetworkEnclaveRegistryLib {
+func NewNetworkEnclaveRegistryLibMock() contractlib.EnclaveRegistryLib {
 	return &MockNetworkEnclaveRegistryLib{}
 }
 

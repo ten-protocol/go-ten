@@ -95,7 +95,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, l
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 
 	// FIXME figure out addresses
-	enclaveRegistryLib := contractlib.NewNetworkEnclaveRegistryLib(&config.NetworkConfigAddress, logger)
+	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&config.EnclaveRegistryAddress, logger)
 	rollupContractLib := contractlib.NewRollupContractLib(&config.RollupContractAddress, logger)
 	contractRegistry := contractlib.NewContractRegistryFromLibs(rollupContractLib, enclaveRegistryLib, logger)
 	// start the mempool in validate only. Based on the config, it might become sequencer

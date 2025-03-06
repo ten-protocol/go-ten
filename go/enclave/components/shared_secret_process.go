@@ -15,7 +15,7 @@ import (
 )
 
 type SharedSecretProcessor struct {
-	enclaveRegistryLib  contractlib.NetworkEnclaveRegistryLib
+	enclaveRegistryLib  contractlib.EnclaveRegistryLib
 	sharedSecretService *crypto.SharedSecretService
 	attestationProvider AttestationProvider // interface for producing attestation reports and verifying them
 	enclaveID           gethcommon.Address
@@ -23,7 +23,7 @@ type SharedSecretProcessor struct {
 	logger              gethlog.Logger
 }
 
-func NewSharedSecretProcessor(enclaveRegistryLib contractlib.NetworkEnclaveRegistryLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger) *SharedSecretProcessor {
+func NewSharedSecretProcessor(enclaveRegistryLib contractlib.EnclaveRegistryLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger) *SharedSecretProcessor {
 	return &SharedSecretProcessor{
 		enclaveRegistryLib:  enclaveRegistryLib,
 		attestationProvider: attestationProvider,
