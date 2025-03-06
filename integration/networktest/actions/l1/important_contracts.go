@@ -69,7 +69,7 @@ func (s *setImportantContract) Run(ctx context.Context, network networktest.Netw
 	if err != nil {
 		return nil, err
 	}
-	tx, err := ethadapter.SetTxGasPrice(ctx, l1Client, txData, networkCfg.ManagementContractAddress, nonce, 0, testlog.Logger())
+	tx, err := ethadapter.SetTxGasPrice(ctx, l1Client, txData, networkCfg.ManagementContractAddress, nonce, 0, nil, testlog.Logger())
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to prepare tx")
 	}

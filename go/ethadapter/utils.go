@@ -28,7 +28,7 @@ var minGasTipCap = big.NewInt(2 * params.GWei)
 
 // SetTxGasPrice takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
-func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int, logger gethlog.Logger) (types.TxData, error) {
+func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int, l1ChainCfg *params.ChainConfig, logger gethlog.Logger) (types.TxData, error) {
 	rawTx := types.NewTx(txData)
 	to := rawTx.To()
 	value := rawTx.Value()
@@ -80,8 +80,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		if head.ExcessBlobGas == nil {
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
-		// todo pass in the L1 chain config
-		blobBaseFee := eip4844.CalcBlobFee(params.SepoliaChainConfig, head)
+		blobBaseFee := eip4844.CalcBlobFee(l1ChainCfg, head)
 		blobMultiplier := calculateRetryMultiplier(_blobPriceMultiplier, retryNumber)
 		blobFeeCap := new(uint256.Int).Mul(
 			uint256.MustFromBig(blobBaseFee),

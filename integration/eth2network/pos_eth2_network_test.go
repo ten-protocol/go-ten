@@ -139,7 +139,7 @@ func txsAreMinted(t *testing.T, startPort int, w wallet.Wallet) {
 	estimatedTx, err := ethadapter.SetTxGasPrice(context.Background(), ethClient, &types.LegacyTx{
 		To:    &toAddr,
 		Value: big.NewInt(100),
-	}, w.Address(), w.GetNonceAndIncrement(), 0, testlog.Logger())
+	}, w.Address(), w.GetNonceAndIncrement(), 0, nil, testlog.Logger())
 	assert.Nil(t, err)
 
 	signedTx, err := w.SignTransaction(estimatedTx)
