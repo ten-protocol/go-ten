@@ -40,13 +40,11 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkConfigAdd
 		return nil, fmt.Errorf("failed to create NetworkConfig caller: %w", err)
 	}
 
-	// Call the Addresses method using the generated binding
 	addresses, err := networkConfigContract.Addresses(&bind.CallOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to call addresses(): %w", err)
 	}
 
-	// Convert to your NetworkAddresses type
 	return &common.NetworkConfigAddresses{
 		CrossChain:             addresses.CrossChain,
 		MessageBus:             addresses.MessageBus,

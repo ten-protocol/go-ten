@@ -239,9 +239,10 @@ func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAd
 			continue
 		}
 		switch l.Topics[0] {
+		case ethadapter.NetworkSecretInitializedEventID:
+			r.processEnclaveRegistrationTx(txData, processed)
 		case ethadapter.SequencerEnclaveGrantedEventID:
 			r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
-			r.processEnclaveRegistrationTx(txData, processed)
 		case ethadapter.SequencerEnclaveRevokedEventID:
 			r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
 		case ethadapter.NetworkSecretRequestedID:
@@ -351,14 +352,18 @@ func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData,
 
 // processManagementContractTx handles decoded transaction types
 func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	decodedTx, _ := r.contractRegistry.NetworkEnclaveLib().DecodeTx(txData.Transaction)
+	networkLib := r.contractRegistry.NetworkEnclaveLib()
+	decodedTx, err := networkLib.DecodeTx(txData.Transaction)
+	if err != nil {
+		r.logger.Error("Error decoding transaction", "txHash", txData.Transaction.Hash, "error", err)
+	}
 	if decodedTx != nil {
 		switch decodedTx.(type) {
 		case *common.L1InitializeSecretTx:
 			processed.AddEvent(common.InitialiseSecretTx, txData)
 		//case *common.L1SetImportantContractsTx:
 		//	processed.AddEvent(common.SetImportantContractsTx, txData)
-		case *common.L1PermissionSeqTx:
+		case *common.L1PermissionSeqTx: //FIXME I think this can be deleted?
 			return // no-op as it was processed in the previous processSequencerLogs call
 		default:
 			// this should never happen since the specific events should always decode into one of these types

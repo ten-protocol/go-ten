@@ -2,7 +2,7 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 interface INetworkEnclaveRegistry {
-    event NetworkSecretInitialized(address initializer);
+    event NetworkSecretInitialized(address enclaveID);
     event NetworkSecretRequested(address indexed requester, string requestReport);
     event NetworkSecretResponded(address indexed attester, address indexed requester);
     event SequencerEnclaveGranted(address enclaveID);
