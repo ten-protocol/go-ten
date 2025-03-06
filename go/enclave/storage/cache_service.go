@@ -302,6 +302,7 @@ func (cs *CacheService) ReadSequencerIDs(_ context.Context, onCacheMiss func() (
 			return nil, err
 		}
 	}
+	cs.logger.Info("returning sequencer IDs from cache")
 	return cs.sequencerIDsCache, nil
 }
 

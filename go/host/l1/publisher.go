@@ -5,16 +5,19 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"reflect"
 	"sync"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
+	"github.com/ten-protocol/go-ten/go/common/signature"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/pkg/errors"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -216,7 +219,18 @@ func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 
-func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
+func (p *Publisher) VerifyRollupSignature(extRollup *common.ExtRollup, blobHash gethcommon.Hash, signatureBytes []byte, enclaveID common.EnclaveID) bool {
+	compositeHash := common.ComputeCompositeHash(extRollup.Header, blobHash)
+	pubKey, err := signature.RecoverPubKey(compositeHash.Bytes(), signatureBytes)
+	if err != nil {
+		p.logger.Error("could not recover public key.", log.ErrKey, err)
+		return false
+	}
+
+	return crypto.PubkeyToAddress(*pubKey) == enclaveID
+}
+
+func (p *Publisher) PublishBlob(result common.CreateRollupResult, enclaveID common.EnclaveID) {
 	// Decode the rollup from the blobs
 	rollupData, err := ethadapter.DecodeBlobs(result.Blobs)
 	if err != nil {
@@ -258,6 +272,15 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 		p.logger.Error("Failed waiting for block after rollup binding block number",
 			"compression_block", rollupBlockNum,
 			log.ErrKey, err)
+	}
+
+	_, blobHashes, err := ethadapter.MakeSidecar(result.Blobs, ethadapter.KZGToVersionedHasher{})
+	if err != nil {
+		p.logger.Crit("could not make sidecar.", log.ErrKey, err)
+	}
+
+	if !p.VerifyRollupSignature(extRollup, blobHashes[0], result.Signature, enclaveID) {
+		p.logger.Error("invalid rollup signature")
 	}
 
 	err = p.publishTransaction(rollupBlobTx)
@@ -374,7 +397,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 
 	for !p.hostStopper.IsStopping() && retries < maxRetries {
 		pricedTx, err := p.executeTransaction(tx, nonce, retries)
-		if pricedTx == nil {
+		if pricedTx == nil || reflect.ValueOf(pricedTx).IsNil() {
 			return fmt.Errorf("could not price transaction")
 		}
 		if err != nil {
