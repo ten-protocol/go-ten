@@ -85,10 +85,9 @@ echo "Test" > "${TEST_LOG_FILE}" 2>&1 &
 ${PRYSMCTL_BINARY} testnet generate-genesis \
            --fork deneb \
            --num-validators 2 \
-	         --genesis-time-delay 5 \
+	         --genesis-time-delay 15 \
            --chain-config-file "${BASE_PATH}/config.yml" \
            --geth-genesis-json-in "${BUILD_DIR}/genesis.json" \
-	         --geth-genesis-json-out "${BUILD_DIR}/genesis.json" \
 	         --output-ssz "${BEACONDATA_DIR}/genesis.ssz"
 
 sleep 1
@@ -137,12 +136,12 @@ echo "VALIDATOR PID $validator_pid"
 
 # Run go-ethereum
 ${GETH_BINARY} --http \
-       --http.api personal,eth,net,web3,debug \
+       --http.api admin,eth,net,web3,debug \
        --http.addr="0.0.0.0" \
        --http.port="${GETH_HTTP_PORT}" \
        --http.corsdomain "*" \
        --http.vhosts "*" \
-       --ws --ws.api personal,eth,net,web3,debug,txpool \
+       --ws --ws.api admin,eth,net,web3,debug,txpool \
        --ws.addr="0.0.0.0" \
        --ws.port="${GETH_WS_PORT}" \
        --ws.origins "*" \
@@ -157,8 +156,6 @@ ${GETH_BINARY} --http \
        --dev \
        --dev.period 1 \
        --syncmode full \
-       --allow-insecure-unlock \
-       --unlock 0x123463a4b065722e99115d6c222f267d9cabb524 \
        --password "${BASE_PATH}/password.txt" > "${GETH_LOG_FILE}" 2>&1 &
 geth_pid=$!
 echo "GETH PID $geth_pid"
