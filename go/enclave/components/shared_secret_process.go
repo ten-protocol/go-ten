@@ -41,7 +41,6 @@ func (ssp *SharedSecretProcessor) ProcessNetworkSecretMsgs(ctx context.Context, 
 
 	// process initialize secret events
 	for _, txData := range processed.GetEvents(common.InitialiseSecretTx) {
-		println()
 		t, err := ssp.enclaveRegistryLib.DecodeTx(txData.Transaction)
 		if err != nil {
 			ssp.logger.Warn("Could not decode transaction", log.ErrKey, err)

@@ -563,7 +563,6 @@ func (s *storageImpl) StoreNewEnclave(ctx context.Context, enclaveId common.Encl
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	println("TRYING TO STORE NEW ENCLAVE: ", enclaveId.Hex())
 	_, err = enclavedb.WriteAttestation(ctx, dbTx, enclaveId, gethcrypto.CompressPubkey(key), common.Validator)
 	if err != nil {
 		return err

@@ -26,7 +26,7 @@ func WriteNetworkConfigToDisk(cfg *config.TenConfig) error {
 	n := NetworkConfig{
 		NetworkConfigAddress:   cfg.Network.L1.L1Contracts.NetworkConfigContract.Hex(),
 		RollupContractAddress:  cfg.Network.L1.L1Contracts.RollupContract.Hex(),
-		EnclaveRegistryAddress: cfg.Network.L1.L1Contracts.EnclaveRegistry.Hex(),
+		EnclaveRegistryAddress: cfg.Network.L1.L1Contracts.EnclaveRegistryContract.Hex(),
 		CrossChainAddress:      cfg.Network.L1.L1Contracts.CrossChainContract.Hex(),
 		MessageBusAddress:      cfg.Network.L1.L1Contracts.MessageBusContract.Hex(),
 		L1StartHash:            cfg.Network.L1.StartHash.Hex(),

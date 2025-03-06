@@ -89,7 +89,7 @@ func (d *DockerNode) Upgrade(networkCfg *NetworkConfig) error {
 	// update the config with the existing network config
 	d.cfg.Network.L1.L1Contracts.NetworkConfigContract = common.HexToAddress(networkCfg.NetworkConfigAddress)
 	d.cfg.Network.L1.L1Contracts.CrossChainContract = common.HexToAddress(networkCfg.CrossChainAddress)
-	d.cfg.Network.L1.L1Contracts.EnclaveRegistry = common.HexToAddress(networkCfg.EnclaveRegistryAddress)
+	d.cfg.Network.L1.L1Contracts.EnclaveRegistryContract = common.HexToAddress(networkCfg.EnclaveRegistryAddress)
 	d.cfg.Network.L1.L1Contracts.RollupContract = common.HexToAddress(networkCfg.RollupContractAddress)
 	d.cfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkCfg.MessageBusAddress)
 	d.cfg.Network.L1.StartHash = common.HexToHash(networkCfg.L1StartHash)

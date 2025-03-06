@@ -88,11 +88,6 @@ func (n *enclaveRegistryLibImpl) CreateRespondSecret(tx *common.L1RespondSecretT
 }
 
 func (n *enclaveRegistryLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
-	println("-----Start-----")
-	println("tx.To().Hex() ", tx.To().Hex())
-	println("n.addr.Hex() ", n.addr.Hex())
-	println("len(tx.Data()) ", len(tx.Data()))
-	println("-----End-----")
 	if tx.To() == nil || tx.To().Hex() != n.addr.Hex() || len(tx.Data()) == 0 {
 		return nil, nil
 	}

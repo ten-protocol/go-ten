@@ -49,6 +49,10 @@ type L1TenData struct {
 	TenStartBlock common.Hash
 	// NetworkConfigAddress defines the network config contract address
 	NetworkConfigAddress common.Address
+	// EnclaveRegistryAddress defines the network enclave registry contract address
+	EnclaveRegistryAddress common.Address
+	// RollupContractAddress defines the rollup contract address
+	RollupContractAddress common.Address
 	// ObxErc20Address - the address of the "TEN" ERC20
 	ObxErc20Address common.Address
 	// EthErc20Address - the address of the "ETH" ERC20
