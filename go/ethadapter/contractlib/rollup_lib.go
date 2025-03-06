@@ -48,13 +48,14 @@ func (r *rollupContractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []
 	}
 
 	metaRollup := RollupContract.StructsMetaRollup{
-		Hash:               decodedRollup.Hash(),
-		Signature:          signature,
-		LastSequenceNumber: big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
-		BlockBindingHash:   decodedRollup.Header.CompressionL1Head,
-		BlockBindingNumber: decodedRollup.Header.CompressionL1Number,
-		CrossChainRoot:     decodedRollup.Header.CrossChainRoot,
-		LastBatchHash:      decodedRollup.Header.LastBatchHash,
+		Hash:                decodedRollup.Hash(),
+		Signature:           signature,
+		FirstSequenceNumber: big.NewInt(int64(decodedRollup.Header.FirstBatchSeqNo)),
+		LastSequenceNumber:  big.NewInt(int64(decodedRollup.Header.LastBatchSeqNo)),
+		BlockBindingHash:    decodedRollup.Header.CompressionL1Head,
+		BlockBindingNumber:  decodedRollup.Header.CompressionL1Number,
+		CrossChainRoot:      decodedRollup.Header.CrossChainRoot,
+		LastBatchHash:       decodedRollup.Header.LastBatchHash,
 	}
 
 	data, err := r.contractABI.Pack(
@@ -68,7 +69,7 @@ func (r *rollupContractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar
 
-	// Use se blobs created here (they are verified that the hash matches with the blobs from the enclave)
+	// Using blobs created here (they are verified that the hash matches with the blobs from the enclave)
 	if sidecar, blobHashes, err = ethadapter.MakeSidecar(blobs, r.BlobHasher()); err != nil {
 		return nil, fmt.Errorf("failed to make sidecar: %w", err)
 	}

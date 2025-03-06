@@ -349,7 +349,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 	for !p.hostStopper.IsStopping() && retries < maxRetries {
 		pricedTx, err := p.executeTransaction(tx, nonce, retries)
 		if pricedTx == nil {
-			return fmt.Errorf("could not price transaction")
+			return fmt.Errorf("could not price transaction. Cause: %w", err)
 		}
 		if err != nil {
 			if retries >= maxRetries-1 {

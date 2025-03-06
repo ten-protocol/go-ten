@@ -4,6 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 interface Structs {
     struct MetaRollup{
         bytes32 Hash;
+        uint256 FirstSequenceNumber;
         uint256 LastSequenceNumber;
 
         bytes32 BlockBindingHash;
