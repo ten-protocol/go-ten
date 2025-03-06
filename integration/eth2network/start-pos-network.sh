@@ -130,28 +130,32 @@ ${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:"${BEACON_RPC_PORT}" \
             --datadir="${VALIDATORDATA_DIR}" \
             --accept-terms-of-use \
             --interop-num-validators 2 \
+            --interop-start-index 0 \
             --chain-config-file "${BASE_PATH}/config.yml" > "${VALIDATOR_LOG_FILE}" 2>&1 &
 validator_pid=$!
 echo "VALIDATOR PID $validator_pid"
 
 # Run go-ethereum
 ${GETH_BINARY} --http \
-       --http.api eth,net,web3,debug \
+       --http.api personal,eth,net,web3,debug \
        --http.addr="0.0.0.0" \
        --http.port="${GETH_HTTP_PORT}" \
        --http.corsdomain "*" \
        --http.vhosts "*" \
-       --ws --ws.api eth,net,web3,debug \
+       --ws --ws.api personal,eth,net,web3,debug,txpool \
        --ws.addr="0.0.0.0" \
        --ws.port="${GETH_WS_PORT}" \
        --ws.origins "*" \
        --authrpc.jwtsecret "${BASE_PATH}/jwt.hex" \
        --authrpc.port "${GETH_RPC_PORT}" \
+       --authrpc.addr="0.0.0.0" \
        --authrpc.vhosts "*" \
        --port="${GETH_NETWORK_PORT}" \
        --datadir="${GETHDATA_DIR}" \
        --networkid="${CHAIN_ID}" \
        --nodiscover \
+       --dev \
+       --dev.period 1 \
        --syncmode full \
        --allow-insecure-unlock \
        --unlock 0x123463a4b065722e99115d6c222f267d9cabb524 \

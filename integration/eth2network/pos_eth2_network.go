@@ -243,6 +243,7 @@ func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 
 func (n *PosImpl) prefundedBalanceActive(client *ethclient.Client) error {
 	for _, addr := range n.wallets {
+		println("CHECKING BALANCE FOR: ", addr)
 		balance, err := client.BalanceAt(context.Background(), gethcommon.HexToAddress(addr), nil)
 		if err != nil {
 			return fmt.Errorf("unable to check balance for account %s - %w", addr, err)
@@ -369,6 +370,7 @@ func fundWallets(walletsToFund []string, buildDir string, chainID int) (string, 
 
 	walletsToFund = append(walletsToFund, integration.GethNodeAddress)
 	for _, account := range walletsToFund {
+		println("Adding funding to wallet: ", account)
 		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "7500000000000000000000000000000"}
 	}
 
