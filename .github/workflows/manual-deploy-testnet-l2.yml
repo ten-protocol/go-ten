@@ -83,7 +83,7 @@ jobs:
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -contracts_env_file=./testnet/.env
-          source ./testnet/.env
+          source ./testnet/.env || true
           echo "Contracts deployed to $MGMTCONTRACTADDR"
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_OUTPUT
