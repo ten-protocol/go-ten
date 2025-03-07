@@ -1,13 +1,13 @@
 services:
   geth:
-    image: ethereum/client-go:stable
+    image: ethereum/client-go:v1.15.5
     ports:
-      - "0.0.0.0:8545:8545"
-      - "0.0.0.0:8551:8551"
-      - "0.0.0.0:8546:8546"
-      - "0.0.0.0:30303:30303"
+      - "127.0.0.1:8545:8545"
+      - "127.0.0.1:8551:8551"
+      - "127.0.0.1:8546:8546"
+      - "127.0.0.1:30303:30303"
     volumes:
-      - "l1data:/datadir"
+      - "gethdir:/datadir"
       - "l1keystore:/keystore"
       - "./config:/config"
       - "./config/jwt.hex:/jwt.hex"
@@ -18,23 +18,20 @@ services:
       - --http
       - --http.addr=0.0.0.0
       - --http.vhosts=*
-      - --http.api=engine,personal,eth,net,web3
+      - --http.api=engine,eth,net,web3
       - --http.corsdomain=*
-      - --authrpc.vhosts=*
-      - --authrpc.port=8551
       - --authrpc.addr=0.0.0.0
+      - --authrpc.port=8558
+      - --authrpc.vhosts=*
       - --authrpc.jwtsecret=/jwt.hex
       - --ws
       - --ws.addr=0.0.0.0
-      - --ws.api=personal,eth,net,web3,debug,txpool
+      - --ws.api=eth,net,web3,debug,txpool
       - --allow-insecure-unlock
-      - --unlock=0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E
       - --password=/password.txt
       - --nodiscover
       - --syncmode=full
       - --state.scheme=hash
-      - --dev
-      - --dev.period=1
       - --mine
       - --miner.etherbase=0x3f1Eae7D46d88F08fc2F8ed27FCb2AB183EB2d0E
       - --gcmode=archive
@@ -43,6 +40,16 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - eth2network
+
+  # Initialize Geth with the genesis configuration
+  init_geth:
+    image: ethereum/client-go:v1.15.5
+    command: init --state.scheme hash --datadir /datadir/ /config/genesis-init.json
+    volumes:
+      - "gethdir:/datadir"
+      - "./config:/config"
     networks:
       - eth2network
 
@@ -91,10 +98,14 @@ services:
       - --rpc-host=0.0.0.0
       - --grpc-gateway-host=0.0.0.0
       - --chain-id=1337
-      - --execution-endpoint=http://geth:8551
+      - --execution-endpoint=geth:8551
       - --accept-terms-of-use
       - --jwt-secret=/jwt.hex
       - --suggested-fee-recipient=0x000000000000000000000000000000000000dEaD
+    volumes:
+      - "consensus:/consensus"
+      - "./config:/config"
+      - "./config/jwt.hex:/jwt.hex"
     depends_on:
       geth:
         condition: service_healthy
@@ -105,10 +116,6 @@ services:
     ports:
       - "127.0.0.1:5000:5000"
       - "127.0.0.1:3500:3500"
-    volumes:
-      - "consensus:/consensus"
-      - "./config:/config"
-      - "./config/jwt.hex:/jwt.hex"
     networks:
       - eth2network
 
@@ -137,6 +144,6 @@ networks:
     driver: bridge
 
 volumes:
-  l1data:
+  gethdir:
   l1keystore:
   consensus:
