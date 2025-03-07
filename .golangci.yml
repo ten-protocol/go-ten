@@ -33,12 +33,11 @@ linters:
 linters-settings:
   gofmt:
     simplify: true
-  govet:
-    exclude:
-      - core/genesis_alloc.go
 
 issues:
   exclude-rules:
+    - linters: [ govet ]
+      path: "core/genesis_alloc.go"
     - path: "vendor/.*"
     - path: crypto/bn256/cloudflare/optate.go
       linters:
