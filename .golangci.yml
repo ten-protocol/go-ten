@@ -36,7 +36,9 @@ linters-settings:
 
 issues:
   exclude-rules:
-    - path: "core/genesis_alloc.go"
+    - path: core/genesis_alloc.go
+      linters:
+        - govet
     - path: "vendor/.*"
     - path: crypto/bn256/cloudflare/optate.go
       linters:
