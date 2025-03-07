@@ -66,7 +66,7 @@ func TestL1IssueContractInteractWaitReceipt(t *testing.T) {
 
 	estimatedTx, err := ethadapter.SetTxGasPrice(context.Background(), ethClient, &types.LegacyTx{
 		Data: gethcommon.FromHex(storeContractBytecode),
-	}, l1Wallet.Address(), l1Wallet.GetNonceAndIncrement(), 0, testlog.Logger())
+	}, l1Wallet.Address(), l1Wallet.GetNonceAndIncrement(), 0, nil, testlog.Logger())
 	require.NoError(t, err)
 
 	signedTx, err := l1Wallet.SignTransaction(estimatedTx)
@@ -109,7 +109,7 @@ func TestL1IssueTxWaitReceipt(t *testing.T) {
 	estimatedTx, err := ethadapter.SetTxGasPrice(context.Background(), ethClient, &types.LegacyTx{
 		To:    &toAddr,
 		Value: big.NewInt(100),
-	}, l1Wallet.Address(), l1Wallet.GetNonceAndIncrement(), 0, testlog.Logger())
+	}, l1Wallet.Address(), l1Wallet.GetNonceAndIncrement(), 0, nil, testlog.Logger())
 	require.NoError(t, err)
 
 	signedTx, err := l1Wallet.SignTransaction(estimatedTx)

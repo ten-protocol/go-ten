@@ -107,6 +107,6 @@ func (cc *localContractCaller) CodeAt(_ context.Context, _ gethcommon.Address, _
 }
 
 func (cc *localContractCaller) CallContract(_ context.Context, call ethereum.CallMsg, _ *big.Int) ([]byte, error) {
-	ret, _, err := cc.evm.Call(vm.AccountRef(call.From), *call.To, call.Data, cc.maxGasForVisibility, uint256.NewInt(0))
+	ret, _, err := cc.evm.Call(call.From, *call.To, call.Data, cc.maxGasForVisibility, uint256.NewInt(0))
 	return ret, err
 }

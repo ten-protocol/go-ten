@@ -32,7 +32,7 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 	defer cli.Close()
 
 	// Check if the image exists locally
-	_, _, err = cli.ImageInspectWithRaw(context.Background(), image)
+	_, err = cli.ImageInspect(context.Background(), image)
 	if err != nil {
 		// unexpected error
 		if !client.IsErrNotFound(err) {

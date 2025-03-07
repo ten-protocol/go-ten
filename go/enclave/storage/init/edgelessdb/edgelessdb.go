@@ -282,7 +282,7 @@ func performHandshake(enclaveConfig *enclaveconfig.EnclaveConfig, edbCfg *Config
 	}
 	if debugMode {
 		unsealedFile, _ := os.Create(edbCredentialsFilepath + ".unsealed")
-		_, err = unsealedFile.WriteString(string(edbCredsJSON))
+		_, err = unsealedFile.WriteString(string(edbCredsJSON)) //nolint:mirror
 		if err != nil {
 			return nil, fmt.Errorf("failed to write unsealed credentials file when debug is enabled - %w", err)
 		}

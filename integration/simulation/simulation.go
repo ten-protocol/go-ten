@@ -458,7 +458,7 @@ func (s *Simulation) prefundL1Accounts() {
 		if err != nil {
 			testlog.Logger().Crit("failed to create deposit tx", log.ErrKey, err)
 		}
-		estimatedTx, err := ethadapter.SetTxGasPrice(s.ctx, ethClient, tx, tokenOwner.Address(), tokenOwner.GetNonceAndIncrement(), 0, testlog.Logger())
+		estimatedTx, err := ethadapter.SetTxGasPrice(s.ctx, ethClient, tx, tokenOwner.Address(), tokenOwner.GetNonceAndIncrement(), 0, nil, testlog.Logger())
 		if err != nil {
 			// ignore txs that are not able to be estimated/execute
 			testlog.Logger().Error("unable to estimate tx", log.ErrKey, err)
