@@ -105,7 +105,7 @@ func (s *setImportantContract) Verify(_ context.Context, network networktest.Net
 		return errors.Wrap(err, "failed to get network config")
 	}
 
-	if networkCfg.ImportantContracts == nil || len(networkCfg.ImportantContracts) == 0 {
+	if len(networkCfg.ImportantContracts) == 0 {
 		return errors.New("no important contracts set")
 	}
 	if addr, ok := networkCfg.ImportantContracts[s.contractKey]; !ok || addr != s.contractAddress {
