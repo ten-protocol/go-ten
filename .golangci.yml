@@ -38,6 +38,7 @@ issues:
   exclude-rules:
     - linters: [ govet ]
       path: "core/genesis_alloc.go"
+      except-path: ".*"  # Excludes govet warnings for this file
     - path: "vendor/.*"
     - path: crypto/bn256/cloudflare/optate.go
       linters:
