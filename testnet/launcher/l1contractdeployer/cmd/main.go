@@ -18,13 +18,13 @@ func main() {
 		),
 	)
 	if err != nil {
-		fmt.Println("unable to configure l1 contract deployer - %w", err)
+		fmt.Printf("unable to configure l1 contract deployer - %s\n", err)
 		os.Exit(1)
 	}
 
 	err = l1ContractDeployer.Start()
 	if err != nil {
-		fmt.Println("unable to start l1 contract deployer - %w", err)
+		fmt.Printf("unable to start l1 contract deployer - %s\n", err)
 		os.Exit(1)
 	}
 
