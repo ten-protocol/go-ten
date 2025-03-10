@@ -57,10 +57,9 @@ type guardianServiceLocator interface {
 // - if it is an active sequencer then the guardian will trigger batch/rollup creation
 // - guardian provides access to the enclave data and reports the enclave status for other services - acting as a gatekeeper
 type Guardian struct {
-	hostData          host.Identity
-	isActiveSequencer bool
-	state             *StateTracker // state machine that tracks our view of the enclave's state
-	enclaveClient     common.Enclave
+	hostData      host.Identity
+	state         *StateTracker // state machine that tracks our view of the enclave's state
+	enclaveClient common.Enclave
 
 	sl      guardianServiceLocator
 	storage storage.Storage
@@ -136,6 +135,12 @@ func (g *Guardian) Start() error {
 
 	go g.mainLoop()
 
+	if g.hostData.IsSequencer {
+		// if host is a sequencer then start the sequencer processes, but they will not do anything unless the enclave becomes an active sequencer
+		go g.periodicBatchProduction()
+		go g.periodicRollupProduction()
+	}
+
 	// subscribe for L1 and P2P data
 	txUnsub := g.sl.P2P().SubscribeForTx(g)
 
@@ -195,12 +200,13 @@ func (g *Guardian) GetEnclaveID() *common.EnclaveID {
 }
 
 func (g *Guardian) PromoteToActiveSequencer() error {
-	if g.isActiveSequencer {
+	if g.state.IsEnclaveActiveSequencer() {
 		// this shouldn't happen and shouldn't be an issue if it does, but good to have visibility on it
 		g.logger.Error("Unable to promote to active sequencer, already active")
 		return nil
 	}
-	if g.state.enclaveL2Head != nil && g.state.enclaveL2Head.Cmp(big.NewInt(0)) > 0 && !g.state.IsLive() {
+	l2Head := g.state.GetEnclaveL2Head()
+	if l2Head != nil && l2Head.Cmp(big.NewInt(0)) > 0 && !g.state.IsLive() {
 		// enclave has an L2 head so it's not just starting up, it can't be promoted to active sequencer until it is
 		// up-to-date with the L2 head according to the host's database.
 		return errors.New("cannot promote to active sequencer while behind the L2 head, it must finish syncing first")
@@ -209,8 +215,7 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 	if err != nil {
 		return errors.Wrap(err, "could not promote enclave to active sequencer")
 	}
-	g.isActiveSequencer = true
-	g.startSequencerProcesses()
+	g.state.OnPromoted()
 	return nil
 }
 
@@ -247,7 +252,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
 	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
-	if g.isActiveSequencer || !g.state.IsLive() {
+	if g.state.IsEnclaveActiveSequencer() || !g.state.IsLive() {
 		return // ignore batches until we're up-to-date
 	}
 	// todo - @matt - does it make sense to use a timeout context?
@@ -442,7 +447,7 @@ func (g *Guardian) catchupWithL1() error {
 				g.logger.Error("should not happen. Chain fork cannot be calculated because there are missing blocks")
 			}
 			if errors.Is(err, l1.ErrNoNextBlock) {
-				if g.state.hostL1Head == gethutil.EmptyHash {
+				if g.state.GetHostL1Head() == gethutil.EmptyHash {
 					return fmt.Errorf("no L1 blocks found in repository")
 				}
 				return nil // we are up-to-date
@@ -460,7 +465,7 @@ func (g *Guardian) catchupWithL1() error {
 func (g *Guardian) catchupWithL2() error {
 	// while we are behind the L2 head and still running:
 	for g.running.Load() && g.state.GetStatus() == L2Catchup {
-		if g.hostData.IsSequencer && g.isActiveSequencer {
+		if g.hostData.IsSequencer && g.state.IsEnclaveActiveSequencer() {
 			return errors.New("l2 catchup is not supported for active sequencer")
 		}
 		// request the next batch by sequence number (based on what the enclave has been fed so far)
@@ -612,6 +617,10 @@ func (g *Guardian) periodicBatchProduction() {
 		}
 		select {
 		case <-batchProdTicker.C:
+			if !g.state.IsEnclaveActiveSequencer() {
+				// only sequencers produce batches
+				continue
+			}
 			if !g.state.InSyncWithL1() {
 				// if we're behind the L1, we don't want to produce batches
 				g.logger.Debug("Skipping batch production because L1 is not up to date")
@@ -646,6 +655,10 @@ func (g *Guardian) periodicRollupProduction() {
 	for {
 		select {
 		case <-rollupCheckTicker.C:
+			if !g.state.IsEnclaveActiveSequencer() {
+				// only sequencers produce batches
+				continue
+			}
 			if !g.state.IsLive() {
 				// if we're behind the L1, we don't want to produce rollups
 				g.logger.Debug("Skipping rollup production because L1 is not up to date", "state", g.state)
@@ -801,11 +814,6 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 		fromBatch++
 	}
 	return fromBatch, nil
-}
-
-func (g *Guardian) startSequencerProcesses() {
-	go g.periodicBatchProduction()
-	go g.periodicRollupProduction()
 }
 
 // evictEnclaveFromHAPool evicts a failing enclave from the HA pool if appropriate
