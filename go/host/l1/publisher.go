@@ -80,8 +80,8 @@ func NewL1Publisher(
 		blobResolver:              blobResolver,
 		hostStopper:               hostStopper,
 		logger:                    logger,
-		maxWaitForL1Receipt:       maxWaitForL1Receipt,
-		retryIntervalForL1Receipt: retryIntervalForL1Receipt,
+		maxWaitForL1Receipt:       4 * time.Minute,
+		retryIntervalForL1Receipt: 1 * time.Second,
 		storage:                   storage,
 
 		importantContractAddresses: map[string]gethcommon.Address{},
