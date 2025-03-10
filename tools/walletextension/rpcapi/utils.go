@@ -135,7 +135,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 				err := rpcClient.CallContext(timeoutContext, &result, method, adjustedArgs...)
 				// return a friendly error to the user
 				if err != nil && errors.Is(err, context.DeadlineExceeded) {
-					return nil, fmt.Errorf(serverBusy)
+					return nil, errors.New(serverBusy)
 				}
 				return result, err
 			})

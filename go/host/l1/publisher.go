@@ -431,7 +431,7 @@ func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum i
 	// Wait for receipt
 	receipt, err := p.waitForReceipt(signedTx)
 	if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
-		return pricedTx, fmt.Errorf(signedTx.Hash().Hex()) // Return hash for MaxRetriesError
+		return pricedTx, fmt.Errorf("receipt not received for tx: %s ", signedTx.Hash().Hex()) // Return hash for MaxRetriesError
 	}
 
 	p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),

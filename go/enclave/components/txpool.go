@@ -228,7 +228,7 @@ func (t *TxPool) add(transaction *common.L2Tx) error {
 	}
 
 	if len(strErrors) > 0 {
-		return fmt.Errorf(strings.Join(strErrors, "; "))
+		return fmt.Errorf(strings.Join(strErrors, "; ")) // nolint
 	}
 	return nil
 }
