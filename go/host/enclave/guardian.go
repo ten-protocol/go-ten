@@ -202,9 +202,8 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 		g.logger.Error("Unable to promote to active sequencer, already active")
 		return nil
 	}
-	if state.Enclave.L2Head != nil && state.Enclave.L2Head.Cmp(big.NewInt(1)) > 0 && !state.IsLive() {
-		// enclave has an L2 head so it's not just starting up, it can't be promoted to active sequencer until it is
-		// up-to-date with the L2 head according to the host's database.
+	if state.Enclave.L2Head != nil && state.Enclave.L2Head.Cmp(big.NewInt(2)) > 0 && !state.IsLive() {
+		// network has already started up (L2 head is past the genesis batch) and we are not live, so we cannot promote
 		return errors.New("cannot promote to active sequencer while behind the L2 head, it must finish syncing first")
 	}
 	err := g.enclaveClient.MakeActive()
