@@ -1007,6 +1007,7 @@ func (s *storageImpl) GetSequencerEnclaveIDs(ctx context.Context) ([]common.Encl
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch sequencer IDs from database. Cause: %w", err)
 		}
+		s.logger.Info("fetched sequencer IDs from database")
 		return sequencerIDs, nil
 	})
 	if err != nil {
