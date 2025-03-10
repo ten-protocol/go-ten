@@ -57,6 +57,7 @@ type StateTracker struct {
 	enclaveStatusCode common.StatusCode // this is the status code reported by the enclave (Running/AwaitingSecret/Unavailable)
 	enclaveL1Head     gethcommon.Hash
 	enclaveL2Head     *big.Int
+	isActiveSequencer bool
 
 	// latest seen heads of L1 and L2 chains from external sources
 	hostL1Head gethcommon.Hash
@@ -66,13 +67,37 @@ type StateTracker struct {
 	logger gethlog.Logger
 }
 
-func NewStateTracker(logger gethlog.Logger) *StateTracker {
-	return &StateTracker{status: Disconnected, m: &sync.RWMutex{}, logger: logger}
+// StateSnapshot is a snapshot of the state of the enclave, used to ensure a consistent, thread-safe view of the state
+type StateSnapshot struct {
+	Status  Status
+	Enclave struct {
+		StatusCode        common.StatusCode
+		L1Head            gethcommon.Hash
+		L2Head            *big.Int
+		IsActiveSequencer bool
+	}
+	Host struct {
+		L1Head gethcommon.Hash
+		L2Head *big.Int
+	}
 }
 
-func (s *StateTracker) String() string {
-	return fmt.Sprintf("StateTracker: [%s] enclave(StatusCode=%d, L1Head=%s, L2Head=%s), Host(L1Head=%s, L2Head=%s)",
-		s.status, s.enclaveStatusCode, s.enclaveL1Head, s.enclaveL2Head, s.hostL1Head, s.hostL2Head)
+// InSyncWithL1 returns true if the enclave is up-to-date with L1 data so guardian can process L1 blocks as they arrive
+func (s StateSnapshot) InSyncWithL1() bool {
+	return s.Status == Live || s.Status == L2Catchup
+}
+
+func (s StateSnapshot) IsLive() bool {
+	return s.Status == Live
+}
+
+func (s StateSnapshot) String() string {
+	return fmt.Sprintf("StateSnapshot: [%s] enclave(StatusCode=%d, L1Head=%s, L2Head=%s IsActive=%v), Host(L1Head=%s, L2Head=%s)",
+		s.Status, s.Enclave.StatusCode, s.Enclave.L1Head, s.Enclave.L2Head, s.Enclave.IsActiveSequencer, s.Host.L1Head, s.Host.L2Head)
+}
+
+func NewStateTracker(logger gethlog.Logger) *StateTracker {
+	return &StateTracker{status: Disconnected, m: &sync.RWMutex{}, logger: logger}
 }
 
 func (s *StateTracker) GetStatus() Status {
@@ -81,11 +106,25 @@ func (s *StateTracker) GetStatus() Status {
 	return s.status
 }
 
+func (s *StateTracker) Snapshot() StateSnapshot {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	var snap StateSnapshot
+	snap.Status = s.status
+	snap.Enclave.StatusCode = s.enclaveStatusCode
+	snap.Enclave.L1Head = s.enclaveL1Head
+	snap.Enclave.L2Head = s.enclaveL2Head
+	snap.Enclave.IsActiveSequencer = s.isActiveSequencer
+	snap.Host.L1Head = s.hostL1Head
+	snap.Host.L2Head = s.hostL2Head
+	return snap
+}
+
 func (s *StateTracker) OnProcessedBlock(enclL1Head gethcommon.Hash) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.enclaveL1Head = enclL1Head
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onProcessedBlock", s.calculateStatus())
 }
 
 func (s *StateTracker) OnReceivedBlock(l1Head gethcommon.Hash) {
@@ -98,7 +137,7 @@ func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.enclaveL2Head = enclL2HeadSeqNo
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onProcessedBatch", s.calculateStatus())
 }
 
 func (s *StateTracker) OnReceivedBatch(l2HeadSeqNo *big.Int) {
@@ -113,7 +152,7 @@ func (s *StateTracker) OnSecretProvided() {
 	if s.enclaveStatusCode == common.AwaitingSecret {
 		s.enclaveStatusCode = common.Running
 	}
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onSecretProvided", s.calculateStatus())
 }
 
 func (s *StateTracker) OnEnclaveStatus(es common.Status) {
@@ -125,18 +164,26 @@ func (s *StateTracker) OnEnclaveStatus(es common.Status) {
 		s.enclaveL1Head = es.L1Head
 	}
 	s.enclaveL2Head = es.L2Head
-
-	s.setStatus(s.calculateStatus())
+	if s.isActiveSequencer != es.IsActiveSequencer {
+		if es.IsActiveSequencer {
+			s.logger.Info("Enclave is now active sequencer")
+		} else {
+			s.logger.Info("Enclave is no longer active sequencer")
+		}
+	}
+	s.isActiveSequencer = es.IsActiveSequencer
+	s.setStatus("onEnclaveStatus", s.calculateStatus())
 }
 
 // OnDisconnected is called if the enclave is unreachable/not returning a valid Status
 func (s *StateTracker) OnDisconnected() {
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.setStatus(Disconnected)
+	s.setStatus("onDisconnect", Disconnected)
 }
 
 // when enclave is operational, this method will calculate the status based on comparison of current chain heads with enclave heads
+// for consistency, this should be called within a lock
 func (s *StateTracker) calculateStatus() Status {
 	switch s.enclaveStatusCode {
 	case common.AwaitingSecret:
@@ -158,37 +205,17 @@ func (s *StateTracker) calculateStatus() Status {
 	}
 }
 
-// InSyncWithL1 returns true if the enclave is up-to-date with L1 data so guardian can process L1 blocks as they arrive
-func (s *StateTracker) InSyncWithL1() bool {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	return s.status == Live || s.status == L2Catchup
-}
-
-func (s *StateTracker) IsLive() bool {
-	return s.status == Live
-}
-
-func (s *StateTracker) GetEnclaveL1Head() gethcommon.Hash {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	return s.enclaveL1Head
-}
-
-func (s *StateTracker) GetEnclaveL2Head() *big.Int {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if s.enclaveL2Head == nil {
-		return nil
-	}
-	return big.NewInt(0).SetBytes(s.enclaveL2Head.Bytes())
-}
-
 // this must be called from within write-lock
-func (s *StateTracker) setStatus(newStatus Status) {
+func (s *StateTracker) setStatus(event string, newStatus Status) {
 	if s.status == newStatus {
 		return
 	}
-	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus), "state", s)
+	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s] following %s", s.status, newStatus, event), "state", s)
 	s.status = newStatus
+}
+
+func (s *StateTracker) SequencerPromoted() {
+	s.m.Lock()
+	defer s.m.Unlock()
+	s.isActiveSequencer = true
 }
