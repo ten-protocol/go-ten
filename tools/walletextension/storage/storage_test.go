@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"crypto/rand"
 	"errors"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
 	"testing"
+
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
