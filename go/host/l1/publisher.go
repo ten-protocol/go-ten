@@ -276,7 +276,8 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult, enclaveID comm
 
 	_, blobHashes, err := ethadapter.MakeSidecar(result.Blobs, ethadapter.KZGToVersionedHasher{})
 	if err != nil {
-		p.logger.Crit("could not make sidecar.", log.ErrKey, err)
+		p.logger.Error("could not make sidecar.", log.ErrKey, err)
+		return
 	}
 
 	if !p.VerifyRollupSignature(extRollup, blobHashes[0], result.Signature, enclaveID) {
