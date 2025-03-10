@@ -197,6 +197,7 @@ func (s *Simulation) bridgeFundingToTen() {
 		panic(err)
 	}
 
+	transactions := make([]*types.Transaction, 0, len(wallets))
 	for idx, w := range wallets {
 		opts, err := bind.NewKeyedTransactorWithChainID(w.PrivateKey(), w.ChainID())
 		if err != nil {
@@ -204,27 +205,28 @@ func (s *Simulation) bridgeFundingToTen() {
 		}
 		opts.Value = value
 
-		_, err = busCtr.SendValueToL2(opts, receivers[idx], value)
+		tx, err := busCtr.SendValueToL2(opts, receivers[idx], value)
 		if err != nil {
 			panic(err)
 		}
+		transactions = append(transactions, tx)
 	}
 
-	time.Sleep(15 * time.Second)
-	// todo - fix the wait group, for whatever reason it does not find a receipt...
-	/*wg := sync.WaitGroup{}
+	wg := sync.WaitGroup{}
 	for _, tx := range transactions {
 		wg.Add(1)
 		transaction := tx
 		go func() {
 			defer wg.Done()
-			err := testcommon.AwaitReceiptEth(s.ctx, s.RPCHandles.RndEthClient(), transaction.Hash(), 20*time.Second)
+			client := s.RPCHandles.RndEthClient()
+			_, err := testcommon.AwaitReceiptEth(s.ctx, client.EthClient(), transaction.Hash(), 20*time.Second)
 			if err != nil {
+				fmt.Println("Error awaiting receipt", err)
 				panic(err)
 			}
 		}()
 	}
-	wg.Wait()*/
+	wg.Wait()
 }
 
 // We subscribe to logs on every client for every wallet.
@@ -323,72 +325,66 @@ func (s *Simulation) deployPublicCallbacksTest() {
 func (s *Simulation) deployTenZen() {
 	testlog.Logger().Info("Deploying ZenBase contract")
 
-	wg := sync.WaitGroup{}
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		auth, err := bind.NewKeyedTransactorWithChainID(s.Params.Wallets.L2FaucetWallet.PrivateKey(), s.Params.Wallets.L2FaucetWallet.ChainID())
+	auth, err := bind.NewKeyedTransactorWithChainID(s.Params.Wallets.L2FaucetWallet.PrivateKey(), s.Params.Wallets.L2FaucetWallet.ChainID())
+	if err != nil {
+		panic(fmt.Errorf("failed to create transactor in order to bootstrap sim test: %w", err))
+	}
+
+	// Node one, because random client might yield the no p2p node, which breaks the timings
+	rpcClient := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
+	var cfg *common.TenNetworkInfo
+	for cfg == nil || cfg.TransactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
+		cfg, err = rpcClient.GetConfig()
 		if err != nil {
-			panic(fmt.Errorf("failed to create transactor in order to bootstrap sim test: %w", err))
+			s.TxInjector.logger.Info("failed to get config", log.ErrKey, err)
 		}
+		time.Sleep(2 * time.Second)
+	}
 
-		// Node one, because random client might yield the no p2p node, which breaks the timings
-		rpcClient := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
-		var cfg *common.TenNetworkInfo
-		for cfg == nil || cfg.TransactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
-			cfg, err = rpcClient.GetConfig()
-			if err != nil {
-				s.TxInjector.logger.Info("failed to get config", log.ErrKey, err)
-			}
-			time.Sleep(2 * time.Second)
-		}
-
-		// Wait for balance with retry
-		err = retry.Do(func() error {
-			balance, err := rpcClient.BalanceAt(context.Background(), nil)
-			if err != nil {
-				return fmt.Errorf("failed to get balance: %w", err)
-			}
-			if balance.Cmp(big.NewInt(0)) <= 0 {
-				return fmt.Errorf("waiting for positive balance")
-			}
-			return nil
-		}, retry.NewTimeoutStrategy(1*time.Minute, 2*time.Second))
+	// Wait for balance with retry
+	err = retry.Do(func() error {
+		balance, err := rpcClient.BalanceAt(context.Background(), nil)
 		if err != nil {
-			panic(fmt.Errorf("failed to get positive balance after timeout: %w", err))
+			return fmt.Errorf("failed to get balance: %w", err)
 		}
+		if balance.Cmp(big.NewInt(0)) <= 0 {
+			return fmt.Errorf("waiting for positive balance")
+		}
+		return nil
+	}, retry.NewTimeoutStrategy(1*time.Minute, 2*time.Second))
+	if err != nil {
+		panic(fmt.Errorf("failed to get positive balance after timeout: %w", err))
+	}
 
-		owner := s.Params.Wallets.L2FaucetWallet
-		ownerRpc := s.RPCHandles.TenWalletClient(owner.Address(), 1)
-		auth.GasPrice = big.NewInt(0).SetUint64(gethparams.InitialBaseFee)
-		auth.Context = context.Background()
-		auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
+	owner := s.Params.Wallets.L2FaucetWallet
+	ownerRpc := s.RPCHandles.TenWalletClient(owner.Address(), 1)
+	auth.GasPrice = big.NewInt(0).SetUint64(gethparams.InitialBaseFee)
+	auth.Context = context.Background()
+	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
 
-		zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, ownerRpc, cfg.TransactionPostProcessorAddress) //, "ZenBase", "ZEN")
-		if err != nil {
-			panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
-		}
-		if receipt, err := bind.WaitMined(s.ctx, s.RPCHandles.TenWalletRndClient(owner), signedTx); err != nil || receipt.Status != types.ReceiptStatusSuccessful {
-			panic(fmt.Errorf("failed to deploy zen base contract"))
-		}
-		s.ZenBaseAddress = zenBaseAddress
+	zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, ownerRpc, cfg.TransactionPostProcessorAddress) //, "ZenBase", "ZEN")
+	if err != nil {
+		panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
+	}
+	if receipt, err := bind.WaitMined(s.ctx, s.RPCHandles.TenWalletRndClient(owner), signedTx); err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+		panic(fmt.Errorf("failed to deploy zen base contract"))
+	}
+	s.ZenBaseAddress = zenBaseAddress
 
-		transactionPostProcessor, err := TransactionPostProcessor.NewTransactionPostProcessor(cfg.TransactionPostProcessorAddress, ownerRpc)
-		if err != nil {
-			panic(fmt.Errorf("failed to deploy transactions analyzer contract: %w", err))
-		}
+	transactionPostProcessor, err := TransactionPostProcessor.NewTransactionPostProcessor(cfg.TransactionPostProcessorAddress, ownerRpc)
+	if err != nil {
+		panic(fmt.Errorf("failed to deploy transactions analyzer contract: %w", err))
+	}
 
-		auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
-		tx, err := transactionPostProcessor.AddOnBlockEndCallback(auth, zenBaseAddress)
-		if err != nil {
-			panic(fmt.Errorf("failed to add on block end callback: %w", err))
-		}
-		receipt, err := bind.WaitMined(s.ctx, ownerRpc, tx)
-		if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
-			panic(fmt.Errorf("failed to add on block end callback"))
-		}
-	}()
-	wg.Wait()
+	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
+	tx, err := transactionPostProcessor.AddOnBlockEndCallback(auth, zenBaseAddress)
+	if err != nil {
+		panic(fmt.Errorf("failed to add on block end callback: %w", err))
+	}
+	receipt, err := bind.WaitMined(s.ctx, ownerRpc, tx)
+	if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+		panic(fmt.Errorf("failed to add on block end callback"))
+	}
 }
 
 // This deploys an ERC20 contract on Ten, which is used for token arithmetic.
