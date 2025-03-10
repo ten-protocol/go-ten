@@ -618,7 +618,7 @@ func (g *Guardian) periodicBatchProduction() {
 		select {
 		case <-batchProdTicker.C:
 			if !g.state.IsEnclaveActiveSequencer() {
-				// only sequencers produce batches
+				// only active sequencer produces batches
 				continue
 			}
 			if !g.state.InSyncWithL1() {
@@ -656,7 +656,7 @@ func (g *Guardian) periodicRollupProduction() {
 		select {
 		case <-rollupCheckTicker.C:
 			if !g.state.IsEnclaveActiveSequencer() {
-				// only sequencers produce batches
+				// only active sequencer produces rollups
 				continue
 			}
 			if !g.state.IsLive() {

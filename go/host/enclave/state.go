@@ -77,7 +77,7 @@ func (s *StateTracker) String() string {
 	return s.unsafeToString()
 }
 
-// unsafeToString is a helper method to print the state without locking (it is used when calling from within a lock)
+// unsafeToString prints the current state without any locking (it is used internally, when calling from within a lock)
 func (s *StateTracker) unsafeToString() string {
 	return fmt.Sprintf("StateTracker: [%s] enclave(StatusCode=%d, L1Head=%s, L2Head=%s, IsSeq=%v), Host(L1Head=%s, L2Head=%s)",
 		s.status, s.enclaveStatusCode, s.enclaveL1Head, s.enclaveL2Head, s.enclaveIsSequencer, s.hostL1Head, s.hostL2Head)
