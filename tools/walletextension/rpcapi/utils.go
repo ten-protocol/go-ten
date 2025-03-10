@@ -208,7 +208,11 @@ func extractUserForRequest(ctx context.Context, w *services.Services) (*common.G
 	}
 	user, err := w.Storage.GetUser(userID)
 	if err != nil {
-		return nil, fmt.Errorf("authentication failed: %w", err)
+		// Check if it's a "not found" error from CosmosDB
+		if strings.Contains(err.Error(), "NotFound") {
+			return nil, fmt.Errorf("authentication failed: user not found")
+		}
+		return nil, fmt.Errorf("authentication failed: %v", err)
 	}
 	return user, nil
 }
