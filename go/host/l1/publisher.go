@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"reflect"
 	"sync"
 	"time"
 
@@ -398,7 +397,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 
 	for !p.hostStopper.IsStopping() && retries < maxRetries {
 		pricedTx, err := p.executeTransaction(tx, nonce, retries)
-		if pricedTx == nil || reflect.ValueOf(pricedTx).IsNil() {
+		if pricedTx == nil {
 			return fmt.Errorf("could not price transaction")
 		}
 		if err != nil {
