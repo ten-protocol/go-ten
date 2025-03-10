@@ -192,6 +192,9 @@ func (c *CosmosDB) getUserDB(userID []byte) (userWithETag, error) {
 
 	itemResponse, err := c.usersContainer.ReadItem(ctx, partitionKey, keyString, nil)
 	if err != nil {
+		if strings.Contains(err.Error(), "404") {
+			return userWithETag{}, dbcommon.ErrUserNotFound
+		}
 		return userWithETag{}, err
 	}
 
