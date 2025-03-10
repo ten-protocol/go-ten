@@ -100,11 +100,6 @@ func NewStateTracker(logger gethlog.Logger) *StateTracker {
 	return &StateTracker{status: Disconnected, m: &sync.RWMutex{}, logger: logger}
 }
 
-func (s *StateTracker) String() string {
-	return fmt.Sprintf("StateTracker: [%s] enclave(StatusCode=%d, L1Head=%s, L2Head=%s), Host(L1Head=%s, L2Head=%s)",
-		s.status, s.enclaveStatusCode, s.enclaveL1Head, s.enclaveL2Head, s.hostL1Head, s.hostL2Head)
-}
-
 func (s *StateTracker) GetStatus() Status {
 	s.m.RLock()
 	defer s.m.RUnlock()
@@ -129,7 +124,7 @@ func (s *StateTracker) OnProcessedBlock(enclL1Head gethcommon.Hash) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.enclaveL1Head = enclL1Head
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onProcessedBlock", s.calculateStatus())
 }
 
 func (s *StateTracker) OnReceivedBlock(l1Head gethcommon.Hash) {
@@ -142,7 +137,7 @@ func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.enclaveL2Head = enclL2HeadSeqNo
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onProcessedBatch", s.calculateStatus())
 }
 
 func (s *StateTracker) OnReceivedBatch(l2HeadSeqNo *big.Int) {
@@ -157,7 +152,7 @@ func (s *StateTracker) OnSecretProvided() {
 	if s.enclaveStatusCode == common.AwaitingSecret {
 		s.enclaveStatusCode = common.Running
 	}
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onSecretProvided", s.calculateStatus())
 }
 
 func (s *StateTracker) OnEnclaveStatus(es common.Status) {
@@ -177,14 +172,14 @@ func (s *StateTracker) OnEnclaveStatus(es common.Status) {
 		}
 	}
 	s.isActiveSequencer = es.IsActiveSequencer
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onEnclaveStatus", s.calculateStatus())
 }
 
 // OnDisconnected is called if the enclave is unreachable/not returning a valid Status
 func (s *StateTracker) OnDisconnected() {
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.setStatus(Disconnected)
+	s.setStatus("onDisconnect", Disconnected)
 }
 
 // when enclave is operational, this method will calculate the status based on comparison of current chain heads with enclave heads
@@ -211,11 +206,11 @@ func (s *StateTracker) calculateStatus() Status {
 }
 
 // this must be called from within write-lock
-func (s *StateTracker) setStatus(newStatus Status) {
+func (s *StateTracker) setStatus(event string, newStatus Status) {
 	if s.status == newStatus {
 		return
 	}
-	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus), "state", s)
+	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s] following %s", s.status, newStatus, event), "state", s)
 	s.status = newStatus
 }
 
