@@ -1,6 +1,7 @@
 package ratelimiter
 
 import (
+	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -255,6 +256,6 @@ func (rl *RateLimiter) logRateLimitedStats() {
 		if math.IsNaN(rateLimitedPercentage) {
 			rateLimitedPercentage = 0
 		}
-		rl.logger.Info("Total requests: %d, Rate-limited requests: %d (%.4f%%)", totalRequests, rateLimitedRequests, rateLimitedPercentage)
+		rl.logger.Info(fmt.Sprintf("Total requests: %d, Rate-limited requests: %d (%.4f%%)", totalRequests, rateLimitedRequests, rateLimitedPercentage))
 	}
 }
