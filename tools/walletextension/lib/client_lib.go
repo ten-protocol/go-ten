@@ -44,7 +44,7 @@ func (o *TGLib) Join() error {
 	// todo move this to stdlib
 	statusCode, userID, err := fasthttp.Get(nil, fmt.Sprintf("%s/v1/join/", o.httpURL))
 	if err != nil || statusCode != 200 {
-		return fmt.Errorf(fmt.Sprintf("Failed to get userID. Status code: %d, err: %s", statusCode, err))
+		return fmt.Errorf("failed to get userID. Status code: %d, err: %s", statusCode, err)
 	}
 	o.userID = hexutils.HexToBytes(string(userID))
 	return nil
