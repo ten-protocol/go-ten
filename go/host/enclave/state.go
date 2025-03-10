@@ -214,7 +214,7 @@ func (s *StateTracker) GetEnclaveL2Head() *big.Int {
 	return big.NewInt(0).SetBytes(s.enclaveL2Head.Bytes())
 }
 
-// this must be called from within write-lock
+// this must be called from within write-lock, event is just for logging purposes to see cause of status change when debugging
 func (s *StateTracker) setStatus(event string, newStatus Status) {
 	if s.status == newStatus {
 		return
