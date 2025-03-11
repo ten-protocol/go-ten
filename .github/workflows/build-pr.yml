@@ -21,8 +21,8 @@ jobs:
         with:
           go-version: 1.23.5
 
-      # Install GLIBC 2.41 in a custom location
-      - name: Install GLIBC 2.41
+      # Install GLIBC 2.35 in a custom location
+      - name: Install GLIBC 2.35
         run: |
           # Create a temporary directory for building GLIBC
           mkdir -p $HOME/glibc_install
@@ -32,16 +32,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential wget bison python3 make
           
-          # Download and extract GLIBC 2.41 source
-          wget https://ftp.gnu.org/gnu/glibc/glibc-2.41.tar.xz
-          tar -xf glibc-2.41.tar.xz
+          # Download and extract GLIBC 2.35 source
+          wget https://ftp.gnu.org/gnu/glibc/glibc-2.35.tar.xz
+          tar -xf glibc-2.35.tar.xz
           
           # Build GLIBC in a separate directory
           mkdir -p glibc-build
           cd glibc-build
           
           # Configure with custom prefix to avoid replacing system GLIBC
-          ../glibc-2.41/configure --prefix=$HOME/glibc_install
+          ../glibc-2.35/configure --prefix=$HOME/glibc_install
           
           # Build and install
           make -j$(nproc)
@@ -53,7 +53,7 @@ jobs:
           # Verify the installed version
           $HOME/glibc_install/lib/libc.so.6 --version
           
-          echo "GLIBC 2.41 installed successfully to $HOME/glibc_install"
+          echo "GLIBC 2.35 installed successfully to $HOME/glibc_install"
 
       # Set the initial build number environment variable
       - name: Set Build Number
