@@ -23,10 +23,11 @@ type StatusCode int
 // Status represents the enclave's current state - whether the enclave is healthy and ready to process requests, as well
 // as its latest known heads for the L1 and L2 chains and enclave ID derived from the public key
 type Status struct {
-	StatusCode StatusCode
-	L1Head     gethcommon.Hash
-	L2Head     *big.Int
-	EnclaveID  EnclaveID
+	StatusCode        StatusCode
+	L1Head            gethcommon.Hash
+	L2Head            *big.Int
+	EnclaveID         EnclaveID
+	IsActiveSequencer bool
 }
 
 type TxAndReceiptAndBlobs struct {
@@ -43,9 +44,6 @@ const (
 
 // EnclaveInit defines methods for initializing and managing the state of an enclave.
 type EnclaveInit interface {
-	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
-	Status(context.Context) (Status, SystemError)
-
 	// Attestation - Produces an attestation report which will be used to request the shared secret from another enclave.
 	Attestation(context.Context) (*AttestationReport, SystemError)
 
@@ -66,6 +64,8 @@ type EnclaveInit interface {
 type EnclaveAdmin interface {
 	// MakeActive - backup sequencer enclave can become active at the command of the host
 	MakeActive() SystemError
+	// Status checks whether the enclave is ready to process requests - only implemented by the RPC layer
+	Status(context.Context) (Status, SystemError)
 
 	// SubmitL1Block - Used for the host to submit L1 pre-processed blocks to the enclave, these may be:
 	//  a. historic block - if the enclave is behind and in the process of catching up with the L1 state

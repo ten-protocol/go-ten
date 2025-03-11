@@ -146,7 +146,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status(ctx context.Context) (common.Status, common.SystemError) {
-	return e.initAPI.Status(ctx)
+	return e.adminAPI.Status(ctx)
 }
 
 func (e *enclaveImpl) Attestation(ctx context.Context) (*common.AttestationReport, common.SystemError) {
