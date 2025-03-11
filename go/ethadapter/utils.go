@@ -80,7 +80,8 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		if head.ExcessBlobGas == nil {
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
-		blobBaseFee := eip4844.CalcBlobFee(*head.ExcessBlobGas)
+		// todo pass in the L1 chain config
+		blobBaseFee := eip4844.CalcBlobFee(params.SepoliaChainConfig, head)
 		blobMultiplier := calculateRetryMultiplier(_blobPriceMultiplier, retryNumber)
 		blobFeeCap := new(uint256.Int).Mul(
 			uint256.MustFromBig(blobBaseFee),
