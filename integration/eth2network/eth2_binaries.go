@@ -45,7 +45,7 @@ func EnsureBinariesExist() (string, error) {
 
 	var wg sync.WaitGroup
 	prysmaticURL := fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/", _prysmVersion)
-	gethURL := fmt.Sprintf("https://gethstore.blob.core.windows.net/builds")
+	gethURL := "https://gethstore.blob.core.windows.net/builds"
 	wg.Add(4)
 	go func() {
 		defer wg.Done()
