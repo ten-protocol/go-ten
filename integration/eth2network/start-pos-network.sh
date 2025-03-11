@@ -135,7 +135,7 @@ validator_pid=$!
 echo "VALIDATOR PID $validator_pid"
 
 # Run go-ethereum
-${GETH_BINARY} --http \
+CGO_ENABLED=0 ${GETH_BINARY} --http \
        --http.api eth,net,web3,debug \
        --http.addr="0.0.0.0" \
        --http.port="${GETH_HTTP_PORT}" \
