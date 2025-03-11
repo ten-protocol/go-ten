@@ -5,6 +5,8 @@
 #
 # This script uses GitHub Environments for variables (vars) and secrets - these are configured on GitHub and
 #  the environments match the input.testnet_type options
+#
+# To deploy sepolia the user must type 'confirm' in the confirmation field
 
 name: '[M] Deploy Testnet L2'
 run-name: '[M] Deploy Testnet L2 ( ${{ github.event.inputs.testnet_type }} )'
@@ -25,6 +27,10 @@ on:
         required: true
         default: 3
         type: number
+      confirmation:
+          description: 'Type "confirm" if deploying sepolia'
+          required: false
+          type: string
 
 jobs:
   build:
@@ -40,6 +46,14 @@ jobs:
 
 
     steps:
+      - name: 'Check confirmation'
+        # if env is sepolia then confirmation field needs to say 'confirm'
+        run: |
+          if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+            echo "Confirmation field must say 'confirm' to deploy sepolia to avoid accidental deployments"
+            exit 1
+          fi
+
       - name: 'Print GitHub variables'
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
         run: |
