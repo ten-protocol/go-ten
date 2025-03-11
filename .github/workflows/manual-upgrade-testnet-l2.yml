@@ -10,6 +10,8 @@
 #
 # This script uses GitHub Environments for variables (vars) and secrets - these are configured on GitHub and
 #  the environments match the input.testnet_type options
+#
+# To upgrade sepolia the user must type 'confirm' in the confirmation field
 
 name: '[M] Upgrade Testnet L2'
 run-name: '[M] Upgrade Testnet L2 ( ${{ github.event.inputs.testnet_type }} )'
@@ -32,6 +34,10 @@ on:
         required: true
         default: 3
         type: number
+      confirmation:
+        description: 'Type "confirm" if upgrading sepolia'
+        required: false
+        type: string
 
 jobs:
   build:
@@ -43,6 +49,14 @@ jobs:
       VM_BUILD_NUMBER: ${{ steps.outputVars.outputs.VM_BUILD_NUMBER }}
 
     steps:
+      - name: 'Check confirmation'
+        # if env is sepolia then confirmation field needs to say 'confirm'
+        run: |
+          if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+            echo "Confirmation field must say 'confirm' to upgrade sepolia to avoid accidental upgrades"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-go@v5
