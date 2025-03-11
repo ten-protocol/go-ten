@@ -14,12 +14,46 @@ on:
 jobs:
   build:
     runs-on: self-hosted
-
-    container:
-      image: golang:1.23.5-bullseye
-
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.5
+
+      # Install GLIBC 2.41 in a custom location
+      - name: Install GLIBC 2.41
+        run: |
+          # Create a temporary directory for building GLIBC
+          mkdir -p $HOME/glibc_install
+          cd $HOME
+          
+          # Install build dependencies
+          sudo apt-get update
+          sudo apt-get install -y build-essential wget bison python3 make
+          
+          # Download and extract GLIBC 2.41 source
+          wget https://ftp.gnu.org/gnu/glibc/glibc-2.41.tar.xz
+          tar -xf glibc-2.41.tar.xz
+          
+          # Build GLIBC in a separate directory
+          mkdir -p glibc-build
+          cd glibc-build
+          
+          # Configure with custom prefix to avoid replacing system GLIBC
+          ../glibc-2.41/configure --prefix=$HOME/glibc_install
+          
+          # Build and install
+          make -j$(nproc)
+          make install
+          
+          # Set environment variables to use the new GLIBC
+          echo "LD_LIBRARY_PATH=$HOME/glibc_install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          
+          # Verify the installed version
+          $HOME/glibc_install/lib/libc.so.6 --version
+          
+          echo "GLIBC 2.41 installed successfully to $HOME/glibc_install"
 
       # Set the initial build number environment variable
       - name: Set Build Number

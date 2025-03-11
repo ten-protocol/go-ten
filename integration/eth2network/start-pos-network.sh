@@ -75,6 +75,35 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+if [ -f "$GETH_BINARY" ]; then
+  # Check if we need to patch the binary (you can skip this check if you know it needs patching)
+  if ldd "$GETH_BINARY" 2>&1 | grep -q 'GLIBC_2.32'; then
+    echo "Detected GLIBC dependency issue in geth binary, attempting to patch..."
+
+    # Install patchelf if not already installed
+    which patchelf > /dev/null || {
+      echo "Installing patchelf..."
+      sudo apt-get update && sudo apt-get install -y patchelf
+    }
+
+    # Get the system's current GLIBC
+    SYSTEM_GLIBC=$(ldd --version | head -n 1 | grep -oP '[\d\.]+$')
+    echo "Current system GLIBC version: $SYSTEM_GLIBC"
+
+    # Modify the binary to use the available GLIBC
+    patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 "$GETH_BINARY"
+    patchelf --replace-needed libc.so.6 /lib/x86_64-linux-gnu/libc.so.6 "$GETH_BINARY"
+
+    echo "Modified geth binary to use system GLIBC"
+  else
+    echo "Geth binary appears to be compatible with system GLIBC"
+  fi
+else
+  echo "ERROR: Geth binary not found at $GETH_BINARY"
+  exit 1
+fi
+
+
 mkdir -p "$(dirname "${BEACON_LOG_FILE}")"
 mkdir -p "$(dirname "${VALIDATOR_LOG_FILE}")"
 mkdir -p "$(dirname "${GETH_LOG_FILE}")"
@@ -135,7 +164,7 @@ validator_pid=$!
 echo "VALIDATOR PID $validator_pid"
 
 # Run go-ethereum
-CGO_ENABLED=0 ${GETH_BINARY} --http \
+${GETH_BINARY} --http \
        --http.api eth,net,web3,debug \
        --http.addr="0.0.0.0" \
        --http.port="${GETH_HTTP_PORT}" \
