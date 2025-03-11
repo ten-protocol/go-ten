@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"time"
 
 	"github.com/codeclysm/extract/v3"
 )
@@ -121,8 +122,9 @@ func downloadFile(filepath string, url string) error {
 	}
 	defer out.Close()
 
+	client := http.Client{Timeout: 2 * time.Minute}
 	// Get the data
-	resp, err := http.Get(url) //nolint: gosec, noctx
+	resp, err := client.Get(url) //nolint: gosec, noctx
 	if err != nil {
 		return err
 	}
