@@ -75,61 +75,6 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
-# Create a temporary directory for building GLIBC
-mkdir -p $BASE_PATH/glibc_install
-cd $BASE_PATH
-
-# Install build dependencies
-sudo apt-get update
-sudo apt-get install -y build-essential wget bison python3 make
-
-# Download and extract GLIBC 2.35 source
-wget https://ftp.gnu.org/gnu/glibc/glibc-2.35.tar.xz
-tar -xf glibc-2.35.tar.xz
-
-# Build GLIBC in a separate directory
-mkdir -p glibc-build
-cd glibc-build
-
-# Configure with custom prefix to avoid replacing system GLIBC
-../glibc-2.35/configure --prefix=$BASE_PATH/glibc_install
-
-# Build and install
-make -j$(nproc)
-make install
-
-# Set environment variables to use the new GLIBC
-echo "LD_LIBRARY_PATH=$BASE_PATH/glibc_install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-
-# Verify the installed version
-$BASE_PATH/glibc_install/lib/libc.so.6 --version
-
-echo "GLIBC 2.35 installed successfully to $BASE_PATH/glibc_install"
-
-# Check if we need to patch the binary (you can skip this check if you know it needs patching)
-if ldd "$GETH_BINARY" 2>&1 | grep -q 'GLIBC_2.32'; then
-  echo "Detected GLIBC dependency issue in geth binary, attempting to patch..."
-
-  # Install patchelf if not already installed
-  which patchelf > /dev/null || {
-    echo "Installing patchelf..."
-    sudo apt-get update && sudo apt-get install -y patchelf
-  }
-
-  # Get the system's current GLIBC
-  SYSTEM_GLIBC=$(ldd --version | head -n 1 | grep -oP '[\d\.]+$')
-  echo "Current system GLIBC version: $SYSTEM_GLIBC"
-
-  # Modify the binary to use the available GLIBC
-  patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 "$GETH_BINARY"
-  patchelf --replace-needed libc.so.6 /lib/x86_64-linux-gnu/libc.so.6 "$GETH_BINARY"
-
-  echo "Modified geth binary to use system GLIBC"
-else
-  echo "Geth binary appears to be compatible with system GLIBC"
-fi
-
-
 mkdir -p "$(dirname "${BEACON_LOG_FILE}")"
 mkdir -p "$(dirname "${VALIDATOR_LOG_FILE}")"
 mkdir -p "$(dirname "${GETH_LOG_FILE}")"
