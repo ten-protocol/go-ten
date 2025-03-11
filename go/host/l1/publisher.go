@@ -8,13 +8,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/params"
+
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
+	"github.com/ten-protocol/go-ten/go/common/signature"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/host/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/pkg/errors"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -33,6 +37,7 @@ type Publisher struct {
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	storage         storage.Storage
 	blobResolver    BlobResolver
+	l1ChainCfg      *params.ChainConfig
 
 	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
 	importantContractAddresses map[string]gethcommon.Address
@@ -66,6 +71,7 @@ func NewL1Publisher(
 	maxWaitForL1Receipt time.Duration,
 	retryIntervalForL1Receipt time.Duration,
 	storage storage.Storage,
+	l1ChainCfg *params.ChainConfig,
 ) *Publisher {
 	sendingCtx, cancelSendingCtx := context.WithCancel(context.Background())
 	return &Publisher{
@@ -77,9 +83,10 @@ func NewL1Publisher(
 		blobResolver:              blobResolver,
 		hostStopper:               hostStopper,
 		logger:                    logger,
-		maxWaitForL1Receipt:       maxWaitForL1Receipt,
-		retryIntervalForL1Receipt: retryIntervalForL1Receipt,
+		maxWaitForL1Receipt:       4 * time.Minute,
+		retryIntervalForL1Receipt: 1 * time.Second,
 		storage:                   storage,
+		l1ChainCfg:                l1ChainCfg,
 
 		importantContractAddresses: map[string]gethcommon.Address{},
 		importantAddressesMutex:    sync.RWMutex{},
@@ -216,7 +223,18 @@ func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
 	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
 }
 
-func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
+func (p *Publisher) VerifyRollupSignature(extRollup *common.ExtRollup, blobHash gethcommon.Hash, signatureBytes []byte, enclaveID common.EnclaveID) bool {
+	compositeHash := common.ComputeCompositeHash(extRollup.Header, blobHash)
+	pubKey, err := signature.RecoverPubKey(compositeHash.Bytes(), signatureBytes)
+	if err != nil {
+		p.logger.Error("could not recover public key.", log.ErrKey, err)
+		return false
+	}
+
+	return crypto.PubkeyToAddress(*pubKey) == enclaveID
+}
+
+func (p *Publisher) PublishBlob(result common.CreateRollupResult, enclaveID common.EnclaveID) {
 	// Decode the rollup from the blobs
 	rollupData, err := ethadapter.DecodeBlobs(result.Blobs)
 	if err != nil {
@@ -258,6 +276,16 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 		p.logger.Error("Failed waiting for block after rollup binding block number",
 			"compression_block", rollupBlockNum,
 			log.ErrKey, err)
+	}
+
+	_, blobHashes, err := ethadapter.MakeSidecar(result.Blobs, ethadapter.KZGToVersionedHasher{})
+	if err != nil {
+		p.logger.Error("could not make sidecar.", log.ErrKey, err)
+		return
+	}
+
+	if !p.VerifyRollupSignature(extRollup, blobHashes[0], result.Signature, enclaveID) {
+		p.logger.Error("invalid rollup signature")
 	}
 
 	err = p.publishTransaction(rollupBlobTx)
@@ -403,7 +431,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 // transaction so we can log the values in the event we exceed the maximum number of retries.
 func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) (types.TxData, error) {
 	// Set gas prices and create transaction
-	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, p.logger)
+	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, p.l1ChainCfg, p.logger)
 	if err != nil {
 		return pricedTx, errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 	}
@@ -426,7 +454,7 @@ func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum i
 	// Wait for receipt
 	receipt, err := p.waitForReceipt(signedTx)
 	if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
-		return pricedTx, fmt.Errorf(signedTx.Hash().Hex()) // Return hash for MaxRetriesError
+		return pricedTx, fmt.Errorf("receipt not received for tx: %s ", signedTx.Hash().Hex()) // Return hash for MaxRetriesError
 	}
 
 	p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),

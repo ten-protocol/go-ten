@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ethereum/go-ethereum/params"
+
 	"github.com/ten-protocol/go-ten/go/enclave/config"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -19,15 +21,17 @@ import (
 // TenChainContext - basic implementation of the ChainContext needed for the EVM integration
 type TenChainContext struct {
 	storage             storage.Storage
+	cc                  *params.ChainConfig
 	config              *config.EnclaveConfig
 	gethEncodingService gethencoding.EncodingService
 	logger              gethlog.Logger
 }
 
 // NewTenChainContext returns a new instance of the TenChainContext given a storage ( and logger )
-func NewTenChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config *config.EnclaveConfig, logger gethlog.Logger) *TenChainContext {
+func NewTenChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config *config.EnclaveConfig, cc *params.ChainConfig, logger gethlog.Logger) *TenChainContext {
 	return &TenChainContext{
 		storage:             storage,
+		cc:                  cc,
 		config:              config,
 		gethEncodingService: gethEncodingService,
 		logger:              logger,
@@ -36,6 +40,10 @@ func NewTenChainContext(storage storage.Storage, gethEncodingService gethencodin
 
 func (occ *TenChainContext) Engine() consensus.Engine {
 	return &NoOpConsensusEngine{logger: occ.logger}
+}
+
+func (occ *TenChainContext) Config() *params.ChainConfig {
+	return occ.cc
 }
 
 func (occ *TenChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header {

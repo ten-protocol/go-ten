@@ -109,7 +109,6 @@ type Client struct {
 }
 
 func (c *Client) Stop() {
-	// todo
 }
 
 type reconnectFunc func(context.Context) (ServerCodec, error)

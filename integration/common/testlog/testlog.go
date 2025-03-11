@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/ten-protocol/go-ten/lib/gethfork/debug"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
@@ -46,7 +46,7 @@ func Setup(cfg *Cfg) *os.File {
 	}
 	logFile = f.Name()
 
-	err = debug.Setup("terminal", logFile, false, 10000000, 0, 0, false, false, cfg.LogLevel, "")
+	err = log.Setup("terminal", logFile, false, 10000000, 0, 0, false, false, cfg.LogLevel, "")
 	if err != nil {
 		panic(err)
 	}
@@ -57,7 +57,7 @@ func Setup(cfg *Cfg) *os.File {
 
 // SetupSysOut will direct the test logs to stdout
 func SetupSysOut() {
-	err := debug.Setup("terminal", "", false, 10000000, 0, 0, false, false, slog.LevelDebug, "")
+	err := log.Setup("terminal", "", false, 10000000, 0, 0, false, false, slog.LevelDebug, "")
 	if err != nil {
 		panic(err)
 	}
