@@ -108,7 +108,7 @@ func NewBatchExecutor(
 // ComputeBatch where the batch execution conventions are
 func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) {
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
-	fmt.Printf("nd%s: batch executor: %d\n", executor.config.NodeID, ec.SequencerNo)
+
 	ec.ctx = ctx
 	if err := executor.verifyContext(ec); err != nil {
 		return nil, err
@@ -138,7 +138,6 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 
 		err = executor.systemContracts.Initialize(cb.Batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
 		if err != nil {
-			fmt.Printf("nd%s: Failed to initialize system contracts: %v\n", executor.config.NodeID, err)
 			return nil, fmt.Errorf("failed to initialize system contracts: %w", err)
 		}
 	}

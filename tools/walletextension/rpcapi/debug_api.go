@@ -35,7 +35,7 @@ func (api *DebugAPI) GetRawReceipts(ctx context.Context, blockNrOrHash rpc.Block
 	return nil, rpcNotImplemented
 }
 
-func (s *DebugAPI) GetRawTransaction(ctx context.Context, hash gethcommon.Hash) (hexutil.Bytes, error) {
+func (api *DebugAPI) GetRawTransaction(ctx context.Context, hash gethcommon.Hash) (hexutil.Bytes, error) {
 	return nil, rpcNotImplemented
 }
 

@@ -15,10 +15,23 @@
     "londonBlock": 0,
     "arrowGlacierBlock": 0,
     "grayGlacierBlock": 0,
-    "shanghaiTime": 1720522149,
-    "cancunTime": 1720522149,
+    "shanghaiTime": 0,
+    "cancunTime": 0,
+    "pragueTime": 0,
     "terminalTotalDifficulty": 0,
-    "terminalTotalDifficultyPassed": true
+    "terminalTotalDifficultyPassed": true,
+    "blobSchedule": {
+      "cancun": {
+        "target": 3,
+        "max": 6,
+        "baseFeeUpdateFraction": 3338477
+      },
+      "prague": {
+        "target": 6,
+        "max": 9,
+        "baseFeeUpdateFraction": 5007716
+      }
+    }
   },
   "nonce": "0x0",
   "timestamp": "0x668d15a5",

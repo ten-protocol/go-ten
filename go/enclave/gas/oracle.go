@@ -26,10 +26,12 @@ type Oracle interface {
 	EstimateL1CostForMsg(args *gethapi.TransactionArgs, block *types.Header, header *common.BatchHeader) (*big.Int, error)
 }
 
-type oracle struct{}
+type oracle struct {
+	l1ChainCfg *params.ChainConfig
+}
 
-func NewGasOracle() Oracle {
-	return &oracle{}
+func NewGasOracle(l1ChainCfg *params.ChainConfig) Oracle {
+	return &oracle{l1ChainCfg: l1ChainCfg}
 }
 
 // EstimateL1StorageGasCost - Returns the expected l1 gas cost for a transaction at a given l1 block.
@@ -65,7 +67,7 @@ func (o *oracle) calculateL1Cost(l1Block *types.Header, l2Batch *common.BatchHea
 	// price in Wei for a single unit of blob
 	// todo - use a moving average for the L1 blob fee
 	// todo pass in the L1 chain config
-	blobFeePerByte := eip4844.CalcBlobFee(params.SepoliaChainConfig, l1Block)
+	blobFeePerByte := eip4844.CalcBlobFee(o.l1ChainCfg, l1Block)
 	txL1Size := CalculateL1Size(encodedTx)
 	shareOfBlobCost := big.NewInt(0).Mul(txL1Size, blobFeePerByte)
 
