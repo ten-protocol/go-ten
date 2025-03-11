@@ -14,12 +14,12 @@ on:
 jobs:
   build:
     runs-on: self-hosted
+
+    container:
+      image: golang:1.23.5-bullseye
+
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.23.5
 
       # Set the initial build number environment variable
       - name: Set Build Number
