@@ -73,9 +73,8 @@ type Guardian struct {
 	l1StartHash        gethcommon.Hash
 	maxRollupSize      uint64
 
-	hostInterrupter      *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
-	sequencerInterrupter *stopcontrol.StopControl
-	running              atomic.Bool
+	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
+	running         atomic.Bool
 
 	logger           gethlog.Logger
 	maxBatchInterval time.Duration
@@ -87,21 +86,20 @@ type Guardian struct {
 
 func NewGuardian(cfg *hostconfig.HostConfig, hostData host.Identity, serviceLocator guardianServiceLocator, enclaveClient common.Enclave, storage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Guardian {
 	return &Guardian{
-		hostData:             hostData,
-		state:                NewStateTracker(logger),
-		enclaveClient:        enclaveClient,
-		sl:                   serviceLocator,
-		batchInterval:        cfg.BatchInterval,
-		maxBatchInterval:     cfg.MaxBatchInterval,
-		rollupInterval:       cfg.RollupInterval,
-		l1StartHash:          cfg.L1StartHash,
-		maxRollupSize:        cfg.MaxRollupSize,
-		blockTime:            cfg.L1BlockTime,
-		crossChainInterval:   cfg.CrossChainInterval,
-		storage:              storage,
-		hostInterrupter:      interrupter,
-		sequencerInterrupter: stopcontrol.New(),
-		logger:               logger,
+		hostData:           hostData,
+		state:              NewStateTracker(logger),
+		enclaveClient:      enclaveClient,
+		sl:                 serviceLocator,
+		batchInterval:      cfg.BatchInterval,
+		maxBatchInterval:   cfg.MaxBatchInterval,
+		rollupInterval:     cfg.RollupInterval,
+		l1StartHash:        cfg.L1StartHash,
+		maxRollupSize:      cfg.MaxRollupSize,
+		blockTime:          cfg.L1BlockTime,
+		crossChainInterval: cfg.CrossChainInterval,
+		storage:            storage,
+		hostInterrupter:    interrupter,
+		logger:             logger,
 	}
 }
 
@@ -230,9 +228,6 @@ func (g *Guardian) DemoteFromActiveSequencer() {
 	}
 	g.logger.Info("Guardian demoted from active sequencer")
 	g.state.OnDemoted()
-
-	// Signal the sequencer processes to stop
-	g.sequencerInterrupter.Stop()
 
 	// if this has been called the enclave is probably already dead, but we should try to stop it to ensure the enclave
 	// is not left running as an active sequencer
@@ -661,10 +656,6 @@ func (g *Guardian) periodicBatchProduction() {
 			// interrupted by host stopping
 			batchProdTicker.Stop()
 			return
-		case <-g.sequencerInterrupter.Done():
-			// interrupted by demotion
-			batchProdTicker.Stop()
-			return
 		}
 	}
 }
@@ -744,10 +735,6 @@ func (g *Guardian) periodicRollupProduction() {
 
 		case <-g.hostInterrupter.Done():
 			// interrupted by host stopping
-			rollupCheckTicker.Stop()
-			return
-		case <-g.sequencerInterrupter.Done():
-			// interrupted by demotion
 			rollupCheckTicker.Stop()
 			return
 		}
