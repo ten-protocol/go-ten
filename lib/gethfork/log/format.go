@@ -10,6 +10,8 @@ import (
 	"time"
 	"unicode/utf8"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/holiman/uint256"
 )
 
@@ -35,7 +37,7 @@ func (h *TerminalHandler) format(buf []byte, r slog.Record, usecolor bool) []byt
 	color := ""
 	if usecolor {
 		switch r.Level {
-		case LevelCrit:
+		case gethlog.LevelCrit:
 			color = "\x1b[35m"
 		case slog.LevelError:
 			color = "\x1b[31m"
@@ -45,7 +47,7 @@ func (h *TerminalHandler) format(buf []byte, r slog.Record, usecolor bool) []byt
 			color = "\x1b[32m"
 		case slog.LevelDebug:
 			color = "\x1b[36m"
-		case LevelTrace:
+		case gethlog.LevelTrace:
 			color = "\x1b[34m"
 		}
 	}
@@ -56,10 +58,10 @@ func (h *TerminalHandler) format(buf []byte, r slog.Record, usecolor bool) []byt
 
 	if color != "" { // Start color
 		b.WriteString(color)
-		b.WriteString(LevelAlignedString(r.Level))
+		b.WriteString(gethlog.LevelAlignedString(r.Level))
 		b.WriteString("\x1b[0m")
 	} else {
-		b.WriteString(LevelAlignedString(r.Level))
+		b.WriteString(gethlog.LevelAlignedString(r.Level))
 	}
 	b.WriteString("[")
 	writeTimeTermFormat(b, r.Time)
