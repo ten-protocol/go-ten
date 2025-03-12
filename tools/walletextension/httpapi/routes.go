@@ -378,8 +378,11 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 
 	// Convert the TenNetworkInfo fields to strings
 	importantContracts := make(map[string]string)
-	for name, address := range networkConfig.ImportantContracts {
-		importantContracts[name] = address.Hex()
+	if networkConfig.ImportantContracts != nil {
+		importantContracts["CrossChain"] = networkConfig.ImportantContracts.CrossChain.Hex()
+		importantContracts["MessageBus"] = networkConfig.ImportantContracts.MessageBus.Hex()
+		importantContracts["NetworkEnclaveRegistry"] = networkConfig.ImportantContracts.NetworkEnclaveRegistry.Hex()
+		importantContracts["RollupContract"] = networkConfig.ImportantContracts.RollupContract.Hex()
 	}
 
 	networkConfigResponse := NetworkConfigResponse{
