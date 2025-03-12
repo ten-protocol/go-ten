@@ -137,7 +137,8 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 	//FIXME
 	contractLib, err := s.Params.NetworkContractConfigLib.GetContractAddresses()
 	if err != nil {
-		s.Stop()
+		testlog.Logger().Error("Could not get contract addresses. Cause: %s", err.Error())
+		//s.Stop()
 	}
 	rollupLib := contractlib.NewRollupContractLib(&contractLib.RollupContract, testlog.Logger())
 
