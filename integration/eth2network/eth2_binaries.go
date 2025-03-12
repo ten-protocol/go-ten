@@ -6,18 +6,18 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
+	"time"
 
 	"github.com/codeclysm/extract/v3"
 )
 
 const (
 	_gethVersion  = "1.14.6"
+	_gethHash     = "aadddf3a"
 	_prysmVersion = "v5.0.4"
 )
 
@@ -27,14 +27,6 @@ var (
 	basepath   = filepath.Dir(b)
 
 	creationLock sync.Mutex // makes sure there isn't two creations running at the same time
-)
-
-var _gethFileNameVersion = fmt.Sprintf("geth-%s-%s-%s", runtime.GOOS, runtime.GOARCH, _gethVersion)
-
-var (
-	_prysmBeaconChainFileNameVersion = fmt.Sprintf("beacon-chain-%s-%s-%s", _prysmVersion, runtime.GOOS, runtime.GOARCH)
-	_prysmCTLFileNameVersion         = fmt.Sprintf("prysmctl-%s-%s-%s", _prysmVersion, runtime.GOOS, runtime.GOARCH)
-	_prysmValidatorFileNameVersion   = fmt.Sprintf("validator-%s-%s-%s", _prysmVersion, runtime.GOOS, runtime.GOARCH)
 )
 
 // EnsureBinariesExist makes sure node binaries exist, returns the base path where binaries exist
@@ -51,47 +43,33 @@ func EnsureBinariesExist() (string, error) {
 
 	var wg sync.WaitGroup
 	prysmaticURL := fmt.Sprintf("https://github.com/prysmaticlabs/prysm/releases/download/%s/", _prysmVersion)
+	gethURL := "https://gethstore.blob.core.windows.net/builds"
 	wg.Add(4)
 	go func() {
 		defer wg.Done()
-		err := checkOrDownloadBinary(_prysmBeaconChainFileNameVersion, fmt.Sprintf("%s%s", prysmaticURL, _prysmBeaconChainFileNameVersion), false)
+		err := checkOrDownloadBinary(prysmBeaconChainFileNameVersion, fmt.Sprintf("%s%s", prysmaticURL, prysmBeaconChainFileNameVersion), false)
 		if err != nil {
 			panic(err)
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		err := checkOrDownloadBinary(_prysmCTLFileNameVersion, fmt.Sprintf("%s%s", prysmaticURL, _prysmCTLFileNameVersion), false)
+		err := checkOrDownloadBinary(prysmCTLFileNameVersion, fmt.Sprintf("%s%s", prysmaticURL, prysmCTLFileNameVersion), false)
 		if err != nil {
 			panic(err)
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		err := checkOrDownloadBinary(_prysmValidatorFileNameVersion, fmt.Sprintf("%s%s", prysmaticURL, _prysmValidatorFileNameVersion), false)
+		err := checkOrDownloadBinary(prysmValidatorFileNameVersion, fmt.Sprintf("%s%s", prysmaticURL, prysmValidatorFileNameVersion), false)
 		if err != nil {
 			panic(err)
 		}
 	}()
 	go func() {
 		defer wg.Done()
-		expectedFilePath := path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)
-		if fileExists(expectedFilePath) {
-			return
-		}
-		gethScript := path.Join(basepath, "./build_geth_binary.sh")
-
-		v := strings.Split(_gethVersion, "-")
-		cmd := exec.Command(
-			"bash",
-			gethScript,
-			fmt.Sprintf("%s=%s", "--version", "v"+v[0]),
-			fmt.Sprintf("%s=%s", "--output", path.Join(basepath, _eth2BinariesRelPath, _gethFileNameVersion)),
-		)
-		cmd.Stderr = os.Stderr
-
-		if out, err := cmd.Output(); err != nil {
-			fmt.Printf("%s\n", out)
+		err := checkOrDownloadBinary(gethFileNameVersion, fmt.Sprintf("%s/geth-%s-%s-%s-%s.tar.gz", gethURL, runtime.GOOS, runtime.GOARCH, _gethVersion, _gethHash), true)
+		if err != nil {
 			panic(err)
 		}
 	}()
@@ -141,8 +119,9 @@ func downloadFile(filepath string, url string) error {
 	}
 	defer out.Close()
 
+	client := http.Client{Timeout: 2 * time.Minute}
 	// Get the data
-	resp, err := http.Get(url) //nolint: gosec, noctx
+	resp, err := client.Get(url) //nolint: gosec, noctx
 	if err != nil {
 		return err
 	}

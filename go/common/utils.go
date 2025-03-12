@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/ethereum/go-ethereum/params"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -45,4 +47,15 @@ func BigMin(a, b *big.Int) *big.Int {
 		return a
 	}
 	return b
+}
+
+func GetL1ChainConfig(chainID uint64) *params.ChainConfig {
+	switch chainID {
+	case params.SepoliaChainConfig.ChainID.Uint64():
+		return params.SepoliaChainConfig
+	case params.MainnetChainConfig.ChainID.Uint64():
+		return params.MainnetChainConfig
+	default:
+		return params.AllDevChainProtocolChanges
+	}
 }

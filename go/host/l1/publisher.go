@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/params"
+
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -33,6 +35,7 @@ type Publisher struct {
 	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
 	storage         storage.Storage
 	blobResolver    BlobResolver
+	l1ChainCfg      *params.ChainConfig
 
 	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
 	importantContractAddresses map[string]gethcommon.Address
@@ -66,6 +69,7 @@ func NewL1Publisher(
 	maxWaitForL1Receipt time.Duration,
 	retryIntervalForL1Receipt time.Duration,
 	storage storage.Storage,
+	l1ChainCfg *params.ChainConfig,
 ) *Publisher {
 	sendingCtx, cancelSendingCtx := context.WithCancel(context.Background())
 	return &Publisher{
@@ -80,6 +84,7 @@ func NewL1Publisher(
 		maxWaitForL1Receipt:       maxWaitForL1Receipt,
 		retryIntervalForL1Receipt: retryIntervalForL1Receipt,
 		storage:                   storage,
+		l1ChainCfg:                l1ChainCfg,
 
 		importantContractAddresses: map[string]gethcommon.Address{},
 		importantAddressesMutex:    sync.RWMutex{},
@@ -403,7 +408,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 // transaction so we can log the values in the event we exceed the maximum number of retries.
 func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) (types.TxData, error) {
 	// Set gas prices and create transaction
-	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, p.logger)
+	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, p.l1ChainCfg, p.logger)
 	if err != nil {
 		return pricedTx, errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 	}
@@ -426,7 +431,7 @@ func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum i
 	// Wait for receipt
 	receipt, err := p.waitForReceipt(signedTx)
 	if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
-		return pricedTx, fmt.Errorf(signedTx.Hash().Hex()) // Return hash for MaxRetriesError
+		return pricedTx, fmt.Errorf("receipt not received for tx: %s ", signedTx.Hash().Hex()) // Return hash for MaxRetriesError
 	}
 
 	p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),

@@ -11,7 +11,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 
-	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/node"
 
 	"github.com/docker/docker/client"
@@ -30,7 +29,7 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 }
 
 func (n *ContractDeployer) Start() error {
-	fmt.Printf("Starting L1 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
+	fmt.Printf("Starting L1 contract deployer with config: \n%v\n\n", n.cfg)
 
 	cmds := []string{"npx"}
 	var ports []int
