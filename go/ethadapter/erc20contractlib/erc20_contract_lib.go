@@ -78,10 +78,11 @@ func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTran
 
 	// only process transfers made to the management contract
 	toAddr, ok := to.(gethcommon.Address)
-	//FIXME not sure if this is correct
-	if !ok || toAddr.Hex() != c.crossChainContractAddr.Hex() {
+	if !ok {
 		return nil, nil
 	}
+	//FIXME not sure if this is correct
+	//println("ERC20 TO ADDR: ", toAddr.Hex())
 
 	amount, found := contractCallData[AmountCallData]
 	if !found {

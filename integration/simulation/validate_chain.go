@@ -3,13 +3,14 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sort"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
@@ -278,13 +279,25 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 			if err != nil {
 				panic(err)
 			}
+			if t != nil {
+				// Check if it's a deposit transaction
+				if depositTx, ok := t.(*common.L1DepositTx); ok {
+					receipt, err := node.TransactionReceipt(tx.Hash())
+					if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+						continue
+					}
+					deposits = append(deposits, tx.Hash())
+					totalDeposited.Add(totalDeposited, depositTx.Amount)
+					successfulDeposits++
+					continue // Skip to next transaction
+				}
+			}
+			t, err = rollupLib.DecodeTx(tx)
+			if err != nil {
+				panic(err)
+			}
 
 			if t == nil {
-				//FIXME
-				t, err = rollupLib.DecodeTx(tx)
-				if err != nil {
-					panic(err)
-				}
 				t, err = enclaveRegistryLib.DecodeTx(tx)
 				if err != nil {
 					panic(err)
@@ -295,19 +308,12 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 				continue
 			}
 			receipt, err := node.TransactionReceipt(tx.Hash())
-
 			if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
 				continue
 			}
 
-			switch l1tx := t.(type) {
-			case *common.L1DepositTx:
-				// todo (@stefan) - remove this hack once the old integrated bridge is removed.
-				deposits = append(deposits, tx.Hash())
-				totalDeposited.Add(totalDeposited, l1tx.Amount)
-				successfulDeposits++
-			case *common.L1RollupHashes:
-				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, l1tx.BlobHashes)
+			if rollupTx, ok := t.(*common.L1RollupHashes); ok {
+				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, rollupTx.BlobHashes)
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
