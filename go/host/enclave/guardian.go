@@ -224,17 +224,18 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 // DemoteFromActiveSequencer stops the guardian from being the active sequencer,
 // stopping batch and rollup production. The enclave can be promoted again later if it catches up and failover is needed.
 func (g *Guardian) DemoteFromActiveSequencer() {
-	if !g.isActiveSequencer {
+	if !g.state.IsEnclaveActiveSequencer() {
 		g.logger.Info("Cannot demote from active sequencer - not currently active")
 		return
 	}
 	g.logger.Info("Guardian demoted from active sequencer")
-	g.isActiveSequencer = false
+	g.state.OnDemoted()
 
 	// Signal the sequencer processes to stop
 	g.sequencerInterrupter.Stop()
 
-	// if this has been called the enclave is probably already dead, but we should try to stop it for good measure
+	// if this has been called the enclave is probably already dead, but we should try to stop it to ensure the enclave
+	// is not left running as an active sequencer
 	err := g.enclaveClient.Stop()
 	if err != nil {
 		// log the error at info, this will be common as the enclave is probably already dead

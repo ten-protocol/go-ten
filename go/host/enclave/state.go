@@ -157,6 +157,12 @@ func (s *StateTracker) OnPromoted() {
 	s.enclaveIsSequencer = true
 }
 
+func (s *StateTracker) OnDemoted() {
+	s.m.Lock()
+	defer s.m.Unlock()
+	s.enclaveIsSequencer = false
+}
+
 // when enclave is operational, this method will calculate the status based on comparison of current chain heads with enclave heads
 // this must be called from within write-lock to ensure consistency
 func (s *StateTracker) calculateStatus() Status {
