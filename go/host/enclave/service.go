@@ -20,9 +20,7 @@ const (
 	_promoteSeqRetryInterval = 1 * time.Second
 )
 
-var (
-	_noActiveSequencer = common.EnclaveID{}
-)
+var _noActiveSequencer = common.EnclaveID{}
 
 // This private interface enforces the services that the enclaves service depends on
 type enclaveServiceLocator interface {

@@ -459,7 +459,7 @@ func (e *enclaveAdminService) Stop() common.SystemError {
 	defer e.mainMutex.Unlock()
 
 	e.logger.Warn("Shutting down enclave.")
-	
+
 	// block all requests
 	e.stopControl.Stop()
 
