@@ -336,7 +336,7 @@ func (t *TxPool) validateL1Gas(tx *common.L2Tx) error {
 	// calculate the cost in l2 gas
 	l2Gas := big.NewInt(0).Div(l1Cost, headBatch.BaseFee)
 
-	intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.To() == nil, true, true, true)
+	intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.SetCodeAuthorizations(), tx.To() == nil, true, true, true)
 	if err != nil {
 		return err
 	}
