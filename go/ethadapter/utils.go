@@ -13,7 +13,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/holiman/uint256"
@@ -46,12 +45,6 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		BlobHashes: blobHashes,
 	})
 	if err != nil {
-		// After the error
-		println("Gas estimation failed",
-			"error", err,
-			"from", from.Hex(),
-			"to", to.Hex(),
-			"method_signature", hexutil.Encode(data[:4])) // First 4 bytes are the method signature
 		return nil, fmt.Errorf("could not estimate gas - %w", err)
 	}
 

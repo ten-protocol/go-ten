@@ -66,8 +66,8 @@ contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
         _;
     }
 
-    // TODO sequencer address must be contract owner
-    function addRollup(Structs.MetaRollup calldata r) external verifyRollupIntegrity(r) onlyOwner{
+    // TODO can we make it so only attested sequencer enclaves can call this? can pass the requester ID as a param?
+    function addRollup(Structs.MetaRollup calldata r) external verifyRollupIntegrity(r) {
         AppendRollup(r);
 
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
