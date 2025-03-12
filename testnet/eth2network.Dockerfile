@@ -9,7 +9,7 @@
 # final = copies over the executables from the 'build-*' stages and prepares the final image.
 
 # Build stage for downloading dependencies based on the core defined system
-FROM golang:1.23-bullseye as get-dependencies
+FROM golang:1.23.7-bullseye as get-dependencies
 
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
