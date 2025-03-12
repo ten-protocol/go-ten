@@ -56,11 +56,12 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		simParams.StartPort,
 		simParams.NumberOfNodes,
 	)
-	networkContractConfig, err := contractlib.NewNetworkConfigLib(simParams.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient())
+	networkConfigLib, err := contractlib.NewNetworkConfigLib(simParams.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient())
 	if err != nil {
 		return nil, err
 	}
-	println(networkContractConfig.GetContractAddr().Hex())
+	simParams.NetworkContractConfigLib = networkConfigLib
+
 	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(
 		&simParams.L1TenData.NetworkConfigAddress,
 		&simParams.L1TenData.ObxErc20Address,
@@ -171,7 +172,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	}
 
 	// permission the sequencer enclaveID (also requires retries as the enclaveID may not be attested yet)
-	addresses, err := networkContractConfig.GetContractAddresses()
+	addresses, err := networkConfigLib.GetContractAddresses()
 	if err != nil {
 		//FIXME
 		return nil, err
