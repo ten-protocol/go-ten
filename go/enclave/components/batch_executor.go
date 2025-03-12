@@ -124,7 +124,22 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 			return nil, err
 		}
 		// the sys genesis batch will not contain anything else
-		return executor.execResult(ec)
+		cb, err := executor.execResult(ec)
+		if err != nil {
+			return nil, err
+		}
+
+		// When system contract deployment genesis batch is committed, initialize executor's addresses for the hooks.
+		// Further restarts will call into Load() which will take the receipts for batch number 2 (which should never be deleted)
+		// and reinitialize them.
+		if len(ec.genesisSysCtrResult) == 0 {
+			return nil, fmt.Errorf("failed to instantiate system contracts: expected receipt for system deployer transaction, but no receipts found in batch")
+		}
+
+		err = executor.systemContracts.Initialize(cb.Batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize system contracts: %w", err)
+		}
 	}
 
 	// Step 1: execute the transactions included in the batch or pending in the mempool
@@ -214,7 +229,7 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 	if err != nil {
 		return fmt.Errorf("could not create eth header for batch. Cause: %w", err)
 	}
-	ec.Chain = evm.NewTenChainContext(executor.storage, executor.gethEncodingService, executor.config, executor.logger)
+	ec.Chain = evm.NewTenChainContext(executor.storage, executor.gethEncodingService, executor.config, executor.chainConfig, executor.logger)
 
 	zero := uint64(0)
 	ec.usedGas = &zero
@@ -524,7 +539,7 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("failed creating batch. Cause: %w", err)
 	}
 
-	rootHash, err := ec.stateDB.Commit(batch.Number().Uint64(), true)
+	rootHash, err := ec.stateDB.Commit(batch.Number().Uint64(), true, true)
 	if err != nil {
 		return nil, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
 	}
@@ -536,20 +551,6 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("failed to commit trieDB. Cause: %w", err)
 	}
 	batch.Header.Root = rootHash
-
-	// When system contract deployment genesis batch is committed, initialize executor's addresses for the hooks.
-	// Further restarts will call into Load() which will take the receipts for batch number 2 (which should never be deleted)
-	// and reinitialize them.
-	if ec.currentBatch.Header.SequencerOrderNo.Uint64() == common.L2SysContractGenesisSeqNo {
-		if len(ec.genesisSysCtrResult) == 0 {
-			return nil, fmt.Errorf("failed to instantiate system contracts: expected receipt for system deployer transaction, but no receipts found in batch")
-		}
-
-		err := executor.systemContracts.Initialize(batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize system contracts: %w", err)
-		}
-	}
 
 	batch.ResetHash()
 

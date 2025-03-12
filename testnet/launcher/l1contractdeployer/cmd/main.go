@@ -18,20 +18,20 @@ func main() {
 		),
 	)
 	if err != nil {
-		fmt.Println("unable to configure l1 contract deployer - %w", err)
+		fmt.Printf("unable to configure l1 contract deployer - %s\n", err)
 		os.Exit(1)
 	}
 
 	err = l1ContractDeployer.Start()
 	if err != nil {
-		fmt.Println("unable to start l1 contract deployer - %w", err)
+		fmt.Printf("unable to start l1 contract deployer - %s\n", err)
 		os.Exit(1)
 	}
 
 	networkConfig, err := l1ContractDeployer.RetrieveL1ContractAddresses()
 	if err != nil {
-		fmt.Println("unable to fetch l1 contract addresses - %w", err)
-		os.Exit(1)
+		fmt.Printf("unable to fetch l1 contract addresses - %s", err)
+		os.Exit(0)
 	}
 	fmt.Println("L1 Contracts were successfully deployed...")
 
