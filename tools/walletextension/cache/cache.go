@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"golang.org/x/sync/singleflight"
+
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -42,49 +44,69 @@ type Cfg struct {
 	DynamicType func() Strategy
 }
 
+// Global singleflight group
+var sfGroup singleflight.Group
+
 func WithCache[R any](cache Cache, cfg *Cfg, cacheKey []byte, onCacheMiss func() (*R, error)) (*R, error) {
 	if cfg == nil {
 		return onCacheMiss()
 	}
 
-	cacheType := cfg.Type
-	if cfg.DynamicType != nil {
-		cacheType = cfg.DynamicType()
-	}
+	sfKey := string(cacheKey)
 
-	if cacheType == NoCache {
-		return onCacheMiss()
-	}
-
-	// we implement a custom cache eviction logic for the cache strategy of type LatestBatch.
-	// when a new batch is created, all entries with "LatestBatch" are considered evicted.
-	// elements not cached for a specific batch are not evicted
-	isEvicted := false
-	ttl := longCacheTTL
-	if cacheType == LatestBatch {
-		ttl = shortCacheTTL
-		isEvicted = cache.IsEvicted(cacheKey, ttl)
-	}
-
-	if !isEvicted {
-		cachedValue, foundInCache := cache.Get(cacheKey)
-		if foundInCache {
-			returnValue, ok := cachedValue.(*R)
-			if !ok {
-				return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
-			}
-			return returnValue, nil
+	// serialises and optimizes access to the cache for the same key
+	res, err, _ := sfGroup.Do(sfKey, func() (interface{}, error) {
+		cacheType := cfg.Type
+		if cfg.DynamicType != nil {
+			cacheType = cfg.DynamicType()
 		}
+
+		if cacheType == NoCache {
+			return onCacheMiss()
+		}
+
+		// we implement a custom cache eviction logic for the cache strategy of type LatestBatch.
+		// when a new batch is created, all entries with "LatestBatch" are considered evicted.
+		// elements not cached for a specific batch are not evicted
+		isEvicted := false
+		ttl := longCacheTTL
+		if cacheType == LatestBatch {
+			ttl = shortCacheTTL
+			isEvicted = cache.IsEvicted(cacheKey, ttl)
+		}
+
+		if !isEvicted {
+			cachedValue, foundInCache := cache.Get(cacheKey)
+			if foundInCache {
+				returnValue, ok := cachedValue.(*R)
+				if !ok {
+					return nil, fmt.Errorf("unexpected error. Invalid format cached. %v", cachedValue)
+				}
+				return returnValue, nil
+			}
+		}
+
+		result, err := onCacheMiss()
+
+		// cache only non-nil values
+		if err == nil && result != nil {
+			cache.Set(cacheKey, result, ttl)
+		}
+
+		return result, err
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	result, err := onCacheMiss()
-
-	// cache only non-nil values
-	if err == nil && result != nil {
-		cache.Set(cacheKey, result, ttl)
+	// Convert back to the correct type
+	result, ok := res.(*R)
+	if !ok {
+		return nil, fmt.Errorf("singleflight returned unexpected type: %T", res)
 	}
 
-	return result, err
+	return result, nil
 }
 
 type noOpCache struct{}

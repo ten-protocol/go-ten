@@ -18,7 +18,7 @@ const (
 type ristrettoCache struct {
 	cache              *ristretto.Cache[[]byte, any]
 	quit               chan struct{}
-	lastEviction       time.Time
+	lastEviction       atomic.Pointer[time.Time]
 	shortLivingEnabled *atomic.Bool
 }
 
@@ -37,9 +37,11 @@ func NewRistrettoCacheWithEviction(nrElems int, logger log.Logger) (Cache, error
 	c := &ristrettoCache{
 		cache:              cache,
 		quit:               make(chan struct{}),
-		lastEviction:       time.Now(),
+		lastEviction:       atomic.Pointer[time.Time]{},
 		shortLivingEnabled: &atomic.Bool{},
 	}
+	now := time.Now()
+	c.lastEviction.Store(&now)
 	c.shortLivingEnabled.Store(true)
 
 	// Start the metrics logging
@@ -51,7 +53,8 @@ func NewRistrettoCacheWithEviction(nrElems int, logger log.Logger) (Cache, error
 func (c *ristrettoCache) EvictShortLiving() {
 	// this event happens when a new batch is received, so the cache can be enabled
 	c.shortLivingEnabled.Store(true)
-	c.lastEviction = time.Now()
+	now := time.Now()
+	c.lastEviction.Store(&now)
 }
 
 func (c *ristrettoCache) DisableShortLiving() {
@@ -69,7 +72,7 @@ func (c *ristrettoCache) IsEvicted(key []byte, originalTTL time.Duration) bool {
 	cachedTime := time.Now().Add(remainingTTL).Add(-originalTTL)
 	// ... LE...Cached...Now - Valid
 	// ... Cached...LE...Now - Evicted
-	return c.lastEviction.After(cachedTime)
+	return c.lastEviction.Load().After(cachedTime)
 }
 
 // Set adds the key and value to the cache.
@@ -100,4 +103,9 @@ func (c *ristrettoCache) startMetricsLogging(logger log.Logger) {
 			return
 		}
 	}
+}
+
+func (c *ristrettoCache) Close() {
+	close(c.quit)
+	c.cache.Close() // if Ristretto has a close method
 }

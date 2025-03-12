@@ -95,10 +95,10 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 	// w.MetricsTracker.RecordUserActivity(hexutils.BytesToHex(user.ID))
 
 	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
-	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	if !rateLimitAllowed {
 		return nil, fmt.Errorf("rate limit exceeded")
 	}
+	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 
 	cacheArgs := []any{user.ID, method}
 	cacheArgs = append(cacheArgs, args...)
