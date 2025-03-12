@@ -182,6 +182,11 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
 	}
 
+	err = PermissionRollupContractStateRoot(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.CrossChain, addresses.RollupContract)
+	if err != nil {
+		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
+	}
+
 	// wait for nodes to be healthy now we've permissioned
 	// make sure the nodes are healthy
 	for _, client := range n.tenClients {

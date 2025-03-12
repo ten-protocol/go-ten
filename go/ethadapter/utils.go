@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/params"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/holiman/uint256"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 const (
@@ -45,6 +47,26 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		BlobHashes: blobHashes,
 	})
 	if err != nil {
+		// After the error
+		println("Gas estimation failed",
+			"error", err.Error(),
+			"from", from.Hex(),
+			"to", to.Hex(),
+			"method_signature", hexutil.Encode(data[:4])) // First 4 bytes are the method signature
+		
+		// Try to extract more detailed error information
+		if strings.Contains(err.Error(), "execution reverted") {
+			// Try to get the revert reason if available
+			reason := "Unknown reason"
+			if strings.Contains(err.Error(), "execution reverted: ") {
+				parts := strings.Split(err.Error(), "execution reverted: ")
+				if len(parts) > 1 {
+					reason = parts[1]
+				}
+			}
+			println("Execution reverted with reason:", reason)
+		}
+		
 		return nil, fmt.Errorf("could not estimate gas - %w", err)
 	}
 
@@ -85,7 +107,8 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		blobMultiplier := calculateRetryMultiplier(_blobPriceMultiplier, retryNumber)
 		blobFeeCap := new(uint256.Int).Mul(
 			uint256.MustFromBig(blobBaseFee),
-			uint256.NewInt(uint64(math.Ceil(blobMultiplier)))) // double base fee with retry multiplier,
+			uint256.NewInt(uint64(math.Ceil(blobMultiplier))),
+		)
 
 		// even if we hit the minimum, we should still increase for retries
 		if blobFeeCap.Lt(uint256.NewInt(params.GWei)) {

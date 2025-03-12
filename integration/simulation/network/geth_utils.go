@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/contracts/generated/MerkleTreeMessageBus"
 	"math/big"
 	"time"
 
@@ -299,6 +300,40 @@ func PermissionTenSequencerEnclave(mcOwner wallet.Wallet, client ethadapter.EthC
 	tx, err := ctr.GrantSequencerEnclave(opts, seqEnclaveID)
 	if err != nil {
 		return err
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func PermissionRollupContractStateRoot(mcOwner wallet.Wallet, client ethadapter.EthClient, crossChainAddress common.Address, rollupContractAddress common.Address) error {
+	crossChainContract, err := CrossChain.NewCrossChain(crossChainAddress, client.EthClient())
+	if err != nil {
+		return err
+	}
+
+	// fetch merkle message bus address from cross chain contract
+	merkleTreeMessageBus, err := crossChainContract.MerkleMessageBus(&bind.CallOpts{})
+	if err != nil {
+		return fmt.Errorf("unable to get merkletreeMessageBus contract address: %w", err)
+	}
+	ctr, err := MerkleTreeMessageBus.NewMerkleTreeMessageBus(merkleTreeMessageBus, client.EthClient())
+	if err != nil {
+		return fmt.Errorf("unable to get merkletreeMessageBus contract: %w", err)
+	}
+	opts, err := bind.NewKeyedTransactorWithChainID(mcOwner.PrivateKey(), mcOwner.ChainID())
+	if err != nil {
+		return err
+	}
+
+	// FIXME execution reverted: Only admin can call this function
+	tx, err := ctr.AddStateRootManager(opts, rollupContractAddress)
+	if err != nil {
+		return fmt.Errorf("unable to grant rollup contract state root manager acces: %w", err)
 	}
 
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)

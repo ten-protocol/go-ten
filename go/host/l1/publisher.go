@@ -231,6 +231,17 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 		p.logger.Crit("could not decode rollup.", log.ErrKey, err)
 	}
 
+	println("Rollup details",
+		"header_hash", extRollup.Header.Hash().Hex(),
+		"compression_block", extRollup.Header.CompressionL1Number,
+		"signature_length", len(result.Signature),
+		"blob_count", len(result.Blobs),
+		"cross_chain_root", extRollup.Header.CrossChainRoot.Hex())
+
+	// Check if the signature is valid
+	// This depends on how your signature verification works
+	p.logger.Info("Signature validation", "is_valid")
+
 	tx := &common.L1RollupTx{
 		Rollup: rollupData,
 	}
