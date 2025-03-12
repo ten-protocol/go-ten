@@ -92,7 +92,8 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 		logger.Crit("failed to load system contracts", log.ErrKey, err)
 	}
 
-	gasOracle := gas.NewGasOracle()
+	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
+	gasOracle := gas.NewGasOracle(l1ChainCfg)
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 
 	// start the mempool in validate only. Based on the config, it might become sequencer
@@ -104,7 +105,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
 
-	chainContext := evm.NewTenChainContext(storage, gethEncodingService, config, logger)
+	chainContext := evm.NewTenChainContext(storage, gethEncodingService, config, chainConfig, logger)
 	visibilityReader := evm.NewContractVisibilityReader(logger)
 	evmFacade := evm.NewEVMExecutor(chainContext, chainConfig, config, config.GasLocalExecutionCapFlag, storage, gethEncodingService, visibilityReader, logger)
 

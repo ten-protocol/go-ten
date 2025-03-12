@@ -63,7 +63,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.22.11
+          go-version: 1.23.5
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -97,7 +97,7 @@ jobs:
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -contracts_env_file=./testnet/.env
-          source ./testnet/.env
+          source ./testnet/.env || true
           echo "Contracts deployed to $MGMTCONTRACTADDR"
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
           echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_OUTPUT

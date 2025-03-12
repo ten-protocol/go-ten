@@ -233,14 +233,14 @@ func (t *TxPool) add(transaction *common.L2Tx) error {
 	}
 
 	var strErrors []string
-	for _, err := range t.pool.Add([]*types.Transaction{transaction}, false, false) {
+	for _, err := range t.pool.Add([]*types.Transaction{transaction}, false) {
 		if err != nil {
 			strErrors = append(strErrors, err.Error())
 		}
 	}
 
 	if len(strErrors) > 0 {
-		return fmt.Errorf(strings.Join(strErrors, "; "))
+		return fmt.Errorf(strings.Join(strErrors, "; ")) // nolint
 	}
 	return nil
 }

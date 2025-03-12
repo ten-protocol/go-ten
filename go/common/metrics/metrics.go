@@ -27,7 +27,9 @@ type Service struct {
 }
 
 func New(enabled bool, port uint, logger gethlog.Logger) *Service {
-	gethmetrics.Enabled = enabled
+	if enabled {
+		gethmetrics.Enable()
+	}
 	return &Service{
 		registry: gethmetrics.NewRegistry(),
 		port:     port,
@@ -38,7 +40,7 @@ func New(enabled bool, port uint, logger gethlog.Logger) *Service {
 // Start starts the metrics server
 func (m *Service) Start() {
 	// metrics not enabled
-	if !gethmetrics.Enabled {
+	if !gethmetrics.Enabled() {
 		return
 	}
 
