@@ -161,7 +161,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 }
 
 func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
-	bytecode, err := constants.NetworkEnclaveRegistryBytecode()
+	bytecode, err := constants.EnclaveRegistryBytecode()
 	if err != nil {
 		return nil, nil, err
 	}

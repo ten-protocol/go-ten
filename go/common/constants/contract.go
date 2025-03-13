@@ -21,7 +21,7 @@ func NetworkConfigBytecode() ([]byte, error) {
 	return append(bytecode, input...), nil
 }
 
-func NetworkEnclaveRegistryBytecode() ([]byte, error) {
+func EnclaveRegistryBytecode() ([]byte, error) {
 	parsed, err := NetworkEnclaveRegistry.NetworkEnclaveRegistryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
