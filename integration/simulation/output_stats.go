@@ -123,7 +123,7 @@ func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient)
 		}
 		if _, ok := t.(*common.L1DepositTx); ok {
 			o.canonicalERC20DepositCount++
-			continue 
+			continue
 		}
 	}
 }

@@ -132,11 +132,12 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 
 	if !deployERC20s {
 		return &params.L1TenData{
-			TenStartBlock:          networkConfigReceipt.BlockHash,
-			NetworkConfigAddress:   networkConfigReceipt.ContractAddress,
-			EnclaveRegistryAddress: enclaveRegistryReceipt.ContractAddress,
-			RollupContractAddress:  rollupReceipt.ContractAddress,
-			MessageBusAddr:         messageBusAddr,
+			TenStartBlock:             networkConfigReceipt.BlockHash,
+			NetworkConfigAddress:      networkConfigReceipt.ContractAddress,
+			EnclaveRegistryAddress:    enclaveRegistryReceipt.ContractAddress,
+			RollupContractAddress:     rollupReceipt.ContractAddress,
+			CrossChainContractAddress: crossChainReceipt.ContractAddress,
+			MessageBusAddr:            messageBusAddr,
 		}, nil
 	}
 
@@ -151,13 +152,14 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}
 
 	return &params.L1TenData{
-		TenStartBlock:          networkConfigReceipt.BlockHash,
-		NetworkConfigAddress:   networkConfigReceipt.ContractAddress,
-		EnclaveRegistryAddress: enclaveRegistryReceipt.ContractAddress,
-		RollupContractAddress:  rollupReceipt.ContractAddress,
-		ObxErc20Address:        erc20ContractAddr[0],
-		EthErc20Address:        erc20ContractAddr[1],
-		MessageBusAddr:         messageBusAddr,
+		TenStartBlock:             networkConfigReceipt.BlockHash,
+		NetworkConfigAddress:      networkConfigReceipt.ContractAddress,
+		EnclaveRegistryAddress:    enclaveRegistryReceipt.ContractAddress,
+		RollupContractAddress:     rollupReceipt.ContractAddress,
+		CrossChainContractAddress: crossChainReceipt.ContractAddress,
+		ObxErc20Address:           erc20ContractAddr[0],
+		EthErc20Address:           erc20ContractAddr[1],
+		MessageBusAddr:            messageBusAddr,
 	}, nil
 }
 
