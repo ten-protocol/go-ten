@@ -35,7 +35,6 @@ func (m *MockNetworkEnclaveRegistryLib) DecodeTx(tx *types.Transaction) (common.
 	case GrantSeqTxAddr.Hex():
 		return DecodeTx(tx), nil
 	default:
-		println("UNKNOWN TX at addr: ", tx.To().Hex())
 		return nil, nil
 	}
 }

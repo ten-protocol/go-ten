@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sync"
 	"time"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
@@ -30,9 +32,10 @@ type Publisher struct {
 	hostData         host.Identity
 	hostWallet       wallet.Wallet // Wallet used to issue ethereum transactions
 	ethClient        ethadapter.EthClient
-	contractRegistry contractlib.ContractRegistryLib // Library to handle Management Contract lib operations
+	contractRegistry contractlib.ContractRegistryLib
 	storage          storage.Storage
 	blobResolver     BlobResolver
+	l1ChainCfg       *params.ChainConfig
 
 	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
 	importantContractAddresses map[string]gethcommon.Address

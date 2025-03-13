@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
-
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -255,9 +253,8 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
-	contractAddresses := s.Params.ContractRegistryLib.GetContractAddresses()
-	rollupLib := contractlib.NewRollupContractLib(&contractAddresses.RollupContract, testlog.Logger())
-	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&contractAddresses.NetworkEnclaveRegistry, testlog.Logger())
+	rollupLib := s.Params.ContractRegistryLib.RollupLib()
+	enclaveRegistryLib := s.Params.ContractRegistryLib.NetworkEnclaveLib()
 
 	blockchain, err := node.BlocksBetween(startBlock, endBlock)
 
@@ -294,7 +291,6 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 			}
 
 			if t == nil {
-				println("ABOUT TO BLOW UP: ", tx.To().Hex())
 				t, err = enclaveRegistryLib.DecodeTx(tx)
 				if err != nil {
 					panic(err)
