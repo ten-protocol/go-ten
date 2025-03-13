@@ -303,6 +303,7 @@ func startNetworkScript(gethNetworkPort, beaconP2PPort, gethRPCPort, gethHTTPPor
 	}
 
 	output := out.String()
+	fmt.Println(output)
 	return _parsePIDs(output)
 }
 

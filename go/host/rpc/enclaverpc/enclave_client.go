@@ -132,10 +132,11 @@ func (c *Client) Status(ctx context.Context) (common.Status, common.SystemError)
 	}
 
 	return common.Status{
-		StatusCode: common.StatusCode(response.StatusCode),
-		L1Head:     gethcommon.BytesToHash(response.L1Head),
-		L2Head:     big.NewInt(0).SetBytes(response.L2Head),
-		EnclaveID:  common.EnclaveID(response.EnclaveID),
+		StatusCode:        common.StatusCode(response.StatusCode),
+		L1Head:            gethcommon.BytesToHash(response.L1Head),
+		L2Head:            big.NewInt(0).SetBytes(response.L2Head),
+		EnclaveID:         common.EnclaveID(response.EnclaveID),
+		IsActiveSequencer: response.IsActiveSequencer,
 	}, nil
 }
 

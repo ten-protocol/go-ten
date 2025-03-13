@@ -50,21 +50,21 @@ func TestCheckSignature(t *testing.T) {
 	// Generate all message types and create map with the corresponding signature type
 	EIP712Message, err := viewingkey.GenerateMessage(userID, chainID, 0, viewingkey.EIP712Signature)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	EIP712MessageHash, err := viewingkey.GetMessageHash(EIP712Message, viewingkey.EIP712Signature)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	PersonalSignMessage, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	PersonalSignMessageHash, err := viewingkey.GetMessageHash(PersonalSignMessage, viewingkey.PersonalSign)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	messages := map[string]MessageWithSignatureType{
@@ -99,20 +99,20 @@ func TestVerifyViewingKey(t *testing.T) {
 
 	EIP712Message, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.EIP712Signature)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	EIP712MessageHash, err := viewingkey.GetMessageHash(EIP712Message, viewingkey.EIP712Signature)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	PersonalSignMessage, err := viewingkey.GenerateMessage(userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 	PersonalSignMessageHash, err := viewingkey.GetMessageHash(PersonalSignMessage, viewingkey.PersonalSign)
 	if err != nil {
-		t.Fatalf(err.Error())
+		t.Fatal(err.Error())
 	}
 
 	messages := map[string]MessageWithSignatureType{

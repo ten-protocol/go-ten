@@ -163,7 +163,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	var seqEnclaveID *common.EnclaveID
 	for ; seqEnclaveID == nil; time.Sleep(100 * time.Millisecond) {
 		seqHealth, _ := n.tenClients[0].Health()
-		if seqHealth.Enclaves == nil || len(seqHealth.Enclaves) == 0 {
+		if len(seqHealth.Enclaves) == 0 {
 			continue
 		}
 		seqEnclaveID = &seqHealth.Enclaves[0].EnclaveID

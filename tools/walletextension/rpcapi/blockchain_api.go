@@ -88,7 +88,7 @@ type StorageResult struct {
 	Proof []string     `json:"proof"`
 }
 
-func (s *BlockChainAPI) GetProof(ctx context.Context, address gethcommon.Address, storageKeys []string, blockNrOrHash rpc.BlockNumberOrHash) (*AccountResult, error) {
+func (api *BlockChainAPI) GetProof(ctx context.Context, address gethcommon.Address, storageKeys []string, blockNrOrHash rpc.BlockNumberOrHash) (*AccountResult, error) {
 	return nil, rpcNotImplemented
 }
 
@@ -246,7 +246,7 @@ func boolToByte(res bool) byte {
 	return 0
 }
 
-func (s *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
+func (api *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
 	return nil, rpcNotImplemented
 }
 
@@ -351,7 +351,7 @@ type accessListResult struct {
 	GasUsed    hexutil.Uint64    `json:"gasUsed"`
 }
 
-func (s *BlockChainAPI) CreateAccessList(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash) (*accessListResult, error) {
+func (api *BlockChainAPI) CreateAccessList(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash) (*accessListResult, error) {
 	return nil, rpcNotImplemented
 }
 

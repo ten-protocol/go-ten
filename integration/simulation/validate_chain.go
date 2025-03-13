@@ -653,7 +653,7 @@ func extractWithdrawals(t *testing.T, tenClient *obsclient.ObsClient, nodeIdx in
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
 	for {
 		if header == nil {
-			t.Errorf(fmt.Sprintf("Node %d: Reached a missing rollup", nodeIdx))
+			t.Errorf("Node %d: Reached a missing rollup", nodeIdx)
 			return
 		}
 		if header.Number.Uint64() == common.L1GenesisHeight {
@@ -663,7 +663,7 @@ func extractWithdrawals(t *testing.T, tenClient *obsclient.ObsClient, nodeIdx in
 		// note this retrieves batches currently.
 		newHeader, err := tenClient.GetBatchHeaderByHash(header.ParentHash)
 		if err != nil {
-			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve batch header %s. Cause: %s", nodeIdx, header.ParentHash, err))
+			t.Errorf("Node %d: Could not retrieve batch header %s. Cause: %s", nodeIdx, header.ParentHash, err)
 			return
 		}
 

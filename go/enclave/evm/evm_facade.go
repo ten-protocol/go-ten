@@ -94,9 +94,10 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 		},
 	}
 
+	hookedStateDb := state.NewHookedState(s, cfg.Tracer)
+
 	blockContext := gethcore.NewEVMBlockContext(header, exec.chain, nil)
-	// todo - why do we need the blobhashes here?
-	evmEnv := vm.NewEVM(blockContext, vm.TxContext{BlobHashes: tx.Tx.BlobHashes(), GasPrice: header.BaseFee}, s, exec.cc, cfg)
+	evmEnv := vm.NewEVM(blockContext, hookedStateDb, exec.cc, cfg)
 
 	msg, err := TransactionToMessageWithOverrides(tx, exec.cc, header)
 	if err != nil {
@@ -105,7 +106,7 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 
 	receipt, err := adjustPublishingCostGas(tx, msg, s, header, noBaseFee, func() (*types.Receipt, error) {
 		s.SetTxContext(tx.Tx.Hash(), tCount)
-		return gethcore.ApplyTransactionWithEVM(msg, exec.cc, gp, s, header.Number, header.Hash(), tx.Tx, usedGas, evmEnv)
+		return gethcore.ApplyTransactionWithEVM(msg, gp, s, header.Number, header.Hash(), tx.Tx, usedGas, evmEnv)
 	})
 	if err != nil {
 		return nil, err
@@ -151,8 +152,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 
 	blockContext := gethcore.NewEVMBlockContext(ethHeader, exec.chain, nil)
 	// sets TxKey.origin
-	txContext := gethcore.NewEVMTxContext(msg)
-	vmenv := vm.NewEVM(blockContext, txContext, cleanState, exec.cc, vmCfg)
+	vmenv := vm.NewEVM(blockContext, cleanState, exec.cc, vmCfg)
 	result, err := gethcore.ApplyMessage(vmenv, msg, &gp)
 	// Follow the same error check structure as in geth
 	// 1 - vmError / stateDB err check

@@ -1,6 +1,7 @@
 package ratelimiter
 
 import (
+	"fmt"
 	"math"
 	"sync"
 	"time"
@@ -192,7 +193,7 @@ func (rl *RateLimiter) Allow(userID common.Address) (bool, uuid.UUID) {
 	// Check if the user has reached the maximum number of concurrent requests
 	if uint32(rl.CountOpenRequests(userID)) >= rl.GetMaxConcurrentRequest() {
 		rl.IncrementRateLimitedRequests()
-		rl.logger.Info("User %s has reached the maximum number of concurrent requests.", userID.Hex())
+		rl.logger.Info("User has reached the maximum number of concurrent requests.", "uid", userID.Hex())
 		return false, zeroUUID
 	}
 
@@ -255,6 +256,6 @@ func (rl *RateLimiter) logRateLimitedStats() {
 		if math.IsNaN(rateLimitedPercentage) {
 			rateLimitedPercentage = 0
 		}
-		rl.logger.Info("Total requests: %d, Rate-limited requests: %d (%.4f%%)", totalRequests, rateLimitedRequests, rateLimitedPercentage)
+		rl.logger.Info(fmt.Sprintf("Total requests: %d, Rate-limited requests: %d (%.4f%%)", totalRequests, rateLimitedRequests, rateLimitedPercentage))
 	}
 }
