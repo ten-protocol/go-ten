@@ -3,6 +3,7 @@ package l1
 import (
 	"context"
 	"fmt"
+
 	"github.com/ten-protocol/go-ten/integration/networktest/actions"
 
 	"github.com/ethereum/go-ethereum/common"

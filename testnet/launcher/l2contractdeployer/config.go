@@ -61,16 +61,19 @@ func WithEnclaveRegistryAddress(s string) Option {
 		c.enclaveRegistryAddress = s
 	}
 }
+
 func WithCrossChainAddress(s string) Option {
 	return func(c *Config) {
 		c.crossChainAddress = s
 	}
 }
+
 func WithRollupContractAddress(s string) Option {
 	return func(c *Config) {
 		c.rollupAddress = s
 	}
 }
+
 func WithNetworkConfigAddress(s string) Option {
 	return func(c *Config) {
 		c.networkConfigAddress = s

@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ethereum/go-ethereum/params"
 
@@ -37,8 +38,6 @@ type Publisher struct {
 	blobResolver     BlobResolver
 	l1ChainCfg       *params.ChainConfig
 
-	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
-	importantContractAddresses map[string]gethcommon.Address
 	// lock for the important contract addresses map
 	importantAddressesMutex sync.RWMutex
 	importantAddresses      *common.NetworkConfigAddresses

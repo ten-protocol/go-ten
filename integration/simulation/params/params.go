@@ -1,8 +1,9 @@
 package params
 
 import (
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/go/host/l1"
 

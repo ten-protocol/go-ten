@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
+
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"

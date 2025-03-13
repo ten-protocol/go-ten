@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/contracts/generated/MerkleTreeMessageBus"
 	"math/big"
 	"time"
+
+	"github.com/ten-protocol/go-ten/contracts/generated/MerkleTreeMessageBus"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkEnclaveRegistry"

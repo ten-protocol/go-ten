@@ -21,7 +21,7 @@ import (
 
 // The types of contracts supported by the deployer
 const (
-	//mgmtContract        = "MGMT"
+	// mgmtContract        = "MGMT"
 	enclaveRegistry     = "ENCLAVE_REGISTRY"
 	rollup              = "ROLLUP"
 	crossChain          = "CROSS_CHAIN"

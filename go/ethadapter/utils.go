@@ -53,7 +53,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 			"from", from.Hex(),
 			"to", to.Hex(),
 			"method_signature", hexutil.Encode(data[:4])) // First 4 bytes are the method signature
-		
+
 		// Try to extract more detailed error information
 		if strings.Contains(err.Error(), "execution reverted") {
 			// Try to get the revert reason if available
@@ -66,7 +66,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 			}
 			println("Execution reverted with reason:", reason)
 		}
-		
+
 		return nil, fmt.Errorf("could not estimate gas - %w", err)
 	}
 

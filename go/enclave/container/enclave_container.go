@@ -3,6 +3,7 @@ package container
 import (
 	"context"
 	"fmt"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -48,7 +49,6 @@ func NewEnclaveContainerFromConfig(config *enclaveconfig.EnclaveConfig) *Enclave
 
 // NewEnclaveContainerWithLogger is useful for testing etc.
 func NewEnclaveContainerWithLogger(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) *EnclaveContainer {
-
 	genesis, err := obscuroGenesis.New(config.TenGenesis)
 	if err != nil {
 		logger.Crit("unable to parse obscuro genesis", log.ErrKey, err)

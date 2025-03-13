@@ -2,6 +2,7 @@ package contractlib
 
 import (
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -46,7 +47,6 @@ func (n *enclaveRegistryLibImpl) CreateInitializeSecret(tx *common.L1InitializeS
 		tx.InitialSecret,
 		ethadapter.Base64EncodeToString(tx.Attestation),
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
@@ -77,7 +77,6 @@ func (n *enclaveRegistryLibImpl) CreateRespondSecret(tx *common.L1RespondSecretT
 		tx.Secret,
 		verifyAttester,
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}

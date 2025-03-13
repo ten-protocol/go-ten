@@ -26,7 +26,7 @@ type EnclaveConfig struct {
 	//// These L1 contracts must be already deployed before the TEN network is created
 	// L1 contract address that maintains all the index of all system/ network contracts
 	NetworkConfigAddress gethcommon.Address
-	//Rollup contract L1 Address
+	// Rollup contract L1 Address
 	RollupContractAddress gethcommon.Address
 	// EnclaveRegistry L1 Address
 	EnclaveRegistryAddress gethcommon.Address

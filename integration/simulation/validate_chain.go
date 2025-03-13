@@ -257,7 +257,6 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 	enclaveRegistryLib := s.Params.ContractRegistryLib.NetworkEnclaveLib()
 
 	blockchain, err := node.BlocksBetween(startBlock, endBlock)
-
 	if err != nil {
 		panic(err)
 	}

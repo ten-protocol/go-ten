@@ -2,6 +2,7 @@ package network
 
 import (
 	"fmt"
+
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"

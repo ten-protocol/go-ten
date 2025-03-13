@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 	"math/big"
 	"time"
+
+	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 
 	"github.com/TwiN/gocache/v2"
 

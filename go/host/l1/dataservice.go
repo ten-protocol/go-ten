@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
@@ -361,9 +362,9 @@ func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, proc
 		switch decodedTx.(type) {
 		case *common.L1InitializeSecretTx:
 			processed.AddEvent(common.InitialiseSecretTx, txData)
-		//case *common.L1SetImportantContractsTx:
+		// case *common.L1SetImportantContractsTx:
 		//	processed.AddEvent(common.SetImportantContractsTx, txData)
-		case *common.L1PermissionSeqTx: //FIXME I think this can be deleted?
+		case *common.L1PermissionSeqTx: // FIXME I think this can be deleted?
 			return // no-op as it was processed in the previous processSequencerLogs call
 		default:
 			// this should never happen since the specific events should always decode into one of these types

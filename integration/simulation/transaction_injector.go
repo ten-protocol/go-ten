@@ -3,14 +3,15 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"math/rand"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"

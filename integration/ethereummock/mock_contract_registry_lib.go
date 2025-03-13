@@ -5,11 +5,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 )
 
-type mockContractRegistryLib struct {
-	rollupLib         mockRollupContractLib
-	networkEnclaveLib MockNetworkEnclaveRegistryLib
-	networkConfigLib  mockNetworkConfigLib
-}
+type mockContractRegistryLib struct{}
 
 func (m *mockContractRegistryLib) GetContractAddresses() *common.NetworkConfigAddresses {
 	addresses := &common.NetworkConfigAddresses{

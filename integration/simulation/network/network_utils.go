@@ -2,10 +2,11 @@ package network
 
 import (
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math"
 	"math/big"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -63,7 +64,6 @@ func createInMemTenNode(
 	l1BlockTime time.Duration,
 	blobResolver l1.BlobResolver,
 ) *hostcontainer.HostContainer {
-
 	networkConfigAddr := contractRegistryLib.NetworkConfigLib().GetContractAddr()
 	hostConfig := &hostconfig.HostConfig{
 		ID:                   fmt.Sprintf("%d", id),

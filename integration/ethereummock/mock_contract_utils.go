@@ -3,6 +3,7 @@ package ethereummock
 import (
 	"bytes"
 	"encoding/gob"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"

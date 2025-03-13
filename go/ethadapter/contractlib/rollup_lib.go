@@ -2,6 +2,8 @@ package contractlib
 
 import (
 	"fmt"
+	"math/big"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -10,7 +12,6 @@ import (
 	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"math/big"
 )
 
 type RollupContractLib interface {

@@ -3,12 +3,13 @@ package network
 import (
 	"bufio"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 

@@ -3,6 +3,7 @@ package simulation
 import (
 	"bytes"
 	"fmt"
+
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ethereum/go-ethereum/core/types"

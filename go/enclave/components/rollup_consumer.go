@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
+
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
