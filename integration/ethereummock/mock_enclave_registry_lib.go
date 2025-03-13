@@ -18,20 +18,21 @@ func (m *MockNetworkEnclaveRegistryLib) IsMock() bool {
 }
 
 func (m *MockNetworkEnclaveRegistryLib) GetContractAddr() *gethcommon.Address {
-	return &StoreSecretTxAddr
+	return &RespondSecretTxAddr
 }
 
 func (m *MockNetworkEnclaveRegistryLib) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
 	if tx.To() == nil || len(tx.Data()) == 0 {
 		return nil, nil
 	}
-
 	switch tx.To().Hex() {
-	case StoreSecretTxAddr.Hex():
+	case InitializeSecretTxAddr.Hex():
 		return DecodeTx(tx), nil
 	case RequestSecretTxAddr.Hex():
 		return DecodeTx(tx), nil
-	case InitializeSecretTxAddr.Hex():
+	case RespondSecretTxAddr.Hex():
+		return DecodeTx(tx), nil
+	case GrantSeqTxAddr.Hex():
 		return DecodeTx(tx), nil
 	default:
 		return nil, nil
@@ -47,5 +48,5 @@ func (m *MockNetworkEnclaveRegistryLib) CreateRequestSecret(tx *common.L1Request
 }
 
 func (m *MockNetworkEnclaveRegistryLib) CreateRespondSecret(tx *common.L1RespondSecretTx, _ bool) (types.TxData, error) {
-	return EncodeTx(tx, StoreSecretTxAddr), nil
+	return EncodeTx(tx, RespondSecretTxAddr), nil
 }

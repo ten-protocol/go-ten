@@ -307,6 +307,7 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 		var data []byte
 		switch tx.To().Hex() {
 		case RollupTxAddr.Hex():
+			println("ROLLUP EVENT")
 			topic = ethadapter.RollupAddedID
 			blobHashes := tx.BlobHashes()
 			if len(blobHashes) > 0 {
@@ -329,16 +330,22 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 				copy(data[96:], signature)
 			}
 		case MessageBusAddr.Hex():
+			println("MESSAGEBUS EVENT")
 			topic = ethadapter.CrossChainEventID
 		case DepositTxAddr.Hex():
+			println("DEPOSIT EVENT")
 			topic = ethadapter.ValueTransferEventID
-		case StoreSecretTxAddr.Hex():
+		case RespondSecretTxAddr.Hex():
+			println("RESPOND SECRET EVENT")
 			topic = ethadapter.NetworkSecretRespondedID
 		case RequestSecretTxAddr.Hex():
+			println("REQUEST SECRET EVENT")
 			topic = ethadapter.NetworkSecretRequestedID
 		case InitializeSecretTxAddr.Hex():
+			println("INITIALIZE SECRET EVENT")
 			topic = ethadapter.SequencerEnclaveGrantedEventID
 		case GrantSeqTxAddr.Hex():
+			println("GRANT SEQ EVENT")
 			topic = ethadapter.SequencerEnclaveGrantedEventID
 			// enclave ID address, padded out to 32 bytes to match standard eth fields
 			data = make([]byte, 32)

@@ -14,7 +14,7 @@ var (
 	MessageBusAddr         = datagenerator.RandomAddress()
 	DepositTxAddr          = datagenerator.RandomAddress()
 	RollupTxAddr           = datagenerator.RandomAddress()
-	StoreSecretTxAddr      = datagenerator.RandomAddress()
+	RespondSecretTxAddr    = datagenerator.RandomAddress()
 	RequestSecretTxAddr    = datagenerator.RandomAddress()
 	InitializeSecretTxAddr = datagenerator.RandomAddress()
 	GrantSeqTxAddr         = datagenerator.RandomAddress()
@@ -35,15 +35,20 @@ func DecodeTx(tx *types.Transaction) common.L1TenTransaction {
 	// so this is a way that we can differentiate different contract calls
 	var t common.L1TenTransaction
 	switch tx.To().Hex() {
-	case StoreSecretTxAddr.Hex():
+	case RespondSecretTxAddr.Hex():
+		println("StoreSecretTxAddr: ", RespondSecretTxAddr.Hex())
 		t = &common.L1RespondSecretTx{}
 	case DepositTxAddr.Hex():
+		println("DepositTxAddr: ", DepositTxAddr.Hex())
 		t = &common.L1DepositTx{}
 	case RequestSecretTxAddr.Hex():
+		println("RequestSecretTxAddr: ", RequestSecretTxAddr.Hex())
 		t = &common.L1RequestSecretTx{}
 	case InitializeSecretTxAddr.Hex():
+		println("InitializeSecretTxAddr: ", InitializeSecretTxAddr.Hex())
 		t = &common.L1InitializeSecretTx{}
 	case GrantSeqTxAddr.Hex():
+		println("GrantSeqTxAddr: ", GrantSeqTxAddr.Hex())
 		// this tx is empty and entirely mocked, no need to decode
 		return &common.L1PermissionSeqTx{}
 	default:
