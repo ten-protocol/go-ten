@@ -13,9 +13,9 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
     // custom access control to avoid conflicting dependencies in MessageBus
     mapping(address => bool) public stateRootManagers;
     
-    constructor() MessageBus() {
-        admin = msg.sender;
-        stateRootManagers[msg.sender] = true;
+    constructor(address _admin) MessageBus() {
+        admin = _admin;
+        stateRootManagers[_admin] = true;
     }
     
     modifier onlyAdmin() {

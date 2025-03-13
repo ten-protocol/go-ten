@@ -259,7 +259,6 @@ func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 			panic(err)
 		}
 
-		println("Adding gas bridge tx: ", tx.Hash().Hex())
 		go ti.TxTracker.trackGasBridgingTx(tx, receiverWallet)
 
 		sleepRndBtw(ti.avgBlockDuration/3, ti.avgBlockDuration)

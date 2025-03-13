@@ -237,7 +237,6 @@ func deployRollupContract(client ethadapter.EthClient, ownerKey wallet.Wallet, m
 		return nil, nil, fmt.Errorf("failed to instantiate RollupContract. Cause: %w", err)
 	}
 
-	// Create a fresh transactor for initialization
 	opts, err := createTransactor(ownerKey)
 	if err != nil {
 		return nil, nil, err
@@ -274,6 +273,7 @@ func deployCrossChainContract(client ethadapter.EthClient, ownerKey wallet.Walle
 		return nil, nil, err
 	}
 
+	println("Key that deployed cross chain contract: ", ownerKey.Address().Hex())
 	tx, err := crossChainContract.Initialize(opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize CrossChain contract. Cause: %w", err)
@@ -286,31 +286,31 @@ func deployCrossChainContract(client ethadapter.EthClient, ownerKey wallet.Walle
 	return crossChainContract, crossChainReceipt, nil
 }
 
-func PermissionTenSequencerEnclave(mcOwner wallet.Wallet, client ethadapter.EthClient, enclaveRegistryAddr common.Address, seqEnclaveID common.Address) error {
+func PermissionTenSequencerEnclave(contractOwner wallet.Wallet, client ethadapter.EthClient, enclaveRegistryAddr common.Address, seqEnclaveID common.Address) error {
 	ctr, err := NetworkEnclaveRegistry.NewNetworkEnclaveRegistry(enclaveRegistryAddr, client.EthClient())
 	if err != nil {
 		return err
 	}
 
-	opts, err := bind.NewKeyedTransactorWithChainID(mcOwner.PrivateKey(), mcOwner.ChainID())
+	opts, err := createTransactor(contractOwner)
 	if err != nil {
 		return err
 	}
 
 	tx, err := ctr.GrantSequencerEnclave(opts, seqEnclaveID)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to grant enclave sequencer permission: %w", err)
 	}
 
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to fetch receipt for granting enclave sequencer: %w", err)
 	}
 
 	return nil
 }
 
-func PermissionRollupContractStateRoot(mcOwner wallet.Wallet, client ethadapter.EthClient, crossChainAddress common.Address, rollupContractAddress common.Address) error {
+func PermissionRollupContractStateRoot(contractOwner wallet.Wallet, client ethadapter.EthClient, crossChainAddress common.Address, rollupContractAddress common.Address) error {
 	crossChainContract, err := CrossChain.NewCrossChain(crossChainAddress, client.EthClient())
 	if err != nil {
 		return err
@@ -325,12 +325,13 @@ func PermissionRollupContractStateRoot(mcOwner wallet.Wallet, client ethadapter.
 	if err != nil {
 		return fmt.Errorf("unable to get merkletreeMessageBus contract: %w", err)
 	}
-	opts, err := bind.NewKeyedTransactorWithChainID(mcOwner.PrivateKey(), mcOwner.ChainID())
+
+	println("Key trying to add state root manager: ", contractOwner.Address().Hex())
+	opts, err := createTransactor(contractOwner)
 	if err != nil {
 		return err
 	}
 
-	// FIXME execution reverted: Only admin can call this function
 	tx, err := ctr.AddStateRootManager(opts, rollupContractAddress)
 	if err != nil {
 		return fmt.Errorf("unable to grant rollup contract state root manager acces: %w", err)
@@ -338,7 +339,7 @@ func PermissionRollupContractStateRoot(mcOwner wallet.Wallet, client ethadapter.
 
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to fetch receipt for granting rollup contract state root permission: %w", err)
 	}
 
 	return nil

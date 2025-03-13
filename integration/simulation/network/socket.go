@@ -184,7 +184,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 
 	err = PermissionRollupContractStateRoot(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.CrossChain, addresses.RollupContract)
 	if err != nil {
-		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
+		return nil, fmt.Errorf("unable to permission rollup contract on merkle messagebus: %w", err)
 	}
 
 	// wait for nodes to be healthy now we've permissioned
