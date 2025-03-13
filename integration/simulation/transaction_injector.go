@@ -234,7 +234,6 @@ func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 	addresses := ti.contractRegistryLib.GetContractAddresses()
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-
 		busCtr, err := MessageBus.NewMessageBus(addresses.MessageBus, ti.rpcHandles.RndEthClient().EthClient())
 		if err != nil {
 			panic(err)
