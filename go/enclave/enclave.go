@@ -94,9 +94,9 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, l
 	gasOracle := gas.NewGasOracle()
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 
-	// FIXME figure out addresses
 	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&config.EnclaveRegistryAddress, logger)
 	rollupContractLib := contractlib.NewRollupContractLib(&config.RollupContractAddress, logger)
+	// we use this construction to avoid passing an eth client in the enclave and fetching the addresses
 	contractRegistry := contractlib.NewContractRegistryFromLibs(rollupContractLib, enclaveRegistryLib, logger)
 	// start the mempool in validate only. Based on the config, it might become sequencer
 	evmEntropyService := crypto.NewEvmEntropyService(sharedSecretService, logger)

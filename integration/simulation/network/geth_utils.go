@@ -273,7 +273,6 @@ func deployCrossChainContract(client ethadapter.EthClient, ownerKey wallet.Walle
 		return nil, nil, err
 	}
 
-	println("Key that deployed cross chain contract: ", ownerKey.Address().Hex())
 	tx, err := crossChainContract.Initialize(opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize CrossChain contract. Cause: %w", err)
@@ -326,7 +325,6 @@ func PermissionRollupContractStateRoot(contractOwner wallet.Wallet, client ethad
 		return fmt.Errorf("unable to get merkletreeMessageBus contract: %w", err)
 	}
 
-	println("Key trying to add state root manager: ", contractOwner.Address().Hex())
 	opts, err := createTransactor(contractOwner)
 	if err != nil {
 		return err

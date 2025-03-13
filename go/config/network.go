@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/ten-protocol/go-ten/go/common"
 	"math/big"
 	"time"
 
@@ -65,12 +66,12 @@ type L1Config struct {
 //	yaml: `network.l1.contracts`
 type L1Contracts struct {
 	//FIXME add to yamls
-	NetworkConfigContract   gethcommon.Address `mapstructure:"networkConfig"` //this might be the only one we need
-	CrossChainContract      gethcommon.Address `mapstructure:"crossChain"`
-	RollupContract          gethcommon.Address `mapstructure:"rollup"`
-	EnclaveRegistryContract gethcommon.Address `mapstructure:"enclaveRegistry"`
-	MessageBusContract      gethcommon.Address `mapstructure:"messageBus"`
-	BridgeContract          gethcommon.Address `mapstructure:"bridge"`
+	NetworkConfigContract   common.NetworkConfigAddress `mapstructure:"networkConfig"` //this might be the only one we need
+	CrossChainContract      common.CrossChainAddress    `mapstructure:"crossChain"`
+	RollupContract          common.RollupAddress        `mapstructure:"rollup"`
+	EnclaveRegistryContract common.RollupAddress        `mapstructure:"enclaveRegistry"`
+	MessageBusContract      gethcommon.Address          `mapstructure:"messageBus"`
+	BridgeContract          gethcommon.Address          `mapstructure:"bridge"`
 }
 
 // RollupConfig contains the configuration for the rollup processing on the Ten network

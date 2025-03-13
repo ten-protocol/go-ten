@@ -32,14 +32,13 @@ func L1BytecodeWithDefaultSupply(tokenName string, crossChainContractAddress com
 	return L1Bytecode(tokenName, tokenName, "1000000000000000000000000000000000000000", crossChainContractAddress)
 }
 
-// FIXME what does managment addr do here?
-func L1Bytecode(tokenName string, tokenSymbol string, initialSupply string, crossChainContractAddress common.Address) []byte {
+func L1Bytecode(tokenName string, tokenSymbol string, initialSupply string, crossChainContract common.Address) []byte {
 	parsed, err := EthERC20.EthERC20MetaData.GetAbi()
 	if err != nil {
 		panic(err)
 	}
 	supply, _ := big.NewInt(0).SetString(initialSupply, 10)
-	input, err := parsed.Pack("", tokenName, tokenSymbol, supply, crossChainContractAddress)
+	input, err := parsed.Pack("", tokenName, tokenSymbol, supply, crossChainContract)
 	if err != nil {
 		panic(err)
 	}

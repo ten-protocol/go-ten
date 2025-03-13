@@ -76,13 +76,10 @@ func (c *erc20ContractLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTran
 		return nil, fmt.Errorf("to not found for transfer")
 	}
 
-	// only process transfers made to the management contract
 	toAddr, ok := to.(gethcommon.Address)
 	if !ok {
 		return nil, nil
 	}
-	//FIXME not sure if this is correct
-	//println("ERC20 TO ADDR: ", toAddr.Hex())
 
 	amount, found := contractCallData[AmountCallData]
 	if !found {

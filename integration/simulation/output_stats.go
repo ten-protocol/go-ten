@@ -97,45 +97,37 @@ func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient)
 	}
 
 	rollupLib := contractlib.NewRollupContractLib(&contractAddresses.RollupContract, testlog.Logger())
-	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&contractAddresses.NetworkEnclaveRegistry, testlog.Logger())
-
-	//FIXME
 	for _, tx := range block.Transactions() {
+		// Try rollup tx first
 		t, err := rollupLib.DecodeTx(tx)
 		if err != nil {
 			panic(err)
 		}
-		t, err = enclaveRegistryLib.DecodeTx(tx)
+		if t != nil {
+			switch l1Tx := t.(type) {
+			case *common.L1RollupHashes:
+				if len(l1Tx.BlobHashes) == 0 {
+					testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
+				}
+				//if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {
+				//	o.l2RollupCountInL1Blocks++
+				//	for _, batch := range r.BatchPayloads {
+				//		o.l2RollupTxCountInL1Blocks += len(batch.TxHashes)
+				//	}
+				//}
+			}
+		}
+
+		// Check if it's a deposit transaction
+		t, err = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
 		if err != nil {
 			panic(err)
 		}
-		if t == nil {
-			var err error
-			t, err = o.simulation.Params.ERC20ContractLib.DecodeTx(tx)
-			if err != nil {
-				testlog.Logger().Crit("could not decode tx.", log.ErrKey, err)
+		if t != nil {
+			if _, ok := t.(*common.L1DepositTx); ok {
+				o.canonicalERC20DepositCount++
+				continue // Skip to next transaction
 			}
-		}
-
-		if t == nil {
-			continue
-		}
-
-		switch l1Tx := t.(type) {
-		case *common.L1RollupTx:
-			_, err := common.DecodeRollup(l1Tx.Rollup)
-			if err != nil {
-				testlog.Logger().Crit("could not decode rollup.", log.ErrKey, err)
-			}
-			//if l1Node.IsBlockAncestor(block, r.Header.L1Proof) {
-			//	o.l2RollupCountInL1Blocks++
-			//	for _, batch := range r.BatchPayloads {
-			//		o.l2RollupTxCountInL1Blocks += len(batch.TxHashes)
-			//	}
-			//}
-
-		case *common.L1DepositTx:
-			o.canonicalERC20DepositCount++
 		}
 	}
 }

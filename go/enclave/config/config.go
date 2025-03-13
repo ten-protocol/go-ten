@@ -24,13 +24,11 @@ type EnclaveConfig struct {
 	TenChainID int64
 
 	//// These L1 contracts must be already deployed before the TEN network is created
-	//// The management contract address on the L1 network
-	//ManagementContractAddress gethcommon.Address
-	// TODO
+	// L1 contract address that maintains all the index of all system/ network contracts
 	NetworkConfigAddress gethcommon.Address
-	//TODO
+	//Rollup contract L1 Address
 	RollupContractAddress gethcommon.Address
-	//TODO
+	// EnclaveRegistry L1 Address
 	EnclaveRegistryAddress gethcommon.Address
 	// MessageBus L1 Address
 	MessageBusAddress gethcommon.Address
