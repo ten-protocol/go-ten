@@ -69,7 +69,7 @@ func (s *setImportantContract) Run(ctx context.Context, network networktest.Netw
 	if err != nil {
 		return nil, err
 	}
-	tx, err := ethadapter.SetTxGasPrice(ctx, l1Client, txData, networkCfg.ManagementContractAddress, nonce, 0, testlog.Logger())
+	tx, err := ethadapter.SetTxGasPrice(ctx, l1Client, txData, networkCfg.ManagementContractAddress, nonce, 0, nil, testlog.Logger())
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to prepare tx")
 	}
@@ -105,7 +105,7 @@ func (s *setImportantContract) Verify(_ context.Context, network networktest.Net
 		return errors.Wrap(err, "failed to get network config")
 	}
 
-	if networkCfg.ImportantContracts == nil || len(networkCfg.ImportantContracts) == 0 {
+	if len(networkCfg.ImportantContracts) == 0 {
 		return errors.New("no important contracts set")
 	}
 	if addr, ok := networkCfg.ImportantContracts[s.contractKey]; !ok || addr != s.contractAddress {

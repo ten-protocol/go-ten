@@ -12,11 +12,9 @@ import (
 	"github.com/ten-protocol/go-ten/go/responses"
 
 	"github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/common/log"
 	_ "github.com/ten-protocol/go-ten/go/common/tracers/native" // make sure the tracers are loaded
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
@@ -46,34 +44,6 @@ func NewEnclaveInitAPI(config *enclaveconfig.EnclaveConfig, storage storage.Stor
 		daEncryptionService: daEncryptionService,
 		rpcKeyService:       rpcKeyService,
 	}
-}
-
-// Status is only implemented by the RPC wrapper
-func (e *enclaveInitService) Status(ctx context.Context) (common.Status, common.SystemError) {
-	initialised := e.sharedSecretService.IsInitialised()
-	if !initialised {
-		return common.Status{StatusCode: common.AwaitingSecret, L2Head: _noHeadBatch}, nil
-	}
-	var l1HeadHash gethcommon.Hash
-	l1Head, err := e.l1BlockProcessor.GetHead(ctx)
-	if err != nil {
-		// this might be normal while enclave is starting up, just send empty hash
-		e.logger.Debug("failed to fetch L1 head block for status response", log.ErrKey, err)
-	} else {
-		l1HeadHash = l1Head.Hash()
-	}
-	// we use zero when there's no head batch yet, the first seq number is 1
-	l2HeadSeqNo := _noHeadBatch
-	// this is the highest seq number that has been received and stored on the enclave (it may not have been executed)
-	currSeqNo, err := e.storage.FetchCurrentSequencerNo(ctx)
-	if err != nil {
-		// this might be normal while enclave is starting up, just send empty hash
-		e.logger.Debug("failed to fetch L2 head batch for status response", log.ErrKey, err)
-	} else {
-		l2HeadSeqNo = currSeqNo
-	}
-	enclaveID := e.enclaveKeyService.EnclaveID()
-	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadSeqNo, EnclaveID: enclaveID}, nil
 }
 
 func (e *enclaveInitService) Attestation(ctx context.Context) (*common.AttestationReport, common.SystemError) {
