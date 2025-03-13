@@ -299,14 +299,14 @@ func createTenNetwork(t *testing.T, startPort int) {
 	// Create the TEN network.
 	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
-		NumberOfNodes:    1,
-		AvgBlockDuration: 2 * time.Second,
-		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
-		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
-		Wallets:          wallets,
-		StartPort:        startPort,
-		WithPrefunding:   true,
-		L1BeaconPort:     integration.TestPorts.TestTenscanPort + integration.DefaultPrysmGatewayPortOffset,
+		NumberOfNodes:       1,
+		AvgBlockDuration:    2 * time.Second,
+		ContractRegistryLib: ethereummock.NewContractRegistryLibMock(),
+		ERC20ContractLib:    ethereummock.NewERC20ContractLibMock(),
+		Wallets:             wallets,
+		StartPort:           startPort,
+		WithPrefunding:      true,
+		L1BeaconPort:        integration.TestPorts.TestTenscanPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)
