@@ -294,6 +294,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 			}
 
 			if t == nil {
+				println("ABOUT TO BLOW UP: ", tx.To().Hex())
 				t, err = enclaveRegistryLib.DecodeTx(tx)
 				if err != nil {
 					panic(err)

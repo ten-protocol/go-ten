@@ -263,7 +263,6 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		h.publicSystemContracts = publicCfg.PublicSystemContracts
 	}
 
-	h.contractRegistry.RollupLib().GetContractAddr()
 	return &common.TenNetworkInfo{
 		NetworkConfigAddress:            h.config.NetworkConfigAddress,
 		L1StartHash:                     h.config.L1StartHash,

@@ -81,7 +81,7 @@ func createInMemTenNode(
 	}
 
 	contracts := contractRegistryLib.GetContractAddresses()
-	
+
 	enclaveConfig := &enclaveconfig.EnclaveConfig{
 		NodeID:                    hostConfig.ID,
 		L1ChainID:                 integration.EthereumChainID,
@@ -104,7 +104,7 @@ func createInMemTenNode(
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
-	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &TestnetGenesis, enclaveLogger)}
+	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &TestnetGenesis, contractRegistryLib, enclaveLogger)}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	// create an in memory TEN node

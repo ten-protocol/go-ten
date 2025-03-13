@@ -64,7 +64,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	simParams.ContractRegistryLib = contractRegistryLib
 
 	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(
-		&simParams.L1TenData.NetworkConfigAddress,
+		&simParams.L1TenData.CrossChainContractAddress,
 		&simParams.L1TenData.ObxErc20Address,
 		&simParams.L1TenData.EthErc20Address,
 	)

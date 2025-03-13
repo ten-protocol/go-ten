@@ -18,7 +18,7 @@ func (m *MockNetworkEnclaveRegistryLib) IsMock() bool {
 }
 
 func (m *MockNetworkEnclaveRegistryLib) GetContractAddr() *gethcommon.Address {
-	return &RespondSecretTxAddr
+	return &InitializeSecretTxAddr
 }
 
 func (m *MockNetworkEnclaveRegistryLib) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
@@ -35,6 +35,7 @@ func (m *MockNetworkEnclaveRegistryLib) DecodeTx(tx *types.Transaction) (common.
 	case GrantSeqTxAddr.Hex():
 		return DecodeTx(tx), nil
 	default:
+		println("UNKNOWN TX at addr: ", tx.To().Hex())
 		return nil, nil
 	}
 }

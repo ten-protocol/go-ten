@@ -36,22 +36,18 @@ func DecodeTx(tx *types.Transaction) common.L1TenTransaction {
 	var t common.L1TenTransaction
 	switch tx.To().Hex() {
 	case RespondSecretTxAddr.Hex():
-		println("StoreSecretTxAddr: ", RespondSecretTxAddr.Hex())
 		t = &common.L1RespondSecretTx{}
 	case DepositTxAddr.Hex():
-		println("DepositTxAddr: ", DepositTxAddr.Hex())
 		t = &common.L1DepositTx{}
 	case RequestSecretTxAddr.Hex():
-		println("RequestSecretTxAddr: ", RequestSecretTxAddr.Hex())
 		t = &common.L1RequestSecretTx{}
 	case InitializeSecretTxAddr.Hex():
-		println("InitializeSecretTxAddr: ", InitializeSecretTxAddr.Hex())
 		t = &common.L1InitializeSecretTx{}
 	case GrantSeqTxAddr.Hex():
-		println("GrantSeqTxAddr: ", GrantSeqTxAddr.Hex())
 		// this tx is empty and entirely mocked, no need to decode
 		return &common.L1PermissionSeqTx{}
 	default:
+		println("PANIC with tx to addr: ", tx.To().Hex())
 		panic("unexpected type")
 	}
 
