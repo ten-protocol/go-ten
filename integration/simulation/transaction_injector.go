@@ -231,14 +231,11 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 	gasWallet := ti.wallets.GasBridgeWallet
 
-	ethClient := ti.rpcHandles.RndEthClient()
-
 	addresses := ti.contractRegistryLib.GetContractAddresses()
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		ethClient = ti.rpcHandles.RndEthClient()
 
-		busCtr, err := MessageBus.NewMessageBus(addresses.MessageBus, ethClient.EthClient())
+		busCtr, err := MessageBus.NewMessageBus(addresses.MessageBus, ti.rpcHandles.RndEthClient().EthClient())
 		if err != nil {
 			panic(err)
 		}
@@ -362,6 +359,9 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 
 	ethClient := ti.rpcHandles.RndEthClient()
 	crossChainCtr, err := CrossChain.NewCrossChain(ti.contractRegistryLib.GetContractAddresses().CrossChain, ethClient.EthClient())
+	if err != nil {
+		panic(err)
+	}
 
 	opts, err := bind.NewKeyedTransactorWithChainID(ti.wallets.GasWithdrawalWallet.PrivateKey(), ti.wallets.GasWithdrawalWallet.ChainID())
 	if err != nil {

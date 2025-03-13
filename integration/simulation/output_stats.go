@@ -121,11 +121,9 @@ func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient)
 		if err != nil {
 			panic(err)
 		}
-		if t != nil {
-			if _, ok := t.(*common.L1DepositTx); ok {
-				o.canonicalERC20DepositCount++
-				continue // Skip to next transaction
-			}
+		if _, ok := t.(*common.L1DepositTx); ok {
+			o.canonicalERC20DepositCount++
+			continue 
 		}
 	}
 }
