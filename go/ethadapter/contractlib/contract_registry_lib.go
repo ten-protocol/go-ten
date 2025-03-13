@@ -24,7 +24,7 @@ type ContractRegistryImpl struct {
 	logger            gethlog.Logger
 }
 
-func NewContractRegistry(networkConfigAddr gethcommon.Address, ethClient ethclient.Client, logger gethlog.Logger) (ContractRegistryLib, error) {
+func NewContractRegistryLib(networkConfigAddr gethcommon.Address, ethClient ethclient.Client, logger gethlog.Logger) (ContractRegistryLib, error) {
 	networkConfig, err := NewNetworkConfigLib(networkConfigAddr, ethClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create NetworkConfig: %w", err)

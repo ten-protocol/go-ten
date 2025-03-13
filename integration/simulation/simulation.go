@@ -134,11 +134,7 @@ func (s *Simulation) Stop() {
 func (s *Simulation) waitForTenGenesisOnL1() {
 	// grab an L1 client
 	client := s.RPCHandles.EthClients[0]
-	contractLib, err := s.Params.NetworkContractConfigLib.GetContractAddresses()
-	if err != nil {
-		testlog.Logger().Error("Could not get contract addresses. Cause: %s", err.Error())
-		//s.Stop()
-	}
+	contractLib := s.Params.ContractRegistryLib.GetContractAddresses()
 	rollupLib := contractlib.NewRollupContractLib(&contractLib.RollupContract, testlog.Logger())
 
 	for {

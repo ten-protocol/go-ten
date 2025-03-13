@@ -255,11 +255,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
-	contractAddresses, err := s.Params.NetworkContractConfigLib.GetContractAddresses()
-	if err != nil {
-		panic(err)
-	}
-
+	contractAddresses := s.Params.ContractRegistryLib.GetContractAddresses()
 	rollupLib := contractlib.NewRollupContractLib(&contractAddresses.RollupContract, testlog.Logger())
 	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&contractAddresses.NetworkEnclaveRegistry, testlog.Logger())
 

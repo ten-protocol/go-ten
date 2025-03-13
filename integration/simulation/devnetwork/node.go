@@ -177,7 +177,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		ExposedURLParamNames: nil,
 	}
 	rpcServer := node.NewServer(&rpcConfig, n.logger)
-	contractRegistry, err := contractlib.NewContractRegistry(n.l1Data.NetworkConfigAddress, *n.l1Client.EthClient(), n.logger)
+	contractRegistry, err := contractlib.NewContractRegistryLib(n.l1Data.NetworkConfigAddress, *n.l1Client.EthClient(), n.logger)
 	if err != nil {
 		panic(fmt.Sprintf("error creating contract registry. Cause: %s", err))
 	}

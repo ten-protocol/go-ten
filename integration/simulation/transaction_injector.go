@@ -55,9 +55,8 @@ type TransactionInjector struct {
 	rpcHandles *network.RPCHandles
 
 	// addrs and libs
-	networkConfigAddr *gethcommon.Address
-	networkConfigLib  contractlib.NetworkConfigLib
-	erc20ContractLib  erc20contractlib.ERC20ContractLib
+	contractRegistryLib contractlib.ContractRegistryLib
+	erc20ContractLib    erc20contractlib.ERC20ContractLib
 
 	// controls
 	interruptRun     *int32
@@ -80,8 +79,7 @@ func NewTransactionInjector(
 	stats *simstats.Stats,
 	rpcHandles *network.RPCHandles,
 	wallets *params.SimWallets,
-	networkConfigAddr *gethcommon.Address,
-	networkConfigLib contractlib.NetworkConfigLib,
+	contractRegistryLib contractlib.ContractRegistryLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	txsToIssue int,
 	params *params.SimParams,
@@ -89,20 +87,19 @@ func NewTransactionInjector(
 	interrupt := int32(0)
 
 	return &TransactionInjector{
-		avgBlockDuration:  avgBlockDuration,
-		stats:             stats,
-		rpcHandles:        rpcHandles,
-		interruptRun:      &interrupt,
-		fullyStoppedChan:  make(chan bool, 1),
-		networkConfigAddr: networkConfigAddr,
-		networkConfigLib:  networkConfigLib,
-		erc20ContractLib:  erc20ContractLib,
-		wallets:           wallets,
-		TxTracker:         newCounter(),
-		txsToIssue:        txsToIssue,
-		params:            params,
-		ctx:               context.Background(), // for now we create a new context here, should allow it to be passed in
-		logger:            testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
+		avgBlockDuration:    avgBlockDuration,
+		stats:               stats,
+		rpcHandles:          rpcHandles,
+		interruptRun:        &interrupt,
+		fullyStoppedChan:    make(chan bool, 1),
+		contractRegistryLib: contractRegistryLib,
+		erc20ContractLib:    erc20ContractLib,
+		wallets:             wallets,
+		TxTracker:           newCounter(),
+		txsToIssue:          txsToIssue,
+		params:              params,
+		ctx:                 context.Background(), // for now we create a new context here, should allow it to be passed in
+		logger:              testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
 	}
 }
 
@@ -235,7 +232,7 @@ func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 
 	ethClient := ti.rpcHandles.RndEthClient()
 
-	addresses, _ := ti.networkConfigLib.GetContractAddresses()
+	addresses := ti.contractRegistryLib.GetContractAddresses()
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		ethClient = ti.rpcHandles.RndEthClient()
@@ -358,16 +355,12 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	// In mem sim does not support the l1 interaction required for the rest of the function.
-
-	if ti.networkConfigLib.IsMock() {
+	if ti.contractRegistryLib.IsMock() {
 		return
 	}
 
 	ethClient := ti.rpcHandles.RndEthClient()
-
-	addresses, _ := ti.networkConfigLib.GetContractAddresses()
-	crossChainAddr := addresses.CrossChain
-	crossChainCtr, err := CrossChain.NewCrossChain(crossChainAddr, ethClient.EthClient())
+	crossChainCtr, err := CrossChain.NewCrossChain(ti.contractRegistryLib.GetContractAddresses().CrossChain, ethClient.EthClient())
 
 	opts, err := bind.NewKeyedTransactorWithChainID(ti.wallets.GasWithdrawalWallet.PrivateKey(), ti.wallets.GasWithdrawalWallet.ChainID())
 	if err != nil {

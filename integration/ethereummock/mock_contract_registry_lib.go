@@ -8,7 +8,7 @@ import (
 type mockContractRegistryLib struct {
 	rollupLib         mockRollupContractLib
 	networkEnclaveLib MockNetworkEnclaveRegistryLib
-	networkConfigLib  contractlib.NetworkConfigLib
+	networkConfigLib  mockNetworkConfigLib
 }
 
 func (m *mockContractRegistryLib) GetContractAddresses() *common.NetworkConfigAddresses {

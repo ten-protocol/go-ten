@@ -56,11 +56,12 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		simParams.StartPort,
 		simParams.NumberOfNodes,
 	)
-	networkConfigLib, err := contractlib.NewNetworkConfigLib(simParams.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient())
+
+	contractRegistryLib, err := contractlib.NewContractRegistryLib(simParams.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient(), testlog.Logger())
 	if err != nil {
-		return nil, err
+		panic(fmt.Sprintf("error creating contract registry. Cause: %s", err))
 	}
-	simParams.NetworkContractConfigLib = networkConfigLib
+	simParams.ContractRegistryLib = contractRegistryLib
 
 	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(
 		&simParams.L1TenData.NetworkConfigAddress,
@@ -171,7 +172,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		}
 	}
 
-	addresses, err := networkConfigLib.GetContractAddresses()
+	addresses := contractRegistryLib.GetContractAddresses()
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch contract addresses. Cause: %s", err)
 	}

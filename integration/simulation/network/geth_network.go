@@ -1,11 +1,13 @@
 package network
 
 import (
+	"fmt"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/eth2network"
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
@@ -44,11 +46,11 @@ func (n *networkInMemGeth) Create(params *params.SimParams, _ *stats.Stats) (*RP
 	}
 	walletClients := createAuthClientsPerWallet(n.l2Clients, params.Wallets)
 
-	contractLib, err := contractlib.NewNetworkConfigLib(params.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient())
+	contractRegistryLib, err := contractlib.NewContractRegistryLib(params.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient(), testlog.Logger())
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("error creating contract registry. Cause: %s", err))
 	}
-	params.NetworkContractConfigLib = contractLib
+	params.ContractRegistryLib = contractRegistryLib
 	params.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(&params.L1TenData.NetworkConfigAddress,
 		&params.L1TenData.ObxErc20Address, &params.L1TenData.EthErc20Address)
 

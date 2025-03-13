@@ -52,7 +52,7 @@ func createInMemTenNode(
 	id int64,
 	isGenesis bool,
 	nodeType common.NodeType,
-	networkConfig contractlib.NetworkConfigLib,
+	contractRegistryLib contractlib.ContractRegistryLib,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	mockP2P hostcommon.P2PHostService,
@@ -63,8 +63,8 @@ func createInMemTenNode(
 	l1BlockTime time.Duration,
 	blobResolver l1.BlobResolver,
 ) *hostcontainer.HostContainer {
-	networkConfigAddr := networkConfig.GetContractAddr()
 
+	networkConfigAddr := contractRegistryLib.NetworkConfigLib().GetContractAddr()
 	hostConfig := &hostconfig.HostConfig{
 		ID:                   fmt.Sprintf("%d", id),
 		IsGenesis:            isGenesis,
@@ -80,11 +80,8 @@ func createInMemTenNode(
 		UseInMemoryDB:        true,
 	}
 
-	contracts, err := networkConfig.GetContractAddresses()
-	if err != nil {
-		panic(err)
-	}
-
+	contracts := contractRegistryLib.GetContractAddresses()
+	
 	enclaveConfig := &enclaveconfig.EnclaveConfig{
 		NodeID:                    hostConfig.ID,
 		L1ChainID:                 integration.EthereumChainID,
@@ -110,14 +107,10 @@ func createInMemTenNode(
 	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &TestnetGenesis, enclaveLogger)}
 
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
-	contractRegistry, err := contractlib.NewContractRegistry(*networkConfig.GetContractAddr(), *ethClient.EthClient(), hostLogger)
-	if err != nil {
-		panic(err)
-	}
 	// create an in memory TEN node
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-	l1Data := l1.NewL1DataService(ethClient, hostLogger, contractRegistry, blobResolver)
-	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Data, enclaveClients, ethWallet, nil, hostLogger, metricsService, blobResolver, contractRegistry)
+	l1Data := l1.NewL1DataService(ethClient, hostLogger, contractRegistryLib, blobResolver)
+	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Data, enclaveClients, ethWallet, nil, hostLogger, metricsService, blobResolver, contractRegistryLib)
 
 	return currentContainer
 }

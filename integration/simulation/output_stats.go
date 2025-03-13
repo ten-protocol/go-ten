@@ -91,10 +91,7 @@ func (o *OutputStats) countBlockChain() {
 }
 
 func (o *OutputStats) incrementStats(block *types.Block, _ ethadapter.EthClient) {
-	contractAddresses, err := o.simulation.Params.NetworkContractConfigLib.GetContractAddresses()
-	if err != nil {
-		panic(err)
-	}
+	contractAddresses := o.simulation.Params.ContractRegistryLib.GetContractAddresses()
 
 	rollupLib := contractlib.NewRollupContractLib(&contractAddresses.RollupContract, testlog.Logger())
 	for _, tx := range block.Transactions() {

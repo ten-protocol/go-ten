@@ -24,7 +24,7 @@ type SimParams struct {
 	L1EfficiencyThreshold float64
 	L1BeaconPort          int
 
-	NetworkContractConfigLib contractlib.NetworkConfigLib
+	ContractRegistryLib contractlib.ContractRegistryLib
 	// ERC20ContractLib allows parsing ERC20Contract txs to and from the eth txs
 	ERC20ContractLib erc20contractlib.ERC20ContractLib
 

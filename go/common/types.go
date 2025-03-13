@@ -43,6 +43,7 @@ type (
 	CrossChainAddress      = common.Address
 	EnclaveRegistryAddress = common.Address
 	RollupAddress          = common.Address
+	MessageBusAddress      = common.Address
 
 	// Local Obscuro aliases
 	L2BatchHash              = common.Hash
