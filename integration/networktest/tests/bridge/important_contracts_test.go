@@ -1,8 +1,9 @@
 package bridge
 
 import (
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"testing"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/integration/networktest"
 	"github.com/ten-protocol/go-ten/integration/networktest/actions"

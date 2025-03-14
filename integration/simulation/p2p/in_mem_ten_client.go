@@ -175,7 +175,7 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 	}
 
 	tenNetworkInfo := &common.TenNetworkInfo{
-		MessageBusAddress:               gethcommon.Address(cfg.MessageBusAddress),
+		NetworkConfigAddress:            gethcommon.Address(cfg.NetworkConfigAddress),
 		L2MessageBusAddress:             gethcommon.Address(cfg.L2MessageBusAddress),
 		TransactionPostProcessorAddress: gethcommon.Address(cfg.TransactionPostProcessorAddress),
 		L1StartHash:                     cfg.L1StartHash,

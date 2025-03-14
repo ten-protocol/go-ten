@@ -2,6 +2,7 @@ package contractlib
 
 import (
 	"fmt"
+
 	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/ethclient"
