@@ -386,12 +386,12 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 	}
 
 	networkConfigResponse := NetworkConfigResponse{
-		NetworkConfigAddress:           networkConfig.ImportantContracts.NetworkConfigAddress.Hex(),
+		NetworkConfigAddress:           networkConfig.NetworkConfigAddress.Hex(),
 		EnclaveRegistryContractAddress: networkConfig.ImportantContracts.EnclaveRegistry.Hex(),
 		RollupContractAddress:          networkConfig.ImportantContracts.RollupContract.Hex(),
 		CrossChainAddress:              networkConfig.ImportantContracts.CrossChain.Hex(),
 		L1StartHash:                    networkConfig.L1StartHash.Hex(),
-		MessageBusAddress:              networkConfig.MessageBusAddress.Hex(),
+		MessageBusAddress:              networkConfig.ImportantContracts.MessageBus.Hex(),
 		L2MessageBusAddress:            networkConfig.L2MessageBusAddress.Hex(),
 		ImportantContracts:             importantContracts,
 	}

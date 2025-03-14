@@ -48,7 +48,7 @@ func (s *setImportantContract) Run(ctx context.Context, network networktest.Netw
 		return ctx, errors.Wrap(err, "failed to get L1 client")
 	}
 
-	networkContract, err := contractlib.NewNetworkConfigLib(networkCfg.ImportantContracts.NetworkConfigAddress, *l1Client.EthClient())
+	networkContract, err := contractlib.NewNetworkConfigLib(networkCfg.NetworkConfigAddress, *l1Client.EthClient())
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to get L1 client")
 	}
@@ -59,7 +59,7 @@ func (s *setImportantContract) Run(ctx context.Context, network networktest.Netw
 	}
 
 	txData := &types.LegacyTx{
-		To:   &networkCfg.ImportantContracts.NetworkConfigAddress,
+		To:   &networkCfg.NetworkConfigAddress,
 		Data: msg.Data,
 	}
 	contractOwner, err := network.GetContractOwnerWallet()
@@ -68,11 +68,11 @@ func (s *setImportantContract) Run(ctx context.Context, network networktest.Netw
 	}
 	// !! Important note !!
 	// The ownerOnly check in the contract doesn't like the gas estimate in here, to test you may need to hardcode the gas value when the estimate errors
-	nonce, err := l1Client.Nonce(networkCfg.ImportantContracts.NetworkConfigAddress)
+	nonce, err := l1Client.Nonce(networkCfg.NetworkConfigAddress)
 	if err != nil {
 		return nil, err
 	}
-	tx, err := ethadapter.SetTxGasPrice(ctx, l1Client, txData, networkCfg.ImportantContracts.NetworkConfigAddress, nonce, 0, nil, testlog.Logger())
+	tx, err := ethadapter.SetTxGasPrice(ctx, l1Client, txData, networkCfg.NetworkConfigAddress, nonce, 0, nil, testlog.Logger())
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to prepare tx")
 	}
