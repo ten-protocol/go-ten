@@ -16,7 +16,7 @@ func main() {
 			l2cd.WithL2Host(cliConfig.l2Host),                                    // "host"
 			l2cd.WithL2WSPort(cliConfig.l2WSPort),                                // 81
 			l2cd.WithL1PrivateKey(cliConfig.privateKey),                          // "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
-			l2cd.WithManagementContractAddress(cliConfig.managementContractAddr), // "0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF"
+			l2cd.WithNetworkConfigAddress(cliConfig.networkConfigAddress),        // "0xeDa66Cc53bd2f26896f6Ba6b736B1Ca325DE04eF"
 			l2cd.WithMessageBusContractAddress(cliConfig.messageBusContractAddr), // "0xFD03804faCA2538F4633B3EBdfEfc38adafa259B"
 			l2cd.WithL2PrivateKey(cliConfig.l2PrivateKey),                        // "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"
 			l2cd.WithDockerImage(cliConfig.dockerImage),

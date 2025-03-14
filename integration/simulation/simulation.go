@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum"
@@ -133,6 +135,8 @@ func (s *Simulation) Stop() {
 func (s *Simulation) waitForTenGenesisOnL1() {
 	// grab an L1 client
 	client := s.RPCHandles.EthClients[0]
+	contractLib := s.Params.ContractRegistryLib.GetContractAddresses()
+	rollupLib := contractlib.NewRollupContractLib(&contractLib.RollupContract, testlog.Logger())
 
 	for {
 		// spin through the L1 blocks periodically to see if the genesis rollup has arrived
@@ -151,7 +155,7 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 					panic(err)
 				}
 				for _, tx := range b.Transactions() {
-					t, err := s.Params.MgmtContractLib.DecodeTx(tx)
+					t, err := rollupLib.DecodeTx(tx)
 					if err != nil {
 						panic(err)
 					}

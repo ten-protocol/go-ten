@@ -843,7 +843,7 @@ func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data
 	}
 
 	// if any contracts have been updated then we need to resync
-	if len(processed.GetEvents(common.SetImportantContractsTx)) > 0 {
+	if len(processed.GetEvents(common.NetworkContractAddressAddedTx)) > 0 {
 		syncContracts = true
 	}
 	return rollupTxs, syncContracts

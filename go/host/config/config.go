@@ -24,10 +24,8 @@ type HostConfig struct {
 	L1StartHash gethcommon.Hash
 	// The address of the sequencer node's P2P server
 	SequencerP2PAddress string
-	// The rollup contract address on the L1 network
-	ManagementContractAddress gethcommon.Address
-	// The message bus contract address on the L1 network
-	MessageBusAddress gethcommon.Address
+	// This contract contains a registry of all the addresses of deployed contracts
+	NetworkConfigAddress common.NetworkConfigAddress
 	// Min interval before creating the next batch (only used by Sequencer nodes)
 	BatchInterval time.Duration
 	// MaxBatchInterval is the max interval between batches, if this is set higher than BatchInterval, the host will
@@ -120,11 +118,10 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		L1ChainID:  tenCfg.Network.L1.ChainID,
 		TenChainID: tenCfg.Network.ChainID,
 
-		L1StartHash:               tenCfg.Network.L1.StartHash,
-		L1BlockTime:               tenCfg.Network.L1.BlockTime,
-		SequencerP2PAddress:       tenCfg.Network.Sequencer.P2PAddress,
-		ManagementContractAddress: tenCfg.Network.L1.L1Contracts.ManagementContract,
-		MessageBusAddress:         tenCfg.Network.L1.L1Contracts.MessageBusContract,
+		L1StartHash:          tenCfg.Network.L1.StartHash,
+		L1BlockTime:          tenCfg.Network.L1.BlockTime,
+		SequencerP2PAddress:  tenCfg.Network.Sequencer.P2PAddress,
+		NetworkConfigAddress: tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
 
 		BatchInterval:      tenCfg.Network.Batch.Interval,
 		MaxBatchInterval:   tenCfg.Network.Batch.MaxInterval,

@@ -63,7 +63,8 @@ func (d *InMemNode) Upgrade(networkCfg *node.NetworkConfig) error {
 		return err
 	}
 
-	d.tenCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkCfg.ManagementContractAddress)
+	// FIXME do we need the others?
+	d.tenCfg.Network.L1.L1Contracts.NetworkConfigContract = common.HexToAddress(networkCfg.NetworkConfigAddress)
 	d.tenCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkCfg.MessageBusAddress)
 	d.tenCfg.Network.L1.StartHash = common.HexToHash(networkCfg.L1StartHash)
 

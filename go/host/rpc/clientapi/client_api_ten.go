@@ -99,20 +99,16 @@ func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.Encr
 
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
 type ChecksumFormattedTenNetworkConfig struct {
-	ManagementContractAddress       gethcommon.AddressEIP55
 	L1StartHash                     gethcommon.Hash
-	MessageBusAddress               gethcommon.AddressEIP55
+	NetworkConfigAddress            gethcommon.AddressEIP55
 	L2MessageBusAddress             gethcommon.AddressEIP55
-	ImportantContracts              map[string]gethcommon.AddressEIP55 // map of contract name to address
 	TransactionPostProcessorAddress gethcommon.AddressEIP55
+	ImportantContracts              common.NetworkConfigAddresses
 	PublicSystemContracts           map[string]gethcommon.AddressEIP55
 }
 
 func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetworkConfig {
-	importantContracts := make(map[string]gethcommon.AddressEIP55)
-	for name, addr := range info.ImportantContracts {
-		importantContracts[name] = gethcommon.AddressEIP55(addr)
-	}
+	importantContracts := info.ImportantContracts
 
 	publicSystemContracts := make(map[string]gethcommon.AddressEIP55)
 	for name, addr := range info.PublicSystemContracts {
@@ -120,12 +116,11 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 	}
 
 	return &ChecksumFormattedTenNetworkConfig{
-		ManagementContractAddress:       gethcommon.AddressEIP55(info.ManagementContractAddress),
-		L1StartHash:                     info.L1StartHash,
-		MessageBusAddress:               gethcommon.AddressEIP55(info.MessageBusAddress),
+		NetworkConfigAddress:            gethcommon.AddressEIP55(info.NetworkConfigAddress),
 		L2MessageBusAddress:             gethcommon.AddressEIP55(info.L2MessageBusAddress),
-		ImportantContracts:              importantContracts,
 		TransactionPostProcessorAddress: gethcommon.AddressEIP55(info.TransactionPostProcessorAddress),
+		L1StartHash:                     info.L1StartHash,
+		ImportantContracts:              *importantContracts,
 		PublicSystemContracts:           publicSystemContracts,
 	}
 }

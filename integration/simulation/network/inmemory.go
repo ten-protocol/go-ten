@@ -60,7 +60,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			int64(i),
 			isGenesis,
 			GetNodeType(i),
-			params.MgmtContractLib,
+			params.ContractRegistryLib,
 			params.Wallets.NodeWallets[i],
 			miner,
 			p2pNetw.NewNode(i),
@@ -137,7 +137,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	for _, node := range n.ethNodes {
 		node.PromoteEnclave(sequencerHealth.Enclaves[0].EnclaveID)
 	}
-	permMockAddr := ethereummock.MockGrantSeqTxAddress()
+	permMockAddr := ethereummock.GrantSeqTxAddr
 	mockTx := types.NewTx(&types.LegacyTx{
 		To:   &permMockAddr,
 		Data: []byte{0x1},

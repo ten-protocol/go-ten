@@ -5,12 +5,12 @@ type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1HTTPURL           string
-	privateKey          string
-	mgmtContractAddress string
-	enclaveIDs          string
-	dockerImage         string
-	sequencerURL        string
+	l1HTTPURL              string
+	privateKey             string
+	enclaveRegistryAddress string
+	enclaveIDs             string
+	dockerImage            string
+	sequencerURL           string
 
 	// debugEnabled        bool
 }
@@ -37,9 +37,9 @@ func WithPrivateKey(s string) Option {
 	}
 }
 
-func WithMgmtContractAddress(s string) Option {
+func WithEnclaveContractAddress(s string) Option {
 	return func(c *Config) {
-		c.mgmtContractAddress = s
+		c.enclaveRegistryAddress = s
 	}
 }
 

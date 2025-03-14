@@ -66,7 +66,7 @@ const (
 	CrossChainValueTranserTx
 	SequencerAddedTx
 	SequencerRevokedTx
-	SetImportantContractsTx
+	NetworkContractAddressAddedTx
 )
 
 // ProcessedL1Data is submitted to the enclave by the guardian

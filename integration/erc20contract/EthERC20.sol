@@ -24,7 +24,7 @@ interface IMessageBus {
     ) external payable returns (uint64 sequence);
 }
 
-interface IManagementContract {
+interface ICrossChain {
     function messageBus() external view returns (IMessageBus);
 }
 
@@ -47,14 +47,14 @@ contract EthERC20 is ERC20 {
         string memory name,
         string memory symbol,
         uint256 initialSupply,
-        address managementContract
+        address crossChainContract
     )  ERC20(name, symbol) {
 
-        if (managementContract != address(0x0)) {
-            bus = IManagementContract(managementContract).messageBus();
+        if (crossChainContract != address(0x0)) {
+            bus = ICrossChain(crossChainContract).messageBus();
         }
 
-        target = managementContract;
+        target = crossChainContract;
         _mint(msg.sender, initialSupply);
     }
 

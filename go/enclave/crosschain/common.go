@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -18,24 +17,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
-)
-
-var (
-	MessageBusABI, _                  = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	MgmtContractABI, _                = abi.JSON(strings.NewReader(ManagementContract.ManagementContractMetaData.ABI))
-	CrossChainEventName               = "LogMessagePublished"
-	CrossChainEventID                 = MessageBusABI.Events[CrossChainEventName].ID
-	ValueTransferEventName            = "ValueTransfer"
-	ValueTransferEventID              = MessageBusABI.Events["ValueTransfer"].ID
-	SequencerEnclaveGrantedEventID    = MgmtContractABI.Events["SequencerEnclaveGranted"].ID
-	SequencerEnclaveRevokedEventID    = MgmtContractABI.Events["SequencerEnclaveRevoked"].ID
-	NetworkSecretRequestedID          = MgmtContractABI.Events["NetworkSecretRequested"].ID
-	NetworkSecretRespondedID          = MgmtContractABI.Events["NetworkSecretResponded"].ID
-	RollupAddedID                     = MgmtContractABI.Events["RollupAdded"].ID
-	ImportantContractAddressUpdatedID = MgmtContractABI.Events["ImportantContractAddressUpdated"].ID
 )
 
 func lazilyLogReceiptChecksum(block *types.Header, receipts types.Receipts, logger gethlog.Logger) {
