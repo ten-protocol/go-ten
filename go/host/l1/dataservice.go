@@ -250,6 +250,8 @@ func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAd
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case ethadapter.NetworkSecretRespondedID:
 			processed.AddEvent(common.SecretResponseTx, txData)
+		case ethadapter.NetworkContractAddressAddededID:
+			processed.AddEvent(common.NetworkContractAddressAddedTx, txData)
 		default:
 			// there are known events that we don't care about here
 			r.logger.Debug("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
@@ -362,8 +364,6 @@ func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, proc
 		switch decodedTx.(type) {
 		case *common.L1InitializeSecretTx:
 			processed.AddEvent(common.InitialiseSecretTx, txData)
-		// case *common.L1SetImportantContractsTx:
-		//	processed.AddEvent(common.SetImportantContractsTx, txData)
 		case *common.L1PermissionSeqTx: // FIXME I think this can be deleted?
 			return // no-op as it was processed in the previous processSequencerLogs call
 		default:
