@@ -75,3 +75,70 @@ func TestHASequencerBackup(t *testing.T) {
 		),
 	)
 }
+
+// TestHARestoringEnclaves tests that the enclaves can be brought back after being stopped and they continue to work
+// The order for this test is:
+// - tx when both encl up
+// - stop encl 0 then tx
+// - start encl 0 then tx
+// - stop encl 1 then tx
+// thus checking that encl 0 which was stopped successfully re-entered the pool of enclaves and was promoted again
+func TestHARestoringEnclaves(t *testing.T) {
+	networktest.TestOnlyRunsInIDE(t)
+	totalTransferAmount := big.NewInt(1).Mul(big.NewInt(4), _transferAmount)
+	networktest.Run(
+		"ha-sequencer-enclaves-restored",
+		t,
+		env.LocalDevNetwork(devnetwork.WithHASequencer()),
+		actions.Series(
+			&actions.CreateTestUser{UserID: 0},
+			&actions.CreateTestUser{UserID: 1},
+			actions.SetContextValue(actions.KeyNumberOfTestUsers, 2),
+
+			&actions.AllocateFaucetFunds{UserID: 0},
+			actions.SnapshotUserBalances(actions.SnapAfterAllocation), // record user balances (we have no guarantee on how much the network faucet allocates)
+
+			&actions.SendNativeFunds{FromUser: 0, ToUser: 1, Amount: _transferAmount},
+
+			// wait for tx to complete before killing
+			actions.SleepAction(5*time.Second),
+
+			// kill the primary enclave
+			actions.StopSequencerEnclave(0),
+
+			// wait for failover to complete
+			actions.SleepAction(5*time.Second),
+
+			&actions.SendNativeFunds{FromUser: 0, ToUser: 1, Amount: _transferAmount},
+
+			// wait for tx to complete
+			actions.SleepAction(5*time.Second),
+
+			// start the enclave again
+			actions.StartSequencerEnclave(0),
+
+			// wait for the enclave to start
+			actions.SleepAction(5*time.Second),
+
+			&actions.SendNativeFunds{FromUser: 0, ToUser: 1, Amount: _transferAmount},
+
+			// wait for tx to complete
+			actions.SleepAction(5*time.Second),
+
+			// stop the other enclave
+			actions.StopSequencerEnclave(1),
+
+			// wait for failover to complete
+			actions.SleepAction(5*time.Second),
+
+			&actions.SendNativeFunds{FromUser: 0, ToUser: 1, Amount: _transferAmount},
+
+			// wait for tx to complete
+			actions.SleepAction(15*time.Second),
+
+			// two transfers should have happened so we verify double the amounts
+			&actions.VerifyBalanceAfterTest{UserID: 1, ExpectedBalance: totalTransferAmount},
+			&actions.VerifyBalanceDiffAfterTest{UserID: 0, Snapshot: actions.SnapAfterAllocation, ExpectedDiff: big.NewInt(0).Neg(totalTransferAmount)},
+		),
+	)
+}
