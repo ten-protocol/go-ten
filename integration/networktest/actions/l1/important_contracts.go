@@ -67,7 +67,8 @@ func (s *setImportantContract) Run(ctx context.Context, network networktest.Netw
 		return ctx, errors.Wrap(err, "failed to get MC owner wallet")
 	}
 	// !! Important note !!
-	// The ownerOnly check in the contract doesn't like the gas estimate in here, to test you may need to hardcode the gas value when the estimate errors
+	// The ownerOnly check in the contract doesn't like the gas estimate in here, to test you may need to hardcode
+	// the gas value when the estimate errors
 	nonce, err := l1Client.Nonce(networkCfg.NetworkConfigAddress)
 	if err != nil {
 		return nil, err
