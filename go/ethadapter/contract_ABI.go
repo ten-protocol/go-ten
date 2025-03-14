@@ -43,6 +43,7 @@ var (
 	SequencerEnclaveGrantedEventName  = "SequencerEnclaveGranted"
 	SequencerEnclaveRevokedEventName  = "SequencerEnclaveRevoked"
 	RollupAddedEventName              = "RollupAdded"
+	NetworkContractAddressAddedName   = "NetworkContractAddressAdded"
 
 	CrossChainEventID               = MessageBusABI.Events[CrossChainEventName].ID
 	ValueTransferEventID            = MessageBusABI.Events[ValueTransferEventName].ID
@@ -52,4 +53,5 @@ var (
 	NetworkSecretRequestedID        = EnclaveRegistryABI.Events[NetworkSecretRequestedEventName].ID
 	NetworkSecretRespondedID        = EnclaveRegistryABI.Events[NetworkSecretRespondedEventName].ID
 	RollupAddedID                   = RollupContractABI.Events[RollupAddedEventName].ID
+	NetworkContractAddressAddededID = NetworkConfigABI.Events[NetworkContractAddressAddedName].ID
 )

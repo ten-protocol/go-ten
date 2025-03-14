@@ -4,12 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/ethereum/go-ethereum/params"
 	"math"
 	"math/big"
-	"strings"
-
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/params"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -47,26 +44,6 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		BlobHashes: blobHashes,
 	})
 	if err != nil {
-		// After the error
-		println("Gas estimation failed",
-			"error", err.Error(),
-			"from", from.Hex(),
-			"to", to.Hex(),
-			"method_signature", hexutil.Encode(data[:4])) // First 4 bytes are the method signature
-
-		// Try to extract more detailed error information
-		if strings.Contains(err.Error(), "execution reverted") {
-			// Try to get the revert reason if available
-			reason := "Unknown reason"
-			if strings.Contains(err.Error(), "execution reverted: ") {
-				parts := strings.Split(err.Error(), "execution reverted: ")
-				if len(parts) > 1 {
-					reason = parts[1]
-				}
-			}
-			println("Execution reverted with reason:", reason)
-		}
-
 		return nil, fmt.Errorf("could not estimate gas - %w", err)
 	}
 

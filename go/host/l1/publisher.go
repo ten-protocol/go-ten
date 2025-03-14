@@ -307,7 +307,10 @@ func (p *Publisher) GetImportantContracts() *common.NetworkConfigAddresses {
 // Note: this should be run in a goroutine as it makes L1 transactions in series and will block.
 // Cache is not overwritten until it completes.
 func (p *Publisher) ResyncImportantContracts() error {
-	addresses := p.contractRegistry.GetContractAddresses()
+	addresses, err := p.contractRegistry.NetworkConfigLib().GetContractAddresses()
+	if err != nil {
+		return fmt.Errorf("could not get latest contract addresses: %w", err)
+	}
 
 	p.importantAddressesMutex.Lock()
 	defer p.importantAddressesMutex.Unlock()

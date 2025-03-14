@@ -272,7 +272,6 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 				panic(err)
 			}
 			if t != nil {
-				// Check if it's a deposit transaction
 				if depositTx, ok := t.(*common.L1DepositTx); ok {
 					receipt, err := node.TransactionReceipt(tx.Hash())
 					if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
@@ -281,7 +280,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 					deposits = append(deposits, tx.Hash())
 					totalDeposited.Add(totalDeposited, depositTx.Amount)
 					successfulDeposits++
-					continue // Skip to next transaction
+					continue
 				}
 			}
 			t, err = rollupLib.DecodeTx(tx)

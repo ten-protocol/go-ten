@@ -25,7 +25,7 @@ type HostConfig struct {
 	// The address of the sequencer node's P2P server
 	SequencerP2PAddress string
 	// This contract contains a registry of all the addresses of deployed contracts
-	NetworkConfigAddress gethcommon.Address
+	NetworkConfigAddress common.NetworkConfigAddress
 	// Min interval before creating the next batch (only used by Sequencer nodes)
 	BatchInterval time.Duration
 	// MaxBatchInterval is the max interval between batches, if this is set higher than BatchInterval, the host will

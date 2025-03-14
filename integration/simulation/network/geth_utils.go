@@ -113,7 +113,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}
 
 	// Create the Addresses struct to pass to initialize
-	addresses := NetworkConfig.NetworkConfigAddresses{
+	addresses := NetworkConfig.NetworkConfigFixedAddresses{
 		CrossChain:             crossChainReceipt.ContractAddress,
 		MessageBus:             messageBusAddr,
 		NetworkEnclaveRegistry: enclaveRegistryReceipt.ContractAddress,
@@ -195,7 +195,7 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.
 	return networkEnclaveRegistryContract, networkEnclaveRegistryReceipt, nil
 }
 
-func deployNetworkConfigContract(client ethadapter.EthClient, ownerKey wallet.Wallet, addresses NetworkConfig.NetworkConfigAddresses) (*NetworkConfig.NetworkConfig, *types.Receipt, error) {
+func deployNetworkConfigContract(client ethadapter.EthClient, ownerKey wallet.Wallet, addresses NetworkConfig.NetworkConfigFixedAddresses) (*NetworkConfig.NetworkConfig, *types.Receipt, error) {
 	// Deploy NetworkConfig contract
 	bytecode, err := constants.NetworkConfigBytecode()
 	if err != nil {
