@@ -188,31 +188,31 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 
 	for _, l := range logs {
 		if len(l.Topics) == 0 {
-			r.logger.Warn("Log has no topics", "txHash", l.TxHash)
-			continue
+			r.logger.Error("Log has no topics. Should not happen", "txHash", l.TxHash)
+			return nil, errors.New("log has no topics")
 		}
 
 		txData, err := r.fetchTxAndReceipt(l.TxHash)
 		if err != nil {
-			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
-			continue
+			r.logger.Error("Error creating transaction data. Should not happen", "txHash", l.TxHash, "error", err)
+			return nil, fmt.Errorf("error creating transaction data. Should not happen: %w", err)
 		}
 
 		// first topic is always the event signature
 		switch l.Topics[0] {
 		case crosschain.CrossChainEventID:
-			r.processCrossChainLogs(l, txData, processed)
+			err = r.processCrossChainLogs(l, txData, processed)
 		case crosschain.ValueTransferEventID:
-			r.processValueTransferLogs(l, txData, processed)
+			err = r.processValueTransferLogs(l, txData, processed)
 		case crosschain.SequencerEnclaveGrantedEventID:
-			r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
-			r.processManagementContractTx(txData, processed) // we need to decode the InitialiseSecretTx
+			err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
+			err = r.processManagementContractTx(txData, processed) // we need to decode the InitialiseSecretTx
 		case crosschain.SequencerEnclaveRevokedEventID:
-			r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
+			err = r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
 		case crosschain.ImportantContractAddressUpdatedID:
-			r.processManagementContractTx(txData, processed)
+			err = r.processManagementContractTx(txData, processed)
 		case crosschain.RollupAddedID:
-			r.processRollupLogs(l, txData, processed)
+			err = r.processRollupLogs(l, txData, processed)
 		case crosschain.NetworkSecretRequestedID:
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case crosschain.NetworkSecretRespondedID:
@@ -221,6 +221,12 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			// there are known events that we don't care about here
 			r.logger.Debug("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
 		}
+
+		if err != nil {
+			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
+			return nil, fmt.Errorf("error processing log: %w", err)
+		}
+
 	}
 	return processed, nil
 }
@@ -260,45 +266,55 @@ func (r *DataService) fetchTxAndReceipt(txHash gethcommon.Hash) (*common.L1TxDat
 }
 
 // processCrossChainLogs handles cross-chain message logs
-func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	if messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, crosschain.CrossChainEventName, crosschain.MessageBusABI); err == nil {
-		txData.CrossChainMessages = messages
-		processed.AddEvent(common.CrossChainMessageTx, txData)
+func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
+	messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, crosschain.CrossChainEventName, crosschain.MessageBusABI)
+	if err != nil {
+		return err
 	}
+
+	txData.CrossChainMessages = messages
+	processed.AddEvent(common.CrossChainMessageTx, txData)
+	return nil
 }
 
 // processValueTransferLogs handles value transfer logs
-func (r *DataService) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
-	if transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, crosschain.ValueTransferEventName, crosschain.MessageBusABI); err == nil {
-		txData.ValueTransfers = transfers
-		processed.AddEvent(common.CrossChainValueTranserTx, txData)
+func (r *DataService) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
+	transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, crosschain.ValueTransferEventName, crosschain.MessageBusABI)
+	if err != nil {
+		return err
 	}
+	txData.ValueTransfers = transfers
+	processed.AddEvent(common.CrossChainValueTranserTx, txData)
+	return nil
 }
 
 // processSequencerLogs handles sequencer logs
-func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data, txType common.L1TenEventType) {
-	if enclaveID, err := getEnclaveIdFromLog(l); err == nil {
-		txData.SequencerEnclaveID = enclaveID
-		processed.AddEvent(txType, txData)
+func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data, txType common.L1TenEventType) error {
+	enclaveID, err := getEnclaveIdFromLog(l)
+	if err != nil {
+		return err
 	}
+	txData.SequencerEnclaveID = enclaveID
+	processed.AddEvent(txType, txData)
+	return nil
 }
 
-func (r *DataService) processRollupLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *DataService) processRollupLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
 	abi, err := ManagementContract.ManagementContractMetaData.GetAbi()
 	if err != nil {
 		r.logger.Error("Error getting ManagementContract ABI", log.ErrKey, err)
-		return
+		return err
 	}
 	var event ManagementContract.ManagementContractRollupAdded
 	err = abi.UnpackIntoInterface(&event, "RollupAdded", l.Data)
 	if err != nil {
 		r.logger.Error("Error unpacking RollupAdded event", log.ErrKey, err)
-		return
+		return err
 	}
 	blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash})
 	if err != nil {
 		r.logger.Error(fmt.Sprintf("error while fetching blobs. Cause: %s", err))
-		return
+		return err
 	}
 	txData.BlobsWithSignature = []common.BlobAndSignature{
 		{
@@ -307,10 +323,11 @@ func (r *DataService) processRollupLogs(l types.Log, txData *common.L1TxData, pr
 		},
 	}
 	processed.AddEvent(common.RollupTx, txData)
+	return nil
 }
 
 // processManagementContractTx handles decoded transaction types
-func (r *DataService) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *DataService) processManagementContractTx(txData *common.L1TxData, processed *common.ProcessedL1Data) error {
 	decodedTx, _ := r.mgmtContractLib.DecodeTx(txData.Transaction)
 	if decodedTx != nil {
 		switch decodedTx.(type) {
@@ -319,12 +336,13 @@ func (r *DataService) processManagementContractTx(txData *common.L1TxData, proce
 		case *common.L1SetImportantContractsTx:
 			processed.AddEvent(common.SetImportantContractsTx, txData)
 		case *common.L1PermissionSeqTx:
-			return // no-op as it was processed in the previous processSequencerLogs call
+			return nil // no-op as it was processed in the previous processSequencerLogs call
 		default:
 			// this should never happen since the specific events should always decode into one of these types
 			r.logger.Error("Unknown tx type", "txHash", txData.Transaction.Hash().Hex())
 		}
 	}
+	return nil
 }
 
 // stream blocks from L1 as they arrive and forward them to subscribers, no guarantee of perfect ordering or that there won't be gaps.
