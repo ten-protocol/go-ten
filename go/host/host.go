@@ -266,10 +266,18 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		h.publicSystemContracts = publicCfg.PublicSystemContracts
 	}
 
+	networkConfigAddresses, err := h.contractRegistry.NetworkConfigLib().GetContractAddresses()
+	if err != nil {
+		return nil, responses.ToInternalError(fmt.Errorf("unable to get network config addresses - %w", err))
+	}
+
 	return &common.TenNetworkInfo{
 		NetworkConfigAddress:            h.config.NetworkConfigAddress,
 		L1StartHash:                     h.config.L1StartHash,
 		L2MessageBusAddress:             *h.l2MessageBusAddress,
+		MessageBus:                      networkConfigAddresses.MessageBus,
+		CrossChainAddress:               networkConfigAddresses.CrossChain,
+		MessageBusAddress:               networkConfigAddresses.MessageBus,
 		ImportantContracts:              h.services.L1Publisher().GetImportantContracts(),
 		TransactionPostProcessorAddress: h.transactionPostProcessorAddress,
 		PublicSystemContracts:           h.publicSystemContracts,
