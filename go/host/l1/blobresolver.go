@@ -38,7 +38,7 @@ func NewBlobResolver(beaconClient *ethadapter.L1BeaconClient, logger gethlog.Log
 
 func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
 	var blobs []*kzg4844.Blob
-	err := retry.Do1(func(retryNum int) error {
+	err := retry.DoWithCount(func(retryNum int) error {
 		if retryNum > 5 {
 			r.logger.Info("Retrying to fetch blobs", "retryNum", retryNum)
 		}
