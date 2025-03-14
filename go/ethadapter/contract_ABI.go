@@ -26,7 +26,8 @@ const (
 
 	AddRollupMethod = "addRollup"
 
-	MethodBytesLen = 4
+	AddAddressMethod = "addAddress"
+	MethodBytesLen   = 4
 )
 
 var (

@@ -267,7 +267,6 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 	}
 
 	return &common.TenNetworkInfo{
-		NetworkConfigAddress:            h.config.NetworkConfigAddress,
 		L1StartHash:                     h.config.L1StartHash,
 		L2MessageBusAddress:             *h.l2MessageBusAddress,
 		ImportantContracts:              h.services.L1Publisher().GetImportantContracts(),

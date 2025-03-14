@@ -24,7 +24,7 @@ type NetworkConnector interface {
 	GetSequencerNode() NodeOperator
 	GetValidatorNode(idx int) NodeOperator
 	GetL1Client() (ethadapter.EthClient, error)
-	GetMCOwnerWallet() (wallet.Wallet, error) // wallet that owns the management contract (network admin)
+	GetContractOwnerWallet() (wallet.Wallet, error) // wallet that owns the management contract (network admin)
 	GetGatewayURL() (string, error)
 	GetGatewayWSURL() (string, error)
 }

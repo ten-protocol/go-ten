@@ -9,10 +9,10 @@ type mockContractRegistryLib struct{}
 
 func (m *mockContractRegistryLib) GetContractAddresses() *common.NetworkConfigAddresses {
 	addresses := &common.NetworkConfigAddresses{
-		CrossChain:             RollupTxAddr,
-		MessageBus:             MessageBusAddr,
-		NetworkEnclaveRegistry: RespondSecretTxAddr,
-		RollupContract:         RollupTxAddr,
+		CrossChain:      RollupTxAddr,
+		MessageBus:      MessageBusAddr,
+		EnclaveRegistry: RespondSecretTxAddr,
+		RollupContract:  RollupTxAddr,
 	}
 	return addresses
 }

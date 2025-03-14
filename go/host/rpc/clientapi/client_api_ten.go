@@ -99,15 +99,11 @@ func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.Encr
 
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
 type ChecksumFormattedTenNetworkConfig struct {
-	NetworkConfigAddress            gethcommon.AddressEIP55
-	EnclaveRegistryAddress          gethcommon.AddressEIP55
-	RollupContractAddress           gethcommon.AddressEIP55
-	CrossChainAddress               gethcommon.AddressEIP55
 	L1StartHash                     gethcommon.Hash
 	MessageBusAddress               gethcommon.AddressEIP55
 	L2MessageBusAddress             gethcommon.AddressEIP55
 	TransactionPostProcessorAddress gethcommon.AddressEIP55
-	ImportantContracts              *common.NetworkConfigAddresses
+	ImportantContracts              common.NetworkConfigAddresses
 	PublicSystemContracts           map[string]gethcommon.AddressEIP55
 }
 
@@ -120,15 +116,11 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 	}
 
 	return &ChecksumFormattedTenNetworkConfig{
-		NetworkConfigAddress:            gethcommon.AddressEIP55(info.NetworkConfigAddress),
-		EnclaveRegistryAddress:          gethcommon.AddressEIP55(info.EnclaveRegistryAddress),
-		RollupContractAddress:           gethcommon.AddressEIP55(info.RollupContractAddress),
-		CrossChainAddress:               gethcommon.AddressEIP55(info.CrossChainAddress),
 		MessageBusAddress:               gethcommon.AddressEIP55(info.MessageBusAddress),
 		L2MessageBusAddress:             gethcommon.AddressEIP55(info.L2MessageBusAddress),
 		TransactionPostProcessorAddress: gethcommon.AddressEIP55(info.TransactionPostProcessorAddress),
 		L1StartHash:                     info.L1StartHash,
-		ImportantContracts:              importantContracts,
+		ImportantContracts:              *importantContracts,
 		PublicSystemContracts:           publicSystemContracts,
 	}
 }

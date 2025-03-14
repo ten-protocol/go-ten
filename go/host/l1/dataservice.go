@@ -176,7 +176,7 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 	if err := r.processMessageBusLogs(block, addresses.MessageBus, processed); err != nil {
 		return nil, err
 	}
-	if err := r.processEnclaveRegistryLogs(block, addresses.NetworkEnclaveRegistry, processed); err != nil {
+	if err := r.processEnclaveRegistryLogs(block, addresses.EnclaveRegistry, processed); err != nil {
 		return nil, err
 	}
 	if err := r.processRollupLogs(block, addresses.RollupContract, processed); err != nil {

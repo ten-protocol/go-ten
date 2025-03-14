@@ -91,7 +91,7 @@ func createInMemTenNode(
 		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         l1BusAddress,
 		RollupContractAddress:     contracts.RollupContract,
-		EnclaveRegistryAddress:    contracts.NetworkEnclaveRegistry,
+		EnclaveRegistryAddress:    contracts.EnclaveRegistry,
 		SystemContractOwner:       gethcommon.BigToAddress(big.NewInt(1)), // Irrelevant for in-mem nodes
 		MaxBatchSize:              1024 * 55,
 		MaxRollupSize:             1024 * 128,

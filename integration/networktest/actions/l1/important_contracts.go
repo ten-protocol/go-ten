@@ -3,8 +3,9 @@ package l1
 import (
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
@@ -20,13 +21,13 @@ import (
 )
 
 type setImportantContract struct {
-	contractKey     string
+	contractName    string
 	contractAddress common.Address
 }
 
-func SetImportantContract(contractKey string, contractAddress common.Address) networktest.Action {
+func SetImportantContract(contractName string, contractAddress common.Address) networktest.Action {
 	return &setImportantContract{
-		contractKey:     contractKey,
+		contractName:    contractName,
 		contractAddress: contractAddress,
 	}
 }
@@ -47,36 +48,35 @@ func (s *setImportantContract) Run(ctx context.Context, network networktest.Netw
 		return ctx, errors.Wrap(err, "failed to get L1 client")
 	}
 
-	networkContract, err := contractlib.NewNetworkConfigLib(networkCfg.NetworkConfigAddress, *l1Client.EthClient())
+	networkContract, err := contractlib.NewNetworkConfigLib(networkCfg.ImportantContracts.NetworkConfigAddress, *l1Client.EthClient())
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to get L1 client")
 	}
 
-	msg, err := networkContract.(s.contractKey, s.contractAddress)
+	msg, err := networkContract.AddAddress(s.contractName, s.contractAddress)
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to create SetImportantContractMsg")
 	}
 
 	txData := &types.LegacyTx{
-		To:   &networkCfg.ManagementContractAddress,
+		To:   &networkCfg.ImportantContracts.NetworkConfigAddress,
 		Data: msg.Data,
 	}
-	mcOwner, err := network.GetMCOwnerWallet()
+	contractOwner, err := network.GetContractOwnerWallet()
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to get MC owner wallet")
 	}
 	// !! Important note !!
-	// The ownerOnly check in the contract doesn't like the gas estimate in here, to test you may need to hardcode a
-	// the gas value when the estimate errors
-	nonce, err := l1Client.Nonce(networkCfg.ManagementContractAddress)
+	// The ownerOnly check in the contract doesn't like the gas estimate in here, to test you may need to hardcode the gas value when the estimate errors
+	nonce, err := l1Client.Nonce(networkCfg.ImportantContracts.NetworkConfigAddress)
 	if err != nil {
 		return nil, err
 	}
-	tx, err := ethadapter.SetTxGasPrice(ctx, l1Client, txData, networkCfg.ManagementContractAddress, nonce, 0, nil, testlog.Logger())
+	tx, err := ethadapter.SetTxGasPrice(ctx, l1Client, txData, networkCfg.ImportantContracts.NetworkConfigAddress, nonce, 0, nil, testlog.Logger())
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to prepare tx")
 	}
-	signedTx, err := mcOwner.SignTransaction(tx)
+	signedTx, err := contractOwner.SignTransaction(tx)
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to sign tx")
 	}
@@ -108,10 +108,17 @@ func (s *setImportantContract) Verify(_ context.Context, network networktest.Net
 		return errors.Wrap(err, "failed to get network config")
 	}
 
-	if len(networkCfg.ImportantContracts) == 0 {
+	if len(networkCfg.ImportantContracts.AdditionalContracts) == 0 {
 		return errors.New("no important contracts set")
 	}
-	if addr, ok := networkCfg.ImportantContracts[s.contractKey]; !ok || addr != s.contractAddress {
+	found := false
+	for _, contract := range networkCfg.ImportantContracts.AdditionalContracts {
+		if contract.Name == s.contractName && contract.Addr == s.contractAddress {
+			found = true
+			break
+		}
+	}
+	if !found {
 		return errors.New("important contract not set")
 	}
 	return nil

@@ -79,7 +79,7 @@ func (s *InMemDevNetwork) GetGatewayWSURL() (string, error) {
 	return fmt.Sprintf("ws://localhost:%d", _gwWSPort), nil
 }
 
-func (s *InMemDevNetwork) GetMCOwnerWallet() (wallet.Wallet, error) {
+func (s *InMemDevNetwork) GetContractOwnerWallet() (wallet.Wallet, error) {
 	return s.networkWallets.ContractOwnerWallet, nil
 }
 
