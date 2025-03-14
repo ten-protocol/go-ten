@@ -145,7 +145,7 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BeaconUrl)
 	// we can add more fallback clients as they become available
 	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BlobArchiveUrl)
-	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback))
+	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback), logger)
 	contractAddresses := map[l1.ContractType][]gethcommon.Address{
 		l1.MgmtContract: {cfg.ManagementContractAddress},
 		l1.MsgBus:       {cfg.MessageBusAddress},

@@ -272,6 +272,10 @@ func (m *Node) FetchHeadBlock() (*types.Header, error) {
 	return m.head, nil
 }
 
+func (m *Node) SupportsEventLogs() bool {
+	return false
+}
+
 func (m *Node) Info() ethadapter.Info {
 	return ethadapter.Info{
 		L2ID: m.l2ID,

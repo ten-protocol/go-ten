@@ -64,8 +64,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		&simParams.L1TenData.EthErc20Address,
 	)
 	beaconURL := fmt.Sprintf("127.0.0.1:%d", simParams.L1BeaconPort)
-	simParams.BlobResolver = l1.NewBlobResolver(ethadapter.NewL1BeaconClient(
-		ethadapter.NewBeaconHTTPClient(new(http.Client), beaconURL)))
+	simParams.BlobResolver = l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), beaconURL)), testlog.Logger())
 
 	// get the sequencer Address
 	seqPrivateKey := n.wallets.NodeWallets[0].PrivateKey()

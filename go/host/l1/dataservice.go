@@ -268,6 +268,9 @@ func (r *DataService) fetchTxAndReceipt(txHash gethcommon.Hash) (*common.L1TxDat
 
 // processCrossChainLogs handles cross-chain message logs
 func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
+	if !r.ethClient.SupportsEventLogs() {
+		return nil
+	}
 	messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, crosschain.CrossChainEventName, crosschain.MessageBusABI)
 	if err != nil {
 		return err
@@ -280,6 +283,10 @@ func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData
 
 // processValueTransferLogs handles value transfer logs
 func (r *DataService) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
+	if !r.ethClient.SupportsEventLogs() {
+		return nil
+	}
+
 	transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, crosschain.ValueTransferEventName, crosschain.MessageBusABI)
 	if err != nil {
 		return err
@@ -291,6 +298,10 @@ func (r *DataService) processValueTransferLogs(l types.Log, txData *common.L1TxD
 
 // processSequencerLogs handles sequencer logs
 func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data, txType common.L1TenEventType) error {
+	if !r.ethClient.SupportsEventLogs() {
+		return nil
+	}
+
 	enclaveID, err := getEnclaveIdFromLog(l)
 	if err != nil {
 		return err

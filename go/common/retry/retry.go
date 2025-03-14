@@ -7,12 +7,19 @@ import (
 )
 
 func Do(fn func() error, retryStrat Strategy) error {
+	return Do1(func(retry int) error {
+		return fn()
+	}, retryStrat)
+}
+
+func Do1(fn func(int) error, retryStrat Strategy) error {
 	// Reset tells the strategy we are about to start making attempts (it might reset attempts counter/record start time)
 	retryStrat.Reset()
-
+	retryNr := 0
 	for {
+		retryNr++
 		// attempt to execute the function
-		err := fn()
+		err := fn(retryNr)
 		if err == nil {
 			// success
 			return nil
