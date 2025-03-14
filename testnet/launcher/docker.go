@@ -57,7 +57,10 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to load sequencer config - %w", err)
 	}
 	sequencerCfg.Network.L1.StartHash = common.HexToHash(networkConfig.L1StartHash)
-	sequencerCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkConfig.ManagementContractAddress)
+	sequencerCfg.Network.L1.L1Contracts.EnclaveRegistryContract = common.HexToAddress(networkConfig.EnclaveRegistryAddress)
+	sequencerCfg.Network.L1.L1Contracts.RollupContract = common.HexToAddress(networkConfig.RollupContractAddress)
+	sequencerCfg.Network.L1.L1Contracts.CrossChainContract = common.HexToAddress(networkConfig.CrossChainAddress)
+	sequencerCfg.Network.L1.L1Contracts.NetworkConfigContract = common.HexToAddress(networkConfig.NetworkConfigAddress)
 	sequencerCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
 
 	sequencerNode := node.NewDockerNode(sequencerCfg, "testnetobscuronet.azurecr.io/obscuronet/host:latest", "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", edgelessDBImage, false, "", 1)
@@ -82,7 +85,10 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to load validator config - %w", err)
 	}
 	validatorNodeCfg.Network.L1.StartHash = common.HexToHash(networkConfig.L1StartHash)
-	validatorNodeCfg.Network.L1.L1Contracts.ManagementContract = common.HexToAddress(networkConfig.ManagementContractAddress)
+	validatorNodeCfg.Network.L1.L1Contracts.EnclaveRegistryContract = common.HexToAddress(networkConfig.EnclaveRegistryAddress)
+	validatorNodeCfg.Network.L1.L1Contracts.RollupContract = common.HexToAddress(networkConfig.RollupContractAddress)
+	validatorNodeCfg.Network.L1.L1Contracts.CrossChainContract = common.HexToAddress(networkConfig.CrossChainAddress)
+	validatorNodeCfg.Network.L1.L1Contracts.NetworkConfigContract = common.HexToAddress(networkConfig.NetworkConfigAddress)
 	validatorNodeCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
 
 	validatorNode := node.NewDockerNode(validatorNodeCfg, "testnetobscuronet.azurecr.io/obscuronet/host:latest", "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", edgelessDBImage, false, "", 1)
@@ -105,7 +111,7 @@ func (t *Testnet) Start() error {
 			l2cd.WithL2WSPort(81),
 			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l2cd.WithMessageBusContractAddress("0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C"),
-			l2cd.WithManagementContractAddress("0x51D43a3Ca257584E770B6188232b199E76B022A2"),
+			l2cd.WithNetworkConfigAddress("0x51D43a3Ca257584E770B6188232b199E76B022A2"),
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
 			l2cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
 			l2cd.WithDebugEnabled(t.cfg.contractDeployerDebug),
@@ -116,7 +122,7 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to configure the l2 contract deployer - %w", err)
 	}
 
-	err = t.grantSequencerStatus(networkConfig.ManagementContractAddress)
+	err = t.grantSequencerStatus(networkConfig.EnclaveRegistryAddress)
 	if err != nil {
 		return fmt.Errorf("failed to grant sequencer status: %w", err)
 	}
@@ -279,7 +285,7 @@ func waitForHealthyNode(port int) error { // todo: hook the cfg
 	return nil
 }
 
-func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
+func (t *Testnet) grantSequencerStatus(enclaveRegistryAddr string) error {
 	// fetch enclaveIDs
 	hostURL := fmt.Sprintf("http://localhost:%d", 80)
 
@@ -288,7 +294,7 @@ func (t *Testnet) grantSequencerStatus(mgmtContractAddr string) error {
 			l1gs.WithL1HTTPURL("http://eth2network:8025"),
 			l1gs.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1gs.WithDockerImage(t.cfg.contractDeployerDockerImage),
-			l1gs.WithMgmtContractAddress(mgmtContractAddr),
+			l1gs.WithEnclaveContractAddress(enclaveRegistryAddr),
 			l1gs.WithSequencerURL(hostURL),
 		),
 	)

@@ -18,31 +18,39 @@ func main() {
 		),
 	)
 	if err != nil {
-		fmt.Println("unable to configure l1 contract deployer - %w", err)
+		fmt.Printf("unable to configure l1 contract deployer - %s\n", err)
 		os.Exit(1)
 	}
 
 	err = l1ContractDeployer.Start()
 	if err != nil {
-		fmt.Println("unable to start l1 contract deployer - %w", err)
+		fmt.Printf("unable to start l1 contract deployer - %s\n", err)
 		os.Exit(1)
 	}
 
 	networkConfig, err := l1ContractDeployer.RetrieveL1ContractAddresses()
 	if err != nil {
-		fmt.Println("unable to fetch l1 contract addresses - %w", err)
-		os.Exit(1)
+		fmt.Printf("unable to fetch l1 contract addresses - %s", err)
+		os.Exit(0)
 	}
 	fmt.Println("L1 Contracts were successfully deployed...")
 
-	fmt.Printf("MGMTCONTRACTADDR=%s\n", networkConfig.ManagementContractAddress)
+	fmt.Printf("ENCLAVEREGISTRYADDR=%s\n", networkConfig.EnclaveRegistryAddress)
+	fmt.Printf("CROSSCHAINADDR=%s\n", networkConfig.CrossChainAddress)
+	fmt.Printf("ROLLUPADDR=%s\n", networkConfig.RollupContractAddress)
+	fmt.Printf("NETWORKCONFIGADDR=%s\n", networkConfig.NetworkConfigAddress)
 	fmt.Printf("MSGBUSCONTRACTADDR=%s\n", networkConfig.MessageBusAddress)
 	fmt.Printf("L1START=%s\n", networkConfig.L1StartHash)
 
 	// the responsibility of writing to disk is outside the deployers domain
 	if cliConfig.contractsEnvFile != "" {
-		envFile := fmt.Sprintf("MGMTCONTRACTADDR=%s\nMSGBUSCONTRACTADDR=%s\nL1START=%s\n",
-			networkConfig.ManagementContractAddress, networkConfig.MessageBusAddress, networkConfig.L1StartHash)
+		envFile := fmt.Sprintf("ENCLAVEREGISTRYADDR=%s\nCROSSCHAINADDR=%s\nROLLUPADDR=%s\nNETWORKCONFIGADDR=%s\nMSGBUSCONTRACTADDR=%s\nL1START=%s\n",
+			networkConfig.EnclaveRegistryAddress,
+			networkConfig.CrossChainAddress,
+			networkConfig.RollupContractAddress,
+			networkConfig.NetworkConfigAddress,
+			networkConfig.MessageBusAddress,
+			networkConfig.L1StartHash)
 
 		// Write the content to a new file or override the existing file
 		err = os.WriteFile(cliConfig.contractsEnvFile, []byte(envFile), 0o644) //nolint:gosec

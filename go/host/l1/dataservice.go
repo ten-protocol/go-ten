@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 	"math/big"
 	"sync/atomic"
 	"time"
+
+	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
@@ -361,9 +362,9 @@ func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, proc
 		switch decodedTx.(type) {
 		case *common.L1InitializeSecretTx:
 			processed.AddEvent(common.InitialiseSecretTx, txData)
-		//case *common.L1SetImportantContractsTx:
+		// case *common.L1SetImportantContractsTx:
 		//	processed.AddEvent(common.SetImportantContractsTx, txData)
-		case *common.L1PermissionSeqTx: //FIXME I think this can be deleted?
+		case *common.L1PermissionSeqTx: // FIXME I think this can be deleted?
 			return // no-op as it was processed in the previous processSequencerLogs call
 		default:
 			// this should never happen since the specific events should always decode into one of these types
@@ -379,13 +380,11 @@ func (r *DataService) streamLiveBlocks() {
 	for r.running.Load() {
 		select {
 		case blockHeader := <-liveStream:
-			block, err := r.ethClient.HeaderByHash(blockHeader.Hash())
-			if err != nil {
-				r.logger.Error("Could not read block head.", log.ErrKey, err)
-			}
-			err = r.blockResolver.AddBlock(block)
+			r.logger.Info(fmt.Sprintf("received block from l1 stream: %v", blockHeader))
+			err := r.blockResolver.AddBlock(blockHeader)
 			if err != nil {
 				r.logger.Error("Could not add block to host db.", log.ErrKey, err)
+				// todo - handle unexpected errors here
 			}
 
 			r.head = blockHeader.Hash()
@@ -452,5 +451,5 @@ func getEnclaveIdFromLog(log types.Log) (gethcommon.Address, error) {
 }
 
 func increment(i *big.Int) *big.Int {
-	return i.Add(i, one)
+	return big.NewInt(0).Add(i, one)
 }

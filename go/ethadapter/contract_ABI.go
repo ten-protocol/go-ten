@@ -1,12 +1,13 @@
 package ethadapter
 
 import (
+	"strings"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkEnclaveRegistry"
 	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
-	"strings"
 )
 
 const (

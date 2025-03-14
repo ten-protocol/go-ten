@@ -5,19 +5,16 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 )
 
-type mockContractRegistryLib struct {
-	rollupLib         mockRollupContractLib
-	networkEnclaveLib MockNetworkEnclaveRegistryLib
-	networkConfigLib  contractlib.NetworkConfigLib
-}
+type mockContractRegistryLib struct{}
 
 func (m *mockContractRegistryLib) GetContractAddresses() *common.NetworkConfigAddresses {
-	return &common.NetworkConfigAddresses{
+	addresses := &common.NetworkConfigAddresses{
 		CrossChain:             RollupTxAddr,
 		MessageBus:             MessageBusAddr,
-		NetworkEnclaveRegistry: StoreSecretTxAddr,
+		NetworkEnclaveRegistry: RespondSecretTxAddr,
 		RollupContract:         RollupTxAddr,
 	}
+	return addresses
 }
 
 func NewContractRegistryLibMock() contractlib.ContractRegistryLib {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -102,6 +103,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 	hostServices.RegisterService(hostcommon.L1DataServiceName, l1Repo)
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
 	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
+	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
 	l1Publisher := l1.NewL1Publisher(
 		hostIdentity,
 		ethWallet,
@@ -114,6 +116,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		maxWaitForL1Receipt,
 		retryIntervalForL1Receipt,
 		hostStorage,
+		l1ChainCfg,
 	)
 
 	hostServices.RegisterService(hostcommon.L1PublisherName, l1Publisher)
@@ -263,7 +266,6 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		h.publicSystemContracts = publicCfg.PublicSystemContracts
 	}
 
-	h.contractRegistry.RollupLib().GetContractAddr()
 	return &common.TenNetworkInfo{
 		NetworkConfigAddress:            h.config.NetworkConfigAddress,
 		L1StartHash:                     h.config.L1StartHash,

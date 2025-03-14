@@ -17,12 +17,13 @@ func (m *mockNetworkConfigLib) GetContractAddr() *gethcommon.Address {
 }
 
 func (m *mockNetworkConfigLib) GetContractAddresses() (*common.NetworkConfigAddresses, error) {
-	return &common.NetworkConfigAddresses{
+	addresses := &common.NetworkConfigAddresses{
 		CrossChain:             CrossChainAddr,
 		MessageBus:             MessageBusAddr,
-		NetworkEnclaveRegistry: StoreSecretTxAddr,
+		NetworkEnclaveRegistry: RespondSecretTxAddr,
 		RollupContract:         RollupTxAddr,
-	}, nil
+	}
+	return addresses, nil
 }
 
 func (m *mockNetworkConfigLib) IsMock() bool {

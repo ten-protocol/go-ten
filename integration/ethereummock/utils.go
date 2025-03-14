@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ten-protocol/go-ten/go/common"
 

@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"strings"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -29,7 +31,7 @@ var minGasTipCap = big.NewInt(2 * params.GWei)
 
 // SetTxGasPrice takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
-func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int, logger gethlog.Logger) (types.TxData, error) {
+func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int, l1ChainCfg *params.ChainConfig, logger gethlog.Logger) (types.TxData, error) {
 	rawTx := types.NewTx(txData)
 	to := rawTx.To()
 	value := rawTx.Value()
@@ -45,6 +47,26 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		BlobHashes: blobHashes,
 	})
 	if err != nil {
+		// After the error
+		println("Gas estimation failed",
+			"error", err.Error(),
+			"from", from.Hex(),
+			"to", to.Hex(),
+			"method_signature", hexutil.Encode(data[:4])) // First 4 bytes are the method signature
+
+		// Try to extract more detailed error information
+		if strings.Contains(err.Error(), "execution reverted") {
+			// Try to get the revert reason if available
+			reason := "Unknown reason"
+			if strings.Contains(err.Error(), "execution reverted: ") {
+				parts := strings.Split(err.Error(), "execution reverted: ")
+				if len(parts) > 1 {
+					reason = parts[1]
+				}
+			}
+			println("Execution reverted with reason:", reason)
+		}
+
 		return nil, fmt.Errorf("could not estimate gas - %w", err)
 	}
 
@@ -81,7 +103,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		if head.ExcessBlobGas == nil {
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
-		blobBaseFee := eip4844.CalcBlobFee(*head.ExcessBlobGas)
+		blobBaseFee := eip4844.CalcBlobFee(l1ChainCfg, head)
 		blobMultiplier := calculateRetryMultiplier(_blobPriceMultiplier, retryNumber)
 		blobFeeCap := new(uint256.Int).Mul(
 			uint256.MustFromBig(blobBaseFee),

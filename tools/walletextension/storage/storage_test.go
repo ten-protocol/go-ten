@@ -6,12 +6,13 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
+
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/stretchr/testify/require"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
@@ -160,7 +161,7 @@ func testDeleteUser(storage UserStorage, t *testing.T) {
 	// Attempt to retrieve the deleted user's private key
 	// This should fail with a "not found" error
 	_, err = storage.GetUser(userID)
-	if err == nil || !errors.Is(err, errutil.ErrNotFound) {
+	if err == nil || !errors.Is(err, common.ErrUserNotFound) {
 		t.Fatal("Expected 'not found' error when getting deleted user, but got none or different error")
 	}
 }

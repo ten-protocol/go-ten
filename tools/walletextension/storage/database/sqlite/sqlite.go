@@ -28,7 +28,6 @@ import (
 	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
 
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
@@ -194,7 +193,7 @@ func (s *SqliteDB) readUser(dbTx *sql.Tx, userID []byte) (dbcommon.GWUserDB, err
 	err := dbTx.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return dbcommon.GWUserDB{}, fmt.Errorf("failed to get user: %w", errutil.ErrNotFound)
+			return dbcommon.GWUserDB{}, dbcommon.ErrUserNotFound
 		}
 		return dbcommon.GWUserDB{}, fmt.Errorf("failed to get user: %w", err)
 	}

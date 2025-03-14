@@ -177,10 +177,9 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		ExposedURLParamNames: nil,
 	}
 	rpcServer := node.NewServer(&rpcConfig, n.logger)
-	// FIXME HERE
-	contractRegistry, err := contractlib.NewContractRegistry(n.l1Data.NetworkConfigAddress, *n.l1Client.EthClient(), n.logger)
+	contractRegistry, err := contractlib.NewContractRegistryLib(n.l1Data.NetworkConfigAddress, *n.l1Client.EthClient(), n.logger)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("error creating contract registry. Cause: %s", err))
 	}
 
 	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort))))

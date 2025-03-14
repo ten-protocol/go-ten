@@ -21,7 +21,11 @@ import (
 
 // The types of contracts supported by the deployer
 const (
-	mgmtContract        = "MGMT"
+	// mgmtContract        = "MGMT"
+	enclaveRegistry     = "ENCLAVE_REGISTRY"
+	rollup              = "ROLLUP"
+	crossChain          = "CROSS_CHAIN"
+	networkConfig       = "NETWORK_CONFIG"
 	Layer2Erc20Contract = "Layer2ERC20"
 	layer1Erc20Contract = "Layer1ERC20"
 )
@@ -155,8 +159,14 @@ func (cd *contractDeployer) signAndSendTxWithReceipt(wallet wallet.Wallet, deplo
 
 func getContractCode(cfg *Config) ([]byte, error) {
 	switch cfg.ContractName {
-	case mgmtContract:
-		return constants.Bytecode()
+	case enclaveRegistry:
+		return constants.EnclaveRegistryBytecode()
+	case crossChain:
+		return constants.CrossChainBytecode()
+	case rollup:
+		return constants.RollupContractBytecode()
+	case networkConfig:
+		return constants.NetworkConfigBytecode()
 
 	case Layer2Erc20Contract:
 		tokenName := cfg.ConstructorParams[0]

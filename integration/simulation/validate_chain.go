@@ -3,7 +3,6 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sort"
 	"strings"
@@ -254,16 +253,10 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
-	contractAddresses, err := s.Params.NetworkContractConfigLib.GetContractAddresses()
-	if err != nil {
-		panic(err)
-	}
-
-	rollupLib := contractlib.NewRollupContractLib(&contractAddresses.RollupContract, testlog.Logger())
-	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&contractAddresses.NetworkEnclaveRegistry, testlog.Logger())
+	rollupLib := s.Params.ContractRegistryLib.RollupLib()
+	enclaveRegistryLib := s.Params.ContractRegistryLib.NetworkEnclaveLib()
 
 	blockchain, err := node.BlocksBetween(startBlock, endBlock)
-
 	if err != nil {
 		panic(err)
 	}
@@ -278,13 +271,25 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 			if err != nil {
 				panic(err)
 			}
+			if t != nil {
+				// Check if it's a deposit transaction
+				if depositTx, ok := t.(*common.L1DepositTx); ok {
+					receipt, err := node.TransactionReceipt(tx.Hash())
+					if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+						continue
+					}
+					deposits = append(deposits, tx.Hash())
+					totalDeposited.Add(totalDeposited, depositTx.Amount)
+					successfulDeposits++
+					continue // Skip to next transaction
+				}
+			}
+			t, err = rollupLib.DecodeTx(tx)
+			if err != nil {
+				panic(err)
+			}
 
 			if t == nil {
-				//FIXME
-				t, err = rollupLib.DecodeTx(tx)
-				if err != nil {
-					panic(err)
-				}
 				t, err = enclaveRegistryLib.DecodeTx(tx)
 				if err != nil {
 					panic(err)
@@ -295,19 +300,12 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 				continue
 			}
 			receipt, err := node.TransactionReceipt(tx.Hash())
-
 			if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
 				continue
 			}
 
-			switch l1tx := t.(type) {
-			case *common.L1DepositTx:
-				// todo (@stefan) - remove this hack once the old integrated bridge is removed.
-				deposits = append(deposits, tx.Hash())
-				totalDeposited.Add(totalDeposited, l1tx.Amount)
-				successfulDeposits++
-			case *common.L1RollupHashes:
-				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, l1tx.BlobHashes)
+			if rollupTx, ok := t.(*common.L1RollupHashes); ok {
+				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, rollupTx.BlobHashes)
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
@@ -651,7 +649,7 @@ func extractWithdrawals(t *testing.T, tenClient *obsclient.ObsClient, nodeIdx in
 	// sum all the withdrawals by traversing the node headers from Head to Genesis
 	for {
 		if header == nil {
-			t.Errorf(fmt.Sprintf("Node %d: Reached a missing rollup", nodeIdx))
+			t.Errorf("Node %d: Reached a missing rollup", nodeIdx)
 			return
 		}
 		if header.Number.Uint64() == common.L1GenesisHeight {
@@ -661,7 +659,7 @@ func extractWithdrawals(t *testing.T, tenClient *obsclient.ObsClient, nodeIdx in
 		// note this retrieves batches currently.
 		newHeader, err := tenClient.GetBatchHeaderByHash(header.ParentHash)
 		if err != nil {
-			t.Errorf(fmt.Sprintf("Node %d: Could not retrieve batch header %s. Cause: %s", nodeIdx, header.ParentHash, err))
+			t.Errorf("Node %d: Could not retrieve batch header %s. Cause: %s", nodeIdx, header.ParentHash, err)
 			return
 		}
 

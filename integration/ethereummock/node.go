@@ -5,11 +5,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
@@ -332,12 +333,12 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 			topic = ethadapter.CrossChainEventID
 		case DepositTxAddr.Hex():
 			topic = ethadapter.ValueTransferEventID
-		case StoreSecretTxAddr.Hex():
+		case RespondSecretTxAddr.Hex():
 			topic = ethadapter.NetworkSecretRespondedID
 		case RequestSecretTxAddr.Hex():
 			topic = ethadapter.NetworkSecretRequestedID
 		case InitializeSecretTxAddr.Hex():
-			topic = ethadapter.SequencerEnclaveGrantedEventID
+			topic = ethadapter.NetworkSecretInitializedEventID
 		case GrantSeqTxAddr.Hex():
 			topic = ethadapter.SequencerEnclaveGrantedEventID
 			// enclave ID address, padded out to 32 bytes to match standard eth fields

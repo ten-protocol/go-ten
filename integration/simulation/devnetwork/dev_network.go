@@ -174,6 +174,11 @@ func (s *InMemDevNetwork) Start() {
 		}
 	}
 
+	err = network.PermissionRollupContractStateRoot(s.networkWallets.ContractOwnerWallet, s.l1Network.GetClient(0), s.l1SetupData.CrossChainContractAddress, s.l1SetupData.RollupContractAddress)
+	if err != nil {
+		panic(err)
+	}
+
 	if s.tenConfig.TenGatewayEnabled {
 		s.startTenGateway()
 	}

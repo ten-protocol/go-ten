@@ -3,6 +3,7 @@ package ethereummock
 import (
 	"bytes"
 	"encoding/gob"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -14,7 +15,7 @@ var (
 	MessageBusAddr         = datagenerator.RandomAddress()
 	DepositTxAddr          = datagenerator.RandomAddress()
 	RollupTxAddr           = datagenerator.RandomAddress()
-	StoreSecretTxAddr      = datagenerator.RandomAddress()
+	RespondSecretTxAddr    = datagenerator.RandomAddress()
 	RequestSecretTxAddr    = datagenerator.RandomAddress()
 	InitializeSecretTxAddr = datagenerator.RandomAddress()
 	GrantSeqTxAddr         = datagenerator.RandomAddress()
@@ -35,7 +36,7 @@ func DecodeTx(tx *types.Transaction) common.L1TenTransaction {
 	// so this is a way that we can differentiate different contract calls
 	var t common.L1TenTransaction
 	switch tx.To().Hex() {
-	case StoreSecretTxAddr.Hex():
+	case RespondSecretTxAddr.Hex():
 		t = &common.L1RespondSecretTx{}
 	case DepositTxAddr.Hex():
 		t = &common.L1DepositTx{}
@@ -47,6 +48,7 @@ func DecodeTx(tx *types.Transaction) common.L1TenTransaction {
 		// this tx is empty and entirely mocked, no need to decode
 		return &common.L1PermissionSeqTx{}
 	default:
+		println("PANIC with tx to addr: ", tx.To().Hex())
 		panic("unexpected type")
 	}
 

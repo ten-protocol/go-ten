@@ -3,15 +3,15 @@ package simulation
 import (
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
-	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"math/rand"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -56,9 +56,8 @@ type TransactionInjector struct {
 	rpcHandles *network.RPCHandles
 
 	// addrs and libs
-	networkConfigAddr *gethcommon.Address
-	networkConfigLib  contractlib.NetworkConfigLib
-	erc20ContractLib  erc20contractlib.ERC20ContractLib
+	contractRegistryLib contractlib.ContractRegistryLib
+	erc20ContractLib    erc20contractlib.ERC20ContractLib
 
 	// controls
 	interruptRun     *int32
@@ -81,8 +80,7 @@ func NewTransactionInjector(
 	stats *simstats.Stats,
 	rpcHandles *network.RPCHandles,
 	wallets *params.SimWallets,
-	networkConfigAddr *gethcommon.Address,
-	networkConfigLib contractlib.NetworkConfigLib,
+	contractRegistryLib contractlib.ContractRegistryLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	txsToIssue int,
 	params *params.SimParams,
@@ -90,20 +88,19 @@ func NewTransactionInjector(
 	interrupt := int32(0)
 
 	return &TransactionInjector{
-		avgBlockDuration:  avgBlockDuration,
-		stats:             stats,
-		rpcHandles:        rpcHandles,
-		interruptRun:      &interrupt,
-		fullyStoppedChan:  make(chan bool, 1),
-		networkConfigAddr: networkConfigAddr,
-		networkConfigLib:  networkConfigLib,
-		erc20ContractLib:  erc20ContractLib,
-		wallets:           wallets,
-		TxTracker:         newCounter(),
-		txsToIssue:        txsToIssue,
-		params:            params,
-		ctx:               context.Background(), // for now we create a new context here, should allow it to be passed in
-		logger:            testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
+		avgBlockDuration:    avgBlockDuration,
+		stats:               stats,
+		rpcHandles:          rpcHandles,
+		interruptRun:        &interrupt,
+		fullyStoppedChan:    make(chan bool, 1),
+		contractRegistryLib: contractRegistryLib,
+		erc20ContractLib:    erc20ContractLib,
+		wallets:             wallets,
+		TxTracker:           newCounter(),
+		txsToIssue:          txsToIssue,
+		params:              params,
+		ctx:                 context.Background(), // for now we create a new context here, should allow it to be passed in
+		logger:              testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
 	}
 }
 
@@ -234,22 +231,10 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 	gasWallet := ti.wallets.GasBridgeWallet
 
-	ethClient := ti.rpcHandles.RndEthClient()
-
-	networkCtrAddr := ti.networkConfigAddr
-	networkConfCtr, err := NetworkConfig.NewNetworkConfig(*networkCtrAddr, ethClient.EthClient())
-	if err != nil {
-		panic(fmt.Sprintf("could not create network config contract. Cause: %s", err))
-	}
-	busAddr, err := networkConfCtr.MessageBusContractAddress(&bind.CallOpts{})
-	if err != nil {
-		panic(err)
-	}
+	addresses := ti.contractRegistryLib.GetContractAddresses()
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		ethClient = ti.rpcHandles.RndEthClient()
-
-		busCtr, err := MessageBus.NewMessageBus(busAddr, ethClient.EthClient())
+		busCtr, err := MessageBus.NewMessageBus(addresses.MessageBus, ti.rpcHandles.RndEthClient().EthClient())
 		if err != nil {
 			panic(err)
 		}
@@ -367,20 +352,15 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	// In mem sim does not support the l1 interaction required for the rest of the function.
-
-	if ti.networkConfigLib.IsMock() {
+	if ti.contractRegistryLib.IsMock() {
 		return
 	}
 
 	ethClient := ti.rpcHandles.RndEthClient()
-	networkCtrAddr := ti.networkConfigAddr
-	networkConfCtr, err := NetworkConfig.NewNetworkConfig(*networkCtrAddr, ethClient.EthClient())
+	crossChainCtr, err := CrossChain.NewCrossChain(ti.contractRegistryLib.GetContractAddresses().CrossChain, ethClient.EthClient())
 	if err != nil {
-		panic(fmt.Sprintf("could not create network config contract. Cause: %s", err))
+		panic(err)
 	}
-	crossChainAddr, err := networkConfCtr.CrossChainContractAddress(&bind.CallOpts{})
-
-	crosschainCtr, err := CrossChain.NewCrossChain(crossChainAddr, ethClient.EthClient())
 
 	opts, err := bind.NewKeyedTransactorWithChainID(ti.wallets.GasWithdrawalWallet.PrivateKey(), ti.wallets.GasWithdrawalWallet.ChainID())
 	if err != nil {
@@ -400,7 +380,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	withdrawalTx, err := crosschainCtr.ExtractNativeValue(
+	withdrawalTx, err := crossChainCtr.ExtractNativeValue(
 		opts,
 		CrossChain.StructsValueTransferMessage(vTransfers[0]),
 		proof32,

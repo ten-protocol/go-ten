@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/core"

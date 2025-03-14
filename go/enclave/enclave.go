@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
 
@@ -54,7 +55,7 @@ type enclaveImpl struct {
 //
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, logger gethlog.Logger) common.Enclave {
+func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, contractRegistryLib contractlib.ContractRegistryLib, logger gethlog.Logger) common.Enclave {
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Creating enclave service with following config", log.CfgKey, string(jsonConfig))
 
@@ -91,13 +92,10 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, l
 		logger.Crit("failed to load system contracts", log.ErrKey, err)
 	}
 
-	gasOracle := gas.NewGasOracle()
+	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
+	gasOracle := gas.NewGasOracle(l1ChainCfg)
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 
-	// FIXME figure out addresses
-	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&config.EnclaveRegistryAddress, logger)
-	rollupContractLib := contractlib.NewRollupContractLib(&config.RollupContractAddress, logger)
-	contractRegistry := contractlib.NewContractRegistryFromLibs(rollupContractLib, enclaveRegistryLib, logger)
 	// start the mempool in validate only. Based on the config, it might become sequencer
 	evmEntropyService := crypto.NewEvmEntropyService(sharedSecretService, logger)
 	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, evmEntropyService, logger)
@@ -107,7 +105,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, l
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
 
-	chainContext := evm.NewTenChainContext(storage, gethEncodingService, config, logger)
+	chainContext := evm.NewTenChainContext(storage, gethEncodingService, config, chainConfig, logger)
 	visibilityReader := evm.NewContractVisibilityReader(logger)
 	evmFacade := evm.NewEVMExecutor(chainContext, chainConfig, config, config.GasLocalExecutionCapFlag, storage, gethEncodingService, visibilityReader, logger)
 
@@ -135,7 +133,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, l
 
 	// these services are directly exposed as the API of the Enclave
 	initAPI := NewEnclaveInitAPI(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider, sharedSecretService, daEncryptionService, rpcKeyService)
-	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, attestationProvider, sharedSecretService, daEncryptionService, contractRegistry)
+	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, attestationProvider, sharedSecretService, daEncryptionService, contractRegistryLib)
 	rpcAPI := NewEnclaveRPCAPI(config, storage, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, rpcKeyService, evmFacade)
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
@@ -149,7 +147,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, l
 
 // Status is only implemented by the RPC wrapper
 func (e *enclaveImpl) Status(ctx context.Context) (common.Status, common.SystemError) {
-	return e.initAPI.Status(ctx)
+	return e.adminAPI.Status(ctx)
 }
 
 func (e *enclaveImpl) Attestation(ctx context.Context) (*common.AttestationReport, common.SystemError) {

@@ -3,12 +3,13 @@ package network
 import (
 	"bufio"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"net/http"
 	"os/exec"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 
@@ -56,14 +57,15 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		simParams.StartPort,
 		simParams.NumberOfNodes,
 	)
-	networkConfigLib, err := contractlib.NewNetworkConfigLib(simParams.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient())
+
+	contractRegistryLib, err := contractlib.NewContractRegistryLib(simParams.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient(), testlog.Logger())
 	if err != nil {
-		return nil, err
+		panic(fmt.Sprintf("error creating contract registry. Cause: %s", err))
 	}
-	simParams.NetworkContractConfigLib = networkConfigLib
+	simParams.ContractRegistryLib = contractRegistryLib
 
 	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(
-		&simParams.L1TenData.NetworkConfigAddress,
+		&simParams.L1TenData.CrossChainContractAddress,
 		&simParams.L1TenData.ObxErc20Address,
 		&simParams.L1TenData.EthErc20Address,
 	)
@@ -162,7 +164,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	var seqEnclaveID *common.EnclaveID
 	for ; seqEnclaveID == nil; time.Sleep(100 * time.Millisecond) {
 		seqHealth, _ := n.tenClients[0].Health()
-		if seqHealth.Enclaves == nil || len(seqHealth.Enclaves) == 0 {
+		if len(seqHealth.Enclaves) == 0 {
 			continue
 		}
 		seqEnclaveID = &seqHealth.Enclaves[0].EnclaveID
@@ -171,15 +173,19 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		}
 	}
 
-	// permission the sequencer enclaveID (also requires retries as the enclaveID may not be attested yet)
-	addresses, err := networkConfigLib.GetContractAddresses()
+	addresses := contractRegistryLib.GetContractAddresses()
 	if err != nil {
-		//FIXME
-		return nil, err
+		return nil, fmt.Errorf("unable to fetch contract addresses. Cause: %s", err)
 	}
+	// permission the sequencer enclaveID (also requires retries as the enclaveID may not be attested yet)
 	err = PermissionTenSequencerEnclave(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.NetworkEnclaveRegistry, *seqEnclaveID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
+	}
+
+	err = PermissionRollupContractStateRoot(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.CrossChain, addresses.RollupContract)
+	if err != nil {
+		return nil, fmt.Errorf("unable to permission rollup contract on merkle messagebus: %w", err)
 	}
 
 	// wait for nodes to be healthy now we've permissioned

@@ -27,7 +27,7 @@ func TestInMemoryMonteCarloSimulation(t *testing.T) {
 		AvgBlockDuration:           180 * time.Millisecond,
 		SimulationTime:             45 * time.Second,
 		L1EfficiencyThreshold:      0.8,
-		NetworkContractConfigLib:   ethereummock.NewNetworkConfigLibMock(),
+		ContractRegistryLib:        ethereummock.NewContractRegistryLibMock(),
 		ERC20ContractLib:           ethereummock.NewERC20ContractLibMock(),
 		BlobResolver:               ethereummock.NewMockBlobResolver(),
 		Wallets:                    wallets,

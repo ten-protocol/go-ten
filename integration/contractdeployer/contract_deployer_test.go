@@ -136,13 +136,13 @@ func creatTenNetwork(t *testing.T, startPort int) {
 	numberOfNodes := 1
 	wallets := params.NewSimWallets(1, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
-		NumberOfNodes:    numberOfNodes,
-		AvgBlockDuration: 2 * time.Second,
-		MgmtContractLib:  ethereummock.NewMgmtContractLibMock(),
-		ERC20ContractLib: ethereummock.NewERC20ContractLibMock(),
-		Wallets:          wallets,
-		StartPort:        startPort,
-		WithPrefunding:   true,
+		NumberOfNodes:       numberOfNodes,
+		AvgBlockDuration:    2 * time.Second,
+		ContractRegistryLib: ethereummock.NewContractRegistryLibMock(),
+		ERC20ContractLib:    ethereummock.NewERC20ContractLibMock(),
+		Wallets:             wallets,
+		StartPort:           startPort,
+		WithPrefunding:      true,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)

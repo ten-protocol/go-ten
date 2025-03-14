@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
 
@@ -425,6 +426,33 @@ func (e *enclaveAdminService) HealthCheck(ctx context.Context) (bool, common.Sys
 	}
 
 	return storageHealthy && l1blockHealthy && l2batchHealthy, nil
+}
+
+func (e *enclaveAdminService) Status(ctx context.Context) (common.Status, common.SystemError) {
+	initialised := e.sharedSecretService.IsInitialised()
+	if !initialised {
+		return common.Status{StatusCode: common.AwaitingSecret, L2Head: _noHeadBatch}, nil
+	}
+	var l1HeadHash gethcommon.Hash
+	l1Head, err := e.l1BlockProcessor.GetHead(ctx)
+	if err != nil {
+		// this might be normal while enclave is starting up, just send empty hash
+		e.logger.Debug("failed to fetch L1 head block for status response", log.ErrKey, err)
+	} else {
+		l1HeadHash = l1Head.Hash()
+	}
+	// we use zero when there's no head batch yet, the first seq number is 1
+	l2HeadSeqNo := _noHeadBatch
+	// this is the highest seq number that has been received and stored on the enclave (it may not have been executed)
+	currSeqNo, err := e.storage.FetchCurrentSequencerNo(ctx)
+	if err != nil {
+		// this might be normal while enclave is starting up, just send empty hash
+		e.logger.Debug("failed to fetch L2 head batch for status response", log.ErrKey, err)
+	} else {
+		l2HeadSeqNo = currSeqNo
+	}
+	enclaveID := e.enclaveKeyService.EnclaveID()
+	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadSeqNo, EnclaveID: enclaveID, IsActiveSequencer: e.activeSequencer}, nil
 }
 
 func (e *enclaveAdminService) Stop() common.SystemError {

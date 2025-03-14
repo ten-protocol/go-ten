@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"

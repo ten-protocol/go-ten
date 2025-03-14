@@ -1,25 +1,53 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.7.0 <0.9.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-
 import "../common/Structs.sol";
 import "./IMerkleTreeMessageBus.sol";
 import "./MessageBus.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
     
-    constructor() MessageBus() {}
+    address public admin;
 
+    // custom access control to avoid conflicting dependencies in MessageBus
+    mapping(address => bool) public stateRootManagers;
+    
+    constructor(address _admin) MessageBus() {
+        admin = _admin;
+        stateRootManagers[_admin] = true;
+    }
+    
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can call this function");
+        _;
+    }
+    
+    modifier onlyStateRootManager() {
+        require(stateRootManagers[msg.sender], "Only state root managers can call this function");
+        _;
+    }
+    
+    function addStateRootManager(address manager) external onlyAdmin {
+        stateRootManagers[manager] = true;
+    }
+    
+    function removeStateRootManager(address manager) external onlyAdmin {
+        stateRootManagers[manager] = false;
+    }
+    
+    function transferAdmin(address newAdmin) external onlyAdmin {
+        admin = newAdmin;
+    }
+    
     mapping(bytes32 => uint256) rootValidAfter; //When a xchain messages root becomes valid represented as a timestamp in seconds to be compared against block timestamp
 
-    function addStateRoot(bytes32 stateRoot, uint256 activationTime) external onlyOwner {
+    function addStateRoot(bytes32 stateRoot, uint256 activationTime) external onlyStateRootManager {
         require(rootValidAfter[stateRoot] == 0, "Root already added to the message bus");
         rootValidAfter[stateRoot] = activationTime;
     }
 
-    function disableStateRoot(bytes32 stateRoot) external onlyOwner {
+    function disableStateRoot(bytes32 stateRoot) external onlyStateRootManager {
         require(rootValidAfter[stateRoot] != 0, "State root does not exist.");
         rootValidAfter[stateRoot] = 0;
     }

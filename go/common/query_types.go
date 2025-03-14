@@ -125,8 +125,8 @@ type TenNetworkInfo struct {
 }
 
 type NetworkConfigAddresses struct {
-	CrossChain             common.Address
-	MessageBus             common.Address
-	NetworkEnclaveRegistry common.Address
-	RollupContract         common.Address
+	CrossChain             CrossChainAddress
+	MessageBus             MessageBusAddress
+	NetworkEnclaveRegistry EnclaveRegistryAddress
+	RollupContract         RollupAddress
 }

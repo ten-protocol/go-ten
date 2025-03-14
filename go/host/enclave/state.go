@@ -54,9 +54,10 @@ type StateTracker struct {
 	status Status
 
 	// enclave states (updated when enclave returns Status and optimistically after successful actions)
-	enclaveStatusCode common.StatusCode // this is the status code reported by the enclave (Running/AwaitingSecret/Unavailable)
-	enclaveL1Head     gethcommon.Hash
-	enclaveL2Head     *big.Int
+	enclaveStatusCode  common.StatusCode // this is the status code reported by the enclave (Running/AwaitingSecret/Unavailable)
+	enclaveL1Head      gethcommon.Hash
+	enclaveL2Head      *big.Int
+	enclaveIsSequencer bool
 
 	// latest seen heads of L1 and L2 chains from external sources
 	hostL1Head gethcommon.Hash
@@ -71,8 +72,15 @@ func NewStateTracker(logger gethlog.Logger) *StateTracker {
 }
 
 func (s *StateTracker) String() string {
-	return fmt.Sprintf("StateTracker: [%s] enclave(StatusCode=%d, L1Head=%s, L2Head=%s), Host(L1Head=%s, L2Head=%s)",
-		s.status, s.enclaveStatusCode, s.enclaveL1Head, s.enclaveL2Head, s.hostL1Head, s.hostL2Head)
+	s.m.RLock()
+	defer s.m.RUnlock()
+	return s.unsafeToString()
+}
+
+// unsafeToString prints the current state without any locking (it is used internally, when calling from within a lock)
+func (s *StateTracker) unsafeToString() string {
+	return fmt.Sprintf("StateTracker: [%s] enclave(StatusCode=%d, L1Head=%s, L2Head=%s, IsSeq=%v), Host(L1Head=%s, L2Head=%s)",
+		s.status, s.enclaveStatusCode, s.enclaveL1Head, s.enclaveL2Head, s.enclaveIsSequencer, s.hostL1Head, s.hostL2Head)
 }
 
 func (s *StateTracker) GetStatus() Status {
@@ -81,11 +89,17 @@ func (s *StateTracker) GetStatus() Status {
 	return s.status
 }
 
+func (s *StateTracker) IsEnclaveActiveSequencer() bool {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	return s.enclaveIsSequencer
+}
+
 func (s *StateTracker) OnProcessedBlock(enclL1Head gethcommon.Hash) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.enclaveL1Head = enclL1Head
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onProcessedBlock", s.calculateStatus())
 }
 
 func (s *StateTracker) OnReceivedBlock(l1Head gethcommon.Hash) {
@@ -98,7 +112,7 @@ func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.enclaveL2Head = enclL2HeadSeqNo
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onProcessedBatch", s.calculateStatus())
 }
 
 func (s *StateTracker) OnReceivedBatch(l2HeadSeqNo *big.Int) {
@@ -113,7 +127,7 @@ func (s *StateTracker) OnSecretProvided() {
 	if s.enclaveStatusCode == common.AwaitingSecret {
 		s.enclaveStatusCode = common.Running
 	}
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onSecretProvided", s.calculateStatus())
 }
 
 func (s *StateTracker) OnEnclaveStatus(es common.Status) {
@@ -125,18 +139,26 @@ func (s *StateTracker) OnEnclaveStatus(es common.Status) {
 		s.enclaveL1Head = es.L1Head
 	}
 	s.enclaveL2Head = es.L2Head
+	s.enclaveIsSequencer = es.IsActiveSequencer
 
-	s.setStatus(s.calculateStatus())
+	s.setStatus("onEnclaveStatus", s.calculateStatus())
 }
 
 // OnDisconnected is called if the enclave is unreachable/not returning a valid Status
 func (s *StateTracker) OnDisconnected() {
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.setStatus(Disconnected)
+	s.setStatus("onDisconnect", Disconnected)
+}
+
+func (s *StateTracker) OnPromoted() {
+	s.m.Lock()
+	defer s.m.Unlock()
+	s.enclaveIsSequencer = true
 }
 
 // when enclave is operational, this method will calculate the status based on comparison of current chain heads with enclave heads
+// this must be called from within write-lock to ensure consistency
 func (s *StateTracker) calculateStatus() Status {
 	switch s.enclaveStatusCode {
 	case common.AwaitingSecret:
@@ -166,7 +188,15 @@ func (s *StateTracker) InSyncWithL1() bool {
 }
 
 func (s *StateTracker) IsLive() bool {
+	s.m.RLock()
+	defer s.m.RUnlock()
 	return s.status == Live
+}
+
+func (s *StateTracker) GetHostL1Head() gethcommon.Hash {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	return s.hostL1Head
 }
 
 func (s *StateTracker) GetEnclaveL1Head() gethcommon.Hash {
@@ -184,11 +214,11 @@ func (s *StateTracker) GetEnclaveL2Head() *big.Int {
 	return big.NewInt(0).SetBytes(s.enclaveL2Head.Bytes())
 }
 
-// this must be called from within write-lock
-func (s *StateTracker) setStatus(newStatus Status) {
+// this must be called from within write-lock, event is just for logging purposes to see cause of status change when debugging
+func (s *StateTracker) setStatus(event string, newStatus Status) {
 	if s.status == newStatus {
 		return
 	}
-	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s]", s.status, newStatus), "state", s)
+	s.logger.Info(fmt.Sprintf("Updating enclave status from [%s] to [%s] on %s", s.status, newStatus, event), "state", s.unsafeToString())
 	s.status = newStatus
 }

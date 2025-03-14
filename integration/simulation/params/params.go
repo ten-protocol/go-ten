@@ -1,8 +1,9 @@
 package params
 
 import (
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
@@ -24,7 +25,7 @@ type SimParams struct {
 	L1EfficiencyThreshold float64
 	L1BeaconPort          int
 
-	NetworkContractConfigLib contractlib.NetworkConfigLib
+	ContractRegistryLib contractlib.ContractRegistryLib
 	// ERC20ContractLib allows parsing ERC20Contract txs to and from the eth txs
 	ERC20ContractLib erc20contractlib.ERC20ContractLib
 
@@ -51,6 +52,8 @@ type L1TenData struct {
 	NetworkConfigAddress common.Address
 	// EnclaveRegistryAddress defines the network enclave registry contract address
 	EnclaveRegistryAddress common.Address
+	// CrossChainContractAddress defines the cross chain contract address
+	CrossChainContractAddress common.Address
 	// RollupContractAddress defines the rollup contract address
 	RollupContractAddress common.Address
 	// ObxErc20Address - the address of the "TEN" ERC20

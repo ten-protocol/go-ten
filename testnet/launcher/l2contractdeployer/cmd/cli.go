@@ -11,7 +11,7 @@ type L2ContractDeployerConfigCLI struct {
 	dockerImage            string
 	l2Host                 string
 	l2WSPort               int
-	managementContractAddr string
+	networkConfigAddress   string
 	messageBusContractAddr string
 	l2PrivateKey           string
 	faucetFunding          string
@@ -27,7 +27,7 @@ func ParseConfigCLI() *L2ContractDeployerConfigCLI {
 	dockerImage := flag.String(dockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", flagUsageMap[dockerImageFlag])
 	l2Host := flag.String(l2HostFlag, "", flagUsageMap[l2HostFlag])
 	l2WSPort := flag.Int(l2WSPortFlag, 9000, flagUsageMap[l2WSPortFlag])
-	managementContractAddr := flag.String(managementContractAddrFlag, "", flagUsageMap[managementContractAddrFlag])
+	networkConfigAddress := flag.String(networkConfigAddressFlag, "", flagUsageMap[networkConfigAddressFlag])
 	messageBusContractAddr := flag.String(messageBusContractAddrFlag, "", flagUsageMap[messageBusContractAddrFlag])
 	l2PrivateKey := flag.String(l2privateKeyFlag, "", flagUsageMap[l2privateKeyFlag])
 	faucetFunds := flag.String(faucetFundingFlag, "0", flagUsageMap[faucetFundingFlag])
@@ -39,7 +39,7 @@ func ParseConfigCLI() *L2ContractDeployerConfigCLI {
 	cfg.dockerImage = *dockerImage
 	cfg.l2Host = *l2Host
 	cfg.l2WSPort = *l2WSPort
-	cfg.managementContractAddr = *managementContractAddr
+	cfg.networkConfigAddress = *networkConfigAddress
 	cfg.messageBusContractAddr = *messageBusContractAddr
 	cfg.l2PrivateKey = *l2PrivateKey
 	cfg.faucetFunding = *faucetFunds

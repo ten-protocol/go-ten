@@ -69,4 +69,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
+func.dependencies = ['NetworkConfig'];
 func.tags = ['CrossChainMessenger', 'CrossChainMessenger_deploy'];

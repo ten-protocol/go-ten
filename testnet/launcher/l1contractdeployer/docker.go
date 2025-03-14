@@ -11,7 +11,6 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 
-	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/node"
 
 	"github.com/docker/docker/client"
@@ -30,7 +29,7 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 }
 
 func (n *ContractDeployer) Start() error {
-	fmt.Printf("Starting L1 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
+	fmt.Printf("Starting L1 contract deployer with config: \n%v\n\n", n.cfg)
 
 	cmds := []string{"npx"}
 	var ports []int
@@ -116,10 +115,23 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		lines = lines[:len(lines)-2]
 	}
 
-	managementAddr, err := findAddress(lines[0])
-	if err != nil {
-		return nil, err
-	}
+	//TODO see what order the deployment happens
+	//enclaveRegistryAddr, err := findAddress(lines[0])
+	//if err != nil {
+	//	return nil, err
+	//}
+	//crossChainAddr, err := findAddress(lines[1])
+	//if err != nil {
+	//	return nil, err
+	//}
+	//rollupAddr, err := findAddress(lines[2])
+	//if err != nil {
+	//	return nil, err
+	//}
+	//networkConfigAddr, err := findAddress(lines[3])
+	//if err != nil {
+	//	return nil, err
+	//}
 	messageBusAddr, err := findAddress(lines[1])
 	if err != nil {
 		return nil, err
@@ -127,9 +139,12 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	l1BlockHash := readValue("L1Start", lines[2])
 
 	return &node.NetworkConfig{
-		ManagementContractAddress: managementAddr,
-		MessageBusAddress:         messageBusAddr,
-		L1StartHash:               l1BlockHash,
+		// EnclaveRegistryAddress: enclaveRegistryAddr,
+		// RollupContractAddress: rollupAddr,
+		// CrossChainAddress: crossChainAddr,
+		// NetworkConfigAddress: networkConfigAddr,
+		MessageBusAddress: messageBusAddr,
+		L1StartHash:       l1BlockHash,
 	}, nil
 }
 

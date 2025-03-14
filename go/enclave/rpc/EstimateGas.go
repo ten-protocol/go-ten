@@ -241,9 +241,8 @@ func estimateGasSinglePass(ctx context.Context, rpc *EncryptionManager, args *ge
 	// There can be further discrepancies in the execution due to storage and other factors.
 	gasUsedBig := big.NewInt(0).SetUint64(result.UsedGas)
 	gasUsedBig.Add(gasUsedBig, big.NewInt(0).SetUint64(calculateProxyOverhead(args)))
-	// Add 20% overhead to gas used - this is a rough accommodation for
-	// warm storage slots.
-	gasUsedBig.Mul(gasUsedBig, big.NewInt(120))
+	// Add 33% overhead to the single pass estimation
+	gasUsedBig.Mul(gasUsedBig, big.NewInt(133))
 	gasUsedBig.Div(gasUsedBig, big.NewInt(100))
 	gasUsed := hexutil.Uint64(gasUsedBig.Uint64())
 

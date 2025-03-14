@@ -2,9 +2,10 @@ package container
 
 import (
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"net/http"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
@@ -140,7 +141,7 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 		Host:       cfg.ClientRPCHost,
 	}, logger)
 
-	contractRegistry, err := contractlib.NewContractRegistry(cfg.NetworkConfigAddress, *l1Client.EthClient(), logger)
+	contractRegistry, err := contractlib.NewContractRegistryLib(cfg.NetworkConfigAddress, *l1Client.EthClient(), logger)
 	if err != nil {
 		logger.Crit("could not create contract lib registry.", log.ErrKey, err)
 	}

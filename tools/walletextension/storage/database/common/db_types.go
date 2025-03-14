@@ -1,6 +1,7 @@
 package common
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -10,6 +11,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
+
+var ErrUserNotFound = errors.New("user not found")
 
 type GWUserDB struct {
 	UserId     []byte          `json:"userId"`

@@ -38,6 +38,13 @@ type (
 	L1Receipt     = types.Receipt
 	L1Receipts    = types.Receipts
 
+	// L1 addresses
+	NetworkConfigAddress   = common.Address
+	CrossChainAddress      = common.Address
+	EnclaveRegistryAddress = common.Address
+	RollupAddress          = common.Address
+	MessageBusAddress      = common.Address
+
 	// Local Obscuro aliases
 	L2BatchHash              = common.Hash
 	L2RollupHash             = common.Hash

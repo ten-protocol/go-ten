@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
-
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
+
+	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/params"

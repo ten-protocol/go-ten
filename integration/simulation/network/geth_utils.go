@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ten-protocol/go-ten/contracts/generated/MerkleTreeMessageBus"
+
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkEnclaveRegistry"
 
@@ -130,11 +132,12 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 
 	if !deployERC20s {
 		return &params.L1TenData{
-			TenStartBlock:          networkConfigReceipt.BlockHash,
-			NetworkConfigAddress:   networkConfigReceipt.ContractAddress,
-			EnclaveRegistryAddress: enclaveRegistryReceipt.ContractAddress,
-			RollupContractAddress:  rollupReceipt.ContractAddress,
-			MessageBusAddr:         messageBusAddr,
+			TenStartBlock:             networkConfigReceipt.BlockHash,
+			NetworkConfigAddress:      networkConfigReceipt.ContractAddress,
+			EnclaveRegistryAddress:    enclaveRegistryReceipt.ContractAddress,
+			RollupContractAddress:     rollupReceipt.ContractAddress,
+			CrossChainContractAddress: crossChainReceipt.ContractAddress,
+			MessageBusAddr:            messageBusAddr,
 		}, nil
 	}
 
@@ -149,18 +152,19 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}
 
 	return &params.L1TenData{
-		TenStartBlock:          networkConfigReceipt.BlockHash,
-		NetworkConfigAddress:   networkConfigReceipt.ContractAddress,
-		EnclaveRegistryAddress: enclaveRegistryReceipt.ContractAddress,
-		RollupContractAddress:  rollupReceipt.ContractAddress,
-		ObxErc20Address:        erc20ContractAddr[0],
-		EthErc20Address:        erc20ContractAddr[1],
-		MessageBusAddr:         messageBusAddr,
+		TenStartBlock:             networkConfigReceipt.BlockHash,
+		NetworkConfigAddress:      networkConfigReceipt.ContractAddress,
+		EnclaveRegistryAddress:    enclaveRegistryReceipt.ContractAddress,
+		RollupContractAddress:     rollupReceipt.ContractAddress,
+		CrossChainContractAddress: crossChainReceipt.ContractAddress,
+		ObxErc20Address:           erc20ContractAddr[0],
+		EthErc20Address:           erc20ContractAddr[1],
+		MessageBusAddr:            messageBusAddr,
 	}, nil
 }
 
 func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
-	bytecode, err := constants.NetworkEnclaveRegistryBytecode()
+	bytecode, err := constants.EnclaveRegistryBytecode()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -236,7 +240,6 @@ func deployRollupContract(client ethadapter.EthClient, ownerKey wallet.Wallet, m
 		return nil, nil, fmt.Errorf("failed to instantiate RollupContract. Cause: %w", err)
 	}
 
-	// Create a fresh transactor for initialization
 	opts, err := createTransactor(ownerKey)
 	if err != nil {
 		return nil, nil, err
@@ -285,25 +288,59 @@ func deployCrossChainContract(client ethadapter.EthClient, ownerKey wallet.Walle
 	return crossChainContract, crossChainReceipt, nil
 }
 
-func PermissionTenSequencerEnclave(mcOwner wallet.Wallet, client ethadapter.EthClient, enclaveRegistryAddr common.Address, seqEnclaveID common.Address) error {
+func PermissionTenSequencerEnclave(contractOwner wallet.Wallet, client ethadapter.EthClient, enclaveRegistryAddr common.Address, seqEnclaveID common.Address) error {
 	ctr, err := NetworkEnclaveRegistry.NewNetworkEnclaveRegistry(enclaveRegistryAddr, client.EthClient())
 	if err != nil {
 		return err
 	}
 
-	opts, err := bind.NewKeyedTransactorWithChainID(mcOwner.PrivateKey(), mcOwner.ChainID())
+	opts, err := createTransactor(contractOwner)
 	if err != nil {
 		return err
 	}
 
 	tx, err := ctr.GrantSequencerEnclave(opts, seqEnclaveID)
 	if err != nil {
-		return err
+		return fmt.Errorf("unable to grant enclave sequencer permission: %w", err)
 	}
 
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
 	if err != nil {
+		return fmt.Errorf("unable to fetch receipt for granting enclave sequencer: %w", err)
+	}
+
+	return nil
+}
+
+func PermissionRollupContractStateRoot(contractOwner wallet.Wallet, client ethadapter.EthClient, crossChainAddress common.Address, rollupContractAddress common.Address) error {
+	crossChainContract, err := CrossChain.NewCrossChain(crossChainAddress, client.EthClient())
+	if err != nil {
 		return err
+	}
+
+	// fetch merkle message bus address from cross chain contract
+	merkleTreeMessageBus, err := crossChainContract.MerkleMessageBus(&bind.CallOpts{})
+	if err != nil {
+		return fmt.Errorf("unable to get merkletreeMessageBus contract address: %w", err)
+	}
+	ctr, err := MerkleTreeMessageBus.NewMerkleTreeMessageBus(merkleTreeMessageBus, client.EthClient())
+	if err != nil {
+		return fmt.Errorf("unable to get merkletreeMessageBus contract: %w", err)
+	}
+
+	opts, err := createTransactor(contractOwner)
+	if err != nil {
+		return err
+	}
+
+	tx, err := ctr.AddStateRootManager(opts, rollupContractAddress)
+	if err != nil {
+		return fmt.Errorf("unable to grant rollup contract state root manager acces: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return fmt.Errorf("unable to fetch receipt for granting rollup contract state root permission: %w", err)
 	}
 
 	return nil
@@ -362,7 +399,7 @@ func InitializeContract(workerClient ethadapter.EthClient, w wallet.Wallet, cont
 // DeployContract returns receipt of deployment
 // todo (@matt) - this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
-	deployContractTx, err := ethadapter.SetTxGasPrice(context.Background(), workerClient, &types.LegacyTx{Data: contractBytes}, w.Address(), w.GetNonceAndIncrement(), 0, testlog.Logger())
+	deployContractTx, err := ethadapter.SetTxGasPrice(context.Background(), workerClient, &types.LegacyTx{Data: contractBytes}, w.Address(), w.GetNonceAndIncrement(), 0, nil, testlog.Logger())
 	if err != nil {
 		return nil, err
 	}
