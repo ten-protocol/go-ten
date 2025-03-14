@@ -198,10 +198,10 @@ func (e *Service) promoteNewActiveSequencer() {
 				continue
 			}
 			e.activeSequencerID.Store(enclID)
-			e.logger.Warn("Successfully promoted new sequencer.", log.EnclaveIDKey, e.activeSequencerID)
+			e.logger.Warn("Successfully promoted new sequencer.", log.EnclaveIDKey, enclID)
 			return
 		}
-		// wait for retry interval before trying again, enclaves may not be ready yet or we may not have permissioned them
+		// wait for retry interval before trying again, enclaves may not be ready yet or may be awaiting permissioning
 		time.Sleep(_promoteSeqRetryInterval)
 	}
 }
