@@ -151,16 +151,10 @@ func (s *StateTracker) OnDisconnected() {
 	s.setStatus("onDisconnect", Disconnected)
 }
 
-func (s *StateTracker) OnPromoted() {
+func (s *StateTracker) SetActiveSequencer(isActive bool) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.enclaveIsSequencer = true
-}
-
-func (s *StateTracker) OnDemoted() {
-	s.m.Lock()
-	defer s.m.Unlock()
-	s.enclaveIsSequencer = false
+	s.enclaveIsSequencer = isActive
 }
 
 // when enclave is operational, this method will calculate the status based on comparison of current chain heads with enclave heads

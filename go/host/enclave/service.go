@@ -20,7 +20,7 @@ const (
 	_promoteSeqRetryInterval = 1 * time.Second
 )
 
-var _noActiveSequencer = common.EnclaveID{}
+var _noActiveSequencer = &common.EnclaveID{}
 
 // This private interface enforces the services that the enclaves service depends on
 type enclaveServiceLocator interface {
@@ -34,7 +34,7 @@ type Service struct {
 
 	// The service goes via the Guardians to talk to the enclave (because guardian knows if the enclave is healthy etc.)
 	enclaveGuardians  []*Guardian
-	activeSequencerID atomic.Value // atomic pointer for thread safety, type: *common.EnclaveID
+	activeSequencerID atomic.Pointer[common.EnclaveID] // atomic pointer for thread safety
 
 	running atomic.Bool
 	logger  gethlog.Logger
@@ -133,7 +133,7 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 // NotifyUnavailable is called by enclave guardians when they detect that the enclave is unavailable.
 // If this is a sequencer host then this function will start a search for a live standby enclave to promote to active sequencer.
 func (e *Service) NotifyUnavailable(enclaveID *common.EnclaveID) {
-	if len(e.enclaveGuardians) <= 1 || e.activeSequencerID.Load() != *enclaveID {
+	if len(e.enclaveGuardians) <= 1 || e.activeSequencerID.Load() != enclaveID {
 		e.logger.Debug("Failed enclave is not an active sequencer on an HA node, no action required.", log.EnclaveIDKey, enclaveID)
 		return
 	}

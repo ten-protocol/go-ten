@@ -215,7 +215,7 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 	if err != nil {
 		return errors.Wrap(err, "could not promote enclave to active sequencer")
 	}
-	g.state.OnPromoted()
+	g.state.SetActiveSequencer(true)
 	return nil
 }
 
@@ -227,7 +227,7 @@ func (g *Guardian) DemoteFromActiveSequencer() {
 		return
 	}
 	g.logger.Info("Guardian demoted from active sequencer")
-	g.state.OnDemoted()
+	g.state.SetActiveSequencer(false)
 
 	// if this has been called the enclave is probably already dead, but we should try to stop it to ensure the enclave
 	// is not left running as an active sequencer
@@ -317,7 +317,7 @@ func (g *Guardian) mainLoop() {
 			// todo make this demotion trigger configurable once we've settled on how it should work
 			if unavailableCounter > 10 {
 				// enclave has been unavailable for a while, evict it from the HA pool
-				g.evictEnclaveFromHAPool("enclave has been unavailable for too long")
+				g.notifyEnclaveUnavailable("enclave has been unavailable for too long")
 				// reset the counter so we don't spam the log
 				unavailableCounter = 0
 			}
@@ -650,7 +650,7 @@ func (g *Guardian) periodicBatchProduction() {
 			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
 				g.logger.Error("Unable to produce batch", log.ErrKey, err)
-				g.evictEnclaveFromHAPool("seq enclave could not produce batch")
+				g.notifyEnclaveUnavailable("seq enclave could not produce batch")
 			}
 		case <-g.hostInterrupter.Done():
 			// interrupted by host stopping
@@ -832,10 +832,10 @@ func (g *Guardian) getLatestBatchNo() (uint64, error) {
 	return fromBatch, nil
 }
 
-// evictEnclaveFromHAPool evicts a failing enclave from the HA pool if appropriate
-// This is called when the enclave is unrecoverable and we want to notify the host that it should failover if an
-// alternative enclave is available.
-func (g *Guardian) evictEnclaveFromHAPool(reason string) {
+// notifyEnclaveUnavailable evicts a failing enclave from the HA pool if appropriate
+// This is called when the enclave is unavailable or failing to perform its duties if it is active sequencer.
+// We want to notify the host that it should failover if an alternative enclave is available.
+func (g *Guardian) notifyEnclaveUnavailable(reason string) {
 	g.logger.Debug("Enclave is unavailable - notifying enclave service to evict it from HA pool if necessary", log.ErrKey, reason)
 	go g.sl.Enclaves().NotifyUnavailable(g.enclaveID)
 }
