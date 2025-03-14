@@ -143,6 +143,7 @@ func creatTenNetwork(t *testing.T, startPort int) {
 		Wallets:          wallets,
 		StartPort:        startPort,
 		WithPrefunding:   true,
+		L1BeaconPort:     startPort + integration.DefaultPrysmGatewayPortOffset,
 	}
 	simStats := stats.NewStats(simParams.NumberOfNodes)
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)

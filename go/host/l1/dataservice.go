@@ -299,6 +299,10 @@ func (r *DataService) processValueTransferLogs(l types.Log, txData *common.L1TxD
 // processSequencerLogs handles sequencer logs
 func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data, txType common.L1TenEventType) error {
 	if !r.ethClient.SupportsEventLogs() {
+		// todo - this is a hack that must be addressed for our sanity
+		enclaveID, _ := getEnclaveIdFromLog(l)
+		txData.SequencerEnclaveID = enclaveID
+		processed.AddEvent(txType, txData)
 		return nil
 	}
 
