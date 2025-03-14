@@ -3,6 +3,9 @@ package l1
 import (
 	"context"
 	"fmt"
+	"time"
+
+	"github.com/ten-protocol/go-ten/go/common/retry"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -11,6 +14,8 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
+
+var _maxWaitForBlobs = 2 * time.Minute
 
 // BlobResolver is an interface for fetching blobs
 type BlobResolver interface {
@@ -29,9 +34,14 @@ func NewBlobResolver(beaconClient *ethadapter.L1BeaconClient) BlobResolver {
 }
 
 func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
-	blobs, err := r.beaconClient.FetchBlobs(ctx, b, hashes)
+	var blobs []*kzg4844.Blob
+	err := retry.Do(func() error {
+		var fetchErr error
+		blobs, fetchErr = r.beaconClient.FetchBlobs(ctx, b, hashes)
+		return fetchErr
+	}, retry.NewTimeoutStrategy(_maxWaitForBlobs, time.Second))
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch blobs from beacon client: %w", err)
+		return nil, fmt.Errorf("failed to fetch blobs after retries: %w", err)
 	}
 	return blobs, nil
 }
