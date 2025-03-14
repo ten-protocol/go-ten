@@ -206,7 +206,9 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			err = r.processValueTransferLogs(l, txData, processed)
 		case crosschain.SequencerEnclaveGrantedEventID:
 			err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
-			err = r.processManagementContractTx(txData, processed) // we need to decode the InitialiseSecretTx
+			if err == nil {
+				err = r.processManagementContractTx(txData, processed) // we need to decode the InitialiseSecretTx
+			}
 		case crosschain.SequencerEnclaveRevokedEventID:
 			err = r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
 		case crosschain.ImportantContractAddressUpdatedID:
@@ -226,7 +228,6 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
 			return nil, fmt.Errorf("error processing log: %w", err)
 		}
-
 	}
 	return processed, nil
 }
