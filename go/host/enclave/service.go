@@ -197,7 +197,7 @@ func (e *Service) promoteNewActiveSequencer() {
 				e.logger.Info("Unable to promote new sequencer.", log.EnclaveIDKey, enclID, log.ErrKey, err)
 				continue
 			}
-			e.activeSequencerID.Store(*enclID)
+			e.activeSequencerID.Store(enclID)
 			e.logger.Warn("Successfully promoted new sequencer.", log.EnclaveIDKey, e.activeSequencerID)
 			return
 		}
