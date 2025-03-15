@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"database/sql"
+	"database/sql/driver"
 	"embed"
 	"encoding/hex"
 	"encoding/json"
@@ -131,6 +132,8 @@ type Credentials struct {
 
 // Connector (re-)establishes a connection to the Edgeless DB for the TEN enclave
 func Connector(edbCfg *Config, config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) (enclavedb.EnclaveDB, error) {
+	RegisterPanicOnConnectionRefusedDriver(logger)
+
 	// rather than fail immediately if EdgelessDB is not available yet we wait up for `edgelessDBStartTimeout` for it to be available
 	err := waitForEdgelessDBToStart(edbCfg.Host, logger)
 	if err != nil {
@@ -471,10 +474,64 @@ func ConnectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logg
 	cfg.TLSConfig = "custom"
 	dsn := cfg.FormatDSN()
 	logger.Info(fmt.Sprintf("Configuring mysql connection: %s", dsn))
-	db, err := sql.Open("mysql", dsn)
+	db, err := sql.Open("mysql-panic-on-refused", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize mysql connection to edb - %w", err)
 	}
 	db.SetMaxOpenConns(maxDBPoolSize)
 	return db, nil
+}
+
+// PanicOnConnectionRefusedDriver wraps the MySQL driver and panics on connection refused errors
+type PanicOnConnectionRefusedDriver struct {
+	driver.Driver
+	logger gethlog.Logger
+}
+
+// Open implements the driver.Driver interface
+func (d *PanicOnConnectionRefusedDriver) Open(dsn string) (driver.Conn, error) {
+	conn, err := d.Driver.Open(dsn)
+	if err != nil {
+		return nil, err
+	}
+	return &panicOnErrorConn{Conn: conn, logger: d.logger}, nil
+}
+
+// panicOnErrorConn wraps a driver.Conn and panics on connection refused errors
+type panicOnErrorConn struct {
+	driver.Conn
+	driver.ExecerContext
+	driver.QueryerContext
+	logger gethlog.Logger
+}
+
+func (c *panicOnErrorConn) ExecContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	execer, ok := c.Conn.(driver.ExecerContext)
+	if !ok {
+		return nil, driver.ErrSkip
+	}
+
+	result, err := execer.ExecContext(ctx, query, args)
+	if err != nil && strings.Contains(err.Error(), "connection refused") {
+		c.logger.Crit(fmt.Sprintf("Database operation failed with connection refused: %v", err))
+	}
+	return result, err
+}
+
+func (c *panicOnErrorConn) QueryContext(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+	queryer, ok := c.Conn.(driver.QueryerContext)
+	if !ok {
+		return nil, driver.ErrSkip
+	}
+
+	rows, err := queryer.QueryContext(ctx, query, args)
+	if err != nil && strings.Contains(err.Error(), "connection refused") {
+		c.logger.Crit(fmt.Sprintf("Database query failed with connection refused: %v", err))
+	}
+	return rows, err
+}
+
+// RegisterPanicOnConnectionRefusedDriver registers the custom driver
+func RegisterPanicOnConnectionRefusedDriver(logger gethlog.Logger) {
+	sql.Register("mysql-panic-on-refused", &PanicOnConnectionRefusedDriver{Driver: &mysql.MySQLDriver{}, logger: logger})
 }
