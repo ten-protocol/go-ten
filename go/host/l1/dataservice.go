@@ -216,9 +216,13 @@ func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr ge
 		}
 		switch l.Topics[0] {
 		case ethadapter.CrossChainEventID:
-			r.processCrossChainLogs(l, txData, processed)
+			err = r.processCrossChainLogs(l, txData, processed)
 		case ethadapter.ValueTransferEventID:
-			r.processValueTransferLogs(l, txData, processed)
+			err = r.processValueTransferLogs(l, txData, processed)
+		}
+		if err != nil {
+			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
+			return fmt.Errorf("error processing log: %w", err)
 		}
 	}
 	return nil
@@ -241,11 +245,11 @@ func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAd
 		}
 		switch l.Topics[0] {
 		case ethadapter.NetworkSecretInitializedEventID:
-			r.processEnclaveRegistrationTx(txData, processed)
+			err = r.processEnclaveRegistrationTx(txData, processed)
 		case ethadapter.SequencerEnclaveGrantedEventID:
 			err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
 		case ethadapter.SequencerEnclaveRevokedEventID:
-			r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
+			err = r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
 		case ethadapter.NetworkSecretRequestedID:
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case ethadapter.NetworkSecretRespondedID:
