@@ -275,7 +275,9 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 		g.logger.Debug("Active sequencer cannot receive batches")
 		return
 	}
-	if g.state.GetEnclaveL2Head() != nil && g.state.GetEnclaveL2Head().Cmp(batch.Header.SequencerOrderNo) < 0 {
+	// expect one after the enclave L2 head, if it's further ahead than that then we don't process it yet
+	nextExpectedSeqNo := new(big.Int).Add(g.state.GetEnclaveL2Head(), big.NewInt(1))
+	if g.state.GetEnclaveL2Head() != nil && nextExpectedSeqNo.Cmp(batch.Header.SequencerOrderNo) < 0 {
 		g.logger.Debug("Enclave is behind, ignoring batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 		return // ignore batches until we're up-to-date
 	}
