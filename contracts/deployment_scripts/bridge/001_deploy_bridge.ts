@@ -12,7 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         deployments, 
         getNamedAccounts
     } = hre;
-    var mgmtContractAddress = process.env.MGMT_CONTRACT_ADDRESS!!
+    var mgmtContractAddress = process.env.NETWORK_CONFIG_ADDRESS!!
     if (mgmtContractAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
         mgmtContractAddress = networkConfig.NetworkConfigAddress;

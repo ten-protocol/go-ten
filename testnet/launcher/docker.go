@@ -110,8 +110,10 @@ func (t *Testnet) Start() error {
 			l2cd.WithL2Host("sequencer-host"),
 			l2cd.WithL2WSPort(81),
 			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
-			l2cd.WithMessageBusContractAddress("0xDaBD89EEA0f08B602Ec509c3C608Cb8ED095249C"),
-			l2cd.WithNetworkConfigAddress("0x51D43a3Ca257584E770B6188232b199E76B022A2"),
+			l2cd.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
+			l2cd.WithNetworkConfigAddress(networkConfig.NetworkConfigAddress),
+			l2cd.WithRollupContractAddress(networkConfig.RollupContractAddress),
+			l2cd.WithCrossChainAddress(networkConfig.CrossChainAddress)
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
 			l2cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
 			l2cd.WithDebugEnabled(t.cfg.contractDeployerDebug),
