@@ -42,13 +42,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
 
     // get management contract and write the L1 bridge address to it
-<<<<<<< HEAD
     const mgmtContract = (await hre.ethers.getContractFactory('NetworkConfig')).attach(mgmtContractAddress)
     const recordL1AddressTx = await mgmtContract.getFunction("addAddress").populateTransaction("L1Bridge", layer1BridgeDeployment.address);
-=======
- /*   const mgmtContract = (await hre.ethers.getContractFactory('ManagementContract')).attach(mgmtContractAddress)
-    const recordL1AddressTx = await mgmtContract.getFunction("SetImportantContractAddress").populateTransaction("L1Bridge", layer1BridgeDeployment.address);
->>>>>>> origin/will/mgmt-contract-refactor
     const receipt = await hre.companionNetworks.layer1.deployments.rawTx({
         from: accountsL1.deployer,
         to: mgmtContractAddress,
@@ -60,7 +55,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         console.log(`Failed to set L1BridgeAddress=${layer1BridgeDeployment.address} on management contract.`);
     } else {
         console.log(`L1BridgeAddress=${layer1BridgeDeployment.address}`);
-    } */
+    }
 
     // We get the Cross chain messenger deployment on the layer 2 network.
     const messengerL2 = await deployments.get("CrossChainMessenger");
