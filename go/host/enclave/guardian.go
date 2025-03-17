@@ -271,11 +271,15 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 	// record the newest batch we've seen
 	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
 	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
-	if g.state.IsEnclaveActiveSequencer() || !g.state.IsLive() {
+	if g.state.IsEnclaveActiveSequencer() {
+		g.logger.Debug("Active sequencer cannot receive batches")
+		return
+	}
+	if g.state.GetEnclaveL2Head() != nil && g.state.GetEnclaveL2Head().Cmp(batch.Header.SequencerOrderNo) < 0 {
+		g.logger.Debug("Enclave is behind, ignoring batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 		return // ignore batches until we're up-to-date
 	}
-	// todo - @matt - does it make sense to use a timeout context?
-	err := g.submitL2Batch(context.Background(), batch)
+	err := g.submitL2Batch(batch)
 	if err != nil {
 		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
 	}
@@ -499,7 +503,7 @@ func (g *Guardian) catchupWithL2() error {
 			return errors.Wrap(err, "could not fetch next L2 batch")
 		}
 
-		err = g.submitL2Batch(context.Background(), batch)
+		err = g.submitL2Batch(batch)
 		if err != nil {
 			return err
 		}
@@ -609,9 +613,9 @@ func (g *Guardian) publishSharedSecretResponses(scrtResponses []*common.Produced
 	return nil
 }
 
-func (g *Guardian) submitL2Batch(ctx context.Context, batch *common.ExtBatch) error {
+func (g *Guardian) submitL2Batch(batch *common.ExtBatch) error {
 	g.submitDataLock.Lock()
-	err := g.enclaveClient.SubmitBatch(ctx, batch)
+	err := g.enclaveClient.SubmitBatch(context.Background(), batch)
 	g.submitDataLock.Unlock()
 	if err != nil {
 		// something went wrong, return error and let the main loop check status and try again when appropriate
