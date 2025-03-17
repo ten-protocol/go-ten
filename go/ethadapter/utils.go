@@ -130,18 +130,27 @@ func calculateRetryMultiplier(baseMultiplier float64, retryNumber int) float64 {
 	return math.Pow(baseMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
 }
 
-func BlocksBetween(e EthClient, startingBlock *types.Header, lastBlock *types.Header) ([]*types.Header, error) {
-	var blocksBetween []*types.Header
-	var err error
-
-	for currentBlk := lastBlock; currentBlk != nil && !bytes.Equal(currentBlk.Hash().Bytes(), startingBlock.Hash().Bytes()) && !bytes.Equal(currentBlk.ParentHash.Bytes(), gethcommon.HexToHash("").Bytes()); {
-		c := currentBlk.ParentHash
-		currentBlk, err = e.HeaderByHash(currentBlk.ParentHash)
-		if err != nil {
-			return nil, fmt.Errorf("could not fetch parent block with hash %s. cause: %w", c.String(), err)
-		}
-		blocksBetween = append(blocksBetween, currentBlk)
+func BlocksBetween(e EthClient, blockA *types.Header, blockB *types.Header) ([]*types.Header, error) {
+	if bytes.Equal(blockA.Hash().Bytes(), blockB.Hash().Bytes()) {
+		return []*types.Header{blockB}, nil
 	}
-
-	return blocksBetween, nil
+	blocks := make([]*types.Header, 0)
+	tempBlock := blockB
+	for {
+		blocks = append(blocks, tempBlock)
+		if bytes.Equal(tempBlock.Hash().Bytes(), blockA.Hash().Bytes()) {
+			break
+		}
+		tb, err := e.HeaderByHash(tempBlock.ParentHash)
+		if err != nil {
+			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
+		}
+		tempBlock = tb
+	}
+	n := len(blocks)
+	result := make([]*types.Header, n)
+	for i, block := range blocks {
+		result[n-i-1] = block
+	}
+	return result, nil
 }
