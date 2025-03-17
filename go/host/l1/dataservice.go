@@ -207,12 +207,12 @@ func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr ge
 	for _, l := range logs {
 		if len(l.Topics) == 0 {
 			r.logger.Error("Log has no topics. Should not happen", "txHash", l.TxHash)
-			return nil, errors.New("log has no topics")
+			return errors.New("log has no topics")
 		}
 		txData, err := r.fetchTxAndReceipt(l.TxHash)
 		if err != nil {
 			r.logger.Error("Error creating transaction data. Should not happen", "txHash", l.TxHash, "error", err)
-			return nil, fmt.Errorf("error creating transaction data. Should not happen: %w", err)
+			return fmt.Errorf("error creating transaction data. Should not happen: %w", err)
 		}
 		switch l.Topics[0] {
 		case ethadapter.CrossChainEventID:
@@ -244,9 +244,6 @@ func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAd
 			r.processEnclaveRegistrationTx(txData, processed)
 		case ethadapter.SequencerEnclaveGrantedEventID:
 			err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
-			if err == nil {
-				err = r.processManagementContractTx(txData, processed) // we need to decode the InitialiseSecretTx
-			}
 		case ethadapter.SequencerEnclaveRevokedEventID:
 			r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
 		case ethadapter.NetworkSecretRequestedID:
@@ -262,7 +259,7 @@ func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAd
 
 		if err != nil {
 			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
-			return nil, fmt.Errorf("error processing log: %w", err)
+			return fmt.Errorf("error processing log: %w", err)
 		}
 	}
 	return nil
@@ -338,15 +335,15 @@ func (r *DataService) fetchTxAndReceipt(txHash gethcommon.Hash) (*common.L1TxDat
 }
 
 // processCrossChainLogs handles cross-chain message logs
-func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
 	if !r.ethClient.SupportsEventLogs() {
 		return nil
-  }
-  if messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, ethadapter.CrossChainEventName, ethadapter.MessageBusABI); err == nil {
+	}
+	if messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, ethadapter.CrossChainEventName, ethadapter.MessageBusABI); err == nil {
 		txData.CrossChainMessages = messages
 		processed.AddEvent(common.CrossChainMessageTx, txData)
 	}
-	messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, crosschain.CrossChainEventName, crosschain.MessageBusABI)
+	messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, ethadapter.CrossChainEventName, ethadapter.MessageBusABI)
 	if err != nil {
 		return err
 	}
@@ -357,16 +354,16 @@ func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData
 }
 
 // processValueTransferLogs handles value transfer logs
-func (r *DataService) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *DataService) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
 	if !r.ethClient.SupportsEventLogs() {
 		return nil
-  }
-  if transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI); err == nil {
+	}
+	if transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI); err == nil {
 		txData.ValueTransfers = transfers
 		processed.AddEvent(common.CrossChainValueTranserTx, txData)
 	}
 
-	transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, crosschain.ValueTransferEventName, crosschain.MessageBusABI)
+	transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI)
 	if err != nil {
 		return err
 	}
@@ -394,45 +391,20 @@ func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData,
 	return nil
 }
 
-func (r *DataService) processRollupLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
-	abi, err := ManagementContract.ManagementContractMetaData.GetAbi()
-	if err != nil {
-		r.logger.Error("Error getting ManagementContract ABI", log.ErrKey, err)
-		return err
-	}
-	var event ManagementContract.ManagementContractRollupAdded
-	err = abi.UnpackIntoInterface(&event, "RollupAdded", l.Data)
-	if err != nil {
-		r.logger.Error("Error unpacking RollupAdded event", log.ErrKey, err)
-		return err
-	}
-	blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash})
-	if err != nil {
-		r.logger.Error(fmt.Sprintf("error while fetching blobs. Cause: %s", err))
-		return err
-	}
-	txData.BlobsWithSignature = []common.BlobAndSignature{
-		{
-			Blob:      blobs[0],
-			Signature: event.Signature,
-		},
-	}
-	processed.AddEvent(common.RollupTx, txData)
-	return nil
-}
 // processManagementContractTx handles decoded transaction types
-func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, processed *common.ProcessedL1Data) error {
 	networkLib := r.contractRegistry.NetworkEnclaveLib()
 	decodedTx, err := networkLib.DecodeTx(txData.Transaction)
 	if err != nil {
 		r.logger.Error("Error decoding transaction", "txHash", txData.Transaction.Hash, "error", err)
+		return err
 	}
 	if decodedTx != nil {
 		switch decodedTx.(type) {
 		case *common.L1InitializeSecretTx:
 			processed.AddEvent(common.InitialiseSecretTx, txData)
 		case *common.L1PermissionSeqTx: // FIXME I think this can be deleted?
-			return // no-op as it was processed in the previous processSequencerLogs call
+			return nil // no-op as it was processed in the previous processSequencerLogs call
 		default:
 			// this should never happen since the specific events should always decode into one of these types
 			r.logger.Error("Unknown tx type", "txHash", txData.Transaction.Hash().Hex())
