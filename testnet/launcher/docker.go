@@ -113,7 +113,7 @@ func (t *Testnet) Start() error {
 			l2cd.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
 			l2cd.WithNetworkConfigAddress(networkConfig.NetworkConfigAddress),
 			l2cd.WithRollupContractAddress(networkConfig.RollupContractAddress),
-			l2cd.WithCrossChainAddress(networkConfig.CrossChainAddress)
+			l2cd.WithCrossChainAddress(networkConfig.CrossChainAddress),
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
 			l2cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
 			l2cd.WithDebugEnabled(t.cfg.contractDeployerDebug),
