@@ -20,7 +20,7 @@ const (
 func TestBlobResolver(t *testing.T) {
 	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://docs-demo.quiknode.pro/")
 	fallback := ethadapter.NewArchivalHTTPClient(new(http.Client), "https://api.ethernow.xyz")
-	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, fallback))
+	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, fallback), nil)
 
 	// this will convert to slot 5 which will return 404 from the quicknode api, causing the fallback to be used
 	b := &types.Header{
@@ -39,7 +39,7 @@ func TestSepoliaBlobResolver(t *testing.T) {
 	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://ethereum-sepolia-beacon-api.publicnode.com")
 	// l1_blob_archive_url for sepolia
 	fallback := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://eth-beacon-chain-sepolia.drpc.org/rest/")
-	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, fallback))
+	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, fallback), nil)
 
 	// this is a moving point in time so we can't compare hashes or be certain there will be blobs in the block
 	// create block with timestamp 30 days ago relative to current time

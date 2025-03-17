@@ -37,6 +37,7 @@ type EthClient interface {
 	Alive() bool                                                                  // returns whether the connection is live or not
 	Info() Info                                                                   // retrieves the node Info
 	Stop()                                                                        // tries to cleanly stop the client and release any resources
+	SupportsEventLogs() bool                                                      // returns false for the in-mem simulation
 
 	// todo - all the below should be removed from the interface
 	BlocksBetween(block *types.Header, head *types.Header) ([]*types.Header, error) // returns the blocks between two blocks

@@ -258,6 +258,10 @@ func (e *gethRPCClient) GetLogs(q ethereum.FilterQuery) ([]types.Log, error) {
 	return e.client.FilterLogs(ctx, q)
 }
 
+func (e *gethRPCClient) SupportsEventLogs() bool {
+	return true
+}
+
 func (e *gethRPCClient) Stop() {
 	e.blockCache.StopJanitor()
 	e.client.Close()
