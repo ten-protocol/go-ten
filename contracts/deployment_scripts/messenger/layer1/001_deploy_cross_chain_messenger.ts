@@ -46,7 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
 
     // get management contract and write the cross chain messenger address to it
-   /* const mgmtContract = (await hre.ethers.getContractFactory('NetworkConfig')).attach(mgmtContractAddress)
+    const mgmtContract = (await hre.ethers.getContractFactory('NetworkConfig')).attach(mgmtContractAddress)
     const tx = await  mgmtContract.getFunction("addAddress").populateTransaction("L1CrossChainMessenger", crossChainDeployment.address);
     const receipt = await hre.companionNetworks.layer1.deployments.rawTx({
         from: deployer,
@@ -59,7 +59,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         console.log(`Failed to set L1CrossChainMessenger=${crossChainDeployment.address} on management contract.`);
     } else {
         console.log(`L1CrossChainMessenger=${crossChainDeployment.address}`);
-    }*/
+    }
 };
 
 export default func;

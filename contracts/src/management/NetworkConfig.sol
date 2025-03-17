@@ -41,8 +41,8 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
 
     event NetworkContractAddressAdded(string name, address addr);
 
-    function initialize( NetworkConfig.FixedAddresses memory _addresses) public initializer {
-        __Ownable_init(msg.sender);
+    function initialize( NetworkConfig.FixedAddresses memory _addresses, address owner) public initializer {
+        __Ownable_init(owner);
 
         Storage.setAddress(CROSS_CHAIN_SLOT, _addresses.crossChain);
         Storage.setAddress(MESSAGE_BUS_SLOT, _addresses.messageBus);
