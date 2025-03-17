@@ -214,7 +214,7 @@ func deployNetworkConfigContract(client ethadapter.EthClient, ownerKey wallet.Wa
 	if err != nil {
 		return nil, nil, err
 	}
-	tx, err := networkConfigContract.Initialize(opts, addresses)
+	tx, err := networkConfigContract.Initialize(opts, addresses, ownerKey.Address())
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize NetworkConfig contract. Cause: %w", err)
 	}
