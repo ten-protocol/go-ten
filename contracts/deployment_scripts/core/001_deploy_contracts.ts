@@ -26,7 +26,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
 
     const merkleMessageBusAddress = await deployments.read('CrossChain', 'merkleMessageBus');
-    console.log(`MerkleMessageBus deployed to: ${merkleMessageBusAddress}`);
 
     const networkEnclaveRegistryDeployment = await deployments.deploy('NetworkEnclaveRegistry', {
         from: deployer,
@@ -73,11 +72,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     });
 
-    console.log(`NetworkConfig deployed to: ${networkConfigDeployment.address}`);
-    console.log(`MerkleMessageBus deployed to: ${merkleMessageBusAddress}`);
-    console.log(`CrossChain deployed to: ${crossChainDeployment.address}`);
-    console.log(`NetworkEnclaveRegistry deployed to: ${networkEnclaveRegistryDeployment.address}`);
-    console.log(`RollupContract deployed to: ${rollupContractDeployment.address}`);
+    console.log(`NetworkConfig= ${networkConfigDeployment.address}`);
+    console.log(`CrossChain= ${crossChainDeployment.address}`);
+    console.log(`MerkleMessageBus= ${merkleMessageBusAddress}`);
+    console.log(`NetworkEnclaveRegistry= ${networkEnclaveRegistryDeployment.address}`);
+    console.log(`RollupContract= ${rollupContractDeployment.address}`);
+    console.log(`L1Start= ${networkConfigDeployment.receipt!!.blockHash}`);
 };
 
 export default func;
