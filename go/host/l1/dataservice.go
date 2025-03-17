@@ -282,28 +282,32 @@ func (r *DataService) processRollupLogs(block *types.Header, contractAddr gethco
 		}
 		switch l.Topics[0] {
 		case ethadapter.RollupAddedID:
-			r.processRollupLog(l, txData, processed)
+			err = r.processRollupLog(l, txData, processed)
+		}
+		if err != nil {
+			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
+			return fmt.Errorf("error processing log: %w", err)
 		}
 	}
 	return nil
 }
 
-func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) {
+func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
 	abi, err := RollupContract.RollupContractMetaData.GetAbi()
 	if err != nil {
 		r.logger.Error("Error getting ManagementContract ABI", log.ErrKey, err)
-		return
+		return err
 	}
 	var event RollupContract.RollupContractRollupAdded
 	err = abi.UnpackIntoInterface(&event, "RollupAdded", l.Data)
 	if err != nil {
 		r.logger.Error("Error unpacking RollupAdded event", log.ErrKey, err)
-		return
+		return err
 	}
 	blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash})
 	if err != nil {
 		r.logger.Error(fmt.Sprintf("error while fetching blobs. Cause: %s", err))
-		return
+		return err
 	}
 	txData.BlobsWithSignature = []common.BlobAndSignature{
 		{
@@ -312,6 +316,7 @@ func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, pro
 		},
 	}
 	processed.AddEvent(common.RollupTx, txData)
+	return nil
 }
 
 // fetchTxAndReceipt creates a new L1TxData instance for a transaction
