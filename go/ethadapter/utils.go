@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/ethereum/go-ethereum/params"
 	"math"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/params"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 

@@ -176,14 +176,10 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 
 	tenNetworkInfo := &common.TenNetworkInfo{
 		NetworkConfigAddress:            gethcommon.Address(cfg.NetworkConfigAddress),
-		EnclaveRegistryAddress:          gethcommon.Address(cfg.EnclaveRegistryAddress),
-		RollupContractAddress:           gethcommon.Address(cfg.RollupContractAddress),
-		CrossChainAddress:               gethcommon.Address(cfg.CrossChainAddress),
-		MessageBusAddress:               gethcommon.Address(cfg.MessageBusAddress),
 		L2MessageBusAddress:             gethcommon.Address(cfg.L2MessageBusAddress),
 		TransactionPostProcessorAddress: gethcommon.Address(cfg.TransactionPostProcessorAddress),
 		L1StartHash:                     cfg.L1StartHash,
-		ImportantContracts:              importantContracts,
+		ImportantContracts:              &importantContracts,
 		PublicSystemContracts:           publicSystemContracts,
 	}
 

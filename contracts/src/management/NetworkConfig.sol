@@ -29,13 +29,13 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         NamedAddress[] additionalContracts;  // Dynamic address storage
     }
 
-    // Fixed storage slots for fixed contracts
+    // fixed storage slots for fixed contracts
     bytes32 public constant CROSS_CHAIN_SLOT = bytes32(uint256(keccak256("networkconfig.crossChain")) - 1);
     bytes32 public constant MESSAGE_BUS_SLOT = bytes32(uint256(keccak256("networkconfig.messageBus")) - 1);
     bytes32 public constant NETWORK_ENCLAVE_REGISTRY_SLOT = bytes32(uint256(keccak256("networkconfig.networkEnclaveRegistry")) - 1);
     bytes32 public constant ROLLUP_CONTRACT_SLOT = bytes32(uint256(keccak256("networkconfig.rollupContract")) - 1);
 
-    // Simple mapping for additional addresses
+    // simple storage for additional addresses
     string[] private addressNames;
     mapping(string => address) public additionalAddresses;
 
@@ -66,7 +66,7 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         addr_ = Storage.getAddress(ROLLUP_CONTRACT_SLOT);
     }
 
-    // Function to add a new contract address
+    // stores a new address in the simple address mapping
     function addAddress(string calldata name, address addr) external onlyOwner {
         require(addr != address(0), "Invalid address");
         require(additionalAddresses[name] == address(0), "Address name already exists");
@@ -75,7 +75,7 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         emit NetworkContractAddressAdded(name, addr);
     }
 
-    // Modified function to return paired data
+    // returns all stored addresses
     function addresses() external view returns (Addresses memory) {
         NamedAddress[] memory additional = new NamedAddress[](addressNames.length);
         for(uint i = 0; i < addressNames.length; i++) {

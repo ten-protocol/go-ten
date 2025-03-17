@@ -381,17 +381,17 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 	if networkConfig.ImportantContracts != nil {
 		importantContracts["CrossChain"] = networkConfig.ImportantContracts.CrossChain.Hex()
 		importantContracts["MessageBus"] = networkConfig.ImportantContracts.MessageBus.Hex()
-		importantContracts["NetworkEnclaveRegistry"] = networkConfig.ImportantContracts.NetworkEnclaveRegistry.Hex()
+		importantContracts["NetworkEnclaveRegistry"] = networkConfig.ImportantContracts.EnclaveRegistry.Hex()
 		importantContracts["RollupContract"] = networkConfig.ImportantContracts.RollupContract.Hex()
 	}
 
 	networkConfigResponse := NetworkConfigResponse{
 		NetworkConfigAddress:           networkConfig.NetworkConfigAddress.Hex(),
-		EnclaveRegistryContractAddress: networkConfig.EnclaveRegistryAddress.Hex(),
-		RollupContractAddress:          networkConfig.RollupContractAddress.Hex(),
-		CrossChainAddress:              networkConfig.CrossChainAddress.Hex(),
+		EnclaveRegistryContractAddress: networkConfig.ImportantContracts.EnclaveRegistry.Hex(),
+		RollupContractAddress:          networkConfig.ImportantContracts.RollupContract.Hex(),
+		CrossChainAddress:              networkConfig.ImportantContracts.CrossChain.Hex(),
 		L1StartHash:                    networkConfig.L1StartHash.Hex(),
-		MessageBusAddress:              networkConfig.MessageBusAddress.Hex(),
+		MessageBusAddress:              networkConfig.ImportantContracts.MessageBus.Hex(),
 		L2MessageBusAddress:            networkConfig.L2MessageBusAddress.Hex(),
 		ImportantContracts:             importantContracts,
 	}

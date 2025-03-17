@@ -3,6 +3,8 @@ package contractlib
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum"
+
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -17,6 +19,7 @@ import (
 type NetworkConfigLib interface {
 	GetContractAddr() *gethcommon.Address
 	GetContractAddresses() (*common.NetworkConfigAddresses, error)
+	AddAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error)
 	IsMock() bool
 }
 
@@ -46,15 +49,23 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkConfigAdd
 	}
 
 	return &common.NetworkConfigAddresses{
-		CrossChain:             addresses.CrossChain,
-		MessageBus:             addresses.MessageBus,
-		NetworkEnclaveRegistry: addresses.NetworkEnclaveRegistry,
-		RollupContract:         addresses.RollupContract,
+		CrossChain:      addresses.CrossChain,
+		MessageBus:      addresses.MessageBus,
+		EnclaveRegistry: addresses.NetworkEnclaveRegistry,
+		RollupContract:  addresses.RollupContract,
 	}, nil
 }
 
 func (nc *networkConfigLibImpl) GetContractAddr() *gethcommon.Address {
 	return &nc.addr
+}
+
+func (nc *networkConfigLibImpl) AddAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error) {
+	data, err := nc.contractABI.Pack(ethadapter.AddAddressMethod, name, address)
+	if err != nil {
+		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
+	}
+	return ethereum.CallMsg{To: &nc.addr, Data: data}, nil
 }
 
 func (nc *networkConfigLibImpl) IsMock() bool {

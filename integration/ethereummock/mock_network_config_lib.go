@@ -1,6 +1,7 @@
 package ethereummock
 
 import (
+	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
@@ -18,12 +19,16 @@ func (m *mockNetworkConfigLib) GetContractAddr() *gethcommon.Address {
 
 func (m *mockNetworkConfigLib) GetContractAddresses() (*common.NetworkConfigAddresses, error) {
 	addresses := &common.NetworkConfigAddresses{
-		CrossChain:             CrossChainAddr,
-		MessageBus:             MessageBusAddr,
-		NetworkEnclaveRegistry: RespondSecretTxAddr,
-		RollupContract:         RollupTxAddr,
+		CrossChain:      CrossChainAddr,
+		MessageBus:      MessageBusAddr,
+		EnclaveRegistry: RespondSecretTxAddr,
+		RollupContract:  RollupTxAddr,
 	}
 	return addresses, nil
+}
+
+func (m *mockNetworkConfigLib) AddAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error) {
+	panic("no-op")
 }
 
 func (m *mockNetworkConfigLib) IsMock() bool {

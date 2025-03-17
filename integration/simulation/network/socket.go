@@ -178,7 +178,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		return nil, fmt.Errorf("unable to fetch contract addresses. Cause: %s", err)
 	}
 	// permission the sequencer enclaveID (also requires retries as the enclaveID may not be attested yet)
-	err = PermissionTenSequencerEnclave(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.NetworkEnclaveRegistry, *seqEnclaveID)
+	err = PermissionTenSequencerEnclave(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.EnclaveRegistry, *seqEnclaveID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
 	}

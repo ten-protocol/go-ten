@@ -37,7 +37,7 @@ func NewContractRegistryLib(networkConfigAddr gethcommon.Address, ethClient ethc
 	}
 
 	rollupLib := NewRollupContractLib(&addresses.RollupContract, logger)
-	networkEnclaveLib := NewEnclaveRegistryLib(&addresses.NetworkEnclaveRegistry, logger)
+	networkEnclaveLib := NewEnclaveRegistryLib(&addresses.EnclaveRegistry, logger)
 
 	registry := &ContractRegistryImpl{
 		rollupLib:         rollupLib,
