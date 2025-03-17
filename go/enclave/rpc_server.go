@@ -269,7 +269,6 @@ func (s *RPCServer) GetBatch(ctx context.Context, request *generated.GetBatchReq
 	batch, err := s.enclave.GetBatch(ctx, gethcommon.BytesToHash(request.KnownHead))
 	if err != nil {
 		s.logger.Error("Error getting batch", log.ErrKey, err)
-		// todo  do we want to exit here or return the usual response
 		return nil, err
 	}
 
@@ -291,7 +290,6 @@ func (s *RPCServer) GetBatchBySeqNo(ctx context.Context, request *generated.GetB
 	batch, err := s.enclave.GetBatchBySeqNo(ctx, request.SeqNo)
 	if err != nil {
 		s.logger.Error("Error getting batch by seq", log.ErrKey, err)
-		// todo  do we want to exit here or return the usual response
 		return nil, err
 	}
 

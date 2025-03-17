@@ -1,6 +1,7 @@
 package ethadapter
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math"
@@ -127,4 +128,20 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 
 func calculateRetryMultiplier(baseMultiplier float64, retryNumber int) float64 {
 	return math.Pow(baseMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
+}
+
+func BlocksBetween(e EthClient, startingBlock *types.Header, lastBlock *types.Header) ([]*types.Header, error) {
+	var blocksBetween []*types.Header
+	var err error
+
+	for currentBlk := lastBlock; currentBlk != nil && !bytes.Equal(currentBlk.Hash().Bytes(), startingBlock.Hash().Bytes()) && !bytes.Equal(currentBlk.ParentHash.Bytes(), gethcommon.HexToHash("").Bytes()); {
+		c := currentBlk.ParentHash
+		currentBlk, err = e.HeaderByHash(currentBlk.ParentHash)
+		if err != nil {
+			return nil, fmt.Errorf("could not fetch parent block with hash %s. cause: %w", c.String(), err)
+		}
+		blocksBetween = append(blocksBetween, currentBlk)
+	}
+
+	return blocksBetween, nil
 }
