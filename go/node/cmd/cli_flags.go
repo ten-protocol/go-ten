@@ -23,7 +23,7 @@ const (
 	enclaveRegistryAddrFlag     = "enclave_registry_addr"
 	crossChainAddrFlag          = "cross_chain_addr"
 	rollupAddrFlag              = "rollup_addr"
-	networkConfigAddrFlag       = "management_contract_addr"
+	networkConfigAddrFlag       = "network_config_addr"
 	messageBusContractAddrFlag  = "message_bus_contract_addr"
 	l1StartBlockFlag            = "l1_start"
 	pccsAddrFlag                = "pccs_addr"
