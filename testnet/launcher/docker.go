@@ -249,6 +249,20 @@ func (t *Testnet) deployL1Contracts() (*node.NetworkConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch l1 contract addresses - %w", err)
 	}
+
+	fmt.Printf("Network Config Values:\n"+
+		"  NetworkConfig Address: %s\n"+
+		"  CrossChain Address: %s\n"+
+		"  MessageBus Address: %s\n"+
+		"  EnclaveRegistry Address: %s\n"+
+		"  RollupContract Address: %s\n"+
+		"  L1 Start Hash: %s\n",
+		networkConfig.NetworkConfigAddress,
+		networkConfig.CrossChainAddress,
+		networkConfig.MessageBusAddress,
+		networkConfig.EnclaveRegistryAddress,
+		networkConfig.RollupContractAddress,
+		networkConfig.L1StartHash)
 	fmt.Println("L1 Contracts were successfully deployed...")
 	return networkConfig, nil
 }
