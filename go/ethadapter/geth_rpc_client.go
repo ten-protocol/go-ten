@@ -1,7 +1,6 @@
 package ethadapter
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -17,7 +16,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
-	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 )
@@ -79,51 +77,6 @@ func (e *gethRPCClient) FetchHeadBlock() (*types.Header, error) {
 
 func (e *gethRPCClient) Info() Info {
 	return Info{}
-}
-
-func (e *gethRPCClient) BlocksBetween(startingBlock *types.Header, lastBlock *types.Header) ([]*types.Header, error) {
-	var blocksBetween []*types.Header
-	var err error
-
-	for currentBlk := lastBlock; currentBlk != nil && !bytes.Equal(currentBlk.Hash().Bytes(), startingBlock.Hash().Bytes()) && !bytes.Equal(currentBlk.ParentHash.Bytes(), gethcommon.HexToHash("").Bytes()); {
-		c := currentBlk.ParentHash
-		currentBlk, err = e.HeaderByHash(currentBlk.ParentHash)
-		if err != nil {
-			e.logger.Error(fmt.Sprintf("could not fetch parent block with hash %s.", c.String()), log.ErrKey, err)
-			return nil, fmt.Errorf("could not fetch parent block with hash %s. cause: %w", c.String(), err)
-		}
-		blocksBetween = append(blocksBetween, currentBlk)
-	}
-
-	return blocksBetween, nil
-}
-
-func (e *gethRPCClient) IsBlockAncestor(block *types.Header, maybeAncestor common.L1BlockHash) bool {
-	if bytes.Equal(maybeAncestor.Bytes(), block.Hash().Bytes()) || bytes.Equal(maybeAncestor.Bytes(), (common.L1BlockHash{}).Bytes()) {
-		return true
-	}
-
-	if block.Number.Int64() == int64(common.L1GenesisHeight) {
-		return false
-	}
-
-	resolvedAncestorBlock, err := e.HeaderByHash(maybeAncestor)
-	if err != nil {
-		e.logger.Crit(fmt.Sprintf("could not fetch parent block with hash %s.", maybeAncestor.String()), log.ErrKey, err)
-	}
-	if resolvedAncestorBlock.Number.Int64() >= block.Number.Int64() {
-		return false
-	}
-
-	p, err := e.HeaderByHash(block.ParentHash)
-	if err != nil {
-		e.logger.Crit(fmt.Sprintf("could not fetch parent block with hash %s", block.ParentHash.String()), log.ErrKey, err)
-	}
-	if p == nil {
-		return false
-	}
-
-	return e.IsBlockAncestor(p, maybeAncestor)
 }
 
 func (e *gethRPCClient) SendTransaction(signedTx *types.Transaction) error {
