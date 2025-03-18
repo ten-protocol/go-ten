@@ -2,12 +2,12 @@
 contracts/
 ├── src/
 │   ├── L1_management_contract/  # set of contracts deployed to Ethereum that manage the state of the TEN network
-│   │   ├── lib/
+│   │   ├── interfaces/
 │   │   │   ├── ICrossChain
 │   │   │   ├── INetworkEnclaveRegistry
 │   │   │   ├── IRollupContract
 │   │   │   └── NetworkConfig
-│   │   └── impl/
+│   │   └── contracts/
 │   │       ├── CrossChain  # depends on "Cross_chain_messaging". It is the only input to the cross-chain message bus.
 │   │       ├── NetworkEnclaveRegistry
 │   │       └── RollupContract # todo - rename to DataAvailabilityRegistry
@@ -17,7 +17,7 @@ contracts/
 │   │   │   ├── IMessageBus
 │   │   │   ├── ICrossChainMessenger
 │   │   │   ├── CrossChainMessenger
-│   │   ├── lib/
+│   │   ├── interfaces/
 │   │   │   ├── CrossChainEnabledObscuro # rename to CrossChainEnabledTEN
 │   │   ├── L1/
 │   │   │   ├── IMerkleTreeMessageBus
@@ -28,13 +28,13 @@ contracts/
 │   ├── TEN_system/  # "system" contracts deployed automatically on the TEN network and managed by the platform. Also configuration convenstions supported by the TEN platform
 │   │   ├── config/
 │   │   │   └── IContractTransparencyConfig # if implemented by a SC it will configure custom data "visibility rules"
-│   │   ├── lib/
+│   │   ├── interfaces/
 │   │   │   ├── IFees  # todo needs a proper explanation of how it works.
 │   │   │   ├── IOnBlockEndCallback # custom decentralised platform logic based on the transactions.
 │   │   │   ├── IPublicCallback     # SC can register decoupled actions to be executed 
 │   │   │   ├── Logger
 │   │   │   └── Transaction
-│   │   ├── impl/
+│   │   ├── contracts/
 │   │   │   ├── Fees 
 │   │   │   ├── SystemDeployer
 │   │   │   ├── TransactionPostProcessor
@@ -47,7 +47,7 @@ contracts/
 │       ├── L1/
 │       │ - same as now
 │       └── L2/
-│           ├── lib/
+│           ├── interfaces/
 │           │   ├── IBridge
 │           │   └── ITokenFactory
 │           └── impl/
