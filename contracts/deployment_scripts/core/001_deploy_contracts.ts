@@ -18,7 +18,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             execute: {
                 init: {
                     methodName: "initialize",
-                    args: []
+                    args: [deployer]
                 }
             }
         },
@@ -32,7 +32,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         execute: {
             init: {
                 methodName: "initialize",
-                args: []
+                args: [deployer]
             }
         },
         log: true,
@@ -45,7 +45,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
                 methodName: "initialize",
                 args: [
                     merkleMessageBusAddress,
-                    networkEnclaveRegistryDeployment.address
+                    networkEnclaveRegistryDeployment.address,
+                    deployer
                 ]
             }
         },

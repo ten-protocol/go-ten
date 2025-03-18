@@ -22,9 +22,10 @@ contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
 
     function initialize(
         address _merkleMessageBus,
-        address _enclaveRegistry
+        address _enclaveRegistry,
+        address _owner
     ) public initializer {
-        __Ownable_init(msg.sender);
+        __Ownable_init(_owner);
         merkleMessageBus = IMerkleTreeMessageBus(_merkleMessageBus);
         enclaveRegistry = INetworkEnclaveRegistry(_enclaveRegistry);
         lastBatchSeqNo = 0;

@@ -20,6 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const prefundAmount = hre.ethers.parseEther("0.5");
     console.log(`Prefund amount ${prefundAmount}; MB = ${messageBus}`);
 
+    console.log(`Deployer = ${messageBusAddress}`);
     const tx = await messageBus.getFunction("sendValueToL2").populateTransaction(deployer, prefundAmount, {
         value: prefundAmount.toString()
     });

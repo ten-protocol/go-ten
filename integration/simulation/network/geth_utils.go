@@ -183,7 +183,7 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.
 		return nil, nil, err
 	}
 
-	tx, err := networkEnclaveRegistryContract.Initialize(opts)
+	tx, err := networkEnclaveRegistryContract.Initialize(opts, ownerKey.Address())
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize NetworkEnclaveRegistry contract. Cause: %w", err)
 	}
@@ -244,7 +244,7 @@ func deployRollupContract(client ethadapter.EthClient, ownerKey wallet.Wallet, m
 	if err != nil {
 		return nil, nil, err
 	}
-	tx, err := rollupContract.Initialize(opts, messageBus, enclaveRegistryAddress)
+	tx, err := rollupContract.Initialize(opts, messageBus, enclaveRegistryAddress, ownerKey.Address())
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize RollupContract. Cause: %w", err)
 	}
@@ -276,7 +276,7 @@ func deployCrossChainContract(client ethadapter.EthClient, ownerKey wallet.Walle
 		return nil, nil, err
 	}
 
-	tx, err := crossChainContract.Initialize(opts)
+	tx, err := crossChainContract.Initialize(opts, ownerKey.Address())
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize CrossChain contract. Cause: %w", err)
 	}

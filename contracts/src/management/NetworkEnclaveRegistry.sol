@@ -24,8 +24,8 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Ownab
         _transferOwnership(msg.sender);
     }
 
-    function initialize() public initializer {
-        __Ownable_init(msg.sender);
+    function initialize(address owner) public initializer {
+        __Ownable_init(owner);
         networkSecretInitialized = false;
     }
 
