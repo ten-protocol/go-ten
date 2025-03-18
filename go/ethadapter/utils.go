@@ -1,7 +1,6 @@
 package ethadapter
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"math"
@@ -130,26 +129,28 @@ func calculateRetryMultiplier(baseMultiplier float64, retryNumber int) float64 {
 	return math.Pow(baseMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
 }
 
-func BlocksBetween(e EthClient, blockA *types.Header, blockB *types.Header) ([]*types.Header, error) {
-	if bytes.Equal(blockA.Hash().Bytes(), blockB.Hash().Bytes()) {
-		return []*types.Header{blockB}, nil
-	}
-	blocks := make([]*types.Header, 0)
-	tempBlock := blockB
+// BlocksBetween returns a slice of Ethereum block headers between the startBlock and endBlock, inclusive, in order.
+func BlocksBetween(e EthClient, startBlock *types.Header, endBlock *types.Header) ([]*types.Header, error) {
+	startHash := startBlock.Hash()
+
+	path := make([]*types.Header, 0)
+	tempBlock := endBlock
 	for {
-		blocks = append(blocks, tempBlock)
-		if bytes.Equal(tempBlock.Hash().Bytes(), blockA.Hash().Bytes()) {
+		path = append(path, tempBlock)
+		if tempBlock.Hash() == startHash {
 			break
 		}
-		tb, err := e.HeaderByHash(tempBlock.ParentHash)
+		parent, err := e.HeaderByHash(tempBlock.ParentHash)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
 		}
-		tempBlock = tb
+		tempBlock = parent
 	}
-	n := len(blocks)
+
+	// reverse the list
+	n := len(path)
 	result := make([]*types.Header, n)
-	for i, block := range blocks {
+	for i, block := range path {
 		result[n-i-1] = block
 	}
 	return result, nil
