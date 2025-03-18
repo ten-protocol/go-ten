@@ -137,7 +137,7 @@ func BlocksBetween(e EthClient, startBlock *types.Header, endBlock *types.Header
 	tempBlock := endBlock
 	for {
 		path = append(path, tempBlock)
-		if tempBlock.Hash() == startHash {
+		if (tempBlock.Hash() == startHash) || (tempBlock.ParentHash == gethcommon.HexToHash("")) {
 			break
 		}
 		parent, err := e.HeaderByHash(tempBlock.ParentHash)
