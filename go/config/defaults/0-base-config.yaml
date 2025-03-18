@@ -24,7 +24,10 @@ network:
     blockTime: 15s
     startHash: 0x0 # hash of the L1 block that Ten can safely start processing from to get entire L2 history
     contracts:
-      management: 0x0 # L1 address of the Ten management contract
+      networkConfig: 0x0 # L1 address of the Ten network config contract
+      crossChain: 0x0 # L1 address of the Ten cross chain contract
+      rollup: 0x0 # L1 address of the Ten rollup contract
+      enclaveRegistry: 0x0 # L1 address of the Ten enclave registry contract
       messageBus: 0x0 # L1 address of the Ten message bus contract
       bridge: 0x0 # L1 address of the Ten bridge contract
   sequencer:
