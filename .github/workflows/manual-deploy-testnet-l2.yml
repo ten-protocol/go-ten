@@ -460,7 +460,7 @@ jobs:
     steps:
       -  uses: actions/checkout@v4
 
-      -  name: 'Set challenge period on management contract'
+      -  name: 'Set challenge period on rollup contract'
          id: setChallengePeriod
          shell: bash
          run: |

@@ -199,7 +199,6 @@ func (r *DataService) getContractLogs(block *types.Header, contractAddr gethcomm
 }
 
 func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	println("DataService: Processing message bus logs")
 	logs, err := r.getContractLogs(block, contractAddr)
 	if err != nil {
 		return err
@@ -217,10 +216,8 @@ func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr ge
 		}
 		switch l.Topics[0] {
 		case ethadapter.CrossChainEventID:
-			println("EVENT: CrossChainEventID")
 			err = r.processCrossChainLogs(l, txData, processed)
 		case ethadapter.ValueTransferEventID:
-			println("EVENT: ValueTransferEventID")
 			err = r.processValueTransferLogs(l, txData, processed)
 		}
 		if err != nil {
@@ -232,7 +229,6 @@ func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr ge
 }
 
 func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	println("DataService: Processing enclave registry logs")
 	logs, err := r.getContractLogs(block, contractAddr)
 	if err != nil {
 		return err
@@ -249,22 +245,16 @@ func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAd
 		}
 		switch l.Topics[0] {
 		case ethadapter.NetworkSecretInitializedEventID:
-			println("EVENT: NetworkSecretInitializedEventID")
 			err = r.processEnclaveRegistrationTx(txData, processed)
 		case ethadapter.SequencerEnclaveGrantedEventID:
-			println("EVENT: SequencerEnclaveGrantedEventID")
 			err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
 		case ethadapter.SequencerEnclaveRevokedEventID:
-			println("EVENT: SequencerEnclaveRevokedEventID")
 			err = r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
 		case ethadapter.NetworkSecretRequestedID:
-			println("EVENT: NetworkSecretRequestedID")
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case ethadapter.NetworkSecretRespondedID:
-			println("EVENT: NetworkSecretRespondedID")
 			processed.AddEvent(common.SecretResponseTx, txData)
 		case ethadapter.NetworkContractAddressAddededID:
-			println("EVENT: NetworkContractAddressAddededID")
 			processed.AddEvent(common.NetworkContractAddressAddedTx, txData)
 		default:
 			// there are known events that we don't care about here
@@ -280,7 +270,6 @@ func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAd
 }
 
 func (r *DataService) processRollupLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	println("DataService: Processing rollup logs")
 	rollupLogs, err := r.getContractLogs(block, contractAddr)
 	if err != nil {
 		return err
@@ -297,7 +286,6 @@ func (r *DataService) processRollupLogs(block *types.Header, contractAddr gethco
 		}
 		switch l.Topics[0] {
 		case ethadapter.RollupAddedID:
-			println("EVENT: RollupAddedID")
 			err = r.processRollupLog(l, txData, processed)
 		}
 		if err != nil {
