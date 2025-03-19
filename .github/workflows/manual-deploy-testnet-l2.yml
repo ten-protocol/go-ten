@@ -94,17 +94,37 @@ jobs:
         env:
           DOCKER_API_VERSION: "1.45"
         run: |
+          # Run deployer and capture output
           go run ./testnet/launcher/l1contractdeployer/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -contracts_env_file=./testnet/.env
-          source ./testnet/.env || true
-          echo "Contracts deployed to $NETWORKCONFIGADDR"
+          
+          # Debug: Check if .env file exists and show contents
+          echo "Contents of .env file:"
+          cat ./testnet/.env
+          
+          # Source the file without the || true to see if it fails
+          source ./testnet/.env
+          
+          # Debug: Print the variable to verify it's set
+          echo "NetworkConfig Address: $NETWORKCONFIGADDR"
+          
+          # Continue with the rest of your commands
+          echo "Contracts successfully deployed"
           echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_ENV
+          echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> GITHUB_OUTPUT
+          
           echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_ENV
-          echo "ROLLUP_CONTRACT_ADDR=$ROLLUPCONTRACTADDR" >> $GITHUB_ENV
+          echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_OUTPUT
+          
+          echo "ROLLUP_CONTRACT_ADDR=$ROLLUPADDR" >> $GITHUB_ENV
+          echo "ROLLUP_CONTRACT_ADDR=$ROLLUPADDR" >> $GITHUB_OUTPUT
+          
           echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_ENV
+          echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_OUTPUT
+          
           echo "L1_START_HASH=$L1START" >> $GITHUB_ENV
           echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
 

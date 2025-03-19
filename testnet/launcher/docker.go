@@ -112,6 +112,7 @@ func (t *Testnet) Start() error {
 			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l2cd.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
 			l2cd.WithNetworkConfigAddress(networkConfig.NetworkConfigAddress),
+			l2cd.WithEnclaveRegistryAddress(networkConfig.EnclaveRegistryAddress),
 			l2cd.WithRollupContractAddress(networkConfig.RollupContractAddress),
 			l2cd.WithCrossChainAddress(networkConfig.CrossChainAddress),
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
