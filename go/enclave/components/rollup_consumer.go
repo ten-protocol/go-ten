@@ -91,10 +91,16 @@ func (rc *rollupConsumerImpl) ProcessRollup(ctx context.Context, rollup *common.
 		return nil, nil
 	}
 
+	internalHeader := new(common.CalldataRollupHeader)
+	err = rc.rollupCompression.DecryptDecompressAndDeserialise(rollup.CalldataRollupHeader, internalHeader)
+	if err != nil {
+		return nil, err
+	}
+
 	// if all batches included in this rollup exist, we don't need to process
 	lastBatch, err := rc.storage.FetchBatchBySeqNo(ctx, rollup.Header.LastBatchSeqNo)
 	if err == nil {
-		// check that the stored batches match the rollup
+		// security check that the stored batches match the rollup
 		if lastBatch.Hash() != rollup.Header.LastBatchHash {
 			rc.logger.Error("Last batch hash mismatch", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 			return nil, fmt.Errorf(
@@ -103,15 +109,21 @@ func (rc *rollupConsumerImpl) ProcessRollup(ctx context.Context, rollup *common.
 				lastBatch.Hash().Hex(),
 			)
 		}
+		return rc.storeRollupAndGenerateMetadata(ctx, rollup, internalHeader)
 	}
 
 	// read batch data from rollup, verify and store it
-	internalHeader, err := rc.rollupCompression.ProcessExtRollup(ctx, rollup)
+	err = rc.rollupCompression.ProcessExtRollup(ctx, rollup, internalHeader)
 	if err != nil {
 		rc.logger.Error("Failed processing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 		// todo - issue challenge as a validator
 		return nil, err
 	}
+
+	return rc.storeRollupAndGenerateMetadata(ctx, rollup, internalHeader)
+}
+
+func (rc *rollupConsumerImpl) storeRollupAndGenerateMetadata(ctx context.Context, rollup *common.ExtRollup, internalHeader *common.CalldataRollupHeader) (*common.ExtRollupMetadata, error) {
 	if err := rc.storage.StoreRollup(ctx, rollup, internalHeader); err != nil {
 		rc.logger.Error("Failed storing rollup", log.RollupHashKey, rollup.Hash(), log.ErrKey, err)
 		return nil, err
@@ -126,7 +138,6 @@ func (rc *rollupConsumerImpl) ProcessRollup(ctx context.Context, rollup *common.
 	rollupMetadata := common.ExtRollupMetadata{
 		CrossChainTree: serializedTree,
 	}
-
 	return &rollupMetadata, nil
 }
 
