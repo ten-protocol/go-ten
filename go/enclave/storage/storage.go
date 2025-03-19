@@ -79,7 +79,7 @@ var defaultCacheConfig = &gethcore.CacheConfig{
 	TrieTimeLimit:  5 * time.Minute,
 	SnapshotLimit:  256,
 	SnapshotWait:   true,
-	StateScheme:    rawdb.HashScheme, // todo - change to rawdb.PathScheme for next release
+	StateScheme:    rawdb.PathScheme,
 }
 
 var trieDBConfig = &triedb.Config{

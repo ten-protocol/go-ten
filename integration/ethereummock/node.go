@@ -282,10 +282,6 @@ func (m *Node) Info() ethadapter.Info {
 	}
 }
 
-func (m *Node) IsBlockAncestor(block *types.Header, proof common.L1BlockHash) bool {
-	return m.BlockResolver.IsBlockAncestor(context.Background(), block, proof)
-}
-
 func (m *Node) BalanceAt(gethcommon.Address, *big.Int) (*big.Int, error) {
 	panic("not implemented")
 }
@@ -445,7 +441,7 @@ func (m *Node) processBlock(b *types.Block, head *types.Header) *types.Header {
 		}
 		m.logger.Info(
 			fmt.Sprintf("L1Reorg new=b_%s(%d), old=b_%s(%d), fork=b_%s(%d)", b.Hash(), b.NumberU64(), head.Hash(), head.Number.Uint64(), fork.CommonAncestor.Hash(), fork.CommonAncestor.Number.Uint64()))
-		f, err := m.BlocksBetween(fork.CommonAncestor, b.Header())
+		f, err := ethadapter.BlocksBetween(m, fork.CommonAncestor, b.Header())
 		if err != nil {
 			m.logger.Crit("Failed to fetch blocks between fork and new block. Cause: %w", err)
 		}
@@ -584,31 +580,6 @@ func (m *Node) Stop() {
 	time.Sleep(time.Millisecond * 500)
 	m.exitMiningCh <- true
 	m.exitCh <- true
-}
-
-func (m *Node) BlocksBetween(blockA *types.Header, blockB *types.Header) ([]*types.Header, error) {
-	if bytes.Equal(blockA.Hash().Bytes(), blockB.Hash().Bytes()) {
-		return []*types.Header{blockB}, nil
-	}
-	blocks := make([]*types.Header, 0)
-	tempBlock := blockB
-	for {
-		blocks = append(blocks, tempBlock)
-		if bytes.Equal(tempBlock.Hash().Bytes(), blockA.Hash().Bytes()) {
-			break
-		}
-		tb, err := m.BlockResolver.FetchFullBlock(context.Background(), tempBlock.ParentHash)
-		if err != nil {
-			return nil, fmt.Errorf("could not retrieve parent block. Cause: %w", err)
-		}
-		tempBlock = tb.Header()
-	}
-	n := len(blocks)
-	result := make([]*types.Header, n)
-	for i, block := range blocks {
-		result[n-i-1] = block
-	}
-	return result, nil
 }
 
 func (m *Node) CallContract(ethereum.CallMsg) ([]byte, error) {
