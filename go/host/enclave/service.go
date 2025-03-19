@@ -134,7 +134,7 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 // If this is a sequencer host then this function will start a search for a live standby enclave to promote to active sequencer.
 func (e *Service) NotifyUnavailable(enclaveID *common.EnclaveID) {
 	if e.activeSequencerID.Load() != enclaveID {
-		e.logger.Debug("Failed enclave is not an active sequencer on an HA node, no action required.", log.EnclaveIDKey, enclaveID)
+		e.logger.Debug("Failed enclave is not an active sequencer, no action required.", log.EnclaveIDKey, enclaveID)
 		return
 	}
 	failedEnclaveIdx := -1
