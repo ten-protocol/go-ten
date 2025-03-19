@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
     Structs.RollupStorage private rollups;
     uint256 public lastBatchSeqNo;
+    uint256 private challengePeriod;
 
     IMerkleTreeMessageBus public merkleMessageBus;
     INetworkEnclaveRegistry public enclaveRegistry;
@@ -72,7 +73,8 @@ contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
         AppendRollup(r);
 
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
-            merkleMessageBus.addStateRoot(r.crossChainRoot, block.timestamp);
+            uint256 activationTime = block.timestamp + challengePeriod;
+            merkleMessageBus.addStateRoot(r.crossChainRoot, activationTime);
         }
 
         emit RollupAdded(blobhash(0), r.Signature);
@@ -82,5 +84,14 @@ contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
     function getRollupByHash(bytes32 rollupHash) external view returns (bool, Structs.MetaRollup memory) {
         Structs.MetaRollup memory rol = rollups.byHash[rollupHash];
         return (rol.Hash == rollupHash , rol);
+    }
+
+
+    function getChallengePeriod() external view returns (uint256) {
+        return challengePeriod;
+    }
+
+    function setChallengePeriod(uint256 _delay) external onlyOwner {
+        challengePeriod = _delay;
     }
 }

@@ -58,12 +58,4 @@ contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable, Reentranc
         }
         return isBundleSaved[bundleHash];
     }
-
-    function getChallengePeriod() external view returns (uint256) {
-        return challengePeriod;
-    }
-
-    function setChallengePeriod(uint256 _delay) external onlyOwner {
-        challengePeriod = _delay;
-    }
 }

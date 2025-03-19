@@ -1,31 +1,31 @@
 import { ethers } from "hardhat";
-import {CrossChain} from "../../typechain-types";
+import {RollupContract} from "../../typechain-types";
 
-const setChallengePeriod = async function (crossChainContractAddress: string, challengPeriod: number) {
-    const crossChainContract = await ethers.getContractAt(
-        "CrossChain",
-        crossChainContractAddress
-    ) as CrossChain;
+const setChallengePeriod = async function (rollupContractAddress: string, challengPeriod: number) {
+    const rollupContract = await ethers.getContractAt(
+        "RollupContract",
+        rollupContractAddress
+    ) as RollupContract;
 
 
     console.log(`Setting challenge period to: ${challengPeriod}`);
-    const tx = await crossChainContract.setChallengePeriod(BigInt(challengPeriod));
+    const tx = await rollupContract.setChallengePeriod(BigInt(challengPeriod));
     await tx.wait();
     console.log(`Successfully set challenge period to: ${challengPeriod}`);
     
-    const mgmtContractChallengePeriod = await crossChainContract.getChallengePeriod();
-    if (BigInt(challengPeriod) !== mgmtContractChallengePeriod) {
-        throw new Error(`Failed to set the challenge period to: ${challengPeriod}. Returned value is: ${mgmtContractChallengePeriod}`);
+    const rollupChallengePeriod = await rollupContract.getChallengePeriod();
+    if (BigInt(challengPeriod) !== rollupChallengePeriod) {
+        throw new Error(`Failed to set the challenge period to: ${challengPeriod}. Returned value is: ${rollupChallengePeriod}`);
     }
 }
 
-const crossChainContractAddress = process.env.CROSS_CHAIN_ADDRESS;
+const crossChainContractAddress = process.env.ROLLUP_CONTRACT_ADDRESS;
 const challengePeriod = process.env.L1_CHALLENGE_PERIOD ?
     Number(process.env.L1_CHALLENGE_PERIOD) : 0;
 
 
 if (!crossChainContractAddress) {
-    console.error("Missing required environment variables: CROSS_CHAIN_ADDRESS");
+    console.error("Missing required environment variables: ROLLUP_CONTRACT_ADDRESS");
     process.exit(1);
 }
 

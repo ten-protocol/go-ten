@@ -15,7 +15,6 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         address rollupContract;
     }
 
-    // Add a struct to pair name and address
     struct NamedAddress {
         string name;
         address addr;

@@ -7,39 +7,40 @@ import "./MessageBus.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 
 contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
-    
+
     address public admin;
 
-    // custom access control to avoid conflicting dependencies in MessageBus
+    // The list of addresses that are allowed to call the addStateRoot functioned. The owner of this contract
+    // manually adds the rollup contract to this mapping once the contracts have been deployed.
     mapping(address => bool) public stateRootManagers;
-    
+
     constructor(address _admin) MessageBus() {
         admin = _admin;
         stateRootManagers[_admin] = true;
     }
-    
+
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin can call this function");
         _;
     }
-    
+
     modifier onlyStateRootManager() {
         require(stateRootManagers[msg.sender], "Only state root managers can call this function");
         _;
     }
-    
+
     function addStateRootManager(address manager) external onlyAdmin {
         stateRootManagers[manager] = true;
     }
-    
+
     function removeStateRootManager(address manager) external onlyAdmin {
         stateRootManagers[manager] = false;
     }
-    
+
     function transferAdmin(address newAdmin) external onlyAdmin {
         admin = newAdmin;
     }
-    
+
     mapping(bytes32 => uint256) rootValidAfter; //When a xchain messages root becomes valid represented as a timestamp in seconds to be compared against block timestamp
 
     function addStateRoot(bytes32 stateRoot, uint256 activationTime) external onlyStateRootManager {
@@ -56,7 +57,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
         require(rootValidAfter[root] != 0, "Root is not published on this message bus.");
         require(block.timestamp >= rootValidAfter[root], "Root is not considered final yet.");
 
-         bytes32 messageHash = keccak256(abi.encode(
+        bytes32 messageHash = keccak256(abi.encode(
             message.sender,
             message.sequence,
             message.nonce,

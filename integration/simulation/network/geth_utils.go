@@ -362,40 +362,6 @@ func StopEth2Network(clients []ethadapter.EthClient, network eth2network.PosEth2
 	}
 }
 
-func InitializeContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractAddress common.Address) (*types.Receipt, error) {
-	//ctr, err := ManagementContract.NewManagementContract(contractAddress, workerClient.EthClient())
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//opts, err := bind.NewKeyedTransactorWithChainID(w.PrivateKey(), w.ChainID())
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//tx, err := ctr.Initialize(opts)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//w.SetNonce(w.GetNonce())
-	//
-	//var start time.Time
-	//var receipt *types.Receipt
-	//// todo (@matt) these timings should be driven by the L2 batch times and L1 block times
-	//for start = time.Now(); time.Since(start) < 80*time.Second; time.Sleep(2 * time.Second) {
-	//	receipt, err = workerClient.TransactionReceipt(tx.Hash())
-	//	if err == nil && receipt != nil {
-	//		if receipt.Status != types.ReceiptStatusSuccessful {
-	//			return nil, errors.New("unable to initialize contract")
-	//		}
-	//		testlog.Logger().Info("Contract initialized")
-	//		return receipt, nil
-	//	}
-	//}
-	//
-	return nil, nil
-}
-
 // DeployContract returns receipt of deployment
 // todo (@matt) - this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
