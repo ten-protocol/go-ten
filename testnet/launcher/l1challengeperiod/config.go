@@ -10,8 +10,6 @@ type Config struct {
 	rollupContractAddress string
 	dockerImage           string
 	challengePeriod       int
-
-	// debugEnabled        bool
 }
 
 func NewChallengePeriodConfig(opts ...Option) *Config {
