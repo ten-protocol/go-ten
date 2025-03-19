@@ -133,8 +133,8 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 // NotifyUnavailable is called by enclave guardians when they detect that the enclave is unavailable.
 // If this is a sequencer host then this function will start a search for a live standby enclave to promote to active sequencer.
 func (e *Service) NotifyUnavailable(enclaveID *common.EnclaveID) {
-	if len(e.enclaveGuardians) <= 1 || e.activeSequencerID.Load() != enclaveID {
-		e.logger.Debug("Failed enclave is not an active sequencer on an HA node, no action required.", log.EnclaveIDKey, enclaveID)
+	if e.activeSequencerID.Load() != enclaveID {
+		e.logger.Debug("Failed enclave is not an active sequencer, no action required.", log.EnclaveIDKey, enclaveID)
 		return
 	}
 	failedEnclaveIdx := -1
@@ -149,6 +149,7 @@ func (e *Service) NotifyUnavailable(enclaveID *common.EnclaveID) {
 		return
 	}
 	e.enclaveGuardians[failedEnclaveIdx].DemoteFromActiveSequencer()
+	e.activeSequencerID.Store(_noActiveSequencer)
 
 	go e.promoteNewActiveSequencer()
 }
@@ -187,7 +188,6 @@ func (e *Service) Unsubscribe(id rpc.ID) error {
 // promoteNewActiveSequencer is a background goroutine that promotes a new active sequencer at startup or when the current one fails.
 // It will never give up, it just cycles through current enclaves until one can be successfully promoted.
 func (e *Service) promoteNewActiveSequencer() {
-	e.activeSequencerID.Store(_noActiveSequencer)
 	for e.activeSequencerID.Load() == _noActiveSequencer && e.running.Load() {
 		for _, guardian := range e.enclaveGuardians {
 			enclID := guardian.GetEnclaveID()
