@@ -338,6 +338,7 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 }
 
 func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData, nonce uint64) error {
+	println("ABOUT TO EXECUTE INITIAL SECRET TX")
 	retries := 0
 	for !p.hostStopper.IsStopping() {
 		if _, err := p.executeTransaction(tx, nonce, retries); err != nil {
@@ -346,6 +347,7 @@ func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData, nonce uint64) err
 		}
 		return nil
 	}
+	println("SENT INITIAL SECRET TX")
 	return errors.New("stopped while retrying transaction")
 }
 

@@ -34,7 +34,6 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Ownab
     function initializeNetworkSecret(address enclaveID, bytes calldata _initSecret, string calldata _genesisAttestation) external {
         require(!networkSecretInitialized, "network secret already initialized");
         require(enclaveID != address(0), "invalid enclave address");
-        require(bytes(_genesisAttestation).length == 116, "invalid genesis attestation length");
 
         // network can no longer be initialized
         networkSecretInitialized = true;

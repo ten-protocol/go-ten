@@ -434,7 +434,7 @@ func (g *Guardian) provideSecret() error {
 }
 
 func (g *Guardian) generateAndBroadcastSecret() error {
-	g.logger.Info("Node is genesis node. Publishing secret to L1 management contract.")
+	g.logger.Info("Node is genesis node. Publishing secret to L1 enclave registry contract.")
 	// Create the shared secret and submit it to the management contract for storage
 	attestation, err := g.enclaveClient.Attestation(context.Background())
 	if err != nil {

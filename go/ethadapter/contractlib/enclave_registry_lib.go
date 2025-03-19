@@ -77,6 +77,7 @@ func (n *enclaveRegistryLibImpl) CreateRespondSecret(tx *common.L1RespondSecretT
 		tx.Secret,
 		verifyAttester,
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
