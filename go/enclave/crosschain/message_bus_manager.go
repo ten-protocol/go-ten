@@ -31,7 +31,6 @@ func NewTenMessageBusManager(
 	storage storage.Storage,
 	logger gethlog.Logger,
 ) Manager {
-	// todo (#1549) - implement with cryptography epic, remove this key and use the DeriveKey
 	logger = logger.New(log.CmpKey, log.CrossChainCmp)
 
 	return &MessageBusManager{

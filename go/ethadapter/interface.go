@@ -6,8 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/ten-protocol/go-ten/go/common"
-
 	"github.com/ethereum/go-ethereum"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -15,7 +13,6 @@ import (
 )
 
 // EthClient defines the interface for RPC communications with the ethereum nodes
-// todo (#1617) - some of these methods are composed calls that should be decoupled in the future (ie: BlocksBetween or IsBlockAncestor)
 type EthClient interface {
 	BlockNumber() (uint64, error)                                                 // retrieves the number of the head block
 	FetchHeadBlock() (*types.Header, error)                                       // retrieves the block at head height
@@ -40,8 +37,6 @@ type EthClient interface {
 	SupportsEventLogs() bool                                                      // returns false for the in-mem simulation
 
 	// todo - all the below should be removed from the interface
-	BlocksBetween(block *types.Header, head *types.Header) ([]*types.Header, error) // returns the blocks between two blocks
-	IsBlockAncestor(block *types.Header, maybeAncestor common.L1BlockHash) bool     // returns if the node considers a block the ancestor
 	FetchLastBatchSeqNo(address gethcommon.Address) (*big.Int, error)
 }
 

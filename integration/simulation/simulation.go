@@ -145,7 +145,7 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 			panic(fmt.Errorf("could not fetch head block. Cause: %w", err))
 		}
 		if err == nil {
-			blocks, err := client.BlocksBetween(ethereummock.MockGenesisBlock.Header(), head)
+			blocks, err := ethadapter.BlocksBetween(client, ethereummock.MockGenesisBlock.Header(), head)
 			if err != nil {
 				continue
 			}
