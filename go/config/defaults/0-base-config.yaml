@@ -11,7 +11,7 @@ network:
     maxSize: 125952 # (128-5)kb - the size of the rollup minus overhead
   rollup:
     interval: 5s
-    maxInterval: 10m # rollups will be produced after this time even if the data blob is not full
+    maxInterval: 120m # rollups will be produced after this time even if the data blob is not full
     maxSize: 131072 # 128kb - the size of a blob
   gas:
     baseFee: 100000000
