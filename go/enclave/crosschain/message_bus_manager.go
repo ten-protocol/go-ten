@@ -58,7 +58,7 @@ func (m *MessageBusManager) Initialize(systemAddresses common.SystemContractAddr
 }
 
 // ExtractOutboundMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
-func (m *MessageBusManager) ExtractOutboundMessages(ctx context.Context, receipts common.L2Receipts) (common.CrossChainMessages, error) {
+func (m *MessageBusManager) ExtractOutboundMessages(_ context.Context, receipts common.L2Receipts) (common.CrossChainMessages, error) {
 	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &ethadapter.CrossChainEventID)
 	if err != nil {
 		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err)
@@ -148,7 +148,7 @@ func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlo
 
 const BalanceIncreaseXChainValueTransfer tracing.BalanceChangeReason = 110
 
-func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB) {
+func (m *MessageBusManager) ExecuteValueTransfers(_ context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB) {
 	for _, transfer := range transfers {
 		rollupState.AddBalance(transfer.Receiver, uint256.MustFromBig(transfer.Amount), BalanceIncreaseXChainValueTransfer)
 		m.logger.Debug(fmt.Sprintf("Executed cross chain value transfer from %s to %s with amount %s", transfer.Sender.Hex(), transfer.Receiver.Hex(), transfer.Amount.String()))
@@ -156,7 +156,7 @@ func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers
 }
 
 // CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.
-func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, rollupState *state.StateDB) (common.L2Transactions, error) {
+func (m *MessageBusManager) CreateSyntheticTransactions(_ context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, rollupState *state.StateDB) (common.L2Transactions, error) {
 	if len(messages) == 0 && len(transfers) == 0 {
 		return make(common.L2Transactions, 0), nil
 	}

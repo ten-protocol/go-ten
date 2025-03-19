@@ -139,7 +139,7 @@ func Base64EncodeToString(bytes []byte) string {
 func Base64DecodeFromString(in string) ([]byte, error) {
 	return base64.StdEncoding.DecodeString(in)
 }
-  
+
 // BlocksBetween returns a slice of Ethereum block headers between the startBlock and endBlock, inclusive, in order.
 func BlocksBetween(e EthClient, startBlock *types.Header, endBlock *types.Header) ([]*types.Header, error) {
 	startHash := startBlock.Hash()
