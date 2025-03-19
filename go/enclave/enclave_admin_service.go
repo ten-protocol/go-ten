@@ -373,6 +373,7 @@ func (e *enclaveAdminService) StreamL2Updates() (chan common.StreamL2UpdatesResp
 	}
 
 	e.registry.SubscribeForExecutedBatches(func(batch *core.Batch, receipts types.Receipts) {
+		defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "stream batch")
 		e.sendBatch(batch, l2UpdatesChannel)
 		if receipts != nil {
 			e.streamEventsForNewHeadBatch(context.Background(), batch, receipts, l2UpdatesChannel)
