@@ -482,7 +482,7 @@ jobs:
            go run ./testnet/launcher/l1challengeperiod/cmd \
            -l1_http_url=${{ secrets.L1_HTTP_URL }} \
            -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-           -rollup_contract_addr=${{ needs.build.outputs.ROLLUP_CONTRACT_ADDRESS }} \
+           -rollup_contract_addr=${{ needs.build.outputs.ROLLUP_CONTRACT_ADDR }} \
            -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
            -l1_challenge_period=${{ vars.L1_CHALLENGE_PERIOD }} \
            echo "Setting challenge period to ${{ vars.L1_CHALLENGE_PERIOD }}"

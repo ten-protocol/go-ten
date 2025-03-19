@@ -19,13 +19,13 @@ const setChallengePeriod = async function (rollupContractAddress: string, challe
     }
 }
 
-const crossChainContractAddress = process.env.ROLLUP_CONTRACT_ADDRESS;
+const crossChainContractAddress = process.env.ROLLUP_CONTRACT_ADDR;
 const challengePeriod = process.env.L1_CHALLENGE_PERIOD ?
     Number(process.env.L1_CHALLENGE_PERIOD) : 0;
 
 
 if (!crossChainContractAddress) {
-    console.error("Missing required environment variables: ROLLUP_CONTRACT_ADDRESS");
+    console.error("Missing required environment variables: ROLLUP_CONTRACT_ADDR");
     process.exit(1);
 }
 
