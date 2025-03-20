@@ -117,7 +117,7 @@ type L1Publisher interface {
 
 	// GetImportantContracts returns a (cached) record of addresses of the important network contracts
 	GetImportantContracts() *common.NetworkConfigAddresses
-	// ResyncImportantContracts will fetch the latest important contracts from the management contract, update the cache
+	// ResyncImportantContracts will fetch the latest important contracts from the network contract amd update the cache
 	ResyncImportantContracts() error
 }
 

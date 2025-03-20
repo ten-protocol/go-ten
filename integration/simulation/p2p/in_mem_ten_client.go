@@ -167,20 +167,27 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 		return err
 	}
 
-	importantContracts := cfg.ImportantContracts
-
 	publicSystemContracts := make(map[string]gethcommon.Address)
 	for key, value := range cfg.PublicSystemContracts {
 		publicSystemContracts[key] = gethcommon.Address(value)
 	}
 
 	tenNetworkInfo := &common.TenNetworkInfo{
-		NetworkConfigAddress:            gethcommon.Address(cfg.NetworkConfigAddress),
-		L2MessageBusAddress:             gethcommon.Address(cfg.L2MessageBusAddress),
+		NetworkConfigAddress: cfg.NetworkConfigAddress,
+
+		EnclaveRegistry:                 cfg.EnclaveRegistry,
+		CrossChain:                      cfg.CrossChain,
+		RollupContract:                  cfg.RollupContract,
+		L1MessageBus:                    cfg.L1MessageBus,
+		L1Bridge:                        cfg.L1Bridge,
+		L2Bridge:                        cfg.L2Bridge,
+		L1CrossChainMessenger:           cfg.L1CrossChainMessenger,
+		L2CrossChainMessenger:           cfg.L2CrossChainMessenger,
+		L2MessageBusAddress:             cfg.L2MessageBusAddress,
 		TransactionPostProcessorAddress: gethcommon.Address(cfg.TransactionPostProcessorAddress),
 		L1StartHash:                     cfg.L1StartHash,
-		ImportantContracts:              &importantContracts,
 		PublicSystemContracts:           publicSystemContracts,
+		AdditionalContracts:             cfg.AdditionalContracts,
 	}
 
 	*result.(*common.TenNetworkInfo) = *tenNetworkInfo

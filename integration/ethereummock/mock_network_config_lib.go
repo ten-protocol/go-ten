@@ -20,7 +20,7 @@ func (m *mockNetworkConfigLib) GetContractAddr() *gethcommon.Address {
 func (m *mockNetworkConfigLib) GetContractAddresses() (*common.NetworkConfigAddresses, error) {
 	addresses := &common.NetworkConfigAddresses{
 		CrossChain:      CrossChainAddr,
-		MessageBus:      MessageBusAddr,
+		L1MessageBus:    MessageBusAddr,
 		EnclaveRegistry: RespondSecretTxAddr,
 		RollupContract:  RollupTxAddr,
 	}

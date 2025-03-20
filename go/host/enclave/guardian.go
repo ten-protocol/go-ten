@@ -550,7 +550,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	}
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, g.shouldSyncContracts(*processedData))
+	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, g.shouldSyncContracts(*processedData), g.shouldSyncAdditionalContracts(*processedData))
 
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
 	err = g.publishSharedSecretResponses(resp.ProducedSecretResponses)
@@ -560,7 +560,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, syncContracts bool) {
+func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, syncContracts bool, syncAdditionalContracts bool) {
 	for idx, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
@@ -587,7 +587,9 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 		}
 	}
 
-	if syncContracts {
+	if syncContracts || syncAdditionalContracts {
+		println("SYNC IMPORTANT CONTRACTS: ", syncContracts)
+		println("SYNC ADDITIONAL CONTRACTS: ", syncAdditionalContracts)
 		go func() {
 			err := g.sl.L1Publisher().ResyncImportantContracts()
 			if err != nil {
@@ -867,4 +869,8 @@ func (g *Guardian) getRollupTxs(processed common.ProcessedL1Data) []*common.L1Ro
 
 func (g *Guardian) shouldSyncContracts(processed common.ProcessedL1Data) bool {
 	return len(processed.GetEvents(common.NetworkContractAddressAddedTx)) > 0
+}
+
+func (g *Guardian) shouldSyncAdditionalContracts(processed common.ProcessedL1Data) bool {
+	return len(processed.GetEvents(common.AdditionalContractAddressAddedTx)) > 0
 }

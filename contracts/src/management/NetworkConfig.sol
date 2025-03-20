@@ -49,6 +49,7 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
     mapping(string => address) public additionalAddresses;
 
     event NetworkContractAddressAdded(string name, address addr);
+    event AdditionalContractAddressAdded(string name, address addr);
 
     function initialize( NetworkConfig.FixedAddresses memory _addresses, address owner) public initializer {
         __Ownable_init(owner);
@@ -75,7 +76,6 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         addr_ = Storage.getAddress(ROLLUP_CONTRACT_SLOT);
     }
 
-    // Add getters for bridge and messenger addresses
     function l1BridgeAddress() public view returns (address addr_) {
         addr_ = Storage.getAddress(L1_BRIDGE_SLOT);
     }
@@ -124,10 +124,10 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
             addressNames.push(name);
         }
         additionalAddresses[name] = addr;
-        emit NetworkContractAddressAdded(name, addr);
+        emit AdditionalContractAddressAdded(name, addr);
     }
 
-
+    // return the names of contracts stored in the additional contracts map
     function getAdditionaContractNames() public view returns (string[] memory) {
         return addressNames;
     }

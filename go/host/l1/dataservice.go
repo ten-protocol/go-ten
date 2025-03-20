@@ -171,15 +171,19 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 		BlockHeader: block,
 		Events:      []common.L1Event{},
 	}
-	addresses := r.contractRegistry.GetContractAddresses()
+	networkConfigAddress := r.contractRegistry.NetworkEnclaveLib().GetContractAddr()
+	allAddresses := r.contractRegistry.GetContractAddresses()
 
-	if err := r.processMessageBusLogs(block, addresses.MessageBus, processed); err != nil {
+	if err := r.processNetworkConfigLogs(block, *networkConfigAddress, processed); err != nil {
 		return nil, err
 	}
-	if err := r.processEnclaveRegistryLogs(block, addresses.EnclaveRegistry, processed); err != nil {
+	if err := r.processMessageBusLogs(block, allAddresses.L1MessageBus, processed); err != nil {
 		return nil, err
 	}
-	if err := r.processRollupLogs(block, addresses.RollupContract, processed); err != nil {
+	if err := r.processEnclaveRegistryLogs(block, allAddresses.EnclaveRegistry, processed); err != nil {
+		return nil, err
+	}
+	if err := r.processRollupLogs(block, allAddresses.RollupContract, processed); err != nil {
 		return nil, err
 	}
 
@@ -254,16 +258,41 @@ func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAd
 			processed.AddEvent(common.SecretRequestTx, txData)
 		case ethadapter.NetworkSecretRespondedID:
 			processed.AddEvent(common.SecretResponseTx, txData)
-		case ethadapter.NetworkContractAddressAddededID:
-			processed.AddEvent(common.NetworkContractAddressAddedTx, txData)
 		default:
 			// there are known events that we don't care about here
-			r.logger.Debug("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
+			r.logger.Trace("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
 		}
 
 		if err != nil {
 			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
 			return fmt.Errorf("error processing log: %w", err)
+		}
+	}
+	return nil
+}
+
+func (r *DataService) processNetworkConfigLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
+	logs, err := r.getContractLogs(block, contractAddr)
+	if err != nil {
+		return err
+	}
+	for _, l := range logs {
+		if len(l.Topics) == 0 {
+			continue
+		}
+		txData, err := r.fetchTxAndReceipt(l.TxHash)
+		if err != nil {
+			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
+			continue
+		}
+		switch l.Topics[0] {
+		case ethadapter.NetworkContractAddressAddedID:
+			processed.AddEvent(common.NetworkContractAddressAddedTx, txData)
+		case ethadapter.AdditionalContractAddressAddedID:
+			processed.AddEvent(common.AdditionalContractAddressAddedTx, txData)
+		default:
+			// there are known events that we don't care about here
+			r.logger.Trace("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
 		}
 	}
 	return nil
@@ -400,7 +429,7 @@ func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData,
 	return nil
 }
 
-// processManagementContractTx handles decoded transaction types
+// processEnclaveRegistrationTx handles decoded transaction types
 func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, processed *common.ProcessedL1Data) error {
 	networkLib := r.contractRegistry.NetworkEnclaveLib()
 	decodedTx, err := networkLib.DecodeTx(txData.Transaction)

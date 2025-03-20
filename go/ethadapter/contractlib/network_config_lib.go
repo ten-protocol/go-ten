@@ -19,7 +19,6 @@ import (
 type NetworkConfigLib interface {
 	GetContractAddr() *gethcommon.Address
 	GetContractAddresses() (*common.NetworkConfigAddresses, error)
-	GetAdditionalContractNames() (ethereum.CallMsg, error)
 	AddAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error)
 	IsMock() bool
 }
@@ -50,19 +49,15 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkConfigAdd
 	}
 
 	return &common.NetworkConfigAddresses{
-		CrossChain:      addresses.CrossChain,
-		MessageBus:      addresses.MessageBus,
-		EnclaveRegistry: addresses.NetworkEnclaveRegistry,
-		RollupContract:  addresses.RollupContract,
+		CrossChain:            addresses.CrossChain,
+		EnclaveRegistry:       addresses.NetworkEnclaveRegistry,
+		RollupContract:        addresses.RollupContract,
+		L1MessageBus:          addresses.MessageBus,
+		L1Bridge:              addresses.L1Bridge,
+		L2Bridge:              addresses.L2Bridge,
+		L1CrossChainMessenger: addresses.L1crossChainMessenger,
+		L2CrossChainMessenger: addresses.L2crossChainMessenger,
 	}, nil
-}
-
-func (nc *networkConfigLibImpl) GetAdditionalContractNames( (ethereum.CallMsg, error) {
-	data, err := nc.contractABI.Pack(GetImportantContractKeysMethod)
-	if err != nil {
-		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
-	}
-	return ethereum.CallMsg{To: &nc.addr, Data: data}, nil
 }
 
 func (nc *networkConfigLibImpl) GetContractAddr() *gethcommon.Address {
@@ -70,7 +65,7 @@ func (nc *networkConfigLibImpl) GetContractAddr() *gethcommon.Address {
 }
 
 func (nc *networkConfigLibImpl) AddAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error) {
-	data, err := nc.contractABI.Pack(ethadapter.AddAddressMethod, name, address)
+	data, err := nc.contractABI.Pack(ethadapter.AddAdditionalAddressMethod, name, address)
 	if err != nil {
 		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
 	}
