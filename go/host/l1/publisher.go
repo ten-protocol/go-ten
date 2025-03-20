@@ -361,46 +361,57 @@ func (p *Publisher) publishTransaction(tx types.TxData) error {
 }
 
 func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData, nonce uint64) error {
-	retries := 0
-	for !p.hostStopper.IsStopping() {
-		if _, err := p.executeTransaction(tx, nonce, retries); err != nil {
-			retries++
-			continue
+	err := retry.DoWithCount(func(retryCount int) error {
+		if p.hostStopper.IsStopping() {
+			return retry.FailFast(errors.New("host is stopping while publishing transaction"))
+		}
+		_, err := p.executeTransaction(tx, nonce, retryCount)
+		if err != nil {
+			p.logger.Info("publish L1 tx failed, retrying...", log.ErrKey, err)
+			return err
 		}
 		return nil
-	}
-	return errors.New("stopped while retrying transaction")
+	}, retry.NewBackoffAndRetryForeverStrategy([]time.Duration{0, 0}, 1*time.Second)) // couple of instant retries then 1sec intervals
+
+	return err
 }
 
 func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error {
 	const maxRetries = 5
-	retries := 0
+	err := retry.DoWithCount(func(retryCount int) error {
+		if p.hostStopper.IsStopping() {
+			return retry.FailFast(errors.New("host is stopping while attempting to publish blob"))
+		}
 
-	for !p.hostStopper.IsStopping() && retries < maxRetries {
-		pricedTx, err := p.executeTransaction(tx, nonce, retries)
+		pricedTx, err := p.executeTransaction(tx, nonce, retryCount)
 		if pricedTx == nil {
-			return fmt.Errorf("could not price transaction")
+			// even if there was an error we expect pricedTx to be populated for common failures
+			return retry.FailFast(fmt.Errorf("could not price transaction"))
 		}
 		if err != nil {
-			if retries >= maxRetries-1 {
+			if retryCount > maxRetries {
 				blobTx, ok := pricedTx.(*types.BlobTx)
 				if !ok {
-					return &MaxRetriesError{
+					return retry.FailFast(&MaxRetriesError{
 						Err:    fmt.Sprintf("unexpected tx type: %T", pricedTx),
 						BlobTx: nil,
-					}
+					})
 				}
-				return &MaxRetriesError{
+				return retry.FailFast(&MaxRetriesError{
 					Err:    err.Error(),
 					BlobTx: blobTx,
-				}
+				})
 			}
-			retries++
-			continue
+
+			p.logger.Info("publish L1 blob tx failed, retrying...", log.ErrKey, err)
+			return err
 		}
+
+		// success, we're done
 		return nil
-	}
-	return errors.New("stopped while retrying transaction")
+	}, retry.NewBackoffAndRetryForeverStrategy([]time.Duration{0, 0}, 1*time.Second)) // couple of instant retries then 1sec intervals
+
+	return err
 }
 
 // executeTransaction handles the common flow of pricing, signing, sending and waiting for receipt. Returns the priced
