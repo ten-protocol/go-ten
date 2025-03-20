@@ -29,10 +29,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`Script: 001_deploy_cross_chain_messenger.ts - address used: ${deployer}`);
 
     // TODO: Remove hardcoded L2 message bus address when properly exposed.
-
     const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-    console.log(`L2 MessageBus = ${networkConfig.L2MessageBusAddress}`);
-    var l2MessageBus = networkConfig.L2MessageBusAddress;
+    console.log(`L2 MessageBus = ${networkConfig.L2MessageBus}`);
+    var l2MessageBus = networkConfig.L2MessageBus;
 
     const messageBusAddress = hre.ethers.getAddress(l2MessageBus);
     console.log(`Deploying l2 cross chain messenger.`)

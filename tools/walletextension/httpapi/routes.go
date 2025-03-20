@@ -366,18 +366,18 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 
 	// Define a struct to represent the response
 	type NetworkConfigResponse struct {
-		NetworkConfigAddress           string            `json:"NetworkConfigContractAddress"`
-		EnclaveRegistryContractAddress string            `json:"EnclaveRegistryContractAddress"`
-		RollupContractAddress          string            `json:"RollupContractAddress"`
-		CrossChainAddress              string            `json:"CrossChainContractAddress"`
-		L1MessageBusAddress            string            `json:"L1MessageBusAddress"`
-		L2MessageBusAddress            string            `json:"L2MessageBusAddress"`
-		L1BridgeAddress                string            `json:"L1BridgeAdress"`
-		L2BridgeAddress                string            `json:"L2BridgeAdress"`
-		L1CrossChainMessengerAddress   string            `json:"L1CrossChainMessengerAddress"`
-		L2CrossChainMessengerAddress   string            `json:"L2CrossChainMessengerAddress"`
-		L1StartHash                    string            `json:"L1StartHash"`
-		AdditionalContracts            map[string]string `json:"AdditionalContracts"`
+		NetworkConfigAddress         string            `json:"NetworkConfigContractAddress"`
+		EnclaveRegistryAddress       string            `json:"EnclaveRegistryContractAddress"`
+		RollupContractAddress        string            `json:"RollupContractAddress"`
+		CrossChainAddress            string            `json:"CrossChainContractAddress"`
+		L1MessageBusAddress          string            `json:"L1MessageBusAddress"`
+		L2MessageBusAddress          string            `json:"L2MessageBusAddress"`
+		L1BridgeAddress              string            `json:"L1BridgeAdress"`
+		L2BridgeAddress              string            `json:"L2BridgeAdress"`
+		L1CrossChainMessengerAddress string            `json:"L1CrossChainMessengerAddress"`
+		L2CrossChainMessengerAddress string            `json:"L2CrossChainMessengerAddress"`
+		L1StartHash                  string            `json:"L1StartHash"`
+		AdditionalContracts          map[string]string `json:"AdditionalContracts"`
 	}
 
 	// Convert the TenNetworkInfo fields to strings
@@ -389,18 +389,18 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 	}
 
 	networkConfigResponse := NetworkConfigResponse{
-		NetworkConfigAddress:           networkConfig.NetworkConfigAddress.Hex(),
-		EnclaveRegistryContractAddress: networkConfig.EnclaveRegistry.Hex(),
-		RollupContractAddress:          networkConfig.RollupContract.Hex(),
-		CrossChainAddress:              networkConfig.CrossChain.Hex(),
-		L1MessageBusAddress:            networkConfig.L1MessageBus.Hex(),
-		L2MessageBusAddress:            networkConfig.L2MessageBus.Hex(),
-		L1BridgeAddress:                networkConfig.L1Bridge.Hex(),
-		L2BridgeAddress:                networkConfig.L2Bridge.Hex(),
-		L1CrossChainMessengerAddress:   networkConfig.L1CrossChainMessenger.Hex(),
-		L2CrossChainMessengerAddress:   networkConfig.L2CrossChainMessenger.Hex(),
-		L1StartHash:                    networkConfig.L1StartHash.Hex(),
-		AdditionalContracts:            additionalContracts,
+		NetworkConfigAddress:         networkConfig.NetworkConfigAddress.Hex(),
+		EnclaveRegistryAddress:       networkConfig.EnclaveRegistry.Hex(),
+		RollupContractAddress:        networkConfig.RollupContract.Hex(),
+		CrossChainAddress:            networkConfig.CrossChain.Hex(),
+		L1MessageBusAddress:          networkConfig.L1MessageBus.Hex(),
+		L2MessageBusAddress:          networkConfig.L2MessageBus.Hex(),
+		L1BridgeAddress:              networkConfig.L1Bridge.Hex(),
+		L2BridgeAddress:              networkConfig.L2Bridge.Hex(),
+		L1CrossChainMessengerAddress: networkConfig.L1CrossChainMessenger.Hex(),
+		L2CrossChainMessengerAddress: networkConfig.L2CrossChainMessenger.Hex(),
+		L1StartHash:                  networkConfig.L1StartHash.Hex(),
+		AdditionalContracts:          additionalContracts,
 	}
 
 	// Marshal the response into JSON format

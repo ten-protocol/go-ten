@@ -330,7 +330,7 @@ func (r *DataService) processRollupLogs(block *types.Header, contractAddr gethco
 func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
 	abi, err := RollupContract.RollupContractMetaData.GetAbi()
 	if err != nil {
-		r.logger.Error("Error getting ManagementContract ABI", log.ErrKey, err)
+		r.logger.Error("Error getting RollupContract ABI", log.ErrKey, err)
 		return err
 	}
 	var event RollupContract.RollupContractRollupAdded

@@ -24,7 +24,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     var messageBusAddress : string = process.env.MESSAGE_BUS_ADDRESS!!
     if (messageBusAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-        messageBusAddress = networkConfig.MessageBusAddress;
+        messageBusAddress = networkConfig.L1MessageBus;
         console.log(`Fallback read of message bus address = ${messageBusAddress}`);
     }
     console.log(`Network Config Contract address ${networkConfigAddress}`);
