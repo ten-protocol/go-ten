@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"math/big"
-	"net/http"
 	"testing"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -123,17 +122,18 @@ func TestBlobEncodingLarge(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestBlobArchiveClient(t *testing.T) {
-	client := NewArchivalHTTPClient(new(http.Client), "https://api.ethernow.xyz")
-	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
-	ctx := context.Background()
-
-	resp, err := client.BeaconBlobSidecars(ctx, 1, vHashes)
-	require.NoError(t, err)
-
-	require.Len(t, resp.Data, 2)
-	require.NotNil(t, client)
-}
+// TODO This provider has been deprecated, need to find a new one
+//func TestBlobArchiveClient(t *testing.T) {
+//	client := NewArchivalHTTPClient(new(http.Client), "https://api.ethernow.xyz")
+//	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
+//	ctx := context.Background()
+//
+//	resp, err := client.BeaconBlobSidecars(ctx, 1, vHashes)
+//	require.NoError(t, err)
+//
+//	require.Len(t, resp.Data, 2)
+//	require.NotNil(t, client)
+//}
 
 func TestBeaconClientFallback(t *testing.T) {
 	indices := []uint64{5, 7, 2}
