@@ -99,12 +99,12 @@ func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.Encr
 
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
 type ChecksumFormattedTenNetworkConfig struct {
-	L1StartHash                     gethcommon.Hash
-	NetworkConfigAddress            gethcommon.AddressEIP55
-	EnclaveRegistryAddress          gethcommon.AddressEIP55
-	RollupContractAddress           gethcommon.AddressEIP55
-	CrossChainAddress               gethcommon.AddressEIP55
-	MessageBusAddress               gethcommon.AddressEIP55
+	L1StartHash          gethcommon.Hash
+	NetworkConfigAddress gethcommon.AddressEIP55
+	//EnclaveRegistryAddress          gethcommon.AddressEIP55
+	//RollupContractAddress           gethcommon.AddressEIP55
+	//CrossChainAddress               gethcommon.AddressEIP55
+	//MessageBusAddress               gethcommon.AddressEIP55
 	L2MessageBusAddress             gethcommon.AddressEIP55
 	TransactionPostProcessorAddress gethcommon.AddressEIP55
 	ImportantContracts              common.NetworkConfigAddresses
@@ -120,11 +120,11 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 	}
 
 	return &ChecksumFormattedTenNetworkConfig{
-		NetworkConfigAddress:            gethcommon.AddressEIP55(info.NetworkConfigAddress),
-		EnclaveRegistryAddress:          gethcommon.AddressEIP55(info.ImportantContracts.EnclaveRegistry),
-		RollupContractAddress:           gethcommon.AddressEIP55(info.ImportantContracts.RollupContract),
-		CrossChainAddress:               gethcommon.AddressEIP55(info.ImportantContracts.CrossChain),
-		MessageBusAddress:               gethcommon.AddressEIP55(info.ImportantContracts.MessageBus),
+		NetworkConfigAddress: gethcommon.AddressEIP55(info.NetworkConfigAddress),
+		//EnclaveRegistryAddress:          gethcommon.AddressEIP55(info.ImportantContracts.EnclaveRegistry),
+		//RollupContractAddress:           gethcommon.AddressEIP55(info.ImportantContracts.RollupContract),
+		//CrossChainAddress:               gethcommon.AddressEIP55(info.ImportantContracts.CrossChain),
+		//MessageBusAddress:               gethcommon.AddressEIP55(info.ImportantContracts.MessageBus),
 		L2MessageBusAddress:             gethcommon.AddressEIP55(info.L2MessageBusAddress),
 		TransactionPostProcessorAddress: gethcommon.AddressEIP55(info.TransactionPostProcessorAddress),
 		L1StartHash:                     info.L1StartHash,

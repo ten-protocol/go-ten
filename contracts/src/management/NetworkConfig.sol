@@ -39,6 +39,7 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
     mapping(string => address) public additionalAddresses;
 
     event NetworkContractAddressAdded(string name, address addr);
+    event NetworkContractAddressUpdated(string name, address addr);
 
     function initialize( NetworkConfig.FixedAddresses memory _addresses, address owner) public initializer {
         __Ownable_init(owner);
@@ -65,12 +66,13 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         addr_ = Storage.getAddress(ROLLUP_CONTRACT_SLOT);
     }
 
-    // stores a new address in the simple address mapping
+    // stores or updates an address in the simple address mapping
     function addAddress(string calldata name, address addr) external onlyOwner {
         require(addr != address(0), "Invalid address");
-        require(additionalAddresses[name] == address(0), "Address name already exists");
+        if (additionalAddresses[name] == address(0)) {
+            addressNames.push(name);
+        }
         additionalAddresses[name] = addr;
-        addressNames.push(name);
         emit NetworkContractAddressAdded(name, addr);
     }
 
