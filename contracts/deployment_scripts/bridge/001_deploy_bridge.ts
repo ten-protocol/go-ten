@@ -12,11 +12,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         deployments, 
         getNamedAccounts
     } = hre;
-    var mgmtContractAddress = process.env.NETWORK_CONFIG_ADDRESS!!
-    if (mgmtContractAddress === undefined) {
+    var networkConfigAddress = process.env.NETWORK_CONFIG_ADDRESS!!
+    if (networkConfigAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-        mgmtContractAddress = networkConfig.NetworkConfigAddress;
-        console.log(`Fallback read of management contract address = ${mgmtContractAddress}`);
+        networkConfigAddress = networkConfig.NetworkConfigAddress;
+        console.log(`Fallback read of network config contract address = ${networkConfigAddress}`);
     }
 
     // L2 address of a prefunded deployer account to be used in smart contracts
@@ -42,17 +42,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     });
 
     // get management contract and write the L1 bridge address to it
-    const mgmtContract = (await hre.ethers.getContractFactory('NetworkConfig')).attach(mgmtContractAddress)
-    const recordL1AddressTx = await mgmtContract.getFunction("addAddress").populateTransaction("L1Bridge", layer1BridgeDeployment.address);
+    const networkConfigContract = (await hre.ethers.getContractFactory('NetworkConfig')).attach(networkConfigAddress)
+    const recordL1AddressTx = await networkConfigContract.getFunction("setL1BridgeAddress").populateTransaction(layer1BridgeDeployment.address);
     const receipt = await hre.companionNetworks.layer1.deployments.rawTx({
         from: accountsL1.deployer,
-        to: mgmtContractAddress,
+        to: networkConfigAddress,
         data: recordL1AddressTx.data,
         log: true,
         waitConfirmations: 1,
     });
     if (receipt.events?.length === 0) {
-        console.log(`Failed to set L1BridgeAddress=${layer1BridgeDeployment.address} on management contract.`);
+        console.log(`Failed to set L1BridgeAddress=${layer1BridgeDeployment.address} on network config contract.`);
     } else {
         console.log(`L1BridgeAddress=${layer1BridgeDeployment.address}`);
     }
@@ -81,16 +81,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     }, "setRemoteBridge", layer2BridgeDeployment.address);
 
-    const recordL2AddressTx = await mgmtContract.getFunction("addAddress").populateTransaction("L2Bridge", layer2BridgeDeployment.address);
+    const recordL2AddressTx = await networkConfigContract.getFunction("setL2BridgeAddress").populateTransaction(layer2BridgeDeployment.address);
     const receipt2 = await hre.companionNetworks.layer1.deployments.rawTx({
         from: accountsL1.deployer,
-        to: mgmtContractAddress,
+        to: networkConfigAddress,
         data: recordL2AddressTx.data,
         log: true,
         waitConfirmations: 1,
     });
     if (receipt2.events?.length === 0) {
-        console.log(`Failed to set L2BridgeAddress=${layer2BridgeDeployment.address} on management contract.`);
+        console.log(`Failed to set L2BridgeAddress=${layer2BridgeDeployment.address} on network config contract.`);
     } else {
         console.log(`L2BridgeAddress=${layer2BridgeDeployment.address}`);
     }

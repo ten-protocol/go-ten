@@ -527,7 +527,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 		return false, fmt.Errorf("could not extract ten transaction for block=%s - %w", block.Hash(), err)
 	}
 
-	rollupTxs, syncContracts := g.getRollupsAndContractAddrTxs(*processedData)
+	rollupTxs := g.getRollupTxs(*processedData)
 
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
 
@@ -550,7 +550,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	}
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, syncContracts)
+	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, g.shouldSyncContracts(*processedData))
 
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
 	err = g.publishSharedSecretResponses(resp.ProducedSecretResponses)
@@ -846,10 +846,8 @@ func (g *Guardian) notifyEnclaveUnavailable(reason string) {
 	go g.sl.Enclaves().NotifyUnavailable(g.enclaveID)
 }
 
-func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data) ([]*common.L1RollupTx, bool) {
+func (g *Guardian) getRollupTxs(processed common.ProcessedL1Data) []*common.L1RollupTx {
 	rollupTxs := make([]*common.L1RollupTx, 0)
-	var syncContracts bool
-	syncContracts = false
 
 	for _, txData := range processed.GetEvents(common.RollupTx) {
 		encodedRlp, err := ethadapter.DecodeBlobs(txData.BlobsWithSignature.ToBlobs())
@@ -864,9 +862,9 @@ func (g *Guardian) getRollupsAndContractAddrTxs(processed common.ProcessedL1Data
 		rollupTxs = append(rollupTxs, rlp)
 	}
 
-	// if any contracts have been updated then we need to resync
-	if len(processed.GetEvents(common.NetworkContractAddressAddedTx)) > 0 {
-		syncContracts = true
-	}
-	return rollupTxs, syncContracts
+	return rollupTxs
+}
+
+func (g *Guardian) shouldSyncContracts(processed common.ProcessedL1Data) bool {
+	return len(processed.GetEvents(common.NetworkContractAddressAddedTx)) > 0
 }

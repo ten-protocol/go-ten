@@ -19,6 +19,7 @@ import (
 type NetworkConfigLib interface {
 	GetContractAddr() *gethcommon.Address
 	GetContractAddresses() (*common.NetworkConfigAddresses, error)
+	GetAdditionalContractNames() (ethereum.CallMsg, error)
 	AddAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error)
 	IsMock() bool
 }
@@ -54,6 +55,14 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkConfigAdd
 		EnclaveRegistry: addresses.NetworkEnclaveRegistry,
 		RollupContract:  addresses.RollupContract,
 	}, nil
+}
+
+func (nc *networkConfigLibImpl) GetAdditionalContractNames( (ethereum.CallMsg, error) {
+	data, err := nc.contractABI.Pack(GetImportantContractKeysMethod)
+	if err != nil {
+		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)
+	}
+	return ethereum.CallMsg{To: &nc.addr, Data: data}, nil
 }
 
 func (nc *networkConfigLibImpl) GetContractAddr() *gethcommon.Address {

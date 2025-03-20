@@ -14,12 +14,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         getNamedAccounts,
         companionNetworks,
     } = hre;
-    // Use the contract addresses from the management contract deployment.
-    var mgmtContractAddress = process.env.NETWORK_CONFIG_ADDRESS!!
-    if (mgmtContractAddress === undefined) {
+    // Use the contract addresses from the network config contract deployment.
+    var networkConfigAddress = process.env.NETWORK_CONFIG_ADDRESS!!
+    if (networkConfigAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-        mgmtContractAddress = networkConfig.NetworkConfigAddress;
-        console.log(`Fallback read of management contract address = ${mgmtContractAddress}`);
+        networkConfigAddress = networkConfig.NetworkConfigAddress;
+        console.log(`Fallback read of management contract address = ${networkConfigAddress}`);
     }
 
     // Get the prefunded L2 deployer account to use for deploying.
@@ -51,12 +51,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         }
     });
     console.log(`Setting L2 Cross chain messenger`)
-    // get L1 management contract and write the cross chain messenger address to it
-    const mgmtContract = (await hre.ethers.getContractFactory('NetworkConfig')).attach(mgmtContractAddress);
-    const tx = await mgmtContract.getFunction("addAddress").populateTransaction("L2CrossChainMessenger", crossChainDeployment.address);
+    // get L1 network config contract and write the cross chain messenger address to it
+    const networkConfigContract = (await hre.ethers.getContractFactory('NetworkConfig')).attach(networkConfigAddress);
+    const tx = await networkConfigContract.getFunction("setL2CrossChainMessengerAddress").populateTransaction(crossChainDeployment.address);
     const receipt = await companionNetworks.layer1.deployments.rawTx({
         from: l1Accounts.deployer,
-        to: mgmtContractAddress,
+        to: networkConfigAddress,
         data: tx.data,
         log: true,
         waitConfirmations: 1,
