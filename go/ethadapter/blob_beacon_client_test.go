@@ -122,8 +122,8 @@ func TestBlobEncodingLarge(t *testing.T) {
 	require.Error(t, err)
 }
 
+// TODO This provider has been deprecated, need to find a new one
 //func TestBlobArchiveClient(t *testing.T) {
-//	// TODO This provider has been deprecated, need to find a new one
 //	client := NewArchivalHTTPClient(new(http.Client), "https://api.ethernow.xyz")
 //	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
 //	ctx := context.Background()
