@@ -407,7 +407,7 @@ func (s *Simulation) deployTenERC20s() {
 			if err != nil {
 				panic(err)
 			}
-			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), cfg.L2MessageBusAddress)
+			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), cfg.L2MessageBus)
 
 			fmt.Printf("Deploy contract from: %s\n", owner.Address().Hex())
 			deployContractTxData := types.DynamicFeeTx{

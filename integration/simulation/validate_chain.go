@@ -601,7 +601,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		panic(err)
 	}
 
-	msgBusAddr := cfg.L2MessageBusAddress
+	msgBusAddr := cfg.L2MessageBus
 
 	for _, tx := range txInjector.TxTracker.WithdrawalL2Transactions {
 		sender := getSender(tx)

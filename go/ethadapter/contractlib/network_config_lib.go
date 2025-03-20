@@ -19,7 +19,7 @@ import (
 type NetworkConfigLib interface {
 	GetContractAddr() *gethcommon.Address
 	GetContractAddresses() (*common.NetworkConfigAddresses, error)
-	AddAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error)
+	AddAdditionalAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error)
 	IsMock() bool
 }
 
@@ -64,7 +64,7 @@ func (nc *networkConfigLibImpl) GetContractAddr() *gethcommon.Address {
 	return &nc.addr
 }
 
-func (nc *networkConfigLibImpl) AddAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error) {
+func (nc *networkConfigLibImpl) AddAdditionalAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error) {
 	data, err := nc.contractABI.Pack(ethadapter.AddAdditionalAddressMethod, name, address)
 	if err != nil {
 		return ethereum.CallMsg{}, fmt.Errorf("could not pack the call data. Cause: %w", err)

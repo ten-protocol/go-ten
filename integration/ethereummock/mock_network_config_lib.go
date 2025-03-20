@@ -27,7 +27,7 @@ func (m *mockNetworkConfigLib) GetContractAddresses() (*common.NetworkConfigAddr
 	return addresses, nil
 }
 
-func (m *mockNetworkConfigLib) AddAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error) {
+func (m *mockNetworkConfigLib) AddAdditionalAddress(name string, address gethcommon.Address) (ethereum.CallMsg, error) {
 	panic("no-op")
 }
 

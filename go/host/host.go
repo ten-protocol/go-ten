@@ -280,7 +280,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		L1CrossChainMessenger:           importantContractAddresses.L1CrossChainMessenger,
 		L2CrossChainMessenger:           importantContractAddresses.L2CrossChainMessenger,
 		L1StartHash:                     h.config.L1StartHash,
-		L2MessageBusAddress:             *h.l2MessageBusAddress,
+		L2MessageBus:                    *h.l2MessageBusAddress,
 		TransactionPostProcessorAddress: h.transactionPostProcessorAddress,
 		PublicSystemContracts:           h.publicSystemContracts,
 		AdditionalContracts:             importantContractAddresses.AdditionalContracts,

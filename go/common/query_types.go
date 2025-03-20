@@ -120,7 +120,7 @@ type TenNetworkInfo struct {
 	L2Bridge              L2BridgeAddress
 	L1CrossChainMessenger L1CrossChainMessengerAddress
 	L2CrossChainMessenger L2CrossChainMessengerAddress
-	L2MessageBusAddress   L2MessageBusAddress
+	L2MessageBus          L2MessageBusAddress
 
 	TransactionPostProcessorAddress common.Address
 	L1StartHash                     common.Hash

@@ -183,7 +183,7 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 		L2Bridge:                        cfg.L2Bridge,
 		L1CrossChainMessenger:           cfg.L1CrossChainMessenger,
 		L2CrossChainMessenger:           cfg.L2CrossChainMessenger,
-		L2MessageBusAddress:             cfg.L2MessageBusAddress,
+		L2MessageBus:                    cfg.L2MessageBusAddress,
 		TransactionPostProcessorAddress: gethcommon.Address(cfg.TransactionPostProcessorAddress),
 		L1StartHash:                     cfg.L1StartHash,
 		PublicSystemContracts:           publicSystemContracts,

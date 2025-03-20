@@ -53,7 +53,7 @@ func (s *setImportantContract) Run(ctx context.Context, network networktest.Netw
 		return ctx, errors.Wrap(err, "failed to get L1 client")
 	}
 
-	msg, err := networkContract.AddAddress(s.contractName, s.contractAddress)
+	msg, err := networkContract.AddAdditionalAddress(s.contractName, s.contractAddress)
 	if err != nil {
 		return ctx, errors.Wrap(err, "failed to create SetImportantContractMsg")
 	}
@@ -109,11 +109,11 @@ func (s *setImportantContract) Verify(_ context.Context, network networktest.Net
 		return errors.Wrap(err, "failed to get network config")
 	}
 
-	if len(networkCfg.ImportantContracts.AdditionalContracts) == 0 {
+	if len(networkCfg.AdditionalContracts) == 0 {
 		return errors.New("no important contracts set")
 	}
 	found := false
-	for _, contract := range networkCfg.ImportantContracts.AdditionalContracts {
+	for _, contract := range networkCfg.AdditionalContracts {
 		if contract.Name == s.contractName && contract.Addr == s.contractAddress {
 			found = true
 			break
@@ -138,10 +138,10 @@ func VerifyL2MessageBusAddressAvailable() networktest.Action {
 		}
 
 		var _emptyAddress common.Address
-		if networkCfg.L2MessageBusAddress == _emptyAddress {
-			return errors.New("L2MessageBusAddress not set")
+		if networkCfg.L2MessageBus == _emptyAddress {
+			return errors.New("L2MessageBus not set")
 		}
-		fmt.Println("L2MessageBusAddress: ", networkCfg.L2MessageBusAddress)
+		fmt.Println("L2MessageBusAddress: ", networkCfg.L2MessageBus)
 		return nil
 	})
 }

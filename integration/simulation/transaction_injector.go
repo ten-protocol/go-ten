@@ -422,7 +422,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 	if err != nil {
 		panic(err)
 	}
-	msgBusAddr := cfg.L2MessageBusAddress
+	msgBusAddr := cfg.L2MessageBus
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
