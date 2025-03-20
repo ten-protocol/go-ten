@@ -289,7 +289,7 @@ func (s *Simulation) deployPublicCallbacksTest() {
 	}
 	rpcClient := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
 	var cfg *common.TenNetworkInfo
-	for cfg == nil || cfg.TransactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
+	for cfg == nil || cfg.TransactionsPostProcessor.Cmp(gethcommon.Address{}) == 0 {
 		cfg, err = rpcClient.GetConfig()
 		if err != nil {
 			s.TxInjector.logger.Info("failed to get config", log.ErrKey, err)
@@ -337,7 +337,7 @@ func (s *Simulation) deployTenZen() {
 	// Node one, because random client might yield the no p2p node, which breaks the timings
 	rpcClient := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
 	var cfg *common.TenNetworkInfo
-	for cfg == nil || cfg.TransactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
+	for cfg == nil || cfg.TransactionsPostProcessor.Cmp(gethcommon.Address{}) == 0 {
 		cfg, err = rpcClient.GetConfig()
 		if err != nil {
 			s.TxInjector.logger.Info("failed to get config", log.ErrKey, err)
@@ -366,7 +366,7 @@ func (s *Simulation) deployTenZen() {
 	auth.Context = context.Background()
 	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
 
-	zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, ownerRpc, cfg.TransactionPostProcessorAddress) //, "ZenBase", "ZEN")
+	zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, ownerRpc, cfg.TransactionsPostProcessor) //, "ZenBase", "ZEN")
 	if err != nil {
 		panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
 	}
@@ -375,7 +375,7 @@ func (s *Simulation) deployTenZen() {
 	}
 	s.ZenBaseAddress = zenBaseAddress
 
-	transactionPostProcessor, err := TransactionPostProcessor.NewTransactionPostProcessor(cfg.TransactionPostProcessorAddress, ownerRpc)
+	transactionPostProcessor, err := TransactionPostProcessor.NewTransactionPostProcessor(cfg.TransactionsPostProcessor, ownerRpc)
 	if err != nil {
 		panic(fmt.Errorf("failed to deploy transactions analyzer contract: %w", err))
 	}

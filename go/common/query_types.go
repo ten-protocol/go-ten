@@ -111,21 +111,20 @@ func (p *QueryPagination) UnmarshalJSON(data []byte) error {
 }
 
 type TenNetworkInfo struct {
-	NetworkConfigAddress  NetworkConfigAddress
-	EnclaveRegistry       EnclaveRegistryAddress
-	CrossChain            CrossChainAddress
-	RollupContract        RollupAddress
-	L1MessageBus          L1MessageBusAddress
-	L1Bridge              L1BridgeAddress
-	L2Bridge              L2BridgeAddress
-	L1CrossChainMessenger L1CrossChainMessengerAddress
-	L2CrossChainMessenger L2CrossChainMessengerAddress
-	L2MessageBus          L2MessageBusAddress
-
-	TransactionPostProcessorAddress common.Address
-	L1StartHash                     common.Hash
-	PublicSystemContracts           map[string]common.Address
-	AdditionalContracts             []*NamedAddress
+	NetworkConfigAddress      NetworkConfigAddress
+	EnclaveRegistry           EnclaveRegistryAddress
+	CrossChain                CrossChainAddress
+	RollupContract            RollupAddress
+	L1MessageBus              L1MessageBusAddress
+	L2MessageBus              L2MessageBusAddress
+	L1Bridge                  L1BridgeAddress
+	L2Bridge                  L2BridgeAddress
+	L1CrossChainMessenger     L1CrossChainMessengerAddress
+	L2CrossChainMessenger     L2CrossChainMessengerAddress
+	TransactionsPostProcessor TransactionPostProcessorAddress
+	L1StartHash               common.Hash
+	PublicSystemContracts     map[string]common.Address
+	AdditionalContracts       []*NamedAddress
 }
 
 // NetworkConfigAddresses return type of the addresses function on the NetworkConfig contract

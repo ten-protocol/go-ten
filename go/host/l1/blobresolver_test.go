@@ -20,8 +20,8 @@ const (
 func TestBlobResolver(t *testing.T) {
 	t.Skipf("TODO Test needs updating with new params that work")
 	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://docs-demo.quiknode.pro/")
-	//fallback := ethadapter.NewArchivalHTTPClient(new(http.Client), "https://eth-beacon-chain.drpc.org/rest/")
-	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient), nil)
+	fallback := ethadapter.NewArchivalHTTPClient(new(http.Client), "https://api.ethernow.xyz")
+	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, fallback), nil)
 
 	// this will convert to slot 5 which will return 404 from the quicknode api, causing the fallback to be used
 	b := &types.Header{

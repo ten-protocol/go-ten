@@ -269,21 +269,20 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 	importantContractAddresses := h.services.L1Publisher().GetImportantContracts()
 
 	return &common.TenNetworkInfo{
-		NetworkConfigAddress: h.config.NetworkConfigAddress,
-
-		EnclaveRegistry:                 importantContractAddresses.EnclaveRegistry,
-		CrossChain:                      importantContractAddresses.CrossChain,
-		RollupContract:                  importantContractAddresses.RollupContract,
-		L1MessageBus:                    importantContractAddresses.L1MessageBus,
-		L1Bridge:                        importantContractAddresses.L1Bridge,
-		L2Bridge:                        importantContractAddresses.L2Bridge,
-		L1CrossChainMessenger:           importantContractAddresses.L1CrossChainMessenger,
-		L2CrossChainMessenger:           importantContractAddresses.L2CrossChainMessenger,
-		L1StartHash:                     h.config.L1StartHash,
-		L2MessageBus:                    *h.l2MessageBusAddress,
-		TransactionPostProcessorAddress: h.transactionPostProcessorAddress,
-		PublicSystemContracts:           h.publicSystemContracts,
-		AdditionalContracts:             importantContractAddresses.AdditionalContracts,
+		NetworkConfigAddress:      h.config.NetworkConfigAddress,
+		EnclaveRegistry:           importantContractAddresses.EnclaveRegistry,
+		CrossChain:                importantContractAddresses.CrossChain,
+		RollupContract:            importantContractAddresses.RollupContract,
+		L1MessageBus:              importantContractAddresses.L1MessageBus,
+		L1Bridge:                  importantContractAddresses.L1Bridge,
+		L2Bridge:                  importantContractAddresses.L2Bridge,
+		L1CrossChainMessenger:     importantContractAddresses.L1CrossChainMessenger,
+		L2CrossChainMessenger:     importantContractAddresses.L2CrossChainMessenger,
+		L1StartHash:               h.config.L1StartHash,
+		L2MessageBus:              *h.l2MessageBusAddress,
+		TransactionsPostProcessor: h.transactionPostProcessorAddress,
+		PublicSystemContracts:     h.publicSystemContracts,
+		AdditionalContracts:       importantContractAddresses.AdditionalContracts,
 	}, nil
 }
 

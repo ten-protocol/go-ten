@@ -249,7 +249,9 @@ func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAd
 		}
 		switch l.Topics[0] {
 		case ethadapter.NetworkSecretInitializedEventID:
-			err = r.processEnclaveRegistrationTx(txData, processed)
+			if err = r.processEnclaveRegistrationTx(txData, processed); err == nil {
+				err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
+			}
 		case ethadapter.SequencerEnclaveGrantedEventID:
 			err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
 		case ethadapter.SequencerEnclaveRevokedEventID:

@@ -48,9 +48,10 @@ type (
 	L1CrossChainMessengerAddress = common.Address
 
 	// L2 addresses
-	L2BridgeAddress              = common.Address
-	L2CrossChainMessengerAddress = common.Address
-	L2MessageBusAddress          = common.Address
+	L2BridgeAddress                 = common.Address
+	L2CrossChainMessengerAddress    = common.Address
+	L2MessageBusAddress             = common.Address
+	TransactionPostProcessorAddress = common.Address
 
 	// Local Obscuro aliases
 	L2BatchHash              = common.Hash

@@ -55,8 +55,8 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkConfigAdd
 		L1MessageBus:          addresses.MessageBus,
 		L1Bridge:              addresses.L1Bridge,
 		L2Bridge:              addresses.L2Bridge,
-		L1CrossChainMessenger: addresses.L1crossChainMessenger,
-		L2CrossChainMessenger: addresses.L2crossChainMessenger,
+		L1CrossChainMessenger: addresses.L1CrossChainMessenger,
+		L2CrossChainMessenger: addresses.L2CrossChainMessenger,
 	}, nil
 }
 

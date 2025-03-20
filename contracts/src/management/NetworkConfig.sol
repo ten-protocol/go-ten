@@ -27,8 +27,8 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         address rollupContract;
         address l1Bridge;
         address l2Bridge;
-        address l1crossChainMessenger;
-        address l2crossChainMessenger;
+        address l1CrossChainMessenger;
+        address l2CrossChainMessenger;
         NamedAddress[] additionalContracts;  // Dynamic address storage
     }
 
@@ -149,8 +149,8 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
             rollupContract: rollupContractAddress(),
             l1Bridge: l1BridgeAddress(),
             l2Bridge: l2BridgeAddress(),
-            l1crossChainMessenger: l1CrossChainMessengerAddress(),
-            l2crossChainMessenger: l2CrossChainMessengerAddress(),
+            l1CrossChainMessenger: l1CrossChainMessengerAddress(),
+            l2CrossChainMessenger: l2CrossChainMessengerAddress(),
             additionalContracts: additional
         });
     }

@@ -175,21 +175,20 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 	tenNetworkInfo := &common.TenNetworkInfo{
 		NetworkConfigAddress: cfg.NetworkConfigAddress,
 
-		EnclaveRegistry:                 cfg.EnclaveRegistry,
-		CrossChain:                      cfg.CrossChain,
-		RollupContract:                  cfg.RollupContract,
-		L1MessageBus:                    cfg.L1MessageBus,
-		L1Bridge:                        cfg.L1Bridge,
-		L2Bridge:                        cfg.L2Bridge,
-		L1CrossChainMessenger:           cfg.L1CrossChainMessenger,
-		L2CrossChainMessenger:           cfg.L2CrossChainMessenger,
-		L2MessageBus:                    cfg.L2MessageBusAddress,
-		TransactionPostProcessorAddress: gethcommon.Address(cfg.TransactionPostProcessorAddress),
-		L1StartHash:                     cfg.L1StartHash,
-		PublicSystemContracts:           publicSystemContracts,
-		AdditionalContracts:             cfg.AdditionalContracts,
+		EnclaveRegistry:           cfg.EnclaveRegistry,
+		CrossChain:                cfg.CrossChain,
+		RollupContract:            cfg.RollupContract,
+		L1MessageBus:              cfg.L1MessageBus,
+		L1Bridge:                  cfg.L1Bridge,
+		L2Bridge:                  cfg.L2Bridge,
+		L1CrossChainMessenger:     cfg.L1CrossChainMessenger,
+		L2CrossChainMessenger:     cfg.L2CrossChainMessenger,
+		L2MessageBus:              cfg.L2MessageBus,
+		TransactionsPostProcessor: cfg.TransactionsPostProcessor,
+		L1StartHash:               cfg.L1StartHash,
+		PublicSystemContracts:     publicSystemContracts,
+		AdditionalContracts:       cfg.AdditionalContracts,
 	}
-
 	*result.(*common.TenNetworkInfo) = *tenNetworkInfo
 	return nil
 }
