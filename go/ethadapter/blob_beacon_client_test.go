@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	vHash1 = "0x012b7a6a22399aa9eecd8eda6ec658679e81be21af6ff296116aee205e2218f2"
-	vHash2 = "0x012374e04a848591844b75bc2f500318cf640552379b5e3a1a77bb828620690e"
+// vHash1 = "0x012b7a6a22399aa9eecd8eda6ec658679e81be21af6ff296116aee205e2218f2"
+// vHash2 = "0x012374e04a848591844b75bc2f500318cf640552379b5e3a1a77bb828620690e"
 )
 
 func TestBlobsFromSidecars(t *testing.T) {
@@ -122,8 +122,8 @@ func TestBlobEncodingLarge(t *testing.T) {
 	require.Error(t, err)
 }
 
-// TODO This provider has been deprecated, need to find a new one
 //func TestBlobArchiveClient(t *testing.T) {
+//	// TODO This provider has been deprecated, need to find a new one
 //	client := NewArchivalHTTPClient(new(http.Client), "https://api.ethernow.xyz")
 //	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
 //	ctx := context.Background()
