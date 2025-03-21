@@ -218,7 +218,7 @@ func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
-	return p.ethClient.FetchLastBatchSeqNo(*p.contractRegistry.RollupLib().GetContractAddr())
+	return p.ethClient.FetchLastBatchSeqNo(*p.contractRegistry.DARegistryLib().GetContractAddr())
 }
 
 func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
@@ -255,7 +255,7 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, extRollup.Header.Hash(), "batches_len", len(extRollup.BatchPayloads))
 	}
 
-	rollupBlobTx, err := p.contractRegistry.RollupLib().PopulateAddRollup(tx, result.Blobs, result.Signature)
+	rollupBlobTx, err := p.contractRegistry.DARegistryLib().PopulateAddRollup(tx, result.Blobs, result.Signature)
 	if err != nil {
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, extRollup.Hash(), log.ErrKey, err)
 	}

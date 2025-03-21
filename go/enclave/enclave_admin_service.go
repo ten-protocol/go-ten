@@ -80,7 +80,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 
 	rollupCompression := components.NewRollupCompression(registry, batchExecutor, daEncryptionService, dataCompressionService, storage, gethEncodingService, chainConfig, config, logger)
 	rollupProducer := components.NewRollupProducer(enclaveKeyService.EnclaveID(), storage, registry, logger)
-	rollupConsumer := components.NewRollupConsumer(contractRegistry.RollupLib(), registry, rollupCompression, storage, logger, sigVerifier)
+	rollupConsumer := components.NewRollupConsumer(contractRegistry.DARegistryLib(), registry, rollupCompression, storage, logger, sigVerifier)
 
 	seqSettings := nodetype.SequencerSettings{
 		MaxBatchSize:      config.MaxBatchSize,

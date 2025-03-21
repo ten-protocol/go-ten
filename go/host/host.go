@@ -272,7 +272,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		NetworkConfig:             h.config.NetworkConfigAddress,
 		EnclaveRegistry:           importantContractAddresses.EnclaveRegistry,
 		CrossChain:                importantContractAddresses.CrossChain,
-		RollupContract:            importantContractAddresses.RollupContract,
+		DataAvailabilityRegistry:  importantContractAddresses.DataAvailabilityRegistry,
 		L1MessageBus:              importantContractAddresses.L1MessageBus,
 		L1Bridge:                  importantContractAddresses.L1Bridge,
 		L2Bridge:                  importantContractAddresses.L2Bridge,

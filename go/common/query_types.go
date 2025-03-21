@@ -114,7 +114,7 @@ type TenNetworkInfo struct {
 	NetworkConfig             NetworkConfigAddress
 	EnclaveRegistry           EnclaveRegistryAddress
 	CrossChain                CrossChainAddress
-	RollupContract            RollupAddress
+	DataAvailabilityRegistry  DARegistryAddress
 	L1MessageBus              L1MessageBusAddress
 	L2MessageBus              L2MessageBusAddress
 	L1Bridge                  L1BridgeAddress
@@ -129,15 +129,15 @@ type TenNetworkInfo struct {
 
 // NetworkConfigAddresses return type of the addresses function on the NetworkConfig contract
 type NetworkConfigAddresses struct {
-	EnclaveRegistry       EnclaveRegistryAddress
-	CrossChain            CrossChainAddress
-	RollupContract        RollupAddress
-	L1MessageBus          L1MessageBusAddress
-	L1Bridge              L1BridgeAddress
-	L2Bridge              L2BridgeAddress
-	L1CrossChainMessenger L1CrossChainMessengerAddress
-	L2CrossChainMessenger L2CrossChainMessengerAddress
-	AdditionalContracts   []*NamedAddress // Dynamically named additional contracts
+	EnclaveRegistry          EnclaveRegistryAddress
+	CrossChain               CrossChainAddress
+	DataAvailabilityRegistry DARegistryAddress
+	L1MessageBus             L1MessageBusAddress
+	L1Bridge                 L1BridgeAddress
+	L2Bridge                 L2BridgeAddress
+	L1CrossChainMessenger    L1CrossChainMessengerAddress
+	L2CrossChainMessenger    L2CrossChainMessengerAddress
+	AdditionalContracts      []*NamedAddress // Dynamically named additional contracts
 }
 
 // NamedAddress matches the Solidity struct

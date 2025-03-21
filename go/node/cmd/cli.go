@@ -187,7 +187,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	tenCfg.Network.L1.ChainID = int64(cliCfg.l1ChainID)
 	tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract = gethcommon.HexToAddress(cliCfg.enclaveRegistryAddr)
 	tenCfg.Network.L1.L1Contracts.CrossChainContract = gethcommon.HexToAddress(cliCfg.crossChainAddr)
-	tenCfg.Network.L1.L1Contracts.RollupContract = gethcommon.HexToAddress(cliCfg.rollupAddr)
+	tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry = gethcommon.HexToAddress(cliCfg.rollupAddr)
 	tenCfg.Network.L1.L1Contracts.NetworkConfigContract = gethcommon.HexToAddress(cliCfg.networkConfigAddr)
 	tenCfg.Network.L1.L1Contracts.MessageBusContract = gethcommon.HexToAddress(cliCfg.messageBusContractAddr)
 	tenCfg.Network.L1.StartHash = gethcommon.HexToHash(cliCfg.l1Start)

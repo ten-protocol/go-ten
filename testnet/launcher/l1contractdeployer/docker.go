@@ -138,12 +138,12 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	l1BlockHash := readValue("L1Start", lines[5])
 
 	return &node.NetworkConfig{
-		EnclaveRegistryAddress: enclaveRegistryAddr,
-		RollupContractAddress:  rollupAddr,
-		CrossChainAddress:      crossChainAddr,
-		NetworkConfigAddress:   networkConfigAddr,
-		MessageBusAddress:      messageBusAddr,
-		L1StartHash:            l1BlockHash,
+		EnclaveRegistryAddress:          enclaveRegistryAddr,
+		DataAvailabilityRegistryAddress: rollupAddr,
+		CrossChainAddress:               crossChainAddr,
+		NetworkConfigAddress:            networkConfigAddr,
+		MessageBusAddress:               messageBusAddr,
+		L1StartHash:                     l1BlockHash,
 	}, nil
 }
 

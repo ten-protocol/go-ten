@@ -366,18 +366,18 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 
 	// Define a struct to represent the response
 	type NetworkConfigResponse struct {
-		NetworkConfigAddress         string            `json:"NetworkConfigContractAddress"`
-		EnclaveRegistryAddress       string            `json:"EnclaveRegistryContractAddress"`
-		RollupContractAddress        string            `json:"RollupContractAddress"`
-		CrossChainAddress            string            `json:"CrossChainContractAddress"`
-		L1MessageBusAddress          string            `json:"L1MessageBusAddress"`
-		L2MessageBusAddress          string            `json:"L2MessageBusAddress"`
-		L1BridgeAddress              string            `json:"L1BridgeAdress"`
-		L2BridgeAddress              string            `json:"L2BridgeAdress"`
-		L1CrossChainMessengerAddress string            `json:"L1CrossChainMessengerAddress"`
-		L2CrossChainMessengerAddress string            `json:"L2CrossChainMessengerAddress"`
-		L1StartHash                  string            `json:"L1StartHash"`
-		AdditionalContracts          map[string]string `json:"AdditionalContracts"`
+		NetworkConfigAddress            string            `json:"NetworkConfigContractAddress"`
+		EnclaveRegistryAddress          string            `json:"EnclaveRegistryContractAddress"`
+		DataAvailabilityRegistryAddress string            `json:"DataAvailabilityRegistryAddress"`
+		CrossChainAddress               string            `json:"CrossChainContractAddress"`
+		L1MessageBusAddress             string            `json:"L1MessageBusAddress"`
+		L2MessageBusAddress             string            `json:"L2MessageBusAddress"`
+		L1BridgeAddress                 string            `json:"L1BridgeAdress"`
+		L2BridgeAddress                 string            `json:"L2BridgeAdress"`
+		L1CrossChainMessengerAddress    string            `json:"L1CrossChainMessengerAddress"`
+		L2CrossChainMessengerAddress    string            `json:"L2CrossChainMessengerAddress"`
+		L1StartHash                     string            `json:"L1StartHash"`
+		AdditionalContracts             map[string]string `json:"AdditionalContracts"`
 	}
 
 	// Convert the TenNetworkInfo fields to strings

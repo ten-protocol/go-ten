@@ -83,24 +83,24 @@ func createInMemTenNode(
 	contracts := contractRegistryLib.GetContractAddresses()
 
 	enclaveConfig := &enclaveconfig.EnclaveConfig{
-		NodeID:                    hostConfig.ID,
-		L1ChainID:                 integration.EthereumChainID,
-		TenChainID:                integration.TenChainID,
-		WillAttest:                false,
-		UseInMemoryDB:             true,
-		MinGasPrice:               gethcommon.Big1,
-		MessageBusAddress:         l1BusAddress,
-		RollupContractAddress:     contracts.RollupContract,
-		EnclaveRegistryAddress:    contracts.EnclaveRegistry,
-		SystemContractOwner:       gethcommon.BigToAddress(big.NewInt(1)), // Irrelevant for in-mem nodes
-		MaxBatchSize:              1024 * 55,
-		MaxRollupSize:             1024 * 128,
-		BaseFee:                   big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
-		GasLocalExecutionCapFlag:  params.MaxGasLimit / 2,
-		GasBatchExecutionLimit:    30_000_000,
-		RPCTimeout:                5 * time.Second,
-		StoreExecutedTransactions: true,
-		DecompressionLimit:        1024 * 1024 * 2,
+		NodeID:                          hostConfig.ID,
+		L1ChainID:                       integration.EthereumChainID,
+		TenChainID:                      integration.TenChainID,
+		WillAttest:                      false,
+		UseInMemoryDB:                   true,
+		MinGasPrice:                     gethcommon.Big1,
+		MessageBusAddress:               l1BusAddress,
+		DataAvailabilityRegistryAddress: contracts.DataAvailabilityRegistry,
+		EnclaveRegistryAddress:          contracts.EnclaveRegistry,
+		SystemContractOwner:             gethcommon.BigToAddress(big.NewInt(1)), // Irrelevant for in-mem nodes
+		MaxBatchSize:                    1024 * 55,
+		MaxRollupSize:                   1024 * 128,
+		BaseFee:                         big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
+		GasLocalExecutionCapFlag:        params.MaxGasLimit / 2,
+		GasBatchExecutionLimit:          30_000_000,
+		RPCTimeout:                      5 * time.Second,
+		StoreExecutedTransactions:       true,
+		DecompressionLimit:              1024 * 1024 * 2,
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)

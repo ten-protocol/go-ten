@@ -112,7 +112,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Network.Sequencer.P2PAddress = fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset)
 		tenCfg.Network.L1.BlockTime = simParams.AvgBlockDuration
 		tenCfg.Network.L1.L1Contracts.NetworkConfigContract = simParams.L1TenData.NetworkConfigAddress
-		tenCfg.Network.L1.L1Contracts.RollupContract = simParams.L1TenData.RollupContractAddress
+		tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry = simParams.L1TenData.DataAvailabilityRegistryAddress
 		tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract = simParams.L1TenData.EnclaveRegistryAddress
 		tenCfg.Network.L1.L1Contracts.MessageBusContract = simParams.L1TenData.MessageBusAddr
 		tenCfg.Network.Gas.PaymentAddress = simParams.Wallets.L2FeesWallet.Address()
@@ -182,7 +182,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
 	}
 
-	err = PermissionRollupContractStateRoot(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.CrossChain, addresses.RollupContract)
+	err = PermissionDataAvailabilityRegistryStateRoot(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.CrossChain, addresses.DataAvailabilityRegistry)
 	if err != nil {
 		return nil, fmt.Errorf("unable to permission rollup contract on merkle messagebus: %w", err)
 	}

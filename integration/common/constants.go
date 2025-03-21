@@ -64,28 +64,28 @@ type ERC20Mapping struct {
 // DefaultEnclaveConfig returns an EnclaveConfig with default values.
 func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
 	return &enclaveconfig.EnclaveConfig{
-		NodeID:                 "",
-		HostAddress:            "127.0.0.1:10000",
-		RPCAddress:             "127.0.0.1:11000",
-		L1ChainID:              1337,
-		TenChainID:             443,
-		WillAttest:             false, // todo (config) - attestation should be on by default before production release
-		NetworkConfigAddress:   gethcommon.BytesToAddress([]byte("")),
-		RollupContractAddress:  gethcommon.BytesToAddress([]byte("")),
-		EnclaveRegistryAddress: gethcommon.BytesToAddress([]byte("")),
-		LogLevel:               int(gethlog.LvlInfo),
-		LogPath:                log.SysOut,
-		UseInMemoryDB:          true, // todo (config) - persistence should be on by default before production release
-		EdgelessDBHost:         "",
-		SqliteDBPath:           "",
-		ProfilerEnabled:        false,
-		MinGasPrice:            big.NewInt(params.InitialBaseFee),
-		TenGenesis:             "",
-		DebugNamespaceEnabled:  false,
-		MaxBatchSize:           1024 * 55,
-		MaxRollupSize:          1024 * 128,
-		GasPaymentAddress:      gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
-		BaseFee:                new(big.Int).SetUint64(params.InitialBaseFee),
+		NodeID:                          "",
+		HostAddress:                     "127.0.0.1:10000",
+		RPCAddress:                      "127.0.0.1:11000",
+		L1ChainID:                       1337,
+		TenChainID:                      443,
+		WillAttest:                      false, // todo (config) - attestation should be on by default before production release
+		NetworkConfigAddress:            gethcommon.BytesToAddress([]byte("")),
+		DataAvailabilityRegistryAddress: gethcommon.BytesToAddress([]byte("")),
+		EnclaveRegistryAddress:          gethcommon.BytesToAddress([]byte("")),
+		LogLevel:                        int(gethlog.LvlInfo),
+		LogPath:                         log.SysOut,
+		UseInMemoryDB:                   true, // todo (config) - persistence should be on by default before production release
+		EdgelessDBHost:                  "",
+		SqliteDBPath:                    "",
+		ProfilerEnabled:                 false,
+		MinGasPrice:                     big.NewInt(params.InitialBaseFee),
+		TenGenesis:                      "",
+		DebugNamespaceEnabled:           false,
+		MaxBatchSize:                    1024 * 55,
+		MaxRollupSize:                   1024 * 128,
+		GasPaymentAddress:               gethcommon.HexToAddress("0xd6C9230053f45F873Cb66D8A02439380a37A4fbF"),
+		BaseFee:                         new(big.Int).SetUint64(params.InitialBaseFee),
 
 		// Due to hiding L1 costs in the gas quantity, the gas limit needs to be huge
 		// Arbitrum with the same approach has gas limit of 1,125,899,906,842,624,

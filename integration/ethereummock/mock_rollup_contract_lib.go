@@ -14,25 +14,25 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 )
 
-type mockRollupContractLib struct{}
+type mockDataAvailabilityRegistryLib struct{}
 
-func NewRollupContractLibMock() contractlib.RollupContractLib {
-	return &mockRollupContractLib{}
+func NewDataAvailabilityRegistryLibMock() contractlib.DataAvailabilityRegistryLib {
+	return &mockDataAvailabilityRegistryLib{}
 }
 
-func (m *mockRollupContractLib) IsMock() bool {
+func (m *mockDataAvailabilityRegistryLib) IsMock() bool {
 	return true
 }
 
-func (m *mockRollupContractLib) BlobHasher() ethadapter.BlobHasher {
+func (m *mockDataAvailabilityRegistryLib) BlobHasher() ethadapter.BlobHasher {
 	return MockBlobHasher{}
 }
 
-func (m *mockRollupContractLib) GetContractAddr() *gethcommon.Address {
+func (m *mockDataAvailabilityRegistryLib) GetContractAddr() *gethcommon.Address {
 	return &RollupTxAddr
 }
 
-func (m *mockRollupContractLib) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
+func (m *mockDataAvailabilityRegistryLib) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
 	if tx.To() == nil || tx.To().Hex() != RollupTxAddr.Hex() {
 		return nil, nil
 	}
@@ -45,7 +45,7 @@ func (m *mockRollupContractLib) DecodeTx(tx *types.Transaction) (common.L1TenTra
 	return nil, nil
 }
 
-func (m *mockRollupContractLib) PopulateAddRollup(_ *common.L1RollupTx, blobs []*kzg4844.Blob, _ common.RollupSignature) (types.TxData, error) {
+func (m *mockDataAvailabilityRegistryLib) PopulateAddRollup(_ *common.L1RollupTx, blobs []*kzg4844.Blob, _ common.RollupSignature) (types.TxData, error) {
 	var err error
 	var blobHashes []gethcommon.Hash
 	var sidecar *types.BlobTxSidecar

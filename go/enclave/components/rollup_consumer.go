@@ -22,7 +22,7 @@ import (
 )
 
 type rollupConsumerImpl struct {
-	rollupContractLib contractlib.RollupContractLib
+	rollupContractLib contractlib.DataAvailabilityRegistryLib
 
 	rollupCompression *RollupCompression
 	batchRegistry     BatchRegistry
@@ -34,7 +34,7 @@ type rollupConsumerImpl struct {
 }
 
 func NewRollupConsumer(
-	rollupContractLib contractlib.RollupContractLib,
+	rollupContractLib contractlib.DataAvailabilityRegistryLib,
 	batchRegistry BatchRegistry,
 	rollupCompression *RollupCompression,
 	storage storage.Storage,

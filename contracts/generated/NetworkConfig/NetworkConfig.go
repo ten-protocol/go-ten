@@ -34,7 +34,7 @@ type NetworkConfigAddresses struct {
 	CrossChain             common.Address
 	MessageBus             common.Address
 	NetworkEnclaveRegistry common.Address
-	RollupContract         common.Address
+	DataAvailabilityRegistry         common.Address
 	L1Bridge               common.Address
 	L2Bridge               common.Address
 	L1CrossChainMessenger  common.Address
@@ -47,7 +47,7 @@ type NetworkConfigFixedAddresses struct {
 	CrossChain             common.Address
 	MessageBus             common.Address
 	NetworkEnclaveRegistry common.Address
-	RollupContract         common.Address
+	DataAvailabilityRegistry         common.Address
 }
 
 // NetworkConfigNamedAddress is an auto generated low-level Go binding around an user-defined struct.

@@ -68,7 +68,7 @@ func WithCrossChainAddress(s string) Option {
 	}
 }
 
-func WithRollupContractAddress(s string) Option {
+func WithDataAvailabilityRegistryAddress(s string) Option {
 	return func(c *Config) {
 		c.rollupAddress = s
 	}
