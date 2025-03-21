@@ -5,11 +5,11 @@ type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1HTTPURL             string
-	privateKey            string
-	rollupContractAddress string
-	dockerImage           string
-	challengePeriod       int
+	l1HTTPURL         string
+	privateKey        string
+	daRegistryAddress string
+	dockerImage       string
+	challengePeriod   int
 }
 
 func NewChallengePeriodConfig(opts ...Option) *Config {
@@ -36,7 +36,7 @@ func WithPrivateKey(s string) Option {
 
 func WithDataAvailabilityRegistryAddress(s string) Option {
 	return func(c *Config) {
-		c.rollupContractAddress = s
+		c.daRegistryAddress = s
 	}
 }
 

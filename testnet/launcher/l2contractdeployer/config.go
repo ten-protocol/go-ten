@@ -12,7 +12,7 @@ type Config struct {
 	l2PrivateKey           string
 	enclaveRegistryAddress string
 	crossChainAddress      string
-	rollupAddress          string
+	daRegistryAddress      string
 	networkConfigAddress   string
 	messageBusAddress      string
 	dockerImage            string
@@ -70,7 +70,7 @@ func WithCrossChainAddress(s string) Option {
 
 func WithDataAvailabilityRegistryAddress(s string) Option {
 	return func(c *Config) {
-		c.rollupAddress = s
+		c.daRegistryAddress = s
 	}
 }
 

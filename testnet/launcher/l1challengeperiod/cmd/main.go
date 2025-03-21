@@ -15,7 +15,7 @@ func main() {
 			l1cp.WithL1HTTPURL(cliConfig.l1HTTPURL),
 			l1cp.WithPrivateKey(cliConfig.privateKey),
 			l1cp.WithDockerImage(cliConfig.dockerImage),
-			l1cp.WithDataAvailabilityRegistryAddress(cliConfig.rollupContractAddress),
+			l1cp.WithDataAvailabilityRegistryAddress(cliConfig.daRegistryAddress),
 			l1cp.WithChallengePeriod(cliConfig.challengePeriod),
 		),
 	)

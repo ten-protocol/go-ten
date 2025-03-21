@@ -65,7 +65,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
                         crossChain: crossChainDeployment.address,
                         messageBus: merkleMessageBusAddress,
                         networkEnclaveRegistry: networkEnclaveRegistryDeployment.address,
-                        rollupContract: daRegistryDeployment.address
+                        dataAvailabilityRegistry: daRegistryDeployment.address
                     }, deployer]
                 }
             }

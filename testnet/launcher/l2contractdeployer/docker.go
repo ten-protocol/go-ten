@@ -46,7 +46,7 @@ func (n *ContractDeployer) Start() error {
 		"PREFUND_FAUCET_AMOUNT":    n.cfg.faucetPrefundAmount,
 		"ENCLAVE_REGISTRY_ADDRESS": n.cfg.enclaveRegistryAddress,
 		"CROSS_CHAIN_ADDRESS":      n.cfg.crossChainAddress,
-		"ROLLUP_ADDRESS":           n.cfg.rollupAddress,
+		"DA_REGISTRY_ADDRESS":      n.cfg.daRegistryAddress,
 		"NETWORK_CONFIG_ADDRESS":   n.cfg.networkConfigAddress,
 		"MESSAGE_BUS_ADDRESS":      n.cfg.messageBusAddress,
 		"NETWORK_JSON": fmt.Sprintf(`

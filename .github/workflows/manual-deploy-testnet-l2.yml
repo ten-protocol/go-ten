@@ -43,7 +43,7 @@ jobs:
       NETWORK_CONFIG_ADDR: ${{ steps.deployContracts.outputs.NETWORK_CONFIG_ADDR }}
       MSG_BUS_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MSG_BUS_CONTRACT_ADDR }}
       CROSS_CHAIN_ADDR: ${{ steps.deployContracts.outputs.CROSS_CHAIN_ADDR }}
-      ROLLUP_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.ROLLUP_CONTRACT_ADDR }}
+      DA_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.DA_REGISTRY_ADDR }}
       ENCLAVE_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.ENCLAVE_REGISTRY_ADDR }}
       L1_START_HASH: ${{ steps.deployContracts.outputs.L1_START_HASH }}
 
@@ -114,8 +114,8 @@ jobs:
           echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_ENV
           echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_OUTPUT
           
-          echo "ROLLUP_CONTRACT_ADDR=$ROLLUPADDR" >> $GITHUB_ENV
-          echo "ROLLUP_CONTRACT_ADDR=$ROLLUPADDR" >> $GITHUB_OUTPUT
+          echo "DA_REGISTRY_ADDR=$ROLLUPADDR" >> $GITHUB_ENV
+          echo "DA_REGISTRY_ADDR=$ROLLUPADDR" >> $GITHUB_OUTPUT
           
           echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_ENV
           echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_OUTPUT
@@ -388,7 +388,7 @@ jobs:
                -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
                -network_config_addr=${{needs.build.outputs.NETWORK_CONFIG_ADDR}} \
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
-               -rollup_addr=${{needs.build.outputs.ROLLUP_CONTRACT_ADDR}} \
+               -da_registry_addr=${{needs.build.outputs.DA_REGISTRY_ADDR}} \
                -cross_chain_addr=${{needs.build.outputs.CROSS_CHAIN_ADDR}} \
                -enclave_registry_addr=${{needs.build.outputs.ENCLAVE_REGISTRY_ADDR}} \
                -l1_start=${{needs.build.outputs.L1_START_HASH}} \
@@ -482,7 +482,7 @@ jobs:
            go run ./testnet/launcher/l1challengeperiod/cmd \
            -l1_http_url=${{ secrets.L1_HTTP_URL }} \
            -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-           -rollup_contract_addr=${{ needs.build.outputs.ROLLUP_CONTRACT_ADDR }} \
+           -da_registry_addr=${{ needs.build.outputs.DA_REGISTRY_ADDR }} \
            -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
            -l1_challenge_period=${{ vars.L1_CHALLENGE_PERIOD }} \
            echo "Setting challenge period to ${{ vars.L1_CHALLENGE_PERIOD }}"
