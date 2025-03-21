@@ -5,8 +5,8 @@ import {DeployFunction} from 'hardhat-deploy/types';
     This deployment script instantiates the network contracts and stores them in the deployed NetworkConfig contract.
 */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { 
-        deployments, 
+    const {
+        deployments,
         getNamedAccounts
     } = hre;
     const {deployer} = await getNamedAccounts();
@@ -80,15 +80,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`DataAvailabilityRegistry= ${daRegistryDeployment.address}`);
     console.log(`L1Start= ${networkConfigDeployment.receipt!!.blockHash}`);
 
+    // Grant the DataAvailabilityRegistry the stateRootManager permission on MerkleMessageBus so it can publish rollups
     const merkleMessageBusContract = await hre.ethers.getContractAt('MerkleTreeMessageBus', merkleMessageBusAddress);
-    // FIXME WARNING uncommenting these will mess up the address parsing in the docker container
-    // console.log(`Adding DataAvailabilityRegistry (${daRegistryDeployment.address}) as state root manager...`);
     const tx = await merkleMessageBusContract.addStateRootManager(daRegistryDeployment.address);
     const receipt = await tx.wait();
     if (receipt.status === 1) {
-        // console.log('Successfully added DataAvailabilityRegistry as state root manager');
-    } else {
-        // console.log(`Failed to add DataAvailabilityRegistry as state root manager`);
+        const isManager = await merkleMessageBusContract.stateRootManagers(daRegistryDeployment.address);
+        // FIXME WARNING uncommenting these will mess up the address parsing in the docker container but its true
+        // console.log(`Is DARegistry a state root manager?: ${isManager}`);
     }
 };
 
