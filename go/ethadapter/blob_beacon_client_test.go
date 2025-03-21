@@ -122,18 +122,18 @@ func TestBlobEncodingLarge(t *testing.T) {
 	require.Error(t, err)
 }
 
-// TODO This provider has been deprecated, need to find a new one
-//func TestBlobArchiveClient(t *testing.T) {
-//	client := NewArchivalHTTPClient(new(http.Client), "https://api.ethernow.xyz")
-//	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
-//	ctx := context.Background()
-//
-//	resp, err := client.BeaconBlobSidecars(ctx, 1, vHashes)
-//	require.NoError(t, err)
-//
-//	require.Len(t, resp.Data, 2)
-//	require.NotNil(t, client)
-//}
+func TestBlobArchiveClient(t *testing.T) {
+	t.Skipf("TODO need to fix this")
+	client := NewArchivalHTTPClient(new(http.Client), "https://eth-beacon-chain.drpc.org/rest/")
+	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
+	ctx := context.Background()
+
+	resp, err := client.BeaconBlobSidecars(ctx, 1, vHashes)
+	require.NoError(t, err)
+
+	require.Len(t, resp.Data, 2)
+	require.NotNil(t, client)
+}
 
 func TestBeaconClientFallback(t *testing.T) {
 	indices := []uint64{5, 7, 2}

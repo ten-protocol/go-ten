@@ -17,7 +17,6 @@ func DoWithCount(fn func(int) error, retryStrat Strategy) error {
 	retryStrat.Reset()
 	retryNr := 0
 	for {
-		retryNr++
 		// attempt to execute the function
 		err := fn(retryNr)
 		if err == nil {
@@ -25,6 +24,7 @@ func DoWithCount(fn func(int) error, retryStrat Strategy) error {
 			return nil
 		}
 
+		retryNr++
 		var ffErr *FailFastError
 		if errors.As(err, &ffErr) {
 			// if error has been wrapped as fail fast then we don't continue to retry
