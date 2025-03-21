@@ -12,7 +12,7 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         address crossChain;
         address messageBus;
         address networkEnclaveRegistry;
-        address rollupContract;
+        address dataAvailabilityRegistry;
     }
 
     struct NamedAddress {
@@ -24,7 +24,7 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         address crossChain;
         address messageBus;
         address networkEnclaveRegistry;
-        address rollupContract;
+        address dataAvailabilityRegistry;
         address l1Bridge;
         address l2Bridge;
         address l1CrossChainMessenger;
@@ -36,7 +36,7 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
     bytes32 public constant CROSS_CHAIN_SLOT = bytes32(uint256(keccak256("networkconfig.crossChain")) - 1);
     bytes32 public constant MESSAGE_BUS_SLOT = bytes32(uint256(keccak256("networkconfig.messageBus")) - 1);
     bytes32 public constant NETWORK_ENCLAVE_REGISTRY_SLOT = bytes32(uint256(keccak256("networkconfig.networkEnclaveRegistry")) - 1);
-    bytes32 public constant ROLLUP_CONTRACT_SLOT = bytes32(uint256(keccak256("networkconfig.rollupContract")) - 1);
+    bytes32 public constant DATA_AVAILABILITY_REGISTRY_SLOT = bytes32(uint256(keccak256("networkconfig.dataAvailabilityRegistry")) - 1);
 
     // storage slots for contracts that may need to be redeployed 
     bytes32 public constant L1_BRIDGE_SLOT = bytes32(uint256(keccak256("networkconfig.l1Bridge")) - 1);
@@ -57,7 +57,7 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         Storage.setAddress(CROSS_CHAIN_SLOT, _addresses.crossChain);
         Storage.setAddress(MESSAGE_BUS_SLOT, _addresses.messageBus);
         Storage.setAddress(NETWORK_ENCLAVE_REGISTRY_SLOT, _addresses.networkEnclaveRegistry);
-        Storage.setAddress(ROLLUP_CONTRACT_SLOT, _addresses.rollupContract);
+        Storage.setAddress(DATA_AVAILABILITY_REGISTRY_SLOT, _addresses.dataAvailabilityRegistry);
     }
 
     function crossChainContractAddress() public view returns (address addr_) {
@@ -72,8 +72,8 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         addr_ = Storage.getAddress(NETWORK_ENCLAVE_REGISTRY_SLOT);
     }
 
-    function rollupContractAddress() public view returns (address addr_) {
-        addr_ = Storage.getAddress(ROLLUP_CONTRACT_SLOT);
+    function daRegistryContractAddress() public view returns (address addr_) {
+        addr_ = Storage.getAddress(DATA_AVAILABILITY_REGISTRY_SLOT);
     }
 
     function l1BridgeAddress() public view returns (address addr_) {
@@ -146,7 +146,7 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
             networkEnclaveRegistry: networkEnclaveRegistryContractAddress(),
             crossChain: crossChainContractAddress(),
             messageBus: messageBusContractAddress(),
-            rollupContract: rollupContractAddress(),
+            dataAvailabilityRegistry: daRegistryContractAddress(),
             l1Bridge: l1BridgeAddress(),
             l2Bridge: l2BridgeAddress(),
             l1CrossChainMessenger: l1CrossChainMessengerAddress(),

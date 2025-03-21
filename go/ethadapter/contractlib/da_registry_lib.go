@@ -4,51 +4,52 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
-type RollupContractLib interface {
+type DataAvailabilityRegistryLib interface {
 	ContractLib
 	PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob, signature common.RollupSignature) (types.TxData, error)
 	BlobHasher() ethadapter.BlobHasher
 }
 
-type rollupContractLibImpl struct {
+type dataAvailabilityRegistryLibImpl struct {
 	addr        *gethcommon.Address
 	contractABI abi.ABI
 	logger      gethlog.Logger
 }
 
-func NewRollupContractLib(addr *gethcommon.Address, logger gethlog.Logger) RollupContractLib {
-	return &rollupContractLibImpl{
+func NewDataAvailabilityRegistryLib(addr *gethcommon.Address, logger gethlog.Logger) DataAvailabilityRegistryLib {
+	return &dataAvailabilityRegistryLibImpl{
 		addr:        addr,
-		contractABI: ethadapter.RollupContractABI,
+		contractABI: ethadapter.DataAvailabilityRegistryABI,
 		logger:      logger,
 	}
 }
 
-func (r *rollupContractLibImpl) IsMock() bool {
+func (r *dataAvailabilityRegistryLibImpl) IsMock() bool {
 	return false
 }
 
-func (r *rollupContractLibImpl) BlobHasher() ethadapter.BlobHasher {
+func (r *dataAvailabilityRegistryLibImpl) BlobHasher() ethadapter.BlobHasher {
 	return ethadapter.KZGToVersionedHasher{}
 }
 
-func (r *rollupContractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob, signature common.RollupSignature) (types.TxData, error) {
+func (r *dataAvailabilityRegistryLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []*kzg4844.Blob, signature common.RollupSignature) (types.TxData, error) {
 	decodedRollup, err := common.DecodeRollup(t.Rollup)
 	if err != nil {
 		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
 	}
 
-	metaRollup := RollupContract.StructsMetaRollup{
+	metaRollup := DataAvailabilityRegistry.StructsMetaRollup{
 		Hash:                decodedRollup.Hash(),
 		Signature:           signature,
 		FirstSequenceNumber: big.NewInt(int64(decodedRollup.Header.FirstBatchSeqNo)),
@@ -83,7 +84,7 @@ func (r *rollupContractLibImpl) PopulateAddRollup(t *common.L1RollupTx, blobs []
 	}, nil
 }
 
-func (r *rollupContractLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
+func (r *dataAvailabilityRegistryLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
 	if tx.To() == nil || tx.To().Hex() != r.addr.Hex() || len(tx.Data()) == 0 {
 		return nil, nil
 	}
@@ -93,12 +94,9 @@ func (r *rollupContractLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTra
 			BlobHashes: tx.BlobHashes(),
 		}, nil
 	}
-	//else {
-	//	return nil, fmt.Errorf("invalid transaction type: %v", tx.Type())
-	//}
 	return nil, nil
 }
 
-func (r *rollupContractLibImpl) GetContractAddr() *gethcommon.Address {
+func (r *dataAvailabilityRegistryLibImpl) GetContractAddr() *gethcommon.Address {
 	return r.addr
 }

@@ -41,14 +41,14 @@ func (n *ContractDeployer) Start() error {
 	cmds = append(cmds, "/home/obscuro/go-obscuro/entrypoint.sh", "obscuro:deploy", "--network", "layer2")
 
 	envs := map[string]string{
-		"L2_HOST":                  n.cfg.l2Host,
-		"L2_PORT":                  strconv.Itoa(n.cfg.l2Port),
-		"PREFUND_FAUCET_AMOUNT":    n.cfg.faucetPrefundAmount,
-		"ENCLAVE_REGISTRY_ADDRESS": n.cfg.enclaveRegistryAddress,
-		"CROSS_CHAIN_ADDRESS":      n.cfg.crossChainAddress,
-		"ROLLUP_ADDRESS":           n.cfg.rollupAddress,
-		"NETWORK_CONFIG_ADDRESS":   n.cfg.networkConfigAddress,
-		"MESSAGE_BUS_ADDRESS":      n.cfg.messageBusAddress,
+		"L2_HOST":               n.cfg.l2Host,
+		"L2_PORT":               strconv.Itoa(n.cfg.l2Port),
+		"PREFUND_FAUCET_AMOUNT": n.cfg.faucetPrefundAmount,
+		"ENCLAVE_REGISTRY_ADDR": n.cfg.enclaveRegistryAddress,
+		"CROSS_CHAIN_ADDR":      n.cfg.crossChainAddress,
+		"DA_REGISTRY_ADDR":      n.cfg.daRegistryAddress,
+		"NETWORK_CONFIG_ADDR":   n.cfg.networkConfigAddress,
+		"MESSAGE_BUS_ADDR":      n.cfg.messageBusAddress,
 		"NETWORK_JSON": fmt.Sprintf(`
 {
         "layer1" : {

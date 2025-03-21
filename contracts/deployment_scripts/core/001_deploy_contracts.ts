@@ -38,7 +38,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     });
 
-    const rollupContractDeployment = await deployments.deploy('RollupContract', {
+    const daRegistryDeployment = await deployments.deploy('DataAvailabilityRegistry', {
         from: deployer,
         execute: {
             init: {
@@ -65,7 +65,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
                         crossChain: crossChainDeployment.address,
                         messageBus: merkleMessageBusAddress,
                         networkEnclaveRegistry: networkEnclaveRegistryDeployment.address,
-                        rollupContract: rollupContractDeployment.address
+                        dataAvailabilityRegistry: daRegistryDeployment.address
                     }, deployer]
                 }
             }
@@ -77,7 +77,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`CrossChain= ${crossChainDeployment.address}`);
     console.log(`MerkleMessageBus= ${merkleMessageBusAddress}`);
     console.log(`NetworkEnclaveRegistry= ${networkEnclaveRegistryDeployment.address}`);
-    console.log(`RollupContract= ${rollupContractDeployment.address}`);
+    console.log(`DataAvailabilityRegistry= ${daRegistryDeployment.address}`);
     console.log(`L1Start= ${networkConfigDeployment.receipt!!.blockHash}`);
 };
 

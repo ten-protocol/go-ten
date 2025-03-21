@@ -10,7 +10,7 @@ import (
 )
 
 type ContractRegistryLib interface {
-	RollupLib() RollupContractLib
+	DARegistryLib() DataAvailabilityRegistryLib
 	EnclaveRegistryLib() EnclaveRegistryLib
 	NetworkConfigLib() NetworkConfigLib
 	GetContractAddresses() *common.NetworkConfigAddresses
@@ -18,7 +18,7 @@ type ContractRegistryLib interface {
 }
 
 type ContractRegistryImpl struct {
-	rollupLib         RollupContractLib
+	daRegistryLib     DataAvailabilityRegistryLib
 	networkEnclaveLib EnclaveRegistryLib
 	networkConfig     NetworkConfigLib
 	addresses         *common.NetworkConfigAddresses
@@ -36,11 +36,11 @@ func NewContractRegistryLib(networkConfigAddr gethcommon.Address, ethClient ethc
 		return nil, fmt.Errorf("failed to get contract addresses: %w", err)
 	}
 
-	rollupLib := NewRollupContractLib(&addresses.RollupContract, logger)
+	daRegistryLib := NewDataAvailabilityRegistryLib(&addresses.DataAvailabilityRegistry, logger)
 	networkEnclaveLib := NewEnclaveRegistryLib(&addresses.EnclaveRegistry, logger)
 
 	registry := &ContractRegistryImpl{
-		rollupLib:         rollupLib,
+		daRegistryLib:     daRegistryLib,
 		networkEnclaveLib: networkEnclaveLib,
 		networkConfig:     networkConfig,
 		addresses:         addresses,
@@ -51,9 +51,9 @@ func NewContractRegistryLib(networkConfigAddr gethcommon.Address, ethClient ethc
 }
 
 // NewContractRegistryFromLibs - helper function when creating the contract registry on the enclave
-func NewContractRegistryFromLibs(rolluplib RollupContractLib, enclaveRegistryLib EnclaveRegistryLib, logger gethlog.Logger) *ContractRegistryImpl {
+func NewContractRegistryFromLibs(daRegistryLib DataAvailabilityRegistryLib, enclaveRegistryLib EnclaveRegistryLib, logger gethlog.Logger) *ContractRegistryImpl {
 	registry := &ContractRegistryImpl{
-		rollupLib:         rolluplib,
+		daRegistryLib:     daRegistryLib,
 		networkEnclaveLib: enclaveRegistryLib,
 		logger:            logger,
 	}
@@ -65,8 +65,8 @@ func (r *ContractRegistryImpl) GetContractAddresses() *common.NetworkConfigAddre
 	return r.addresses
 }
 
-func (r *ContractRegistryImpl) RollupLib() RollupContractLib {
-	return r.rollupLib
+func (r *ContractRegistryImpl) DARegistryLib() DataAvailabilityRegistryLib {
+	return r.daRegistryLib
 }
 
 func (r *ContractRegistryImpl) EnclaveRegistryLib() EnclaveRegistryLib {

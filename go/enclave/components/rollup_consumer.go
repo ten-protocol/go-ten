@@ -22,7 +22,7 @@ import (
 )
 
 type rollupConsumerImpl struct {
-	rollupContractLib contractlib.RollupContractLib
+	dataAvailabilityRegistryLib contractlib.DataAvailabilityRegistryLib
 
 	rollupCompression *RollupCompression
 	batchRegistry     BatchRegistry
@@ -34,7 +34,7 @@ type rollupConsumerImpl struct {
 }
 
 func NewRollupConsumer(
-	rollupContractLib contractlib.RollupContractLib,
+	dataAvailabilityRegistryLib contractlib.DataAvailabilityRegistryLib,
 	batchRegistry BatchRegistry,
 	rollupCompression *RollupCompression,
 	storage storage.Storage,
@@ -42,12 +42,12 @@ func NewRollupConsumer(
 	verifier SequencerSignatureVerifier,
 ) RollupConsumer {
 	return &rollupConsumerImpl{
-		rollupContractLib: rollupContractLib,
-		batchRegistry:     batchRegistry,
-		rollupCompression: rollupCompression,
-		logger:            logger,
-		storage:           storage,
-		sigValidator:      verifier,
+		dataAvailabilityRegistryLib: dataAvailabilityRegistryLib,
+		batchRegistry:               batchRegistry,
+		rollupCompression:           rollupCompression,
+		logger:                      logger,
+		storage:                     storage,
+		sigValidator:                verifier,
 	}
 }
 
@@ -176,7 +176,7 @@ func (rc *rollupConsumerImpl) extractRollupData(rollupTx *common.L1TxData) (*com
 		signatures = append(signatures, blobWithSig.Signature)
 	}
 
-	_, blobHashes, err := ethadapter.MakeSidecar(blobs, rc.rollupContractLib.BlobHasher())
+	_, blobHashes, err := ethadapter.MakeSidecar(blobs, rc.dataAvailabilityRegistryLib.BlobHasher())
 	if err != nil {
 		// non-critical as signature not verified - could be bad data
 		return nil, nil, nil, nil, fmt.Errorf("could not get blob hashes from blobs. Cause: %w", err)
@@ -216,7 +216,7 @@ func (rc *rollupConsumerImpl) verifyBlobHashes(rollupTx *common.L1TxData, blobHa
 		blobHashSet[h] = struct{}{}
 	}
 
-	t, err := rc.rollupContractLib.DecodeTx(rollupTx.Transaction)
+	t, err := rc.dataAvailabilityRegistryLib.DecodeTx(rollupTx.Transaction)
 	if err != nil {
 		return fmt.Errorf("could not decode tx. Cause: %s", err)
 	}

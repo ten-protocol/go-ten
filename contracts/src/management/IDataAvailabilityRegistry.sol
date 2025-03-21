@@ -4,10 +4,10 @@ pragma solidity >=0.7.0 <0.9.0;
 import "../common/Structs.sol";
 
 /**
- * @title IRollupContract
+ * @title IDataAvailabilityRegistry
  * @dev Interface for managing L2 rollup submissions
  */
-interface IRollupContract {
+interface IDataAvailabilityRegistry {
     event RollupAdded(bytes32 rollupHash, bytes signature);
     
     /**

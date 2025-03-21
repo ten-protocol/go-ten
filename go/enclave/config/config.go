@@ -27,7 +27,7 @@ type EnclaveConfig struct {
 	// L1 contract address that maintains all the index of all system/ network contracts
 	NetworkConfigAddress gethcommon.Address
 	// Rollup contract L1 Address
-	RollupContractAddress gethcommon.Address
+	DataAvailabilityRegistryAddress gethcommon.Address
 	// EnclaveRegistry L1 Address
 	EnclaveRegistryAddress gethcommon.Address
 	// MessageBus L1 Address
@@ -105,14 +105,14 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 		RPCAddress: tenCfg.Enclave.RPC.BindAddress,
 		RPCTimeout: tenCfg.Enclave.RPC.Timeout,
 
-		L1ChainID:              tenCfg.Network.L1.ChainID,
-		NetworkConfigAddress:   tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
-		RollupContractAddress:  tenCfg.Network.L1.L1Contracts.RollupContract,
-		EnclaveRegistryAddress: tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract,
-		MessageBusAddress:      tenCfg.Network.L1.L1Contracts.MessageBusContract,
-		SystemContractOwner:    tenCfg.Network.Sequencer.SystemContractsUpgrader,
-		LogLevel:               tenCfg.Enclave.Log.Level,
-		LogPath:                tenCfg.Enclave.Log.Path,
+		L1ChainID:                       tenCfg.Network.L1.ChainID,
+		NetworkConfigAddress:            tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
+		DataAvailabilityRegistryAddress: tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry,
+		EnclaveRegistryAddress:          tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract,
+		MessageBusAddress:               tenCfg.Network.L1.L1Contracts.MessageBusContract,
+		SystemContractOwner:             tenCfg.Network.Sequencer.SystemContractsUpgrader,
+		LogLevel:                        tenCfg.Enclave.Log.Level,
+		LogPath:                         tenCfg.Enclave.Log.Path,
 
 		UseInMemoryDB:  tenCfg.Enclave.DB.UseInMemory,
 		EdgelessDBHost: tenCfg.Enclave.DB.EdgelessDBHost,

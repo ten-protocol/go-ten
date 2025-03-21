@@ -253,7 +253,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
-	rollupLib := s.Params.ContractRegistryLib.RollupLib()
+	daRegistryLib := s.Params.ContractRegistryLib.DARegistryLib()
 	enclaveRegistryLib := s.Params.ContractRegistryLib.EnclaveRegistryLib()
 
 	blockchain, err := ethadapter.BlocksBetween(node, startBlock, endBlock)
@@ -283,7 +283,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 					continue
 				}
 			}
-			t, err = rollupLib.DecodeTx(tx)
+			t, err = daRegistryLib.DecodeTx(tx)
 			if err != nil {
 				panic(err)
 			}

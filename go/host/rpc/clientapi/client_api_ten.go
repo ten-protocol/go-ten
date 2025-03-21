@@ -102,7 +102,7 @@ type ChecksumFormattedTenNetworkConfig struct {
 	NetworkConfig             gethcommon.AddressEIP55
 	EnclaveRegistry           gethcommon.AddressEIP55
 	CrossChain                gethcommon.AddressEIP55
-	RollupContract            gethcommon.AddressEIP55
+	DataAvailabilityRegistry  gethcommon.AddressEIP55
 	L1MessageBus              gethcommon.AddressEIP55
 	L2MessageBus              gethcommon.AddressEIP55
 	L1Bridge                  gethcommon.AddressEIP55
@@ -127,7 +127,7 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 		NetworkConfig:             gethcommon.AddressEIP55(info.NetworkConfig),
 		EnclaveRegistry:           gethcommon.AddressEIP55(info.EnclaveRegistry),
 		CrossChain:                gethcommon.AddressEIP55(info.CrossChain),
-		RollupContract:            gethcommon.AddressEIP55(info.RollupContract),
+		DataAvailabilityRegistry:  gethcommon.AddressEIP55(info.DataAvailabilityRegistry),
 		L1MessageBus:              gethcommon.AddressEIP55(info.L1MessageBus),
 		L2MessageBus:              gethcommon.AddressEIP55(info.L2MessageBus),
 		L1Bridge:                  gethcommon.AddressEIP55(info.L1Bridge),
