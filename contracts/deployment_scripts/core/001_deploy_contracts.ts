@@ -73,12 +73,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     });
 
+
     console.log(`NetworkConfig= ${networkConfigDeployment.address}`);
     console.log(`CrossChain= ${crossChainDeployment.address}`);
     console.log(`MerkleMessageBus= ${merkleMessageBusAddress}`);
     console.log(`NetworkEnclaveRegistry= ${networkEnclaveRegistryDeployment.address}`);
     console.log(`DataAvailabilityRegistry= ${daRegistryDeployment.address}`);
     console.log(`L1Start= ${networkConfigDeployment.receipt!!.blockHash}`);
+
+    // Get the MerkleTreeMessageBus contract instance
+    const merkleMessageBusContract = await hre.ethers.getContractAt('MerkleTreeMessageBus', merkleMessageBusAddress);
+    console.log(`Adding DataAvailabilityRegistry (${daRegistryDeployment.address}) as state root manager...`);
+    const tx = await merkleMessageBusContract.addStateRootManager(daRegistryDeployment.address);
+    await tx.wait();
+    console.log('Successfully added DataAvailabilityRegistry as state root manager');
 };
 
 export default func;
