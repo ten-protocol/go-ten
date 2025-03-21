@@ -99,17 +99,17 @@ func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.Encr
 
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
 type ChecksumFormattedTenNetworkConfig struct {
-	NetworkConfigAddress      common.NetworkConfigAddress
-	EnclaveRegistry           common.EnclaveRegistryAddress
-	CrossChain                common.CrossChainAddress
-	RollupContract            common.RollupAddress
-	L1MessageBus              common.L1MessageBusAddress
-	L2MessageBus              common.L2MessageBusAddress
-	L1Bridge                  common.L1BridgeAddress
-	L2Bridge                  common.L2BridgeAddress
-	L1CrossChainMessenger     common.L1CrossChainMessengerAddress
-	L2CrossChainMessenger     common.L2CrossChainMessengerAddress
-	TransactionsPostProcessor common.TransactionPostProcessorAddress
+	NetworkConfigAddress      gethcommon.AddressEIP55
+	EnclaveRegistry           gethcommon.AddressEIP55
+	CrossChain                gethcommon.AddressEIP55
+	RollupContract            gethcommon.AddressEIP55
+	L1MessageBus              gethcommon.AddressEIP55
+	L2MessageBus              gethcommon.AddressEIP55
+	L1Bridge                  gethcommon.AddressEIP55
+	L2Bridge                  gethcommon.AddressEIP55
+	L1CrossChainMessenger     gethcommon.AddressEIP55
+	L2CrossChainMessenger     gethcommon.AddressEIP55
+	TransactionsPostProcessor gethcommon.AddressEIP55
 	L1StartHash               gethcommon.Hash
 	PublicSystemContracts     map[string]gethcommon.AddressEIP55
 	AdditionalContracts       []*common.NamedAddress
@@ -124,17 +124,17 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 	}
 
 	return &ChecksumFormattedTenNetworkConfig{
-		NetworkConfigAddress:      info.NetworkConfigAddress,
-		EnclaveRegistry:           info.EnclaveRegistry,
-		CrossChain:                info.CrossChain,
-		RollupContract:            info.RollupContract,
-		L1MessageBus:              info.L1MessageBus,
-		L2MessageBus:              info.L2MessageBus,
-		L1Bridge:                  info.L1Bridge,
-		L2Bridge:                  info.L2Bridge,
-		L1CrossChainMessenger:     info.L1CrossChainMessenger,
-		L2CrossChainMessenger:     info.L2CrossChainMessenger,
-		TransactionsPostProcessor: info.TransactionsPostProcessor,
+		NetworkConfigAddress:      gethcommon.AddressEIP55(info.NetworkConfigAddress),
+		EnclaveRegistry:           gethcommon.AddressEIP55(info.EnclaveRegistry),
+		CrossChain:                gethcommon.AddressEIP55(info.CrossChain),
+		RollupContract:            gethcommon.AddressEIP55(info.RollupContract),
+		L1MessageBus:              gethcommon.AddressEIP55(info.L1MessageBus),
+		L2MessageBus:              gethcommon.AddressEIP55(info.L2MessageBus),
+		L1Bridge:                  gethcommon.AddressEIP55(info.L1Bridge),
+		L2Bridge:                  gethcommon.AddressEIP55(info.L2Bridge),
+		L1CrossChainMessenger:     gethcommon.AddressEIP55(info.L1CrossChainMessenger),
+		L2CrossChainMessenger:     gethcommon.AddressEIP55(info.L2CrossChainMessenger),
+		TransactionsPostProcessor: gethcommon.AddressEIP55(info.TransactionsPostProcessor),
 		L1StartHash:               info.L1StartHash,
 		PublicSystemContracts:     publicSystemContracts,
 		AdditionalContracts:       additionalContracts,

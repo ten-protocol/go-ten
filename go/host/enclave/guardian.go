@@ -588,8 +588,6 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 	}
 
 	if syncContracts || syncAdditionalContracts {
-		println("SYNC IMPORTANT CONTRACTS: ", syncContracts)
-		println("SYNC ADDITIONAL CONTRACTS: ", syncAdditionalContracts)
 		go func() {
 			err := g.sl.L1Publisher().ResyncImportantContracts()
 			if err != nil {

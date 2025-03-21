@@ -171,7 +171,7 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 		BlockHeader: block,
 		Events:      []common.L1Event{},
 	}
-	networkConfigAddress := r.contractRegistry.NetworkEnclaveLib().GetContractAddr()
+	networkConfigAddress := r.contractRegistry.NetworkConfigLib().GetContractAddr()
 	allAddresses := r.contractRegistry.GetContractAddresses()
 
 	if err := r.processNetworkConfigLogs(block, *networkConfigAddress, processed); err != nil {

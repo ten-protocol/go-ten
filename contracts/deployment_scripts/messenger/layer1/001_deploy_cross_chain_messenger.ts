@@ -45,6 +45,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         }
     });
 
+    console.log("Setting L1 Cross chain messenger")
     // get network config contract and write the cross chain messenger address to it
     const networkConfigContract = (await hre.ethers.getContractFactory('NetworkConfig')).attach(networkConfigAddress)
     const tx = await  networkConfigContract.getFunction("setL1CrossChainMessengerAddress").populateTransaction(crossChainDeployment.address);
