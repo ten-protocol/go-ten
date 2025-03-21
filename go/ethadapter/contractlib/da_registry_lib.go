@@ -2,8 +2,9 @@ package contractlib
 
 import (
 	"fmt"
-	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
