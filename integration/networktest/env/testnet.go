@@ -134,8 +134,8 @@ func (t *testnetConnector) AllocateFaucetFundsWithWallet(ctx context.Context, ac
 	return nil
 }
 
-func (t *testnetConnector) GetMCOwnerWallet() (wallet.Wallet, error) {
-	return nil, errors.New("testnet connector environments cannot access the MC owner wallet")
+func (t *testnetConnector) GetContractOwnerWallet() (wallet.Wallet, error) {
+	return nil, errors.New("testnet connector environments cannot access the contract owner wallet")
 }
 
 func (t *testnetConnector) GetGatewayClient() (ethadapter.EthClient, error) {

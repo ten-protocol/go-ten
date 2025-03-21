@@ -40,8 +40,11 @@ jobs:
 
     # Map a step output to a job output
     outputs:
-      MGMT_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MGMT_CONTRACT_ADDR }}
+      NETWORK_CONFIG_ADDR: ${{ steps.deployContracts.outputs.NETWORK_CONFIG_ADDR }}
       MSG_BUS_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MSG_BUS_CONTRACT_ADDR }}
+      CROSS_CHAIN_ADDR: ${{ steps.deployContracts.outputs.CROSS_CHAIN_ADDR }}
+      ROLLUP_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.ROLLUP_CONTRACT_ADDR }}
+      ENCLAVE_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.ENCLAVE_REGISTRY_ADDR }}
       L1_START_HASH: ${{ steps.deployContracts.outputs.L1_START_HASH }}
 
 
@@ -92,17 +95,31 @@ jobs:
         env:
           DOCKER_API_VERSION: "1.45"
         run: |
+          # Run deployer and capture output
           go run ./testnet/launcher/l1contractdeployer/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -contracts_env_file=./testnet/.env
-          source ./testnet/.env || true
-          echo "Contracts deployed to $MGMTCONTRACTADDR"
-          echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_ENV
-          echo "MGMT_CONTRACT_ADDR=$MGMTCONTRACTADDR" >> $GITHUB_OUTPUT
+          
+          source ./testnet/.env
+          
+          # Fix variable names and GITHUB_OUTPUT reference
+          echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_ENV
+          echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_OUTPUT
+          
           echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_ENV
           echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
+          
+          echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_ENV
+          echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_OUTPUT
+          
+          echo "ROLLUP_CONTRACT_ADDR=$ROLLUPADDR" >> $GITHUB_ENV
+          echo "ROLLUP_CONTRACT_ADDR=$ROLLUPADDR" >> $GITHUB_OUTPUT
+          
+          echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_ENV
+          echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_OUTPUT
+          
           echo "L1_START_HASH=$L1START" >> $GITHUB_ENV
           echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
 
@@ -369,8 +386,11 @@ jobs:
                -is_sgx_enabled=true \
                -host_id=${{ vars[matrix.node_addr_lookup] }} \
                -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
-               -management_contract_addr=${{needs.build.outputs.MGMT_CONTRACT_ADDR}} \
+               -network_config_addr=${{needs.build.outputs.NETWORK_CONFIG_ADDR}} \
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
+               -rollup_addr=${{needs.build.outputs.ROLLUP_CONTRACT_ADDR}} \
+               -cross_chain_addr=${{needs.build.outputs.CROSS_CHAIN_ADDR}} \
+               -enclave_registry_addr=${{needs.build.outputs.ENCLAVE_REGISTRY_ADDR}} \
                -l1_start=${{needs.build.outputs.L1_START_HASH}} \
                -private_key=${{ secrets[matrix.node_pk_lookup] }} \
                -sequencer_addr=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
@@ -427,7 +447,7 @@ jobs:
            go run ./testnet/launcher/l1grantsequencers/cmd \
            -l1_http_url=${{ secrets.L1_HTTP_URL }} \
            -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-           -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
+           -enclave_registry_addr=${{ needs.build.outputs.ENCLAVE_REGISTRY_ADDR }} \
            -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
            -sequencer_url=http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
 
@@ -455,14 +475,14 @@ jobs:
     steps:
       -  uses: actions/checkout@v4
 
-      -  name: 'Set challenge period on management contract'
+      -  name: 'Set challenge period on rollup contract'
          id: setChallengePeriod
          shell: bash
          run: |
            go run ./testnet/launcher/l1challengeperiod/cmd \
            -l1_http_url=${{ secrets.L1_HTTP_URL }} \
            -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-           -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
+           -rollup_contract_addr=${{ needs.build.outputs.ROLLUP_CONTRACT_ADDR }} \
            -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
            -l1_challenge_period=${{ vars.L1_CHALLENGE_PERIOD }} \
            echo "Setting challenge period to ${{ vars.L1_CHALLENGE_PERIOD }}"
@@ -501,7 +521,7 @@ jobs:
           -l2_ws_port=81 \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -l2_private_key=${{ secrets.L2_DEPLOYER_KEY }} \
-          -management_contract_addr=${{ needs.build.outputs.MGMT_CONTRACT_ADDR }} \
+          -network_config_addr=${{ needs.build.outputs.NETWORK_CONFIG_ADDR }} \
           -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
           -faucet_funds=${{ vars.FAUCET_INITIAL_FUNDS }}

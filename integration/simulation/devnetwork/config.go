@@ -68,7 +68,7 @@ func LocalDevNetwork(tenConfigOpts ...TenConfigOption) *InMemDevNetwork {
 		if err != nil {
 			panic("could not initialise deployer private key")
 		}
-		nodeOpL1Wallets.MCOwnerWallet = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.EthereumChainID), privKey, testlog.Logger())
+		nodeOpL1Wallets.ContractOwnerWallet = wallet.NewInMemoryWalletFromPK(big.NewInt(integration.EthereumChainID), privKey, testlog.Logger())
 	}
 
 	l1Config := &L1Config{
@@ -109,10 +109,10 @@ func LiveL1DevNetwork(seqWallet wallet.Wallet, validatorWallets []wallet.Wallet,
 	}
 	l2FaucetWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.TenChainID), l2FaucetPrivKey, testlog.Logger())
 	networkWallets := &params.SimWallets{
-		MCOwnerWallet:  seqWallet,
-		NodeWallets:    append([]wallet.Wallet{seqWallet}, validatorWallets...),
-		L2FaucetWallet: l2FaucetWallet,
-		Tokens:         map[testcommon.ERC20]*params.SimToken{},
+		ContractOwnerWallet: seqWallet,
+		NodeWallets:         append([]wallet.Wallet{seqWallet}, validatorWallets...),
+		L2FaucetWallet:      l2FaucetWallet,
+		Tokens:              map[testcommon.ERC20]*params.SimToken{},
 	}
 
 	l1Network := &liveL1Network{

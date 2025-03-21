@@ -79,9 +79,9 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		return nil, err
 	}
 
-	tailSize := "3"
+	tailSize := "6"
 	if n.cfg.debugEnabled {
-		tailSize = "4"
+		tailSize = "7"
 	}
 
 	logsOptions := container.LogsOptions{
@@ -115,20 +115,35 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		lines = lines[:len(lines)-2]
 	}
 
-	managementAddr, err := findAddress(lines[0])
+	networkConfigAddr, err := findAddress(lines[0])
 	if err != nil {
 		return nil, err
 	}
-	messageBusAddr, err := findAddress(lines[1])
+	crossChainAddr, err := findAddress(lines[1])
 	if err != nil {
 		return nil, err
 	}
-	l1BlockHash := readValue("L1Start", lines[2])
+	messageBusAddr, err := findAddress(lines[2])
+	if err != nil {
+		return nil, err
+	}
+	enclaveRegistryAddr, err := findAddress(lines[3])
+	if err != nil {
+		return nil, err
+	}
+	rollupAddr, err := findAddress(lines[4])
+	if err != nil {
+		return nil, err
+	}
+	l1BlockHash := readValue("L1Start", lines[5])
 
 	return &node.NetworkConfig{
-		ManagementContractAddress: managementAddr,
-		MessageBusAddress:         messageBusAddr,
-		L1StartHash:               l1BlockHash,
+		EnclaveRegistryAddress: enclaveRegistryAddr,
+		RollupContractAddress:  rollupAddr,
+		CrossChainAddress:      crossChainAddr,
+		NetworkConfigAddress:   networkConfigAddr,
+		MessageBusAddress:      messageBusAddr,
+		L1StartHash:            l1BlockHash,
 	}, nil
 }
 

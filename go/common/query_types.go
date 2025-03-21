@@ -111,11 +111,37 @@ func (p *QueryPagination) UnmarshalJSON(data []byte) error {
 }
 
 type TenNetworkInfo struct {
-	ManagementContractAddress       common.Address
-	L1StartHash                     common.Hash
-	MessageBusAddress               common.Address
-	L2MessageBusAddress             common.Address
-	ImportantContracts              map[string]common.Address // map of contract name to address
-	TransactionPostProcessorAddress common.Address
-	PublicSystemContracts           map[string]common.Address
+	NetworkConfig             NetworkConfigAddress
+	EnclaveRegistry           EnclaveRegistryAddress
+	CrossChain                CrossChainAddress
+	RollupContract            RollupAddress
+	L1MessageBus              L1MessageBusAddress
+	L2MessageBus              L2MessageBusAddress
+	L1Bridge                  L1BridgeAddress
+	L2Bridge                  L2BridgeAddress
+	L1CrossChainMessenger     L1CrossChainMessengerAddress
+	L2CrossChainMessenger     L2CrossChainMessengerAddress
+	TransactionsPostProcessor TransactionPostProcessorAddress
+	L1StartHash               common.Hash
+	PublicSystemContracts     map[string]common.Address
+	AdditionalContracts       []*NamedAddress
+}
+
+// NetworkConfigAddresses return type of the addresses function on the NetworkConfig contract
+type NetworkConfigAddresses struct {
+	EnclaveRegistry       EnclaveRegistryAddress
+	CrossChain            CrossChainAddress
+	RollupContract        RollupAddress
+	L1MessageBus          L1MessageBusAddress
+	L1Bridge              L1BridgeAddress
+	L2Bridge              L2BridgeAddress
+	L1CrossChainMessenger L1CrossChainMessengerAddress
+	L2CrossChainMessenger L2CrossChainMessengerAddress
+	AdditionalContracts   []*NamedAddress // Dynamically named additional contracts
+}
+
+// NamedAddress matches the Solidity struct
+type NamedAddress struct {
+	Name string
+	Addr common.Address
 }

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -17,11 +19,10 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
 type rollupConsumerImpl struct {
-	MgmtContractLib mgmtcontractlib.MgmtContractLib
+	rollupContractLib contractlib.RollupContractLib
 
 	rollupCompression *RollupCompression
 	batchRegistry     BatchRegistry
@@ -33,7 +34,7 @@ type rollupConsumerImpl struct {
 }
 
 func NewRollupConsumer(
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	rollupContractLib contractlib.RollupContractLib,
 	batchRegistry BatchRegistry,
 	rollupCompression *RollupCompression,
 	storage storage.Storage,
@@ -41,7 +42,7 @@ func NewRollupConsumer(
 	verifier SequencerSignatureVerifier,
 ) RollupConsumer {
 	return &rollupConsumerImpl{
-		MgmtContractLib:   mgmtContractLib,
+		rollupContractLib: rollupContractLib,
 		batchRegistry:     batchRegistry,
 		rollupCompression: rollupCompression,
 		logger:            logger,
@@ -175,7 +176,7 @@ func (rc *rollupConsumerImpl) extractRollupData(rollupTx *common.L1TxData) (*com
 		signatures = append(signatures, blobWithSig.Signature)
 	}
 
-	_, blobHashes, err := ethadapter.MakeSidecar(blobs, rc.MgmtContractLib.BlobHasher())
+	_, blobHashes, err := ethadapter.MakeSidecar(blobs, rc.rollupContractLib.BlobHasher())
 	if err != nil {
 		// non-critical as signature not verified - could be bad data
 		return nil, nil, nil, nil, fmt.Errorf("could not get blob hashes from blobs. Cause: %w", err)
@@ -215,7 +216,7 @@ func (rc *rollupConsumerImpl) verifyBlobHashes(rollupTx *common.L1TxData, blobHa
 		blobHashSet[h] = struct{}{}
 	}
 
-	t, err := rc.MgmtContractLib.DecodeTx(rollupTx.Transaction)
+	t, err := rc.rollupContractLib.DecodeTx(rollupTx.Transaction)
 	if err != nil {
 		return fmt.Errorf("could not decode tx. Cause: %s", err)
 	}

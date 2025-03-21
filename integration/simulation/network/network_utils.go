@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -20,7 +22,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/metrics"
 	"github.com/ten-protocol/go-ten/go/enclave"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
@@ -52,7 +53,7 @@ func createInMemTenNode(
 	id int64,
 	isGenesis bool,
 	nodeType common.NodeType,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	contractRegistryLib contractlib.ContractRegistryLib,
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	mockP2P hostcommon.P2PHostService,
@@ -63,23 +64,23 @@ func createInMemTenNode(
 	l1BlockTime time.Duration,
 	blobResolver l1.BlobResolver,
 ) *hostcontainer.HostContainer {
-	mgtContractAddress := mgmtContractLib.GetContractAddr()
-
+	networkConfigAddr := contractRegistryLib.NetworkConfigLib().GetContractAddr()
 	hostConfig := &hostconfig.HostConfig{
-		ID:                        fmt.Sprintf("%d", id),
-		IsGenesis:                 isGenesis,
-		NodeType:                  nodeType,
-		HasClientRPCHTTP:          false,
-		P2PPublicAddress:          fmt.Sprintf("%d", id),
-		L1StartHash:               l1StartBlk,
-		ManagementContractAddress: *mgtContractAddress,
-		MessageBusAddress:         l1BusAddress,
-		BatchInterval:             batchInterval,
-		CrossChainInterval:        11 * time.Second, // todo @matt fix where this default comes from
-		IsInboundP2PDisabled:      incomingP2PDisabled,
-		L1BlockTime:               l1BlockTime,
-		UseInMemoryDB:             true,
+		ID:                   fmt.Sprintf("%d", id),
+		IsGenesis:            isGenesis,
+		NodeType:             nodeType,
+		HasClientRPCHTTP:     false,
+		P2PPublicAddress:     fmt.Sprintf("%d", id),
+		L1StartHash:          l1StartBlk,
+		NetworkConfigAddress: *networkConfigAddr,
+		BatchInterval:        batchInterval,
+		CrossChainInterval:   11 * time.Second, // todo @matt fix where this default comes from
+		IsInboundP2PDisabled: incomingP2PDisabled,
+		L1BlockTime:          l1BlockTime,
+		UseInMemoryDB:        true,
 	}
+
+	contracts := contractRegistryLib.GetContractAddresses()
 
 	enclaveConfig := &enclaveconfig.EnclaveConfig{
 		NodeID:                    hostConfig.ID,
@@ -89,7 +90,8 @@ func createInMemTenNode(
 		UseInMemoryDB:             true,
 		MinGasPrice:               gethcommon.Big1,
 		MessageBusAddress:         l1BusAddress,
-		ManagementContractAddress: *mgtContractAddress,
+		RollupContractAddress:     contracts.RollupContract,
+		EnclaveRegistryAddress:    contracts.EnclaveRegistry,
 		SystemContractOwner:       gethcommon.BigToAddress(big.NewInt(1)), // Irrelevant for in-mem nodes
 		MaxBatchSize:              1024 * 55,
 		MaxRollupSize:             1024 * 128,
@@ -102,13 +104,13 @@ func createInMemTenNode(
 	}
 
 	enclaveLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.EnclaveCmp)
-	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &TestnetGenesis, mgmtContractLib, enclaveLogger)}
+	enclaveClients := []common.Enclave{enclave.NewEnclave(enclaveConfig, &TestnetGenesis, contractRegistryLib, enclaveLogger)}
 
-	// create an in memory TEN node
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
+	// create an in memory TEN node
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-	l1Data := l1.NewL1DataService(ethClient, hostLogger, mgmtContractLib, blobResolver, ethereummock.ContractAddresses)
-	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Data, enclaveClients, mgmtContractLib, ethWallet, nil, hostLogger, metricsService, blobResolver)
+	l1Data := l1.NewL1DataService(ethClient, hostLogger, contractRegistryLib, blobResolver)
+	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Data, enclaveClients, ethWallet, nil, hostLogger, metricsService, blobResolver, contractRegistryLib)
 
 	return currentContainer
 }

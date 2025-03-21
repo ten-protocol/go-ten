@@ -65,7 +65,7 @@ type CrossChainProof struct {
 	Root  gethcommon.Hash
 }
 
-func (api *TenAPI) GetCrossChainProof(ctx context.Context, messageType string, crossChainMessage gethcommon.Hash) (CrossChainProof, error) {
+func (api *TenAPI) GetCrossChainProof(_ context.Context, messageType string, crossChainMessage gethcommon.Hash) (CrossChainProof, error) {
 	proof, root, err := api.host.Storage().FetchCrossChainProof(messageType, crossChainMessage)
 	if err != nil {
 		return CrossChainProof{}, err
@@ -99,20 +99,24 @@ func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.Encr
 
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
 type ChecksumFormattedTenNetworkConfig struct {
-	ManagementContractAddress       gethcommon.AddressEIP55
-	L1StartHash                     gethcommon.Hash
-	MessageBusAddress               gethcommon.AddressEIP55
-	L2MessageBusAddress             gethcommon.AddressEIP55
-	ImportantContracts              map[string]gethcommon.AddressEIP55 // map of contract name to address
-	TransactionPostProcessorAddress gethcommon.AddressEIP55
-	PublicSystemContracts           map[string]gethcommon.AddressEIP55
+	NetworkConfig             gethcommon.AddressEIP55
+	EnclaveRegistry           gethcommon.AddressEIP55
+	CrossChain                gethcommon.AddressEIP55
+	RollupContract            gethcommon.AddressEIP55
+	L1MessageBus              gethcommon.AddressEIP55
+	L2MessageBus              gethcommon.AddressEIP55
+	L1Bridge                  gethcommon.AddressEIP55
+	L2Bridge                  gethcommon.AddressEIP55
+	L1CrossChainMessenger     gethcommon.AddressEIP55
+	L2CrossChainMessenger     gethcommon.AddressEIP55
+	TransactionsPostProcessor gethcommon.AddressEIP55
+	L1StartHash               gethcommon.Hash
+	PublicSystemContracts     map[string]gethcommon.AddressEIP55
+	AdditionalContracts       []*common.NamedAddress
 }
 
 func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetworkConfig {
-	importantContracts := make(map[string]gethcommon.AddressEIP55)
-	for name, addr := range info.ImportantContracts {
-		importantContracts[name] = gethcommon.AddressEIP55(addr)
-	}
+	additionalContracts := info.AdditionalContracts
 
 	publicSystemContracts := make(map[string]gethcommon.AddressEIP55)
 	for name, addr := range info.PublicSystemContracts {
@@ -120,12 +124,19 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 	}
 
 	return &ChecksumFormattedTenNetworkConfig{
-		ManagementContractAddress:       gethcommon.AddressEIP55(info.ManagementContractAddress),
-		L1StartHash:                     info.L1StartHash,
-		MessageBusAddress:               gethcommon.AddressEIP55(info.MessageBusAddress),
-		L2MessageBusAddress:             gethcommon.AddressEIP55(info.L2MessageBusAddress),
-		ImportantContracts:              importantContracts,
-		TransactionPostProcessorAddress: gethcommon.AddressEIP55(info.TransactionPostProcessorAddress),
-		PublicSystemContracts:           publicSystemContracts,
+		NetworkConfig:             gethcommon.AddressEIP55(info.NetworkConfig),
+		EnclaveRegistry:           gethcommon.AddressEIP55(info.EnclaveRegistry),
+		CrossChain:                gethcommon.AddressEIP55(info.CrossChain),
+		RollupContract:            gethcommon.AddressEIP55(info.RollupContract),
+		L1MessageBus:              gethcommon.AddressEIP55(info.L1MessageBus),
+		L2MessageBus:              gethcommon.AddressEIP55(info.L2MessageBus),
+		L1Bridge:                  gethcommon.AddressEIP55(info.L1Bridge),
+		L2Bridge:                  gethcommon.AddressEIP55(info.L2Bridge),
+		L1CrossChainMessenger:     gethcommon.AddressEIP55(info.L1CrossChainMessenger),
+		L2CrossChainMessenger:     gethcommon.AddressEIP55(info.L2CrossChainMessenger),
+		TransactionsPostProcessor: gethcommon.AddressEIP55(info.TransactionsPostProcessor),
+		L1StartHash:               info.L1StartHash,
+		PublicSystemContracts:     publicSystemContracts,
+		AdditionalContracts:       additionalContracts,
 	}
 }

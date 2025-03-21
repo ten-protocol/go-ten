@@ -4,7 +4,7 @@ package main
 const (
 	l1HTTPURLFlag           = "l1_http_url"
 	privateKeyFlag          = "private_key"
-	mgmtContractAddressFlag = "management_contract_addr"
+	enclaveRegistryAddrFlag = "enclave_registry_addr"
 	enclaveIDsFlag          = "enclave_ids"
 	dockerImageFlag         = "docker_image"
 	contractsEnvFileFlag    = "contracts_env_file"
@@ -17,7 +17,7 @@ func getFlagUsageMap() map[string]string {
 	return map[string]string{
 		l1HTTPURLFlag:           "Layer 1 network http RPC addr",
 		privateKeyFlag:          "L1 and L2 private key used in the node",
-		mgmtContractAddressFlag: "L1 management contract address",
+		enclaveRegistryAddrFlag: "L1 enclave registry contract address",
 		enclaveIDsFlag:          "List of enclave public keys to grant sequencer role",
 		dockerImageFlag:         "Docker image to run",
 		contractsEnvFileFlag:    "If set, it will write the contract addresses to the file",

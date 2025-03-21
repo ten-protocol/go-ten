@@ -90,7 +90,14 @@ func printBlock(b *types.Block, m *Node) string {
 			panic(err)
 		}
 		if t == nil {
-			t, err = m.mgmtContractLib.DecodeTx(tx)
+			t, err = m.contractRegistryLib.EnclaveRegistryLib().DecodeTx(tx)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		if t == nil {
+			t, err = m.contractRegistryLib.RollupLib().DecodeTx(tx)
 			if err != nil {
 				panic(err)
 			}

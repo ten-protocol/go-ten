@@ -366,25 +366,41 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 
 	// Define a struct to represent the response
 	type NetworkConfigResponse struct {
-		ManagementContractAddress string            `json:"ManagementContractAddress"`
-		L1StartHash               string            `json:"L1StartHash"`
-		MessageBusAddress         string            `json:"MessageBusAddress"`
-		L2MessageBusAddress       string            `json:"L2MessageBusAddress"`
-		ImportantContracts        map[string]string `json:"ImportantContracts"`
+		NetworkConfigAddress         string            `json:"NetworkConfigContractAddress"`
+		EnclaveRegistryAddress       string            `json:"EnclaveRegistryContractAddress"`
+		RollupContractAddress        string            `json:"RollupContractAddress"`
+		CrossChainAddress            string            `json:"CrossChainContractAddress"`
+		L1MessageBusAddress          string            `json:"L1MessageBusAddress"`
+		L2MessageBusAddress          string            `json:"L2MessageBusAddress"`
+		L1BridgeAddress              string            `json:"L1BridgeAdress"`
+		L2BridgeAddress              string            `json:"L2BridgeAdress"`
+		L1CrossChainMessengerAddress string            `json:"L1CrossChainMessengerAddress"`
+		L2CrossChainMessengerAddress string            `json:"L2CrossChainMessengerAddress"`
+		L1StartHash                  string            `json:"L1StartHash"`
+		AdditionalContracts          map[string]string `json:"AdditionalContracts"`
 	}
 
 	// Convert the TenNetworkInfo fields to strings
-	importantContracts := make(map[string]string)
-	for name, address := range networkConfig.ImportantContracts {
-		importantContracts[name] = address.Hex()
+	additionalContracts := make(map[string]string)
+	if len(networkConfig.AdditionalContracts) > 0 {
+		for _, contract := range networkConfig.AdditionalContracts {
+			additionalContracts[contract.Name] = contract.Addr.Hex()
+		}
 	}
 
 	networkConfigResponse := NetworkConfigResponse{
-		ManagementContractAddress: networkConfig.ManagementContractAddress.Hex(),
-		L1StartHash:               networkConfig.L1StartHash.Hex(),
-		MessageBusAddress:         networkConfig.MessageBusAddress.Hex(),
-		L2MessageBusAddress:       networkConfig.L2MessageBusAddress.Hex(),
-		ImportantContracts:        importantContracts,
+		NetworkConfigAddress:         networkConfig.NetworkConfig.Hex(),
+		EnclaveRegistryAddress:       networkConfig.EnclaveRegistry.Hex(),
+		RollupContractAddress:        networkConfig.RollupContract.Hex(),
+		CrossChainAddress:            networkConfig.CrossChain.Hex(),
+		L1MessageBusAddress:          networkConfig.L1MessageBus.Hex(),
+		L2MessageBusAddress:          networkConfig.L2MessageBus.Hex(),
+		L1BridgeAddress:              networkConfig.L1Bridge.Hex(),
+		L2BridgeAddress:              networkConfig.L2Bridge.Hex(),
+		L1CrossChainMessengerAddress: networkConfig.L1CrossChainMessenger.Hex(),
+		L2CrossChainMessengerAddress: networkConfig.L2CrossChainMessenger.Hex(),
+		L1StartHash:                  networkConfig.L1StartHash.Hex(),
+		AdditionalContracts:          additionalContracts,
 	}
 
 	// Marshal the response into JSON format

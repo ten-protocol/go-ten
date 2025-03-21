@@ -6,8 +6,6 @@ import { network } from 'hardhat';
 /* 
     This script deploys the ZenTestnet contract on the l2 and whitelists it.
 */
-
-
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const l2Network = hre; 
 
@@ -28,7 +26,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             execute: {
                 init: {
                     methodName: "initialize",
-                    args: [networkConfig["TransactionPostProcessorAddress"]]
+                    args: [networkConfig["TransactionsPostProcessor"]]
                 }
             }
         }
@@ -38,7 +36,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const signer = await l2Network.ethers.getSigner(l2Accounts.deployer);
     const transactionPostProcessor = await l2Network.ethers.getContractAt(
         'TransactionPostProcessor', 
-        networkConfig["TransactionPostProcessorAddress"], 
+        networkConfig["TransactionsPostProcessor"],
         signer
     );
     

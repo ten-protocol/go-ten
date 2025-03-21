@@ -21,11 +21,20 @@ func (api *NetAPI) Version(ctx context.Context) (*string, error) {
 }
 
 type ConfigResponseJson struct {
-	ManagementContractAddress       string
-	MessageBusAddress               string
-	L2MessageBusAddress             string
-	TransactionPostProcessorAddress string
-	PublicSystemContracts           map[string]string
+	NetworkConfigAddress            string            `json:"NetworkConfig"`
+	EnclaveRegistryAddress          string            `json:"EnclaveRegistry"`
+	RollupContractAddress           string            `json:"RollupContract"`
+	CrossChainAddress               string            `json:"CrossChain"`
+	L1MessageBusAddress             string            `json:"L1MessageBus"`
+	L2MessageBusAddress             string            `json:"L2MessageBus"`
+	TransactionPostProcessorAddress string            `json:"TransactionsPostProcessor"`
+	L1Bridge                        string            `json:"L1Bridge"`
+	L2Bridge                        string            `json:"L2Bridge"`
+	L1CrossChainMessenger           string            `json:"L1CrossChainMessenger"`
+	L2CrossChainMessenger           string            `json:"L2CrossChainMessenger"`
+	L1StartHash                     string            `json:"L1StartHash"`
+	PublicSystemContracts           map[string]string `json:"PublicSystemContracts"`
+	AdditionalContracts             interface{}       `json:"AdditionalContracts"`
 }
 
 func (api *NetAPI) Config(ctx context.Context) (*ConfigResponseJson, error) {

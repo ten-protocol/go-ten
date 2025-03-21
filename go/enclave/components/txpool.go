@@ -45,8 +45,8 @@ const (
 	txMaxSize = 4*txSlotSize - rollupOverhead // 128KB - overhead
 )
 
-// this is how long the node waits to receive the second batch
-var startMempoolTimeout = 90 * time.Second
+// this is how long the node waits to receive the second batch (longer now as we have to wait for all the contracts to be deployed)
+var startMempoolTimeout = 180 * time.Second
 
 // TxPool is an obscuro wrapper around geths transaction pool
 type TxPool struct {

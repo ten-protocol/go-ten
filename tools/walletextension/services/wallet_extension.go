@@ -302,6 +302,7 @@ func (w *Services) GetTenNetworkConfig() (tencommon.TenNetworkInfo, error) {
 	res, err := WithPlainRPCConnection[tencommon.TenNetworkInfo](context.Background(), w.BackendRPC, func(client *gethrpc.Client) (*tencommon.TenNetworkInfo, error) {
 		return obsclient.NewObsClient(client).GetConfig()
 	})
+	println("GET TEN NETWORK CONFIG: ", res)
 	if err != nil {
 		return tencommon.TenNetworkInfo{}, err
 	}

@@ -11,7 +11,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     var messageBusAddress = process.env.MESSAGE_BUS_ADDRESS!!
     if (messageBusAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-        messageBusAddress = networkConfig.MessageBusAddress;
+        console.log(`Network config = ${JSON.stringify(networkConfig)}`);
+        messageBusAddress = networkConfig.L1MessageBus;
         console.log(`Fallback read of message bus address = ${messageBusAddress}`);
     }
 
@@ -19,6 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const prefundAmount = hre.ethers.parseEther("0.5");
     console.log(`Prefund amount ${prefundAmount}; MB = ${messageBus}`);
 
+    console.log(`Deployer = ${messageBusAddress}`);
     const tx = await messageBus.getFunction("sendValueToL2").populateTransaction(deployer, prefundAmount, {
         value: prefundAmount.toString()
     });
