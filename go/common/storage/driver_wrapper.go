@@ -8,7 +8,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-// PanicOnDBErrorDriver wraps an SQL driver and panics on connection refused errors
+// PanicOnDBErrorDriver wraps an SQL driver and panics on unexpected errors
 type PanicOnDBErrorDriver struct {
 	driver.Driver
 	logger     gethlog.Logger
