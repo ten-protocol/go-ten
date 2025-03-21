@@ -30,6 +30,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
         merkleMessageBus = IMerkleTreeMessageBus(_merkleMessageBus);
         enclaveRegistry = INetworkEnclaveRegistry(_enclaveRegistry);
         lastBatchSeqNo = 0;
+        challengePeriod = 0;
     }
 
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
