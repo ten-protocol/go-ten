@@ -174,7 +174,7 @@ func (s *InMemDevNetwork) Start() {
 		}
 	}
 
-	err = network.PermissionRollupContractStateRoot(s.networkWallets.ContractOwnerWallet, s.l1Network.GetClient(0), s.l1SetupData.CrossChainContractAddress, s.l1SetupData.RollupContractAddress)
+	err = network.PermissionDataAvailabilityRegistryStateRoot(s.networkWallets.ContractOwnerWallet, s.l1Network.GetClient(0), s.l1SetupData.CrossChainContractAddress, s.l1SetupData.DataAvailabilityRegistryAddress)
 	if err != nil {
 		panic(err)
 	}

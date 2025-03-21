@@ -2,14 +2,14 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "./INetworkEnclaveRegistry.sol";
-import "./IRollupContract.sol";
+import "./IDataAvailabilityRegistry.sol";
 import "../messaging/IMerkleTreeMessageBus.sol";
 import "../common/Structs.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
-contract RollupContract is IRollupContract, Initializable, OwnableUpgradeable {
+contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, OwnableUpgradeable {
     Structs.RollupStorage private rollups;
     uint256 public lastBatchSeqNo;
     uint256 private challengePeriod;

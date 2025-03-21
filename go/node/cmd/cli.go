@@ -39,7 +39,7 @@ type NodeConfigCLI struct {
 	sequencerUpgraderAddr   string
 	enclaveRegistryAddr     string
 	crossChainAddr          string
-	rollupAddr              string
+	daRegistryAddr          string
 	networkConfigAddr       string
 	messageBusContractAddr  string
 	l1Start                 string
@@ -85,7 +85,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	sequencerP2PAddr := flag.String(sequencerP2PAddrFlag, "", flagUsageMap[sequencerP2PAddrFlag])
 	enclaveRegistryAddr := flag.String(enclaveRegistryAddrFlag, "", flagUsageMap[enclaveRegistryAddrFlag])
 	crossChainAddr := flag.String(crossChainAddrFlag, "", flagUsageMap[crossChainAddrFlag])
-	rollupAddr := flag.String(rollupAddrFlag, "", flagUsageMap[rollupAddrFlag])
+	daRegistryAddr := flag.String(daRegistryAddrFlag, "", flagUsageMap[daRegistryAddrFlag])
 	networkConfigAddr := flag.String(networkConfigAddrFlag, "", flagUsageMap[networkConfigAddrFlag])
 	messageBusContractAddr := flag.String(messageBusContractAddrFlag, "", flagUsageMap[messageBusContractAddrFlag])
 	l1Start := flag.String(l1StartBlockFlag, "", flagUsageMap[l1StartBlockFlag])
@@ -121,7 +121,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.sequencerP2PAddr = *sequencerP2PAddr
 	cfg.enclaveRegistryAddr = *enclaveRegistryAddr
 	cfg.crossChainAddr = *crossChainAddr
-	cfg.rollupAddr = *rollupAddr
+	cfg.daRegistryAddr = *daRegistryAddr
 	cfg.networkConfigAddr = *networkConfigAddr
 	cfg.messageBusContractAddr = *messageBusContractAddr
 	cfg.l1Start = *l1Start
@@ -187,7 +187,7 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	tenCfg.Network.L1.ChainID = int64(cliCfg.l1ChainID)
 	tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract = gethcommon.HexToAddress(cliCfg.enclaveRegistryAddr)
 	tenCfg.Network.L1.L1Contracts.CrossChainContract = gethcommon.HexToAddress(cliCfg.crossChainAddr)
-	tenCfg.Network.L1.L1Contracts.RollupContract = gethcommon.HexToAddress(cliCfg.rollupAddr)
+	tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry = gethcommon.HexToAddress(cliCfg.daRegistryAddr)
 	tenCfg.Network.L1.L1Contracts.NetworkConfigContract = gethcommon.HexToAddress(cliCfg.networkConfigAddr)
 	tenCfg.Network.L1.L1Contracts.MessageBusContract = gethcommon.HexToAddress(cliCfg.messageBusContractAddr)
 	tenCfg.Network.L1.StartHash = gethcommon.HexToHash(cliCfg.l1Start)

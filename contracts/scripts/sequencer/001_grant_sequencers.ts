@@ -30,11 +30,11 @@ const grantSequencerStatus = async function (enclaveRegistryAddress: string, enc
     }
 };
 
-const enclaveRegistryAddress = process.env.ENCLAVE_REGISTRY_ADDRESS;
+const enclaveRegistryAddress = process.env.ENCLAVE_REGISTRY_ADDR;
 const enclaveIDs = process.env.ENCLAVE_IDS;
 
 if (!enclaveRegistryAddress || !enclaveIDs) {
-    console.error("Missing required environment variables: ENCLAVE_REGISTRY_ADDRESS and ENCLAVE_IDS.");
+    console.error("Missing required environment variables: ENCLAVE_REGISTRY_ADDR and ENCLAVE_IDS.");
     process.exit(1);
 }
 

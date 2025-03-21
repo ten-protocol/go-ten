@@ -97,7 +97,7 @@ func printBlock(b *types.Block, m *Node) string {
 		}
 
 		if t == nil {
-			t, err = m.contractRegistryLib.RollupLib().DecodeTx(tx)
+			t, err = m.contractRegistryLib.DARegistryLib().DecodeTx(tx)
 			if err != nil {
 				panic(err)
 			}

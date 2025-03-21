@@ -42,7 +42,7 @@ type (
 	NetworkConfigAddress         = common.Address
 	CrossChainAddress            = common.Address
 	EnclaveRegistryAddress       = common.Address
-	RollupAddress                = common.Address
+	DARegistryAddress            = common.Address
 	L1MessageBusAddress          = common.Address
 	L1BridgeAddress              = common.Address
 	L1CrossChainMessengerAddress = common.Address

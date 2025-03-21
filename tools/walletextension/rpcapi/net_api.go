@@ -23,7 +23,7 @@ func (api *NetAPI) Version(ctx context.Context) (*string, error) {
 type ConfigResponseJson struct {
 	NetworkConfigAddress            string            `json:"NetworkConfig"`
 	EnclaveRegistryAddress          string            `json:"EnclaveRegistry"`
-	RollupContractAddress           string            `json:"RollupContract"`
+	DataAvailabilityRegistryAddress string            `json:"DataAvailabilityRegistry"`
 	CrossChainAddress               string            `json:"CrossChain"`
 	L1MessageBusAddress             string            `json:"L1MessageBus"`
 	L2MessageBusAddress             string            `json:"L2MessageBus"`

@@ -54,8 +54,8 @@ type L1TenData struct {
 	EnclaveRegistryAddress common.Address
 	// CrossChainContractAddress defines the cross chain contract address
 	CrossChainContractAddress common.Address
-	// RollupContractAddress defines the rollup contract address
-	RollupContractAddress common.Address
+	// DataAvailabilityRegistryAddress defines the rollup contract address
+	DataAvailabilityRegistryAddress common.Address
 	// ObxErc20Address - the address of the "TEN" ERC20
 	ObxErc20Address common.Address
 	// EthErc20Address - the address of the "ETH" ERC20

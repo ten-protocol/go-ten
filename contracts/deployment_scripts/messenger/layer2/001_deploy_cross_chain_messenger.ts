@@ -15,7 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         companionNetworks,
     } = hre;
     // Use the contract addresses from the network config contract deployment.
-    var networkConfigAddress = process.env.NETWORK_CONFIG_ADDRESS!!
+    var networkConfigAddress = process.env.NETWORK_CONFIG_ADDR!!
     if (networkConfigAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
         networkConfigAddress = networkConfig.NetworkConfigAddress;

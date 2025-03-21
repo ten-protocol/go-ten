@@ -59,8 +59,8 @@ func (s *GrantSequencers) Start() error {
                 "accounts": [ "%s" ]
             }
         }`, s.cfg.l1HTTPURL, s.cfg.privateKey),
-		"ENCLAVE_REGISTRY_ADDRESS": s.cfg.enclaveRegistryAddress,
-		"ENCLAVE_IDS":              enclaveIDs,
+		"ENCLAVE_REGISTRY_ADDR": s.cfg.enclaveRegistryAddress,
+		"ENCLAVE_IDS":           enclaveIDs,
 	}
 
 	fmt.Printf("Starting grant sequencer script. EnclaveRegistryAddress: %s, EnclaveIDs: %s\n", s.cfg.enclaveRegistryAddress, enclaveIDs)

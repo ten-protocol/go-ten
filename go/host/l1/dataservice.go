@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
+	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
@@ -183,7 +183,7 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 	if err := r.processEnclaveRegistryLogs(block, allAddresses.EnclaveRegistry, processed); err != nil {
 		return nil, err
 	}
-	if err := r.processRollupLogs(block, allAddresses.RollupContract, processed); err != nil {
+	if err := r.processRollupLogs(block, allAddresses.DataAvailabilityRegistry, processed); err != nil {
 		return nil, err
 	}
 
@@ -328,12 +328,12 @@ func (r *DataService) processRollupLogs(block *types.Header, contractAddr gethco
 }
 
 func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
-	abi, err := RollupContract.RollupContractMetaData.GetAbi()
+	abi, err := DataAvailabilityRegistry.DataAvailabilityRegistryMetaData.GetAbi()
 	if err != nil {
-		r.logger.Error("Error getting RollupContract ABI", log.ErrKey, err)
+		r.logger.Error("Error getting DataAvailabilityRegistry ABI", log.ErrKey, err)
 		return err
 	}
-	var event RollupContract.RollupContractRollupAdded
+	var event DataAvailabilityRegistry.DataAvailabilityRegistryRollupAdded
 	err = abi.UnpackIntoInterface(&event, "RollupAdded", l.Data)
 	if err != nil {
 		r.logger.Error("Error unpacking RollupAdded event", log.ErrKey, err)

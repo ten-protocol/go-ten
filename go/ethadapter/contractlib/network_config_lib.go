@@ -49,14 +49,14 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkConfigAdd
 	}
 
 	return &common.NetworkConfigAddresses{
-		CrossChain:            addresses.CrossChain,
-		EnclaveRegistry:       addresses.NetworkEnclaveRegistry,
-		RollupContract:        addresses.RollupContract,
-		L1MessageBus:          addresses.MessageBus,
-		L1Bridge:              addresses.L1Bridge,
-		L2Bridge:              addresses.L2Bridge,
-		L1CrossChainMessenger: addresses.L1CrossChainMessenger,
-		L2CrossChainMessenger: addresses.L2CrossChainMessenger,
+		CrossChain:               addresses.CrossChain,
+		EnclaveRegistry:          addresses.NetworkEnclaveRegistry,
+		DataAvailabilityRegistry: addresses.DataAvailabilityRegistry,
+		L1MessageBus:             addresses.MessageBus,
+		L1Bridge:                 addresses.L1Bridge,
+		L2Bridge:                 addresses.L2Bridge,
+		L1CrossChainMessenger:    addresses.L1CrossChainMessenger,
+		L2CrossChainMessenger:    addresses.L2CrossChainMessenger,
 	}, nil
 }
 

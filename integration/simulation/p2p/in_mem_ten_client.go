@@ -176,7 +176,7 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 		NetworkConfig:             gethcommon.Address(cfg.NetworkConfig),
 		EnclaveRegistry:           gethcommon.Address(cfg.EnclaveRegistry),
 		CrossChain:                gethcommon.Address(cfg.CrossChain),
-		RollupContract:            gethcommon.Address(cfg.RollupContract),
+		DataAvailabilityRegistry:  gethcommon.Address(cfg.DataAvailabilityRegistry),
 		L1MessageBus:              gethcommon.Address(cfg.L1MessageBus),
 		L1Bridge:                  gethcommon.Address(cfg.L1Bridge),
 		L2Bridge:                  gethcommon.Address(cfg.L2Bridge),
