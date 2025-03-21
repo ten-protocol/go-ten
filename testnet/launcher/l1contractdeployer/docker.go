@@ -131,7 +131,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	if err != nil {
 		return nil, err
 	}
-	rollupAddr, err := findAddress(lines[4])
+	daRegistryAddr, err := findAddress(lines[4])
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 
 	return &node.NetworkConfig{
 		EnclaveRegistryAddress:          enclaveRegistryAddr,
-		DataAvailabilityRegistryAddress: rollupAddr,
+		DataAvailabilityRegistryAddress: daRegistryAddr,
 		CrossChainAddress:               crossChainAddr,
 		NetworkConfigAddress:            networkConfigAddr,
 		MessageBusAddress:               messageBusAddr,

@@ -22,7 +22,7 @@ const (
 	sequencerP2PAddrFlag        = "sequencer_addr"
 	enclaveRegistryAddrFlag     = "enclave_registry_addr"
 	crossChainAddrFlag          = "cross_chain_addr"
-	rollupAddrFlag              = "rollup_addr"
+	daRegistryAddrFlag          = "da_registry_addr"
 	networkConfigAddrFlag       = "network_config_addr"
 	messageBusContractAddrFlag  = "message_bus_contract_addr"
 	l1StartBlockFlag            = "l1_start"
@@ -63,7 +63,7 @@ func getFlagUsageMap() map[string]string {
 		sequencerP2PAddrFlag:        "The address for the sequencer p2p server",
 		enclaveRegistryAddrFlag:     "The enclave registry contract address on the L1",
 		crossChainAddrFlag:          "The cross chain contract address on the L1",
-		rollupAddrFlag:              "The rollup contract address on the L1",
+		daRegistryAddrFlag:          "The data availability contract address on the L1",
 		networkConfigAddrFlag:       "The network config contract address on the L1",
 		messageBusContractAddrFlag:  "The address of the L1 message bus contract owned by the management contract.",
 		l1StartBlockFlag:            "The block hash on the L1 where the management contract was deployed",
