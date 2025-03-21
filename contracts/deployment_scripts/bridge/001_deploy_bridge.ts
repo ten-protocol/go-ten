@@ -12,7 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         deployments, 
         getNamedAccounts
     } = hre;
-    var networkConfigAddress = process.env.NETWORK_CONFIG_ADDRESS!!
+    var networkConfigAddress = process.env.NETWORK_CONFIG_ADDR!!
     if (networkConfigAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
         networkConfigAddress = networkConfig.NetworkConfigAddress;

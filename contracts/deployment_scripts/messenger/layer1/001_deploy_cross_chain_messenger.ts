@@ -14,14 +14,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployer } = await hre.companionNetworks.layer1.getNamedAccounts();
 
     // Use the contract addresses from the management contract deployment.
-    var networkConfigAddress = process.env.NETWORK_CONFIG_ADDRESS!!
+    var networkConfigAddress = process.env.NETWORK_CONFIG_ADDR!!
     if (networkConfigAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
         networkConfigAddress = networkConfig.NetworkConfigAddress;
         console.log(`Fallback read of management contract address = ${networkConfigAddress}`);
     }
 
-    var messageBusAddress : string = process.env.MESSAGE_BUS_ADDRESS!!
+    var messageBusAddress : string = process.env.MESSAGE_BUS_ADDR!!
     if (messageBusAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
         messageBusAddress = networkConfig.L1MessageBus;
