@@ -130,7 +130,7 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
 	}
-	initialiseSecretTx, err := p.contractRegistry.NetworkEnclaveLib().CreateInitializeSecret(l1tx)
+	initialiseSecretTx, err := p.contractRegistry.EnclaveRegistryLib().CreateInitializeSecret(l1tx)
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 			panic(errors.Wrap(err, "could not fetch head block"))
 		}
 	}
-	requestSecretTx, err := p.contractRegistry.NetworkEnclaveLib().CreateRequestSecret(l1tx)
+	requestSecretTx, err := p.contractRegistry.EnclaveRegistryLib().CreateRequestSecret(l1tx)
 	if err != nil {
 		return gethutil.EmptyHash, err
 	}
@@ -179,7 +179,7 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 		AttesterID:  secretResponse.AttesterID,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	respondSecretTx, err := p.contractRegistry.NetworkEnclaveLib().CreateRespondSecret(l1tx, false)
+	respondSecretTx, err := p.contractRegistry.EnclaveRegistryLib().CreateRespondSecret(l1tx, false)
 	if err != nil {
 		return err
 	}
@@ -201,7 +201,7 @@ func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common
 	secretRespTxs := make([]*common.L1RespondSecretTx, 0)
 
 	for _, tx := range processed {
-		t, err := p.contractRegistry.NetworkEnclaveLib().DecodeTx(tx.Transaction)
+		t, err := p.contractRegistry.EnclaveRegistryLib().DecodeTx(tx.Transaction)
 		if err != nil {
 			p.logger.Error("Could not decode transaction", log.ErrKey, err)
 			continue

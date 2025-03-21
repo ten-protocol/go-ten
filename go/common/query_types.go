@@ -111,7 +111,7 @@ func (p *QueryPagination) UnmarshalJSON(data []byte) error {
 }
 
 type TenNetworkInfo struct {
-	NetworkConfigAddress      NetworkConfigAddress
+	NetworkConfig             NetworkConfigAddress
 	EnclaveRegistry           EnclaveRegistryAddress
 	CrossChain                CrossChainAddress
 	RollupContract            RollupAddress

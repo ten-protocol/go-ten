@@ -90,7 +90,7 @@ func printBlock(b *types.Block, m *Node) string {
 			panic(err)
 		}
 		if t == nil {
-			t, err = m.contractRegistryLib.NetworkEnclaveLib().DecodeTx(tx)
+			t, err = m.contractRegistryLib.EnclaveRegistryLib().DecodeTx(tx)
 			if err != nil {
 				panic(err)
 			}

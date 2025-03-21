@@ -269,7 +269,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 	importantContractAddresses := h.services.L1Publisher().GetImportantContracts()
 
 	return &common.TenNetworkInfo{
-		NetworkConfigAddress:      h.config.NetworkConfigAddress,
+		NetworkConfig:             h.config.NetworkConfigAddress,
 		EnclaveRegistry:           importantContractAddresses.EnclaveRegistry,
 		CrossChain:                importantContractAddresses.CrossChain,
 		RollupContract:            importantContractAddresses.RollupContract,

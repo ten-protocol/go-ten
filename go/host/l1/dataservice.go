@@ -433,7 +433,7 @@ func (r *DataService) processSequencerLogs(l types.Log, txData *common.L1TxData,
 
 // processEnclaveRegistrationTx handles decoded transaction types
 func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, processed *common.ProcessedL1Data) error {
-	networkLib := r.contractRegistry.NetworkEnclaveLib()
+	networkLib := r.contractRegistry.EnclaveRegistryLib()
 	decodedTx, err := networkLib.DecodeTx(txData.Transaction)
 	if err != nil {
 		r.logger.Error("Error decoding transaction", "txHash", txData.Transaction.Hash, "error", err)

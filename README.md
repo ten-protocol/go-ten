@@ -342,7 +342,7 @@ Note that relevant contract addresses on the network can be found from running t
 
 ```bash
 curl -X POST 127.0.0.1:80  -H 'Content-Type: application/json' \
--d '{"jsonrpc":"2.0","method":"obscuro_config","params":[],"id":1}'
+-d '{"jsonrpc":"2.0","method":"ten_config","params":[],"id":1}'
 ```
 
 ## Community 

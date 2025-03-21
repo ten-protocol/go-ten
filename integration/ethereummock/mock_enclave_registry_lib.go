@@ -7,21 +7,21 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 )
 
-type MockNetworkEnclaveRegistryLib struct{}
+type MockEnclaveRegistryLib struct{}
 
-func NewNetworkEnclaveRegistryLibMock() contractlib.EnclaveRegistryLib {
-	return &MockNetworkEnclaveRegistryLib{}
+func NewEnclaveRegistryLibMock() contractlib.EnclaveRegistryLib {
+	return &MockEnclaveRegistryLib{}
 }
 
-func (m *MockNetworkEnclaveRegistryLib) IsMock() bool {
+func (m *MockEnclaveRegistryLib) IsMock() bool {
 	return true
 }
 
-func (m *MockNetworkEnclaveRegistryLib) GetContractAddr() *gethcommon.Address {
+func (m *MockEnclaveRegistryLib) GetContractAddr() *gethcommon.Address {
 	return &InitializeSecretTxAddr
 }
 
-func (m *MockNetworkEnclaveRegistryLib) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
+func (m *MockEnclaveRegistryLib) DecodeTx(tx *types.Transaction) (common.L1TenTransaction, error) {
 	if tx.To() == nil || len(tx.Data()) == 0 {
 		return nil, nil
 	}
@@ -39,14 +39,14 @@ func (m *MockNetworkEnclaveRegistryLib) DecodeTx(tx *types.Transaction) (common.
 	}
 }
 
-func (m *MockNetworkEnclaveRegistryLib) CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error) {
+func (m *MockEnclaveRegistryLib) CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error) {
 	return EncodeTx(tx, InitializeSecretTxAddr), nil
 }
 
-func (m *MockNetworkEnclaveRegistryLib) CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error) {
+func (m *MockEnclaveRegistryLib) CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error) {
 	return EncodeTx(tx, RequestSecretTxAddr), nil
 }
 
-func (m *MockNetworkEnclaveRegistryLib) CreateRespondSecret(tx *common.L1RespondSecretTx, _ bool) (types.TxData, error) {
+func (m *MockEnclaveRegistryLib) CreateRespondSecret(tx *common.L1RespondSecretTx, _ bool) (types.TxData, error) {
 	return EncodeTx(tx, RespondSecretTxAddr), nil
 }

@@ -254,7 +254,7 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 	totalDeposited := big.NewInt(0)
 
 	rollupLib := s.Params.ContractRegistryLib.RollupLib()
-	enclaveRegistryLib := s.Params.ContractRegistryLib.NetworkEnclaveLib()
+	enclaveRegistryLib := s.Params.ContractRegistryLib.EnclaveRegistryLib()
 
 	blockchain, err := ethadapter.BlocksBetween(node, startBlock, endBlock)
 	if err != nil {

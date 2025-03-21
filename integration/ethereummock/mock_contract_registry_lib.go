@@ -25,8 +25,8 @@ func (m *mockContractRegistryLib) RollupLib() contractlib.RollupContractLib {
 	return NewRollupContractLibMock()
 }
 
-func (m *mockContractRegistryLib) NetworkEnclaveLib() contractlib.EnclaveRegistryLib {
-	return NewNetworkEnclaveRegistryLibMock()
+func (m *mockContractRegistryLib) EnclaveRegistryLib() contractlib.EnclaveRegistryLib {
+	return NewEnclaveRegistryLibMock()
 }
 
 func (m *mockContractRegistryLib) NetworkConfigLib() contractlib.NetworkConfigLib {

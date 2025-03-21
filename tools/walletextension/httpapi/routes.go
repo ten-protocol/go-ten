@@ -389,7 +389,7 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 	}
 
 	networkConfigResponse := NetworkConfigResponse{
-		NetworkConfigAddress:         networkConfig.NetworkConfigAddress.Hex(),
+		NetworkConfigAddress:         networkConfig.NetworkConfig.Hex(),
 		EnclaveRegistryAddress:       networkConfig.EnclaveRegistry.Hex(),
 		RollupContractAddress:        networkConfig.RollupContract.Hex(),
 		CrossChainAddress:            networkConfig.CrossChain.Hex(),

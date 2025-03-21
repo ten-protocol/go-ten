@@ -99,7 +99,7 @@ func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.Encr
 
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
 type ChecksumFormattedTenNetworkConfig struct {
-	NetworkConfigAddress      gethcommon.AddressEIP55
+	NetworkConfig             gethcommon.AddressEIP55
 	EnclaveRegistry           gethcommon.AddressEIP55
 	CrossChain                gethcommon.AddressEIP55
 	RollupContract            gethcommon.AddressEIP55
@@ -124,7 +124,7 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 	}
 
 	return &ChecksumFormattedTenNetworkConfig{
-		NetworkConfigAddress:      gethcommon.AddressEIP55(info.NetworkConfigAddress),
+		NetworkConfig:             gethcommon.AddressEIP55(info.NetworkConfig),
 		EnclaveRegistry:           gethcommon.AddressEIP55(info.EnclaveRegistry),
 		CrossChain:                gethcommon.AddressEIP55(info.CrossChain),
 		RollupContract:            gethcommon.AddressEIP55(info.RollupContract),

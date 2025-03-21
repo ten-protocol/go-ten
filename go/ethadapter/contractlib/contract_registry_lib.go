@@ -11,7 +11,7 @@ import (
 
 type ContractRegistryLib interface {
 	RollupLib() RollupContractLib
-	NetworkEnclaveLib() EnclaveRegistryLib
+	EnclaveRegistryLib() EnclaveRegistryLib
 	NetworkConfigLib() NetworkConfigLib
 	GetContractAddresses() *common.NetworkConfigAddresses
 	IsMock() bool
@@ -69,7 +69,7 @@ func (r *ContractRegistryImpl) RollupLib() RollupContractLib {
 	return r.rollupLib
 }
 
-func (r *ContractRegistryImpl) NetworkEnclaveLib() EnclaveRegistryLib {
+func (r *ContractRegistryImpl) EnclaveRegistryLib() EnclaveRegistryLib {
 	return r.networkEnclaveLib
 }
 
