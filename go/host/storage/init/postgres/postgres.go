@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/lib/pq"
+
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	_ "github.com/lib/pq"
@@ -18,7 +21,8 @@ const (
 	maxDBConnections = 100
 )
 
-func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) {
+func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Logger) (*sql.DB, error) {
+	driverName := registerPanicOnConnectionRefusedDriver(logger)
 	if baseURL == "" {
 		return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
 	}
@@ -26,7 +30,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) 
 
 	dbName = strings.ToLower(dbName)
 
-	db, err := sql.Open("postgres", dbURL)
+	db, err := sql.Open(driverName, dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL server: %v", err)
 	}
@@ -67,4 +71,18 @@ func CreatePostgresDBConnection(baseURL string, dbName string) (*sql.DB, error) 
 	}
 
 	return db, nil
+}
+
+// registerPanicOnConnectionRefusedDriver registers the custom driver
+func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
+	driverName := "pg-panic-on-unexpected-err"
+	sql.Register(driverName,
+		storage.NewPanicOnDBErrorDriver(
+			&pq.Driver{},
+			logger,
+			func(err error) bool {
+				return strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "shutting down")
+			}),
+	)
+	return driverName
 }
