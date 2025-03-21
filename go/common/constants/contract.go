@@ -3,9 +3,9 @@ package constants
 import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
+	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkEnclaveRegistry"
-	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 )
 
 func NetworkConfigBytecode() ([]byte, error) {
@@ -34,8 +34,8 @@ func EnclaveRegistryBytecode() ([]byte, error) {
 	return append(bytecode, input...), nil
 }
 
-func RollupContractBytecode() ([]byte, error) {
-	parsed, err := RollupContract.RollupContractMetaData.GetAbi()
+func DataAvailabilityRegistryBytecode() ([]byte, error) {
+	parsed, err := DataAvailabilityRegistry.DataAvailabilityRegistryMetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func RollupContractBytecode() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	bytecode := common.FromHex(RollupContract.RollupContractMetaData.Bin)
+	bytecode := common.FromHex(DataAvailabilityRegistry.DataAvailabilityRegistryMetaData.Bin)
 	return append(bytecode, input...), nil
 }
 

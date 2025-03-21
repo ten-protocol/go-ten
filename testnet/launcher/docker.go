@@ -58,7 +58,7 @@ func (t *Testnet) Start() error {
 	}
 	sequencerCfg.Network.L1.StartHash = common.HexToHash(networkConfig.L1StartHash)
 	sequencerCfg.Network.L1.L1Contracts.EnclaveRegistryContract = common.HexToAddress(networkConfig.EnclaveRegistryAddress)
-	sequencerCfg.Network.L1.L1Contracts.RollupContract = common.HexToAddress(networkConfig.RollupContractAddress)
+	sequencerCfg.Network.L1.L1Contracts.DataAvailabilityRegistry = common.HexToAddress(networkConfig.DataAvailabilityRegistryAddress)
 	sequencerCfg.Network.L1.L1Contracts.CrossChainContract = common.HexToAddress(networkConfig.CrossChainAddress)
 	sequencerCfg.Network.L1.L1Contracts.NetworkConfigContract = common.HexToAddress(networkConfig.NetworkConfigAddress)
 	sequencerCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
@@ -86,7 +86,7 @@ func (t *Testnet) Start() error {
 	}
 	validatorNodeCfg.Network.L1.StartHash = common.HexToHash(networkConfig.L1StartHash)
 	validatorNodeCfg.Network.L1.L1Contracts.EnclaveRegistryContract = common.HexToAddress(networkConfig.EnclaveRegistryAddress)
-	validatorNodeCfg.Network.L1.L1Contracts.RollupContract = common.HexToAddress(networkConfig.RollupContractAddress)
+	validatorNodeCfg.Network.L1.L1Contracts.DataAvailabilityRegistry = common.HexToAddress(networkConfig.DataAvailabilityRegistryAddress)
 	validatorNodeCfg.Network.L1.L1Contracts.CrossChainContract = common.HexToAddress(networkConfig.CrossChainAddress)
 	validatorNodeCfg.Network.L1.L1Contracts.NetworkConfigContract = common.HexToAddress(networkConfig.NetworkConfigAddress)
 	validatorNodeCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
@@ -113,7 +113,7 @@ func (t *Testnet) Start() error {
 			l2cd.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
 			l2cd.WithNetworkConfigAddress(networkConfig.NetworkConfigAddress),
 			l2cd.WithEnclaveRegistryAddress(networkConfig.EnclaveRegistryAddress),
-			l2cd.WithRollupContractAddress(networkConfig.RollupContractAddress),
+			l2cd.WithDataAvailabilityRegistryAddress(networkConfig.DataAvailabilityRegistryAddress),
 			l2cd.WithCrossChainAddress(networkConfig.CrossChainAddress),
 			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
 			l2cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
@@ -256,13 +256,13 @@ func (t *Testnet) deployL1Contracts() (*node.NetworkConfig, error) {
 		"  CrossChain Address: %s\n"+
 		"  MessageBus Address: %s\n"+
 		"  EnclaveRegistry Address: %s\n"+
-		"  RollupContract Address: %s\n"+
+		"  DataAvailabilityRegistry Address: %s\n"+
 		"  L1 Start Hash: %s\n",
 		networkConfig.NetworkConfigAddress,
 		networkConfig.CrossChainAddress,
 		networkConfig.MessageBusAddress,
 		networkConfig.EnclaveRegistryAddress,
-		networkConfig.RollupContractAddress,
+		networkConfig.DataAvailabilityRegistryAddress,
 		networkConfig.L1StartHash)
 	fmt.Println("L1 Contracts were successfully deployed...")
 	return networkConfig, nil

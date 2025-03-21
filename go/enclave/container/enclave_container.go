@@ -55,7 +55,7 @@ func NewEnclaveContainerWithLogger(config *enclaveconfig.EnclaveConfig, logger g
 	}
 
 	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&config.EnclaveRegistryAddress, logger)
-	rollupContractLib := contractlib.NewRollupContractLib(&config.RollupContractAddress, logger)
+	rollupContractLib := contractlib.NewDataAvailabilityRegistryLib(&config.DataAvailabilityRegistryAddress, logger)
 	// we use this construction to avoid passing an eth client in the enclave and fetching the addresses
 	contractRegistryLib := contractlib.NewContractRegistryFromLibs(rollupContractLib, enclaveRegistryLib, logger)
 	encl := enclave.NewEnclave(config, genesis, contractRegistryLib, logger)

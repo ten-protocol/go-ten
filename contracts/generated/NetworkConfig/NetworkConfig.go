@@ -31,23 +31,23 @@ var (
 
 // NetworkConfigAddresses is an auto generated low-level Go binding around an user-defined struct.
 type NetworkConfigAddresses struct {
-	CrossChain             common.Address
-	MessageBus             common.Address
-	NetworkEnclaveRegistry common.Address
-	RollupContract         common.Address
-	L1Bridge               common.Address
-	L2Bridge               common.Address
-	L1CrossChainMessenger  common.Address
-	L2CrossChainMessenger  common.Address
-	AdditionalContracts    []NetworkConfigNamedAddress
+	CrossChain               common.Address
+	MessageBus               common.Address
+	NetworkEnclaveRegistry   common.Address
+	DataAvailabilityRegistry common.Address
+	L1Bridge                 common.Address
+	L2Bridge                 common.Address
+	L1CrossChainMessenger    common.Address
+	L2CrossChainMessenger    common.Address
+	AdditionalContracts      []NetworkConfigNamedAddress
 }
 
 // NetworkConfigFixedAddresses is an auto generated low-level Go binding around an user-defined struct.
 type NetworkConfigFixedAddresses struct {
-	CrossChain             common.Address
-	MessageBus             common.Address
-	NetworkEnclaveRegistry common.Address
-	RollupContract         common.Address
+	CrossChain               common.Address
+	MessageBus               common.Address
+	NetworkEnclaveRegistry   common.Address
+	DataAvailabilityRegistry common.Address
 }
 
 // NetworkConfigNamedAddress is an auto generated low-level Go binding around an user-defined struct.

@@ -164,7 +164,7 @@ func getContractCode(cfg *Config) ([]byte, error) {
 	case crossChain:
 		return constants.CrossChainBytecode()
 	case rollup:
-		return constants.RollupContractBytecode()
+		return constants.DataAvailabilityRegistryBytecode()
 	case networkConfig:
 		return constants.NetworkConfigBytecode()
 

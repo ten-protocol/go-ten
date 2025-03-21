@@ -1,18 +1,18 @@
 import { ethers } from "hardhat";
-import {RollupContract} from "../../typechain-types";
+import {DataAvailabilityRegistry} from "../../typechain-types";
 
 const setChallengePeriod = async function (rollupContractAddress: string, challengPeriod: number) {
     const rollupContract = await ethers.getContractAt(
-        "RollupContract",
+        "DataAvailabilityRegistry",
         rollupContractAddress
-    ) as RollupContract;
+    ) as DataAvailabilityRegistry;
 
 
     console.log(`Setting challenge period to: ${challengPeriod}`);
     const tx = await rollupContract.setChallengePeriod(BigInt(challengPeriod));
     await tx.wait();
     console.log(`Successfully set challenge period to: ${challengPeriod}`);
-    
+
     const rollupChallengePeriod = await rollupContract.getChallengePeriod();
     if (BigInt(challengPeriod) !== rollupChallengePeriod) {
         throw new Error(`Failed to set the challenge period to: ${challengPeriod}. Returned value is: ${rollupChallengePeriod}`);

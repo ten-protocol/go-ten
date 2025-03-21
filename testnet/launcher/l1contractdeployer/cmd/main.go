@@ -37,7 +37,7 @@ func main() {
 
 	fmt.Printf("ENCLAVEREGISTRYADDR=%s\n", networkConfig.EnclaveRegistryAddress)
 	fmt.Printf("CROSSCHAINADDR=%s\n", networkConfig.CrossChainAddress)
-	fmt.Printf("ROLLUPADDR=%s\n", networkConfig.RollupContractAddress)
+	fmt.Printf("ROLLUPADDR=%s\n", networkConfig.DataAvailabilityRegistryAddress)
 	fmt.Printf("NETWORKCONFIGADDR=%s\n", networkConfig.NetworkConfigAddress)
 	fmt.Printf("MSGBUSCONTRACTADDR=%s\n", networkConfig.MessageBusAddress)
 	fmt.Printf("L1START=%s\n", networkConfig.L1StartHash)
@@ -47,7 +47,7 @@ func main() {
 		envFile := fmt.Sprintf("ENCLAVEREGISTRYADDR=%s\nCROSSCHAINADDR=%s\nROLLUPADDR=%s\nNETWORKCONFIGADDR=%s\nMSGBUSCONTRACTADDR=%s\nL1START=%s\n",
 			networkConfig.EnclaveRegistryAddress,
 			networkConfig.CrossChainAddress,
-			networkConfig.RollupContractAddress,
+			networkConfig.DataAvailabilityRegistryAddress,
 			networkConfig.NetworkConfigAddress,
 			networkConfig.MessageBusAddress,
 			networkConfig.L1StartHash)
