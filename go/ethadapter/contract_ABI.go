@@ -3,11 +3,12 @@ package ethadapter
 import (
 	"strings"
 
+	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
+
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkEnclaveRegistry"
-	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
 )
 
 const (
@@ -22,10 +23,10 @@ const (
 )
 
 var (
-	MessageBusABI, _      = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
-	NetworkConfigABI, _   = abi.JSON(strings.NewReader(NetworkConfig.NetworkConfigMetaData.ABI))
-	RollupContractABI, _  = abi.JSON(strings.NewReader(RollupContract.RollupContractMetaData.ABI))
-	EnclaveRegistryABI, _ = abi.JSON(strings.NewReader(NetworkEnclaveRegistry.NetworkEnclaveRegistryMetaData.ABI))
+	MessageBusABI, _               = abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	NetworkConfigABI, _            = abi.JSON(strings.NewReader(NetworkConfig.NetworkConfigMetaData.ABI))
+	DataAvailabilityRegistryABI, _ = abi.JSON(strings.NewReader(DataAvailabilityRegistry.DataAvailabilityRegistryMetaData.ABI))
+	EnclaveRegistryABI, _          = abi.JSON(strings.NewReader(NetworkEnclaveRegistry.NetworkEnclaveRegistryMetaData.ABI))
 
 	CrossChainEventName                = "LogMessagePublished"
 	ValueTransferEventName             = "ValueTransfer"
@@ -45,7 +46,7 @@ var (
 	SequencerEnclaveRevokedEventID   = EnclaveRegistryABI.Events[SequencerEnclaveRevokedEventName].ID
 	NetworkSecretRequestedID         = EnclaveRegistryABI.Events[NetworkSecretRequestedEventName].ID
 	NetworkSecretRespondedID         = EnclaveRegistryABI.Events[NetworkSecretRespondedEventName].ID
-	RollupAddedID                    = RollupContractABI.Events[RollupAddedEventName].ID
+	RollupAddedID                    = DataAvailabilityRegistryABI.Events[RollupAddedEventName].ID
 	NetworkContractAddressAddedID    = NetworkConfigABI.Events[NetworkContractAddressAddedName].ID
 	AdditionalContractAddressAddedID = NetworkConfigABI.Events[AdditionalContractAddressAddedName].ID
 )

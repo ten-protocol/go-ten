@@ -68,6 +68,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
         _;
     }
 
+    // TODO can we make it so only attested sequencer enclaves can call this? can pass the requester ID as a param?
     function addRollup(Structs.MetaRollup calldata r) external verifyRollupIntegrity(r) {
         AppendRollup(r);
 

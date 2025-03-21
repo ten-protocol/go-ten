@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/contracts/generated/RollupContract"
+	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -30,7 +30,7 @@ type dataAvailabilityRegistryLibImpl struct {
 func NewDataAvailabilityRegistryLib(addr *gethcommon.Address, logger gethlog.Logger) DataAvailabilityRegistryLib {
 	return &dataAvailabilityRegistryLibImpl{
 		addr:        addr,
-		contractABI: ethadapter.RollupContractABI,
+		contractABI: ethadapter.DataAvailabilityRegistryABI,
 		logger:      logger,
 	}
 }
@@ -49,7 +49,7 @@ func (r *dataAvailabilityRegistryLibImpl) PopulateAddRollup(t *common.L1RollupTx
 		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
 	}
 
-	metaRollup := RollupContract.StructsMetaRollup{
+	metaRollup := DataAvailabilityRegistry.StructsMetaRollup{
 		Hash:                decodedRollup.Hash(),
 		Signature:           signature,
 		FirstSequenceNumber: big.NewInt(int64(decodedRollup.Header.FirstBatchSeqNo)),
