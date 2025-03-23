@@ -7,18 +7,26 @@ import "./MessageBus.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
+// This contract implements the IMerkleTreeMessageBus interface
 contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessControlUpgradeable {
 
     bytes32 public constant STATE_ROOT_MANAGER_ROLE = keccak256("STATE_ROOT_MANAGER_ROLE");
+    bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
 
     // When a xchain messages root becomes valid represented as a timestamp in seconds to be compared against block timestamp
     mapping(bytes32 => uint256) rootValidAfter;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() MessageBus() {
+        // Constructor intentionally left empty
     }
 
-    function initialize(address initialOwner) public override initializer {
+    /**
+     * @dev Initializes the contract with provided owner
+     * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
+     * @param withdrawalManager Address that will be granted the WITHDRAWAL_MANAGER_ROLE
+     */
+    function initialize(address initialOwner, address withdrawalManager) public override(IMerkleTreeMessageBus, MessageBus) initializer {
         // Initialize parent contracts
         //super.initialize(initialOwner, address(0));
         __Ownable_init(initialOwner);
@@ -27,17 +35,17 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
         // Set up roles
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
+        _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
     }
-
     /**
      * @dev Overrides the receiveValueFromL2 function to make it callable by 
-     * addresses with the STATE_ROOT_MANAGER_ROLE instead of only the owner.
+     * addresses with the WITHDRAWAL_MANAGER_ROLE instead of only the owner.
      * Uses the parent contract's internal _receiveValueFromL2Internal function for the core logic.
      */
     function receiveValueFromL2(
         address receiver,
         uint256 amount
-    ) external override onlyRole(STATE_ROOT_MANAGER_ROLE) {
+    ) external override onlyRole(WITHDRAWAL_MANAGER_ROLE) {
         _receiveValueFromL2Internal(receiver, amount);
     }
 

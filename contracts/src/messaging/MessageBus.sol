@@ -15,7 +15,7 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
       //  _disableInitializers();
     }
 
-    function initialize(address caller, address feesAddress) public initializer {
+    function initialize(address caller, address feesAddress) public virtual initializer {
         __Ownable_init(caller);
         fees = IFees(feesAddress);
     }

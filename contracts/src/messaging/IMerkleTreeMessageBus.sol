@@ -17,5 +17,5 @@ interface IMerkleTreeMessageBus {
     // arguments are same as the ones for message inclusion
     function verifyValueTransferInclusion(Structs.ValueTransferMessage calldata message, bytes32[] calldata proof, bytes32 root) external view;
 
-    function initialize(address initialOwner) external;
+    function initialize(address initialOwner, address withdrawalManager) external;
 }
