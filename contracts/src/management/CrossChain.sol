@@ -25,7 +25,8 @@ contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable, Reentranc
     function initialize(address owner) public initializer {
         __Ownable_init(owner);
         __ReentrancyGuard_init();
-        merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus(owner);
+        merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus();
+        merkleMessageBus.initialize(owner);
         messageBus = MessageBus.IMessageBus(address(merkleMessageBus));
         paused = false; // Default to withdrawals enabled
         emit LogCrossChainContractCreated(address(messageBus));

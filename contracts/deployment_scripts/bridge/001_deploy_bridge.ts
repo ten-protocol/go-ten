@@ -15,7 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     var networkConfigAddress = process.env.NETWORK_CONFIG_ADDR!!
     if (networkConfigAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-        networkConfigAddress = networkConfig.NetworkConfigAddress;
+        networkConfigAddress = networkConfig.NetworkConfig;
         console.log(`Fallback read of network config contract address = ${networkConfigAddress}`);
     }
 

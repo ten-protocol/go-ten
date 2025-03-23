@@ -16,4 +16,6 @@ interface IMerkleTreeMessageBus {
     // This function verifies that a value transfer message is included in the state root.
     // arguments are same as the ones for message inclusion
     function verifyValueTransferInclusion(Structs.ValueTransferMessage calldata message, bytes32[] calldata proof, bytes32 root) external view;
+
+    function initialize(address initialOwner) external;
 }

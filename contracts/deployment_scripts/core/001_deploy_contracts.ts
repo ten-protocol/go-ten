@@ -84,10 +84,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const merkleMessageBusContract = await hre.ethers.getContractAt('MerkleTreeMessageBus', merkleMessageBusAddress);
     const tx = await merkleMessageBusContract.addStateRootManager(daRegistryDeployment.address);
     const receipt = await tx.wait();
-    if (receipt.status === 1) {
-        const isManager = await merkleMessageBusContract.stateRootManagers(daRegistryDeployment.address);
-        // FIXME WARNING uncommenting these will mess up the address parsing in the docker container but its true
-        // console.log(`Is DARegistry a state root manager?: ${isManager}`);
+    if (receipt!.status !== 1) {
+        throw new Error('Failed to add DataAvailabilityRegistry as stateRootManager to MerkleMessageBus');
     }
 };
 

@@ -112,6 +112,26 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		return nil, err
 	}
 
+	merkleTreeMessageBus, err := MerkleTreeMessageBus.NewMerkleTreeMessageBus(messageBusAddr, client.EthClient())
+	if err != nil {
+		return nil, fmt.Errorf("failed to instantiate MerkleTreeMessageBus contract. Cause: %w", err)
+	}
+
+	opts, err := createTransactor(wallets.ContractOwnerWallet)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := merkleTreeMessageBus.AddStateRootManager(opts, daRegistryReceipt.ContractAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add state root manager to MerkleTreeMessageBus contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("no receipt for MerkleTreeMessageBus contract state root manager addition")
+	}
+
 	// Create the Addresses struct to pass to initialize
 	addresses := NetworkConfig.NetworkConfigFixedAddresses{
 		CrossChain:               crossChainReceipt.ContractAddress,

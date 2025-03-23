@@ -12,7 +12,7 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
 
     constructor() {
         _transferOwnership(msg.sender);
-        _disableInitializers();
+      //  _disableInitializers();
     }
 
     function initialize(address caller, address feesAddress) public initializer {
@@ -70,7 +70,15 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
     function receiveValueFromL2(
         address receiver,
         uint256 amount
-    ) external onlyOwner {
+    ) external virtual onlyOwner {
+        _receiveValueFromL2Internal(receiver, amount);
+    }
+
+    /**
+     * @dev Internal function with the core logic for receiving value from L2.
+     * This is used to avoid duplicating code when overriding receiveValueFromL2.
+     */
+    function _receiveValueFromL2Internal(address receiver, uint256 amount) internal {
         require(address(this).balance >= amount, "Insufficient funds to send value");
         (bool ok, ) = receiver.call{value: amount}("");
         require(ok, "failed sending value");
