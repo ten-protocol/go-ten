@@ -1,0 +1,71 @@
+# Decommission an L2 TEN network on Azure for UAT and Dev Testnet
+#
+
+name: '[M] Decommission Testnet L2'
+run-name: '[M] Decommission Testnet L2 ( ${{ github.event.inputs.testnet_type }} )'
+on:
+  workflow_dispatch:
+    inputs:
+      testnet_type:
+        description: 'Testnet Type'
+        required: true
+        default: 'dev-testnet'
+        type: choice
+        options:
+          - 'dev-testnet'
+          - 'uat-testnet'
+      confirmation:
+        description: 'Must enter "confirm" to allow workflow to run'
+        required: false
+        type: string
+
+jobs:
+  decom:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+
+    steps:
+      - name: 'Check confirmation'
+        run: |
+          if [[ "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+            echo "Confirmation field must say 'confirm' to continue"
+            exit 1
+          fi
+
+      - name: 'Print GitHub variables'
+        run: |
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # This will fail some deletions due to resource dependencies (i.e. you must first delete the vm before deleting the disk)
+      - name: 'Delete deployed VMs'
+        uses: azure/CLI@v1
+        continue-on-error: true
+        with:
+          inlineScript: |
+            $(az resource list --tag ${{ vars.AZURE_DEPLOY_GROUP_L2 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+
+      # This will clean up any lingering dependencies - might fail if there are no resources to clean up
+      - name: 'Delete VMs dependencies'
+        uses: azure/CLI@v1
+        continue-on-error: true
+        with:
+          inlineScript: |
+            $(az resource list --tag ${{ vars.AZURE_DEPLOY_GROUP_L2 }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+
+      # Delete old database tables from previous deployment
+      - name: 'Delete host databases'
+        uses: azure/CLI@v1
+        continue-on-error: true
+        with:
+          inlineScript: |
+            databases=$(az postgres flexible-server db list --resource-group Testnet --server-name postgres-ten-${{ github.event.inputs.testnet_type }} --query "[?starts_with(name, 'host_')].[name]" -o tsv)
+
+            for db in $databases; do
+              az postgres flexible-server db delete --database-name "$db" --resource-group Testnet --server-name postgres-ten-${{ github.event.inputs.testnet_type }} --yes
+            done
