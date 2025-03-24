@@ -54,3 +54,5 @@ contracts/
 │               └── EthereumBridge
 
 ```
+
+Note: as part of this PR, let's also revisit the naming of the relevant events. Like: `LogMessagePublished` and `ValueTransfer`
