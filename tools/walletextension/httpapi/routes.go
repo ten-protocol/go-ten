@@ -366,18 +366,18 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 
 	// Define a struct to represent the response
 	type NetworkConfigResponse struct {
-		NetworkConfigAddress              string            `json:"NetworkConfig"`
-		EnclaveRegistryAddress            string            `json:"EnclaveRegistry"`
-		DataAvailabilityRegistryAddress   string            `json:"DataAvailabilityRegistry"`
-		CrossChainAddress                 string            `json:"CrossChain"`
-		L1MessageBusAddress               string            `json:"L1MessageBus"`
-		L2MessageBusAddress               string            `json:"L2MessageBus"`
-		L1BridgeAddress                   string            `json:"L1Bridge"`
-		L2BridgeAddress                   string            `json:"L2Bridge"`
-		L1CrossChainMessengerAddress      string            `json:"L1CrossChainMessenger"`
-		L2CrossChainMessengerAddress      string            `json:"L2CrossChainMessenger"`
-		L1StartHash                       string            `json:"L1StartHash"`
-		AdditionalContracts               map[string]string `json:"AdditionalContracts"`
+		NetworkConfigAddress            string            `json:"NetworkConfig"`
+		EnclaveRegistryAddress          string            `json:"EnclaveRegistry"`
+		DataAvailabilityRegistryAddress string            `json:"DataAvailabilityRegistry"`
+		CrossChainAddress               string            `json:"CrossChain"`
+		L1MessageBusAddress             string            `json:"L1MessageBus"`
+		L2MessageBusAddress             string            `json:"L2MessageBus"`
+		L1BridgeAddress                 string            `json:"L1Bridge"`
+		L2BridgeAddress                 string            `json:"L2Bridge"`
+		L1CrossChainMessengerAddress    string            `json:"L1CrossChainMessenger"`
+		L2CrossChainMessengerAddress    string            `json:"L2CrossChainMessenger"`
+		L1StartHash                     string            `json:"L1StartHash"`
+		AdditionalContracts             map[string]string `json:"AdditionalContracts"`
 	}
 
 	// Convert the TenNetworkInfo fields to strings
