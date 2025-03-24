@@ -11,23 +11,12 @@ on:
         default: ''
 
 jobs:
-  build-and-push:
-    runs-on: arc-runner-set
-    environment: production
+  build:
+    name: Build image
+    runs-on: arc-runner-set  # Ensure this matches your arc runner's label
 
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: 1.23.5
-
-      - name: 'Login to Azure docker registry'
-        uses: azure/docker-login@v1
-        with:
-          login-server: testnetobscuronet.azurecr.io
-          username: testnetobscuronet
-          password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: 'Get version'
         id: get_version
@@ -42,11 +31,24 @@ jobs:
             echo "VERSION=${LATEST_TAG}" >> $GITHUB_OUTPUT
           fi
 
-      - name: 'Build and push obscuro node images'
-        env:
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
-        run: |
-          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION} -f dockerfiles/enclave.Dockerfile .
-          docker push testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION}
-          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/host:${VERSION} -f dockerfiles/host.Dockerfile .
-          docker push testnetobscuronet.azurecr.io/obscuronet/host:${VERSION}
+      - name: 'Build and push obscuro node images (enclave)'
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: testnetobscuronet.azurecr.io/obscuronet/enclave
+          tags: ${{ steps.get_version.outputs.VERSION }}
+          containerfiles: dockerfiles/enclave.Dockerfile
+          push: true
+          registries: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Build and push obscuro node images (host)'
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: testnetobscuronet.azurecr.io/obscuronet/host
+          tags: ${{ steps.get_version.outputs.VERSION }}
+          containerfiles: dockerfiles/host.Dockerfile
+          push: true
+          registries: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
