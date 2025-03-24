@@ -29,10 +29,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const networkEnclaveRegistryDeployment = await deployments.deploy('NetworkEnclaveRegistry', {
         from: deployer,
-        execute: {
-            init: {
-                methodName: "initialize",
-                args: [deployer]
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [deployer]
+                }
             }
         },
         log: true,
@@ -40,15 +43,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const daRegistryDeployment = await deployments.deploy('DataAvailabilityRegistry', {
         from: deployer,
-        execute: {
-            init: {
-                methodName: "initialize",
-                args: [
-                    merkleMessageBusAddress,
-                    networkEnclaveRegistryDeployment.address,
-                    deployer
-                ]
-            }
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [
+                        merkleMessageBusAddress,
+                        networkEnclaveRegistryDeployment.address,
+                        deployer
+                    ]
+                }
+            },
         },
         log: true,
     });
