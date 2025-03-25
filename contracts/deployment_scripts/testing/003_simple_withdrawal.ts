@@ -77,7 +77,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
     console.log(`Network config = ${JSON.stringify(networkConfig, null, 2)}`);
 
-    const networkConfigAddress = networkConfig.NetworkConfigAddress;
+    const networkConfigAddress = networkConfig.NetworkConfig;
     const messageBusAddress = networkConfig.L1MessageBus;
     const l2MessageBusAddress = networkConfig.L2MessageBus;
 

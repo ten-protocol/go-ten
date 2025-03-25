@@ -5,8 +5,8 @@ import {DeployFunction} from 'hardhat-deploy/types';
     This deployment script instantiates the network contracts and stores them in the deployed NetworkConfig contract.
 */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { 
-        deployments, 
+    const {
+        deployments,
         getNamedAccounts
     } = hre;
     const {deployer} = await getNamedAccounts();
@@ -29,10 +29,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const networkEnclaveRegistryDeployment = await deployments.deploy('NetworkEnclaveRegistry', {
         from: deployer,
-        execute: {
-            init: {
-                methodName: "initialize",
-                args: [deployer]
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [deployer]
+                }
             }
         },
         log: true,
@@ -40,15 +43,18 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const daRegistryDeployment = await deployments.deploy('DataAvailabilityRegistry', {
         from: deployer,
-        execute: {
-            init: {
-                methodName: "initialize",
-                args: [
-                    merkleMessageBusAddress,
-                    networkEnclaveRegistryDeployment.address,
-                    deployer
-                ]
-            }
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [
+                        merkleMessageBusAddress,
+                        networkEnclaveRegistryDeployment.address,
+                        deployer
+                    ]
+                }
+            },
         },
         log: true,
     });
@@ -73,12 +79,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         log: true,
     });
 
-    console.log(`NetworkConfig= ${networkConfigDeployment.address}`);
+    console.log(`NetworkConfig= ${networkConfigDeployment.address}`); // line[0] in docker container
     console.log(`CrossChain= ${crossChainDeployment.address}`);
     console.log(`MerkleMessageBus= ${merkleMessageBusAddress}`);
     console.log(`NetworkEnclaveRegistry= ${networkEnclaveRegistryDeployment.address}`);
     console.log(`DataAvailabilityRegistry= ${daRegistryDeployment.address}`);
     console.log(`L1Start= ${networkConfigDeployment.receipt!!.blockHash}`);
+
+    // Grant the DataAvailabilityRegistry the stateRootManager permission on MerkleMessageBus so it can publish rollups
+    const merkleMessageBusContract = await hre.ethers.getContractAt('MerkleTreeMessageBus', merkleMessageBusAddress);
+    const tx = await merkleMessageBusContract.addStateRootManager(daRegistryDeployment.address);
+    const receipt = await tx.wait();
+    if (receipt!.status !== 1) {
+        throw new Error('Failed to add DataAvailabilityRegistry as stateRootManager to MerkleMessageBus');
+    }
 };
 
 export default func;

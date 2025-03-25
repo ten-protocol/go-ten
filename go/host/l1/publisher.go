@@ -363,7 +363,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 		pricedTx, err := p.executeTransaction(tx, nonce, retryCount)
 		if pricedTx == nil {
 			// even if there was an error we expect pricedTx to be populated for common failures
-			return retry.FailFast(fmt.Errorf("could not price transaction"))
+			return retry.FailFast(fmt.Errorf("could not price transaction. Cause: %w", err))
 		}
 		if err != nil {
 			if retryCount > maxRetries {

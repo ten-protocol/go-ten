@@ -5,50 +5,64 @@ import "../common/Structs.sol";
 import "./IMerkleTreeMessageBus.sol";
 import "./MessageBus.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
+// This contract implements the IMerkleTreeMessageBus interface
+contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessControlUpgradeable {
 
-    address public admin;
+    bytes32 public constant STATE_ROOT_MANAGER_ROLE = keccak256("STATE_ROOT_MANAGER_ROLE");
+    bytes32 public constant WITHDRAWAL_MANAGER_ROLE = keccak256("WITHDRAWAL_MANAGER_ROLE");
 
-    // The list of addresses that are allowed to call the addStateRoot functioned. The owner of this contract
-    // manually adds the rollup contract to this mapping once the contracts have been deployed.
-    mapping(address => bool) public stateRootManagers;
+    // When a xchain messages root becomes valid represented as a timestamp in seconds to be compared against block timestamp
+    mapping(bytes32 => uint256) rootValidAfter;
 
-    constructor(address _admin) MessageBus() {
-        admin = _admin;
-        stateRootManagers[_admin] = true;
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() MessageBus() {
+        // Constructor intentionally left empty
     }
 
-    modifier onlyAdmin() {
-        require(msg.sender == admin, "Only admin can call this function");
-        _;
+    /**
+     * @dev Initializes the contract with provided owner
+     * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
+     * @param withdrawalManager Address that will be granted the WITHDRAWAL_MANAGER_ROLE
+     */
+    function initialize(address initialOwner, address withdrawalManager) public override(IMerkleTreeMessageBus, MessageBus) initializer {
+        // Initialize parent contracts
+        //super.initialize(initialOwner, address(0));
+        __Ownable_init(initialOwner);
+        __AccessControl_init();
+        
+        // Set up roles
+        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
+        _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
+        _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
+    }
+    /**
+     * @dev Overrides the receiveValueFromL2 function to make it callable by 
+     * addresses with the WITHDRAWAL_MANAGER_ROLE instead of only the owner.
+     * Uses the parent contract's internal _receiveValueFromL2Internal function for the core logic.
+     */
+    function receiveValueFromL2(
+        address receiver,
+        uint256 amount
+    ) external override onlyRole(WITHDRAWAL_MANAGER_ROLE) {
+        _receiveValueFromL2Internal(receiver, amount);
     }
 
-    modifier onlyStateRootManager() {
-        require(stateRootManagers[msg.sender], "Only state root managers can call this function");
-        _;
+    function addStateRootManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        grantRole(STATE_ROOT_MANAGER_ROLE, manager);
     }
 
-    function addStateRootManager(address manager) external onlyAdmin {
-        stateRootManagers[manager] = true;
+    function removeStateRootManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        revokeRole(STATE_ROOT_MANAGER_ROLE, manager);
     }
 
-    function removeStateRootManager(address manager) external onlyAdmin {
-        stateRootManagers[manager] = false;
-    }
-
-    function transferAdmin(address newAdmin) external onlyAdmin {
-        admin = newAdmin;
-    }
-
-    mapping(bytes32 => uint256) rootValidAfter; //When a xchain messages root becomes valid represented as a timestamp in seconds to be compared against block timestamp
-
-    function addStateRoot(bytes32 stateRoot, uint256 activationTime) external onlyStateRootManager {
+    function addStateRoot(bytes32 stateRoot, uint256 activationTime) external onlyRole(STATE_ROOT_MANAGER_ROLE) {
         require(rootValidAfter[stateRoot] == 0, "Root already added to the message bus");
         rootValidAfter[stateRoot] = activationTime;
     }
 
-    function disableStateRoot(bytes32 stateRoot) external onlyStateRootManager {
+    function disableStateRoot(bytes32 stateRoot) external onlyRole(STATE_ROOT_MANAGER_ROLE) {
         require(rootValidAfter[stateRoot] != 0, "State root does not exist.");
         rootValidAfter[stateRoot] = 0;
     }
