@@ -2,6 +2,7 @@ package enclave
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"sync/atomic"
@@ -12,6 +13,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
@@ -24,6 +27,9 @@ var _noActiveSequencer = &common.EnclaveID{}
 
 // This private interface enforces the services that the enclaves service depends on
 type enclaveServiceLocator interface {
+	L1Data() host.L1DataService
+	L1Publisher() host.L1Publisher
+	L2Repo() host.L2BatchRepository
 	P2P() host.P2P
 }
 
@@ -36,15 +42,23 @@ type Service struct {
 	enclaveGuardians  []*Guardian
 	activeSequencerID atomic.Pointer[common.EnclaveID] // atomic pointer for thread safety
 
+	// rollup config
+	rollupInterval time.Duration
+	blockTime      time.Duration
+	maxRollupSize  uint64
+
 	running atomic.Bool
 	logger  gethlog.Logger
 }
 
-func NewService(hostData host.Identity, serviceLocator enclaveServiceLocator, enclaveGuardians []*Guardian, logger gethlog.Logger) *Service {
+func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLocator enclaveServiceLocator, enclaveGuardians []*Guardian, logger gethlog.Logger) *Service {
 	return &Service{
 		hostData:         hostData,
 		sl:               serviceLocator,
 		enclaveGuardians: enclaveGuardians,
+		rollupInterval:   config.RollupInterval,
+		blockTime:        config.L1BlockTime,
+		maxRollupSize:    config.MaxRollupSize,
 		logger:           logger,
 	}
 }
@@ -60,6 +74,7 @@ func (e *Service) Start() error {
 	e.activeSequencerID.Store(_noActiveSequencer)
 	if e.hostData.IsSequencer {
 		go e.promoteNewActiveSequencer()
+		go e.managePeriodicRollups()
 	}
 	return nil
 }
@@ -204,4 +219,181 @@ func (e *Service) promoteNewActiveSequencer() {
 		// wait for retry interval before trying again, enclaves may not be ready yet or may be awaiting permissioning
 		time.Sleep(_promoteSeqRetryInterval)
 	}
+}
+
+const batchCompressionFactor = 0.85
+
+// managePeriodicRollups is a background goroutine that periodically produces a rollup
+// where possible it will prefer to use a non-active sequencer enclave to avoid disrupting the production of batches
+// note: this function runs in a separate goroutine for the lifetime of the service
+func (e *Service) managePeriodicRollups() {
+	e.logger.Info("Starting periodic rollups.")
+	lastSuccessfulRollup := time.Now()
+
+	time.Sleep(e.blockTime)
+
+	for e.running.Load() {
+
+		// block time seems a reasonable scaling cadence to check if rollup required, no need to check after every batch
+		time.Sleep(e.blockTime)
+
+		var rollupToPublish *common.CreateRollupResult
+		var err error
+
+		rollupRequired, fromBatch := e.isRollupRequired(lastSuccessfulRollup)
+		if !rollupRequired {
+			// the rollup required check contains appropriate logging, so no need to log here
+			continue
+		}
+
+		// find a client to produce rollup. Skip active sequencer at first, then try active sequencer if needed.
+		for _, guardian := range e.enclaveGuardians {
+			if guardian.state.IsEnclaveActiveSequencer() {
+				continue // skip active sequencer for now
+			}
+
+			rollupToPublish, err = e.prepareRollup(guardian, fromBatch)
+			if err != nil {
+				e.logger.Error("Enclave failed to prepare rollup.", log.ErrKey, err)
+				continue // try next guardian
+			}
+
+		}
+
+		if rollupToPublish == nil {
+			// if we didn't find a non-active sequencer to produce the rollup, try the active sequencer
+			guardian, err := e.getActiveSequencerGuardian()
+			if err != nil {
+				e.logger.Error("no active sequencer guardian found, cannot prepare rollup", log.ErrKey, err)
+				continue // try again later
+			}
+			rollupToPublish, err = e.prepareRollup(guardian, fromBatch)
+			if err != nil {
+				e.logger.Error("Seq failed to prepare rollup.", log.ErrKey, err)
+				continue // try again later
+			}
+		}
+
+		// this method waits until the receipt is received
+		err = e.sl.L1Publisher().PublishBlob(*rollupToPublish)
+		if err != nil {
+			e.logger.Error("Failed to publish rollup ", log.ErrKey, err)
+			continue // try again later
+		}
+		lastSuccessfulRollup = time.Now()
+	}
+
+	e.logger.Info("Stopping periodic rollups.")
+}
+
+// returns true if a rollup is required, and the batch number to start from
+func (e *Service) isRollupRequired(lastSuccessfulRollup time.Time) (bool, uint64) {
+	if e.activeSequencerID.Load() == _noActiveSequencer {
+		e.logger.Debug("No active sequencer, skipping periodic rollup.")
+		return false, 0
+	}
+
+	fromBatch, err := e.getLatestBatchNo()
+	if err != nil {
+		e.logger.Error("Encountered error while trying to retrieve latest batch", log.ErrKey, err)
+		return false, 0
+	}
+
+	// estimate the size of a compressed rollup
+	availBatchesSumSize, err := e.calculateNonRolledupBatchesSize(fromBatch)
+	if err != nil {
+		e.logger.Error("Unable to estimate the size of the current rollup", log.ErrKey, err, "from_batch", fromBatch)
+		// Note: this should not happen. If it does, we will assume the size is 0, meaning only time will trigger a rollup
+		availBatchesSumSize = 0
+	}
+
+	// adjust the availBatchesSumSize
+	estimatedRunningRollupSize := uint64(float64(availBatchesSumSize) * batchCompressionFactor)
+
+	// produce and issue rollup when either:
+	// it has passed g.rollupInterval from last lastSuccessfulRollup
+	// or the size of accumulated batches is > g.maxRollupSize
+	timeExpired := time.Since(lastSuccessfulRollup) > e.rollupInterval
+	sizeExceeded := estimatedRunningRollupSize >= e.maxRollupSize
+
+	return timeExpired || sizeExceeded, fromBatch
+}
+
+func (e *Service) prepareRollup(guardian *Guardian, fromBatch uint64) (*common.CreateRollupResult, error) {
+	enclID := guardian.GetEnclaveID()
+	e.logger.Info("Attempting to produce rollup.", log.EnclaveIDKey, enclID)
+	result, err := guardian.GetEnclaveClient().CreateRollup(context.Background(), fromBatch)
+	if err != nil {
+		e.logger.Info("Unable to produce rollup", log.EnclaveIDKey, enclID, log.ErrKey, err)
+		return nil, err
+	}
+	rollup, err := ethadapter.ReconstructRollup(result.Blobs)
+	if err != nil {
+		e.logger.Error("Failed to reconstruct rollup", log.ErrKey, err)
+		return nil, err
+	}
+
+	canonBlock, err := e.sl.L1Data().FetchBlockByHeight(rollup.Header.CompressionL1Number)
+	if err != nil {
+		e.logger.Error("Failed to fetch canonical block for rollup", log.ErrKey, err)
+		return nil, err
+	}
+
+	// only publish if the block used for compression is canonical
+	if canonBlock.Hash() != rollup.Header.CompressionL1Head {
+		e.logger.Info("Skipping rollup publication because compression block is not canonical.", "block", canonBlock.Hash())
+		return nil, fmt.Errorf("compression block is not canonical, block=%s", canonBlock.Hash())
+	}
+	return result, nil
+}
+
+func (e *Service) getLatestBatchNo() (uint64, error) {
+	lastBatchNo, err := e.sl.L1Publisher().FetchLatestSeqNo()
+	if err != nil {
+		return 0, err
+	}
+	fromBatch := lastBatchNo.Uint64()
+	if lastBatchNo.Uint64() > common.L2GenesisSeqNo {
+		fromBatch++
+	}
+	return fromBatch, nil
+}
+
+func (e *Service) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error) {
+	var size uint64
+
+	if seqNo == 0 { // don't calculate for seqNo 0 batches
+		return 0, nil
+	}
+
+	currentNo := seqNo
+	for {
+		batch, err := e.sl.L2Repo().FetchBatchBySeqNo(context.TODO(), big.NewInt(int64(currentNo)))
+		if err != nil {
+			if errors.Is(err, errutil.ErrNotFound) {
+				break // no more batches
+			}
+			return 0, err
+		}
+
+		bSize := len(batch.EncryptedTxBlob)
+		size += uint64(bSize)
+		currentNo++
+	}
+
+	return size, nil
+}
+
+func (e *Service) getActiveSequencerGuardian() (*Guardian, error) {
+	activeSequencerID := e.activeSequencerID.Load()
+	if activeSequencerID == _noActiveSequencer {
+		return nil, errors.New("no active sequencer found")
+	}
+
+	for _, guardian := range e.enclaveGuardians {
+		if *(guardian.GetEnclaveID()) == *activeSequencerID {
+			return guardian, nil
+		}
+	}
+	return nil, errors.New("active sequencer not found in guardians")
 }

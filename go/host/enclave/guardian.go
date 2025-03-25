@@ -138,7 +138,6 @@ func (g *Guardian) Start() error {
 	if g.hostData.IsSequencer {
 		// if host is a sequencer then start the sequencer processes, but they will not do anything unless the enclave becomes an active sequencer
 		go g.periodicBatchProduction()
-		go g.periodicRollupProduction()
 	}
 
 	// subscribe for L1 and P2P data
@@ -666,87 +665,6 @@ func (g *Guardian) periodicBatchProduction() {
 	}
 }
 
-const batchCompressionFactor = 0.85
-
-func (g *Guardian) periodicRollupProduction() {
-	defer g.logger.Info("Stopping rollup production")
-
-	rollupCheckTicker := time.NewTicker(g.blockTime)
-	lastSuccessfulRollup := time.Now()
-
-	for {
-		select {
-		case <-rollupCheckTicker.C:
-			if !g.state.IsEnclaveActiveSequencer() {
-				// only active sequencer produces rollups
-				continue
-			}
-			if !g.state.IsLive() {
-				// if we're behind the L1, we don't want to produce rollups
-				g.logger.Debug("Skipping rollup production because L1 is not up to date", "state", g.state)
-				continue
-			}
-
-			fromBatch, err := g.getLatestBatchNo()
-			if err != nil {
-				g.logger.Error("Encountered error while trying to retrieve latest sequence number", log.ErrKey, err)
-				continue
-			}
-
-			// estimate the size of a compressed rollup
-			availBatchesSumSize, err := g.calculateNonRolledupBatchesSize(fromBatch)
-			if err != nil {
-				g.logger.Error("Unable to estimate the size of the current rollup", log.ErrKey, err, "from_batch", fromBatch)
-				// todo - this should not happen. Is it worth continuing?
-				availBatchesSumSize = 0
-			}
-
-			// adjust the availBatchesSumSize
-			estimatedRunningRollupSize := uint64(float64(availBatchesSumSize) * batchCompressionFactor)
-
-			// produce and issue rollup when either:
-			// it has passed g.rollupInterval from last lastSuccessfulRollup
-			// or the size of accumulated batches is > g.maxRollupSize
-			timeExpired := time.Since(lastSuccessfulRollup) > g.rollupInterval
-			sizeExceeded := estimatedRunningRollupSize >= g.maxRollupSize
-			// if rollup retry takes longer than the block time then we need to allow time to publish
-			rollupJustPublished := time.Since(lastSuccessfulRollup) >= g.blockTime
-			if timeExpired || sizeExceeded && !rollupJustPublished {
-				g.logger.Info("Trigger rollup production.", "timeExpired", timeExpired, "sizeExceeded", sizeExceeded, "rollupJustPublished", rollupJustPublished)
-				result, err := g.enclaveClient.CreateRollup(context.Background(), fromBatch)
-				if err != nil {
-					g.logger.Error("Unable to create rollup", log.BatchSeqNoKey, fromBatch, log.ErrKey, err)
-					continue
-				}
-				rollup, err := ethadapter.ReconstructRollup(result.Blobs)
-				if err != nil {
-					g.logger.Error("Could not reconstruct rollup", log.ErrKey, err)
-					continue
-				}
-				canonBlock, err := g.sl.L1Data().FetchBlockByHeight(rollup.Header.CompressionL1Number)
-				if err != nil {
-					g.logger.Error("Could not fetch block for compression", log.ErrKey, err)
-					continue
-				}
-
-				// only publish if the block used for compression is canonical
-				if canonBlock.Hash() == rollup.Header.CompressionL1Head {
-					// this method waits until the receipt is received
-					g.sl.L1Publisher().PublishBlob(*result)
-					lastSuccessfulRollup = time.Now()
-				} else {
-					g.logger.Info("Skipping rollup publication because compression block is not canonical", "block", canonBlock.Hash())
-				}
-			}
-
-		case <-g.hostInterrupter.Done():
-			// interrupted by host stopping
-			rollupCheckTicker.Stop()
-			return
-		}
-	}
-}
-
 func (g *Guardian) streamEnclaveData() {
 	defer g.logger.Info("Stopping enclave data stream")
 	g.logger.Info("Starting L2 update stream from enclave")
@@ -799,43 +717,6 @@ func (g *Guardian) streamEnclaveData() {
 			return
 		}
 	}
-}
-
-func (g *Guardian) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error) {
-	var size uint64
-
-	if seqNo == 0 { // don't calculate for seqNo 0 batches
-		return 0, nil
-	}
-
-	currentNo := seqNo
-	for {
-		batch, err := g.sl.L2Repo().FetchBatchBySeqNo(context.TODO(), big.NewInt(int64(currentNo)))
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				break // no more batches
-			}
-			return 0, err
-		}
-
-		bSize := len(batch.EncryptedTxBlob)
-		size += uint64(bSize)
-		currentNo++
-	}
-
-	return size, nil
-}
-
-func (g *Guardian) getLatestBatchNo() (uint64, error) {
-	lastBatchNo, err := g.sl.L1Publisher().FetchLatestSeqNo()
-	if err != nil {
-		return 0, err
-	}
-	fromBatch := lastBatchNo.Uint64()
-	if lastBatchNo.Uint64() > common.L2GenesisSeqNo {
-		fromBatch++
-	}
-	return fromBatch, nil
 }
 
 // notifyEnclaveUnavailable evicts a failing enclave from the HA pool if appropriate
