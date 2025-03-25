@@ -54,9 +54,9 @@ type TenConfig struct {
 
 func (t *TenConfig) PrettyPrint() {
 	configCopy := *t
-	configCopy.Node = &NodeConfig{} // Create new Node config
+	configCopy.Node = &NodeConfig{}
 	if t.Node != nil {
-		*configCopy.Node = *t.Node // Copy all fields
+		*configCopy.Node = *t.Node // deep copy all fields
 		if configCopy.Node.PrivateKeyString != "" {
 			configCopy.Node.PrivateKeyString = "****"
 		}
