@@ -53,7 +53,16 @@ type TenConfig struct {
 //
 
 func (t *TenConfig) PrettyPrint() {
-	output, err := yaml.Marshal(t)
+	configCopy := *t
+	configCopy.Node = &NodeConfig{} // Create new Node config
+	if t.Node != nil {
+		*configCopy.Node = *t.Node // Copy all fields
+		if configCopy.Node.PrivateKeyString != "" {
+			configCopy.Node.PrivateKeyString = "****"
+		}
+	}
+
+	output, err := yaml.Marshal(&configCopy)
 	if err != nil {
 		fmt.Printf("Error printing config as YAML: %v\n", err)
 		return
