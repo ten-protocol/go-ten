@@ -233,7 +233,6 @@ func (e *Service) managePeriodicRollups() {
 	time.Sleep(e.blockTime)
 
 	for e.running.Load() {
-
 		// block time seems a reasonable scaling cadence to check if rollup required, no need to check after every batch
 		time.Sleep(e.blockTime)
 
@@ -257,7 +256,6 @@ func (e *Service) managePeriodicRollups() {
 				e.logger.Error("Enclave failed to prepare rollup.", log.ErrKey, err)
 				continue // try next guardian
 			}
-
 		}
 
 		if rollupToPublish == nil {
