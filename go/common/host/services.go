@@ -105,7 +105,7 @@ type L1Publisher interface {
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
 	// FindSecretResponseTx will return the secret response tx from an L1 block
 	FindSecretResponseTx(responseTxs []*common.L1TxData) []*common.L1RespondSecretTx
-	
+
 	// PublishBlob will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
 	PublishBlob(result common.CreateRollupResult) error
 
