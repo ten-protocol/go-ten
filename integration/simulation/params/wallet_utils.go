@@ -34,8 +34,8 @@ type L1PrefundWallets struct {
 }
 
 type SimWallets struct {
-	MCOwnerWallet wallet.Wallet   // owner of the management contract deployed on Ethereum
-	NodeWallets   []wallet.Wallet // the keys used by the obscuro nodes to submit rollups to Eth
+	ContractOwnerWallet wallet.Wallet   // owner of the contracts deployed on Ethereum
+	NodeWallets         []wallet.Wallet // the keys used by the obscuro nodes to submit rollups to Eth
 
 	SimEthWallets []wallet.Wallet // the wallets of the simulated users on the Ethereum side
 	SimObsWallets []wallet.Wallet // and their equivalents on the obscuro side (with a different chainId)
@@ -99,7 +99,7 @@ func NewSimWallets(nrSimWallets int, nNodes int, ethereumChainID int64, obscuroC
 	}
 
 	return &SimWallets{
-		MCOwnerWallet:       mcOwnerWallet,
+		ContractOwnerWallet: mcOwnerWallet,
 		NodeWallets:         nodeWallets,
 		SimEthWallets:       simEthWallets,
 		SimObsWallets:       simObsWallets,
@@ -129,7 +129,7 @@ func (w *SimWallets) AllEthWallets() []wallet.Wallet {
 	ethWallets = append(ethWallets, w.PrefundedEthWallets.POC)
 	ethWallets = append(ethWallets, w.PrefundedEthWallets.HOC)
 	ethWallets = append(ethWallets, w.PrefundedEthWallets.Faucet)
-	return append(append(append(w.NodeWallets, w.SimEthWallets...), w.MCOwnerWallet), ethWallets...)
+	return append(append(append(w.NodeWallets, w.SimEthWallets...), w.ContractOwnerWallet), ethWallets...)
 }
 
 func (w *SimWallets) AllObsWallets() []wallet.Wallet {

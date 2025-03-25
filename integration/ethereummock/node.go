@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -32,10 +34,8 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/core/types"
 	ethclient_ethereum "github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 )
 
 type (
@@ -92,8 +92,8 @@ type Node struct {
 	mempoolCh   chan *types.Transaction // where l1 transactions to be published in the next block are added
 
 	// internal
-	erc20ContractLib erc20contractlib.ERC20ContractLib
-	mgmtContractLib  mgmtcontractlib.MgmtContractLib
+	erc20ContractLib    erc20contractlib.ERC20ContractLib
+	contractRegistryLib contractlib.ContractRegistryLib
 
 	logger gethlog.Logger
 
@@ -167,7 +167,7 @@ func (m *Node) Nonce(gethcommon.Address) (uint64, error) {
 
 func (m *Node) getRollupFromBlock(block *types.Block) *common.ExtRollup {
 	for _, tx := range block.Transactions() {
-		decodedTx, err := m.mgmtContractLib.DecodeTx(tx)
+		decodedTx, err := m.contractRegistryLib.DARegistryLib().DecodeTx(tx)
 		if err != nil {
 			m.logger.Warn(fmt.Sprintf("could not decode tx. Cause: %s", err))
 			continue
@@ -307,8 +307,8 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 		var topic gethcommon.Hash
 		var data []byte
 		switch tx.To().Hex() {
-		case rollupTxAddr.Hex():
-			topic = crosschain.RollupAddedID
+		case RollupTxAddr.Hex():
+			topic = ethadapter.RollupAddedID
 			blobHashes := tx.BlobHashes()
 			if len(blobHashes) > 0 {
 				// event data should be: rollupHash (bytes32) + signature (dynamic bytes)
@@ -329,18 +329,18 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 
 				copy(data[96:], signature)
 			}
-		case messageBusAddr.Hex():
-			topic = crosschain.CrossChainEventID
-		case depositTxAddr.Hex():
-			topic = crosschain.ValueTransferEventID
-		case storeSecretTxAddr.Hex():
-			topic = crosschain.NetworkSecretRespondedID
-		case requestSecretTxAddr.Hex():
-			topic = crosschain.NetworkSecretRequestedID
-		case initializeSecretTxAddr.Hex():
-			topic = crosschain.SequencerEnclaveGrantedEventID
-		case grantSeqTxAddr.Hex():
-			topic = crosschain.SequencerEnclaveGrantedEventID
+		case MessageBusAddr.Hex():
+			topic = ethadapter.CrossChainEventID
+		case DepositTxAddr.Hex():
+			topic = ethadapter.ValueTransferEventID
+		case RespondSecretTxAddr.Hex():
+			topic = ethadapter.NetworkSecretRespondedID
+		case RequestSecretTxAddr.Hex():
+			topic = ethadapter.NetworkSecretRequestedID
+		case InitializeSecretTxAddr.Hex():
+			topic = ethadapter.NetworkSecretInitializedEventID
+		case GrantSeqTxAddr.Hex():
+			topic = ethadapter.SequencerEnclaveGrantedEventID
 			// enclave ID address, padded out to 32 bytes to match standard eth fields
 			data = make([]byte, 32)
 			copy(data[12:], m.tenSeqEnclaveID[:])
@@ -649,26 +649,26 @@ func NewMiner(
 	logger gethlog.Logger,
 ) *Node {
 	return &Node{
-		l2ID:             id,
-		mining:           true,
-		cfg:              cfg,
-		stats:            statsCollector,
-		BlockResolver:    NewResolver(),
-		BlobResolver:     blobResolver,
-		db:               NewTxDB(),
-		Network:          network,
-		exitCh:           make(chan bool),
-		exitMiningCh:     make(chan bool),
-		interrupt:        new(int32),
-		p2pCh:            make(chan *types.Block),
-		miningCh:         make(chan *types.Block),
-		canonicalCh:      make(chan *types.Header),
-		mempoolCh:        make(chan *types.Transaction),
-		erc20ContractLib: NewERC20ContractLibMock(),
-		mgmtContractLib:  NewMgmtContractLibMock(),
-		logger:           logger,
-		subs:             map[uuid.UUID]*mockSubscription{},
-		subMu:            sync.Mutex{},
+		l2ID:                id,
+		mining:              true,
+		cfg:                 cfg,
+		stats:               statsCollector,
+		BlockResolver:       NewResolver(),
+		BlobResolver:        blobResolver,
+		db:                  NewTxDB(),
+		Network:             network,
+		exitCh:              make(chan bool),
+		exitMiningCh:        make(chan bool),
+		interrupt:           new(int32),
+		p2pCh:               make(chan *types.Block),
+		miningCh:            make(chan *types.Block),
+		canonicalCh:         make(chan *types.Header),
+		mempoolCh:           make(chan *types.Transaction),
+		erc20ContractLib:    NewERC20ContractLibMock(),
+		contractRegistryLib: NewContractRegistryLibMock(),
+		logger:              logger,
+		subs:                map[uuid.UUID]*mockSubscription{},
+		subMu:               sync.Mutex{},
 	}
 }
 

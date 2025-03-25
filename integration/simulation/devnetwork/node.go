@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/enclave/config"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
@@ -16,8 +17,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/host"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/init/sqlite"
-
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -128,25 +127,24 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	seqP2PAddr := fmt.Sprintf("%s:%d", network.Localhost, n.config.PortStart+integration.DefaultHostP2pOffset)
 
 	hostConfig := &hostconfig.HostConfig{
-		ID:                        fmt.Sprintf("%d", n.operatorIdx),
-		IsGenesis:                 n.nodeType == common.Sequencer,
-		NodeType:                  n.nodeType,
-		HasClientRPCHTTP:          true,
-		ClientRPCPortHTTP:         uint64(n.config.PortStart + integration.DefaultHostRPCHTTPOffset + n.operatorIdx),
-		HasClientRPCWebsockets:    true,
-		ClientRPCPortWS:           uint64(n.config.PortStart + integration.DefaultHostRPCWSOffset + n.operatorIdx),
-		ClientRPCHost:             network.Localhost,
-		EnclaveRPCAddresses:       enclaveAddresses,
-		P2PBindAddress:            p2pAddr,
-		P2PPublicAddress:          p2pAddr,
-		EnclaveRPCTimeout:         network.EnclaveClientRPCTimeout,
-		L1RPCTimeout:              network.DefaultL1RPCTimeout,
-		ManagementContractAddress: n.l1Data.MgmtContractAddress,
-		MessageBusAddress:         n.l1Data.MessageBusAddr,
-		L1ChainID:                 integration.EthereumChainID,
-		TenChainID:                integration.TenChainID,
-		L1StartHash:               n.l1Data.TenStartBlock,
-		SequencerP2PAddress:       seqP2PAddr,
+		ID:                     fmt.Sprintf("%d", n.operatorIdx),
+		IsGenesis:              n.nodeType == common.Sequencer,
+		NodeType:               n.nodeType,
+		HasClientRPCHTTP:       true,
+		ClientRPCPortHTTP:      uint64(n.config.PortStart + integration.DefaultHostRPCHTTPOffset + n.operatorIdx),
+		HasClientRPCWebsockets: true,
+		ClientRPCPortWS:        uint64(n.config.PortStart + integration.DefaultHostRPCWSOffset + n.operatorIdx),
+		ClientRPCHost:          network.Localhost,
+		EnclaveRPCAddresses:    enclaveAddresses,
+		P2PBindAddress:         p2pAddr,
+		P2PPublicAddress:       p2pAddr,
+		EnclaveRPCTimeout:      network.EnclaveClientRPCTimeout,
+		L1RPCTimeout:           network.DefaultL1RPCTimeout,
+		NetworkConfigAddress:   n.l1Data.NetworkConfigAddress,
+		L1ChainID:              integration.EthereumChainID,
+		TenChainID:             integration.TenChainID,
+		L1StartHash:            n.l1Data.TenStartBlock,
+		SequencerP2PAddress:    seqP2PAddr,
 		// Can provide the postgres db host if testing against a local DB instance
 		UseInMemoryDB:         true,
 		DebugNamespaceEnabled: true,
@@ -179,14 +177,14 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		ExposedURLParamNames: nil,
 	}
 	rpcServer := node.NewServer(&rpcConfig, n.logger)
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&hostConfig.ManagementContractAddress, n.logger)
-	contractAddresses := map[l1.ContractType][]gethcommon.Address{
-		l1.MgmtContract: {hostConfig.ManagementContractAddress},
-		l1.MsgBus:       {hostConfig.MessageBusAddress},
+	contractRegistry, err := contractlib.NewContractRegistryLib(n.l1Data.NetworkConfigAddress, *n.l1Client.EthClient(), n.logger)
+	if err != nil {
+		panic(fmt.Sprintf("error creating contract registry. Cause: %s", err))
 	}
+
 	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort))), hostLogger)
-	l1Data := l1.NewL1DataService(n.l1Client, n.logger, mgmtContractLib, blobResolver, contractAddresses)
-	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, l1Data, enclaveClients, mgmtContractLib, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger), blobResolver)
+	l1Data := l1.NewL1DataService(n.l1Client, n.logger, contractRegistry, blobResolver)
+	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, l1Data, enclaveClients, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger), blobResolver, contractRegistry)
 }
 
 func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.EnclaveContainer {
@@ -199,29 +197,31 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 
 	defaultCfg := integrationCommon.DefaultEnclaveConfig()
 	enclaveConfig := &config.EnclaveConfig{
-		NodeID:                    fmt.Sprintf("%d", idx),
-		HostAddress:               hostAddr,
-		RPCAddress:                enclaveAddr,
-		DecompressionLimit:        defaultCfg.DecompressionLimit,
-		L1ChainID:                 integration.EthereumChainID,
-		TenChainID:                integration.TenChainID,
-		WillAttest:                false,
-		UseInMemoryDB:             false,
-		ManagementContractAddress: n.l1Data.MgmtContractAddress,
-		MinGasPrice:               gethcommon.Big1,
-		MessageBusAddress:         n.l1Data.MessageBusAddr,
-		SqliteDBPath:              n.enclaveDBFilepaths[idx],
-		DebugNamespaceEnabled:     true,
-		MaxBatchSize:              1024 * 55,
-		MaxRollupSize:             1024 * 128,
-		BaseFee:                   defaultCfg.BaseFee, // todo @siliev:: fix test transaction builders so this can be different
-		GasBatchExecutionLimit:    defaultCfg.GasBatchExecutionLimit,
-		GasLocalExecutionCapFlag:  defaultCfg.GasLocalExecutionCapFlag,
-		GasPaymentAddress:         defaultCfg.GasPaymentAddress,
-		RPCTimeout:                5 * time.Second,
-		SystemContractOwner:       gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
-		StoreExecutedTransactions: true,
-		TenGenesis:                integrationCommon.TestnetGenesisJSON(),
+		NodeID:                          fmt.Sprintf("%d", idx),
+		HostAddress:                     hostAddr,
+		RPCAddress:                      enclaveAddr,
+		DecompressionLimit:              defaultCfg.DecompressionLimit,
+		L1ChainID:                       integration.EthereumChainID,
+		TenChainID:                      integration.TenChainID,
+		WillAttest:                      false,
+		UseInMemoryDB:                   false,
+		NetworkConfigAddress:            n.l1Data.NetworkConfigAddress,
+		DataAvailabilityRegistryAddress: n.l1Data.DataAvailabilityRegistryAddress,
+		EnclaveRegistryAddress:          n.l1Data.EnclaveRegistryAddress,
+		MinGasPrice:                     gethcommon.Big1,
+		MessageBusAddress:               n.l1Data.MessageBusAddr,
+		SqliteDBPath:                    n.enclaveDBFilepaths[idx],
+		DebugNamespaceEnabled:           true,
+		MaxBatchSize:                    1024 * 55,
+		MaxRollupSize:                   1024 * 128,
+		BaseFee:                         defaultCfg.BaseFee, // todo @siliev:: fix test transaction builders so this can be different
+		GasBatchExecutionLimit:          defaultCfg.GasBatchExecutionLimit,
+		GasLocalExecutionCapFlag:        defaultCfg.GasLocalExecutionCapFlag,
+		GasPaymentAddress:               defaultCfg.GasPaymentAddress,
+		RPCTimeout:                      5 * time.Second,
+		SystemContractOwner:             gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
+		StoreExecutedTransactions:       true,
+		TenGenesis:                      integrationCommon.TestnetGenesisJSON(),
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }

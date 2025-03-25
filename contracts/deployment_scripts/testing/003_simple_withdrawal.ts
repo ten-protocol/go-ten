@@ -77,9 +77,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
     console.log(`Network config = ${JSON.stringify(networkConfig, null, 2)}`);
 
-    const mgmtContractAddress = networkConfig.ManagementContractAddress;
-    const messageBusAddress = networkConfig.MessageBusAddress;
-    const l2MessageBusAddress = networkConfig.L2MessageBusAddress;
+    const networkConfigAddress = networkConfig.NetworkConfig;
+    const messageBusAddress = networkConfig.L1MessageBus;
+    const l2MessageBusAddress = networkConfig.L2MessageBus;
 
     var mbusBase = await hre.ethers.getContractAt("MessageBus", l2MessageBusAddress);
     const mbus = mbusBase.connect(await hre.ethers.provider.getSigner(deployer)); 
@@ -104,11 +104,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     console.log(`Proof = ${JSON.stringify(proof, null, 2)}`)
 
-    var managementContract = await hre.ethers.getContractAt("ManagementContract", mgmtContractAddress);
+    var networkContract = await hre.ethers.getContractAt("NetworkConfig", networkConfigAddress);
 
     const decoded_proof = hre.ethers.decodeRlp(proof.Proof)
 
-    const estimation = await waitForRootPublished(managementContract, msg, decoded_proof, proof.Root, hre.companionNetworks.layer1.provider)
+    const estimation = await waitForRootPublished(networkContract, msg, decoded_proof, proof.Root, hre.companionNetworks.layer1.provider)
     console.log(`Estimation for native value extraction = ${estimation}`)
 };
 

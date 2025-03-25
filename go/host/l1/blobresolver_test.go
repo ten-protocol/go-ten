@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	vHash1 = "0x012b7a6a22399aa9eecd8eda6ec658679e81be21af6ff296116aee205e2218f2"
-	vHash2 = "0x012374e04a848591844b75bc2f500318cf640552379b5e3a1a77bb828620690e"
+	vHash1 = "0x01c509cb5b108f8edf2333fa35a93acc5e4b24808179b0604f1945a8c7e98a3a"
+	vHash2 = "0x013cc291176322a963ca75c09d27e31ab7690d88afdefb87c436815baeeb1078"
 )
 
 func TestBlobResolver(t *testing.T) {
@@ -25,7 +25,7 @@ func TestBlobResolver(t *testing.T) {
 
 	// this will convert to slot 5 which will return 404 from the quicknode api, causing the fallback to be used
 	b := &types.Header{
-		Time: 1606824090,
+		Time: 1742476343,
 	}
 
 	blobs, err := blobResolver.FetchBlobs(context.Background(), b, []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)})

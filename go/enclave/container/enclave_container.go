@@ -8,8 +8,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave"
-
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	obscuroGenesis "github.com/ten-protocol/go-ten/go/enclave/genesis"
@@ -50,15 +49,16 @@ func NewEnclaveContainerFromConfig(config *enclaveconfig.EnclaveConfig) *Enclave
 
 // NewEnclaveContainerWithLogger is useful for testing etc.
 func NewEnclaveContainerWithLogger(config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) *EnclaveContainer {
-	contractAddr := config.ManagementContractAddress
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&contractAddr, logger)
-
 	genesis, err := obscuroGenesis.New(config.TenGenesis)
 	if err != nil {
 		logger.Crit("unable to parse obscuro genesis", log.ErrKey, err)
 	}
 
-	encl := enclave.NewEnclave(config, genesis, mgmtContractLib, logger)
+	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&config.EnclaveRegistryAddress, logger)
+	dataAvailabilityRegistryLib := contractlib.NewDataAvailabilityRegistryLib(&config.DataAvailabilityRegistryAddress, logger)
+	// we use this construction to avoid passing an eth client in the enclave and fetching the addresses
+	contractRegistryLib := contractlib.NewContractRegistryFromLibs(dataAvailabilityRegistryLib, enclaveRegistryLib, logger)
+	encl := enclave.NewEnclave(config, genesis, contractRegistryLib, logger)
 	rpcServer := enclave.NewEnclaveRPCServer(config.RPCAddress, encl, logger)
 
 	return &EnclaveContainer{

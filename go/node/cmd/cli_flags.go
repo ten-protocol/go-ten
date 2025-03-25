@@ -20,7 +20,10 @@ const (
 	enclaveWSPortFlag           = "enclave_WS_port"
 	privateKeyFlag              = "private_key"
 	sequencerP2PAddrFlag        = "sequencer_addr"
-	managementContractAddrFlag  = "management_contract_addr"
+	enclaveRegistryAddrFlag     = "enclave_registry_addr"
+	crossChainAddrFlag          = "cross_chain_addr"
+	daRegistryAddrFlag          = "da_registry_addr"
+	networkConfigAddrFlag       = "network_config_addr"
 	messageBusContractAddrFlag  = "message_bus_contract_addr"
 	l1StartBlockFlag            = "l1_start"
 	pccsAddrFlag                = "pccs_addr"
@@ -58,7 +61,10 @@ func getFlagUsageMap() map[string]string {
 		enclaveWSPortFlag:           "Enclave's WS bound port",
 		privateKeyFlag:              "L1 and L2 private key used in the node",
 		sequencerP2PAddrFlag:        "The address for the sequencer p2p server",
-		managementContractAddrFlag:  "The management contract address on the L1",
+		enclaveRegistryAddrFlag:     "The enclave registry contract address on the L1",
+		crossChainAddrFlag:          "The cross chain contract address on the L1",
+		daRegistryAddrFlag:          "The data availability contract address on the L1",
+		networkConfigAddrFlag:       "The network config contract address on the L1",
 		messageBusContractAddrFlag:  "The address of the L1 message bus contract owned by the management contract.",
 		l1StartBlockFlag:            "The block hash on the L1 where the management contract was deployed",
 		pccsAddrFlag:                "Sets the PCCS address",

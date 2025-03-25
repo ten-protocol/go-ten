@@ -259,7 +259,7 @@ func (oc *ObsClient) GetBatchTransactions(hash gethcommon.Hash) (*common.Transac
 	return txListing, err
 }
 
-// GetConfig returns the network config for obscuro
+// GetConfig returns the network config for Ten
 func (oc *ObsClient) GetConfig() (*common.TenNetworkInfo, error) {
 	var result common.TenNetworkInfo
 	err := oc.rpcClient.Call(&result, rpc.Config)

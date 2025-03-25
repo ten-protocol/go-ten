@@ -127,11 +127,3 @@ func KZGToVersionedHash(commitment kzg4844.Commitment) (out common.Hash) {
 func VerifyBlobProof(blob *kzg4844.Blob, commitment kzg4844.Commitment, proof kzg4844.Proof) error {
 	return kzg4844.VerifyBlobProof(blob, commitment, proof)
 }
-
-// CalculateSlot calculates the slot number from a given timestamp, genesis time and seconds per slot.
-func CalculateSlot(timestamp uint64, genesisTime uint64, secondsPerSlot uint64) (uint64, error) {
-	if timestamp < genesisTime {
-		return 0, fmt.Errorf("provided timestamp (%v) precedes genesis time (%v)", timestamp, genesisTime)
-	}
-	return (timestamp - genesisTime) / secondsPerSlot, nil
-}

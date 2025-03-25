@@ -9,16 +9,18 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ten-protocol/go-ten/contracts/generated/ManagementContract"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
 	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration"
@@ -54,9 +56,8 @@ type TransactionInjector struct {
 	rpcHandles *network.RPCHandles
 
 	// addrs and libs
-	mgmtContractAddr *gethcommon.Address
-	mgmtContractLib  mgmtcontractlib.MgmtContractLib
-	erc20ContractLib erc20contractlib.ERC20ContractLib
+	contractRegistryLib contractlib.ContractRegistryLib
+	erc20ContractLib    erc20contractlib.ERC20ContractLib
 
 	// controls
 	interruptRun     *int32
@@ -79,8 +80,7 @@ func NewTransactionInjector(
 	stats *simstats.Stats,
 	rpcHandles *network.RPCHandles,
 	wallets *params.SimWallets,
-	mgmtContractAddr *gethcommon.Address,
-	mgmtContractLib mgmtcontractlib.MgmtContractLib,
+	contractRegistryLib contractlib.ContractRegistryLib,
 	erc20ContractLib erc20contractlib.ERC20ContractLib,
 	txsToIssue int,
 	params *params.SimParams,
@@ -88,20 +88,19 @@ func NewTransactionInjector(
 	interrupt := int32(0)
 
 	return &TransactionInjector{
-		avgBlockDuration: avgBlockDuration,
-		stats:            stats,
-		rpcHandles:       rpcHandles,
-		interruptRun:     &interrupt,
-		fullyStoppedChan: make(chan bool, 1),
-		mgmtContractAddr: mgmtContractAddr,
-		mgmtContractLib:  mgmtContractLib,
-		erc20ContractLib: erc20ContractLib,
-		wallets:          wallets,
-		TxTracker:        newCounter(),
-		txsToIssue:       txsToIssue,
-		params:           params,
-		ctx:              context.Background(), // for now we create a new context here, should allow it to be passed in
-		logger:           testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
+		avgBlockDuration:    avgBlockDuration,
+		stats:               stats,
+		rpcHandles:          rpcHandles,
+		interruptRun:        &interrupt,
+		fullyStoppedChan:    make(chan bool, 1),
+		contractRegistryLib: contractRegistryLib,
+		erc20ContractLib:    erc20ContractLib,
+		wallets:             wallets,
+		TxTracker:           newCounter(),
+		txsToIssue:          txsToIssue,
+		params:              params,
+		ctx:                 context.Background(), // for now we create a new context here, should allow it to be passed in
+		logger:              testlog.Logger().New(log.CmpKey, log.TxInjectCmp),
 	}
 }
 
@@ -232,21 +231,10 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 	gasWallet := ti.wallets.GasBridgeWallet
 
-	ethClient := ti.rpcHandles.RndEthClient()
-
-	mgmtCtr, err := ManagementContract.NewManagementContract(*ti.mgmtContractAddr, ethClient.EthClient())
-	if err != nil {
-		panic(err)
-	}
-	busAddr, err := mgmtCtr.MessageBus(&bind.CallOpts{})
-	if err != nil {
-		panic(err)
-	}
+	addresses := ti.contractRegistryLib.GetContractAddresses()
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		ethClient = ti.rpcHandles.RndEthClient()
-
-		busCtr, err := MessageBus.NewMessageBus(busAddr, ethClient.EthClient())
+		busCtr, err := MessageBus.NewMessageBus(addresses.L1MessageBus, ti.rpcHandles.RndEthClient().EthClient())
 		if err != nil {
 			panic(err)
 		}
@@ -325,7 +313,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		logs[i] = *log
 	}
 
-	transfers, err := crosschain.ConvertLogsToValueTransfers(logs, crosschain.ValueTransferEventName, crosschain.MessageBusABI)
+	transfers, err := crosschain.ConvertLogsToValueTransfers(logs, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI)
 	if err != nil {
 		panic(err)
 	}
@@ -364,11 +352,12 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 	}
 
 	// In mem sim does not support the l1 interaction required for the rest of the function.
-	if ti.mgmtContractLib.IsMock() {
+	if ti.contractRegistryLib.IsMock() {
 		return
 	}
 
-	mCtr, err := ManagementContract.NewManagementContract(*ti.mgmtContractAddr, ti.rpcHandles.RndEthClient().EthClient())
+	ethClient := ti.rpcHandles.RndEthClient()
+	crossChainCtr, err := CrossChain.NewCrossChain(ti.contractRegistryLib.GetContractAddresses().CrossChain, ethClient.EthClient())
 	if err != nil {
 		panic(err)
 	}
@@ -391,9 +380,9 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	withdrawalTx, err := mCtr.ExtractNativeValue(
+	withdrawalTx, err := crossChainCtr.ExtractNativeValue(
 		opts,
-		ManagementContract.StructsValueTransferMessage(vTransfers[0]),
+		CrossChain.StructsValueTransferMessage(vTransfers[0]),
 		proof32,
 		proof.Root,
 	)
@@ -433,7 +422,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 	if err != nil {
 		panic(err)
 	}
-	msgBusAddr := cfg.L2MessageBusAddress
+	msgBusAddr := cfg.L2MessageBus
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()

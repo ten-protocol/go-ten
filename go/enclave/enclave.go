@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
@@ -34,8 +36,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 	"github.com/ten-protocol/go-ten/go/enclave/events"
 
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
-
 	_ "github.com/ten-protocol/go-ten/go/common/tracers/native" // make sure the tracers are loaded
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -55,7 +55,7 @@ type enclaveImpl struct {
 //
 // `genesisJSON` is the configuration for the corresponding L1's genesis block. This is used to validate the blocks
 // received from the L1 node if `validateBlocks` is set to true.
-func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, mgmtContractLib mgmtcontractlib.MgmtContractLib, logger gethlog.Logger) common.Enclave {
+func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, contractRegistryLib contractlib.ContractRegistryLib, logger gethlog.Logger) common.Enclave {
 	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
 	logger.Info("Creating enclave service with following config", log.CfgKey, string(jsonConfig))
 
@@ -133,7 +133,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, m
 
 	// these services are directly exposed as the API of the Enclave
 	initAPI := NewEnclaveInitAPI(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider, sharedSecretService, daEncryptionService, rpcKeyService)
-	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, mgmtContractLib, attestationProvider, sharedSecretService, daEncryptionService)
+	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, attestationProvider, sharedSecretService, daEncryptionService, contractRegistryLib)
 	rpcAPI := NewEnclaveRPCAPI(config, storage, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, rpcKeyService, evmFacade)
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())

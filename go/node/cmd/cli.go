@@ -37,7 +37,10 @@ type NodeConfigCLI struct {
 	hostID                  string
 	sequencerP2PAddr        string
 	sequencerUpgraderAddr   string
-	managementContractAddr  string
+	enclaveRegistryAddr     string
+	crossChainAddr          string
+	daRegistryAddr          string
+	networkConfigAddr       string
 	messageBusContractAddr  string
 	l1Start                 string
 	pccsAddr                string
@@ -80,7 +83,10 @@ func ParseConfigCLI() *NodeConfigCLI {
 	privateKey := flag.String(privateKeyFlag, "", flagUsageMap[privateKeyFlag])
 	hostID := flag.String(hostIDFlag, "", flagUsageMap[hostIDFlag])
 	sequencerP2PAddr := flag.String(sequencerP2PAddrFlag, "", flagUsageMap[sequencerP2PAddrFlag])
-	managementContractAddr := flag.String(managementContractAddrFlag, "", flagUsageMap[managementContractAddrFlag])
+	enclaveRegistryAddr := flag.String(enclaveRegistryAddrFlag, "", flagUsageMap[enclaveRegistryAddrFlag])
+	crossChainAddr := flag.String(crossChainAddrFlag, "", flagUsageMap[crossChainAddrFlag])
+	daRegistryAddr := flag.String(daRegistryAddrFlag, "", flagUsageMap[daRegistryAddrFlag])
+	networkConfigAddr := flag.String(networkConfigAddrFlag, "", flagUsageMap[networkConfigAddrFlag])
 	messageBusContractAddr := flag.String(messageBusContractAddrFlag, "", flagUsageMap[messageBusContractAddrFlag])
 	l1Start := flag.String(l1StartBlockFlag, "", flagUsageMap[l1StartBlockFlag])
 	pccsAddr := flag.String(pccsAddrFlag, "", flagUsageMap[pccsAddrFlag])
@@ -113,7 +119,10 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.privateKey = *privateKey
 	cfg.hostID = *hostID
 	cfg.sequencerP2PAddr = *sequencerP2PAddr
-	cfg.managementContractAddr = *managementContractAddr
+	cfg.enclaveRegistryAddr = *enclaveRegistryAddr
+	cfg.crossChainAddr = *crossChainAddr
+	cfg.daRegistryAddr = *daRegistryAddr
+	cfg.networkConfigAddr = *networkConfigAddr
 	cfg.messageBusContractAddr = *messageBusContractAddr
 	cfg.l1Start = *l1Start
 	cfg.pccsAddr = *pccsAddr
@@ -176,7 +185,10 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	}
 
 	tenCfg.Network.L1.ChainID = int64(cliCfg.l1ChainID)
-	tenCfg.Network.L1.L1Contracts.ManagementContract = gethcommon.HexToAddress(cliCfg.managementContractAddr)
+	tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract = gethcommon.HexToAddress(cliCfg.enclaveRegistryAddr)
+	tenCfg.Network.L1.L1Contracts.CrossChainContract = gethcommon.HexToAddress(cliCfg.crossChainAddr)
+	tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry = gethcommon.HexToAddress(cliCfg.daRegistryAddr)
+	tenCfg.Network.L1.L1Contracts.NetworkConfigContract = gethcommon.HexToAddress(cliCfg.networkConfigAddr)
 	tenCfg.Network.L1.L1Contracts.MessageBusContract = gethcommon.HexToAddress(cliCfg.messageBusContractAddr)
 	tenCfg.Network.L1.StartHash = gethcommon.HexToHash(cliCfg.l1Start)
 	tenCfg.Network.Batch.Interval, err = time.ParseDuration(cliCfg.batchInterval)

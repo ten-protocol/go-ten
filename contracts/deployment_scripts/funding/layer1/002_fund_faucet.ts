@@ -9,10 +9,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const {deployer} = await hre.getNamedAccounts();
     const l1Accs = await layer1.getNamedAccounts();
     
-    var messageBusAddress = process.env.MESSAGE_BUS_ADDRESS!!
+    var messageBusAddress = process.env.MESSAGE_BUS_ADDR!!
     if (messageBusAddress === undefined) {
         const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-        messageBusAddress = networkConfig.MessageBusAddress;
+        messageBusAddress = networkConfig.L1MessageBus;
         console.log(`Fallback read of message bus address = ${messageBusAddress}`);
     }
     

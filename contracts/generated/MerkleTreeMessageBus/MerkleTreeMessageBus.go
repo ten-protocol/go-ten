@@ -49,8 +49,8 @@ type StructsValueTransferMessage struct {
 
 // MerkleTreeMessageBusMetaData contains all meta data concerning the MerkleTreeMessageBus contract.
 var MerkleTreeMessageBusMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"OwnableInvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"OwnableUnauthorizedAccount\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"name\":\"LogMessagePublished\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"NativeDeposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"}],\"name\":\"ValueTransfer\",\"type\":\"event\"},{\"stateMutability\":\"payable\",\"type\":\"fallback\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"stateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"activationTime\",\"type\":\"uint256\"}],\"name\":\"addStateRoot\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"stateRoot\",\"type\":\"bytes32\"}],\"name\":\"disableStateRoot\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"crossChainMessage\",\"type\":\"tuple\"}],\"name\":\"getMessageTimeOfFinality\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getPublishFee\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"caller\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"feesAddress\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"notifyDeposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"name\":\"publishMessage\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"receiveValueFromL2\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"}],\"name\":\"retrieveAllFunds\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"sendValueToL2\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"crossChainMessage\",\"type\":\"tuple\"},{\"internalType\":\"uint256\",\"name\":\"finalAfterTimestamp\",\"type\":\"uint256\"}],\"name\":\"storeCrossChainMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"crossChainMessage\",\"type\":\"tuple\"}],\"name\":\"verifyMessageFinalized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"message\",\"type\":\"tuple\"},{\"internalType\":\"bytes32[]\",\"name\":\"proof\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes32\",\"name\":\"root\",\"type\":\"bytes32\"}],\"name\":\"verifyMessageInclusion\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"}],\"internalType\":\"structStructs.ValueTransferMessage\",\"name\":\"message\",\"type\":\"tuple\"},{\"internalType\":\"bytes32[]\",\"name\":\"proof\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes32\",\"name\":\"root\",\"type\":\"bytes32\"}],\"name\":\"verifyValueTransferInclusion\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}]",
-	Bin: "0x608060405234801561000f575f5ffd5b5061001933610026565b610021610096565b610148565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c19930080546001600160a01b031981166001600160a01b03848116918217845560405192169182907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a3505050565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000900460ff16156100e65760405163f92ee8a960e01b815260040160405180910390fd5b80546001600160401b03908116146101455780546001600160401b0319166001600160401b0390811782556040519081527fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d29060200160405180910390a15b50565b6123c5806101555f395ff3fe608060405260043610610110575f3560e01c80638da5cb5b116100a4578063b1454caa11610073578063b6aed0cb11610058578063b6aed0cb1461037a578063e138a8d214610399578063f2fde38b146103b857610180565b8063b1454caa1461033b578063b201246f1461035b57610180565b80638da5cb5b1461029a5780639730886d146102de57806399a3ad21146102fd578063ab53bddc1461031c57610180565b8063346633fb116100e0578063346633fb1461023557806336d2da9014610248578063485cc95514610267578063715018a61461028657610180565b8062a1b815146101a15780630fcfbd11146101cb5780630fe9188e146101ea57806333a88c721461020957610180565b36610180576040517f346633fb000000000000000000000000000000000000000000000000000000008152309063346633fb90349061015590339083906004016111bd565b5f604051808303818588803b15801561016c575f5ffd5b505af115801561017e573d5f5f3e3d5ffd5b005b60405162461bcd60e51b81526004016101989061120c565b60405180910390fd5b3480156101ac575f5ffd5b506101b56103d7565b6040516101c2919061121c565b60405180910390f35b3480156101d6575f5ffd5b506101b56101e5366004611243565b610460565b3480156101f5575f5ffd5b5061017e610204366004611292565b6104bd565b348015610214575f5ffd5b50610228610223366004611243565b610501565b6040516101c291906112b7565b61017e6102433660046112d9565b610551565b348015610253575f5ffd5b5061017e61026236600461130f565b61069a565b348015610272575f5ffd5b5061017e61028136600461132c565b610715565b348015610291575f5ffd5b5061017e61087e565b3480156102a5575f5ffd5b507f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b03166040516101c29190611359565b3480156102e9575f5ffd5b5061017e6102f8366004611367565b610891565b348015610308575f5ffd5b5061017e6103173660046112d9565b6109f6565b348015610327575f5ffd5b5061017e6103363660046112d9565b610a92565b61034e610349366004611429565b610b5a565b6040516101c291906114b1565b348015610366575f5ffd5b5061017e610375366004611519565b610c62565b348015610385575f5ffd5b5061017e610394366004611580565b610d60565b3480156103a4575f5ffd5b5061017e6103b336600461159e565b610da4565b3480156103c3575f5ffd5b5061017e6103d236600461130f565b610eeb565b600354604080517f1a90a21900000000000000000000000000000000000000000000000000000000815290515f926001600160a01b031691631a90a2199160048083019260209291908290030181865afa158015610437573d5f5f3e3d5ffd5b505050506040513d601f19601f8201168201806040525081019061045b9190611621565b905090565b5f5f8260405160200161047391906117d3565b60408051601f1981840301815291815281516020928301205f81815292839052912054909150806104b65760405162461bcd60e51b815260040161019890611822565b9392505050565b6104c5610f41565b5f8181526004602052604081205490036104f15760405162461bcd60e51b815260040161019890611864565b5f90815260046020526040812055565b5f5f8260405160200161051491906117d3565b60408051601f1981840301815291815281516020928301205f8181529283905291205490915080158015906105495750428111155b949350505050565b5f3411801561055f57508034145b61057b5760405162461bcd60e51b8152600401610198906118cc565b60035434906001600160a01b03161561063b575f6105976103d7565b9050803410156105b95760405162461bcd60e51b81526004016101989061190c565b6105c38134611930565b6003546040519193505f916001600160a01b039091169083908381818185875af1925050503d805f8114610612576040519150601f19603f3d011682016040523d82523d5f602084013e610617565b606091505b50509050806106385760405162461bcd60e51b81526004016101989061199b565b50505b5f61064533610fb5565b9050836001600160a01b0316336001600160a01b03167f50c536ac33a920f00755865b831d17bf4cff0b2e0345f65b16d52bfc004068b6848460405161068c9291906119ab565b60405180910390a350505050565b6106a2610f41565b5f816001600160a01b0316476040515f6040518083038185875af1925050503d805f81146106eb576040519150601f19603f3d011682016040523d82523d5f602084013e6106f0565b606091505b50509050806107115760405162461bcd60e51b8152600401610198906119f8565b5050565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000810460ff16159067ffffffffffffffff165f8115801561075f5750825b90505f8267ffffffffffffffff16600114801561077b5750303b155b905081158015610789575080155b156107c0576040517ff92ee8a900000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b845467ffffffffffffffff1916600117855583156107f457845468ff00000000000000001916680100000000000000001785555b6107fd87611012565b6003805473ffffffffffffffffffffffffffffffffffffffff19166001600160a01b038816179055831561087557845468ff0000000000000000191685556040517fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d29061086c90600190611a2b565b60405180910390a15b50505050505050565b610886610f41565b61088f5f611023565b565b5f61089d600130611a39565b90506108d07f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031690565b6001600160a01b0316336001600160a01b031614806108f75750336001600160a01b038216145b6109135760405162461bcd60e51b815260040161019890611a8e565b5f61091e8342611a9e565b90505f8460405160200161093291906117d3565b60408051601f1981840301815291815281516020928301205f81815292839052912054909150156109755760405162461bcd60e51b815260040161019890611b09565b5f818152602081815260408220849055600191906109959088018861130f565b6001600160a01b0316815260208101919091526040015f908120906109c06080880160608901611b19565b63ffffffff1681526020808201929092526040015f90812080546001810182559082529190208691600402016108758282611f35565b6109fe610f41565b80471015610a1e5760405162461bcd60e51b81526004016101989061190c565b5f826001600160a01b0316826040515f6040518083038185875af1925050503d805f8114610a67576040519150601f19603f3d011682016040523d82523d5f602084013e610a6c565b606091505b5050905080610a8d5760405162461bcd60e51b8152600401610198906119f8565b505050565b5f610a9e600130611a39565b9050610ad17f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031690565b6001600160a01b0316336001600160a01b03161480610af85750336001600160a01b038216145b610b145760405162461bcd60e51b815260040161019890611a8e565b826001600160a01b03167fcd9850463422a7449c406a036e35e5edb6fbe35a64c9f12a2354be98a750c0d383604051610b4d919061121c565b60405180910390a2505050565b6003545f906001600160a01b031615610c0b575f610b766103d7565b905080341015610b985760405162461bcd60e51b815260040161019890611f97565b6003546040515f916001600160a01b03169083908381818185875af1925050503d805f8114610be2576040519150601f19603f3d011682016040523d82523d5f602084013e610be7565b606091505b5050905080610c085760405162461bcd60e51b81526004016101989061199b565b50505b610c1433610fb5565b90507fb93c37389233beb85a3a726c3f15c2d15533ee74cb602f20f490dfffef77593733828888888888604051610c519796959493929190611fa7565b60405180910390a195945050505050565b5f818152600460205260408120549003610c8e5760405162461bcd60e51b815260040161019890612062565b5f81815260046020526040902054421015610cbb5760405162461bcd60e51b8152600401610198906120ae565b5f84604051602001610ccd9190612132565b60405160208183030381529060405280519060200120604051602001610cf39190612172565b604051602081830303815290604052805190602001209050610d3d84848484604051602001610d229190612191565b604051602081830303815290604052805190602001206110a0565b610d595760405162461bcd60e51b8152600401610198906121fb565b5050505050565b610d68610f41565b5f8281526004602052604090205415610d935760405162461bcd60e51b815260040161019890612263565b5f9182526004602052604090912055565b5f818152600460205260408120549003610dd05760405162461bcd60e51b815260040161019890612062565b5f81815260046020526040902054421015610dfd5760405162461bcd60e51b8152600401610198906120ae565b5f610e0b602086018661130f565b610e1b6040870160208801612273565b610e2b6060880160408901611b19565b610e3b6080890160608a01611b19565b610e4860808a018a611c63565b610e5860c08c0160a08d01612290565b604051602001610e6e9796959493929190611fa7565b6040516020818303038152906040528051906020012090505f81604051602001610e9891906122df565b604051602081830303815290604052805190602001209050610ec785858584604051602001610d229190612191565b610ee35760405162461bcd60e51b815260040161019890612347565b505050505050565b610ef3610f41565b6001600160a01b038116610f35575f6040517f1e4fbdf70000000000000000000000000000000000000000000000000000000081526004016101989190611359565b610f3e81611023565b50565b33610f737f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031690565b6001600160a01b03161461088f57336040517f118cdaa70000000000000000000000000000000000000000000000000000000081526004016101989190611359565b6001600160a01b0381165f908152600260205260408120805467ffffffffffffffff169160019190610fe78385612357565b92506101000a81548167ffffffffffffffff021916908367ffffffffffffffff160217905550919050565b61101a6110b7565b610f3e8161111e565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300805473ffffffffffffffffffffffffffffffffffffffff1981166001600160a01b03848116918217845560405192169182907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a3505050565b5f826110ad868685611126565b1495945050505050565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a005468010000000000000000900460ff1661088f576040517fd7e6bcf800000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b610ef36110b7565b5f81815b8481101561115e57611154828787848181106111485761114861237b565b90506020020135611167565b915060010161112a565b50949350505050565b5f818310611181575f82815260208490526040902061118f565b5f8381526020839052604090205b90505b92915050565b5f6001600160a01b038216611192565b6111b181611198565b82525050565b806111b1565b604081016111cb82856111a8565b6104b660208301846111b7565b600b8152602081017f756e737570706f72746564000000000000000000000000000000000000000000815290505b60200190565b60208082528101611192816111d8565b6020810161119282846111b7565b5f60c0828403121561123d5761123d5f5ffd5b50919050565b5f60208284031215611256576112565f5ffd5b813567ffffffffffffffff81111561126f5761126f5f5ffd5b6105498482850161122a565b805b8114610f3e575f5ffd5b80356111928161127b565b5f602082840312156112a5576112a55f5ffd5b61118f8383611287565b8015156111b1565b6020810161119282846112af565b61127d81611198565b8035611192816112c5565b5f5f604083850312156112ed576112ed5f5ffd5b6112f784846112ce565b91506113068460208501611287565b90509250929050565b5f60208284031215611322576113225f5ffd5b61118f83836112ce565b5f5f60408385031215611340576113405f5ffd5b61134a84846112ce565b915061130684602085016112ce565b6020810161119282846111a8565b5f5f6040838503121561137b5761137b5f5ffd5b823567ffffffffffffffff811115611394576113945f5ffd5b6113a08582860161122a565b9250506113068460208501611287565b63ffffffff811661127d565b8035611192816113b0565b5f5f83601f8401126113da576113da5f5ffd5b50813567ffffffffffffffff8111156113f4576113f45f5ffd5b60208301915083600182028301111561140e5761140e5f5ffd5b9250929050565b60ff811661127d565b803561119281611415565b5f5f5f5f5f60808688031215611440576114405f5ffd5b61144a87876113bc565b945061145987602088016113bc565b9350604086013567ffffffffffffffff811115611477576114775f5ffd5b611483888289016113c7565b9350935050611495876060880161141e565b90509295509295909350565b67ffffffffffffffff81166111b1565b6020810161119282846114a1565b5f6080828403121561123d5761123d5f5ffd5b5f5f83601f8401126114e5576114e55f5ffd5b50813567ffffffffffffffff8111156114ff576114ff5f5ffd5b60208301915083602082028301111561140e5761140e5f5ffd5b5f5f5f5f60c0858703121561152f5761152f5f5ffd5b61153986866114bf565b9350608085013567ffffffffffffffff811115611557576115575f5ffd5b611563878288016114d2565b93509350506115758660a08701611287565b905092959194509250565b5f5f60408385031215611594576115945f5ffd5b6112f78484611287565b5f5f5f5f606085870312156115b4576115b45f5ffd5b843567ffffffffffffffff8111156115cd576115cd5f5ffd5b6115d98782880161122a565b945050602085013567ffffffffffffffff8111156115f8576115f85f5ffd5b611604878288016114d2565b93509350506115758660408701611287565b80516111928161127b565b5f60208284031215611634576116345f5ffd5b61118f8383611616565b505f61119260208301836112ce565b67ffffffffffffffff811661127d565b80356111928161164d565b505f611192602083018361165d565b505f61119260208301836113bc565b63ffffffff81166111b1565b5f808335601e19368590030181126116ab576116ab5f5ffd5b830160208101925035905067ffffffffffffffff8111156116cd576116cd5f5ffd5b3681900382131561140e5761140e5f5ffd5b82818337505f910152565b8183526020830192506116fe8284836116df565b50601f01601f19160190565b505f611192602083018361141e565b60ff81166111b1565b5f60c08301611731838061163e565b61173b85826111a8565b506117496020840184611668565b61175660208601826114a1565b506117646040840184611677565b6117716040860182611686565b5061177f6060840184611677565b61178c6060860182611686565b5061179a6080840184611692565b85830360808701526117ad8382846116ea565b925050506117be60a084018461170a565b6117cb60a0860182611719565b509392505050565b6020808252810161118f8184611722565b60218152602081017f54686973206d65737361676520776173206e65766572207375626d69747465648152601760f91b602082015290505b60400190565b60208082528101611192816117e4565b601a8152602081017f537461746520726f6f7420646f6573206e6f742065786973742e00000000000081529050611206565b6020808252810161119281611832565b60308152602081017f417474656d7074696e6720746f2073656e642076616c756520776974686f757481527f2070726f766964696e67204574686572000000000000000000000000000000006020820152905061181c565b6020808252810161119281611874565b60208082527f496e73756666696369656e742066756e647320746f2073656e642076616c75659101908152611206565b60208082528101611192816118dc565b634e487b7160e01b5f52601160045260245ffd5b818103818111156111925761119261191c565b60248152602081017f4661696c656420746f2073656e64206665657320746f206665657320636f6e7481527f72616374000000000000000000000000000000000000000000000000000000006020820152905061181c565b6020808252810161119281611943565b604081016119b982856111b7565b6104b660208301846114a1565b60148152602081017f6661696c65642073656e64696e672076616c756500000000000000000000000081529050611206565b60208082528101611192816119c6565b5f61119282611a15565b90565b67ffffffffffffffff1690565b6111b181611a08565b602081016111928284611a22565b6001600160a01b039182169190811690828203908111156111925761119261191c565b60118152602081017f4e6f74206f776e6572206f722073656c6600000000000000000000000000000081529050611206565b6020808252810161119281611a5c565b808201808211156111925761119261191c565b60218152602081017f4d657373616765207375626d6974746564206d6f7265207468616e206f6e636581527f21000000000000000000000000000000000000000000000000000000000000006020820152905061181c565b6020808252810161119281611ab1565b5f60208284031215611b2c57611b2c5f5ffd5b61118f83836113bc565b5f8135611192816112c5565b5f6001600160a01b03835b81169019929092169190911792915050565b5f61119282611198565b5f61119282611b5f565b611b7c82611b69565b611b87818354611b42565b8255505050565b5f81356111928161164d565b5f7bffffffffffffffff0000000000000000000000000000000000000000611b4d8460a01b90565b5f61119267ffffffffffffffff8316611a15565b611bdf82611bc2565b611b87818354611b9a565b5f8135611192816113b0565b5f7fffffffff00000000000000000000000000000000000000000000000000000000611b4d8460e01b90565b5f63ffffffff8216611192565b611c3882611c22565b611b87818354611bf6565b5f63ffffffff83611b4d565b611c5882611c22565b611b87818354611c43565b5f808335601e1936859003018112611c7c57611c7c5f5ffd5b8301915050803567ffffffffffffffff811115611c9a57611c9a5f5ffd5b60208201915060018102360382131561140e5761140e5f5ffd5b634e487b7160e01b5f52604160045260245ffd5b634e487b7160e01b5f52602260045260245ffd5b600281046001821680611cf057607f821691505b60208210810361123d5761123d611cc8565b5f611192611a128381565b611d1683611d02565b81545f1960089490940293841b1916921b91909117905550565b5f610a8d818484611d0d565b8181101561071157611d4e5f82611d30565b600101611d3c565b601f821115610a8d575f818152602090206020601f85010481016020851015611d7c5750805b610d596020601f860104830182611d3c565b8267ffffffffffffffff811115611da757611da7611cb4565b611db18254611cdc565b611dbc828285611d56565b505f601f821160018114611dee575f8315611dd75750848201355b5f19600885021c1981166002850217855550610ee3565b5f84815260208120601f198516915b82811015611e1d5787850135825560209485019460019092019101611dfd565b5084821015611e39575f196008601f8716021c19878501351681555b5050505060020260010190555050565b610a8d838383611d8e565b5f813561119281611415565b5f60ff8216611192565b611e7382611e60565b815460ff191660ff821617611b87565b808280611e8f81611b36565b9050611e9b8184611b73565b50506020830180611eab82611b8e565b9050611eb78184611bd6565b50506040830180611ec782611bea565b9050611ed38184611c2f565b5050506060820180611ee482611bea565b9050611ef38160018501611c4f565b5050611f026080830183611c63565b611f10818360028601611e49565b505060a0820180611f2082611e54565b9050611f2f8160038501611e6a565b50505050565b6107118282611e83565b60258152602081017f496e73756666696369656e742066756e647320746f207075626c697368206d6581527f73736167650000000000000000000000000000000000000000000000000000006020820152905061181c565b6020808252810161119281611f3f565b60c08101611fb5828a6111a8565b611fc260208301896114a1565b611fcf6040830188611686565b611fdc6060830187611686565b8181036080830152611fef8185876116ea565b9050611ffe60a0830184611719565b98975050505050505050565b602a8152602081017f526f6f74206973206e6f74207075626c6973686564206f6e2074686973206d6581527f7373616765206275732e000000000000000000000000000000000000000000006020820152905061181c565b602080825281016111928161200a565b60218152602081017f526f6f74206973206e6f7420636f6e736964657265642066696e616c207965748152601760f91b6020820152905061181c565b6020808252810161119281612072565b505f6111926020830183611287565b6120d7818061163e565b6120e183826111a8565b506120ef602082018261163e565b6120fc60208401826111a8565b5061210a60408201826120be565b61211760408401826111b7565b506121256060820182611668565b610a8d60608401826114a1565b6080810161119282846120cd565b60018152602081017f760000000000000000000000000000000000000000000000000000000000000081529050611206565b6040808252810161218281612140565b905061119260208301846111b7565b61219b81836111b7565b602001919050565b60338152602081017f496e76616c696420696e636c7573696f6e2070726f6f6620666f722076616c7581527f65207472616e73666572206d6573736167652e000000000000000000000000006020820152905061181c565b60208082528101611192816121a3565b60258152602081017f526f6f7420616c726561647920616464656420746f20746865206d657373616781527f65206275730000000000000000000000000000000000000000000000000000006020820152905061181c565b602080825281016111928161220b565b5f60208284031215612286576122865f5ffd5b61118f838361165d565b5f602082840312156122a3576122a35f5ffd5b61118f838361141e565b60018152602081017f6d0000000000000000000000000000000000000000000000000000000000000081529050611206565b60408082528101612182816122ad565b60308152602081017f496e76616c696420696e636c7573696f6e2070726f6f6620666f722063726f7381527f7320636861696e206d6573736167652e000000000000000000000000000000006020820152905061181c565b60208082528101611192816122ef565b67ffffffffffffffff9182169190811690828201908111156111925761119261191c565b634e487b7160e01b5f52603260045260245ffdfea26469706673582212202790914a6f3b56d3e68f273699e51e578a89a9b8c4d3eb5dcff10d788a77683164736f6c634300081c0033",
+	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"AccessControlBadConfirmation\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"internalType\":\"bytes32\",\"name\":\"neededRole\",\"type\":\"bytes32\"}],\"name\":\"AccessControlUnauthorizedAccount\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"owner\",\"type\":\"address\"}],\"name\":\"OwnableInvalidOwner\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"OwnableUnauthorizedAccount\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"indexed\":false,\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"name\":\"LogMessagePublished\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"NativeDeposit\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"previousAdminRole\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"newAdminRole\",\"type\":\"bytes32\"}],\"name\":\"RoleAdminChanged\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleGranted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"RoleRevoked\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"}],\"name\":\"ValueTransfer\",\"type\":\"event\"},{\"stateMutability\":\"payable\",\"type\":\"fallback\"},{\"inputs\":[],\"name\":\"DEFAULT_ADMIN_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"STATE_ROOT_MANAGER_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"WITHDRAWAL_MANAGER_ROLE\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"stateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"activationTime\",\"type\":\"uint256\"}],\"name\":\"addStateRoot\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"manager\",\"type\":\"address\"}],\"name\":\"addStateRootManager\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"stateRoot\",\"type\":\"bytes32\"}],\"name\":\"disableStateRoot\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"crossChainMessage\",\"type\":\"tuple\"}],\"name\":\"getMessageTimeOfFinality\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getPublishFee\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"}],\"name\":\"getRoleAdmin\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"grantRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"hasRole\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"initialOwner\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"withdrawalManager\",\"type\":\"address\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"notifyDeposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"name\":\"publishMessage\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"receiveValueFromL2\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"manager\",\"type\":\"address\"}],\"name\":\"removeStateRootManager\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"callerConfirmation\",\"type\":\"address\"}],\"name\":\"renounceRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"}],\"name\":\"retrieveAllFunds\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"role\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"account\",\"type\":\"address\"}],\"name\":\"revokeRole\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"sendValueToL2\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"crossChainMessage\",\"type\":\"tuple\"},{\"internalType\":\"uint256\",\"name\":\"finalAfterTimestamp\",\"type\":\"uint256\"}],\"name\":\"storeCrossChainMessage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes4\",\"name\":\"interfaceId\",\"type\":\"bytes4\"}],\"name\":\"supportsInterface\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"crossChainMessage\",\"type\":\"tuple\"}],\"name\":\"verifyMessageFinalized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"},{\"internalType\":\"uint32\",\"name\":\"nonce\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"topic\",\"type\":\"uint32\"},{\"internalType\":\"bytes\",\"name\":\"payload\",\"type\":\"bytes\"},{\"internalType\":\"uint8\",\"name\":\"consistencyLevel\",\"type\":\"uint8\"}],\"internalType\":\"structStructs.CrossChainMessage\",\"name\":\"message\",\"type\":\"tuple\"},{\"internalType\":\"bytes32[]\",\"name\":\"proof\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes32\",\"name\":\"root\",\"type\":\"bytes32\"}],\"name\":\"verifyMessageInclusion\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"receiver\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"},{\"internalType\":\"uint64\",\"name\":\"sequence\",\"type\":\"uint64\"}],\"internalType\":\"structStructs.ValueTransferMessage\",\"name\":\"message\",\"type\":\"tuple\"},{\"internalType\":\"bytes32[]\",\"name\":\"proof\",\"type\":\"bytes32[]\"},{\"internalType\":\"bytes32\",\"name\":\"root\",\"type\":\"bytes32\"}],\"name\":\"verifyValueTransferInclusion\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}]",
+	Bin: "0x6080604052348015600e575f5ffd5b50601633601a565b608a565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c19930080546001600160a01b031981166001600160a01b03848116918217845560405192169182907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a3505050565b612ae7806100975f395ff3fe6080604052600436106101b9575f3560e01c80638da5cb5b116100eb578063b1454caa11610089578063d547741f11610063578063d547741f146105e7578063e138a8d214610606578063f2fde38b14610625578063fb8940291461064457610229565b8063b1454caa14610589578063b201246f146105a9578063b6aed0cb146105c857610229565b806399a3ad21116100c557806399a3ad2114610505578063a217fddf14610524578063ab53bddc14610537578063ad7805e81461055657610229565b80638da5cb5b1461043f57806391d14854146104835780639730886d146104e657610229565b80632f2ff15d1161015857806336568abe1161013257806336568abe146103ce57806336d2da90146103ed578063485cc9551461040c578063715018a61461042b57610229565b80632f2ff15d1461037d57806333a88c721461039c578063346633fb146103bb57610229565b80630fcfbd11116101945780630fcfbd11146102d35780630fe9188e146102f25780631050afdd14610311578063248a9ca31461033057610229565b8062a1b8151461024a57806301ffc9a71461027457806302b4df19146102a057610229565b36610229576040517f346633fb000000000000000000000000000000000000000000000000000000008152309063346633fb9034906101fe90339083906004016118a7565b5f604051808303818588803b158015610215575f5ffd5b505af1158015610227573d5f5f3e3d5ffd5b005b60405162461bcd60e51b8152600401610241906118f6565b60405180910390fd5b348015610255575f5ffd5b5061025e610663565b60405161026b9190611906565b60405180910390f35b34801561027f575f5ffd5b5061029361028e366004611935565b6106ec565b60405161026b919061195a565b3480156102ab575f5ffd5b5061025e7f65c4b771cce18ff228842b3883a73079ee3e76bd08965f6dadb7cb56dbf6e19481565b3480156102de575f5ffd5b5061025e6102ed366004611981565b610754565b3480156102fd575f5ffd5b5061022761030c3660046119ca565b6107b1565b34801561031c575f5ffd5b5061022761032b3660046119fb565b610818565b34801561033b575f5ffd5b5061025e61034a3660046119ca565b5f9081527f02dd7bc7dec4dceedda775e58dd541e08a116c6c53815c0bd028192f7b626800602052604090206001015490565b348015610388575f5ffd5b50610227610397366004611a18565b610850565b3480156103a7575f5ffd5b506102936103b6366004611981565b610899565b6102276103c9366004611a4e565b6108e9565b3480156103d9575f5ffd5b506102276103e8366004611a18565b610a32565b3480156103f8575f5ffd5b506102276104073660046119fb565b610a83565b348015610417575f5ffd5b50610227610426366004611a7b565b610afa565b348015610436575f5ffd5b50610227610ca4565b34801561044a575f5ffd5b507f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031660405161026b9190611a99565b34801561048e575f5ffd5b5061029361049d366004611a18565b5f9182527f02dd7bc7dec4dceedda775e58dd541e08a116c6c53815c0bd028192f7b626800602090815260408084206001600160a01b0393909316845291905290205460ff1690565b3480156104f1575f5ffd5b50610227610500366004611aa7565b610cb7565b348015610510575f5ffd5b5061022761051f366004611a4e565b610e1c565b34801561052f575f5ffd5b5061025e5f81565b348015610542575f5ffd5b50610227610551366004611a4e565b610e50565b348015610561575f5ffd5b5061025e7fe0d563514842a8c29151c49cd2698127f54dd344a9b2c74a42fe9be3e305fe9881565b61059c610597366004611b69565b610f18565b60405161026b9190611bf1565b3480156105b4575f5ffd5b506102276105c3366004611c59565b611020565b3480156105d3575f5ffd5b506102276105e2366004611cc0565b61111e565b3480156105f2575f5ffd5b50610227610601366004611a18565b611185565b348015610611575f5ffd5b50610227610620366004611cde565b6111c8565b348015610630575f5ffd5b5061022761063f3660046119fb565b61130f565b34801561064f575f5ffd5b5061022761065e3660046119fb565b611365565b600354604080517f1a90a21900000000000000000000000000000000000000000000000000000000815290515f926001600160a01b031691631a90a2199160048083019260209291908290030181865afa1580156106c3573d5f5f3e3d5ffd5b505050506040513d601f19601f820116820180604052508101906106e79190611d61565b905090565b5f6001600160e01b031982167f7965db0b00000000000000000000000000000000000000000000000000000000148061074e57507f01ffc9a7000000000000000000000000000000000000000000000000000000006001600160e01b03198316145b92915050565b5f5f826040516020016107679190611f13565b60408051601f1981840301815291815281516020928301205f81815292839052912054909150806107aa5760405162461bcd60e51b815260040161024190611f62565b9392505050565b7f65c4b771cce18ff228842b3883a73079ee3e76bd08965f6dadb7cb56dbf6e1946107db81611399565b5f8281526004602052604081205490036108075760405162461bcd60e51b815260040161024190611fa4565b505f90815260046020526040812055565b5f61082281611399565b61084c7f65c4b771cce18ff228842b3883a73079ee3e76bd08965f6dadb7cb56dbf6e19483611185565b5050565b5f8281527f02dd7bc7dec4dceedda775e58dd541e08a116c6c53815c0bd028192f7b626800602052604090206001015461088981611399565b61089383836113a3565b50505050565b5f5f826040516020016108ac9190611f13565b60408051601f1981840301815291815281516020928301205f8181529283905291205490915080158015906108e15750428111155b949350505050565b5f341180156108f757508034145b6109135760405162461bcd60e51b81526004016102419061200c565b60035434906001600160a01b0316156109d3575f61092f610663565b9050803410156109515760405162461bcd60e51b81526004016102419061204c565b61095b8134612070565b6003546040519193505f916001600160a01b039091169083908381818185875af1925050503d805f81146109aa576040519150601f19603f3d011682016040523d82523d5f602084013e6109af565b606091505b50509050806109d05760405162461bcd60e51b8152600401610241906120db565b50505b5f6109dd3361146f565b9050836001600160a01b0316336001600160a01b03167f50c536ac33a920f00755865b831d17bf4cff0b2e0345f65b16d52bfc004068b68484604051610a249291906120eb565b60405180910390a350505050565b6001600160a01b0381163314610a74576040517f6697b23200000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b610a7e82826114cc565b505050565b610a8b611570565b5f816001600160a01b0316476040515f6040518083038185875af1925050503d805f8114610ad4576040519150601f19603f3d011682016040523d82523d5f602084013e610ad9565b606091505b505090508061084c5760405162461bcd60e51b815260040161024190612138565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000810460ff16159067ffffffffffffffff165f81158015610b445750825b90505f8267ffffffffffffffff166001148015610b605750303b155b905081158015610b6e575080155b15610ba5576040517ff92ee8a900000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b845467ffffffffffffffff191660011785558315610bd957845468ff00000000000000001916680100000000000000001785555b610be2876115e4565b610bea6115f5565b610bf45f886113a3565b50610c1f7f65c4b771cce18ff228842b3883a73079ee3e76bd08965f6dadb7cb56dbf6e194886113a3565b50610c4a7fe0d563514842a8c29151c49cd2698127f54dd344a9b2c74a42fe9be3e305fe98876113a3565b508315610c9b57845468ff0000000000000000191685556040517fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d290610c929060019061216b565b60405180910390a15b50505050505050565b610cac611570565b610cb55f6115fd565b565b5f610cc3600130612179565b9050610cf67f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031690565b6001600160a01b0316336001600160a01b03161480610d1d5750336001600160a01b038216145b610d395760405162461bcd60e51b8152600401610241906121ce565b5f610d4483426121de565b90505f84604051602001610d589190611f13565b60408051601f1981840301815291815281516020928301205f8181529283905291205490915015610d9b5760405162461bcd60e51b815260040161024190612249565b5f81815260208181526040822084905560019190610dbb908801886119fb565b6001600160a01b0316815260208101919091526040015f90812090610de66080880160608901612259565b63ffffffff1681526020808201929092526040015f9081208054600181018255908252919020869160040201610c9b8282612657565b7fe0d563514842a8c29151c49cd2698127f54dd344a9b2c74a42fe9be3e305fe98610e4681611399565b610a7e8383611685565b5f610e5c600130612179565b9050610e8f7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031690565b6001600160a01b0316336001600160a01b03161480610eb65750336001600160a01b038216145b610ed25760405162461bcd60e51b8152600401610241906121ce565b826001600160a01b03167fcd9850463422a7449c406a036e35e5edb6fbe35a64c9f12a2354be98a750c0d383604051610f0b9190611906565b60405180910390a2505050565b6003545f906001600160a01b031615610fc9575f610f34610663565b905080341015610f565760405162461bcd60e51b8152600401610241906126b9565b6003546040515f916001600160a01b03169083908381818185875af1925050503d805f8114610fa0576040519150601f19603f3d011682016040523d82523d5f602084013e610fa5565b606091505b5050905080610fc65760405162461bcd60e51b8152600401610241906120db565b50505b610fd23361146f565b90507fb93c37389233beb85a3a726c3f15c2d15533ee74cb602f20f490dfffef7759373382888888888860405161100f97969594939291906126c9565b60405180910390a195945050505050565b5f81815260046020526040812054900361104c5760405162461bcd60e51b815260040161024190612784565b5f818152600460205260409020544210156110795760405162461bcd60e51b8152600401610241906127d0565b5f8460405160200161108b9190612854565b604051602081830303815290604052805190602001206040516020016110b19190612894565b6040516020818303038152906040528051906020012090506110fb848484846040516020016110e091906128b3565b60405160208183030381529060405280519060200120611714565b6111175760405162461bcd60e51b81526004016102419061291d565b5050505050565b7f65c4b771cce18ff228842b3883a73079ee3e76bd08965f6dadb7cb56dbf6e19461114881611399565b5f83815260046020526040902054156111735760405162461bcd60e51b815260040161024190612985565b505f9182526004602052604090912055565b5f8281527f02dd7bc7dec4dceedda775e58dd541e08a116c6c53815c0bd028192f7b62680060205260409020600101546111be81611399565b61089383836114cc565b5f8181526004602052604081205490036111f45760405162461bcd60e51b815260040161024190612784565b5f818152600460205260409020544210156112215760405162461bcd60e51b8152600401610241906127d0565b5f61122f60208601866119fb565b61123f6040870160208801612995565b61124f6060880160408901612259565b61125f6080890160608a01612259565b61126c60808a018a61238b565b61127c60c08c0160a08d016129b2565b60405160200161129297969594939291906126c9565b6040516020818303038152906040528051906020012090505f816040516020016112bc9190612a01565b6040516020818303038152906040528051906020012090506112eb858585846040516020016110e091906128b3565b6113075760405162461bcd60e51b815260040161024190612a69565b505050505050565b611317611570565b6001600160a01b038116611359575f6040517f1e4fbdf70000000000000000000000000000000000000000000000000000000081526004016102419190611a99565b611362816115fd565b50565b5f61136f81611399565b61084c7f65c4b771cce18ff228842b3883a73079ee3e76bd08965f6dadb7cb56dbf6e19483610850565b611362813361172b565b5f8281527f02dd7bc7dec4dceedda775e58dd541e08a116c6c53815c0bd028192f7b626800602081815260408084206001600160a01b038616855290915282205460ff16611466575f848152602082815260408083206001600160a01b03871684529091529020805460ff1916600117905561141c3390565b6001600160a01b0316836001600160a01b0316857f2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d60405160405180910390a4600191505061074e565b5f91505061074e565b6001600160a01b0381165f908152600260205260408120805467ffffffffffffffff1691600191906114a18385612a79565b92506101000a81548167ffffffffffffffff021916908367ffffffffffffffff160217905550919050565b5f8281527f02dd7bc7dec4dceedda775e58dd541e08a116c6c53815c0bd028192f7b626800602081815260408084206001600160a01b038616855290915282205460ff1615611466575f848152602082815260408083206001600160a01b0387168085529252808320805460ff1916905551339287917ff6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b9190a4600191505061074e565b336115a27f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c199300546001600160a01b031690565b6001600160a01b031614610cb557336040517f118cdaa70000000000000000000000000000000000000000000000000000000081526004016102419190611a99565b6115ec6117a9565b61136281611810565b610cb56117a9565b7f9016d09d72d40fdae2fd8ceac6b6234c7706214fd39c1cd1e609a0528c19930080547fffffffffffffffffffffffff000000000000000000000000000000000000000081166001600160a01b03848116918217845560405192169182907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0905f90a3505050565b804710156116a55760405162461bcd60e51b81526004016102419061204c565b5f826001600160a01b0316826040515f6040518083038185875af1925050503d805f81146116ee576040519150601f19603f3d011682016040523d82523d5f602084013e6116f3565b606091505b5050905080610a7e5760405162461bcd60e51b815260040161024190612138565b5f82611721868685611818565b1495945050505050565b5f8281527f02dd7bc7dec4dceedda775e58dd541e08a116c6c53815c0bd028192f7b626800602090815260408083206001600160a01b038516845290915290205460ff1661084c5780826040517fe2517d3f0000000000000000000000000000000000000000000000000000000081526004016102419291906118a7565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a005468010000000000000000900460ff16610cb5576040517fd7e6bcf800000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b6113176117a9565b5f81815b84811015611850576118468287878481811061183a5761183a612a9d565b90506020020135611859565b915060010161181c565b50949350505050565b5f818310611873575f8281526020849052604090206107aa565b505f9182526020526040902090565b5f6001600160a01b03821661074e565b61189b81611882565b82525050565b8061189b565b604081016118b58285611892565b6107aa60208301846118a1565b600b8152602081017f756e737570706f72746564000000000000000000000000000000000000000000815290505b60200190565b6020808252810161074e816118c2565b6020810161074e82846118a1565b6001600160e01b031981165b8114611362575f5ffd5b803561074e81611914565b5f60208284031215611948576119485f5ffd5b6107aa838361192a565b80151561189b565b6020810161074e8284611952565b5f60c0828403121561197b5761197b5f5ffd5b50919050565b5f60208284031215611994576119945f5ffd5b813567ffffffffffffffff8111156119ad576119ad5f5ffd5b6108e184828501611968565b80611920565b803561074e816119b9565b5f602082840312156119dd576119dd5f5ffd5b6107aa83836119bf565b61192081611882565b803561074e816119e7565b5f60208284031215611a0e57611a0e5f5ffd5b6107aa83836119f0565b5f5f60408385031215611a2c57611a2c5f5ffd5b611a3684846119bf565b9150611a4584602085016119f0565b90509250929050565b5f5f60408385031215611a6257611a625f5ffd5b611a6c84846119f0565b9150611a4584602085016119bf565b5f5f60408385031215611a8f57611a8f5f5ffd5b611a3684846119f0565b6020810161074e8284611892565b5f5f60408385031215611abb57611abb5f5ffd5b823567ffffffffffffffff811115611ad457611ad45f5ffd5b611ae085828601611968565b925050611a4584602085016119bf565b63ffffffff8116611920565b803561074e81611af0565b5f5f83601f840112611b1a57611b1a5f5ffd5b50813567ffffffffffffffff811115611b3457611b345f5ffd5b602083019150836001820283011115611b4e57611b4e5f5ffd5b9250929050565b60ff8116611920565b803561074e81611b55565b5f5f5f5f5f60808688031215611b8057611b805f5ffd5b611b8a8787611afc565b9450611b998760208801611afc565b9350604086013567ffffffffffffffff811115611bb757611bb75f5ffd5b611bc388828901611b07565b9350935050611bd58760608801611b5e565b90509295509295909350565b67ffffffffffffffff811661189b565b6020810161074e8284611be1565b5f6080828403121561197b5761197b5f5ffd5b5f5f83601f840112611c2557611c255f5ffd5b50813567ffffffffffffffff811115611c3f57611c3f5f5ffd5b602083019150836020820283011115611b4e57611b4e5f5ffd5b5f5f5f5f60c08587031215611c6f57611c6f5f5ffd5b611c798686611bff565b9350608085013567ffffffffffffffff811115611c9757611c975f5ffd5b611ca387828801611c12565b9350935050611cb58660a087016119bf565b905092959194509250565b5f5f60408385031215611cd457611cd45f5ffd5b611a6c84846119bf565b5f5f5f5f60608587031215611cf457611cf45f5ffd5b843567ffffffffffffffff811115611d0d57611d0d5f5ffd5b611d1987828801611968565b945050602085013567ffffffffffffffff811115611d3857611d385f5ffd5b611d4487828801611c12565b9350935050611cb586604087016119bf565b805161074e816119b9565b5f60208284031215611d7457611d745f5ffd5b6107aa8383611d56565b505f61074e60208301836119f0565b67ffffffffffffffff8116611920565b803561074e81611d8d565b505f61074e6020830183611d9d565b505f61074e6020830183611afc565b63ffffffff811661189b565b5f808335601e1936859003018112611deb57611deb5f5ffd5b830160208101925035905067ffffffffffffffff811115611e0d57611e0d5f5ffd5b36819003821315611b4e57611b4e5f5ffd5b82818337505f910152565b818352602083019250611e3e828483611e1f565b50601f01601f19160190565b505f61074e6020830183611b5e565b60ff811661189b565b5f60c08301611e718380611d7e565b611e7b8582611892565b50611e896020840184611da8565b611e966020860182611be1565b50611ea46040840184611db7565b611eb16040860182611dc6565b50611ebf6060840184611db7565b611ecc6060860182611dc6565b50611eda6080840184611dd2565b8583036080870152611eed838284611e2a565b92505050611efe60a0840184611e4a565b611f0b60a0860182611e59565b509392505050565b602080825281016107aa8184611e62565b60218152602081017f54686973206d65737361676520776173206e65766572207375626d69747465648152601760f91b602082015290505b60400190565b6020808252810161074e81611f24565b601a8152602081017f537461746520726f6f7420646f6573206e6f742065786973742e000000000000815290506118f0565b6020808252810161074e81611f72565b60308152602081017f417474656d7074696e6720746f2073656e642076616c756520776974686f757481527f2070726f766964696e672045746865720000000000000000000000000000000060208201529050611f5c565b6020808252810161074e81611fb4565b60208082527f496e73756666696369656e742066756e647320746f2073656e642076616c756591019081526118f0565b6020808252810161074e8161201c565b634e487b7160e01b5f52601160045260245ffd5b8181038181111561074e5761074e61205c565b60248152602081017f4661696c656420746f2073656e64206665657320746f206665657320636f6e7481527f726163740000000000000000000000000000000000000000000000000000000060208201529050611f5c565b6020808252810161074e81612083565b604081016120f982856118a1565b6107aa6020830184611be1565b60148152602081017f6661696c65642073656e64696e672076616c7565000000000000000000000000815290506118f0565b6020808252810161074e81612106565b5f61074e82612155565b90565b67ffffffffffffffff1690565b61189b81612148565b6020810161074e8284612162565b6001600160a01b0391821691908116908282039081111561074e5761074e61205c565b60118152602081017f4e6f74206f776e6572206f722073656c66000000000000000000000000000000815290506118f0565b6020808252810161074e8161219c565b8082018082111561074e5761074e61205c565b60218152602081017f4d657373616765207375626d6974746564206d6f7265207468616e206f6e636581527f210000000000000000000000000000000000000000000000000000000000000060208201529050611f5c565b6020808252810161074e816121f1565b5f6020828403121561226c5761226c5f5ffd5b6107aa8383611afc565b5f813561074e816119e7565b5f6001600160a01b03835b81169019929092169190911792915050565b5f61074e82611882565b5f61074e8261229f565b6122bc826122a9565b6122c7818354612282565b8255505050565b5f813561074e81611d8d565b5f7bffffffffffffffff000000000000000000000000000000000000000061228d8460a01b90565b5f61074e67ffffffffffffffff8316612155565b61231f82612302565b6122c78183546122da565b5f813561074e81611af0565b5f6001600160e01b031961228d8460e01b90565b5f63ffffffff821661074e565b6123608261234a565b6122c7818354612336565b5f63ffffffff8361228d565b6123808261234a565b6122c781835461236b565b5f808335601e19368590030181126123a4576123a45f5ffd5b8301915050803567ffffffffffffffff8111156123c2576123c25f5ffd5b602082019150600181023603821315611b4e57611b4e5f5ffd5b634e487b7160e01b5f52604160045260245ffd5b634e487b7160e01b5f52602260045260245ffd5b60028104600182168061241857607f821691505b60208210810361197b5761197b6123f0565b5f61074e6121528381565b61243e8361242a565b81545f1960089490940293841b1916921b91909117905550565b5f610a7e818484612435565b8181101561084c576124765f82612458565b600101612464565b601f821115610a7e575f818152602090206020601f850104810160208510156124a45750805b6111176020601f860104830182612464565b8267ffffffffffffffff8111156124cf576124cf6123dc565b6124d98254612404565b6124e482828561247e565b505f601f821160018114612516575f83156124ff5750848201355b5f19600885021c1981166002850217855550611307565b5f84815260208120601f198516915b828110156125455787850135825560209485019460019092019101612525565b5084821015612561575f196008601f8716021c19878501351681555b5050505060020260010190555050565b610a7e8383836124b6565b5f813561074e81611b55565b5f60ff821661074e565b61259b82612588565b815460ff191660ff8216176122c7565b8082806125b781612276565b90506125c381846122b3565b505060208301806125d3826122ce565b90506125df8184612316565b505060408301806125ef8261232a565b90506125fb8184612357565b505050606082018061260c8261232a565b905061261b8160018501612377565b505061262a608083018361238b565b612638818360028601612571565b505060a08201806126488261257c565b90506108938160038501612592565b61084c82826125ab565b60258152602081017f496e73756666696369656e742066756e647320746f207075626c697368206d6581527f737361676500000000000000000000000000000000000000000000000000000060208201529050611f5c565b6020808252810161074e81612661565b60c081016126d7828a611892565b6126e46020830189611be1565b6126f16040830188611dc6565b6126fe6060830187611dc6565b8181036080830152612711818587611e2a565b905061272060a0830184611e59565b98975050505050505050565b602a8152602081017f526f6f74206973206e6f74207075626c6973686564206f6e2074686973206d6581527f7373616765206275732e0000000000000000000000000000000000000000000060208201529050611f5c565b6020808252810161074e8161272c565b60218152602081017f526f6f74206973206e6f7420636f6e736964657265642066696e616c207965748152601760f91b60208201529050611f5c565b6020808252810161074e81612794565b505f61074e60208301836119bf565b6127f98180611d7e565b6128038382611892565b506128116020820182611d7e565b61281e6020840182611892565b5061282c60408201826127e0565b61283960408401826118a1565b506128476060820182611da8565b610a7e6060840182611be1565b6080810161074e82846127ef565b60018152602081017f7600000000000000000000000000000000000000000000000000000000000000815290506118f0565b604080825281016128a481612862565b905061074e60208301846118a1565b6128bd81836118a1565b602001919050565b60338152602081017f496e76616c696420696e636c7573696f6e2070726f6f6620666f722076616c7581527f65207472616e73666572206d6573736167652e0000000000000000000000000060208201529050611f5c565b6020808252810161074e816128c5565b60258152602081017f526f6f7420616c726561647920616464656420746f20746865206d657373616781527f652062757300000000000000000000000000000000000000000000000000000060208201529050611f5c565b6020808252810161074e8161292d565b5f602082840312156129a8576129a85f5ffd5b6107aa8383611d9d565b5f602082840312156129c5576129c55f5ffd5b6107aa8383611b5e565b60018152602081017f6d00000000000000000000000000000000000000000000000000000000000000815290506118f0565b604080825281016128a4816129cf565b60308152602081017f496e76616c696420696e636c7573696f6e2070726f6f6620666f722063726f7381527f7320636861696e206d6573736167652e0000000000000000000000000000000060208201529050611f5c565b6020808252810161074e81612a11565b67ffffffffffffffff91821691908116908282019081111561074e5761074e61205c565b634e487b7160e01b5f52603260045260245ffdfea26469706673582212203d7d79a402f07cf9b10138ca0075d41f58dff0ef2db7f78f0c853441001870b764736f6c634300081c0033",
 }
 
 // MerkleTreeMessageBusABI is the input ABI used to generate the binding from.
@@ -220,6 +220,99 @@ func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorRaw) Transact(opts *b
 	return _MerkleTreeMessageBus.Contract.contract.Transact(opts, method, params...)
 }
 
+// DEFAULTADMINROLE is a free data retrieval call binding the contract method 0xa217fddf.
+//
+// Solidity: function DEFAULT_ADMIN_ROLE() view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCaller) DEFAULTADMINROLE(opts *bind.CallOpts) ([32]byte, error) {
+	var out []interface{}
+	err := _MerkleTreeMessageBus.contract.Call(opts, &out, "DEFAULT_ADMIN_ROLE")
+
+	if err != nil {
+		return *new([32]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
+
+	return out0, err
+
+}
+
+// DEFAULTADMINROLE is a free data retrieval call binding the contract method 0xa217fddf.
+//
+// Solidity: function DEFAULT_ADMIN_ROLE() view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) DEFAULTADMINROLE() ([32]byte, error) {
+	return _MerkleTreeMessageBus.Contract.DEFAULTADMINROLE(&_MerkleTreeMessageBus.CallOpts)
+}
+
+// DEFAULTADMINROLE is a free data retrieval call binding the contract method 0xa217fddf.
+//
+// Solidity: function DEFAULT_ADMIN_ROLE() view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCallerSession) DEFAULTADMINROLE() ([32]byte, error) {
+	return _MerkleTreeMessageBus.Contract.DEFAULTADMINROLE(&_MerkleTreeMessageBus.CallOpts)
+}
+
+// STATEROOTMANAGERROLE is a free data retrieval call binding the contract method 0x02b4df19.
+//
+// Solidity: function STATE_ROOT_MANAGER_ROLE() view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCaller) STATEROOTMANAGERROLE(opts *bind.CallOpts) ([32]byte, error) {
+	var out []interface{}
+	err := _MerkleTreeMessageBus.contract.Call(opts, &out, "STATE_ROOT_MANAGER_ROLE")
+
+	if err != nil {
+		return *new([32]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
+
+	return out0, err
+
+}
+
+// STATEROOTMANAGERROLE is a free data retrieval call binding the contract method 0x02b4df19.
+//
+// Solidity: function STATE_ROOT_MANAGER_ROLE() view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) STATEROOTMANAGERROLE() ([32]byte, error) {
+	return _MerkleTreeMessageBus.Contract.STATEROOTMANAGERROLE(&_MerkleTreeMessageBus.CallOpts)
+}
+
+// STATEROOTMANAGERROLE is a free data retrieval call binding the contract method 0x02b4df19.
+//
+// Solidity: function STATE_ROOT_MANAGER_ROLE() view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCallerSession) STATEROOTMANAGERROLE() ([32]byte, error) {
+	return _MerkleTreeMessageBus.Contract.STATEROOTMANAGERROLE(&_MerkleTreeMessageBus.CallOpts)
+}
+
+// WITHDRAWALMANAGERROLE is a free data retrieval call binding the contract method 0xad7805e8.
+//
+// Solidity: function WITHDRAWAL_MANAGER_ROLE() view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCaller) WITHDRAWALMANAGERROLE(opts *bind.CallOpts) ([32]byte, error) {
+	var out []interface{}
+	err := _MerkleTreeMessageBus.contract.Call(opts, &out, "WITHDRAWAL_MANAGER_ROLE")
+
+	if err != nil {
+		return *new([32]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
+
+	return out0, err
+
+}
+
+// WITHDRAWALMANAGERROLE is a free data retrieval call binding the contract method 0xad7805e8.
+//
+// Solidity: function WITHDRAWAL_MANAGER_ROLE() view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) WITHDRAWALMANAGERROLE() ([32]byte, error) {
+	return _MerkleTreeMessageBus.Contract.WITHDRAWALMANAGERROLE(&_MerkleTreeMessageBus.CallOpts)
+}
+
+// WITHDRAWALMANAGERROLE is a free data retrieval call binding the contract method 0xad7805e8.
+//
+// Solidity: function WITHDRAWAL_MANAGER_ROLE() view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCallerSession) WITHDRAWALMANAGERROLE() ([32]byte, error) {
+	return _MerkleTreeMessageBus.Contract.WITHDRAWALMANAGERROLE(&_MerkleTreeMessageBus.CallOpts)
+}
+
 // GetMessageTimeOfFinality is a free data retrieval call binding the contract method 0x0fcfbd11.
 //
 // Solidity: function getMessageTimeOfFinality((address,uint64,uint32,uint32,bytes,uint8) crossChainMessage) view returns(uint256)
@@ -282,6 +375,68 @@ func (_MerkleTreeMessageBus *MerkleTreeMessageBusCallerSession) GetPublishFee() 
 	return _MerkleTreeMessageBus.Contract.GetPublishFee(&_MerkleTreeMessageBus.CallOpts)
 }
 
+// GetRoleAdmin is a free data retrieval call binding the contract method 0x248a9ca3.
+//
+// Solidity: function getRoleAdmin(bytes32 role) view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCaller) GetRoleAdmin(opts *bind.CallOpts, role [32]byte) ([32]byte, error) {
+	var out []interface{}
+	err := _MerkleTreeMessageBus.contract.Call(opts, &out, "getRoleAdmin", role)
+
+	if err != nil {
+		return *new([32]byte), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new([32]byte)).(*[32]byte)
+
+	return out0, err
+
+}
+
+// GetRoleAdmin is a free data retrieval call binding the contract method 0x248a9ca3.
+//
+// Solidity: function getRoleAdmin(bytes32 role) view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) GetRoleAdmin(role [32]byte) ([32]byte, error) {
+	return _MerkleTreeMessageBus.Contract.GetRoleAdmin(&_MerkleTreeMessageBus.CallOpts, role)
+}
+
+// GetRoleAdmin is a free data retrieval call binding the contract method 0x248a9ca3.
+//
+// Solidity: function getRoleAdmin(bytes32 role) view returns(bytes32)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCallerSession) GetRoleAdmin(role [32]byte) ([32]byte, error) {
+	return _MerkleTreeMessageBus.Contract.GetRoleAdmin(&_MerkleTreeMessageBus.CallOpts, role)
+}
+
+// HasRole is a free data retrieval call binding the contract method 0x91d14854.
+//
+// Solidity: function hasRole(bytes32 role, address account) view returns(bool)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCaller) HasRole(opts *bind.CallOpts, role [32]byte, account common.Address) (bool, error) {
+	var out []interface{}
+	err := _MerkleTreeMessageBus.contract.Call(opts, &out, "hasRole", role, account)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// HasRole is a free data retrieval call binding the contract method 0x91d14854.
+//
+// Solidity: function hasRole(bytes32 role, address account) view returns(bool)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) HasRole(role [32]byte, account common.Address) (bool, error) {
+	return _MerkleTreeMessageBus.Contract.HasRole(&_MerkleTreeMessageBus.CallOpts, role, account)
+}
+
+// HasRole is a free data retrieval call binding the contract method 0x91d14854.
+//
+// Solidity: function hasRole(bytes32 role, address account) view returns(bool)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCallerSession) HasRole(role [32]byte, account common.Address) (bool, error) {
+	return _MerkleTreeMessageBus.Contract.HasRole(&_MerkleTreeMessageBus.CallOpts, role, account)
+}
+
 // Owner is a free data retrieval call binding the contract method 0x8da5cb5b.
 //
 // Solidity: function owner() view returns(address)
@@ -311,6 +466,37 @@ func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) Owner() (common.Addres
 // Solidity: function owner() view returns(address)
 func (_MerkleTreeMessageBus *MerkleTreeMessageBusCallerSession) Owner() (common.Address, error) {
 	return _MerkleTreeMessageBus.Contract.Owner(&_MerkleTreeMessageBus.CallOpts)
+}
+
+// SupportsInterface is a free data retrieval call binding the contract method 0x01ffc9a7.
+//
+// Solidity: function supportsInterface(bytes4 interfaceId) view returns(bool)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCaller) SupportsInterface(opts *bind.CallOpts, interfaceId [4]byte) (bool, error) {
+	var out []interface{}
+	err := _MerkleTreeMessageBus.contract.Call(opts, &out, "supportsInterface", interfaceId)
+
+	if err != nil {
+		return *new(bool), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(bool)).(*bool)
+
+	return out0, err
+
+}
+
+// SupportsInterface is a free data retrieval call binding the contract method 0x01ffc9a7.
+//
+// Solidity: function supportsInterface(bytes4 interfaceId) view returns(bool)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) SupportsInterface(interfaceId [4]byte) (bool, error) {
+	return _MerkleTreeMessageBus.Contract.SupportsInterface(&_MerkleTreeMessageBus.CallOpts, interfaceId)
+}
+
+// SupportsInterface is a free data retrieval call binding the contract method 0x01ffc9a7.
+//
+// Solidity: function supportsInterface(bytes4 interfaceId) view returns(bool)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusCallerSession) SupportsInterface(interfaceId [4]byte) (bool, error) {
+	return _MerkleTreeMessageBus.Contract.SupportsInterface(&_MerkleTreeMessageBus.CallOpts, interfaceId)
 }
 
 // VerifyMessageFinalized is a free data retrieval call binding the contract method 0x33a88c72.
@@ -423,6 +609,27 @@ func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) AddStateRoot
 	return _MerkleTreeMessageBus.Contract.AddStateRoot(&_MerkleTreeMessageBus.TransactOpts, stateRoot, activationTime)
 }
 
+// AddStateRootManager is a paid mutator transaction binding the contract method 0xfb894029.
+//
+// Solidity: function addStateRootManager(address manager) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactor) AddStateRootManager(opts *bind.TransactOpts, manager common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.contract.Transact(opts, "addStateRootManager", manager)
+}
+
+// AddStateRootManager is a paid mutator transaction binding the contract method 0xfb894029.
+//
+// Solidity: function addStateRootManager(address manager) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) AddStateRootManager(manager common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.AddStateRootManager(&_MerkleTreeMessageBus.TransactOpts, manager)
+}
+
+// AddStateRootManager is a paid mutator transaction binding the contract method 0xfb894029.
+//
+// Solidity: function addStateRootManager(address manager) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) AddStateRootManager(manager common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.AddStateRootManager(&_MerkleTreeMessageBus.TransactOpts, manager)
+}
+
 // DisableStateRoot is a paid mutator transaction binding the contract method 0x0fe9188e.
 //
 // Solidity: function disableStateRoot(bytes32 stateRoot) returns()
@@ -444,25 +651,46 @@ func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) DisableState
 	return _MerkleTreeMessageBus.Contract.DisableStateRoot(&_MerkleTreeMessageBus.TransactOpts, stateRoot)
 }
 
-// Initialize is a paid mutator transaction binding the contract method 0x485cc955.
+// GrantRole is a paid mutator transaction binding the contract method 0x2f2ff15d.
 //
-// Solidity: function initialize(address caller, address feesAddress) returns()
-func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactor) Initialize(opts *bind.TransactOpts, caller common.Address, feesAddress common.Address) (*types.Transaction, error) {
-	return _MerkleTreeMessageBus.contract.Transact(opts, "initialize", caller, feesAddress)
+// Solidity: function grantRole(bytes32 role, address account) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactor) GrantRole(opts *bind.TransactOpts, role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.contract.Transact(opts, "grantRole", role, account)
+}
+
+// GrantRole is a paid mutator transaction binding the contract method 0x2f2ff15d.
+//
+// Solidity: function grantRole(bytes32 role, address account) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) GrantRole(role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.GrantRole(&_MerkleTreeMessageBus.TransactOpts, role, account)
+}
+
+// GrantRole is a paid mutator transaction binding the contract method 0x2f2ff15d.
+//
+// Solidity: function grantRole(bytes32 role, address account) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) GrantRole(role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.GrantRole(&_MerkleTreeMessageBus.TransactOpts, role, account)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0x485cc955.
 //
-// Solidity: function initialize(address caller, address feesAddress) returns()
-func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) Initialize(caller common.Address, feesAddress common.Address) (*types.Transaction, error) {
-	return _MerkleTreeMessageBus.Contract.Initialize(&_MerkleTreeMessageBus.TransactOpts, caller, feesAddress)
+// Solidity: function initialize(address initialOwner, address withdrawalManager) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactor) Initialize(opts *bind.TransactOpts, initialOwner common.Address, withdrawalManager common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.contract.Transact(opts, "initialize", initialOwner, withdrawalManager)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0x485cc955.
 //
-// Solidity: function initialize(address caller, address feesAddress) returns()
-func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) Initialize(caller common.Address, feesAddress common.Address) (*types.Transaction, error) {
-	return _MerkleTreeMessageBus.Contract.Initialize(&_MerkleTreeMessageBus.TransactOpts, caller, feesAddress)
+// Solidity: function initialize(address initialOwner, address withdrawalManager) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) Initialize(initialOwner common.Address, withdrawalManager common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.Initialize(&_MerkleTreeMessageBus.TransactOpts, initialOwner, withdrawalManager)
+}
+
+// Initialize is a paid mutator transaction binding the contract method 0x485cc955.
+//
+// Solidity: function initialize(address initialOwner, address withdrawalManager) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) Initialize(initialOwner common.Address, withdrawalManager common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.Initialize(&_MerkleTreeMessageBus.TransactOpts, initialOwner, withdrawalManager)
 }
 
 // NotifyDeposit is a paid mutator transaction binding the contract method 0xab53bddc.
@@ -528,6 +756,27 @@ func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) ReceiveValue
 	return _MerkleTreeMessageBus.Contract.ReceiveValueFromL2(&_MerkleTreeMessageBus.TransactOpts, receiver, amount)
 }
 
+// RemoveStateRootManager is a paid mutator transaction binding the contract method 0x1050afdd.
+//
+// Solidity: function removeStateRootManager(address manager) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactor) RemoveStateRootManager(opts *bind.TransactOpts, manager common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.contract.Transact(opts, "removeStateRootManager", manager)
+}
+
+// RemoveStateRootManager is a paid mutator transaction binding the contract method 0x1050afdd.
+//
+// Solidity: function removeStateRootManager(address manager) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) RemoveStateRootManager(manager common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.RemoveStateRootManager(&_MerkleTreeMessageBus.TransactOpts, manager)
+}
+
+// RemoveStateRootManager is a paid mutator transaction binding the contract method 0x1050afdd.
+//
+// Solidity: function removeStateRootManager(address manager) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) RemoveStateRootManager(manager common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.RemoveStateRootManager(&_MerkleTreeMessageBus.TransactOpts, manager)
+}
+
 // RenounceOwnership is a paid mutator transaction binding the contract method 0x715018a6.
 //
 // Solidity: function renounceOwnership() returns()
@@ -549,6 +798,27 @@ func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) RenounceOwne
 	return _MerkleTreeMessageBus.Contract.RenounceOwnership(&_MerkleTreeMessageBus.TransactOpts)
 }
 
+// RenounceRole is a paid mutator transaction binding the contract method 0x36568abe.
+//
+// Solidity: function renounceRole(bytes32 role, address callerConfirmation) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactor) RenounceRole(opts *bind.TransactOpts, role [32]byte, callerConfirmation common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.contract.Transact(opts, "renounceRole", role, callerConfirmation)
+}
+
+// RenounceRole is a paid mutator transaction binding the contract method 0x36568abe.
+//
+// Solidity: function renounceRole(bytes32 role, address callerConfirmation) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) RenounceRole(role [32]byte, callerConfirmation common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.RenounceRole(&_MerkleTreeMessageBus.TransactOpts, role, callerConfirmation)
+}
+
+// RenounceRole is a paid mutator transaction binding the contract method 0x36568abe.
+//
+// Solidity: function renounceRole(bytes32 role, address callerConfirmation) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) RenounceRole(role [32]byte, callerConfirmation common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.RenounceRole(&_MerkleTreeMessageBus.TransactOpts, role, callerConfirmation)
+}
+
 // RetrieveAllFunds is a paid mutator transaction binding the contract method 0x36d2da90.
 //
 // Solidity: function retrieveAllFunds(address receiver) returns()
@@ -568,6 +838,27 @@ func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) RetrieveAllFunds(recei
 // Solidity: function retrieveAllFunds(address receiver) returns()
 func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) RetrieveAllFunds(receiver common.Address) (*types.Transaction, error) {
 	return _MerkleTreeMessageBus.Contract.RetrieveAllFunds(&_MerkleTreeMessageBus.TransactOpts, receiver)
+}
+
+// RevokeRole is a paid mutator transaction binding the contract method 0xd547741f.
+//
+// Solidity: function revokeRole(bytes32 role, address account) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactor) RevokeRole(opts *bind.TransactOpts, role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.contract.Transact(opts, "revokeRole", role, account)
+}
+
+// RevokeRole is a paid mutator transaction binding the contract method 0xd547741f.
+//
+// Solidity: function revokeRole(bytes32 role, address account) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusSession) RevokeRole(role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.RevokeRole(&_MerkleTreeMessageBus.TransactOpts, role, account)
+}
+
+// RevokeRole is a paid mutator transaction binding the contract method 0xd547741f.
+//
+// Solidity: function revokeRole(bytes32 role, address account) returns()
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusTransactorSession) RevokeRole(role [32]byte, account common.Address) (*types.Transaction, error) {
+	return _MerkleTreeMessageBus.Contract.RevokeRole(&_MerkleTreeMessageBus.TransactOpts, role, account)
 }
 
 // SendValueToL2 is a paid mutator transaction binding the contract method 0x346633fb.
@@ -1240,6 +1531,492 @@ func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) WatchOwnershipTransfe
 func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) ParseOwnershipTransferred(log types.Log) (*MerkleTreeMessageBusOwnershipTransferred, error) {
 	event := new(MerkleTreeMessageBusOwnershipTransferred)
 	if err := _MerkleTreeMessageBus.contract.UnpackLog(event, "OwnershipTransferred", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// MerkleTreeMessageBusRoleAdminChangedIterator is returned from FilterRoleAdminChanged and is used to iterate over the raw logs and unpacked data for RoleAdminChanged events raised by the MerkleTreeMessageBus contract.
+type MerkleTreeMessageBusRoleAdminChangedIterator struct {
+	Event *MerkleTreeMessageBusRoleAdminChanged // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *MerkleTreeMessageBusRoleAdminChangedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(MerkleTreeMessageBusRoleAdminChanged)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(MerkleTreeMessageBusRoleAdminChanged)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *MerkleTreeMessageBusRoleAdminChangedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *MerkleTreeMessageBusRoleAdminChangedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// MerkleTreeMessageBusRoleAdminChanged represents a RoleAdminChanged event raised by the MerkleTreeMessageBus contract.
+type MerkleTreeMessageBusRoleAdminChanged struct {
+	Role              [32]byte
+	PreviousAdminRole [32]byte
+	NewAdminRole      [32]byte
+	Raw               types.Log // Blockchain specific contextual infos
+}
+
+// FilterRoleAdminChanged is a free log retrieval operation binding the contract event 0xbd79b86ffe0ab8e8776151514217cd7cacd52c909f66475c3af44e129f0b00ff.
+//
+// Solidity: event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) FilterRoleAdminChanged(opts *bind.FilterOpts, role [][32]byte, previousAdminRole [][32]byte, newAdminRole [][32]byte) (*MerkleTreeMessageBusRoleAdminChangedIterator, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var previousAdminRoleRule []interface{}
+	for _, previousAdminRoleItem := range previousAdminRole {
+		previousAdminRoleRule = append(previousAdminRoleRule, previousAdminRoleItem)
+	}
+	var newAdminRoleRule []interface{}
+	for _, newAdminRoleItem := range newAdminRole {
+		newAdminRoleRule = append(newAdminRoleRule, newAdminRoleItem)
+	}
+
+	logs, sub, err := _MerkleTreeMessageBus.contract.FilterLogs(opts, "RoleAdminChanged", roleRule, previousAdminRoleRule, newAdminRoleRule)
+	if err != nil {
+		return nil, err
+	}
+	return &MerkleTreeMessageBusRoleAdminChangedIterator{contract: _MerkleTreeMessageBus.contract, event: "RoleAdminChanged", logs: logs, sub: sub}, nil
+}
+
+// WatchRoleAdminChanged is a free log subscription operation binding the contract event 0xbd79b86ffe0ab8e8776151514217cd7cacd52c909f66475c3af44e129f0b00ff.
+//
+// Solidity: event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) WatchRoleAdminChanged(opts *bind.WatchOpts, sink chan<- *MerkleTreeMessageBusRoleAdminChanged, role [][32]byte, previousAdminRole [][32]byte, newAdminRole [][32]byte) (event.Subscription, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var previousAdminRoleRule []interface{}
+	for _, previousAdminRoleItem := range previousAdminRole {
+		previousAdminRoleRule = append(previousAdminRoleRule, previousAdminRoleItem)
+	}
+	var newAdminRoleRule []interface{}
+	for _, newAdminRoleItem := range newAdminRole {
+		newAdminRoleRule = append(newAdminRoleRule, newAdminRoleItem)
+	}
+
+	logs, sub, err := _MerkleTreeMessageBus.contract.WatchLogs(opts, "RoleAdminChanged", roleRule, previousAdminRoleRule, newAdminRoleRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(MerkleTreeMessageBusRoleAdminChanged)
+				if err := _MerkleTreeMessageBus.contract.UnpackLog(event, "RoleAdminChanged", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseRoleAdminChanged is a log parse operation binding the contract event 0xbd79b86ffe0ab8e8776151514217cd7cacd52c909f66475c3af44e129f0b00ff.
+//
+// Solidity: event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) ParseRoleAdminChanged(log types.Log) (*MerkleTreeMessageBusRoleAdminChanged, error) {
+	event := new(MerkleTreeMessageBusRoleAdminChanged)
+	if err := _MerkleTreeMessageBus.contract.UnpackLog(event, "RoleAdminChanged", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// MerkleTreeMessageBusRoleGrantedIterator is returned from FilterRoleGranted and is used to iterate over the raw logs and unpacked data for RoleGranted events raised by the MerkleTreeMessageBus contract.
+type MerkleTreeMessageBusRoleGrantedIterator struct {
+	Event *MerkleTreeMessageBusRoleGranted // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *MerkleTreeMessageBusRoleGrantedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(MerkleTreeMessageBusRoleGranted)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(MerkleTreeMessageBusRoleGranted)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *MerkleTreeMessageBusRoleGrantedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *MerkleTreeMessageBusRoleGrantedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// MerkleTreeMessageBusRoleGranted represents a RoleGranted event raised by the MerkleTreeMessageBus contract.
+type MerkleTreeMessageBusRoleGranted struct {
+	Role    [32]byte
+	Account common.Address
+	Sender  common.Address
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterRoleGranted is a free log retrieval operation binding the contract event 0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d.
+//
+// Solidity: event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) FilterRoleGranted(opts *bind.FilterOpts, role [][32]byte, account []common.Address, sender []common.Address) (*MerkleTreeMessageBusRoleGrantedIterator, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var accountRule []interface{}
+	for _, accountItem := range account {
+		accountRule = append(accountRule, accountItem)
+	}
+	var senderRule []interface{}
+	for _, senderItem := range sender {
+		senderRule = append(senderRule, senderItem)
+	}
+
+	logs, sub, err := _MerkleTreeMessageBus.contract.FilterLogs(opts, "RoleGranted", roleRule, accountRule, senderRule)
+	if err != nil {
+		return nil, err
+	}
+	return &MerkleTreeMessageBusRoleGrantedIterator{contract: _MerkleTreeMessageBus.contract, event: "RoleGranted", logs: logs, sub: sub}, nil
+}
+
+// WatchRoleGranted is a free log subscription operation binding the contract event 0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d.
+//
+// Solidity: event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) WatchRoleGranted(opts *bind.WatchOpts, sink chan<- *MerkleTreeMessageBusRoleGranted, role [][32]byte, account []common.Address, sender []common.Address) (event.Subscription, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var accountRule []interface{}
+	for _, accountItem := range account {
+		accountRule = append(accountRule, accountItem)
+	}
+	var senderRule []interface{}
+	for _, senderItem := range sender {
+		senderRule = append(senderRule, senderItem)
+	}
+
+	logs, sub, err := _MerkleTreeMessageBus.contract.WatchLogs(opts, "RoleGranted", roleRule, accountRule, senderRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(MerkleTreeMessageBusRoleGranted)
+				if err := _MerkleTreeMessageBus.contract.UnpackLog(event, "RoleGranted", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseRoleGranted is a log parse operation binding the contract event 0x2f8788117e7eff1d82e926ec794901d17c78024a50270940304540a733656f0d.
+//
+// Solidity: event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) ParseRoleGranted(log types.Log) (*MerkleTreeMessageBusRoleGranted, error) {
+	event := new(MerkleTreeMessageBusRoleGranted)
+	if err := _MerkleTreeMessageBus.contract.UnpackLog(event, "RoleGranted", log); err != nil {
+		return nil, err
+	}
+	event.Raw = log
+	return event, nil
+}
+
+// MerkleTreeMessageBusRoleRevokedIterator is returned from FilterRoleRevoked and is used to iterate over the raw logs and unpacked data for RoleRevoked events raised by the MerkleTreeMessageBus contract.
+type MerkleTreeMessageBusRoleRevokedIterator struct {
+	Event *MerkleTreeMessageBusRoleRevoked // Event containing the contract specifics and raw log
+
+	contract *bind.BoundContract // Generic contract to use for unpacking event data
+	event    string              // Event name to use for unpacking event data
+
+	logs chan types.Log        // Log channel receiving the found contract events
+	sub  ethereum.Subscription // Subscription for errors, completion and termination
+	done bool                  // Whether the subscription completed delivering logs
+	fail error                 // Occurred error to stop iteration
+}
+
+// Next advances the iterator to the subsequent event, returning whether there
+// are any more events found. In case of a retrieval or parsing error, false is
+// returned and Error() can be queried for the exact failure.
+func (it *MerkleTreeMessageBusRoleRevokedIterator) Next() bool {
+	// If the iterator failed, stop iterating
+	if it.fail != nil {
+		return false
+	}
+	// If the iterator completed, deliver directly whatever's available
+	if it.done {
+		select {
+		case log := <-it.logs:
+			it.Event = new(MerkleTreeMessageBusRoleRevoked)
+			if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+				it.fail = err
+				return false
+			}
+			it.Event.Raw = log
+			return true
+
+		default:
+			return false
+		}
+	}
+	// Iterator still in progress, wait for either a data or an error event
+	select {
+	case log := <-it.logs:
+		it.Event = new(MerkleTreeMessageBusRoleRevoked)
+		if err := it.contract.UnpackLog(it.Event, it.event, log); err != nil {
+			it.fail = err
+			return false
+		}
+		it.Event.Raw = log
+		return true
+
+	case err := <-it.sub.Err():
+		it.done = true
+		it.fail = err
+		return it.Next()
+	}
+}
+
+// Error returns any retrieval or parsing error occurred during filtering.
+func (it *MerkleTreeMessageBusRoleRevokedIterator) Error() error {
+	return it.fail
+}
+
+// Close terminates the iteration process, releasing any pending underlying
+// resources.
+func (it *MerkleTreeMessageBusRoleRevokedIterator) Close() error {
+	it.sub.Unsubscribe()
+	return nil
+}
+
+// MerkleTreeMessageBusRoleRevoked represents a RoleRevoked event raised by the MerkleTreeMessageBus contract.
+type MerkleTreeMessageBusRoleRevoked struct {
+	Role    [32]byte
+	Account common.Address
+	Sender  common.Address
+	Raw     types.Log // Blockchain specific contextual infos
+}
+
+// FilterRoleRevoked is a free log retrieval operation binding the contract event 0xf6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b.
+//
+// Solidity: event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) FilterRoleRevoked(opts *bind.FilterOpts, role [][32]byte, account []common.Address, sender []common.Address) (*MerkleTreeMessageBusRoleRevokedIterator, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var accountRule []interface{}
+	for _, accountItem := range account {
+		accountRule = append(accountRule, accountItem)
+	}
+	var senderRule []interface{}
+	for _, senderItem := range sender {
+		senderRule = append(senderRule, senderItem)
+	}
+
+	logs, sub, err := _MerkleTreeMessageBus.contract.FilterLogs(opts, "RoleRevoked", roleRule, accountRule, senderRule)
+	if err != nil {
+		return nil, err
+	}
+	return &MerkleTreeMessageBusRoleRevokedIterator{contract: _MerkleTreeMessageBus.contract, event: "RoleRevoked", logs: logs, sub: sub}, nil
+}
+
+// WatchRoleRevoked is a free log subscription operation binding the contract event 0xf6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b.
+//
+// Solidity: event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) WatchRoleRevoked(opts *bind.WatchOpts, sink chan<- *MerkleTreeMessageBusRoleRevoked, role [][32]byte, account []common.Address, sender []common.Address) (event.Subscription, error) {
+
+	var roleRule []interface{}
+	for _, roleItem := range role {
+		roleRule = append(roleRule, roleItem)
+	}
+	var accountRule []interface{}
+	for _, accountItem := range account {
+		accountRule = append(accountRule, accountItem)
+	}
+	var senderRule []interface{}
+	for _, senderItem := range sender {
+		senderRule = append(senderRule, senderItem)
+	}
+
+	logs, sub, err := _MerkleTreeMessageBus.contract.WatchLogs(opts, "RoleRevoked", roleRule, accountRule, senderRule)
+	if err != nil {
+		return nil, err
+	}
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		defer sub.Unsubscribe()
+		for {
+			select {
+			case log := <-logs:
+				// New log arrived, parse the event and forward to the user
+				event := new(MerkleTreeMessageBusRoleRevoked)
+				if err := _MerkleTreeMessageBus.contract.UnpackLog(event, "RoleRevoked", log); err != nil {
+					return err
+				}
+				event.Raw = log
+
+				select {
+				case sink <- event:
+				case err := <-sub.Err():
+					return err
+				case <-quit:
+					return nil
+				}
+			case err := <-sub.Err():
+				return err
+			case <-quit:
+				return nil
+			}
+		}
+	}), nil
+}
+
+// ParseRoleRevoked is a log parse operation binding the contract event 0xf6391f5c32d9c69d2a47ea670b442974b53935d1edc7fd64eb21e047a839171b.
+//
+// Solidity: event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)
+func (_MerkleTreeMessageBus *MerkleTreeMessageBusFilterer) ParseRoleRevoked(log types.Log) (*MerkleTreeMessageBusRoleRevoked, error) {
+	event := new(MerkleTreeMessageBusRoleRevoked)
+	if err := _MerkleTreeMessageBus.contract.UnpackLog(event, "RoleRevoked", log); err != nil {
 		return nil, err
 	}
 	event.Raw = log

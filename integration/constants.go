@@ -1,6 +1,8 @@
 package integration
 
-import "reflect"
+import (
+	"reflect"
+)
 
 const (
 	DefaultGethWSPortOffset         = 100

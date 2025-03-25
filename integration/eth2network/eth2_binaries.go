@@ -19,6 +19,9 @@ const (
 	_gethVersion  = "1.14.6"
 	_gethHash     = "aadddf3a"
 	_prysmVersion = "v5.0.4"
+	//_gethVersion  = "1.15.5"
+	//_gethHash     = "4263936a"
+	//_prysmVersion = "v5.3.0"
 )
 
 var (

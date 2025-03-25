@@ -64,9 +64,12 @@ type L1Config struct {
 //
 //	yaml: `network.l1.contracts`
 type L1Contracts struct {
-	ManagementContract gethcommon.Address `mapstructure:"management"`
-	MessageBusContract gethcommon.Address `mapstructure:"messageBus"`
-	BridgeContract     gethcommon.Address `mapstructure:"bridge"`
+	NetworkConfigContract    gethcommon.Address `mapstructure:"networkConfig"` // this might be the only one we need
+	CrossChainContract       gethcommon.Address `mapstructure:"crossChain"`
+	DataAvailabilityRegistry gethcommon.Address `mapstructure:"rollup"`
+	EnclaveRegistryContract  gethcommon.Address `mapstructure:"enclaveRegistry"`
+	MessageBusContract       gethcommon.Address `mapstructure:"messageBus"`
+	BridgeContract           gethcommon.Address `mapstructure:"bridge"`
 }
 
 // RollupConfig contains the configuration for the rollup processing on the Ten network

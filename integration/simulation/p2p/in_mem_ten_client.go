@@ -167,26 +167,27 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 		return err
 	}
 
-	importantContracts := make(map[string]gethcommon.Address)
-	for key, value := range cfg.ImportantContracts {
-		importantContracts[key] = gethcommon.Address(value)
-	}
-
 	publicSystemContracts := make(map[string]gethcommon.Address)
 	for key, value := range cfg.PublicSystemContracts {
 		publicSystemContracts[key] = gethcommon.Address(value)
 	}
 
 	tenNetworkInfo := &common.TenNetworkInfo{
-		ManagementContractAddress:       gethcommon.Address(cfg.ManagementContractAddress),
-		L1StartHash:                     cfg.L1StartHash,
-		MessageBusAddress:               gethcommon.Address(cfg.MessageBusAddress),
-		L2MessageBusAddress:             gethcommon.Address(cfg.L2MessageBusAddress),
-		ImportantContracts:              importantContracts,
-		TransactionPostProcessorAddress: gethcommon.Address(cfg.TransactionPostProcessorAddress),
-		PublicSystemContracts:           publicSystemContracts,
+		NetworkConfig:             gethcommon.Address(cfg.NetworkConfig),
+		EnclaveRegistry:           gethcommon.Address(cfg.EnclaveRegistry),
+		CrossChain:                gethcommon.Address(cfg.CrossChain),
+		DataAvailabilityRegistry:  gethcommon.Address(cfg.DataAvailabilityRegistry),
+		L1MessageBus:              gethcommon.Address(cfg.L1MessageBus),
+		L1Bridge:                  gethcommon.Address(cfg.L1Bridge),
+		L2Bridge:                  gethcommon.Address(cfg.L2Bridge),
+		L1CrossChainMessenger:     gethcommon.Address(cfg.L1CrossChainMessenger),
+		L2CrossChainMessenger:     gethcommon.Address(cfg.L2CrossChainMessenger),
+		L2MessageBus:              gethcommon.Address(cfg.L2MessageBus),
+		TransactionsPostProcessor: gethcommon.Address(cfg.TransactionsPostProcessor),
+		L1StartHash:               cfg.L1StartHash,
+		PublicSystemContracts:     publicSystemContracts,
+		AdditionalContracts:       cfg.AdditionalContracts,
 	}
-
 	*result.(*common.TenNetworkInfo) = *tenNetworkInfo
 	return nil
 }

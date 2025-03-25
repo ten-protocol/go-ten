@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter"
+
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/holiman/uint256"
 
@@ -56,14 +58,14 @@ func (m *MessageBusManager) Initialize(systemAddresses common.SystemContractAddr
 }
 
 // ExtractOutboundMessages - Finds relevant logs in the receipts and converts them to cross chain messages.
-func (m *MessageBusManager) ExtractOutboundMessages(ctx context.Context, receipts common.L2Receipts) (common.CrossChainMessages, error) {
-	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &CrossChainEventID)
+func (m *MessageBusManager) ExtractOutboundMessages(_ context.Context, receipts common.L2Receipts) (common.CrossChainMessages, error) {
+	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &ethadapter.CrossChainEventID)
 	if err != nil {
 		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err
 	}
 
-	messages, err := ConvertLogsToMessages(logs, CrossChainEventName, MessageBusABI)
+	messages, err := ConvertLogsToMessages(logs, ethadapter.CrossChainEventName, ethadapter.MessageBusABI)
 	if err != nil {
 		m.logger.Error("Error converting messages from L2 message bus!", log.ErrKey, err)
 		return make(common.CrossChainMessages, 0), err
@@ -74,13 +76,13 @@ func (m *MessageBusManager) ExtractOutboundMessages(ctx context.Context, receipt
 
 // ExtractOutboundTransfers - Finds relevant logs in the receipts and converts them to cross chain messages.
 func (m *MessageBusManager) ExtractOutboundTransfers(_ context.Context, receipts common.L2Receipts) (common.ValueTransferEvents, error) {
-	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &ValueTransferEventID)
+	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &ethadapter.ValueTransferEventID)
 	if err != nil {
 		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err)
 		return make(common.ValueTransferEvents, 0), err
 	}
 
-	transfers, err := ConvertLogsToValueTransfers(logs, ValueTransferEventName, MessageBusABI)
+	transfers, err := ConvertLogsToValueTransfers(logs, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI)
 	if err != nil {
 		m.logger.Error("Error converting transfers from L2 message bus!", log.ErrKey, err)
 		return make(common.ValueTransferEvents, 0), err
@@ -146,7 +148,7 @@ func (m *MessageBusManager) RetrieveInboundMessages(ctx context.Context, fromBlo
 
 const BalanceIncreaseXChainValueTransfer tracing.BalanceChangeReason = 110
 
-func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB) {
+func (m *MessageBusManager) ExecuteValueTransfers(_ context.Context, transfers common.ValueTransferEvents, rollupState *state.StateDB) {
 	for _, transfer := range transfers {
 		rollupState.AddBalance(transfer.Receiver, uint256.MustFromBig(transfer.Amount), BalanceIncreaseXChainValueTransfer)
 		m.logger.Debug(fmt.Sprintf("Executed cross chain value transfer from %s to %s with amount %s", transfer.Sender.Hex(), transfer.Receiver.Hex(), transfer.Amount.String()))
@@ -154,7 +156,7 @@ func (m *MessageBusManager) ExecuteValueTransfers(ctx context.Context, transfers
 }
 
 // CreateSyntheticTransactions - generates transactions that the enclave should execute internally for the messages.
-func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, rollupState *state.StateDB) (common.L2Transactions, error) {
+func (m *MessageBusManager) CreateSyntheticTransactions(_ context.Context, messages common.CrossChainMessages, transfers common.ValueTransferEvents, rollupState *state.StateDB) (common.L2Transactions, error) {
 	if len(messages) == 0 && len(transfers) == 0 {
 		return make(common.L2Transactions, 0), nil
 	}
@@ -170,7 +172,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 	syntheticTransactions := make(types.Transactions, 0)
 	for idx, message := range messages {
 		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
-		data, err := MessageBusABI.Pack("storeCrossChainMessage", message, delayInBlocks)
+		data, err := ethadapter.MessageBusABI.Pack("storeCrossChainMessage", message, delayInBlocks)
 		if err != nil {
 			return nil, fmt.Errorf("failed packing storeCrossChainMessage %w", err)
 		}
@@ -191,7 +193,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(ctx context.Context, mes
 	startingNonce += uint64(len(messages))
 
 	for idx, transfer := range transfers {
-		data, err := MessageBusABI.Pack("notifyDeposit", transfer.Receiver, transfer.Amount)
+		data, err := ethadapter.MessageBusABI.Pack("notifyDeposit", transfer.Receiver, transfer.Amount)
 		if err != nil {
 			return nil, fmt.Errorf("failed packing notifyDeposit %w", err)
 		}

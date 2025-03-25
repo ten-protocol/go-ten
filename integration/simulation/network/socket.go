@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 
 	"github.com/ten-protocol/go-ten/go/common"
@@ -20,7 +22,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/erc20contractlib"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/node"
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
@@ -57,9 +58,14 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		simParams.NumberOfNodes,
 	)
 
-	simParams.MgmtContractLib = mgmtcontractlib.NewMgmtContractLib(&simParams.L1TenData.MgmtContractAddress, testlog.Logger())
+	contractRegistryLib, err := contractlib.NewContractRegistryLib(simParams.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient(), testlog.Logger())
+	if err != nil {
+		panic(fmt.Sprintf("error creating contract registry. Cause: %s", err))
+	}
+	simParams.ContractRegistryLib = contractRegistryLib
+
 	simParams.ERC20ContractLib = erc20contractlib.NewERC20ContractLib(
-		&simParams.L1TenData.MgmtContractAddress,
+		&simParams.L1TenData.CrossChainContractAddress,
 		&simParams.L1TenData.ObxErc20Address,
 		&simParams.L1TenData.EthErc20Address,
 	)
@@ -73,7 +79,6 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 
 	// create the nodes
 	nodes := make([]node.Node, simParams.NumberOfNodes)
-	var err error
 	for i := 0; i < simParams.NumberOfNodes; i++ {
 		privateKey := seqPrivKey
 		hostAddress := seqHostAddress
@@ -106,7 +111,9 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Network.GenesisJSON = genesis
 		tenCfg.Network.Sequencer.P2PAddress = fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset)
 		tenCfg.Network.L1.BlockTime = simParams.AvgBlockDuration
-		tenCfg.Network.L1.L1Contracts.ManagementContract = simParams.L1TenData.MgmtContractAddress
+		tenCfg.Network.L1.L1Contracts.NetworkConfigContract = simParams.L1TenData.NetworkConfigAddress
+		tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry = simParams.L1TenData.DataAvailabilityRegistryAddress
+		tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract = simParams.L1TenData.EnclaveRegistryAddress
 		tenCfg.Network.L1.L1Contracts.MessageBusContract = simParams.L1TenData.MessageBusAddr
 		tenCfg.Network.Gas.PaymentAddress = simParams.Wallets.L2FeesWallet.Address()
 
@@ -165,10 +172,19 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		}
 	}
 
+	addresses := contractRegistryLib.GetContractAddresses()
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch contract addresses. Cause: %s", err)
+	}
 	// permission the sequencer enclaveID (also requires retries as the enclaveID may not be attested yet)
-	err = PermissionTenSequencerEnclave(n.wallets.MCOwnerWallet, n.gethClients[0], simParams.L1TenData.MgmtContractAddress, *seqEnclaveID)
+	err = PermissionTenSequencerEnclave(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.EnclaveRegistry, *seqEnclaveID)
 	if err != nil {
 		return nil, fmt.Errorf("unable to permission sequencer enclaveID: %w", err)
+	}
+
+	err = PermissionDataAvailabilityRegistryStateRoot(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.CrossChain, addresses.DataAvailabilityRegistry)
+	if err != nil {
+		return nil, fmt.Errorf("unable to permission rollup contract on merkle messagebus: %w", err)
 	}
 
 	// wait for nodes to be healthy now we've permissioned

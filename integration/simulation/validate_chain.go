@@ -253,6 +253,9 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 	rollupReceipts := make(types.Receipts, 0)
 	totalDeposited := big.NewInt(0)
 
+	daRegistryLib := s.Params.ContractRegistryLib.DARegistryLib()
+	enclaveRegistryLib := s.Params.ContractRegistryLib.EnclaveRegistryLib()
+
 	blockchain, err := ethadapter.BlocksBetween(node, startBlock, endBlock)
 	if err != nil {
 		panic(err)
@@ -268,9 +271,25 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 			if err != nil {
 				panic(err)
 			}
+			if t != nil {
+				if depositTx, ok := t.(*common.L1DepositTx); ok {
+					receipt, err := node.TransactionReceipt(tx.Hash())
+					if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
+						continue
+					}
+					deposits = append(deposits, tx.Hash())
+					totalDeposited.Add(totalDeposited, depositTx.Amount)
+					successfulDeposits++
+					continue
+				}
+			}
+			t, err = daRegistryLib.DecodeTx(tx)
+			if err != nil {
+				panic(err)
+			}
 
 			if t == nil {
-				t, err = s.Params.MgmtContractLib.DecodeTx(tx)
+				t, err = enclaveRegistryLib.DecodeTx(tx)
 				if err != nil {
 					panic(err)
 				}
@@ -280,19 +299,12 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 				continue
 			}
 			receipt, err := node.TransactionReceipt(tx.Hash())
-
 			if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
 				continue
 			}
 
-			switch l1tx := t.(type) {
-			case *common.L1DepositTx:
-				// todo (@stefan) - remove this hack once the old integrated bridge is removed.
-				deposits = append(deposits, tx.Hash())
-				totalDeposited.Add(totalDeposited, l1tx.Amount)
-				successfulDeposits++
-			case *common.L1RollupHashes:
-				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, l1tx.BlobHashes)
+			if rollupTx, ok := t.(*common.L1RollupHashes); ok {
+				r, err := getRollupFromBlobHashes(s.ctx, s.Params.BlobResolver, block, rollupTx.BlobHashes)
 				if err != nil {
 					testlog.Logger().Crit("could not decode rollup. ", log.ErrKey, err)
 				}
@@ -589,7 +601,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		panic(err)
 	}
 
-	msgBusAddr := cfg.L2MessageBusAddress
+	msgBusAddr := cfg.L2MessageBus
 
 	for _, tx := range txInjector.TxTracker.WithdrawalL2Transactions {
 		sender := getSender(tx)

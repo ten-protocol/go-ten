@@ -23,9 +23,13 @@ type EnclaveConfig struct {
 	// The ID of the Obscuro chain
 	TenChainID int64
 
-	// These L1 contracts must be already deployed before the TEN network is created
-	// The management contract address on the L1 network
-	ManagementContractAddress gethcommon.Address
+	//// These L1 contracts must be already deployed before the TEN network is created
+	// L1 contract address that maintains all the index of all system/ network contracts
+	NetworkConfigAddress gethcommon.Address
+	// Rollup contract L1 Address
+	DataAvailabilityRegistryAddress gethcommon.Address
+	// EnclaveRegistry L1 Address
+	EnclaveRegistryAddress gethcommon.Address
 	// MessageBus L1 Address
 	MessageBusAddress gethcommon.Address
 	// SystemContractOwner is the address that owns the system contracts
@@ -88,6 +92,7 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse decompression limit: %v", err))
 	}
+
 	return &EnclaveConfig{
 		NodeID:                    tenCfg.Node.ID,
 		HostAddress:               tenCfg.Node.HostAddress,
@@ -100,12 +105,14 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 		RPCAddress: tenCfg.Enclave.RPC.BindAddress,
 		RPCTimeout: tenCfg.Enclave.RPC.Timeout,
 
-		L1ChainID:                 tenCfg.Network.L1.ChainID,
-		ManagementContractAddress: tenCfg.Network.L1.L1Contracts.ManagementContract,
-		MessageBusAddress:         tenCfg.Network.L1.L1Contracts.MessageBusContract,
-		SystemContractOwner:       tenCfg.Network.Sequencer.SystemContractsUpgrader,
-		LogLevel:                  tenCfg.Enclave.Log.Level,
-		LogPath:                   tenCfg.Enclave.Log.Path,
+		L1ChainID:                       tenCfg.Network.L1.ChainID,
+		NetworkConfigAddress:            tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
+		DataAvailabilityRegistryAddress: tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry,
+		EnclaveRegistryAddress:          tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract,
+		MessageBusAddress:               tenCfg.Network.L1.L1Contracts.MessageBusContract,
+		SystemContractOwner:             tenCfg.Network.Sequencer.SystemContractsUpgrader,
+		LogLevel:                        tenCfg.Enclave.Log.Level,
+		LogPath:                         tenCfg.Enclave.Log.Path,
 
 		UseInMemoryDB:  tenCfg.Enclave.DB.UseInMemory,
 		EdgelessDBHost: tenCfg.Enclave.DB.EdgelessDBHost,

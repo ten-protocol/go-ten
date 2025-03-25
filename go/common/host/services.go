@@ -105,9 +105,10 @@ type L1Publisher interface {
 	RequestSecret(report *common.AttestationReport) (gethcommon.Hash, error)
 	// FindSecretResponseTx will return the secret response tx from an L1 block
 	FindSecretResponseTx(responseTxs []*common.L1TxData) []*common.L1RespondSecretTx
+	
 	// PublishBlob will create and publish a rollup tx to the management contract - fire and forget we don't wait for receipt
-	// todo (#1624) - With a single sequencer, it is problematic if rollup publication fails; handle this case better
 	PublishBlob(result common.CreateRollupResult) error
+
 	// PublishSecretResponse will create and publish a secret response tx to the management contract - fire and forget we don't wait for receipt
 	PublishSecretResponse(secretResponse *common.ProducedSecretResponse) error
 
@@ -117,8 +118,8 @@ type L1Publisher interface {
 	FetchLatestSeqNo() (*big.Int, error)
 
 	// GetImportantContracts returns a (cached) record of addresses of the important network contracts
-	GetImportantContracts() map[string]gethcommon.Address
-	// ResyncImportantContracts will fetch the latest important contracts from the management contract, update the cache
+	GetImportantContracts() *common.NetworkConfigAddresses
+	// ResyncImportantContracts will fetch the latest important contracts from the network contract amd update the cache
 	ResyncImportantContracts() error
 }
 

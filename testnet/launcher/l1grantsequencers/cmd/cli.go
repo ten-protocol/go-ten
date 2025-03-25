@@ -8,7 +8,7 @@ import (
 type L1GrantSequencersConfigCLI struct {
 	l1HTTPURL           string
 	privateKey          string
-	mgmtContractAddress string
+	enclaveRegistryAddr string
 	enclaveIDs          string
 	dockerImage         string
 	sequencerURL        string
@@ -21,7 +21,7 @@ func ParseConfigCLI() *L1GrantSequencersConfigCLI {
 
 	l1HTTPURL := flag.String(l1HTTPURLFlag, "http://eth2network:8025", flagUsageMap[l1HTTPURLFlag])
 	privateKey := flag.String(privateKeyFlag, "", flagUsageMap[privateKeyFlag])
-	mgmtContractAddress := flag.String(mgmtContractAddressFlag, "", flagUsageMap[mgmtContractAddressFlag])
+	enclaveRegistryAddr := flag.String(enclaveRegistryAddrFlag, "", flagUsageMap[enclaveRegistryAddrFlag])
 	enclaveIDs := flag.String(enclaveIDsFlag, "", flagUsageMap[enclaveIDsFlag])
 	dockerImage := flag.String(dockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", flagUsageMap[dockerImageFlag])
 	sequencerURL := flag.String(sequencerURLFlag, "", flagUsageMap[sequencerURLFlag])
@@ -29,7 +29,7 @@ func ParseConfigCLI() *L1GrantSequencersConfigCLI {
 
 	cfg.l1HTTPURL = *l1HTTPURL
 	cfg.privateKey = *privateKey
-	cfg.mgmtContractAddress = *mgmtContractAddress
+	cfg.enclaveRegistryAddr = *enclaveRegistryAddr
 	cfg.enclaveIDs = *enclaveIDs
 	cfg.dockerImage = *dockerImage
 	cfg.sequencerURL = *sequencerURL

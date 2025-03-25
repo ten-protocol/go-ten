@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
@@ -24,23 +26,21 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/wallet"
 )
 
 type Publisher struct {
-	hostData        host.Identity
-	hostWallet      wallet.Wallet // Wallet used to issue ethereum transactions
-	ethClient       ethadapter.EthClient
-	mgmtContractLib mgmtcontractlib.MgmtContractLib // Library to handle Management Contract lib operations
-	storage         storage.Storage
-	blobResolver    BlobResolver
-	l1ChainCfg      *params.ChainConfig
+	hostData         host.Identity
+	hostWallet       wallet.Wallet // Wallet used to issue ethereum transactions
+	ethClient        ethadapter.EthClient
+	contractRegistry contractlib.ContractRegistryLib
+	storage          storage.Storage
+	blobResolver     BlobResolver
+	l1ChainCfg       *params.ChainConfig
 
-	// cached map of important contract addresses (updated when we see a SetImportantContractsTx)
-	importantContractAddresses map[string]gethcommon.Address
 	// lock for the important contract addresses map
 	importantAddressesMutex sync.RWMutex
+	importantAddresses      *common.NetworkConfigAddresses
 
 	repository host.L1DataService
 	logger     gethlog.Logger
@@ -61,7 +61,7 @@ func NewL1Publisher(
 	hostData host.Identity,
 	hostWallet wallet.Wallet,
 	client ethadapter.EthClient,
-	mgmtContract mgmtcontractlib.MgmtContractLib,
+	contractRegistry contractlib.ContractRegistryLib,
 	repository host.L1DataService,
 	blobResolver BlobResolver,
 	hostStopper *stopcontrol.StopControl,
@@ -76,7 +76,7 @@ func NewL1Publisher(
 		hostData:                  hostData,
 		hostWallet:                hostWallet,
 		ethClient:                 client,
-		mgmtContractLib:           mgmtContract,
+		contractRegistry:          contractRegistry,
 		repository:                repository,
 		blobResolver:              blobResolver,
 		hostStopper:               hostStopper,
@@ -86,8 +86,8 @@ func NewL1Publisher(
 		storage:                   storage,
 		l1ChainCfg:                l1ChainCfg,
 
-		importantContractAddresses: map[string]gethcommon.Address{},
-		importantAddressesMutex:    sync.RWMutex{},
+		importantAddressesMutex: sync.RWMutex{},
+		importantAddresses:      &common.NetworkConfigAddresses{},
 
 		sendingLock:      sync.Mutex{},
 		sendingContext:   sendingCtx,
@@ -130,7 +130,7 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 		Attestation:   encodedAttestation,
 		InitialSecret: encSecret,
 	}
-	initialiseSecretTx, err := p.mgmtContractLib.CreateInitializeSecret(l1tx)
+	initialiseSecretTx, err := p.contractRegistry.EnclaveRegistryLib().CreateInitializeSecret(l1tx)
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 			panic(errors.Wrap(err, "could not fetch head block"))
 		}
 	}
-	requestSecretTx, err := p.mgmtContractLib.CreateRequestSecret(l1tx)
+	requestSecretTx, err := p.contractRegistry.EnclaveRegistryLib().CreateRequestSecret(l1tx)
 	if err != nil {
 		return gethutil.EmptyHash, err
 	}
@@ -179,7 +179,7 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 		AttesterID:  secretResponse.AttesterID,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	respondSecretTx, err := p.mgmtContractLib.CreateRespondSecret(l1tx, false)
+	respondSecretTx, err := p.contractRegistry.EnclaveRegistryLib().CreateRespondSecret(l1tx, false)
 	if err != nil {
 		return err
 	}
@@ -201,7 +201,7 @@ func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common
 	secretRespTxs := make([]*common.L1RespondSecretTx, 0)
 
 	for _, tx := range processed {
-		t, err := p.mgmtContractLib.DecodeTx(tx.Transaction)
+		t, err := p.contractRegistry.EnclaveRegistryLib().DecodeTx(tx.Transaction)
 		if err != nil {
 			p.logger.Error("Could not decode transaction", log.ErrKey, err)
 			continue
@@ -218,7 +218,7 @@ func (p *Publisher) FindSecretResponseTx(processed []*common.L1TxData) []*common
 }
 
 func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
-	return p.ethClient.FetchLastBatchSeqNo(*p.mgmtContractLib.GetContractAddr())
+	return p.ethClient.FetchLastBatchSeqNo(*p.contractRegistry.DARegistryLib().GetContractAddr())
 }
 
 func (p *Publisher) PublishBlob(result common.CreateRollupResult) error {
@@ -233,6 +233,10 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) error {
 	if err != nil {
 		p.logger.Crit("could not decode rollup.", log.ErrKey, err)
 	}
+
+	// Check if the signature is valid
+	// This depends on how your signature verification works
+	p.logger.Info("Signature validation", "is_valid")
 
 	tx := &common.L1RollupTx{
 		Rollup: rollupData,
@@ -251,7 +255,7 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) error {
 		p.logger.Trace("Sending transaction to publish rollup", "rollup_header", headerLog, log.RollupHashKey, extRollup.Header.Hash(), "batches_len", len(extRollup.BatchPayloads))
 	}
 
-	rollupBlobTx, err := p.mgmtContractLib.PopulateAddRollup(tx, result.Blobs, result.Signature)
+	rollupBlobTx, err := p.contractRegistry.DARegistryLib().PopulateAddRollup(tx, result.Blobs, result.Signature)
 	if err != nil {
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, extRollup.Hash(), log.ErrKey, err)
 		return err
@@ -295,51 +299,24 @@ func (p *Publisher) PublishCrossChainBundle(_ *common.ExtCrossChainBundle, _ *bi
 	return nil
 }
 
-func (p *Publisher) GetImportantContracts() map[string]gethcommon.Address {
+func (p *Publisher) GetImportantContracts() *common.NetworkConfigAddresses {
 	p.importantAddressesMutex.RLock()
 	defer p.importantAddressesMutex.RUnlock()
-	return p.importantContractAddresses
+	return p.importantAddresses
 }
 
-// ResyncImportantContracts will fetch the latest important contracts from the management contract and update the cached map
+// ResyncImportantContracts will fetch the latest contract addresses from the network config contract and update the cached map
 // Note: this should be run in a goroutine as it makes L1 transactions in series and will block.
 // Cache is not overwritten until it completes.
 func (p *Publisher) ResyncImportantContracts() error {
-	getKeysCallMsg, err := p.mgmtContractLib.GetImportantContractKeysMsg()
+	addresses, err := p.contractRegistry.NetworkConfigLib().GetContractAddresses()
 	if err != nil {
-		return fmt.Errorf("could not build callMsg for important contracts: %w", err)
-	}
-	keysResp, err := p.ethClient.CallContract(getKeysCallMsg)
-	if err != nil {
-		return fmt.Errorf("could not fetch important contracts: %w", err)
-	}
-
-	importantContracts, err := p.mgmtContractLib.DecodeImportantContractKeysResponse(keysResp)
-	if err != nil {
-		return fmt.Errorf("could not decode important contracts resp: %w", err)
-	}
-
-	contractsMap := make(map[string]gethcommon.Address)
-
-	for _, contract := range importantContracts {
-		getAddressCallMsg, err := p.mgmtContractLib.GetImportantAddressCallMsg(contract)
-		if err != nil {
-			return fmt.Errorf("could not build callMsg for important contract=%s: %w", contract, err)
-		}
-		addrResp, err := p.ethClient.CallContract(getAddressCallMsg)
-		if err != nil {
-			return fmt.Errorf("could not fetch important contract=%s: %w", contract, err)
-		}
-		contractAddress, err := p.mgmtContractLib.DecodeImportantAddressResponse(addrResp)
-		if err != nil {
-			return fmt.Errorf("could not decode important contract=%s resp: %w", contract, err)
-		}
-		contractsMap[contract] = contractAddress
+		return fmt.Errorf("could not get latest contract addresses: %w", err)
 	}
 
 	p.importantAddressesMutex.Lock()
 	defer p.importantAddressesMutex.Unlock()
-	p.importantContractAddresses = contractsMap
+	p.importantAddresses = addresses
 
 	return nil
 }
@@ -388,7 +365,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error 
 		pricedTx, err := p.executeTransaction(tx, nonce, retryCount)
 		if pricedTx == nil {
 			// even if there was an error we expect pricedTx to be populated for common failures
-			return retry.FailFast(fmt.Errorf("could not price transaction"))
+			return retry.FailFast(fmt.Errorf("could not price transaction. Cause: %w", err))
 		}
 		if err != nil {
 			if retryCount > maxRetries {

@@ -14,16 +14,22 @@ const _networkCfgFile = ".obscuro-network.json"
 // NetworkConfig is key network information required to start a node connecting to that network.
 // We persist it as a json file on our testnet hosts so that they can read it off when restart/upgrading
 type NetworkConfig struct {
-	ManagementContractAddress string
-	MessageBusAddress         string
-	L1StartHash               string // L1 block hash from which to process for L2 data (mgmt contract deploy block)
+	NetworkConfigAddress            string
+	DataAvailabilityRegistryAddress string
+	EnclaveRegistryAddress          string
+	CrossChainAddress               string
+	MessageBusAddress               string
+	L1StartHash                     string // L1 block hash from which to process for L2 data (mgmt contract deploy block)
 }
 
 func WriteNetworkConfigToDisk(cfg *config.TenConfig) error {
 	n := NetworkConfig{
-		ManagementContractAddress: cfg.Network.L1.L1Contracts.ManagementContract.Hex(),
-		MessageBusAddress:         cfg.Network.L1.L1Contracts.MessageBusContract.Hex(),
-		L1StartHash:               cfg.Network.L1.StartHash.Hex(),
+		NetworkConfigAddress:            cfg.Network.L1.L1Contracts.NetworkConfigContract.Hex(),
+		DataAvailabilityRegistryAddress: cfg.Network.L1.L1Contracts.DataAvailabilityRegistry.Hex(),
+		EnclaveRegistryAddress:          cfg.Network.L1.L1Contracts.EnclaveRegistryContract.Hex(),
+		CrossChainAddress:               cfg.Network.L1.L1Contracts.CrossChainContract.Hex(),
+		MessageBusAddress:               cfg.Network.L1.L1Contracts.MessageBusContract.Hex(),
+		L1StartHash:                     cfg.Network.L1.StartHash.Hex(),
 	}
 	jsonStr, err := json.Marshal(n)
 	if err != nil {

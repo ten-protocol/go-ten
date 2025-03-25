@@ -3,7 +3,7 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "../IMessageBus.sol";
-import "../Structs.sol";
+import "../../common/Structs.sol";
 
 interface ICrossChainMessenger {
     struct CrossChainCall {

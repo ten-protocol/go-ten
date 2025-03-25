@@ -9,6 +9,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum"
@@ -133,6 +135,8 @@ func (s *Simulation) Stop() {
 func (s *Simulation) waitForTenGenesisOnL1() {
 	// grab an L1 client
 	client := s.RPCHandles.EthClients[0]
+	contractLib := s.Params.ContractRegistryLib.GetContractAddresses()
+	daRegistryLib := contractlib.NewDataAvailabilityRegistryLib(&contractLib.DataAvailabilityRegistry, testlog.Logger())
 
 	for {
 		// spin through the L1 blocks periodically to see if the genesis rollup has arrived
@@ -151,7 +155,7 @@ func (s *Simulation) waitForTenGenesisOnL1() {
 					panic(err)
 				}
 				for _, tx := range b.Transactions() {
-					t, err := s.Params.MgmtContractLib.DecodeTx(tx)
+					t, err := daRegistryLib.DecodeTx(tx)
 					if err != nil {
 						panic(err)
 					}
@@ -285,7 +289,7 @@ func (s *Simulation) deployPublicCallbacksTest() {
 	}
 	rpcClient := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
 	var cfg *common.TenNetworkInfo
-	for cfg == nil || cfg.TransactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
+	for cfg == nil || cfg.TransactionsPostProcessor.Cmp(gethcommon.Address{}) == 0 {
 		cfg, err = rpcClient.GetConfig()
 		if err != nil {
 			s.TxInjector.logger.Info("failed to get config", log.ErrKey, err)
@@ -333,7 +337,7 @@ func (s *Simulation) deployTenZen() {
 	// Node one, because random client might yield the no p2p node, which breaks the timings
 	rpcClient := s.RPCHandles.TenWalletClient(s.Params.Wallets.L2FaucetWallet.Address(), 1)
 	var cfg *common.TenNetworkInfo
-	for cfg == nil || cfg.TransactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
+	for cfg == nil || cfg.TransactionsPostProcessor.Cmp(gethcommon.Address{}) == 0 {
 		cfg, err = rpcClient.GetConfig()
 		if err != nil {
 			s.TxInjector.logger.Info("failed to get config", log.ErrKey, err)
@@ -362,7 +366,7 @@ func (s *Simulation) deployTenZen() {
 	auth.Context = context.Background()
 	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
 
-	zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, ownerRpc, cfg.TransactionPostProcessorAddress) //, "ZenBase", "ZEN")
+	zenBaseAddress, signedTx, _, err := ZenBase.DeployZenBase(auth, ownerRpc, cfg.TransactionsPostProcessor) //, "ZenBase", "ZEN")
 	if err != nil {
 		panic(fmt.Errorf("failed to deploy zen base contract: %w", err))
 	}
@@ -371,7 +375,7 @@ func (s *Simulation) deployTenZen() {
 	}
 	s.ZenBaseAddress = zenBaseAddress
 
-	transactionPostProcessor, err := TransactionPostProcessor.NewTransactionPostProcessor(cfg.TransactionPostProcessorAddress, ownerRpc)
+	transactionPostProcessor, err := TransactionPostProcessor.NewTransactionPostProcessor(cfg.TransactionsPostProcessor, ownerRpc)
 	if err != nil {
 		panic(fmt.Errorf("failed to deploy transactions analyzer contract: %w", err))
 	}
@@ -403,7 +407,7 @@ func (s *Simulation) deployTenERC20s() {
 			if err != nil {
 				panic(err)
 			}
-			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), cfg.L2MessageBusAddress)
+			contractBytes := erc20contract.L2BytecodeWithDefaultSupply(string(token), cfg.L2MessageBus)
 
 			fmt.Printf("Deploy contract from: %s\n", owner.Address().Hex())
 			deployContractTxData := types.DynamicFeeTx{

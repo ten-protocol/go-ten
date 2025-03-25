@@ -45,8 +45,8 @@ func (s *SetChallengePeriod) Start() error {
                 "accounts": [ "%s" ]
             }
         }`, s.cfg.l1HTTPURL, s.cfg.privateKey),
-		"MGMT_CONTRACT_ADDRESS": s.cfg.mgmtContractAddress,
-		"L1_CHALLENGE_PERIOD":   strconv.Itoa(s.cfg.challengePeriod),
+		"DA_REGISTRY_ADDR":    s.cfg.daRegistryAddress,
+		"L1_CHALLENGE_PERIOD": strconv.Itoa(s.cfg.challengePeriod),
 	}
 
 	containerID, err := docker.StartNewContainer(

@@ -5,16 +5,16 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
+
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/metrics"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
-	"github.com/ten-protocol/go-ten/go/ethadapter/mgmtcontractlib"
 	"github.com/ten-protocol/go-ten/go/host"
 	"github.com/ten-protocol/go-ten/go/host/p2p"
 	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
@@ -141,23 +141,22 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 		Host:       cfg.ClientRPCHost,
 	}, logger)
 
-	mgmtContractLib := mgmtcontractlib.NewMgmtContractLib(&cfg.ManagementContractAddress, logger)
+	contractRegistry, err := contractlib.NewContractRegistryLib(cfg.NetworkConfigAddress, *l1Client.EthClient(), logger)
+	if err != nil {
+		logger.Crit("could not create contract lib registry.", log.ErrKey, err)
+	}
 	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BeaconUrl)
 	// we can add more fallback clients as they become available
 	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BlobArchiveUrl)
 	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback), logger)
-	contractAddresses := map[l1.ContractType][]gethcommon.Address{
-		l1.MgmtContract: {cfg.ManagementContractAddress},
-		l1.MsgBus:       {cfg.MessageBusAddress},
-	}
-	l1Data := l1.NewL1DataService(l1Client, logger, mgmtContractLib, blobResolver, contractAddresses)
-	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Data, enclaveClients, mgmtContractLib, ethWallet, rpcServer, logger, metricsService, blobResolver)
+	l1Data := l1.NewL1DataService(l1Client, logger, contractRegistry, blobResolver)
+	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Data, enclaveClients, ethWallet, rpcServer, logger, metricsService, blobResolver, contractRegistry)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(cfg *hostconfig.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, contractLib mgmtcontractlib.MgmtContractLib, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service, blobResolver l1.BlobResolver) *HostContainer {
-	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClients, hostWallet, contractLib, logger, metricsService.Registry(), blobResolver)
+func NewHostContainer(cfg *hostconfig.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service, blobResolver l1.BlobResolver, contractRegistry contractlib.ContractRegistryLib) *HostContainer {
+	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClients, hostWallet, contractRegistry, logger, metricsService.Registry(), blobResolver)
 
 	hostContainer := &HostContainer{
 		host:           h,
