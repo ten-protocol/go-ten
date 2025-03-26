@@ -7,29 +7,53 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "../interfaces/INetworkEnclaveRegistry.sol";
 
+/**
+ * @title NetworkEnclaveRegistry
+ * @dev Contract for managing network enclave registry
+ * Implements a network secret initialization and attestation mechanism
+ * Allows enclaves to request and respond to the network secret
+ * Provides sequencer enclave status management
+*/
 contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, OwnableUpgradeable {
+    
     using MessageHashUtils for bytes32;
 
+    /**
+     * @dev Flag to check if the network secret has been initialized
+     */
     bool private networkSecretInitialized;
 
-    // mapping of enclaveID to whether it is attested
+    /**
+     * @dev Mapping of enclaveID to whether it is attested
+     */
     mapping(address => bool) private attested;
 
-    // mapping of enclaveID to whether it is permissioned as a sequencer enclave
-    // note: the enclaveID which initialises the network secret is automatically permissioned as a sequencer.
-    // Beyond that, the contract owner can grant and revoke sequencer status.
+    /**
+     * @dev Mapping of enclaveID to whether it is permissioned as a sequencer enclave. The enclaveID which initialises
+     * the network secret is automatically permissioned as a sequencer. Beyond that, the contract owner can grant and revoke
+     * sequencer status.
+     */
     mapping(address => bool) private sequencerEnclave;
 
     constructor() {
         _transferOwnership(msg.sender);
     }
 
+    /**
+     * @dev Initializes the contract
+     * @param owner The owner of the contract
+     */
     function initialize(address owner) public initializer {
         __Ownable_init(owner);
         networkSecretInitialized = false;
     }
 
-    // initializeNetworkSecret kickstarts the network secret, can only be called once
+    /**
+     * @dev Initializes the network secret, can only be called once.
+     * @param enclaveID The enclaveID of the enclave that is initializing the network secret
+     * @param _initSecret The initial secret
+     * @param _genesisAttestation The genesis attestation
+     */
     // solc-ignore-next-line unused-param
     function initializeNetworkSecret(address enclaveID, bytes calldata _initSecret, string calldata _genesisAttestation) external {
         require(!networkSecretInitialized, "network secret already initialized");
@@ -46,16 +70,24 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Ownab
         emit NetworkSecretInitialized(enclaveID);
     }
 
-    // Enclaves can request the Network Secret given an attestation request report
+    /**
+     * @dev Requests the network secret, can only be called by an attested enclave.
+     * @param requestReport The request report
+     */
     function requestNetworkSecret(string calldata requestReport) external {
         // once an enclave has been attested there is no need for them to request this again
         require(!attested[msg.sender], "already attested");
         emit NetworkSecretRequested(msg.sender, requestReport);
     }
 
-    // An attested enclave will pickup the Network Secret Request and, if valid, will respond with the Network Secret
-    // and mark the requesterID as attested
-    // @param verifyAttester Whether to ask the attester to complete a challenge (signing a hash) to prove their identity.
+    /**
+     * @dev Responds to the network secret request, can only be called by an attested enclave.
+     * @param attesterID The enclaveID of the enclave that is responding to the request
+     * @param requesterID The enclaveID of the enclave that is requesting the network secret
+     * @param attesterSig The signature of the attester
+     * @param responseSecret The response secret
+     * @param verifyAttester Whether to ask the attester to complete a challenge (signing a hash) to prove their identity.
+     */
     function respondNetworkSecret(
         address attesterID,
         address requesterID,
@@ -89,17 +121,28 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Ownab
         emit NetworkSecretResponded(attesterID, requesterID);
     }
 
-    // Accessor that checks if an enclave address has been attested
+    /**
+     * @dev Checks if an enclave address has been attested
+     * @param enclaveID The enclaveID of the enclave to check
+     * @return bool True if the enclave is attested, false otherwise
+     */
     function isAttested(address enclaveID) external view returns (bool) {
         return attested[enclaveID];
     }
 
-    // Accessor that checks if an address is permissioned as a sequencer
+    /**
+     * @dev Checks if an enclave address is permissioned as a sequencer
+     * @param enclaveID The enclaveID of the enclave to check
+     * @return bool True if the enclave is a sequencer, false otherwise
+     */
     function isSequencer(address enclaveID) external view returns (bool) {
         return sequencerEnclave[enclaveID];
     }
 
-    // Function to grant sequencer status for an enclave - contract owner only
+    /**
+     * @dev Grants sequencer status to an enclave, can only be called by the contract owner.
+     * @param _addr The enclaveID of the enclave to grant sequencer status to
+     */
     function grantSequencerEnclave(address _addr) external onlyOwner {
         // require the enclave to be attested already
         require(attested[_addr], "enclaveID not attested");
@@ -107,7 +150,10 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Ownab
         emit SequencerEnclaveGranted(_addr);
     }
 
-    // Function to revoke sequencer status for an enclave - contract owner only
+    /**
+     * @dev Revokes sequencer status from an enclave, can only be called by the contract owner.
+     * @param _addr The enclaveID of the enclave to revoke sequencer status from
+     */
     function revokeSequencerEnclave(address _addr) external onlyOwner {
         // require the enclave to be a sequencer already
         require(sequencerEnclave[_addr], "enclaveID not a sequencer");

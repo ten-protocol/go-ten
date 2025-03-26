@@ -8,6 +8,11 @@ import "../../common/Structs.sol";
  * @dev Interface for managing L2 rollup submissions
  */
 interface IDataAvailabilityRegistry {
+    /**
+     * @dev Emitted when a new rollup is added
+     * @param rollupHash The hash of the rollup
+     * @param signature The signature of the rollup
+     */
     event RollupAdded(bytes32 rollupHash, bytes signature);
     
     /**

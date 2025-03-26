@@ -4,9 +4,15 @@ pragma solidity ^0.8.0;
 import "./TransactionPostProcessor.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {Fees} from "./Fees.sol";
-import {MessageBus} from "../../cross_chain_messaging/L2/MessageBus.sol";
+import {MessageBus} from "../../cross_chain_messaging/common/MessageBus.sol";
 import {PublicCallbacks} from "./PublicCallbacks.sol";
 
+/**
+ * @title SystemDeployer
+ * @dev Contract that deploys the system contracts
+ * 
+ * TODO stefan to add docs
+ */
 contract SystemDeployer {
     event SystemContractDeployed(string name, address contractAddress);
 

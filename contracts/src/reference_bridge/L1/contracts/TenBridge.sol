@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 // This is the Ethereum side of the Obscuro Bridge.
 // End-users can interact with it to transfer ERC20 tokens and native eth to the Layer 2 Obscuro.
 contract TenBridge is
-CrossChainEnabledTEN,
+    CrossChainEnabledTEN,
     IBridge,
     ITenBridge,
     AccessControl

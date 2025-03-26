@@ -3,6 +3,12 @@ pragma solidity ^0.8.28;
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+/**
+ * @title PublicCallbacks
+ * @dev Contract that allows to register callbacks that can be executed by the system
+ * 
+ * TODO stefan to add docs
+ */
 contract PublicCallbacks is Initializable {
 
     modifier onlySelf() {

@@ -9,11 +9,29 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
+/**
+ * @title DataAvailabilityRegistry
+ * @dev Contract for managing data availability and rollup validation
+ * Implements a challenge period for state root disputes
+ * Uses MerkleTreeMessageBus for message verification and value transfers
+ */
 contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, OwnableUpgradeable {
+    
+    /**
+     * @dev Storage for rollups
+     */
     Structs.RollupStorage private rollups;
-    uint256 public lastBatchSeqNo;
-    uint256 private challengePeriod;
 
+    /**
+     * @dev Last batch sequence number
+     */
+    uint256 public lastBatchSeqNo;
+
+    /**
+     * @dev Rollup challenge period for state root disputes
+     */
+    uint256 private challengePeriod;
+    
     IMerkleTreeMessageBus public merkleMessageBus;
     INetworkEnclaveRegistry public enclaveRegistry;
 
@@ -21,6 +39,12 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
         _transferOwnership(msg.sender);
     }
 
+    /**
+     * @dev Initializes the contract with the owner and sets up the message bus
+     * @param _merkleMessageBus Address of the MerkleTreeMessageBus
+     * @param _enclaveRegistry Address of the NetworkEnclaveRegistry
+     * @param _owner Address of the contract owner
+     */
     function initialize(
         address _merkleMessageBus,
         address _enclaveRegistry,
@@ -33,6 +57,10 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
         challengePeriod = 0;
     }
 
+    /**
+     * @dev Appends a rollup to the registry
+     * @param _r The rollup to append
+     */
     function AppendRollup(Structs.MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
 
@@ -42,6 +70,10 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
     }
 
 
+    /**
+     * @dev Modifier to verify the integrity of a rollup
+     * @param r The rollup to verify
+     */
     modifier verifyRollupIntegrity(Structs.MetaRollup calldata r) {
         // Block binding checks
         require(block.number > r.BlockBindingNumber, "Cannot bind to future or current block");
@@ -68,8 +100,12 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
         require(enclaveRegistry.isSequencer(enclaveID), "enclaveID not a sequencer");
         _;
     }
-
-    // TODO can we make it so only attested sequencer enclaves can call this? can pass the requester ID as a param?
+    /**
+     * @dev Adds a rollup to the registry
+     * @param r The rollup to add
+     * 
+     * TODO can we make it so only attested sequencer enclaves can call this? can pass the requester ID as a param?
+     */
     function addRollup(Structs.MetaRollup calldata r) external verifyRollupIntegrity(r) {
         AppendRollup(r);
 
@@ -81,17 +117,29 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
         emit RollupAdded(blobhash(0), r.Signature);
     }
 
-
+    /**
+     * @dev Gets a rollup by hash
+     * @param rollupHash The hash of the rollup to get
+     * @return bool True if the rollup exists, false otherwise
+     * @return Structs.MetaRollup The rollup
+     */
     function getRollupByHash(bytes32 rollupHash) external view returns (bool, Structs.MetaRollup memory) {
         Structs.MetaRollup memory rol = rollups.byHash[rollupHash];
         return (rol.Hash == rollupHash , rol);
     }
 
-
+    /**
+     * @dev Gets the rollup challenge period
+     * @return uint256 The challenge period
+     */
     function getChallengePeriod() external view returns (uint256) {
         return challengePeriod;
     }
 
+    /**
+     * @dev Sets the challenge period
+     * @param _delay The delay in seconds
+     */
     function setChallengePeriod(uint256 _delay) external onlyOwner {
         challengePeriod = _delay;
     }

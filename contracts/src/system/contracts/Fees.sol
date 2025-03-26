@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "../interfaces/IFees.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-interface IFees {
-    function messageFee() external view returns (uint256);
-}
-
-// Contract that will contain fees for contracts that need to apply them
+/**
+ * @title Fees
+ * @dev Contract that will contain fees for contracts that need to apply them
+ * 
+ * TODO stefan to add explanation
+ */
 contract Fees is Initializable, OwnableUpgradeable, IFees {
 
     uint256 private _messageFee;

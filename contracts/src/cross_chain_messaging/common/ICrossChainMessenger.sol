@@ -2,23 +2,45 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../L2/IMessageBus.sol";
+import "./IMessageBus.sol";
 import "../../common/Structs.sol";
 
+/**
+ * @title ICrossChainMessenger
+ * @dev Interface for managing cross-chain message delivery and verification.
+ * Provides functionality to relay messages between chains and verify their authenticity
+ * through a message bus system.
+ */
 interface ICrossChainMessenger {
+    
+    /**
+     * @dev Structure representing a cross-chain function call
+     * @param target The address of the contract to call on the destination chain
+     * @param data The calldata to execute on the target contract
+     * @param gas The amount of gas to allocate for the cross-chain execution
+     */
     struct CrossChainCall {
         address target;
         bytes data;
         uint256 gas;
     }
 
-    // Returns the address of the message bus which is being used to verify messages.
+    /**
+     * @dev Returns the address of the message bus used for message verification
+     * @return address The message bus contract address
+     */
     function messageBus() external view returns (address);
 
-    // Returns the message.sender of the current message that is being relayed.
+    /**
+     * @dev Returns the original sender of the current cross-chain message being relayed
+     * @return address The address of the message sender from the source chain
+     */
     function crossChainSender() external view returns (address);
 
-    // Relays messages that exist in the message bus and have not been already consumed to the
-    // target encdoded in the message, with the params encoded in the message.
+    /**
+     * @dev Relays a verified cross-chain message to its target contract
+     * Only processes messages that exist in the message bus and haven't been consumed
+     * @param message The cross-chain message containing target and execution details
+     */
     function relayMessage(Structs.CrossChainMessage calldata message) external;
 }

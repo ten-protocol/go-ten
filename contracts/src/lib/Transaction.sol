@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-// Structs is a library that contains the structs used to represent a TEN transaction in the system contracts.
+/**
+ * @title Transaction
+ * @dev Library for representing a TEN transaction in the system contracts
+ */
 library Structs {
     struct Transaction {
         uint8 txType;

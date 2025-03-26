@@ -8,7 +8,10 @@ import "../../common/Structs.sol";
  * @dev Interface for managing cross-chain value transfers and withdrawals
  */
 interface ICrossChain {
-
+    /**
+     * @dev Emitted when withdrawals are paused or resumed
+     * @param paused True if withdrawals are paused, false if they are resumed
+     */
     event WithdrawalsPaused(bool paused);
 
     /**

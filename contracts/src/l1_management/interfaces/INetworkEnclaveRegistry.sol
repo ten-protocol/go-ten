@@ -6,10 +6,36 @@ pragma solidity >=0.7.0 <0.9.0;
  * @dev Interface for managing registration process of enclaves in the network
  */
 interface INetworkEnclaveRegistry {
+    /**
+     * @dev Emitted when the network secret is initialized
+     * @param enclaveID The enclaveID of the enclave that initialized the network secret
+     */
     event NetworkSecretInitialized(address enclaveID);
+
+    /**
+     * @dev Emitted when a network secret request is made
+     * @param requester The enclaveID of the enclave that made the request
+     * @param requestReport The request report
+     */
     event NetworkSecretRequested(address indexed requester, string requestReport);
+    
+    /**
+     * @dev Emitted when a network secret response is made
+     * @param attester The enclaveID of the enclave that made the response
+     * @param requester The enclaveID of the enclave that made the request
+     */
     event NetworkSecretResponded(address indexed attester, address indexed requester);
+    
+    /**
+     * @dev Emitted when a sequencer enclave is granted
+     * @param enclaveID The enclaveID of the enclave that was granted sequencer status
+         */
     event SequencerEnclaveGranted(address enclaveID);
+
+    /**
+     * @dev Emitted when a sequencer enclave is revoked
+     * @param enclaveID The enclaveID of the enclave that was revoked
+     */
     event SequencerEnclaveRevoked(address enclaveID);
 
     /**

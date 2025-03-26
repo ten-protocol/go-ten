@@ -1,27 +1,43 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./IMessageBus.sol";
 import "../../common/Structs.sol";
-
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../../system/contracts/Fees.sol";
 
+import "../../system/interfaces/IFees.sol";
+import "./IMessageBus.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+/**
+ * @title MessageBus
+ * @dev Implementation of the IMessageBus interface for cross-layer message handling.
+ * Manages message publishing, verification, and value transfers between L1 and L2.
+ */
 contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
 
     constructor() {
         _transferOwnership(msg.sender);
-      //  _disableInitializers();
     }
 
+     /**
+     * @dev Initializes the contract with an owner and fees contract
+     * @param caller The address to set as the owner
+     * @param feesAddress The address of the fees contract
+     */
     function initialize(address caller, address feesAddress) public virtual initializer {
         __Ownable_init(caller);
         fees = IFees(feesAddress);
     }
 
-    // Since this contract exists on the L2, when messages are added from the L1, we can have the from address be the same as self.
-    // This ensures no EOA collision can ever occur and no key is needed to be stored on the L2 or shared with validators.
+    
+    /**
+     * @dev Modifier to restrict access to owner or self
+     * Since this contract exists on L2, when messages are added from L1,
+     * we can have the from address be the same as self.
+     * This ensures no EOA collision can occur and no key needs to be stored
+     * on L2 or shared with validators.
+     */
     modifier ownerOrSelf() {
         address maskedSelf = address(uint160(address(this)) - 1);
         require(msg.sender == owner() || msg.sender == maskedSelf, "Not owner or self");
@@ -39,8 +55,14 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
     // Whenever a message is published, this sequence number increments.
     // This gives ordering to messages, guaranteed by us.
     mapping(address => uint64) addressSequences;
+
     IFees fees;
 
+    /**
+     * @dev Increments and returns the sequence number for a sender
+     * @param sender The address to increment the sequence for
+     * @return sequence The previous sequence number
+     */
     function incrementSequence(
         address sender
     ) internal returns (uint64 sequence) {
@@ -48,6 +70,11 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         addressSequences[sender] += 1;
     }
 
+    /**
+     * @dev Sends value to L2
+     * @param receiver The address to receive the value on L2
+     * @param amount The amount to send
+     */
     function sendValueToL2(
         address receiver,
         uint256 amount
@@ -67,6 +94,11 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         emit ValueTransfer(msg.sender, receiver, amountToBridge, sequence);
     }
 
+    /**
+     * @dev Receives value from L2, restricted to owner
+     * @param receiver The address to receive the value
+     * @param amount The amount being received
+     */
     function receiveValueFromL2(
         address receiver,
         uint256 amount
@@ -75,8 +107,10 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @dev Internal function with the core logic for receiving value from L2.
-     * This is used to avoid duplicating code when overriding receiveValueFromL2.
+     * @dev Internal function with the core logic for receiving value from L2
+     * Used to avoid duplicating code when overriding receiveValueFromL2
+     * @param receiver The address to receive the value
+     * @param amount The amount to send
      */
     function _receiveValueFromL2Internal(address receiver, uint256 amount) internal {
         require(address(this).balance >= amount, "Insufficient funds to send value");
@@ -88,14 +122,14 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         return fees.messageFee();
     }
 
-    // This method is called from contracts to publish messages to the other linked message bus.
-    // nonce - This is provided and serves as deduplication nonce. It can also be used to group a batch of messages together.
-    // topic - This is the topic for which the payload is published.
-    // payload - This is the actual message.
-    // consistencyLevel - this is how many block confirmations to wait before publishing the message.
-    // Notice that consistencyLevel == 0 is still secure, but might make your protocol result more prone to reorganizations.
-    // returns sequence - this is the unique id of the published message for the address calling the function. It can be used
-    // to determine the order of incoming messages on the other side and if something is missing.
+    /**
+     * @dev Publishes a message to the other linked message bus
+     * @param nonce Deduplication nonce, can group messages together
+     * @param topic The topic for which the payload is published
+     * @param payload The actual message content
+     * @param consistencyLevel Block confirmations to wait. Level 0 is secure but more prone to reorganizations
+     * @return sequence Unique ID of the published message for the calling address
+     */
     function publishMessage(
         uint32 nonce,
         uint32 topic,
@@ -121,8 +155,12 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         return sequence;
     }
 
-    // This function verifies that a cross chain message provided by the caller has indeed been submitted from the other network
-    // and returns true only if the challenge period for the message has passed.
+    /**
+     * @dev Verifies  that a cross chain message provided by the caller has indeed been submitted from the other network
+     *  and returns true only if the challenge period for the message has passed.
+     * @param crossChainMessage The message to verify
+     * @return bool True if the message's challenge period has passed
+     */
     function verifyMessageFinalized(
         Structs.CrossChainMessage calldata crossChainMessage
     ) external view override returns (bool) {
@@ -134,7 +172,11 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
 
     }
 
-    // Returns the time when a message is final (when the rollup challenge period has passed). If the message was never submitted the call will revert.
+    /**
+     * @dev Gets the finality timestamp for a message (after the rollup challenge period has passed). If the message was never submitted the call will revert.
+     * @param crossChainMessage The message to check
+     * @return uint256 The timestamp when the message becomes final
+     */
     function getMessageTimeOfFinality(
         Structs.CrossChainMessage calldata crossChainMessage
     ) external view override returns (uint256) {
@@ -145,9 +187,11 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         return timeOfFinality;
     }
 
-    // This is the smart contract function which is used to store messages sent from the other linked layer.
-    // The function will be called by the ManagementContract on L1 and the enclave on L2.
-    // It should be access controlled and called according to the consistencyLevel and Obscuro platform rules.
+    /**
+     * @dev Stores messages from the other linked layer. It should be access controlled and called according to the consistencyLevel and TEN platform rules.
+     * @param crossChainMessage The message to store
+     * @param finalAfterTimestamp Time to wait before considering message final
+     */
     function storeCrossChainMessage(
         Structs.CrossChainMessage calldata crossChainMessage,
         uint256 finalAfterTimestamp
@@ -168,6 +212,11 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         );
     }
 
+    /**
+     * @dev Notifies of a deposit event
+     * @param receiver The address receiving the deposit
+     * @param amount The amount deposited
+     */
     function notifyDeposit(
         address receiver,
         uint256 amount
@@ -175,6 +224,10 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         emit NativeDeposit(receiver, amount);
     }
 
+    /**
+     * @dev Retrieves all funds from the contract (Testnet only - to be removed before mainnet deployment)
+     * @param receiver The address to receive the funds
+     */
     function retrieveAllFunds(
         address receiver
     ) external onlyOwner {

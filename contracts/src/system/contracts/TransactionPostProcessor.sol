@@ -7,6 +7,12 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/**
+ * @title TransactionPostProcessor
+ * @dev Contract that processes transactions after they are converted
+ * 
+ * TODO stefan to add docs
+ */
 contract TransactionPostProcessor is Initializable, AccessControl{
     using Structs for Structs.Transaction;
 

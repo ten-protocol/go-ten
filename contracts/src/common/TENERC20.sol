@@ -2,7 +2,7 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../cross_chain_messaging/L2/IMessageBus.sol";
+import "../cross_chain_messaging/common/IMessageBus.sol";
 
 // This is an implementation of a canonical ERC20 as used in the TEN network
 // where access to data has to be restricted.

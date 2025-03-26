@@ -1,11 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+/**
+ * @title Logger
+ * @dev Library for logging messages
+ */
 library Logger {
-    // Define the event with a string parameter
+    /**
+     * @dev Emitted when a message is logged
+     * @param message The message to log
+     */
     event LogMessage(string message);
 
-    // Function to emit the LogMessage event
+    /**
+     * @dev Emits a message
+     * @param message The message to emit
+     */
     function emitLog(string calldata message) external {
         emit LogMessage(message);
     }
