@@ -2,9 +2,9 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../../../cross_chain_messaging/interfaces/CrossChainEnabledTEN.sol";
-import "../../L2/interfaces/IBridge.sol";
+import "../../../cross_chain_messaging/lib/CrossChainEnabledTEN.sol";
 import "../../L2/interfaces/ITokenFactory.sol";
+import "../../common/IBridge.sol";
 import "../interfaces/ITenBridge.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";

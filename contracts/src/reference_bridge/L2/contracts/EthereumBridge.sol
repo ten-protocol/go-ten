@@ -2,10 +2,10 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../../../common/WrappedERC20.sol";
-import "../../../cross_chain_messaging/interfaces/CrossChainEnabledTEN.sol";
-import "../interfaces/IBridge.sol";
+import "../../../cross_chain_messaging/lib/CrossChainEnabledTEN.sol";
+import "../../../testing/WrappedERC20.sol";
 
+import "../../common/IBridge.sol";
 import "../interfaces/ITokenFactory.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract EthereumBridge is
     IBridge,
     ITokenFactory,
-CrossChainEnabledTEN
+    CrossChainEnabledTEN
 {
     event CreatedWrappedToken(
         address remoteAddress,
