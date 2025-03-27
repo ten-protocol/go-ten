@@ -28,6 +28,8 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
+const _contractTimeout = time.Second * 10
+
 func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*params.L1TenData, []ethadapter.EthClient, eth2network.PosEth2Network) {
 	eth2Network, err := StartGethNetwork(wallets, startPort)
 	if err != nil {
@@ -273,6 +275,10 @@ func deployDataAvailabilityRegistry(client ethadapter.EthClient, ownerKey wallet
 	if err != nil {
 		return nil, nil, fmt.Errorf("no receipt for DataAvailabilityRegistry initialization")
 	}
+
+	//wait for DA contract to be available before granting state root manager
+	err = waitForContractDeployment(context.Background(), client, daRegistryContractReceipt.ContractAddress)
+
 	return daRegistryContract, daRegistryContractReceipt, nil
 }
 
@@ -364,6 +370,26 @@ func PermissionDataAvailabilityRegistryStateRoot(contractOwner wallet.Wallet, cl
 	}
 
 	return nil
+}
+
+func waitForContractDeployment(ctx context.Context, client ethadapter.EthClient, address common.Address) error {
+	start := time.Now()
+	for {
+		if time.Since(start) > _contractTimeout {
+			return fmt.Errorf("timeout waiting for contract code at address %s", address.Hex())
+		}
+
+		code, err := client.EthClient().CodeAt(ctx, address, nil)
+		if err != nil {
+			return fmt.Errorf("error checking contract code: %w", err)
+		}
+
+		if len(code) > 0 {
+			return nil
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func StopEth2Network(clients []ethadapter.EthClient, network eth2network.PosEth2Network) {
