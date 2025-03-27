@@ -28,7 +28,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
 )
 
-const _contractTimeout = time.Second * 10
+const _contractTimeout = time.Second * 30
 
 func SetUpGethNetwork(wallets *params.SimWallets, startPort int, nrNodes int) (*params.L1TenData, []ethadapter.EthClient, eth2network.PosEth2Network) {
 	eth2Network, err := StartGethNetwork(wallets, startPort)
@@ -109,6 +109,12 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		return nil, fmt.Errorf("failed to fetch MessageBus address. Cause: %w", err)
 	}
 
+	// Wait for MessageBus contract to be deployed
+	err = waitForContractDeployment(context.Background(), client, messageBusAddr)
+	if err != nil {
+		return nil, fmt.Errorf("MessageBus contract not available after deployment: %w", err)
+	}
+
 	_, daRegistryReceipt, err := deployDataAvailabilityRegistry(client, wallets.ContractOwnerWallet, messageBusAddr, enclaveRegistryReceipt.ContractAddress)
 	if err != nil {
 		return nil, err
@@ -185,14 +191,14 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}, nil
 }
 
-func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
+func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
 	bytecode, err := constants.EnclaveRegistryBytecode()
 	if err != nil {
 		return nil, nil, err
 	}
-	networkEnclaveRegistryReceipt, err := DeployContract(client, ownerKey, bytecode)
+	networkEnclaveRegistryReceipt, err := DeployContract(client, contractOwner, bytecode)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to deploy NetworkEnclaveRegistry contract from %s. Cause: %w", ownerKey.Address(), err)
+		return nil, nil, fmt.Errorf("failed to deploy NetworkEnclaveRegistry contract from %s. Cause: %w", contractOwner.Address(), err)
 	}
 	networkEnclaveRegistryContract, err := NetworkEnclaveRegistry.NewNetworkEnclaveRegistry(networkEnclaveRegistryReceipt.ContractAddress, client.EthClient())
 	if err != nil {
@@ -200,12 +206,12 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.
 	}
 
 	// Create a fresh transactor for initialization
-	opts, err := createTransactor(ownerKey)
+	opts, err := createTransactor(contractOwner)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	tx, err := networkEnclaveRegistryContract.Initialize(opts, ownerKey.Address())
+	tx, err := networkEnclaveRegistryContract.Initialize(opts, contractOwner.Address())
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize NetworkEnclaveRegistry contract. Cause: %w", err)
 	}
@@ -217,26 +223,26 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.
 	return networkEnclaveRegistryContract, networkEnclaveRegistryReceipt, nil
 }
 
-func deployNetworkConfigContract(client ethadapter.EthClient, ownerKey wallet.Wallet, addresses NetworkConfig.NetworkConfigFixedAddresses) (*NetworkConfig.NetworkConfig, *types.Receipt, error) {
+func deployNetworkConfigContract(client ethadapter.EthClient, contractOwner wallet.Wallet, addresses NetworkConfig.NetworkConfigFixedAddresses) (*NetworkConfig.NetworkConfig, *types.Receipt, error) {
 	// Deploy NetworkConfig contract
 	bytecode, err := constants.NetworkConfigBytecode()
 	if err != nil {
 		return nil, nil, err
 	}
-	networkConfigReceipt, err := DeployContract(client, ownerKey, bytecode)
+	networkConfigReceipt, err := DeployContract(client, contractOwner, bytecode)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to deploy NetworkConfig contract from %s. Cause: %w", ownerKey.Address(), err)
+		return nil, nil, fmt.Errorf("failed to deploy NetworkConfig contract from %s. Cause: %w", contractOwner.Address(), err)
 	}
 	networkConfigContract, err := NetworkConfig.NewNetworkConfig(networkConfigReceipt.ContractAddress, client.EthClient())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to instantiate NetworkConfig contract. Cause: %w", err)
 	}
 
-	opts, err := createTransactor(ownerKey)
+	opts, err := createTransactor(contractOwner)
 	if err != nil {
 		return nil, nil, err
 	}
-	tx, err := networkConfigContract.Initialize(opts, addresses, ownerKey.Address())
+	tx, err := networkConfigContract.Initialize(opts, addresses, contractOwner.Address())
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize NetworkConfig contract. Cause: %w", err)
 	}
@@ -248,25 +254,25 @@ func deployNetworkConfigContract(client ethadapter.EthClient, ownerKey wallet.Wa
 	return networkConfigContract, networkConfigReceipt, nil
 }
 
-func deployDataAvailabilityRegistry(client ethadapter.EthClient, ownerKey wallet.Wallet, messageBus common.Address, enclaveRegistryAddress common.Address) (*DataAvailabilityRegistry.DataAvailabilityRegistry, *types.Receipt, error) {
+func deployDataAvailabilityRegistry(client ethadapter.EthClient, contractOwner wallet.Wallet, messageBus common.Address, enclaveRegistryAddress common.Address) (*DataAvailabilityRegistry.DataAvailabilityRegistry, *types.Receipt, error) {
 	bytecode, err := constants.DataAvailabilityRegistryBytecode()
 	if err != nil {
 		return nil, nil, err
 	}
-	daRegistryContractReceipt, err := DeployContract(client, ownerKey, bytecode)
+	daRegistryContractReceipt, err := DeployContract(client, contractOwner, bytecode)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to deploy DataAvailabilityRegistry from %s. Cause: %w", ownerKey.Address(), err)
+		return nil, nil, fmt.Errorf("failed to deploy DataAvailabilityRegistry from %s. Cause: %w", contractOwner.Address(), err)
 	}
 	daRegistryContract, err := DataAvailabilityRegistry.NewDataAvailabilityRegistry(daRegistryContractReceipt.ContractAddress, client.EthClient())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to instantiate DataAvailabilityRegistry. Cause: %w", err)
 	}
 
-	opts, err := createTransactor(ownerKey)
+	opts, err := createTransactor(contractOwner)
 	if err != nil {
 		return nil, nil, err
 	}
-	tx, err := daRegistryContract.Initialize(opts, messageBus, enclaveRegistryAddress, ownerKey.Address())
+	tx, err := daRegistryContract.Initialize(opts, messageBus, enclaveRegistryAddress, contractOwner.Address())
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize DataAvailabilityRegistry. Cause: %w", err)
 	}
@@ -284,27 +290,27 @@ func deployDataAvailabilityRegistry(client ethadapter.EthClient, ownerKey wallet
 	return daRegistryContract, daRegistryContractReceipt, nil
 }
 
-func deployCrossChainContract(client ethadapter.EthClient, ownerKey wallet.Wallet) (*CrossChain.CrossChain, *types.Receipt, error) {
+func deployCrossChainContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*CrossChain.CrossChain, *types.Receipt, error) {
 	// Deploy CrossChain contract
 	bytecode, err := constants.CrossChainBytecode()
 	if err != nil {
 		return nil, nil, err
 	}
-	crossChainReceipt, err := DeployContract(client, ownerKey, bytecode)
+	crossChainReceipt, err := DeployContract(client, contractOwner, bytecode)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to deploy CrossChain contract from %s. Cause: %w", ownerKey.Address(), err)
+		return nil, nil, fmt.Errorf("failed to deploy CrossChain contract from %s. Cause: %w", contractOwner.Address(), err)
 	}
 	crossChainContract, err := CrossChain.NewCrossChain(crossChainReceipt.ContractAddress, client.EthClient())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to instantiate CrossChain contract. Cause: %w", err)
 	}
 
-	opts, err := createTransactor(ownerKey)
+	opts, err := createTransactor(contractOwner)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	tx, err := crossChainContract.Initialize(opts, ownerKey.Address())
+	tx, err := crossChainContract.Initialize(opts, contractOwner.Address())
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize CrossChain contract. Cause: %w", err)
 	}
