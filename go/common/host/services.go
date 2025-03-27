@@ -131,7 +131,8 @@ type L2BatchRepository interface {
 	// SubscribeValidatedBatches will register a handler to receive batches that have been validated by the enclave
 	SubscribeValidatedBatches(handler L2BatchHandler) func()
 
-	FetchBatchBySeqNo(background context.Context, seqNo *big.Int) (*common.ExtBatch, error)
+	FetchBatchBySeqNo(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error)
+	EstimateRollupSize(ctx context.Context, fromSeqNo *big.Int) (uint64, error)
 
 	FetchLatestBatchSeqNo() *big.Int
 	FetchLatestValidatedBatchSeqNo() *big.Int

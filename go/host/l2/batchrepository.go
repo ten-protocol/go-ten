@@ -233,6 +233,10 @@ func (r *Repository) NotifyNewValidatedHead(batch *common.ExtBatch) {
 	}
 }
 
+func (r *Repository) EstimateRollupSize(_ context.Context, fromSeqNo *big.Int) (uint64, error) {
+	return r.storage.EstimateRollupSize(fromSeqNo)
+}
+
 func (r *Repository) fetchBatchFallbackToEnclave(ctx context.Context, seqNo *big.Int) (*common.ExtBatch, error) {
 	b, err := r.sl.Enclaves().LookupBatchBySeqNo(ctx, seqNo)
 	if err != nil {

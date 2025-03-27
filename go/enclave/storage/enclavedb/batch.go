@@ -412,3 +412,12 @@ func FetchConvertedBatchHash(ctx context.Context, db *sql.DB, seqNo uint64) (get
 	}
 	return gethcommon.BytesToHash(hash), nil
 }
+
+func EstimateRollupSize(ctx context.Context, db *sql.DB, fromSeqNo *big.Int) (uint64, error) {
+	var size uint64
+	err := db.QueryRowContext(ctx, "select sum(length(header)) from batch where sequence >= ?", fromSeqNo.Uint64()).Scan(&size)
+	if err != nil {
+		return 0, err
+	}
+	return size, nil
+}

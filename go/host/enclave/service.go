@@ -358,28 +358,11 @@ func (e *Service) getLatestBatchNo() (uint64, error) {
 }
 
 func (e *Service) calculateNonRolledupBatchesSize(seqNo uint64) (uint64, error) {
-	var size uint64
-
 	if seqNo == 0 { // don't calculate for seqNo 0 batches
 		return 0, nil
 	}
 
-	currentNo := seqNo
-	for {
-		batch, err := e.sl.L2Repo().FetchBatchBySeqNo(context.TODO(), big.NewInt(int64(currentNo)))
-		if err != nil {
-			if errors.Is(err, errutil.ErrNotFound) {
-				break // no more batches
-			}
-			return 0, err
-		}
-
-		bSize := len(batch.EncryptedTxBlob)
-		size += uint64(bSize)
-		currentNo++
-	}
-
-	return size, nil
+	return e.sl.L2Repo().EstimateRollupSize(context.Background(), big.NewInt(int64(seqNo)))
 }
 
 func (e *Service) getActiveSequencerGuardian() (*Guardian, error) {
