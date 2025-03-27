@@ -205,7 +205,6 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wa
 		return nil, nil, fmt.Errorf("failed to instantiate NetworkEnclaveRegistry contract. Cause: %w", err)
 	}
 
-	// Create a fresh transactor for initialization
 	opts, err := createTransactor(contractOwner)
 	if err != nil {
 		return nil, nil, err
@@ -220,11 +219,15 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wa
 	if err != nil {
 		return nil, nil, fmt.Errorf("no receipt for NetworkEnclaveRegistry contract initialization")
 	}
+
+	err = waitForContractDeployment(context.Background(), client, networkEnclaveRegistryReceipt.ContractAddress)
+	if err != nil {
+		return nil, nil, fmt.Errorf("NetworkEnclaveRegistry contract not available after time. Cause: %w", err)
+	}
 	return networkEnclaveRegistryContract, networkEnclaveRegistryReceipt, nil
 }
 
 func deployNetworkConfigContract(client ethadapter.EthClient, contractOwner wallet.Wallet, addresses NetworkConfig.NetworkConfigFixedAddresses) (*NetworkConfig.NetworkConfig, *types.Receipt, error) {
-	// Deploy NetworkConfig contract
 	bytecode, err := constants.NetworkConfigBytecode()
 	if err != nil {
 		return nil, nil, err
@@ -291,7 +294,6 @@ func deployDataAvailabilityRegistry(client ethadapter.EthClient, contractOwner w
 }
 
 func deployCrossChainContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*CrossChain.CrossChain, *types.Receipt, error) {
-	// Deploy CrossChain contract
 	bytecode, err := constants.CrossChainBytecode()
 	if err != nil {
 		return nil, nil, err
@@ -319,6 +321,12 @@ func deployCrossChainContract(client ethadapter.EthClient, contractOwner wallet.
 	if err != nil {
 		return nil, nil, fmt.Errorf("no receipt for CrossChain initialization")
 	}
+
+	err = waitForContractDeployment(context.Background(), client, crossChainReceipt.ContractAddress)
+	if err != nil {
+		return nil, nil, fmt.Errorf("CrossChain contract not available after time. Cause: %w", err)
+	}
+
 	return crossChainContract, crossChainReceipt, nil
 }
 
