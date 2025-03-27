@@ -102,7 +102,10 @@ jobs:
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -contracts_env_file=./testnet/.env
           
-          source ./testnet/.env
+          # todo: remove this, temporary so we can get to next stop and read the artifact of failed deployer logs
+          if [ -f ./testnet/.env ]; then
+            source ./testnet/.env
+          fi
           
           # Fix variable names and GITHUB_OUTPUT reference
           echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_ENV
