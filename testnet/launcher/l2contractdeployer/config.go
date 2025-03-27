@@ -1,28 +1,34 @@
 package l2contractdeployer
 
+import (
+	"fmt"
+
+	"gopkg.in/yaml.v2"
+)
+
 // Option is a function that applies configs to a Config Object
 type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1HTTPURL              string
-	l1privateKey           string
-	l2Port                 int
-	l2Host                 string
-	l2PrivateKey           string
-	enclaveRegistryAddress string
-	crossChainAddress      string
-	daRegistryAddress      string
-	networkConfigAddress   string
-	messageBusAddress      string
-	dockerImage            string
-	faucetPrefundAmount    string
-	debugEnabled           bool
+	L1HTTPURL              string `yaml:"l1_http_url"`
+	L1PrivateKey           string `yaml:"l1_private_key"`
+	L2Port                 int    `yaml:"l2_port"`
+	L2Host                 string `yaml:"l2_host"`
+	L2PrivateKey           string `yaml:"l2_private_key"`
+	EnclaveRegistryAddress string `yaml:"enclave_registry_address"`
+	CrossChainAddress      string `yaml:"cross_chain_address"`
+	DaRegistryAddress      string `yaml:"da_registry_address"`
+	NetworkConfigAddress   string `yaml:"network_config_address"`
+	MessageBusAddress      string `yaml:"message_bus_address"`
+	DockerImage            string `yaml:"docker_image"`
+	FaucetPrefundAmount    string `yaml:"faucet_prefund_amount"`
+	DebugEnabled           bool   `yaml:"debug_enabled"`
 }
 
 func NewContractDeployerConfig(opts ...Option) *Config {
 	defaultConfig := &Config{
-		faucetPrefundAmount: "10000",
+		FaucetPrefundAmount: "10000",
 	}
 
 	for _, opt := range opts {
@@ -34,78 +40,96 @@ func NewContractDeployerConfig(opts ...Option) *Config {
 
 func WithL1HTTPURL(s string) Option {
 	return func(c *Config) {
-		c.l1HTTPURL = s
+		c.L1HTTPURL = s
 	}
 }
 
 func WithL1PrivateKey(s string) Option {
 	return func(c *Config) {
-		c.l1privateKey = s
+		c.L1PrivateKey = s
 	}
 }
 
 func WithL2WSPort(i int) Option {
 	return func(c *Config) {
-		c.l2Port = i
+		c.L2Port = i
 	}
 }
 
 func WithL2Host(s string) Option {
 	return func(c *Config) {
-		c.l2Host = s
+		c.L2Host = s
 	}
 }
 
 func WithEnclaveRegistryAddress(s string) Option {
 	return func(c *Config) {
-		c.enclaveRegistryAddress = s
+		c.EnclaveRegistryAddress = s
 	}
 }
 
 func WithCrossChainAddress(s string) Option {
 	return func(c *Config) {
-		c.crossChainAddress = s
+		c.CrossChainAddress = s
 	}
 }
 
 func WithDataAvailabilityRegistryAddress(s string) Option {
 	return func(c *Config) {
-		c.daRegistryAddress = s
+		c.DaRegistryAddress = s
 	}
 }
 
 func WithNetworkConfigAddress(s string) Option {
 	return func(c *Config) {
-		c.networkConfigAddress = s
+		c.NetworkConfigAddress = s
 	}
 }
 
 func WithMessageBusContractAddress(s string) Option {
 	return func(c *Config) {
-		c.messageBusAddress = s
+		c.MessageBusAddress = s
 	}
 }
 
 func WithL2PrivateKey(s string) Option {
 	return func(c *Config) {
-		c.l2PrivateKey = s
+		c.L2PrivateKey = s
 	}
 }
 
 func WithDockerImage(s string) Option {
 	return func(c *Config) {
-		c.dockerImage = s
+		c.DockerImage = s
 	}
 }
 
 func WithFaucetFunds(f string) Option {
 	return func(c *Config) {
-		c.faucetPrefundAmount = f
+		c.FaucetPrefundAmount = f
 	}
 }
 
 func WithDebugEnabled(b bool) Option {
 	return func(c *Config) {
-		c.debugEnabled = b
+		c.DebugEnabled = b
 	}
+}
+
+func (c *Config) Obfuscate() string {
+	configCopy := *c
+
+	// Mask both private keys
+	if configCopy.L1PrivateKey != "" {
+		configCopy.L1PrivateKey = "****"
+	}
+	if configCopy.L2PrivateKey != "" {
+		configCopy.L2PrivateKey = "****"
+	}
+
+	output, err := yaml.Marshal(&configCopy)
+	if err != nil {
+		return fmt.Sprintf("Error marshaling config to YAML: %v", err)
+	}
+	return string(output)
 }
