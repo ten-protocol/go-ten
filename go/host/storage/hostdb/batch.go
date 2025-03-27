@@ -14,13 +14,14 @@ import (
 )
 
 const (
-	selectBatch        = "SELECT sequence, hash, height, ext_batch FROM batch_host"
-	selectExtBatch     = "SELECT ext_batch FROM batch_host"
-	selectLatestBatch  = "SELECT sequence, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
-	selectTxsAndBatch  = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.hash = "
-	selectBatchSeqByTx = "SELECT b_sequence FROM transaction_host WHERE hash = "
-	selectTxBySeq      = "SELECT hash FROM transaction_host WHERE b_sequence = "
-	selectBatchTxs     = "SELECT t.hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
+	selectBatch         = "SELECT sequence, hash, height, ext_batch FROM batch_host"
+	selectExtBatch      = "SELECT ext_batch FROM batch_host"
+	selectLatestBatch   = "SELECT sequence, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
+	selectTxsAndBatch   = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.hash = "
+	selectBatchSeqByTx  = "SELECT b_sequence FROM transaction_host WHERE hash = "
+	selectTxBySeq       = "SELECT hash FROM transaction_host WHERE b_sequence = "
+	selectBatchTxs      = "SELECT t.hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
+	selectSumBatchSizes = "SELECT SUM(LENGTH(ext_batch)) FROM batch_host WHERE sequence >= "
 )
 
 // AddBatch adds a batch and its header to the DB
@@ -274,6 +275,15 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
 	whereQuery := " WHERE b.hash=" + db.GetSQLStatement().Placeholder
 	return fetchBatchTxs(db.GetSQLDB(), whereQuery, batchHash.Bytes())
+}
+
+func EstimateRollupSize(db HostDB, fromSeqNo *big.Int) (uint64, error) {
+	var totalTx uint64
+	err := db.GetSQLDB().QueryRow(selectSumBatchSizes, fromSeqNo.String()).Scan(&totalTx)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query sum of rollup batches: %w", err)
+	}
+	return totalTx, nil
 }
 
 func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {

@@ -54,6 +54,8 @@ type BatchResolver interface {
 	FetchTransactionListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error)
 	// FetchCrossChainProof returns the proof for a cross chain message
 	FetchCrossChainProof(messageType string, crossChainMessage gethcommon.Hash) ([][]byte, gethcommon.Hash, error)
+	// EstimateRollupSize returns the estimated size of the rollup from the given seq number to the latest
+	EstimateRollupSize(fromSeqNo *big.Int) (uint64, error)
 }
 
 type BlockResolver interface {

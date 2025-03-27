@@ -233,6 +233,10 @@ func (s *storageImpl) FetchTransactionListing(pagination *common.QueryPagination
 	return hostdb.GetTransactionListing(s.db, pagination)
 }
 
+func (s *storageImpl) EstimateRollupSize(fromSeqNo *big.Int) (uint64, error) {
+	return hostdb.EstimateRollupSize(s.db, fromSeqNo)
+}
+
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }

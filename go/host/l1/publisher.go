@@ -221,7 +221,7 @@ func (p *Publisher) FetchLatestSeqNo() (*big.Int, error) {
 	return p.ethClient.FetchLastBatchSeqNo(*p.contractRegistry.DARegistryLib().GetContractAddr())
 }
 
-func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
+func (p *Publisher) PublishBlob(result common.CreateRollupResult) error {
 	// Decode the rollup from the blobs
 	rollupData, err := ethadapter.DecodeBlobs(result.Blobs)
 	if err != nil {
@@ -258,6 +258,7 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 	rollupBlobTx, err := p.contractRegistry.DARegistryLib().PopulateAddRollup(tx, result.Blobs, result.Signature)
 	if err != nil {
 		p.logger.Error("Could not create rollup blobs", log.RollupHashKey, extRollup.Hash(), log.ErrKey, err)
+		return err
 	}
 
 	rollupBlockNum := extRollup.Header.CompressionL1Number
@@ -267,6 +268,7 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 		p.logger.Error("Failed waiting for block after rollup binding block number",
 			"compression_block", rollupBlockNum,
 			log.ErrKey, err)
+		return fmt.Errorf("unexpected error waiting for bloack after rollup bound block: %w", err)
 	}
 
 	err = p.publishTransaction(rollupBlobTx)
@@ -274,15 +276,15 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) {
 		var maxRetriesErr *MaxRetriesError
 		if errors.As(err, &maxRetriesErr) {
 			p.handleMaxRetriesFailure(maxRetriesErr, extRollup)
-			return
+		} else {
+			p.logger.Error("Could not issue rollup tx",
+				log.RollupHashKey, extRollup.Hash(),
+				log.ErrKey, err)
 		}
-
-		p.logger.Error("Could not issue rollup tx",
-			log.RollupHashKey, extRollup.Hash(),
-			log.ErrKey, err)
-	} else {
-		p.logger.Info("Rollup included in L1", log.RollupHashKey, extRollup.Hash())
+		return err
 	}
+	p.logger.Info("Rollup included in L1", log.RollupHashKey, extRollup.Hash())
+	return nil
 }
 
 func (p *Publisher) handleMaxRetriesFailure(err *MaxRetriesError, rollup *common.ExtRollup) {
