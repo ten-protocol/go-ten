@@ -9,7 +9,7 @@ on:
       - v*
     branches:
       - main
-      - releases/v1.0
+      - releases/v1.1
   pull_request:
 permissions:
   contents: read

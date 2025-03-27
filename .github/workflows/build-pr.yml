@@ -9,7 +9,7 @@ on:
       - 'planning/**'
     branches:
       - main
-      - releases/v1.0
+      - releases/v1.1
 
 jobs:
   build:
