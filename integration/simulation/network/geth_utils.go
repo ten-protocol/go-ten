@@ -276,8 +276,10 @@ func deployDataAvailabilityRegistry(client ethadapter.EthClient, ownerKey wallet
 		return nil, nil, fmt.Errorf("no receipt for DataAvailabilityRegistry initialization")
 	}
 
-	//wait for DA contract to be available before granting state root manager
 	err = waitForContractDeployment(context.Background(), client, daRegistryContractReceipt.ContractAddress)
+	if err != nil {
+		return nil, nil, fmt.Errorf("DataAvailabilityRegistry contract not available after time. Cause: %w", err)
+	}
 
 	return daRegistryContract, daRegistryContractReceipt, nil
 }
