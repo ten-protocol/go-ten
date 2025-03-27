@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IPublicCallbacks} from "../system/PublicCallbacks.sol";
+import "../system/interfaces/IPublicCallbacks.sol";
 
 contract PublicCallbacksTest {
     IPublicCallbacks public callbacks;
