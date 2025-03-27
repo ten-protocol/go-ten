@@ -254,6 +254,11 @@ func deployNetworkConfigContract(client ethadapter.EthClient, contractOwner wall
 	if err != nil {
 		return nil, nil, fmt.Errorf("no receipt for NetworkConfig contract initialization")
 	}
+
+	err = waitForContractDeployment(context.Background(), client, networkConfigReceipt.ContractAddress)
+	if err != nil {
+		return nil, nil, fmt.Errorf("NetworkConfig contract not available after time. Cause: %w", err)
+	}
 	return networkConfigContract, networkConfigReceipt, nil
 }
 
