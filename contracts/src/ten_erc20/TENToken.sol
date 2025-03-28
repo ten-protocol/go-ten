@@ -20,10 +20,10 @@ contract TENToken is Initializable, ERC20Upgradeable, ERC20PausableUpgradeable, 
     function initialize(address recipient, address initialOwner)
         public initializer
     {
-        __ERC20_init("TENToken", "TEN");
+        __ERC20_init("TEN Token", "TEN");
         __ERC20Pausable_init();
         __Ownable_init(initialOwner);
-        __ERC20Permit_init("TENToken");
+        __ERC20Permit_init("TEN Token");
         __ERC20Votes_init();
 
         _mint(recipient, 1000000000 * 10 ** decimals());
