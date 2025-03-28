@@ -1,0 +1,1 @@
+This is the ERC20 deployed on Ethereum, which will be the TEN token.
