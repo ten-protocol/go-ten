@@ -22,6 +22,9 @@ func VerifySignature(chainID int64, tx *types.Transaction) error {
 
 // GetAuthenticatedSender - Get sender and tx nonce from transaction
 func GetAuthenticatedSender(chainID int64, tx *types.Transaction) (*gethcommon.Address, error) {
+	if chainID != tx.ChainId().Int64() {
+		return nil, fmt.Errorf("ten chain id does not match tx chain id. Expected %d vs %d", chainID, tx.ChainId().Int64())
+	}
 	signer := types.LatestSignerForChainID(tx.ChainId())
 	sender, err := types.Sender(signer, tx)
 	if err != nil {

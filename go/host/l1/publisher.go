@@ -234,10 +234,6 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) error {
 		p.logger.Crit("could not decode rollup.", log.ErrKey, err)
 	}
 
-	// Check if the signature is valid
-	// This depends on how your signature verification works
-	p.logger.Info("Signature validation", "is_valid")
-
 	tx := &common.L1RollupTx{
 		Rollup: rollupData,
 	}

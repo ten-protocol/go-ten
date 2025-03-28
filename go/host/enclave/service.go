@@ -314,7 +314,14 @@ func (e *Service) isRollupRequired(lastSuccessfulRollup time.Time) (bool, uint64
 	timeExpired := time.Since(lastSuccessfulRollup) > e.rollupInterval
 	sizeExceeded := estimatedRunningRollupSize >= e.maxRollupSize
 
-	return timeExpired || sizeExceeded, fromBatch
+	rollupRequired := timeExpired || sizeExceeded
+	if rollupRequired {
+		e.logger.Debug("Rollup is required", "time_expired", timeExpired, "size_exceeded", sizeExceeded,
+			"last_successful_rollup", lastSuccessfulRollup, "from_batch", fromBatch,
+			"estimated_size", estimatedRunningRollupSize, "max_rollup_size", e.maxRollupSize)
+	}
+
+	return rollupRequired, fromBatch
 }
 
 func (e *Service) prepareRollup(guardian *Guardian, fromBatch uint64) (*common.CreateRollupResult, error) {
