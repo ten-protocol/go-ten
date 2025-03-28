@@ -279,7 +279,8 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash) (*common.Transac
 
 func EstimateRollupSize(db HostDB, fromSeqNo *big.Int) (uint64, error) {
 	var totalTx uint64
-	err := db.GetSQLDB().QueryRow(selectSumBatchSizes, fromSeqNo.String()).Scan(&totalTx)
+	query := selectSumBatchSizes + db.GetSQLStatement().Placeholder
+	err := db.GetSQLDB().QueryRow(query, fromSeqNo.Uint64()).Scan(&totalTx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query sum of rollup batches: %w", err)
 	}
