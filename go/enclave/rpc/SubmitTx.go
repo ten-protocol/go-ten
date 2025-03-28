@@ -9,7 +9,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
-func SubmitTxValidate(reqParams []any, builder *CallBuilder[common.L2Tx, gethcommon.Hash], _ *EncryptionManager) error {
+func SubmitTxValidate(reqParams []any, builder *CallBuilder[common.L2Tx, gethcommon.Hash], rpc *EncryptionManager) error {
 	txStr, ok := reqParams[0].(string)
 	if !ok {
 		return errors.New("unsupported format")
@@ -17,6 +17,10 @@ func SubmitTxValidate(reqParams []any, builder *CallBuilder[common.L2Tx, gethcom
 	l2Tx, err := ExtractTx(txStr)
 	if err != nil {
 		builder.Err = fmt.Errorf("could not extract transaction. Cause: %w", err)
+		return nil
+	}
+	if l2Tx.ChainId().Int64() != rpc.config.TenChainID {
+		builder.Err = errors.New("invalid chain id")
 		return nil
 	}
 	builder.Param = l2Tx
