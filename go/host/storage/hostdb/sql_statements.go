@@ -23,7 +23,7 @@ func (s SQLStatements) GetPlaceHolder(pos int) string {
 
 func SQLiteSQLStatements() *SQLStatements {
 	return &SQLStatements{
-		InsertBatch:             "INSERT INTO batch_host (sequence, hash, height, ext_batch) VALUES (?, ?, ?, ?)",
+		InsertBatch:             "INSERT INTO batch_host (sequence, hash, height, ext_batch, txs_size) VALUES (?, ?, ?, ?, ?)",
 		InsertTransactions:      "INSERT INTO transaction_host (hash, b_sequence) VALUES ",
 		UpdateTxCount:           "UPDATE transaction_count SET total=? WHERE id=1",
 		InsertRollup:            "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?) RETURNING id",
@@ -36,7 +36,7 @@ func SQLiteSQLStatements() *SQLStatements {
 
 func PostgresSQLStatements() *SQLStatements {
 	return &SQLStatements{
-		InsertBatch:             "INSERT INTO batch_host (sequence, hash, height, ext_batch) VALUES ($1, $2, $3, $4)",
+		InsertBatch:             "INSERT INTO batch_host (sequence, hash, height, ext_batch, txs_size) VALUES ($1, $2, $3, $4, $5)",
 		InsertTransactions:      "INSERT INTO transaction_host (hash, b_sequence) VALUES ",
 		UpdateTxCount:           "UPDATE transaction_count SET total=$1 WHERE id=1",
 		InsertRollup:            "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
