@@ -300,7 +300,8 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
 	}
 
-	result, err := e.sequencer().CreateRollup(ctx, fromSeqNo)
+	// we use the sequencer service directly because backup sequencers don't have the service active, but they can still create rollups
+	result, err := e.sequencerService.CreateRollup(ctx, fromSeqNo)
 	if err != nil {
 		return nil, responses.ToInternalError(err)
 	}
