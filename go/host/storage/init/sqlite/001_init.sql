@@ -39,7 +39,8 @@ create table if not exists batch_host
     sequence       int primary key,
     hash           binary(32) NOT NULL,
     height         int        NOT NULL,
-    ext_batch      mediumblob NOT NULL
+    ext_batch      mediumblob NOT NULL,
+    txs_size       int        NOT NULL
 );
 create index IDX_BATCH_HASH_HOST on batch_host (hash);
 create index IDX_BATCH_HEIGHT_HOST on batch_host (height);

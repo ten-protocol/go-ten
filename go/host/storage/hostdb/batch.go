@@ -21,7 +21,7 @@ const (
 	selectBatchSeqByTx  = "SELECT b_sequence FROM transaction_host WHERE hash = "
 	selectTxBySeq       = "SELECT hash FROM transaction_host WHERE b_sequence = "
 	selectBatchTxs      = "SELECT t.hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
-	selectSumBatchSizes = "SELECT SUM(LENGTH(ext_batch)) FROM batch_host WHERE sequence >= "
+	selectSumBatchSizes = "SELECT SUM(txs_size) FROM batch_host WHERE sequence >= "
 )
 
 // AddBatch adds a batch and its header to the DB
@@ -36,6 +36,7 @@ func AddBatch(dbtx *dbTransaction, statements *SQLStatements, batch *common.ExtB
 		batch.Hash(),                 // full hash
 		batch.Header.Number.Uint64(), // height
 		extBatch,                     // ext_batch
+		len(batch.EncryptedTxBlob),   // txs_size
 	)
 	if err != nil {
 		if IsRowExistsError(err) {

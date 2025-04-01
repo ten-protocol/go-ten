@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS batch_host
     sequence    INT PRIMARY KEY,
     hash        BYTEA         NOT NULL ,
     height      INT           NOT NULL,
-    ext_batch   BYTEA         NOT NULL
+    ext_batch   BYTEA         NOT NULL,
+    txs_size    INT           NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS IDX_BATCH_HASH_HOST ON batch_host USING HASH (hash);
