@@ -47,5 +47,5 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 
 export default func;
-func.tags = ['EthereumBridge', 'EthereumBridge_deploy'];
+func.tags = ['TenBridge', 'TenBridge_deploy'];
 func.dependencies = ['CrossChainMessenger'];

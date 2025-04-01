@@ -9,12 +9,10 @@ import { network } from 'hardhat';
 */
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const {
-        deployments, 
-        getNamedAccounts
-    } = hre;
-        const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-        const bridgeAddress = networkConfig.L1BridgeAddress;
+    const { deployer } = await hre.companionNetworks.layer1.getNamedAccounts();
+    const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+    const bridgeAddress = networkConfig.L1BridgeAddress;
+    console.log(`Net cfg: ${networkConfig}`);
 
     const bridgeContract = (await hre.ethers.getContractFactory('TenBridge')).attach(bridgeAddress);
     const tx = await bridgeContract.getFunction("setRemoteBridge").populateTransaction(networkConfig.L2BridgeAddress);

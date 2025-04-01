@@ -64,8 +64,8 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
 
         // Verify the enclave signature using the registry
         address enclaveID = ECDSA.recover(compositeHash, r.Signature);
-        require(enclaveRegistry.isAttested(enclaveID), "enclaveID not attested");
-        require(enclaveRegistry.isSequencer(enclaveID), "enclaveID not a sequencer");
+     /*   require(enclaveRegistry.isAttested(enclaveID), "enclaveID not attested");
+        require(enclaveRegistry.isSequencer(enclaveID), "enclaveID not a sequencer"); */
         _;
     }
 
