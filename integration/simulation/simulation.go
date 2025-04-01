@@ -17,8 +17,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethparams "github.com/ethereum/go-ethereum/params"
-	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/contracts/generated/PublicCallbacksTest"
+	"github.com/ten-protocol/go-ten/contracts/generated/TenBridge"
 	"github.com/ten-protocol/go-ten/contracts/generated/TransactionPostProcessor"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -181,7 +181,7 @@ func (s *Simulation) bridgeFundingToTen() {
 
 	testlog.Logger().Info("Funding the bridge to TEN")
 
-	destAddr := s.Params.L1TenData.MessageBusAddr
+	destAddr := s.Params.L1TenData.BridgeAddress
 	value, _ := big.NewInt(0).SetString("7400000000000000000000000000000", 10)
 
 	wallets := []wallet.Wallet{
@@ -196,7 +196,7 @@ func (s *Simulation) bridgeFundingToTen() {
 		gethcommon.HexToAddress("0xDEe530E22045939e6f6a0A593F829e35A140D3F1"),
 	}
 
-	busCtr, err := MessageBus.NewMessageBus(destAddr, s.RPCHandles.RndEthClient().EthClient())
+	bridgeCtr, err := TenBridge.NewTenBridge(destAddr, s.RPCHandles.RndEthClient().EthClient())
 	if err != nil {
 		panic(err)
 	}
@@ -209,7 +209,7 @@ func (s *Simulation) bridgeFundingToTen() {
 		}
 		opts.Value = value
 
-		tx, err := busCtr.SendValueToL2(opts, receivers[idx], value)
+		tx, err := bridgeCtr.SendNative(opts, receivers[idx])
 		if err != nil {
 			panic(err)
 		}

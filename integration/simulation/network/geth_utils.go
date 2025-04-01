@@ -7,7 +7,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ten-protocol/go-ten/contracts/generated/CrossChainMessenger"
 	"github.com/ten-protocol/go-ten/contracts/generated/MerkleTreeMessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/TenBridge"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkEnclaveRegistry"
@@ -132,6 +134,50 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		return nil, fmt.Errorf("no receipt for MerkleTreeMessageBus contract state root manager addition")
 	}
 
+	opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
+	ccAddress, tx, ccCtr, err := CrossChainMessenger.DeployCrossChainMessenger(opts, client.EthClient())
+	if err != nil {
+		return nil, fmt.Errorf("failed to instantiate CrossChainMessenger contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("no receipt for CrossChainMessenger contract deployment")
+	}
+
+	opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
+	tx, err = ccCtr.Initialize(opts, messageBusAddr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize CrossChainMessenger contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("no receipt for CrossChainMessenger contract deployment")
+	}
+
+	opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
+	addr, tx, tenBridge, err := TenBridge.DeployTenBridge(opts, client.EthClient())
+	if err != nil {
+		return nil, fmt.Errorf("failed to instantiate TenBridge contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("no receipt for TenBridge contract deployment")
+	}
+
+	opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
+	tx, err = tenBridge.Initialize(opts, ccAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize TenBridge contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("no receipt for TenBridge contract initialization")
+	}
+
 	// Create the Addresses struct to pass to initialize
 	addresses := NetworkConfig.NetworkConfigFixedAddresses{
 		CrossChain:               crossChainReceipt.ContractAddress,
@@ -140,9 +186,21 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		DataAvailabilityRegistry: daRegistryReceipt.ContractAddress,
 	}
 
-	_, networkConfigReceipt, err := deployNetworkConfigContract(client, wallets.ContractOwnerWallet, addresses)
+	networkConfigContract, networkConfigReceipt, err := deployNetworkConfigContract(client, wallets.ContractOwnerWallet, addresses)
 	if err != nil {
 		return nil, err
+	}
+	opts, err = createTransactor(wallets.ContractOwnerWallet)
+	if err != nil {
+		return nil, err
+	}
+	tx, err = networkConfigContract.SetL1CrossChainMessengerAddress(opts, ccAddress)
+	if err != nil {
+		return nil, err
+	}
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("no receipt for NetworkConfig contract additional address addition")
 	}
 
 	fmt.Println("Deployed All Network Contracts successfully",
@@ -158,6 +216,8 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 			DataAvailabilityRegistryAddress: daRegistryReceipt.ContractAddress,
 			CrossChainContractAddress:       crossChainReceipt.ContractAddress,
 			MessageBusAddr:                  messageBusAddr,
+			CrossChainMessengerAddress:      ccAddress,
+			BridgeAddress:                   addr,
 		}, nil
 	}
 
@@ -180,7 +240,34 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		ObxErc20Address:                 erc20ContractAddr[0],
 		EthErc20Address:                 erc20ContractAddr[1],
 		MessageBusAddr:                  messageBusAddr,
+		CrossChainMessengerAddress:      ccAddress,
+		BridgeAddress:                   addr,
 	}, nil
+}
+
+func ConnectTenNetworkBridge(client ethadapter.EthClient, wallets *params.SimWallets, l1Data *params.L1TenData, l2BridgeAddress common.Address) error {
+	bridgeAddr := l1Data.BridgeAddress
+	bridgeCtr, err := TenBridge.NewTenBridge(bridgeAddr, client.EthClient())
+	if err != nil {
+		return fmt.Errorf("failed to instantiate TenBridge contract. Cause: %w", err)
+	}
+
+	opts, err := createTransactor(wallets.ContractOwnerWallet)
+	if err != nil {
+		return fmt.Errorf("failed to create transactor. Cause: %w", err)
+	}
+
+	tx, err := bridgeCtr.SetRemoteBridge(opts, l2BridgeAddress)
+	if err != nil {
+		return fmt.Errorf("failed to set remote bridge. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return fmt.Errorf("no receipt for TenBridge contract remote bridge setting")
+	}
+
+	return nil
 }
 
 func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {

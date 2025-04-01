@@ -14,6 +14,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/TenBridge"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
@@ -320,16 +321,16 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
 	// takes longer for the funds to be bridged across
 	time.Sleep(45 * time.Second)
-	mbusABI, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	mbusABI, _ := abi.JSON(strings.NewReader(TenBridge.TenBridgeMetaData.ABI))
 	gasBridgeRecords := s.TxInjector.TxTracker.GasBridgeTransactions
 	for _, record := range gasBridgeRecords {
-		inputs, err := mbusABI.Methods["sendValueToL2"].Inputs.Unpack(record.L1BridgeTx.Data()[4:])
+		inputs, err := mbusABI.Methods["sendNative"].Inputs.Unpack(record.L1BridgeTx.Data()[4:])
 		if err != nil {
 			panic(err)
 		}
 
 		receiver := inputs[0].(gethcommon.Address)
-		amount := inputs[1].(*big.Int)
+		amount := record.L1BridgeTx.Value()
 
 		if receiver != record.ReceiverWallet.Address() {
 			panic("Test setup is broken. Receiver in tx should match recorded wallet.")

@@ -20,12 +20,13 @@ type Processors struct {
 
 func New(
 	l1BusAddress *gethcommon.Address,
+	l1BridgeAddress *gethcommon.Address,
 	storage storage.Storage,
 	logger gethlog.Logger,
 ) *Processors {
 	processors := Processors{}
 	processors.Local = NewTenMessageBusManager(storage, logger)
-	processors.Remote = NewBlockMessageExtractor(l1BusAddress, storage, logger)
+	processors.Remote = NewBlockMessageExtractor(l1BusAddress, l1BridgeAddress, storage, logger)
 	return &processors
 }
 

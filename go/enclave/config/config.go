@@ -32,6 +32,8 @@ type EnclaveConfig struct {
 	EnclaveRegistryAddress gethcommon.Address
 	// MessageBus L1 Address
 	MessageBusAddress gethcommon.Address
+	// Bridge L1 Address
+	BridgeAddress gethcommon.Address
 	// SystemContractOwner is the address that owns the system contracts
 	SystemContractOwner gethcommon.Address
 
@@ -110,6 +112,7 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 		DataAvailabilityRegistryAddress: tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry,
 		EnclaveRegistryAddress:          tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract,
 		MessageBusAddress:               tenCfg.Network.L1.L1Contracts.MessageBusContract,
+		BridgeAddress:                   tenCfg.Network.L1.L1Contracts.BridgeContract,
 		SystemContractOwner:             tenCfg.Network.Sequencer.SystemContractsUpgrader,
 		LogLevel:                        tenCfg.Enclave.Log.Level,
 		LogPath:                         tenCfg.Enclave.Log.Path,

@@ -114,8 +114,8 @@ func ConvertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi
 }
 
 // createCrossChainMessage - Uses the logged event by the message bus to produce a cross chain message struct
-func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) MessageBus.StructsCrossChainMessage {
-	return MessageBus.StructsCrossChainMessage{
+func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) common.CrossChainMessage {
+	return common.CrossChainMessage{
 		Sender:   event.Sender,
 		Sequence: event.Sequence,
 		Nonce:    event.Nonce,
@@ -175,7 +175,7 @@ func (mb MerkleBatches) ForMerkleTree() [][]interface{} {
 	return values
 }
 
-type MessageStructs []MessageBus.StructsCrossChainMessage
+type MessageStructs []common.CrossChainMessage
 
 func (ms MessageStructs) Len() int {
 	return len(ms)

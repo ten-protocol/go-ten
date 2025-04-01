@@ -9,9 +9,9 @@ import 'process';
 */
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const deployments = hre.companionNetworks.layer1.deployments;
+    const deployments = hre.deployments;
 
-    const { deployer } = await hre.companionNetworks.layer1.getNamedAccounts();
+    const { deployer } = await hre.getNamedAccounts();
 
     // Use the contract addresses from the management contract deployment.
     var networkConfigAddress = process.env.NETWORK_CONFIG_ADDR!!
@@ -49,7 +49,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // get network config contract and write the cross chain messenger address to it
     const networkConfigContract = (await hre.ethers.getContractFactory('NetworkConfig')).attach(networkConfigAddress)
     const tx = await  networkConfigContract.getFunction("setL1CrossChainMessengerAddress").populateTransaction(crossChainDeployment.address);
-    const receipt = await hre.companionNetworks.layer1.deployments.rawTx({
+    const receipt = await hre.deployments.rawTx({
         from: deployer,
         to: networkConfigAddress,
         data: tx.data,

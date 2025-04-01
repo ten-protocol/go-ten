@@ -71,4 +71,14 @@ abstract contract CrossChainEnabledObscuro is Initializable {
         );
         messageBus.publishMessage{value: value}(nonce++, topic, payload, consistencyLevel);
     }
+
+    // This function is used to publish a raw message instead of a function call to be relayed.
+    // This is useful for sending arbitrary data across chains.
+    function publishRawMessage(
+        bytes memory message,
+        uint32 topic,
+        uint256 fee
+    ) internal {
+        messageBus.publishMessage{value: fee}(nonce++, topic, message, 0);
+    }
 }

@@ -18,6 +18,7 @@ contract TenBridge is
     ITenBridgeAdmin,
     AccessControl
 {
+    event Withdrawal(address indexed receiver, address indexed asset, uint256 amount);
     // This is the role that is given to the address that represents a native currency
     bytes32 public constant NATIVE_TOKEN_ROLE = keccak256("NATIVE_TOKEN");
 
@@ -80,8 +81,7 @@ contract TenBridge is
     function sendNative(address receiver) external payable override {
         require(msg.value > 0, "Empty transfer.");
         bytes memory data = abi.encode(ValueTransfer(msg.value, receiver));
-        queueMessage(remoteBridgeAddress, data, uint32(Topics.VALUE), 0, 0, 0);
-        _messageBus().sendValueToL2{value: msg.value}(receiver, msg.value);
+        publishRawMessage(data, uint32(Topics.VALUE), 0); // No fee l1 to l2.
     }
 
     function sendERC20(
@@ -120,7 +120,7 @@ contract TenBridge is
         if (hasRole(ERC20_TOKEN_ROLE, asset)) {
             _receiveTokens(asset, amount, receiver);
         } else if (hasRole(NATIVE_TOKEN_ROLE, asset)) {
-            _receiveNative(receiver);
+            _receiveNative(receiver, amount);
         } else {
             revert("Attempting to withdraw unknown asset.");
         }
@@ -132,10 +132,12 @@ contract TenBridge is
         address receiver
     ) private {
         SafeERC20.safeTransfer(IERC20(asset), receiver, amount);
+        emit Withdrawal(receiver, asset, amount);
     }
 
-    function _receiveNative(address receiver) private {
-        (bool sent, ) = receiver.call("");
+    function _receiveNative(address receiver, uint256 amount) private {
+        (bool sent, ) = receiver.call{value: amount}("");
         require(sent, "Failed to send Ether");
+        emit Withdrawal(receiver, address(0), amount);
     }
 }

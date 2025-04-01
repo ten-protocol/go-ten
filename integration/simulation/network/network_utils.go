@@ -58,6 +58,7 @@ func createInMemTenNode(
 	ethClient ethadapter.EthClient,
 	mockP2P hostcommon.P2PHostService,
 	l1BusAddress gethcommon.Address,
+	l1BridgeAddress gethcommon.Address,
 	l1StartBlk gethcommon.Hash,
 	batchInterval time.Duration,
 	incomingP2PDisabled bool,
@@ -90,6 +91,7 @@ func createInMemTenNode(
 		UseInMemoryDB:                   true,
 		MinGasPrice:                     gethcommon.Big1,
 		MessageBusAddress:               l1BusAddress,
+		BridgeAddress:                   l1BridgeAddress,
 		DataAvailabilityRegistryAddress: contracts.DataAvailabilityRegistry,
 		EnclaveRegistryAddress:          contracts.EnclaveRegistry,
 		SystemContractOwner:             gethcommon.BigToAddress(big.NewInt(1)), // Irrelevant for in-mem nodes

@@ -50,7 +50,8 @@ func (n *ContractDeployer) Start() error {
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
-                "deployment_scripts/core"
+                "deployment_scripts/core",
+				"deployment_scripts/testnet/layer1"
             ],
             "accounts": [ "%s" ]
         }
