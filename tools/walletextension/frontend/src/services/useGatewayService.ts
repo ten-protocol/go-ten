@@ -35,14 +35,18 @@ const useGatewayService = () => {
 
   const finaliseConnectAccounts = async () => {
     const metamaskConnected = await isMetamaskConnected()
+    try {
+      if (!metamaskConnected) {
+        showToast(ToastType.INFO, "No accounts found, connecting...");
+        await connectAccounts();
+        showToast(ToastType.SUCCESS, "Connected to TEN Testnet");
+      }
 
-    if (!metamaskConnected) {
-      showToast(ToastType.INFO, "No accounts found, connecting...");
-      await connectAccounts();
-      showToast(ToastType.SUCCESS, "Connected to TEN Testnet");
+      await fetchUserAccounts();
+    } catch (error: Error | any) {
+      showToast(ToastType.DESTRUCTIVE, `${error?.message}`);
+      throw error;
     }
-
-    await fetchUserAccounts();
   }
 
   const connectToTenTestnet = async () => {
@@ -82,6 +86,9 @@ const useGatewayService = () => {
       await finaliseConnectAccounts()
 
     } catch (error: Error | any) {
+      // MetaMask v12.14.* is throwing an unexpected error while adding a network to.
+      // Despite the error the network is successfully added.
+      // This is a temporary workaround.
       if (error.message === 'l is not a function') {
         await finaliseConnectAccounts()
       } else {
