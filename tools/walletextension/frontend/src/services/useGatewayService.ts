@@ -33,6 +33,18 @@ const useGatewayService = () => {
     }
   };
 
+  const finaliseConnectAccounts = async () => {
+    const metamaskConnected = await isMetamaskConnected()
+
+    if (!metamaskConnected) {
+      showToast(ToastType.INFO, "No accounts found, connecting...");
+      await connectAccounts();
+      showToast(ToastType.SUCCESS, "Connected to TEN Testnet");
+    }
+
+    await fetchUserAccounts();
+  }
+
   const connectToTenTestnet = async () => {
     showToast(ToastType.INFO, "Connecting to TEN Testnet...");
     setLoading(true);
@@ -67,15 +79,16 @@ const useGatewayService = () => {
         showToast(ToastType.SUCCESS, "Added TEN Testnet");
       }
 
-      if (!(await isMetamaskConnected())) {
-        showToast(ToastType.INFO, "No accounts found, connecting...");
-        await connectAccounts();
-        showToast(ToastType.SUCCESS, "Connected to TEN Testnet");
-      }
-      await fetchUserAccounts();
+      await finaliseConnectAccounts()
+
     } catch (error: Error | any) {
-      showToast(ToastType.DESTRUCTIVE, `${error?.message}`);
-      throw error;
+      if (error.message === 'l is not a function') {
+        await finaliseConnectAccounts()
+      } else {
+        showToast(ToastType.DESTRUCTIVE, `${error?.message}`);
+        throw error;
+      }
+
     } finally {
       setLoading(false);
     }
