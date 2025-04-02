@@ -5,11 +5,10 @@ type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1HTTPURL        string
-	privateKey       string
-	dockerImage      string
-	debugEnabled     bool
-	azureKeyVaultURL string
+	l1HTTPURL    string
+	privateKey   string
+	dockerImage  string
+	debugEnabled bool
 }
 
 func NewContractDeployerConfig(opts ...Option) *Config {
@@ -43,11 +42,5 @@ func WithDockerImage(s string) Option {
 func WithDebugEnabled(b bool) Option {
 	return func(c *Config) {
 		c.debugEnabled = b
-	}
-}
-
-func WithAzureKeyVaultURL(s string) Option {
-	return func(c *Config) {
-		c.azureKeyVaultURL = s
 	}
 }

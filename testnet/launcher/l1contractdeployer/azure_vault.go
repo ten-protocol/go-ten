@@ -11,7 +11,7 @@ import (
 
 // StoreNetworkCfgInKeyVault stores the network configuration in the Azure Key Vault.
 // It requires credentials to be set in the environment, see: https://docs.microsoft.com/en-us/azure/key-vault/general/authentication?tabs=azure-cli#set-environment-variables
-// Note: these details are not secrets but it is convenient to store them alongside network secrets for infra systems
+// Note: these details are not secrets, but it is convenient to store them in KV alongside network secrets for infra systems access
 func StoreNetworkCfgInKeyVault(ctx context.Context, vaultURL string, networkConfig *node.NetworkConfig) error {
 	// Create a credential using the default Azure credential chain
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
@@ -27,9 +27,12 @@ func StoreNetworkCfgInKeyVault(ctx context.Context, vaultURL string, networkConf
 
 	// Store each contract address as a secret (matching env var config names from TenConfig)
 	secrets := map[string]string{
-		"NETWORK_L1_CONTRACTS_MANAGEMENT": networkConfig.ManagementContractAddress,
-		"NETWORK_L1_CONTRACTS_MESSAGEBUS": networkConfig.MessageBusAddress,
-		"NETWORK_L1_STARTHASH":            networkConfig.L1StartHash,
+		"NETWORK_L1_CONTRACTS_NETWORKCONFIG":   networkConfig.NetworkConfigAddress,
+		"NETWORK_L1_CONTRACTS_CROSSCHAIN":      networkConfig.CrossChainAddress,
+		"NETWORK_L1_CONTRACTS_ROLLUP":          networkConfig.DataAvailabilityRegistryAddress,
+		"NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY": networkConfig.EnclaveRegistryAddress,
+		"NETWORK_L1_CONTRACTS_MESSAGEBUS":      networkConfig.MessageBusAddress,
+		"NETWORK_L1_STARTHASH":                 networkConfig.L1StartHash,
 	}
 
 	for name, value := range secrets {
