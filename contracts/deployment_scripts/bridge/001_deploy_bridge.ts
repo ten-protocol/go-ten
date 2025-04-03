@@ -56,10 +56,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         waitConfirmations: 1,
     });
     
-    if (!receipt.events || receipt.events.length === 0) {
-        console.log(`Warning: No events emitted. This might indicate a failure when setting L2Bridge=${l2BridgeAddress} on bridge contract.`);
-    } else {
-        console.log(`Successfully set L2BridgeAddress=${l2BridgeAddress} on bridge contract`);
+    if (receipt.status !== 1) {
+        throw new Error("Transaction failed");
     }
 };
 

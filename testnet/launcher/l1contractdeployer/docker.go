@@ -80,9 +80,9 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		return nil, err
 	}
 
-	tailSize := "6"
+	tailSize := "7"
 	if n.cfg.debugEnabled {
-		tailSize = "7"
+		tailSize = "8"
 	}
 
 	logsOptions := container.LogsOptions{
