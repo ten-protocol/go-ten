@@ -103,8 +103,9 @@ jobs:
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -contracts_env_file=./testnet/.env
           
-          source ./testnet/.env
-          
+          if [ -f ./testnet/.env ]; then
+            source ./testnet/.env
+          fi          
           # Fix variable names and GITHUB_OUTPUT reference
           echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_ENV
           echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_OUTPUT
