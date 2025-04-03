@@ -103,6 +103,7 @@ jobs:
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
+          -azure_key_vault_url=${{secrets.AZURE_KEY_VAULT_URL}} \
           -contracts_env_file=./testnet/.env
           
           source ./testnet/.env
