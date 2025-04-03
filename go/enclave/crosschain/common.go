@@ -115,6 +115,7 @@ func ConvertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi
 
 // createCrossChainMessage - Uses the logged event by the message bus to produce a cross chain message struct
 func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) common.CrossChainMessage {
+	println("CROSS CHAIN MESSAGE FOUND")
 	return common.CrossChainMessage{
 		Sender:   event.Sender,
 		Sequence: event.Sequence,

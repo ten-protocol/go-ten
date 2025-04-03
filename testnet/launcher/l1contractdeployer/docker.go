@@ -137,6 +137,12 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		return nil, err
 	}
 	l1BlockHash := readValue("L1Start", lines[5])
+	bridgeAddress, err := findAddress(lines[6])
+	println("BRIDGE ADDRESS FROM CONTAINER LOGS: ", bridgeAddress)
+	println("lines[6]: ", lines[6])
+	if err != nil {
+		return nil, err
+	}
 
 	return &node.NetworkConfig{
 		EnclaveRegistryAddress:          enclaveRegistryAddr,
@@ -145,6 +151,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		NetworkConfigAddress:            networkConfigAddr,
 		MessageBusAddress:               messageBusAddr,
 		L1StartHash:                     l1BlockHash,
+		BridgeAddress:                   bridgeAddress,
 	}, nil
 }
 

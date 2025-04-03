@@ -19,6 +19,7 @@ type NetworkConfig struct {
 	EnclaveRegistryAddress          string
 	CrossChainAddress               string
 	MessageBusAddress               string
+	BridgeAddress                   string
 	L1StartHash                     string // L1 block hash from which to process for L2 data (mgmt contract deploy block)
 }
 
@@ -29,6 +30,7 @@ func WriteNetworkConfigToDisk(cfg *config.TenConfig) error {
 		EnclaveRegistryAddress:          cfg.Network.L1.L1Contracts.EnclaveRegistryContract.Hex(),
 		CrossChainAddress:               cfg.Network.L1.L1Contracts.CrossChainContract.Hex(),
 		MessageBusAddress:               cfg.Network.L1.L1Contracts.MessageBusContract.Hex(),
+		BridgeAddress:                   cfg.Network.L1.L1Contracts.BridgeContract.Hex(),
 		L1StartHash:                     cfg.Network.L1.StartHash.Hex(),
 	}
 	jsonStr, err := json.Marshal(n)

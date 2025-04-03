@@ -62,6 +62,7 @@ func (t *Testnet) Start() error {
 	sequencerCfg.Network.L1.L1Contracts.CrossChainContract = common.HexToAddress(networkConfig.CrossChainAddress)
 	sequencerCfg.Network.L1.L1Contracts.NetworkConfigContract = common.HexToAddress(networkConfig.NetworkConfigAddress)
 	sequencerCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
+	sequencerCfg.Network.L1.L1Contracts.BridgeContract = common.HexToAddress(networkConfig.BridgeAddress)
 
 	sequencerNode := node.NewDockerNode(sequencerCfg, "testnetobscuronet.azurecr.io/obscuronet/host:latest", "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", edgelessDBImage, false, "", 1)
 
@@ -90,6 +91,7 @@ func (t *Testnet) Start() error {
 	validatorNodeCfg.Network.L1.L1Contracts.CrossChainContract = common.HexToAddress(networkConfig.CrossChainAddress)
 	validatorNodeCfg.Network.L1.L1Contracts.NetworkConfigContract = common.HexToAddress(networkConfig.NetworkConfigAddress)
 	validatorNodeCfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkConfig.MessageBusAddress)
+	validatorNodeCfg.Network.L1.L1Contracts.BridgeContract = common.HexToAddress(networkConfig.BridgeAddress)
 
 	validatorNode := node.NewDockerNode(validatorNodeCfg, "testnetobscuronet.azurecr.io/obscuronet/host:latest", "testnetobscuronet.azurecr.io/obscuronet/enclave:latest", edgelessDBImage, false, "", 1)
 	err = validatorNode.Start()
