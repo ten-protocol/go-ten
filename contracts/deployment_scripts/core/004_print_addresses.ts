@@ -14,6 +14,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const merkleMessageBusAddress = await deployments.read("NetworkConfig", {}, "messageBusContractAddress");
     const networkEnclaveRegistryDeployment = await deployments.get("NetworkEnclaveRegistry");
     const daRegistryDeployment = await deployments.get("DataAvailabilityRegistry");
+    const bridgeDeployment = await deployments.get("TenBridge");
 
     console.log(`NetworkConfig= ${networkConfigDeployment.address}`); // line[0] in docker container
     console.log(`CrossChain= ${crossChainDeployment.address}`);
@@ -21,6 +22,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`NetworkEnclaveRegistry= ${networkEnclaveRegistryDeployment.address}`);
     console.log(`DataAvailabilityRegistry= ${daRegistryDeployment.address}`);
     console.log(`L1Start= ${networkConfigDeployment.receipt!!.blockHash}`);
+    console.log(`L1Bridge= ${bridgeDeployment.address}`);
 };
 
 export default func;
