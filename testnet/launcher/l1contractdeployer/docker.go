@@ -136,13 +136,11 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	if err != nil {
 		return nil, err
 	}
-	l1BlockHash := readValue("L1Start", lines[5])
-	bridgeAddress, err := findAddress(lines[6])
-	println("BRIDGE ADDRESS FROM CONTAINER LOGS: ", bridgeAddress)
-	println("lines[6]: ", lines[6])
+	bridgeAddress, err := findAddress(lines[5])
 	if err != nil {
 		return nil, err
 	}
+	l1BlockHash := readValue("L1Start", lines[6])
 
 	return &node.NetworkConfig{
 		EnclaveRegistryAddress:          enclaveRegistryAddr,

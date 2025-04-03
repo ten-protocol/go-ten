@@ -21,8 +21,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`MerkleMessageBus= ${merkleMessageBusAddress}`);
     console.log(`NetworkEnclaveRegistry= ${networkEnclaveRegistryDeployment.address}`);
     console.log(`DataAvailabilityRegistry= ${daRegistryDeployment.address}`);
-    console.log(`L1Start= ${networkConfigDeployment.receipt!!.blockHash}`);
     console.log(`L1Bridge= ${bridgeDeployment.address}`);
+    console.log(`L1Start= ${networkConfigDeployment.receipt!!.blockHash}`);
 };
 
 export default func;
