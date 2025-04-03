@@ -3,6 +3,7 @@ package l1contractdeployer
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets"
@@ -36,6 +37,8 @@ func StoreNetworkCfgInKeyVault(ctx context.Context, vaultURL string, networkConf
 	}
 
 	for name, value := range secrets {
+		// key must not contain underscore, replace with hyphen
+		name = strings.ReplaceAll(name, "_", "-")
 		_, err := client.SetSecret(ctx, name, azsecrets.SetSecretParameters{
 			Value: &value,
 		}, nil)
