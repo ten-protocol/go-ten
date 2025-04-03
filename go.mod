@@ -4,7 +4,9 @@ go 1.23.5
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.17.1
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.0
 	github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos v1.3.0
+	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azsecrets v0.12.0
 	github.com/FantasyJony/openzeppelin-merkle-tree-go v1.1.3
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/TwiN/gocache/v2 v2.2.2
@@ -57,6 +59,8 @@ require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/Azure/azure-sdk-for-go v68.0.0+incompatible // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal v0.7.1 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.3.2 // indirect
 	github.com/DataDog/zstd v1.5.6 // indirect
 	github.com/VictoriaMetrics/fastcache v1.12.2 // indirect
 	github.com/allegro/bigcache v1.2.1 // indirect
@@ -95,6 +99,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/h2non/filetype v1.1.3 // indirect
 	github.com/hashicorp/go-bexpr v0.1.14 // indirect
@@ -105,6 +110,7 @@ require (
 	github.com/juju/errors v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
+	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
@@ -123,6 +129,7 @@ require (
 	github.com/pion/stun/v2 v2.0.0 // indirect
 	github.com/pion/transport/v2 v2.2.10 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
+	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.21.1 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
