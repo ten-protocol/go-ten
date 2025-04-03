@@ -13,7 +13,7 @@ import (
 // StoreNetworkCfgInKeyVault stores the network configuration in the Azure Key Vault.
 // It requires credentials to be set in the environment, see: https://docs.microsoft.com/en-us/azure/key-vault/general/authentication?tabs=azure-cli#set-environment-variables
 // Note: these details are not secrets, but it is convenient to store them in KV alongside network secrets for infra systems access
-func StoreNetworkCfgInKeyVault(ctx context.Context, vaultURL string, networkConfig *node.NetworkConfig) error {
+func StoreNetworkCfgInKeyVault(ctx context.Context, vaultURL string, env string, networkConfig *node.NetworkConfig) error {
 	// Create a credential using the default Azure credential chain
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
@@ -26,14 +26,20 @@ func StoreNetworkCfgInKeyVault(ctx context.Context, vaultURL string, networkConf
 		return fmt.Errorf("failed to create client: %w", err)
 	}
 
+	// envPrefix allows us to use the same KV instance for multiple environments, if env="uat" then prefix="UAT-
+	envPrefix := ""
+	if env != "" {
+		envPrefix = strings.ToUpper(env) + "-"
+	}
+
 	// Store each contract address as a secret (matching env var config names from TenConfig)
 	secrets := map[string]string{
-		"NETWORK_L1_CONTRACTS_NETWORKCONFIG":   networkConfig.NetworkConfigAddress,
-		"NETWORK_L1_CONTRACTS_CROSSCHAIN":      networkConfig.CrossChainAddress,
-		"NETWORK_L1_CONTRACTS_ROLLUP":          networkConfig.DataAvailabilityRegistryAddress,
-		"NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY": networkConfig.EnclaveRegistryAddress,
-		"NETWORK_L1_CONTRACTS_MESSAGEBUS":      networkConfig.MessageBusAddress,
-		"NETWORK_L1_STARTHASH":                 networkConfig.L1StartHash,
+		envPrefix + "NETWORK_L1_CONTRACTS_NETWORKCONFIG":   networkConfig.NetworkConfigAddress,
+		envPrefix + "NETWORK_L1_CONTRACTS_CROSSCHAIN":      networkConfig.CrossChainAddress,
+		envPrefix + "NETWORK_L1_CONTRACTS_ROLLUP":          networkConfig.DataAvailabilityRegistryAddress,
+		envPrefix + "NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY": networkConfig.EnclaveRegistryAddress,
+		envPrefix + "NETWORK_L1_CONTRACTS_MESSAGEBUS":      networkConfig.MessageBusAddress,
+		envPrefix + "NETWORK_L1_STARTHASH":                 networkConfig.L1StartHash,
 	}
 
 	for name, value := range secrets {

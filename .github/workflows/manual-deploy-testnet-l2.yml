@@ -98,12 +98,17 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
+          # Strip the "-testnet" suffix from the input
+          TESTNET_TYPE_RAW="${{ github.event.inputs.testnet_type }}"
+          TESTNET_TYPE=${TESTNET_TYPE_RAW%-testnet}
+  
           # Run deployer and capture output
           go run ./testnet/launcher/l1contractdeployer/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -azure_key_vault_url=${{secrets.AZURE_KEY_VAULT_URL}} \
+          -azure_key_vault_env=$TESTNET_TYPE \
           -contracts_env_file=./testnet/.env
           
           source ./testnet/.env
