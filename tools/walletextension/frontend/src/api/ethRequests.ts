@@ -3,7 +3,7 @@ import {
   tenChainIDDecimal,
   tenChainIDHex, tenNetworkName,
   tenscanAddress,
-  userStorageAddress,
+  zeroAddress,
 } from "@/lib/constants";
 import {
   getRandomIntAsString,
@@ -22,6 +22,7 @@ const typedData = {
       { name: "name", type: "string" },
       { name: "version", type: "string" },
       { name: "chainId", type: "uint256" },
+      { name: "verifyingContract", type: "address" },
     ],
     Authentication: [{ name: "Encryption Token", type: "address" }],
   },
@@ -30,6 +31,7 @@ const typedData = {
     name: "Ten",
     version: "1.0",
     chainId: tenChainIDDecimal,
+    verifyingContract: zeroAddress,
   },
   message: {
     "Encryption Token": "0x",
