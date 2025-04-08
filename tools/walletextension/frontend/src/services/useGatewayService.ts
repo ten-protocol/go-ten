@@ -89,7 +89,7 @@ const useGatewayService = () => {
       // MetaMask v12.14.* is throwing an unexpected error while adding a network to.
       // Despite the error the network is successfully added.
       // This is a temporary workaround.
-      if (error.message === 'l is not a function' || error.message === 'h is not a function') {
+      if (error.message.includes(' is not a function')) {
         await finaliseConnectAccounts()
       } else {
         showToast(ToastType.DESTRUCTIVE, `${error?.message}`);
