@@ -13,15 +13,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const bridgeAddress = networkConfig.L1Bridge;
     console.log(`TenBridge address = ${bridgeAddress}`);
 
-    const prefundAmountStr = process.env.PREFUND_FAUCET_AMOUNT!! || "1"
+    const prefundAmountStr = process.env.PREFUND_FAUCET_AMOUNT!! || "500"
 
     if (prefundAmountStr == "0") {
         return;
     }
 
     const tenBridge = (await hre.ethers.getContractFactory('TenBridge')).attach(bridgeAddress)
-    const prefundAmount = hre.ethers.parseEther("0.5");
-    console.log(`Prefund amount ${prefundAmount}; MB = ${tenBridge}`);
+    const prefundAmount = hre.ethers.parseEther(prefundAmountStr);
 
     // this block is here to prevent underpriced tx failures on testnet startup
     const provider = new HardhatEthersProvider(layer1.provider, "layer1");
