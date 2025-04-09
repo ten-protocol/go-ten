@@ -57,8 +57,11 @@ func createInMemTenNode(
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	mockP2P hostcommon.P2PHostService,
+<<<<<<< HEAD
 	l1BusAddress gethcommon.Address,
 	l1BridgeAddress gethcommon.Address,
+=======
+>>>>>>> origin/main
 	l1StartBlk gethcommon.Hash,
 	batchInterval time.Duration,
 	incomingP2PDisabled bool,
@@ -66,6 +69,8 @@ func createInMemTenNode(
 	blobResolver l1.BlobResolver,
 ) *hostcontainer.HostContainer {
 	networkConfigAddr := contractRegistryLib.NetworkConfigLib().GetContractAddr()
+	addresses, _ := contractRegistryLib.NetworkConfigLib().GetContractAddresses()
+	l1BusAddress := addresses.L1MessageBus
 	hostConfig := &hostconfig.HostConfig{
 		ID:                   fmt.Sprintf("%d", id),
 		IsGenesis:            isGenesis,

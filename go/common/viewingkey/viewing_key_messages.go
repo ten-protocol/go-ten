@@ -23,17 +23,19 @@ const (
 type SignatureType uint8
 
 const (
-	EIP712Domain              = "EIP712Domain"
-	EIP712Type                = "Authentication"
-	EIP712DomainName          = "name"
-	EIP712DomainVersion       = "version"
-	EIP712DomainChainID       = "chainId"
-	EIP712EncryptionToken     = "Encryption Token"
-	EIP712DomainNameValue     = "Ten"
-	EIP712DomainVersionValue  = "1.0"
-	UserIDLength              = 20
-	PersonalSignMessageFormat = "Token: %s on chain: %d version: %d"
-	PersonalSignVersion       = 1
+	EIP712Domain                 = "EIP712Domain"
+	EIP712Type                   = "Authentication"
+	EIP712DomainName             = "name"
+	EIP712DomainVersion          = "version"
+	EIP712DomainChainID          = "chainId"
+	EIP712VerifyingContract      = "verifyingContract"
+	EIP712EncryptionToken        = "Encryption Token"
+	EIP712DomainNameValue        = "Ten"
+	EIP712DomainVersionValue     = "1.0"
+	EIP712VerifyingContractValue = "0x0000000000000000000000000000000000000000"
+	UserIDLength                 = 20
+	PersonalSignMessageFormat    = "Token: %s on chain: %d version: %d"
+	PersonalSignVersion          = 1
 )
 
 type MessageGenerator interface {
@@ -145,9 +147,10 @@ func createTypedDataForEIP712Message(encryptionToken []byte, chainID int64) apit
 	hexToken := hexutils.BytesToHex(encryptionToken)
 
 	domain := apitypes.TypedDataDomain{
-		Name:    EIP712DomainNameValue,
-		Version: EIP712DomainVersionValue,
-		ChainId: (*math.HexOrDecimal256)(big.NewInt(chainID)),
+		Name:              EIP712DomainNameValue,
+		Version:           EIP712DomainVersionValue,
+		ChainId:           (*math.HexOrDecimal256)(big.NewInt(chainID)),
+		VerifyingContract: EIP712VerifyingContractValue,
 	}
 
 	message := map[string]interface{}{
@@ -159,6 +162,7 @@ func createTypedDataForEIP712Message(encryptionToken []byte, chainID int64) apit
 			{Name: EIP712DomainName, Type: "string"},
 			{Name: EIP712DomainVersion, Type: "string"},
 			{Name: EIP712DomainChainID, Type: "uint256"},
+			{Name: EIP712VerifyingContract, Type: "address"},
 		},
 		EIP712Type: {
 			{Name: EIP712EncryptionToken, Type: "address"},

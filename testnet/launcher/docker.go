@@ -30,7 +30,7 @@ func NewTestnetLauncher(cfg *Config) *Testnet {
 }
 
 func (t *Testnet) Start() error {
-	litter.Config.HidePrivateFields = false
+	litter.Config.HidePrivateFields = true
 	fmt.Printf("Starting Testnet with config: \n%s\n\n", litter.Sdump(*t.cfg))
 
 	err := startEth2Network()

@@ -20,7 +20,7 @@ interface Structs {
     }
 
     struct HeaderCrossChainData {
-        Structs.CrossChainMessage[] messages;
+        CrossChainMessage[] messages;
     }
 
     struct CrossChainMessage {

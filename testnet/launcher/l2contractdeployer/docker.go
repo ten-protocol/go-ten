@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 
 	"github.com/docker/docker/client"
-	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
@@ -27,13 +26,14 @@ func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 }
 
 func (n *ContractDeployer) Start() error {
-	fmt.Printf("Starting L2 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
+	configCopy := n.cfg.Obfuscate()
+	fmt.Printf("Starting L2 contract deployer with config: \n%s\n\n", configCopy)
 
 	cmds := []string{"/bin/sh"}
 	var ports []int
 
 	// inspect stops operation until debugger is hooked on port 9229 if debug is enabled
-	if n.cfg.debugEnabled {
+	if n.cfg.DebugEnabled {
 		cmds = append(cmds, "--node-options=\"--inspect-brk=0.0.0.0:9229\"")
 		ports = append(ports, 9229)
 	}
@@ -41,14 +41,14 @@ func (n *ContractDeployer) Start() error {
 	cmds = append(cmds, "/home/obscuro/go-obscuro/entrypoint.sh", "obscuro:deploy", "--network", "layer2")
 
 	envs := map[string]string{
-		"L2_HOST":               n.cfg.l2Host,
-		"L2_PORT":               strconv.Itoa(n.cfg.l2Port),
-		"PREFUND_FAUCET_AMOUNT": n.cfg.faucetPrefundAmount,
-		"ENCLAVE_REGISTRY_ADDR": n.cfg.enclaveRegistryAddress,
-		"CROSS_CHAIN_ADDR":      n.cfg.crossChainAddress,
-		"DA_REGISTRY_ADDR":      n.cfg.daRegistryAddress,
-		"NETWORK_CONFIG_ADDR":   n.cfg.networkConfigAddress,
-		"MESSAGE_BUS_ADDR":      n.cfg.messageBusAddress,
+		"L2_HOST":               n.cfg.L2Host,
+		"L2_PORT":               strconv.Itoa(n.cfg.L2Port),
+		"PREFUND_FAUCET_AMOUNT": n.cfg.FaucetPrefundAmount,
+		"ENCLAVE_REGISTRY_ADDR": n.cfg.EnclaveRegistryAddress,
+		"CROSS_CHAIN_ADDR":      n.cfg.CrossChainAddress,
+		"DA_REGISTRY_ADDR":      n.cfg.DaRegistryAddress,
+		"NETWORK_CONFIG_ADDR":   n.cfg.NetworkConfigAddress,
+		"MESSAGE_BUS_ADDR":      n.cfg.MessageBusAddress,
 		"NETWORK_JSON": fmt.Sprintf(`
 {
         "layer1" : {
@@ -79,10 +79,10 @@ func (n *ContractDeployer) Start() error {
             ]
         }
     }
-`, n.cfg.l1HTTPURL, n.cfg.l1privateKey, n.cfg.l2PrivateKey),
+`, n.cfg.L1HTTPURL, n.cfg.L1PrivateKey, n.cfg.L2PrivateKey),
 	}
 
-	containerID, err := docker.StartNewContainer("hh-l2-deployer", n.cfg.dockerImage, cmds, ports, envs, nil, nil, false)
+	containerID, err := docker.StartNewContainer("hh-l2-deployer", n.cfg.DockerImage, cmds, ports, envs, nil, nil, false)
 	if err != nil {
 		return err
 	}
