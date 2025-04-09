@@ -32,20 +32,6 @@ contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable, Reentranc
         emit LogCrossChainContractCreated(address(messageBus));
     }
 
-    function extractNativeValue(
-        Structs.ValueTransferMessage calldata _msg,
-        bytes32[] calldata proof,
-        bytes32 root
-    ) external nonReentrant {
-        require(!paused, "withdrawals are paused");
-        merkleMessageBus.verifyValueTransferInclusion(_msg, proof, root);
-        bytes32 msgHash = keccak256(abi.encode(_msg));
-        require(isWithdrawalSpent[msgHash] == false, "withdrawal already spent");
-        isWithdrawalSpent[msgHash] = true;  // Use stored msgHash
-
-        messageBus.receiveValueFromL2(_msg.receiver, _msg.amount);
-    }
-
 
     function pauseWithdrawals(bool _pause) external onlyOwner {
         paused = _pause;

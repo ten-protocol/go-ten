@@ -48,16 +48,6 @@ interface IMessageBus {
         uint8 consistencyLevel
     ) external payable returns (uint64 sequence);
 
-    function sendValueToL2(
-        address receiver,
-        uint256 amount
-    ) external payable;
-
-    function receiveValueFromL2(
-        address receiver,
-        uint256 amount
-    ) external;
-
     // This function verifies that a cross chain message provided by the caller has indeed been submitted from the other network
     // and returns true only if the challenge period for the message has passed.
     function verifyMessageFinalized(Structs.CrossChainMessage calldata crossChainMessage) external view returns (bool);

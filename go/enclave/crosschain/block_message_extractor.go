@@ -64,7 +64,6 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 		if txData.CrossChainMessages == nil {
 			continue
 		}
-		println("TRANSFER EVENTS is not empty. Bridge address: ", m.bridgeAddress.Hex())
 		transfersInTx := txData.CrossChainMessages.FilterValueTransfers(*m.bridgeAddress)
 		transfersMessages = append(transfersMessages, transfersInTx...)
 		receipts = append(receipts, txData.Receipt)

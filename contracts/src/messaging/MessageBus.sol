@@ -48,42 +48,6 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         addressSequences[sender] += 1;
     }
 
-    function sendValueToL2(
-        address receiver,
-        uint256 amount
-    ) external payable {
-        require(msg.value > 0 && msg.value == amount, "Attempting to send value without providing Ether");
-        
-        uint256 amountToBridge = msg.value;
-        if (address(fees) != address(0)) {
-            uint256 fee = getPublishFee();
-            require(msg.value >= fee, "Insufficient funds to send value");
-            amountToBridge = msg.value - fee;
-            (bool ok, ) = address(fees).call{value: fee}("");
-            require(ok, "Failed to send fees to fees contract");
-        }
-
-        uint64 sequence = incrementSequence(msg.sender);
-        emit ValueTransfer(msg.sender, receiver, amountToBridge, sequence);
-    }
-
-    function receiveValueFromL2(
-        address receiver,
-        uint256 amount
-    ) external virtual onlyOwner {
-        _receiveValueFromL2Internal(receiver, amount);
-    }
-
-    /**
-     * @dev Internal function with the core logic for receiving value from L2.
-     * This is used to avoid duplicating code when overriding receiveValueFromL2.
-     */
-    function _receiveValueFromL2Internal(address receiver, uint256 amount) internal {
-        require(address(this).balance >= amount, "Insufficient funds to send value");
-        (bool ok, ) = receiver.call{value: amount}("");
-        require(ok, "failed sending value");
-    }
-
     function getPublishFee() public view returns (uint256) {
         return fees.messageFee();
     }
@@ -182,11 +146,7 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
         require(ok, "failed sending value");
     }
 
-    fallback() external payable {
+    fallback() external {
         revert("unsupported");
-    }
-
-    receive() external payable {
-        this.sendValueToL2{value: msg.value}(msg.sender, msg.value);
     }
 }

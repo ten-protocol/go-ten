@@ -115,7 +115,6 @@ func ConvertLogsToMessages(logs []types.Log, eventName string, messageBusABI abi
 
 // createCrossChainMessage - Uses the logged event by the message bus to produce a cross chain message struct
 func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) common.CrossChainMessage {
-	println("CROSS CHAIN MESSAGE FOUND")
 	return common.CrossChainMessage{
 		Sender:   event.Sender,
 		Sequence: event.Sequence,
@@ -123,32 +122,6 @@ func createCrossChainMessage(event MessageBus.MessageBusLogMessagePublished) com
 		Topic:    event.Topic,
 		Payload:  event.Payload,
 	}
-}
-
-// ConvertLogsToValueTransfers - converts the logs of the event to messages. The logs should be filtered, otherwise fails.
-func ConvertLogsToValueTransfers(logs []types.Log, eventName string, messageBusABI abi.ABI) (common.ValueTransferEvents, error) {
-	messages := make(common.ValueTransferEvents, 0)
-
-	for _, log := range logs {
-		if len(log.Topics) != 3 {
-			return nil, fmt.Errorf("invalid number of topics in log: %d", len(log.Topics))
-		}
-		var event MessageBus.MessageBusValueTransfer
-		err := messageBusABI.UnpackIntoInterface(&event, eventName, log.Data)
-		if err != nil {
-			return nil, fmt.Errorf("failed to unpack event data: %w\nData length: %d\nEvent: %s",
-				err, len(log.Data), eventName)
-		}
-
-		messages = append(messages, common.ValueTransferEvent{
-			Sender:   gethcommon.BytesToAddress(log.Topics[1].Bytes()),
-			Receiver: gethcommon.BytesToAddress(log.Topics[2].Bytes()),
-			Amount:   event.Amount,
-			Sequence: event.Sequence,
-		})
-	}
-
-	return messages, nil
 }
 
 type MerkleBatches []*core.Batch

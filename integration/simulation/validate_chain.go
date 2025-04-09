@@ -134,7 +134,7 @@ func checkTenBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uint64)
 // the cost of an empty rollup - adjust if the management contract changes. This is the rollup overhead.
 const emptyRollupGas = 110_000
 
-func checkCollectedL1Fees(_ *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
+func checkCollectedL1Fees(t *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
 	costOfRollupsWithTransactions := big.NewInt(0)
 	costOfEmptyRollups := big.NewInt(0)
 
@@ -162,7 +162,7 @@ func checkCollectedL1Fees(_ *testing.T, node ethadapter.EthClient, s *Simulation
 	obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, l2FeesWallet)
 	_, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
 	if err != nil {
-		panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+		t.Errorf("Node %d: Failed getting balance for bridge transfer receiver. Cause: %s", nodeIdx, err)
 	}
 
 	// if balance of collected fees is less than cost of published rollups fail
@@ -627,7 +627,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		}
 
 		abi, _ := MessageBus.MessageBusMetaData.GetAbi()
-		if receipt.Logs[0].Topics[0] != abi.Events["ValueTransfer"].ID {
+		if receipt.Logs[0].Topics[0] != abi.Events["LogMessagePublished"].ID {
 			testlog.Logger().Error("[CrossChain] wtf")
 			continue
 		}

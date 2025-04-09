@@ -12,18 +12,6 @@ interface ICrossChain {
     event WithdrawalsPaused(bool paused);
 
     /**
-     * @dev Extracts native tokens from L2 to L1 using a verified message
-     * @param msg The value transfer message containing amount and recipient details
-     * @param proof Merkle proof verifying the message inclusion
-     * @param root The Merkle root against which to verify the proof
-     */
-    function extractNativeValue(
-        Structs.ValueTransferMessage calldata msg,
-        bytes32[] calldata proof,
-        bytes32 root
-    ) external;
-
-    /**
      * @dev Enables or disables the withdrawal functionality
      * @param pause True to pause withdrawals, false to enable
      */
