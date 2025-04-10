@@ -13,7 +13,9 @@ import {PublicCallbacks} from "./PublicCallbacks.sol";
  * @title SystemDeployer
  * @dev Contract that deploys the system contracts
  * 
- * TODO stefan to add docs
+ * Auto executed contract on the L2 at the second batch, used to deploy the other system contracts.
+ * The eoaAdmin is the owner of the proxies and can upgrade them. 
+ * depends on the remoteBridgeAddress in order to configure the cross chain functionality.
  */
 contract SystemDeployer {
     event SystemContractDeployed(string name, address contractAddress);
