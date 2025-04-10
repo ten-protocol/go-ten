@@ -79,7 +79,7 @@ const (
 
 	keyExchangeURLFlagName    = "keyExchangeURL"
 	keyExchangeURLFlagDefault = ""
-	keyExchangeURLFlagUsage   = "URL to exchange the key with another enclave. Default: empty"
+	keyExchangeURLFlagUsage   = "URL to exchange the key with another enclave. If set to 'new', a new key will be generated. If empty, it will try to read from sealed key. Default: empty"
 
 	enableTLSFlagName    = "enableTLS"
 	enableTLSFlagDefault = false
