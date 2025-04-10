@@ -1,0 +1,581 @@
+# Deploys an Obscuro network on Alibaba Cloud for Testnet and Dev Testnet
+#
+# The Obscuro network is composed of 2 obscuro nodes running on individual vms with SGX. At the moment the workflow
+# can only be triggered manually as a workflow dispatch.
+#
+# This script uses GitHub Environments for variables (vars) and secrets - these are configured on GitHub and
+#  the environments match the input.testnet_type options
+#
+# To deploy sepolia the user must type 'confirm' in the confirmation field
+
+name: '[M] Deploy Testnet L2 DEV ONLY '
+run-name: '[M] Deploy Testnet L2 DEV ONLY'
+on:
+  workflow_dispatch:
+    inputs:
+#      testnet_type:
+#        description: 'Testnet Type'
+#        required: true
+#        default: 'dev-testnet'
+#        type: choice
+#        options:
+#          - 'dev-testnet'
+#          - 'uat-testnet'
+#          - 'sepolia-testnet'
+      log_level:
+        description: 'Log Level 1-Error 5-Trace'
+        required: true
+        default: 3
+        type: number
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+
+    # Map a step output to a job output
+    outputs:
+      NETWORK_CONFIG_ADDR: ${{ steps.deployContracts.outputs.NETWORK_CONFIG_ADDR }}
+      MSG_BUS_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MSG_BUS_CONTRACT_ADDR }}
+      CROSS_CHAIN_ADDR: ${{ steps.deployContracts.outputs.CROSS_CHAIN_ADDR }}
+      DA_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.DA_REGISTRY_ADDR }}
+      ENCLAVE_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.ENCLAVE_REGISTRY_ADDR }}
+      L1_START_HASH: ${{ steps.deployContracts.outputs.L1_START_HASH }}
+
+
+    steps:
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.5
+
+      - name: 'Configure Alibaba Cloud CLI'
+        uses: alibaba/configure-aliyun-cli@v1
+        with:
+          access-key-id: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
+          region-id: ${{ vars.ALIBABA_CLOUD_REGION }}
+
+      - name: 'Login to Alibaba Cloud Container Registry'
+        run: |
+          aliyun cr GetAuthorizationToken --endpoint cr.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com
+          docker login --username=${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }} --password=${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }} registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com
+
+      - name: 'Build and push obscuro node images'
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} -f dockerfiles/enclave.Dockerfile .
+          docker tag ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}
+          docker push registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}
+          
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_HOST }} -f dockerfiles/host.Dockerfile .
+          docker tag ${{ vars.DOCKER_BUILD_TAG_HOST }} registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.DOCKER_BUILD_TAG_HOST }}
+          docker push registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.DOCKER_BUILD_TAG_HOST }}
+          
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
+          docker tag ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+          docker push registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+
+      - name: 'Deploy Contracts'
+        id: deployContracts
+        shell: bash
+        env:
+          DOCKER_API_VERSION: "1.45"
+        run: |
+          go run ./testnet/launcher/l1contractdeployer/cmd \
+          -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
+          -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
+          -contracts_env_file=./testnet/.env
+          
+          source ./testnet/.env
+          
+          echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_ENV
+          echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_OUTPUT
+          echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_ENV
+          echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
+          echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_ENV
+          echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_OUTPUT
+          echo "DA_REGISTRY_ADDR=$DAREGISTRYADDR" >> $GITHUB_ENV
+          echo "DA_REGISTRY_ADDR=$DAREGISTRYADDR" >> $GITHUB_OUTPUT
+          echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_ENV
+          echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_OUTPUT
+          echo "L1_START_HASH=$L1START" >> $GITHUB_ENV
+          echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
+
+      - name: 'Save L1 deployer container logs'
+        run: |
+          sleep 60
+          docker logs `docker ps -aqf "name=hh-l1-deployer"` > deploy-l1-contracts.out 2>&1
+
+      - name: 'Delete existing ECS instances'
+        run: |
+          aliyun ecs DescribeInstances --RegionId ${{ vars.ALIBABA_CLOUD_REGION }} --Tag.1.Key=DeployGroup --Tag.1.Value=${{ vars.ALIBABA_DEPLOY_GROUP_L2 }} | jq -r '.Instances.Instance[].InstanceId' | xargs -I {} aliyun ecs DeleteInstance --InstanceId {} --Force true
+
+      - name: 'Delete old database tables'
+        run: |
+          aliyun rds DescribeDatabases --DBInstanceId ${{ vars.ALIBABA_RDS_INSTANCE_ID }} | jq -r '.Databases.Database[].DBName' | grep "^host_" | xargs -I {} aliyun rds DeleteDatabase --DBInstanceId ${{ vars.ALIBABA_RDS_INSTANCE_ID }} --DBName {}
+
+      - name: 'Upload L1 deployer container logs'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-l1-artifacts
+          path: |
+            deploy-l1-contracts.out
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+
+    strategy:
+      matrix:
+        host_id: [ 0,1,2 ]
+        include:
+          # Ensure there is a single genesis node
+          - is_genesis: true
+            host_id: 0
+          - is_genesis: false
+            host_id: 1
+          - is_genesis: false
+            host_id: 2
+          # Ensure there is a single sequencer
+          - node_type: sequencer
+            host_id: 0
+          - node_type: validator
+            host_id: 1
+          - node_type: validator
+            host_id: 2
+          # Hardcoded lookup keys because GH actions doesn't let you build them inline with the host_id
+          - node_pk_lookup: ACCOUNT_PK_NODE_0
+            host_id: 0
+          - node_pk_lookup: ACCOUNT_PK_NODE_1
+            host_id: 1
+          - node_pk_lookup: ACCOUNT_PK_NODE_2
+            host_id: 2
+          - node_addr_lookup: ACCOUNT_ADDR_NODE_0
+            host_id: 0
+          - node_addr_lookup: ACCOUNT_ADDR_NODE_1
+            host_id: 1
+          - node_addr_lookup: ACCOUNT_ADDR_NODE_2
+            host_id: 2
+          - node_l1_ws_lookup: L1_WS_URL_0
+            host_id: 0
+          - node_l1_ws_lookup: L1_WS_URL_1
+            host_id: 1
+          - node_l1_ws_lookup: L1_WS_URL_2
+            host_id: 2
+
+    steps:
+      - name: 'Extract branch name'
+        shell: bash
+        run: |
+          echo "Branch Name: ${GITHUB_REF_NAME}"
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+        # The Alibaba Cloud API will sometimes supersede PUT requests that come in close together. This sleep will stagger the VM requests.
+        # It expects host_id to be an int and then multiplies it by 60s (i.e. host 0: sleep 0, host 1: sleep 60,...)
+      - name: 'Stagger ECS creation'
+        shell: bash
+        run: sleep `expr ${{matrix.host_id}} \* 60`
+
+      - name: 'Configure Alibaba Cloud CLI'
+        uses: alibaba/configure-aliyun-cli@v1
+        with:
+          access-key-id: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
+          region-id: ${{ vars.ALIBABA_CLOUD_REGION }}
+
+      - name: 'Determine HA properties'
+        shell: bash
+        run: |
+          if [[ ${{ matrix.host_id }} -eq 0 ]]; then
+            echo "INSTANCE_TYPE=ecs.g7ne.4xlarge" >> $GITHUB_ENV
+            echo "NUM_ENCLAVES=2" >> $GITHUB_ENV 
+          else
+            echo "INSTANCE_TYPE=ecs.g7ne.2xlarge" >> $GITHUB_ENV
+            echo "NUM_ENCLAVES=1" >> $GITHUB_ENV
+          fi
+
+      - name: 'Create ECS instance'
+        run: |
+          aliyun ecs RunInstances \
+            --RegionId ${{ vars.ALIBABA_CLOUD_REGION }} \
+            --ImageId ${{ vars.ALIBABA_CLOUD_IMAGE_ID }} \
+            --InstanceType ${{ env.INSTANCE_TYPE }} \
+            --SecurityGroupId ${{ vars.ALIBABA_CLOUD_SECURITY_GROUP_ID }} \
+            --VSwitchId ${{ vars.ALIBABA_CLOUD_VSWITCH_ID }} \
+            --InstanceName "${{ vars.ALIBABA_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            --Password "${{ secrets.ALIBABA_NODE_ECS_PW }}" \
+            --Tag.1.Key=DeployGroup \
+            --Tag.1.Value=${{ vars.ALIBABA_DEPLOY_GROUP_L2 }} \
+            --Tag.2.Key=Name \
+            --Tag.2.Value="obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}"
+
+      - name: 'Open required ports'
+        run: |
+          aliyun ecs AuthorizeSecurityGroup \
+            --RegionId ${{ vars.ALIBABA_CLOUD_REGION }} \
+            --SecurityGroupId ${{ vars.ALIBABA_CLOUD_SECURITY_GROUP_ID }} \
+            --IpProtocol tcp \
+            --PortRange 80/81 \
+            --SourceCidrIp 0.0.0.0/0
+          
+          aliyun ecs AuthorizeSecurityGroup \
+            --RegionId ${{ vars.ALIBABA_CLOUD_REGION }} \
+            --SecurityGroupId ${{ vars.ALIBABA_CLOUD_SECURITY_GROUP_ID }} \
+            --IpProtocol tcp \
+            --PortRange 6060/6061 \
+            --SourceCidrIp 0.0.0.0/0
+          
+          aliyun ecs AuthorizeSecurityGroup \
+            --RegionId ${{ vars.ALIBABA_CLOUD_REGION }} \
+            --SecurityGroupId ${{ vars.ALIBABA_CLOUD_SECURITY_GROUP_ID }} \
+            --IpProtocol tcp \
+            --PortRange 10000/10000 \
+            --SourceCidrIp 0.0.0.0/0
+
+      - name: 'Wait for ECS initialization'
+        shell: bash
+        run: sleep 60
+
+      - name: 'Start Obscuro node'
+        run: |
+          INSTANCE_ID=$(aliyun ecs DescribeInstances --RegionId ${{ vars.ALIBABA_CLOUD_REGION }} --InstanceName "${{ vars.ALIBABA_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" | jq -r '.Instances.Instance[0].InstanceId')
+          PUBLIC_IP=$(aliyun ecs DescribeInstances --RegionId ${{ vars.ALIBABA_CLOUD_REGION }} --InstanceIds "[\"$INSTANCE_ID\"]" | jq -r '.Instances.Instance[0].PublicIpAddress.IpAddress[0]')
+          
+          sshpass -p "${{ secrets.ALIBABA_NODE_ECS_PW }}" ssh -o StrictHostKeyChecking=no root@$PUBLIC_IP << 'EOF'
+            export DOCKER_API_VERSION=1.45
+            mkdir -p /home/obscuro
+            git clone --depth 1 -b ${{ env.BRANCH_NAME }} https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro
+            cp /home/obscuro/go-obscuro/tools/edbconnect/edb-connect.sh /home/obscuro/edb-connect.sh
+            chmod u+x /home/obscuro/edb-connect.sh
+            docker network create --driver bridge node_network || true
+            mkdir -p /home/obscuro/metrics
+            
+            # Setup monitoring configuration files
+            cat > /home/obscuro/metrics/promtail-config.yaml << 'EOL'
+            server:
+              http_listen_port: 9080
+              grpc_listen_port: 0
+            positions:
+              filename: /tmp/positions.yaml
+            clients:
+              - url: ${{ vars.LOKI_URI }}
+                batchwait: 3s
+                batchsize: 1048576
+                tls_config:
+                  insecure_skip_verify: true
+                basic_auth:
+                  username: ${{ secrets.LOKI_USER }}
+                  password: ${{ secrets.LOKI_PASSWORD }}
+            scrape_configs:
+            - job_name: flog_scrape
+              docker_sd_configs:
+                - host: unix:///var/run/docker.sock
+                  refresh_interval: 5s
+              relabel_configs:
+                - source_labels: ["__meta_docker_container_name"]
+                  regex: "/(.*)"
+                  target_label: "container"
+                - source_labels: ["__meta_docker_container_log_stream"]
+                  target_label: "logstream"
+                - source_labels: ["__meta_docker_container_label_logging_jobname"]
+                  target_label: "job"
+                - replacement: ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+                  target_label: "node_name"
+            EOL
+            
+            cat > /home/obscuro/metrics/prometheus.yaml << 'EOL'
+            global:
+              scrape_interval: 15s
+              evaluation_interval: 15s
+            remote_write:
+              - url: ${{ vars.PROMETHEUS_URI }}
+                tls_config:
+                  insecure_skip_verify: true
+                basic_auth:
+                  username: ${{ secrets.LOKI_USER }}
+                  password: ${{ secrets.LOKI_PASSWORD }}
+            scrape_configs:
+              - job_name: node-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+                scrape_interval: 5s
+                static_configs:
+                  - targets:
+                      - node_exporter:9100
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: 'node'
+                    replacement: ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+              - job_name: container-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+                scrape_interval: 5s
+                static_configs:
+                  - targets:
+                      - cadvisor:8080
+                relabel_configs:
+                  - source_labels: [job]
+                    target_label: 'node'
+                    replacement: ${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }}
+            EOL
+            
+            # Start monitoring containers
+            docker run -d --name promtail \
+              --network node_network \
+              -e HOSTNAME=${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}-${{ GITHUB.RUN_NUMBER }} \
+              -v /var/log:/var/log \
+              -v /home/obscuro/metrics:/etc/promtail \
+              -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              grafana/promtail:latest \
+              -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true
+            
+            docker volume create prometheus-data
+            docker run -d --name prometheus \
+              --network node_network \
+              -p 9090:9090 \
+              -v /home/obscuro/metrics/prometheus.yaml:/etc/prometheus/prometheus.yml \
+              -v prometheus-data:/prometheus \
+              prom/prometheus:latest \
+              --config.file=/etc/prometheus/prometheus.yml
+            
+            docker run -d --name node_exporter \
+              --network node_network \
+              -p 9100:9100 \
+              --pid="host" \
+              -v /:/host:ro \
+              quay.io/prometheus/node-exporter:latest \
+              --path.rootfs=/host
+            
+            docker run -d --name cadvisor \
+              --network node_network \
+              -p 8080:8080 \
+              --privileged \
+              -v /:/rootfs:ro \
+              -v /var/run:/var/run:ro \
+              -v /sys:/sys:ro \
+              -v /var/lib/docker/:/var/lib/docker:ro \
+              -v /dev/disk/:/dev/disk:ro \
+              gcr.io/cadvisor/cadvisor:latest
+            
+            # Start Obscuro node
+            cd /home/obscuro/go-obscuro/
+            sudo DOCKER_API_VERSION=1.45 go run /home/obscuro/go-obscuro/go/node/cmd \
+              -is_genesis=${{ matrix.is_genesis }} \
+              -node_type=${{ matrix.node_type }} \
+              -num_enclaves=${{ env.NUM_ENCLAVES }} \
+              -is_sgx_enabled=true \
+              -host_id=${{ vars[matrix.node_addr_lookup] }} \
+              -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
+              -network_config_addr=${{needs.build.outputs.NETWORK_CONFIG_ADDR}} \
+              -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
+              -da_registry_addr=${{needs.build.outputs.DA_REGISTRY_ADDR}} \
+              -cross_chain_addr=${{needs.build.outputs.CROSS_CHAIN_ADDR}} \
+              -enclave_registry_addr=${{needs.build.outputs.ENCLAVE_REGISTRY_ADDR}} \
+              -l1_start=${{needs.build.outputs.L1_START_HASH}} \
+              -private_key=${{ secrets[matrix.node_pk_lookup] }} \
+              -sequencer_addr=obscuronode-0-${{ github.event.inputs.testnet_type }}.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com:10000 \
+              -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com:10000 \
+              -host_p2p_port=10000 \
+              -enclave_docker_image=registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
+              -host_docker_image=registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.L2_HOST_DOCKER_BUILD_TAG }} \
+              -is_debug_namespace_enabled=true \
+              -log_level=${{ github.event.inputs.log_level }} \
+              -batch_interval=${{ vars.L2_BATCH_INTERVAL }} \
+              -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
+              -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
+              -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
+              -l1_beacon_url=${{ vars.L1_BEACON_URL }} \
+              -l1_blob_archive_url=${{ vars.L1_BLOB_ARCHIVE_URL }} \
+              -system_contracts_upgrader=${{ vars.NETWORK_SEQUENCER_SYSTEMCONTRACTSUPGRADER }} \
+              -postgres_db_host=postgres://tenuser:${{ secrets.ALIBABA_POSTGRES_PW }}@${{ vars.ALIBABA_RDS_ENDPOINT }}:5432/ \
+              start
+          EOF
+
+  check-obscuro-is-healthy:
+    needs:
+      - build
+      - deploy
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: "Wait until obscuro node is healthy"
+        shell: bash
+        run: |
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-2-${{ github.event.inputs.testnet_type }}.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com
+          
+
+  grant-sequencer-enclaves:
+    needs:
+      - build
+      - check-obscuro-is-healthy
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      -  uses: actions/checkout@v4
+
+      -  name: 'Grant permission to sequencer enclave(s)'
+         id: grantSequencerPermission
+         shell: bash
+         env:
+            DOCKER_API_VERSION: "1.45"
+         run: |
+           go run ./testnet/launcher/l1grantsequencers/cmd \
+           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
+           -enclave_registry_addr=${{ needs.build.outputs.ENCLAVE_REGISTRY_ADDR }} \
+           -docker_image=registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
+           -sequencer_url=http://obscuronode-0-${{ github.event.inputs.testnet_type }}.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com:80
+
+      -  name: 'Save sequencer permissioning container logs'
+         run: |
+           docker logs `docker ps -aqf "name=grant-sequencers"` > grant-sequencers.out 2>&1
+
+      -  name: 'Upload sequencer permissioning container logs'
+         uses: actions/upload-artifact@v4
+         with:
+           name: grant-sequencers
+           path: |
+             grant-sequencers.out
+           retention-days: 7
+
+  set-challenge-period:
+    needs:
+      - build
+      - check-obscuro-is-healthy
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    env:
+      DOCKER_API_VERSION: "1.45"
+    steps:
+      -  uses: actions/checkout@v4
+
+      -  name: 'Set challenge period on rollup contract'
+         id: setChallengePeriod
+         shell: bash
+         run: |
+           go run ./testnet/launcher/l1challengeperiod/cmd \
+           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
+           -da_registry_addr=${{ needs.build.outputs.DA_REGISTRY_ADDR }} \
+           -docker_image=registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
+           -l1_challenge_period=${{ vars.L1_CHALLENGE_PERIOD }}
+           echo "Setting challenge period to ${{ vars.L1_CHALLENGE_PERIOD }}"
+
+      -  name: 'Save challenge period container logs'
+         run: |
+           docker logs `docker ps -aqf "name=set-challenge-period"` > set-challenge-period.out 2>&1
+
+      -  name: 'Upload challenge period container logs'
+         uses: actions/upload-artifact@v4
+         with:
+           name: set-challenge-period
+           path: |
+             set-challenge-period.out
+           retention-days: 7
+
+  deploy-l2-contracts:
+    needs:
+      - build
+      - grant-sequencer-enclaves
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 'Deploy L2 contracts'
+        id: deployL2Contracts
+        shell: bash
+        env:
+          DOCKER_API_VERSION: "1.45"
+        run: |
+          go run ./testnet/launcher/l2contractdeployer/cmd \
+          -l2_host=obscuronode-1-${{ github.event.inputs.testnet_type }}.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com \
+          -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+          -l2_ws_port=81 \
+          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
+          -l2_private_key=${{ secrets.L2_DEPLOYER_KEY }} \
+          -network_config_addr=${{ needs.build.outputs.NETWORK_CONFIG_ADDR }} \
+          -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
+          -docker_image=registry.${{ vars.ALIBABA_CLOUD_REGION }}.aliyuncs.com/${{ vars.ALIBABA_CLOUD_NAMESPACE }}/${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
+          -faucet_funds=${{ vars.FAUCET_INITIAL_FUNDS }}
+
+      - name: 'Save L2 deployer container logs'
+        run: |
+          docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
+
+      - name: 'Upload L2 deployer container logs'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-l2-artifacts
+          path: |
+            deploy-l2-contracts.out
+          retention-days: 7
+
+  update-loadbalancer:
+    needs:
+      - grant-sequencer-enclaves
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 'Configure Alibaba Cloud CLI'
+        uses: alibaba/configure-aliyun-cli@v1
+        with:
+          access-key-id: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_ID }}
+          access-key-secret: ${{ secrets.ALIBABA_CLOUD_ACCESS_KEY_SECRET }}
+          region-id: ${{ vars.ALIBABA_CLOUD_REGION }}
+
+      - name: 'Update SLB backend servers'
+        run: |
+          # Remove existing backend servers
+          aliyun slb RemoveBackendServers --LoadBalancerId ${{ vars.ALIBABA_SLB_ID }} --BackendServers "[]"
+          
+          # Get instance IDs
+          INSTANCE_IDS=$(aliyun ecs DescribeInstances --RegionId ${{ vars.ALIBABA_CLOUD_REGION }} --Tag.1.Key=DeployGroup --Tag.1.Value=${{ vars.ALIBABA_DEPLOY_GROUP_L2 }} | jq -r '.Instances.Instance[].InstanceId' | tr '\n' ',' | sed 's/,$//')
+          
+          # Add new backend servers
+          aliyun slb AddBackendServers --LoadBalancerId ${{ vars.ALIBABA_SLB_ID }} --BackendServers "[{\"ServerId\":\"$INSTANCE_IDS\",\"Weight\":\"100\"}]"
+
+  deploy-faucet:
+    name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
+    uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
+    with:
+      testnet_type: ${{ github.event.inputs.testnet_type }}
+    secrets: inherit
+    needs:
+      - grant-sequencer-enclaves
+
+  obscuro-test-repository-dispatch:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    needs:
+      - deploy-faucet
+    steps:
+      - name: 'Send a repository dispatch to obscuro-test on deployment of dev-testnet'
+        if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
+        run: |
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "dev_testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'
+
+      - name: 'Send a repository dispatch to obscuro-test on deployment of testnet'
+        if: ${{ (github.event.inputs.testnet_type == 'uat-testnet') }}
+        run: |
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "uat_testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'
