@@ -253,7 +253,6 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}, nil
 }
 
-<<<<<<< HEAD
 func ConnectTenNetworkBridge(client ethadapter.EthClient, wallets *params.SimWallets, l1Data *params.L1TenData, l2BridgeAddress common.Address) error {
 	bridgeAddr := l1Data.BridgeAddress
 	bridgeCtr, err := TenBridge.NewTenBridge(bridgeAddr, client.EthClient())
@@ -279,10 +278,7 @@ func ConnectTenNetworkBridge(client ethadapter.EthClient, wallets *params.SimWal
 	return nil
 }
 
-func deployEnclaveRegistryContract(client ethadapter.EthClient, ownerKey wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
-=======
 func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
->>>>>>> origin/main
 	bytecode, err := constants.EnclaveRegistryBytecode()
 	if err != nil {
 		return nil, nil, err

@@ -19,12 +19,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/measure"
 )
 
-// IBridgeValueTransfer represents the ValueTransfer struct in IBridge.sol
-type IBridgeValueTransfer struct {
-	Amount    *big.Int
-	Recipient gethcommon.Address
-}
-
 type blockMessageExtractor struct {
 	busAddress    *common.L1Address
 	bridgeAddress *common.L1Address

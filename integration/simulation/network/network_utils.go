@@ -57,11 +57,7 @@ func createInMemTenNode(
 	ethWallet wallet.Wallet,
 	ethClient ethadapter.EthClient,
 	mockP2P hostcommon.P2PHostService,
-<<<<<<< HEAD
-	l1BusAddress gethcommon.Address,
 	l1BridgeAddress gethcommon.Address,
-=======
->>>>>>> origin/main
 	l1StartBlk gethcommon.Hash,
 	batchInterval time.Duration,
 	incomingP2PDisabled bool,
