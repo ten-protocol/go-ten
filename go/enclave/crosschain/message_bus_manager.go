@@ -229,7 +229,6 @@ func (m *MessageBusManager) CreateSyntheticTransactions(_ context.Context, messa
 
 // ConvertLogsToValueTransfers converts logs from the message bus into value transfer events
 func ConvertCrossChainMessagesToValueTransfers(msgs common.CrossChainMessages, eventName string, bridgeAddress *common.L1Address) (common.ValueTransferEvents, error) {
-
 	transfers := msgs.FilterValueTransfers(*bridgeAddress)
 
 	// Create the ABI components for the ValueTransfer struct

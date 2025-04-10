@@ -53,14 +53,12 @@ func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Contex
 	}
 
 	transfersMessages := make(common.CrossChainMessages, 0)
-	var receipts types.Receipts
 	for _, txData := range transferEvents {
 		if txData.CrossChainMessages == nil {
 			continue
 		}
 		transfersInTx := txData.CrossChainMessages.FilterValueTransfers(*m.bridgeAddress)
 		transfersMessages = append(transfersMessages, transfersInTx...)
-		receipts = append(receipts, txData.Receipt)
 	}
 
 	// Create the ABI components for the ValueTransfer struct
