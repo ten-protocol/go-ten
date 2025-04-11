@@ -41,10 +41,10 @@ type KeyExchangeResponse struct {
 }
 
 // GetEncryptionKey returns encryption key for the database
-// 1.) If we use sqlite database we don't need to do anything since sqlite does not need encryption and is usually running in dev environments / for testing
-// 2.) We need to check if the key is already sealed and unseal it if so
-// 3.) If there is a URL to exchange the key with another enclave we need to get the key from there and seal it on this enclave
-// 4.) If the key is not sealed and we don't have the URL to exchange the key we need to generate a new one and seal it
+// If we use sqlite database we don't need to do anything since sqlite does not need encryption and is usually running in dev environments / for testing
+// By default, we try to read from the sealed key
+// If KeyExchangeURL equals "new" we generate a new key
+// If KeyExchangeURL is a URL we try to perform key exchange
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
 	// 1.) check if we are using sqlite database and no encryption key needed
 	if config.DBType == "sqlite" {
@@ -53,11 +53,13 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	}
 
 	var encryptionKey []byte
+	var err error
 
-	// 2.) Check if we have a sealed encryption key and try to unseal it
+	// 2.) Try to read from sealed key by default
 	encryptionKey, found, err := tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
 	if err != nil {
-		logger.Info("unable to unseal encryption key", log.ErrKey, err)
+		logger.Error("unable to unseal encryption key", log.ErrKey, err)
+		return nil, fmt.Errorf("failed to unseal encryption key: %w", err)
 	}
 	// If we found a sealed key we can return it
 	if found {
@@ -65,34 +67,34 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return encryptionKey, nil
 	}
 
-	// 3.) We have to exchange the key with another enclave if we have a key exchange url set
-	if config.KeyExchangeURL != "" {
-		encryptionKey, err = HandleKeyExchange(config, logger)
-		if err != nil {
-			logger.Crit("unable to exchange key", log.ErrKey, err)
-		} else {
-			logger.Info("successfully exchanged key with another enclave")
-		}
-	}
-
-	// 4.) If we don't have a key we need to generate a new one
-	if len(encryptionKey) == 0 {
+	// 3.) If KeyExchangeURL is "new", generate a new key
+	if config.KeyExchangeURL == "new" {
 		encryptionKey, err = common.GenerateRandomKey()
 		if err != nil {
-			logger.Crit("unable to generate random encryption key", log.ErrKey, err)
-			return nil, err
-		} else {
-			logger.Info("Successfully generated random encryption key")
+			logger.Error("unable to generate random encryption key", log.ErrKey, err)
+			return nil, fmt.Errorf("failed to generate random encryption key: %w", err)
 		}
+		logger.Info("generated new encryption key")
+	} else if config.KeyExchangeURL != "" {
+		// 4.) If KeyExchangeURL is a URL, try to perform key exchange
+		encryptionKey, err = HandleKeyExchange(config, logger)
+		if err != nil {
+			logger.Error("unable to exchange key", log.ErrKey, err)
+			return nil, fmt.Errorf("failed to exchange key: %w", err)
+		}
+		logger.Info("successfully exchanged key with another enclave")
+	} else {
+		// If no key was found and no action specified, return error
+		return nil, fmt.Errorf("no encryption key found and no action specified (use 'new' to generate a new key or provide a key exchange URL)")
 	}
 
-	// Seal the key that we generated / got from the key exchange from another enclave
+	// Seal the key that we generated / got from the key exchange
 	err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave)
 	if err != nil {
-		logger.Crit("unable to seal encryption key", log.ErrKey, err)
-		return nil, err
+		logger.Error("unable to seal encryption key", log.ErrKey, err)
+		return nil, fmt.Errorf("failed to seal encryption key: %w", err)
 	}
-	logger.Info("sealed new encryption key")
+	logger.Info("sealed encryption key")
 
 	return encryptionKey, nil
 }
