@@ -8,6 +8,20 @@ import "../../common/Structs.sol";
  * @dev Interface for managing L2 rollup submissions
  */
 interface IDataAvailabilityRegistry {
+
+    // MetaRollup: Represents metadata for a rollup process, including sequence numbers, hashes, and signatures.
+    struct MetaRollup {
+        bytes32 Hash;
+        uint256 FirstSequenceNumber;
+        uint256 LastSequenceNumber;
+
+        bytes32 BlockBindingHash;
+        uint256 BlockBindingNumber;
+        bytes32 crossChainRoot;
+        bytes32 LastBatchHash;
+        bytes Signature;
+    }
+
     /**
      * @dev Emitted when a new rollup is added
      * @param rollupHash The hash of the rollup
@@ -27,7 +41,7 @@ interface IDataAvailabilityRegistry {
      * @notice Requires the sender to be an attested sequencer enclave
      * @notice If crossChainRoot is present, it will be added to MessageBus with a delay of challengePeriod
      */
-    function addRollup(Structs.MetaRollup calldata rollup) external;
+    function addRollup(MetaRollup calldata rollup) external;
 
     /**
      * @dev Retrieves a previously submitted rollup batch by its hash
@@ -35,7 +49,7 @@ interface IDataAvailabilityRegistry {
      * @return bool True if the rollup exists, false otherwise
      * @return Structs.MetaRollup The rollup data if it exists, empty struct if not
      */
-    function getRollupByHash(bytes32 rollupHash) external view returns (bool, Structs.MetaRollup memory);
+    function getRollupByHash(bytes32 rollupHash) external view returns (bool, MetaRollup memory);
 
     /**
      * @dev Returns the current rollup challenge period duration
