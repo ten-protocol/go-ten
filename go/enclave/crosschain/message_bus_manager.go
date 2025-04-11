@@ -205,25 +205,6 @@ func (m *MessageBusManager) CreateSyntheticTransactions(_ context.Context, messa
 		syntheticTransactions = append(syntheticTransactions, stx)
 	}
 
-	startingNonce += uint64(len(messages))
-
-	for idx, transfer := range transfers {
-		data, err := ethadapter.MessageBusABI.Pack("notifyDeposit", transfer.Receiver, transfer.Amount)
-		if err != nil {
-			return nil, fmt.Errorf("failed packing notifyDeposit %w", err)
-		}
-
-		tx := &types.LegacyTx{
-			Nonce:    startingNonce + uint64(idx),
-			Value:    gethcommon.Big0,
-			Data:     data,
-			To:       m.messageBusAddress,
-			Gas:      5_000_000,
-			GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
-		}
-		syntheticTransactions = append(syntheticTransactions, types.NewTx(tx))
-	}
-
 	return syntheticTransactions, nil
 }
 

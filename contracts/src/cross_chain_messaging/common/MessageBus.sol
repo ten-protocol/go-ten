@@ -165,18 +165,6 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @dev Notifies of a deposit event
-     * @param receiver The address receiving the deposit
-     * @param amount The amount deposited
-     */
-    function notifyDeposit(
-        address receiver,
-        uint256 amount
-    ) external ownerOrSelf {
-        emit NativeDeposit(receiver, amount);
-    }
-
-    /**
      * @dev Retrieves all funds from the contract (Testnet only - to be removed before mainnet deployment)
      * @param receiver The address to receive the funds
      */
