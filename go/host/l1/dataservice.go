@@ -221,8 +221,6 @@ func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr ge
 		switch l.Topics[0] {
 		case ethadapter.CrossChainEventID:
 			err = r.processCrossChainLogs(l, txData, processed)
-		case ethadapter.ValueTransferEventID:
-			err = r.processValueTransferLogs(l, txData, processed)
 		}
 		if err != nil {
 			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
@@ -379,10 +377,6 @@ func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData
 	if !r.ethClient.SupportsEventLogs() {
 		return nil
 	}
-	if messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, ethadapter.CrossChainEventName, ethadapter.MessageBusABI); err == nil {
-		txData.CrossChainMessages = messages
-		processed.AddEvent(common.CrossChainMessageTx, txData)
-	}
 	messages, err := crosschain.ConvertLogsToMessages([]types.Log{l}, ethadapter.CrossChainEventName, ethadapter.MessageBusABI)
 	if err != nil {
 		return err
@@ -390,25 +384,6 @@ func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData
 
 	txData.CrossChainMessages = messages
 	processed.AddEvent(common.CrossChainMessageTx, txData)
-	return nil
-}
-
-// processValueTransferLogs handles value transfer logs
-func (r *DataService) processValueTransferLogs(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
-	if !r.ethClient.SupportsEventLogs() {
-		return nil
-	}
-	if transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI); err == nil {
-		txData.ValueTransfers = transfers
-		processed.AddEvent(common.CrossChainValueTranserTx, txData)
-	}
-
-	transfers, err := crosschain.ConvertLogsToValueTransfers([]types.Log{l}, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI)
-	if err != nil {
-		return err
-	}
-	txData.ValueTransfers = transfers
-	processed.AddEvent(common.CrossChainValueTranserTx, txData)
 	return nil
 }
 

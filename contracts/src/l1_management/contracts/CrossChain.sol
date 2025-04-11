@@ -52,26 +52,6 @@ contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable, Reentranc
     }
 
     /**
-     * @dev Extracts native tokens from L2 to L1 using a verified message
-     * @param _msg The value transfer message containing amount and recipient details
-     * @param proof Merkle proof verifying the message inclusion
-     * @param root The Merkle root against which to verify the proof
-     */
-    function extractNativeValue(
-        Structs.ValueTransferMessage calldata _msg,
-        bytes32[] calldata proof,
-        bytes32 root
-    ) external nonReentrant {
-        require(!paused, "withdrawals are paused");
-        merkleMessageBus.verifyValueTransferInclusion(_msg, proof, root);
-        bytes32 msgHash = keccak256(abi.encode(_msg));
-        require(isWithdrawalSpent[msgHash] == false, "withdrawal already spent");
-        isWithdrawalSpent[msgHash] = true;  // Use stored msgHash
-
-        messageBus.receiveValueFromL2(_msg.receiver, _msg.amount);
-    }
-
-    /**
      * @dev Pauses or resumes withdrawals
      * @param _pause True to pause withdrawals, false to resume
      */

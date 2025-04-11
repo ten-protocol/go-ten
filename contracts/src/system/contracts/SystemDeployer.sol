@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "./TransactionPostProcessor.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {Fees} from "./Fees.sol";
+import {CrossChainMessenger} from "../../cross_chain_messaging/common/CrossChainMessenger.sol";
+import {EthereumBridge} from "../../reference_bridge/L2/contracts/EthereumBridge.sol";
 import {MessageBus} from "../../cross_chain_messaging/common/MessageBus.sol";
 import {PublicCallbacks} from "./PublicCallbacks.sol";
 
@@ -11,16 +13,20 @@ import {PublicCallbacks} from "./PublicCallbacks.sol";
  * @title SystemDeployer
  * @dev Contract that deploys the system contracts
  * 
- * TODO stefan to add docs
+ * Auto executed contract on the L2 at the second batch, used to deploy the other system contracts.
+ * The eoaAdmin is the owner of the proxies and can upgrade them. 
+ * depends on the remoteBridgeAddress in order to configure the cross chain functionality.
  */
 contract SystemDeployer {
     event SystemContractDeployed(string name, address contractAddress);
 
-    constructor(address eoaAdmin) {
+    constructor(address eoaAdmin, address remoteBridgeAddress) {
        deployAnalyzer(eoaAdmin);
        address feesProxy = deployFees(eoaAdmin, 0);
-       deployMessageBus(eoaAdmin, feesProxy);
+       address messageBusProxy = deployMessageBus(eoaAdmin, feesProxy);
        deployPublicCallbacks(eoaAdmin);
+       address crossChainMessengerProxy = deployCrossChainMessenger(eoaAdmin, messageBusProxy);
+       deployEthereumBridge(eoaAdmin, crossChainMessengerProxy, remoteBridgeAddress);
     }
 
     function deployAnalyzer(address eoaAdmin) internal {
@@ -31,12 +37,13 @@ contract SystemDeployer {
         emit SystemContractDeployed("TransactionsPostProcessor", transactionsPostProcessorProxy);
     }
 
-    function deployMessageBus(address eoaAdmin, address feesAddress) internal {
+    function deployMessageBus(address eoaAdmin, address feesAddress) internal returns (address) {
         MessageBus messageBus = new MessageBus();
         bytes memory callData = abi.encodeWithSelector(messageBus.initialize.selector, eoaAdmin, feesAddress);
         address messageBusProxy = deployProxy(address(messageBus), eoaAdmin, callData);
 
         emit SystemContractDeployed("MessageBus", messageBusProxy);
+        return messageBusProxy;
     }
 
     function deployPublicCallbacks(address eoaAdmin) internal {
@@ -54,6 +61,23 @@ contract SystemDeployer {
 
         emit SystemContractDeployed("Fees", feesProxy);
         return feesProxy;
+    }
+
+    function deployCrossChainMessenger(address eoaAdmin, address messageBusAddress) internal returns (address) {
+        CrossChainMessenger crossChainMessenger = new CrossChainMessenger();
+        bytes memory callData = abi.encodeWithSelector(crossChainMessenger.initialize.selector, messageBusAddress);
+        address crossChainMessengerProxy = deployProxy(address(crossChainMessenger), eoaAdmin, callData);
+
+        emit SystemContractDeployed("CrossChainMessenger", crossChainMessengerProxy);
+        return crossChainMessengerProxy;
+    }
+
+    function deployEthereumBridge(address eoaAdmin, address crossChainMessengerAddress, address remoteBridgeAddress) internal {
+        EthereumBridge ethereumBridge = new EthereumBridge();
+        bytes memory callData = abi.encodeWithSelector(ethereumBridge.initialize.selector, crossChainMessengerAddress, remoteBridgeAddress);
+        address ethereumBridgeProxy = deployProxy(address(ethereumBridge), eoaAdmin, callData);
+
+        emit SystemContractDeployed("EthereumBridge", ethereumBridgeProxy);
     }
 
     function deployProxy(address _logic, address _admin, bytes memory _data) internal returns (address proxyAddress) {

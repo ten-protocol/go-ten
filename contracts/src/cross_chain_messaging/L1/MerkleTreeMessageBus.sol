@@ -52,18 +52,6 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
         _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
         _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
     }
-    
-    /**
-     * @dev Allows withdrawal manager to receive value from L2
-     * @param receiver Address that will receive the withdrawn value
-     * @param amount Amount of value to be received
-     */
-    function receiveValueFromL2(
-        address receiver,
-        uint256 amount
-    ) external override onlyRole(WITHDRAWAL_MANAGER_ROLE) {
-        _receiveValueFromL2Internal(receiver, amount);
-    }
 
     /**
      * @dev Grants STATE_ROOT_MANAGER_ROLE to a new address
