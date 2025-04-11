@@ -2,6 +2,8 @@
 
 This hardhat project contains the relevant smart contracts for the TEN L2 platform.
 
+For more details check the ``src`` folder.
+
 ## Dependencies
 
 NodeJS LTS (v18)
