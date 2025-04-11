@@ -49,7 +49,7 @@ func (r *dataAvailabilityRegistryLibImpl) PopulateAddRollup(t *common.L1RollupTx
 		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
 	}
 
-	metaRollup := DataAvailabilityRegistry.StructsMetaRollup{
+	metaRollup := DataAvailabilityRegistry.IDataAvailabilityRegistryMetaRollup{
 		Hash:                decodedRollup.Hash(),
 		Signature:           signature,
 		FirstSequenceNumber: big.NewInt(int64(decodedRollup.Header.FirstBatchSeqNo)),
