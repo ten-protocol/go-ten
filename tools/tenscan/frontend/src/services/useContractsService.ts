@@ -29,8 +29,8 @@ export const useContractsService = () => {
       confirmed: true,
     },
     {
-      name: "Rollup Contract",
-      address: contracts?.item.RollupContract,
+      name: "Data Availability Registry",
+      address: contracts?.item.DataAvailabilityRegistry,
       confirmed: true,
     },
     {
