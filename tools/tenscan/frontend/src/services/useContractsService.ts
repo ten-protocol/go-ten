@@ -14,16 +14,62 @@ export const useContractsService = () => {
 
   const formattedContracts = [
     {
-      name: "Management Contract",
-      address: contracts?.item.ManagementContractAddress,
+      name: "Network Config",
+      address: contracts?.item.NetworkConfig,
       confirmed: true,
     },
     {
-      name: "Message Bus Contract",
-      address: contracts?.item.MessageBusAddress,
+      name: "Enclave Registry",
+      address: contracts?.item.EnclaveRegistry,
+      confirmed: true,
+    },
+    {
+      name: "Cross Chain",
+      address: contracts?.item.CrossChain,
+      confirmed: true,
+    },
+    {
+      name: "Data Availability Registry",
+      address: contracts?.item.DataAvailabilityRegistry,
+      confirmed: true,
+    },
+    {
+      name: "L1 Message Bus",
+      address: contracts?.item.L1MessageBus,
+      confirmed: true,
+    },
+    {
+      name: "L2 Message Bus",
+      address: contracts?.item.L2MessageBus,
+      confirmed: true,
+    },
+    {
+      name: "L1 Bridge",
+      address: contracts?.item.L1Bridge,
+      confirmed: true,
+    },
+    {
+      name: "L2 Bridge",
+      address: contracts?.item.L2Bridge,
+      confirmed: true,
+    },
+    {
+      name: "L1 Cross Chain Messenger",
+      address: contracts?.item.L1CrossChainMessenger,
+      confirmed: true,
+    },
+    {
+      name: "L2 Cross Chain Messenger",
+      address: contracts?.item.L2CrossChainMessenger,
+      confirmed: true,
+    },
+    {
+      name: "Transactions Post Processor",
+      address: contracts?.item.TransactionsPostProcessor,
       confirmed: true,
     },
   ];
+
   const sequencerData = [
     {
       name: "Sequencer ID",
