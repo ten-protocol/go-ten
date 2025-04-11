@@ -6,6 +6,8 @@ const (
 	privateKeyFlag       = "private_key"
 	dockerImageFlag      = "docker_image"
 	contractsEnvFileFlag = "contracts_env_file"
+	azureKeyVaultURLFlag = "azure_key_vault_url"
+	azureKeyVaultEnvFlag = "azure_key_vault_env"
 )
 
 // Returns a map of the flag usages.
@@ -16,5 +18,7 @@ func getFlagUsageMap() map[string]string {
 		privateKeyFlag:       "L1 and L2 private key used in the node",
 		dockerImageFlag:      "Docker image to run",
 		contractsEnvFileFlag: "If set, it will write the contract addresses to the file",
+		azureKeyVaultURLFlag: "If set, contract addresses will be stored in Azure Key Vault at this URL",
+		azureKeyVaultEnvFlag: "If set, this will be used as an environment prefix for Azure KV secrets",
 	}
 }
