@@ -78,7 +78,7 @@ contract TenBridge is
     function sendNative(address receiver) external payable override {
         require(msg.value > 0, "Empty transfer.");
         bytes memory data = abi.encode(ValueTransfer(msg.value, receiver));
-        publishRawMessage(data, uint32(Topics.VALUE), 0); // No fee l1 to l2.
+        publishRawMessage(data, uint32(Topics.VALUE), 0, 0); // No fee l1 to l2.
     }
 
     function sendERC20(

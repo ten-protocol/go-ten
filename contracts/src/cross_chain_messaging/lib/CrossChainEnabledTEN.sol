@@ -84,8 +84,9 @@ abstract contract CrossChainEnabledTEN is Initializable {
     function publishRawMessage(
         bytes memory message,
         uint32 topic,
-        uint256 fee
+        uint256 fee,
+        uint8 consistencyLevel
     ) internal {
-        messageBus.publishMessage{value: fee}(nonce++, topic, message, 0);
+        messageBus.publishMessage{value: fee}(nonce++, topic, message, consistencyLevel);
     }
 }
