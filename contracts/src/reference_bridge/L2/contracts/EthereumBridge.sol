@@ -67,7 +67,15 @@ contract EthereumBridge is
     function sendNative(address receiver) external payable {
         require(msg.value > 0, "Nothing sent.");
         require(msg.value >= _messageBus().getPublishFee(), "Insufficient funds to publish value transfer");
-        _messageBus().sendValueToL2{value: msg.value}(receiver, msg.value);
+        uint256 fee = _messageBus().getPublishFee();
+        uint256 amount = msg.value - fee;
+        bytes memory data = abi.encodeWithSelector(
+            IBridge.receiveAssets.selector,
+            address(0), 
+            amount, 
+            receiver
+        );
+        queueMessage(remoteBridgeAddress, data, uint32(Topics.VALUE), 0, 0, fee);
     }
 
     function sendERC20(

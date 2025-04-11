@@ -3,7 +3,9 @@ package crosschain
 import (
 	"context"
 	"fmt"
+	"math/big"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -18,20 +20,23 @@ import (
 )
 
 type blockMessageExtractor struct {
-	busAddress *common.L1Address
-	storage    storage.Storage
-	logger     gethlog.Logger
+	busAddress    *common.L1Address
+	bridgeAddress *common.L1Address
+	storage       storage.Storage
+	logger        gethlog.Logger
 }
 
 func NewBlockMessageExtractor(
 	busAddress *common.L1Address,
+	bridgeAddress *common.L1Address,
 	storage storage.Storage,
 	logger gethlog.Logger,
 ) BlockMessageExtractor {
 	return &blockMessageExtractor{
-		busAddress: busAddress,
-		storage:    storage,
-		logger:     logger.New(log.CmpKey, log.CrossChainCmp),
+		busAddress:    busAddress,
+		bridgeAddress: bridgeAddress,
+		storage:       storage,
+		logger:        logger.New(log.CmpKey, log.CrossChainCmp),
 	}
 }
 
@@ -42,16 +47,70 @@ func (m *blockMessageExtractor) Enabled() bool {
 func (m *blockMessageExtractor) StoreCrossChainValueTransfers(ctx context.Context, block *types.Header, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(m.logger, measure.NewStopwatch(), "BlockHeader value transfer messages processed", log.BlockHashKey, block.Hash())
 
-	transferEvents := processed.GetEvents(common.CrossChainValueTranserTx)
+	transferEvents := processed.GetEvents(common.CrossChainMessageTx)
 	if len(transferEvents) == 0 {
 		return nil
 	}
 
-	var transfers common.ValueTransferEvents
+	transfersMessages := make(common.CrossChainMessages, 0)
 	for _, txData := range transferEvents {
-		if txData.ValueTransfers != nil {
-			transfers = append(transfers, txData.ValueTransfers...)
+		if txData.CrossChainMessages == nil {
+			continue
 		}
+		transfersInTx := txData.CrossChainMessages.FilterValueTransfers(*m.bridgeAddress)
+		transfersMessages = append(transfersMessages, transfersInTx...)
+	}
+
+	// Create the ABI components for the ValueTransfer struct
+	uint256Type, _ := abi.NewType("uint256", "", nil)
+	addressType, _ := abi.NewType("address", "", nil)
+
+	// Define the struct components matching the Solidity struct
+	valueTransferComponents := abi.Arguments{
+		{
+			Name: "amount",
+			Type: uint256Type,
+		},
+		{
+			Name: "recipient",
+			Type: addressType,
+		},
+	}
+
+	var transfers common.ValueTransferEvents
+	for _, msg := range transfersMessages {
+		// With publishRawMessage, we can directly unpack the ValueTransfer struct
+		// No need to unwrap from CrossChainCall anymore
+		unpacked, err := valueTransferComponents.Unpack(msg.Payload)
+		if err != nil {
+			m.logger.Error("Unable to unpack the value transfer struct", log.ErrKey, err)
+			return err
+		}
+
+		// Make sure we get the expected number of values
+		if len(unpacked) != 2 {
+			m.logger.Error("Unexpected number of values unpacked", "expected", 2, "got", len(unpacked))
+			return fmt.Errorf("unexpected number of values unpacked: expected 2, got %d", len(unpacked))
+		}
+
+		// Convert the unpacked values to the right types
+		amount, ok1 := unpacked[0].(*big.Int)
+		recipient, ok2 := unpacked[1].(gethcommon.Address)
+
+		if !ok1 || !ok2 {
+			m.logger.Error("Failed to convert unpacked values to expected types")
+			return fmt.Errorf("failed to convert unpacked values to expected types")
+		}
+
+		// Create the ValueTransferEvent with the unpacked data plus message metadata
+		valueTransfer := common.ValueTransferEvent{
+			Amount:   amount,
+			Receiver: recipient,
+			Sender:   msg.Sender,
+			Sequence: msg.Sequence,
+		}
+
+		transfers = append(transfers, valueTransfer)
 	}
 
 	err := m.storage.StoreValueTransfers(ctx, block.Hash(), transfers)

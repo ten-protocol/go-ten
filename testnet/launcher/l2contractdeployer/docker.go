@@ -56,7 +56,8 @@ func (n *ContractDeployer) Start() error {
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
-                "deployment_scripts/core"
+                "deployment_scripts/core",
+                "deployment_scripts/testnet/layer1"
             ],
             "accounts": [ 
                 "%s"
@@ -70,10 +71,7 @@ func (n *ContractDeployer) Start() error {
             "companionNetworks" : { "layer1" : "layer1" },
             "deploy": [ 
 				"deployment_scripts/funding/layer1",
-                "deployment_scripts/messenger/layer1",
-                "deployment_scripts/messenger/layer2",
                 "deployment_scripts/bridge/",
-                "deployment_scripts/testnet/layer1/",
                 "deployment_scripts/testnet/layer2/"
             ],
             "accounts": [ 

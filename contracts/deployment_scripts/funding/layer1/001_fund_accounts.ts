@@ -4,39 +4,34 @@ import {DeployFunction} from 'hardhat-deploy/types';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const layer1 =  hre.companionNetworks.layer1;
-    
+
     const {deployer} = await hre.getNamedAccounts();
     const l1Accs = await layer1.getNamedAccounts();
-    
-    var messageBusAddress = process.env.MESSAGE_BUS_ADDR!!
-    if (messageBusAddress === undefined) {
-        const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-        console.log(`Network config = ${JSON.stringify(networkConfig)}`);
-        messageBusAddress = networkConfig.L1MessageBus;
-        console.log(`Fallback read of message bus address = ${messageBusAddress}`);
-    }
 
-    const messageBus = (await hre.ethers.getContractFactory('MessageBus')).attach(messageBusAddress)
+    const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+    console.log(`Network config = ${JSON.stringify(networkConfig)}`);
+
+    const bridgeAddress = networkConfig.L1Bridge;
+    console.log(`TenBridge address = ${bridgeAddress}`);
+
+    const tenBridge = (await hre.ethers.getContractFactory('TenBridge')).attach(bridgeAddress)
     const prefundAmount = hre.ethers.parseEther("0.5");
-    console.log(`Prefund amount ${prefundAmount}; MB = ${messageBus}`);
+    console.log(`Prefund amount ${prefundAmount}; MB = ${tenBridge}`);
 
-    console.log(`Deployer = ${messageBusAddress}`);
-    const tx = await messageBus.getFunction("sendValueToL2").populateTransaction(deployer, prefundAmount, {
-        value: prefundAmount.toString()
-    });
+    const tx = await tenBridge.getFunction("sendNative").populateTransaction(deployer);
 
-    console.log(`Sending ${prefundAmount} to ${deployer} through MessageBus ${messageBusAddress}`);
+    console.log(`Sending ${prefundAmount} to ${deployer} through TenBridge ${bridgeAddress}`);
 
     const receipt = await layer1.deployments.rawTx({
         from: l1Accs.deployer,
-        to: messageBusAddress,
+        to: bridgeAddress,
         value: prefundAmount.toString(),
         data: tx.data,
         log: true,
         waitConfirmations: 1,
     });
     if (receipt.events?.length === 0) {
-        console.log(`Account prefunding status = FAILURE NO CROSS CHAIN EVENT`);
+        console.log(`Account prefunding status = FAILURE BRIDGE EVENT`);
     } else {
         console.log(`Account prefunding status = ${receipt.status}`);
     }

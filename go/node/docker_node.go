@@ -92,6 +92,7 @@ func (d *DockerNode) Upgrade(networkCfg *NetworkConfig) error {
 	d.cfg.Network.L1.L1Contracts.EnclaveRegistryContract = common.HexToAddress(networkCfg.EnclaveRegistryAddress)
 	d.cfg.Network.L1.L1Contracts.DataAvailabilityRegistry = common.HexToAddress(networkCfg.DataAvailabilityRegistryAddress)
 	d.cfg.Network.L1.L1Contracts.MessageBusContract = common.HexToAddress(networkCfg.MessageBusAddress)
+	d.cfg.Network.L1.L1Contracts.BridgeContract = common.HexToAddress(networkCfg.MessageBusAddress)
 	d.cfg.Network.L1.StartHash = common.HexToHash(networkCfg.L1StartHash)
 
 	fmt.Println("Starting upgraded host and enclaves")

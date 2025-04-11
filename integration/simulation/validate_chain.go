@@ -14,6 +14,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
+	"github.com/ten-protocol/go-ten/contracts/generated/TenBridge"
 	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
@@ -133,7 +134,7 @@ func checkTenBlockchainValidity(t *testing.T, s *Simulation, maxL1Height uint64)
 // the cost of an empty rollup - adjust if the management contract changes. This is the rollup overhead.
 const emptyRollupGas = 110_000
 
-func checkCollectedL1Fees(_ *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
+func checkCollectedL1Fees(t *testing.T, node ethadapter.EthClient, s *Simulation, nodeIdx int, rollupReceipts types.Receipts) {
 	costOfRollupsWithTransactions := big.NewInt(0)
 	costOfEmptyRollups := big.NewInt(0)
 
@@ -161,7 +162,7 @@ func checkCollectedL1Fees(_ *testing.T, node ethadapter.EthClient, s *Simulation
 	obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, l2FeesWallet)
 	_, err := obsClients[nodeIdx].BalanceAt(context.Background(), nil)
 	if err != nil {
-		panic(fmt.Errorf("failed getting balance for bridge transfer receiver. Cause: %w", err))
+		t.Errorf("Node %d: Failed getting balance for bridge transfer receiver. Cause: %s", nodeIdx, err)
 	}
 
 	// if balance of collected fees is less than cost of published rollups fail
@@ -320,16 +321,16 @@ func ExtractDataFromEthereumChain(startBlock *types.Header, endBlock *types.Head
 func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
 	// takes longer for the funds to be bridged across
 	time.Sleep(45 * time.Second)
-	mbusABI, _ := abi.JSON(strings.NewReader(MessageBus.MessageBusMetaData.ABI))
+	mbusABI, _ := abi.JSON(strings.NewReader(TenBridge.TenBridgeMetaData.ABI))
 	gasBridgeRecords := s.TxInjector.TxTracker.GasBridgeTransactions
 	for _, record := range gasBridgeRecords {
-		inputs, err := mbusABI.Methods["sendValueToL2"].Inputs.Unpack(record.L1BridgeTx.Data()[4:])
+		inputs, err := mbusABI.Methods["sendNative"].Inputs.Unpack(record.L1BridgeTx.Data()[4:])
 		if err != nil {
 			panic(err)
 		}
 
 		receiver := inputs[0].(gethcommon.Address)
-		amount := inputs[1].(*big.Int)
+		amount := record.L1BridgeTx.Value()
 
 		if receiver != record.ReceiverWallet.Address() {
 			panic("Test setup is broken. Receiver in tx should match recorded wallet.")
@@ -626,7 +627,7 @@ func checkTransactionReceipts(ctx context.Context, t *testing.T, nodeIdx int, rp
 		}
 
 		abi, _ := MessageBus.MessageBusMetaData.GetAbi()
-		if receipt.Logs[0].Topics[0] != abi.Events["ValueTransfer"].ID {
+		if receipt.Logs[0].Topics[0] != abi.Events["LogMessagePublished"].ID {
 			testlog.Logger().Error("[CrossChain] wtf")
 			continue
 		}

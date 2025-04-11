@@ -13,6 +13,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -23,6 +24,7 @@ import (
 
 type MessageBusManager struct {
 	messageBusAddress *gethcommon.Address
+	bridgeAddress     *gethcommon.Address
 	storage           storage.Storage
 	logger            gethlog.Logger
 }
@@ -35,6 +37,7 @@ func NewTenMessageBusManager(
 
 	return &MessageBusManager{
 		messageBusAddress: nil,
+		bridgeAddress:     nil,
 		storage:           storage,
 		logger:            logger,
 	}
@@ -53,7 +56,13 @@ func (m *MessageBusManager) Initialize(systemAddresses common.SystemContractAddr
 		return fmt.Errorf("message bus contract not found in system addresses")
 	}
 
+	bridgeAddress, ok := systemAddresses["EthereumBridge"]
+	if !ok {
+		return fmt.Errorf("ethereum bridge contract not found in system addresses")
+	}
+
 	m.messageBusAddress = address
+	m.bridgeAddress = bridgeAddress
 	return nil
 }
 
@@ -76,13 +85,19 @@ func (m *MessageBusManager) ExtractOutboundMessages(_ context.Context, receipts 
 
 // ExtractOutboundTransfers - Finds relevant logs in the receipts and converts them to cross chain messages.
 func (m *MessageBusManager) ExtractOutboundTransfers(_ context.Context, receipts common.L2Receipts) (common.ValueTransferEvents, error) {
-	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &ethadapter.ValueTransferEventID)
+	logs, err := filterLogsFromReceipts(receipts, m.messageBusAddress, &ethadapter.CrossChainEventID)
 	if err != nil {
 		m.logger.Error("Error extracting logs from L2 message bus!", log.ErrKey, err)
 		return make(common.ValueTransferEvents, 0), err
 	}
 
-	transfers, err := ConvertLogsToValueTransfers(logs, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI)
+	msgs, err := ConvertLogsToMessages(logs, ethadapter.CrossChainEventName, ethadapter.MessageBusABI)
+	if err != nil {
+		m.logger.Error("Error converting messages from L2 message bus!", log.ErrKey, err)
+		return make(common.ValueTransferEvents, 0), err
+	}
+
+	transfers, err := ConvertCrossChainMessagesToValueTransfers(msgs, ethadapter.ValueTransferEventName, m.bridgeAddress)
 	if err != nil {
 		m.logger.Error("Error converting transfers from L2 message bus!", log.ErrKey, err)
 		return make(common.ValueTransferEvents, 0), err
@@ -190,24 +205,59 @@ func (m *MessageBusManager) CreateSyntheticTransactions(_ context.Context, messa
 		syntheticTransactions = append(syntheticTransactions, stx)
 	}
 
-	startingNonce += uint64(len(messages))
+	return syntheticTransactions, nil
+}
 
-	for idx, transfer := range transfers {
-		data, err := ethadapter.MessageBusABI.Pack("notifyDeposit", transfer.Receiver, transfer.Amount)
-		if err != nil {
-			return nil, fmt.Errorf("failed packing notifyDeposit %w", err)
-		}
+// ConvertLogsToValueTransfers converts logs from the message bus into value transfer events
+func ConvertCrossChainMessagesToValueTransfers(msgs common.CrossChainMessages, eventName string, bridgeAddress *common.L1Address) (common.ValueTransferEvents, error) {
+	transfers := msgs.FilterValueTransfers(*bridgeAddress)
 
-		tx := &types.LegacyTx{
-			Nonce:    startingNonce + uint64(idx),
-			Value:    gethcommon.Big0,
-			Data:     data,
-			To:       m.messageBusAddress,
-			Gas:      5_000_000,
-			GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
-		}
-		syntheticTransactions = append(syntheticTransactions, types.NewTx(tx))
+	// Create the ABI components for the ValueTransfer struct
+	uint256Type, _ := abi.NewType("uint256", "", nil)
+	addressType, _ := abi.NewType("address", "", nil)
+
+	// Define the struct components matching the Solidity struct
+	valueTransferComponents := abi.Arguments{
+		{
+			Name: "amount",
+			Type: uint256Type,
+		},
+		{
+			Name: "recipient",
+			Type: addressType,
+		},
 	}
 
-	return syntheticTransactions, nil
+	valueTransfers := make(common.ValueTransferEvents, 0)
+	for _, transfer := range transfers {
+		// Unpack the log data
+		unpacked, err := valueTransferComponents.Unpack(transfer.Payload)
+		if err != nil {
+			return nil, fmt.Errorf("unable to unpack the value transfer struct: %w", err)
+		}
+
+		// Make sure we get the expected number of values
+		if len(unpacked) != 2 {
+			return nil, fmt.Errorf("unexpected number of values unpacked: expected 2, got %d", len(unpacked))
+		}
+
+		// Convert the unpacked values to the right types
+		amount, ok1 := unpacked[0].(*big.Int)
+		recipient, ok2 := unpacked[1].(gethcommon.Address)
+
+		if !ok1 || !ok2 {
+			return nil, fmt.Errorf("failed to convert unpacked values to expected types")
+		}
+
+		// Create the ValueTransferEvent with the unpacked data
+		valueTransfer := common.ValueTransferEvent{
+			Amount:   amount,
+			Receiver: recipient,
+			Sender:   gethcommon.BytesToAddress(transfer.Sender.Bytes()), // Sender is in the first topic
+		}
+
+		valueTransfers = append(valueTransfers, valueTransfer)
+	}
+
+	return valueTransfers, nil
 }

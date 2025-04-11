@@ -40,16 +40,18 @@ func main() {
 	fmt.Printf("DAREGISTRYADDR=%s\n", networkConfig.DataAvailabilityRegistryAddress)
 	fmt.Printf("NETWORKCONFIGADDR=%s\n", networkConfig.NetworkConfigAddress)
 	fmt.Printf("MSGBUSCONTRACTADDR=%s\n", networkConfig.MessageBusAddress)
+	fmt.Printf("BRIDGECONTRACTADDR=%s\n", networkConfig.BridgeAddress)
 	fmt.Printf("L1START=%s\n", networkConfig.L1StartHash)
 
 	// the responsibility of writing to disk is outside the deployers domain
 	if cliConfig.contractsEnvFile != "" {
-		envFile := fmt.Sprintf("ENCLAVEREGISTRYADDR=%s\nCROSSCHAINADDR=%s\nDAREGISTRYADDR=%s\nNETWORKCONFIGADDR=%s\nMSGBUSCONTRACTADDR=%s\nL1START=%s\n",
+		envFile := fmt.Sprintf("ENCLAVEREGISTRYADDR=%s\nCROSSCHAINADDR=%s\nDAREGISTRYADDR=%s\nNETWORKCONFIGADDR=%s\nMSGBUSCONTRACTADDR=%s\nBRIDGECONTRACTADDR=%s\nL1START=%s\n",
 			networkConfig.EnclaveRegistryAddress,
 			networkConfig.CrossChainAddress,
 			networkConfig.DataAvailabilityRegistryAddress,
 			networkConfig.NetworkConfigAddress,
 			networkConfig.MessageBusAddress,
+			networkConfig.BridgeAddress,
 			networkConfig.L1StartHash)
 
 		// Write the content to a new file or override the existing file

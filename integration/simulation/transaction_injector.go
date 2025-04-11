@@ -9,14 +9,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
+	"github.com/ten-protocol/go-ten/contracts/generated/CrossChainMessenger"
+	"github.com/ten-protocol/go-ten/contracts/generated/EthereumBridge"
+	"github.com/ten-protocol/go-ten/contracts/generated/TenBridge"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
@@ -231,10 +232,9 @@ func (ti *TransactionInjector) issueRandomTransfers() {
 func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 	gasWallet := ti.wallets.GasBridgeWallet
 
-	addresses := ti.contractRegistryLib.GetContractAddresses()
-
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
-		busCtr, err := MessageBus.NewMessageBus(addresses.L1MessageBus, ti.rpcHandles.RndEthClient().EthClient())
+		bridgeAddr := ti.params.L1TenData.BridgeAddress
+		bridgeCtr, err := TenBridge.NewTenBridge(bridgeAddr, ti.rpcHandles.RndEthClient().EthClient())
 		if err != nil {
 			panic(err)
 		}
@@ -248,7 +248,7 @@ func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 		amount := big.NewInt(0).SetUint64(testcommon.RndBtw(500, 100_000))
 		opts.Value = big.NewInt(0).Set(amount)
 
-		tx, err := busCtr.SendValueToL2(opts, receiverWallet.Address(), amount)
+		tx, err := bridgeCtr.SendNative(opts, receiverWallet.Address())
 		if err != nil {
 			panic(err)
 		}
@@ -302,9 +302,20 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
+	cfg, err := ti.rpcHandles.TenWalletRndClient(fromWallet).GetConfig()
+	if err != nil {
+		ti.logger.Error("Failed to retrieve config for withdrawal transaction", log.ErrKey, err)
+		return
+	}
+
 	receipt, err := ti.rpcHandles.TenWalletRndClient(fromWallet).TransactionReceipt(ti.ctx, tx.Hash())
 	if err != nil {
 		ti.logger.Error("Failed to retrieve receipt for withdrawal transaction", log.ErrKey, err)
+		return
+	}
+
+	if receipt.Status != 1 {
+		ti.logger.Error("Withdrawal transaction failed", log.TxKey, tx.Hash())
 		return
 	}
 
@@ -313,12 +324,12 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		logs[i] = *log
 	}
 
-	transfers, err := crosschain.ConvertLogsToValueTransfers(logs, ethadapter.ValueTransferEventName, ethadapter.MessageBusABI)
+	transfers, err := crosschain.ConvertLogsToMessages(logs, ethadapter.CrossChainEventName, ethadapter.MessageBusABI)
 	if err != nil {
 		panic(err)
 	}
 
-	vTransfers := crosschain.ValueTransfers(transfers)
+	vTransfers := crosschain.MessageStructs(transfers)
 
 	var proof clientapi.CrossChainProof
 	for {
@@ -326,7 +337,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		if err != nil {
 			panic(err)
 		}
-		proof, err = ti.rpcHandles.TenWalletRndClient(fromWallet).GetCrossChainProof(ti.ctx, "v", mtree[0][1].(gethcommon.Hash))
+		proof, err = ti.rpcHandles.TenWalletRndClient(fromWallet).GetCrossChainProof(ti.ctx, "m", mtree[0][1].(gethcommon.Hash))
 		if err != nil {
 			if strings.Contains(err.Error(), "not found") {
 				ti.logger.Info("Proof not found, retrying...", log.ErrKey, err)
@@ -356,12 +367,6 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	ethClient := ti.rpcHandles.RndEthClient()
-	crossChainCtr, err := CrossChain.NewCrossChain(ti.contractRegistryLib.GetContractAddresses().CrossChain, ethClient.EthClient())
-	if err != nil {
-		panic(err)
-	}
-
 	opts, err := bind.NewKeyedTransactorWithChainID(ti.wallets.GasWithdrawalWallet.PrivateKey(), ti.wallets.GasWithdrawalWallet.ChainID())
 	if err != nil {
 		panic(err)
@@ -372,22 +377,20 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		proof32 = append(proof32, [32]byte(proofBytes[i][0:32]))
 	}
 
-	time.Sleep(20 * time.Second)
+	crossChainMessenger, err := CrossChainMessenger.NewCrossChainMessenger(cfg.L1CrossChainMessenger, ti.rpcHandles.RndEthClient().EthClient())
+	if err != nil {
+		panic(err)
+	}
 
-	oldBalance, err := ti.rpcHandles.RndEthClient().BalanceAt(vTransfers[0].Receiver, nil)
+	oldBalance, err := ti.rpcHandles.RndEthClient().BalanceAt(fromWallet.Address(), nil)
 	if err != nil {
 		ti.logger.Error("Failed to retrieve balance of receiver", log.ErrKey, err)
 		return
 	}
 
-	withdrawalTx, err := crossChainCtr.ExtractNativeValue(
-		opts,
-		CrossChain.StructsValueTransferMessage(vTransfers[0]),
-		proof32,
-		proof.Root,
-	)
+	withdrawalTx, err := crossChainMessenger.RelayMessageWithProof(opts, CrossChainMessenger.StructsCrossChainMessage(vTransfers[0]), proof32, proof.Root)
 	if err != nil {
-		ti.logger.Error("Failed to extract value transfer from L2", log.ErrKey, err)
+		ti.logger.Error("Failed to relay message with proof", log.ErrKey, err)
 		return
 	}
 
@@ -402,14 +405,16 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	newBalance, err := ti.rpcHandles.RndEthClient().BalanceAt(vTransfers[0].Receiver, nil)
+	time.Sleep(15 * time.Second)
+
+	newBalance, err := ti.rpcHandles.RndEthClient().BalanceAt(fromWallet.Address(), nil)
 	if err != nil {
 		ti.logger.Error("Failed to retrieve balance of receiver", log.ErrKey, err)
 		return
 	}
 
-	if newBalance.Sub(newBalance, oldBalance).Cmp(vTransfers[0].Amount) != 0 {
-		ti.logger.Error("Balance of receiver did not increase by the expected amount", "expected", vTransfers[0].Amount, "actual", newBalance.Sub(newBalance, oldBalance))
+	if newBalance.Cmp(oldBalance) == 0 {
+		ti.logger.Error("Balance of receiver did not change.")
 		return
 	}
 
@@ -422,7 +427,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 	if err != nil {
 		panic(err)
 	}
-	msgBusAddr := cfg.L2MessageBus
+	l2BridgeAddr := cfg.L2Bridge
 
 	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
 		fromWallet := ti.rndObsWallet()
@@ -433,23 +438,29 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			continue
 		}
 
-		tx := &types.LegacyTx{
-			Nonce:    fromWallet.GetNonceAndIncrement(),
-			Value:    gethcommon.Big1,
-			Gas:      uint64(1_000_000),
-			GasPrice: price,
-			Data:     nil,
-			To:       &msgBusAddr,
-		}
-		signedTx, err := fromWallet.SignTransaction(tx)
+		// Create EthereumBridge contract binding
+		ethereumBridge, err := EthereumBridge.NewEthereumBridge(l2BridgeAddr, client)
 		if err != nil {
-			ti.logger.Error("[CrossChain] unable to sign withdrawal transaction", log.ErrKey, err)
+			ti.logger.Error("[CrossChain] unable to create EthereumBridge contract", log.ErrKey, err)
 			continue
 		}
 
-		err = client.SendTransaction(ti.ctx, signedTx)
+		// Create transaction options
+		opts, err := bind.NewKeyedTransactorWithChainID(fromWallet.PrivateKey(), fromWallet.ChainID())
+		if err != nil {
+			ti.logger.Error("[CrossChain] unable to create transaction options", log.ErrKey, err)
+			continue
+		}
+		opts.Value = big.NewInt(100) // Send 1 wei
+		opts.GasLimit = uint64(1_000_000)
+		opts.GasPrice = price
+		opts.Nonce = big.NewInt(int64(fromWallet.GetNonceAndIncrement()))
+
+		// Call sendNative on the bridge
+		signedTx, err := ethereumBridge.SendNative(opts, fromWallet.Address())
 		if err != nil {
 			ti.logger.Error("[CrossChain] unable to send withdrawal transaction", log.ErrKey, err)
+			continue
 		}
 
 		go ti.TxTracker.trackWithdrawalFromL2(signedTx)

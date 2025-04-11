@@ -9,20 +9,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const {deployer} = await hre.getNamedAccounts();
     const l1Accs = await layer1.getNamedAccounts();
     
-    var messageBusAddress = process.env.MESSAGE_BUS_ADDR!!
-    if (messageBusAddress === undefined) {
-        const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
-        messageBusAddress = networkConfig.L1MessageBus;
-        console.log(`Fallback read of message bus address = ${messageBusAddress}`);
-    }
-    
-    const prefundAmountStr = process.env.PREFUND_FAUCET_AMOUNT!! || "1"
+    const networkConfig : any = await hre.network.provider.request({method: 'net_config'});
+    const bridgeAddress = networkConfig.L1Bridge;
+    console.log(`TenBridge address = ${bridgeAddress}`);
+
+    const prefundAmountStr = process.env.PREFUND_FAUCET_AMOUNT!! || "500"
 
     if (prefundAmountStr == "0") {
         return;
     }
 
-    const messageBus = (await hre.ethers.getContractFactory('MessageBus')).attach(messageBusAddress)
+    const tenBridge = (await hre.ethers.getContractFactory('TenBridge')).attach(bridgeAddress)
     const prefundAmount = hre.ethers.parseEther(prefundAmountStr);
 
     // this block is here to prevent underpriced tx failures on testnet startup
@@ -31,13 +28,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const feeData = await provider.getFeeData();
     const gasPrice = (feeData.gasPrice! * BigInt(120)) / BigInt(100);
 
-    const tx = await messageBus.getFunction("sendValueToL2").populateTransaction("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77", prefundAmount);
-
-    console.log(`Sending ${prefundAmount} to ${deployer} through ${messageBusAddress}`);
+    const tx = await tenBridge.getFunction("sendNative").populateTransaction("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77");
+    console.log(`Sending ${prefundAmount} to ${deployer} through TenBridge ${bridgeAddress}`);
 
     const receipt = await layer1.deployments.rawTx({
         from: l1Accs.deployer,
-        to: messageBusAddress,
+        to: bridgeAddress,
         value: prefundAmount.toString(),
         data: tx.data,
         nonce: nonce,
@@ -46,7 +42,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         waitConfirmations: 2, // Increase confirmations to ensure tx is mined
     });
     if (receipt.events?.length === 0) {
-        console.log(`Account prefunding status = FAILURE NO CROSS CHAIN EVENT`);
+        console.log(`Account prefunding status = FAILURE NO BRIDGE EVENT`);
     } else {
         console.log(`Account prefunding status = ${receipt.status}`);
     }

@@ -73,8 +73,8 @@ type (
 	}
 	L2PricedTransactions []*L2PricedTransaction
 
-	CrossChainMessage  = MessageBus.StructsCrossChainMessage
-	CrossChainMessages = []CrossChainMessage
+	CrossChainMessage  MessageBus.StructsCrossChainMessage
+	CrossChainMessages []CrossChainMessage
 	ValueTransferEvent struct {
 		Sender   common.Address
 		Receiver common.Address
@@ -103,6 +103,20 @@ type (
 		Blobs     []*kzg4844.Blob // The blobs containing the rollup data
 	}
 )
+
+func (c CrossChainMessage) IsValueTransfer(bridgeAuthority common.Address) bool {
+	return c.Sender == bridgeAuthority
+}
+
+func (c CrossChainMessages) FilterValueTransfers(bridgeAuthority common.Address) CrossChainMessages {
+	ret := make(CrossChainMessages, 0)
+	for _, msg := range c {
+		if msg.IsValueTransfer(bridgeAuthority) {
+			ret = append(ret, msg)
+		}
+	}
+	return ret
+}
 
 // FailedDecryptErr - when the TEN enclave fails to decrypt an RPC request
 var FailedDecryptErr = errors.New("failed to decrypt RPC payload. please use the correct enclave key")

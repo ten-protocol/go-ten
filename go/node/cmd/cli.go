@@ -42,6 +42,7 @@ type NodeConfigCLI struct {
 	daRegistryAddr          string
 	networkConfigAddr       string
 	messageBusContractAddr  string
+	bridgeContractAddr      string
 	l1Start                 string
 	pccsAddr                string
 	edgelessDBImage         string
@@ -88,6 +89,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	daRegistryAddr := flag.String(daRegistryAddrFlag, "", flagUsageMap[daRegistryAddrFlag])
 	networkConfigAddr := flag.String(networkConfigAddrFlag, "", flagUsageMap[networkConfigAddrFlag])
 	messageBusContractAddr := flag.String(messageBusContractAddrFlag, "", flagUsageMap[messageBusContractAddrFlag])
+	bridgeContractAddr := flag.String(bridgeContractAddrFlag, "", flagUsageMap[bridgeContractAddrFlag])
 	l1Start := flag.String(l1StartBlockFlag, "", flagUsageMap[l1StartBlockFlag])
 	pccsAddr := flag.String(pccsAddrFlag, "", flagUsageMap[pccsAddrFlag])
 	edgelessDBImage := flag.String(edgelessDBImageFlag, "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2", flagUsageMap[edgelessDBImageFlag])
@@ -124,6 +126,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.daRegistryAddr = *daRegistryAddr
 	cfg.networkConfigAddr = *networkConfigAddr
 	cfg.messageBusContractAddr = *messageBusContractAddr
+	cfg.bridgeContractAddr = *bridgeContractAddr
 	cfg.l1Start = *l1Start
 	cfg.pccsAddr = *pccsAddr
 	cfg.edgelessDBImage = *edgelessDBImage
@@ -190,6 +193,8 @@ func NodeCLIConfigToTenConfig(cliCfg *NodeConfigCLI) *config.TenConfig {
 	tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry = gethcommon.HexToAddress(cliCfg.daRegistryAddr)
 	tenCfg.Network.L1.L1Contracts.NetworkConfigContract = gethcommon.HexToAddress(cliCfg.networkConfigAddr)
 	tenCfg.Network.L1.L1Contracts.MessageBusContract = gethcommon.HexToAddress(cliCfg.messageBusContractAddr)
+	tenCfg.Network.L1.L1Contracts.BridgeContract = gethcommon.HexToAddress(cliCfg.bridgeContractAddr)
+
 	tenCfg.Network.L1.StartHash = gethcommon.HexToHash(cliCfg.l1Start)
 	tenCfg.Network.Batch.Interval, err = time.ParseDuration(cliCfg.batchInterval)
 	if err != nil {

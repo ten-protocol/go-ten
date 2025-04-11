@@ -62,4 +62,8 @@ type L1TenData struct {
 	EthErc20Address common.Address
 	// MessageBusAddr - the address of the L1 message bus.
 	MessageBusAddr common.Address
+	// CrossChainMessengerAddress - the address of the L1 cross chain messenger.
+	CrossChainMessengerAddress common.Address
+	// BridgeAddress - the address of the L1 bridge.
+	BridgeAddress common.Address
 }

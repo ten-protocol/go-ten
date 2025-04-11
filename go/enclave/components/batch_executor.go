@@ -239,7 +239,7 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 }
 
 func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContext) error {
-	systemDeployerTx, err := system.SystemDeployerInitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader())
+	systemDeployerTx, err := system.SystemDeployerInitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader(), executor.config.BridgeAddress)
 	if err != nil {
 		executor.logger.Error("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
 		return err
@@ -495,7 +495,7 @@ func (executor *batchExecutor) postProcessState(ec *BatchExecutionContext) error
 	}
 
 	for _, msg := range valueTransferMessages {
-		ec.stateDB.SubBalance(*executor.crossChainProcessors.Local.GetBusAddress(), uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
+		ec.stateDB.SubBalance(executor.config.BridgeAddress, uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
 	}
 
 	return nil
@@ -671,24 +671,9 @@ func (executor *batchExecutor) populateOutboundCrossChainData(ctx context.Contex
 		return fmt.Errorf("could not extract cross chain messages. Cause: %w", err)
 	}
 
-	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(ctx, receipts)
-	if err != nil {
-		executor.logger.Error("Failed extracting L2->L1 messages value transfers", log.ErrKey, err, log.CmpKey, log.CrossChainCmp)
-		return fmt.Errorf("could not extract cross chain value transfers. Cause: %w", err)
-	}
-
 	xchainTree := make([][]interface{}, 0)
 
 	hasMessages := false
-	if len(valueTransferMessages) > 0 {
-		transfers, err := crosschain.ValueTransfers(valueTransferMessages).ForMerkleTree()
-		if err != nil {
-			return err
-		}
-		xchainTree = append(xchainTree, transfers...)
-		hasMessages = true
-	}
-
 	if len(crossChainMessages) > 0 {
 		messages, err := crosschain.MessageStructs(crossChainMessages).ForMerkleTree()
 		if err != nil {
