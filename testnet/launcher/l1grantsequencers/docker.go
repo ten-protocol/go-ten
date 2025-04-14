@@ -31,16 +31,14 @@ func (s *GrantSequencers) Start() error {
 	fmt.Printf("Starting grant sequencers with config: %s\n", s.cfg)
 	var enclaveIDs string
 	var err error
-	if s.cfg.enclaveIDs != "" {
-		enclaveIDs = s.cfg.enclaveIDs
-	} else if s.cfg.SequencerURL != "" {
-		enclaveIDs, err = fetchEnclaveIDs(s.cfg.SequencerURL)
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("enclaveIDs or sequencerURL must be provided")
+	if s.cfg.SequencerURL == "" {
+		return fmt.Errorf("no SequencerURL provided")
 	}
+	enclaveIDs, err = fetchEnclaveIDs(s.cfg.SequencerURL)
+	if err != nil {
+		return err
+	}
+
 	cmds := []string{
 		"npx",
 		"hardhat",
