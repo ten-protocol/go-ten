@@ -33,7 +33,7 @@ type Route struct {
 	Func func(resp http.ResponseWriter, req *http.Request)
 }
 
-// Server manages the lifeycle of an RPC Server
+// Server manages the lifecycle of an RPC Server
 type Server interface {
 	Start() error
 	Stop()
