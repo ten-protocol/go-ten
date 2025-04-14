@@ -81,7 +81,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	}
 
 	tailSize := "7"
-	if n.cfg.debugEnabled {
+	if n.cfg.DebugEnabled {
 		tailSize = "8"
 	}
 
