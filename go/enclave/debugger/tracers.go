@@ -109,7 +109,7 @@ func (d *Debugger) DebugTraceTransaction(context.Context, gethcommon.Hash, *trac
 //		tracer = logger.NewStructLogger(config.Config)
 //	}
 //	// Run the transaction with tracing enabled.
-//	vmenv := vm.NewEVM(vmctx, txContext, statedb, d.chainConfig, vm.Config{Trivial: true, Tracer: tracer, NoBaseFee: true})
+//	vmenv := vm.NewEVM(vmctx, txContext, statedb, d.chainConfig, vm.Config{Debug: true, Tracer: tracer, NoBaseFee: true})
 //
 //	// Call Prepare to clear out the statedb access list
 //	statedb.Prepare(txctx.TxHash, txctx.TxIndex)
