@@ -1,74 +1,134 @@
-# Ten Gateway
+# Next.js with RainbowKit
 
-Ten Gateway is a Next.js and Tailwind CSS-powered application.
+This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) integrated with [RainbowKit](https://www.rainbowkit.com/) for easy Ethereum wallet connections.
 
-## Folder Structure
+## Prerequisites
 
-```
-📁 Ten Gateway
-├── 📁 api - Contains server-side code, such as API routes or server logic
-├── 📁 public - This directory is used to serve static assets. Files inside this directory can be referenced in your code with a URL path
-├── 📁 src - Main source code directory for this project
-│   ├── 📁 components - Contains reusable React components used throughout the application
-│   ├── 📁 pages - Typically used for Next.js pages. Each .tsx or .js file in this directory becomes a route in your application
-│   ├── 📁 hooks - Custom React hooks that can be shared and reused across components
-│   ├── 📁 lib - Utility functions or modules that provide common functionalities across the application
-│   ├── 📁 routes - Route-related logic or configuration can be placed in this directory
-│   ├── 📁 services - Used for services that interact with external APIs or handle other data-related tasks
-│   └── 📁 types - Type definitions (.d.ts files or TypeScript files) for TypeScript, describing the shape of data and objects used in the application
-└── 📁 styles - Global styles, stylesheets, or styling-related configurations for this project
-```
+You need to have the following installed:
+
+- [Node.js](https://nodejs.org/) (v18 or higher)
+- npm or yarn
 
 ## Getting Started
 
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/ten-protocol/go-ten.git
-   cd go-ten/tools/walletextension/frontend
-   ```
+First, clone the repository and install the dependencies:
 
-2. **Install Dependencies:**
-   ```bash
-   pnpm install
-   ```
+```bash
+npm install
+# or
+yarn install
+```
 
-3. **Configure Environment Variables:**
-Create a `.env.local` file in the root directory of the project and add the following environment variables:
+### Configuration
 
-   ```bash
-   NEXT_PUBLIC_API_GATEWAY_URL=********
-   ```
-   
-   Possible values for `NEXT_PUBLIC_API_GATEWAY_URL` are:
-   - `https://uat-testnet.ten.xyz`
-   - `https://sepolia-testnet.ten.xyz`
-   - `https://dev-testnet.ten.xyz`
+Before running the project, you need to:
 
-4. **Run the Development Server:**
-   ```bash
-   pnpm run dev
-   ```
+1. Get a WalletConnect Project ID from [WalletConnect Cloud](https://cloud.walletconnect.com/)
+2. Open `app/providers.tsx` and replace `YOUR_WALLETCONNECT_PROJECT_ID` with your actual project ID
+3. Configure your custom chain in `app/providers.tsx` by updating the `customChain` object with your chain details
 
-   The application will be accessible at [http://localhost:3000](http://localhost:3000).
+#### Custom Chain Configuration
 
-## Usage
+The project includes a sample custom chain configuration. To connect to your own chain, update the following properties in the `customChain` object in `app/providers.tsx`:
 
-- Connect to Ten Testnet using the button in the top right corner of the application or on the homepage
-- You can request tokens from the Discord bot by typing `!faucet <your address>` in the #faucet channel
-- You can also revoke accounts by clicking the "Revoke Accounts" button on the homepage
+```typescript
+const customChain = {
+  id: 1337, // Replace with your chain ID
+  name: 'My Custom Chain', // Replace with your chain name
+  nativeCurrency: {
+    name: 'Custom Token', // Replace with your token name
+    symbol: 'CTK', // Replace with your token symbol
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://your-custom-rpc-url.com'], // Replace with your RPC URL
+    },
+    public: {
+      http: ['https://your-custom-rpc-url.com'], // Replace with your RPC URL
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'CustomScan', // Replace with your explorer name
+      url: 'https://your-custom-explorer.com', // Replace with your block explorer URL
+    },
+  },
+};
+```
 
-## Built With
+Common chain IDs:
+- Local development chains: 1337 (Ganache), 31337 (Hardhat)
+- Public testnets: 5 (Goerli), 80001 (Mumbai), 97 (BSC Testnet)
+- Public mainnets: 1 (Ethereum), 137 (Polygon), 56 (Binance Smart Chain)
 
-- [Next.js](https://nextjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [Shadcn-UI](https://shadcn.com/)
-- [TypeScript](https://www.typescriptlang.org/)
+### Running the Development Server
 
+```bash
+npm run dev
+# or
+yarn dev
+```
 
-## Contributing
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Contributions are welcome! Please follow our [contribution guidelines](/docs/_docs/community/contributions.md).
+## Features
 
-## License
+- Next.js 14 App Router
+- RainbowKit for easy wallet connections
+- Tailwind CSS for styling
+- TypeScript for type safety
+- Support for multiple Ethereum networks (mainnet, sepolia, and custom chains)
+- Chain switching UI
 
-This project is licensed under the [GNU Affero General Public License v3.0](/LICENSE).
+## Project Structure
+
+- `app/components/ConnectButton.tsx` - Custom styled RainbowKit ConnectButton
+- `app/components/ChainInfo.tsx` - UI for displaying and switching chains
+- `app/providers.tsx` - RainbowKit and wagmi providers with custom chain config
+- `app/page.tsx` - Main application page
+- `app/layout.tsx` - Root layout with providers
+
+## Customization
+
+### Adding More Networks
+
+To add more networks, edit `app/providers.tsx` and import additional chains from `wagmi/chains` or define your own custom chains. Then add them to the chains array in the wagmi configuration.
+
+For example, to add the Polygon network:
+
+```typescript
+import { mainnet, sepolia, polygon } from 'wagmi/chains';
+
+const config = createConfig({
+  chains: [mainnet, sepolia, customChain, polygon],
+  transports: {
+    [mainnet.id]: http(),
+    [sepolia.id]: http(),
+    [customChain.id]: http(customChain.rpcUrls.default.http[0]),
+    [polygon.id]: http(),
+  },
+  // ...
+});
+```
+
+### Styling
+
+The connect button is styled with Tailwind CSS. You can modify the styles in `app/components/ConnectButton.tsx`.
+
+### Theme
+
+RainbowKit theme can be customized in `app/providers.tsx`. See the [RainbowKit documentation](https://www.rainbowkit.com/docs/theming) for more options.
+
+## Learn More
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [RainbowKit Documentation](https://www.rainbowkit.com/docs/introduction)
+- [wagmi Documentation](https://wagmi.sh/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new) from the creators of Next.js.
+
+Check out the [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.

@@ -1,5 +1,5 @@
 import { ResponseDataInterface } from "@/types/interfaces";
-import { httpRequest } from ".";
+import { httpRequest } from "./index";
 import { pathToUrl } from "@/routes/router";
 import { apiRoutes } from "@/routes";
 

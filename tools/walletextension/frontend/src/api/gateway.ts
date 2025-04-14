@@ -1,5 +1,5 @@
 import { apiRoutes } from "../routes";
-import { httpRequest } from ".";
+import { httpRequest } from "./index";
 import { pathToUrl } from "../routes/router";
 import { AuthenticationResponse } from "@/types/interfaces/GatewayInterfaces";
 import { tenGatewayAddress } from "../lib/constants";

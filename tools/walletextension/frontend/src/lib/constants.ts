@@ -28,7 +28,7 @@ export const tenChainIDHex = "0x" + tenChainIDDecimal.toString(16); // Convert t
 
 export const METAMASK_CONNECTION_TIMEOUT = 3000;
 
-export const zeroAddress = "0x0000000000000000000000000000000000000000"
+export const userStorageAddress = "0x0000000000000000000000000000000000000001";
 
 export const nativeCurrency = {
   name: "Sepolia Ether",
@@ -41,3 +41,4 @@ export const CONNECTION_STEPS = [
   "Allow MetaMask to switch networks to the TEN Testnet",
   "Sign the <b>Signature Request</b> (this is not a transaction)",
 ];
+
