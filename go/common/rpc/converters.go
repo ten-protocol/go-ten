@@ -220,35 +220,6 @@ func ToRollupHeaderMsg(header *common.RollupHeader) *generated.RollupHeaderMsg {
 	return &headerMsg
 }
 
-func FromExtRollupMsg(msg *generated.ExtRollupMsg) *common.ExtRollup {
-	if msg.Header == nil {
-		return &common.ExtRollup{
-			Header: nil,
-		}
-	}
-
-	return &common.ExtRollup{
-		Header:               FromRollupHeaderMsg(msg.Header),
-		BatchPayloads:        msg.BatchPayloads,
-		CalldataRollupHeader: msg.CalldataRollupHeader,
-	}
-}
-
-func FromRollupHeaderMsg(header *generated.RollupHeaderMsg) *common.RollupHeader {
-	if header == nil {
-		return nil
-	}
-
-	return &common.RollupHeader{
-		CompressionL1Head:   gethcommon.BytesToHash(header.CompressionL1Head),
-		CompressionL1Number: big.NewInt(0).SetBytes(header.CompressionL1Number),
-		CrossChainRoot:      gethcommon.BytesToHash(header.CrossChainRoot),
-		FirstBatchSeqNo:     header.FirstBatchSeqNo,
-		LastBatchSeqNo:      header.LastBatchSeqNo,
-		LastBatchHash:       gethcommon.BytesToHash(header.LastBatchHash),
-	}
-}
-
 func ToRollupDataMsg(rollupData *common.PublicRollupMetadata) generated.PublicRollupDataMsg {
 	if rollupData == nil {
 		return generated.PublicRollupDataMsg{}
