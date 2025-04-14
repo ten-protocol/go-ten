@@ -95,13 +95,13 @@ jobs:
         shell: bash
         env:
           DOCKER_API_VERSION: "1.45"
+          DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+          DEPLOY_OUTPUTENV: ./testnet/.env
+          DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+          DEPLOY_L1_PRIVATEPK: ${{ secrets.ACCOUNT_PK_WORKER }}
         run: |
           # Run deployer and capture output
-          go run ./testnet/launcher/l1contractdeployer/cmd \
-          -l1_http_url=${{ secrets.L1_HTTP_URL }} \
-          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-          -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
-          -contracts_env_file=./testnet/.env
+          go run ./testnet/launcher/l1contractdeployer/cmd
           
           if [ -f ./testnet/.env ]; then
             source ./testnet/.env
@@ -449,13 +449,14 @@ jobs:
          shell: bash
          env:
             DOCKER_API_VERSION: "1.45"
+            DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+            DEPLOY_L1_PRIVATEPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+            DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+            DEPLOY_L2_SEQUENCERURL: http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
+            NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.build.outputs.ENCLAVE_REGISTRY_ADDR }}
+
          run: |
-           go run ./testnet/launcher/l1grantsequencers/cmd \
-           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
-           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-           -enclave_registry_addr=${{ needs.build.outputs.ENCLAVE_REGISTRY_ADDR }} \
-           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
-           -sequencer_url=http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
+           go run ./testnet/launcher/l1grantsequencers/cmd
 
       -  name: 'Save sequencer permissioning container logs'
          run: |
@@ -478,6 +479,11 @@ jobs:
       name: ${{ github.event.inputs.testnet_type }}
     env:
       DOCKER_API_VERSION: "1.45"
+      DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+      DEPLOY_L1_PRIVATEPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+      DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+      DEPLOY_L1_DAREGISTRY: ${{ needs.build.outputs.DA_REGISTRY_ADDR }}
+      DEPLOY_L1_CHALLENGEPERIOD: ${{ vars.L1_CHALLENGE_PERIOD }}
     steps:
       -  uses: actions/checkout@v4
 
@@ -485,12 +491,7 @@ jobs:
          id: setChallengePeriod
          shell: bash
          run: |
-           go run ./testnet/launcher/l1challengeperiod/cmd \
-           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
-           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-           -da_registry_addr=${{ needs.build.outputs.DA_REGISTRY_ADDR }} \
-           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
-           -l1_challenge_period=${{ vars.L1_CHALLENGE_PERIOD }} \
+           go run ./testnet/launcher/l1challengeperiod/cmd
            echo "Setting challenge period to ${{ vars.L1_CHALLENGE_PERIOD }}"
 
       -  name: 'Save challenge period container logs'
@@ -520,17 +521,17 @@ jobs:
         shell: bash
         env:
           DOCKER_API_VERSION: "1.45"
+          DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+          DEPLOY_L1_PRIVATEPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+          DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+          DEPLOY_L2_PRIVATEPK: ${{ secrets.L2_DEPLOYER_KEY }}
+          DEPLOY_L2_RPCADDRESS: obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          DEPLOY_L2_WS_PORT: 81
+          DEPLOY_L2_FAUCETFUNDS: ${{ vars.FAUCET_INITIAL_FUNDS }}
+          NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.build.outputs.NETWORK_CONFIG_ADDR }}
+          NETWORK_L1_CONTRACTS_MESSAGEBUS: ${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }}
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd \
-          -l2_host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com \
-          -l1_http_url=${{ secrets.L1_HTTP_URL }} \
-          -l2_ws_port=81 \
-          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-          -l2_private_key=${{ secrets.L2_DEPLOYER_KEY }} \
-          -network_config_addr=${{ needs.build.outputs.NETWORK_CONFIG_ADDR }} \
-          -message_bus_contract_addr=${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }} \
-          -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
-          -faucet_funds=${{ vars.FAUCET_INITIAL_FUNDS }}
 
       - name: 'Save L2 deployer container logs'
         run: |

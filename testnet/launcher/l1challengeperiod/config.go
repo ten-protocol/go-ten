@@ -1,5 +1,7 @@
 package l1grantsequencers
 
+import "github.com/ten-protocol/go-ten/go/config"
+
 // Option is a function that applies configs to a Config Object
 type Option = func(c *Config)
 
@@ -12,42 +14,12 @@ type Config struct {
 	challengePeriod   int
 }
 
-func NewChallengePeriodConfig(opts ...Option) *Config {
-	defaultConfig := &Config{}
-
-	for _, opt := range opts {
-		opt(defaultConfig)
-	}
-
-	return defaultConfig
-}
-
-func WithL1HTTPURL(s string) Option {
-	return func(c *Config) {
-		c.l1HTTPURL = s
-	}
-}
-
-func WithPrivateKey(s string) Option {
-	return func(c *Config) {
-		c.privateKey = s
-	}
-}
-
-func WithDataAvailabilityRegistryAddress(s string) Option {
-	return func(c *Config) {
-		c.daRegistryAddress = s
-	}
-}
-
-func WithDockerImage(s string) Option {
-	return func(c *Config) {
-		c.dockerImage = s
-	}
-}
-
-func WithChallengePeriod(i int) Option {
-	return func(c *Config) {
-		c.challengePeriod = i
+func NewChallengePeriodConfig(tenCfg *config.TenConfig) *Config {
+	return &Config{
+		l1HTTPURL:         tenCfg.Deployment.L1Deploy.RPCAddress,
+		privateKey:        tenCfg.Deployment.L1Deploy.DeployerPK,
+		daRegistryAddress: tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry.Hex(),
+		dockerImage:       tenCfg.Deployment.DockerImage,
+		challengePeriod:   tenCfg.Deployment.L1Deploy.ChallengePeriod,
 	}
 }

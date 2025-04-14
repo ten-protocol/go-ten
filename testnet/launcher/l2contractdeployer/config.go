@@ -3,11 +3,9 @@ package l2contractdeployer
 import (
 	"fmt"
 
+	"github.com/ten-protocol/go-ten/go/config"
 	"gopkg.in/yaml.v2"
 )
-
-// Option is a function that applies configs to a Config Object
-type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
@@ -26,93 +24,21 @@ type Config struct {
 	DebugEnabled           bool   `yaml:"debug_enabled"`
 }
 
-func NewContractDeployerConfig(opts ...Option) *Config {
-	defaultConfig := &Config{
-		FaucetPrefundAmount: "10000",
-	}
-
-	for _, opt := range opts {
-		opt(defaultConfig)
-	}
-
-	return defaultConfig
-}
-
-func WithL1HTTPURL(s string) Option {
-	return func(c *Config) {
-		c.L1HTTPURL = s
-	}
-}
-
-func WithL1PrivateKey(s string) Option {
-	return func(c *Config) {
-		c.L1PrivateKey = s
-	}
-}
-
-func WithL2WSPort(i int) Option {
-	return func(c *Config) {
-		c.L2Port = i
-	}
-}
-
-func WithL2Host(s string) Option {
-	return func(c *Config) {
-		c.L2Host = s
-	}
-}
-
-func WithEnclaveRegistryAddress(s string) Option {
-	return func(c *Config) {
-		c.EnclaveRegistryAddress = s
-	}
-}
-
-func WithCrossChainAddress(s string) Option {
-	return func(c *Config) {
-		c.CrossChainAddress = s
-	}
-}
-
-func WithDataAvailabilityRegistryAddress(s string) Option {
-	return func(c *Config) {
-		c.DaRegistryAddress = s
-	}
-}
-
-func WithNetworkConfigAddress(s string) Option {
-	return func(c *Config) {
-		c.NetworkConfigAddress = s
-	}
-}
-
-func WithMessageBusContractAddress(s string) Option {
-	return func(c *Config) {
-		c.MessageBusAddress = s
-	}
-}
-
-func WithL2PrivateKey(s string) Option {
-	return func(c *Config) {
-		c.L2PrivateKey = s
-	}
-}
-
-func WithDockerImage(s string) Option {
-	return func(c *Config) {
-		c.DockerImage = s
-	}
-}
-
-func WithFaucetFunds(f string) Option {
-	return func(c *Config) {
-		c.FaucetPrefundAmount = f
-	}
-}
-
-func WithDebugEnabled(b bool) Option {
-	return func(c *Config) {
-		c.DebugEnabled = b
+func NewContractDeployerConfig(tenCfg *config.TenConfig) *Config {
+	return &Config{
+		L1HTTPURL:              tenCfg.Deployment.L1Deploy.RPCAddress,
+		L1PrivateKey:           tenCfg.Deployment.L1Deploy.DeployerPK,
+		L2Port:                 tenCfg.Deployment.L2Deploy.WSPort,
+		L2Host:                 tenCfg.Deployment.L2Deploy.RPCAddress,
+		L2PrivateKey:           tenCfg.Deployment.L2Deploy.DeployerPK,
+		EnclaveRegistryAddress: tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract.Hex(),
+		CrossChainAddress:      tenCfg.Network.L1.L1Contracts.CrossChainContract.Hex(),
+		DaRegistryAddress:      tenCfg.Deployment.L1Deploy.DARegistry.Hex(),
+		NetworkConfigAddress:   tenCfg.Network.L1.L1Contracts.NetworkConfigContract.Hex(),
+		MessageBusAddress:      tenCfg.Network.L1.L1Contracts.MessageBusContract.Hex(),
+		DockerImage:            tenCfg.Deployment.DockerImage,
+		FaucetPrefundAmount:    tenCfg.Deployment.L2Deploy.FaucetPrefund,
+		DebugEnabled:           tenCfg.Deployment.DebugEnabled,
 	}
 }
 

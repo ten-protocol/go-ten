@@ -4,21 +4,19 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ten-protocol/go-ten/go/config"
 	l1cp "github.com/ten-protocol/go-ten/testnet/launcher/l1challengeperiod"
 )
 
 func main() {
-	cliConfig := ParseConfigCLI()
+	tenCfg, err := config.LoadTenConfig()
+	if err != nil {
+		fmt.Println("Error loading ten config:", err)
+		os.Exit(1)
+	}
 
-	l1challengeperiod, err := l1cp.NewSetChallengePeriod(
-		l1cp.NewChallengePeriodConfig(
-			l1cp.WithL1HTTPURL(cliConfig.l1HTTPURL),
-			l1cp.WithPrivateKey(cliConfig.privateKey),
-			l1cp.WithDockerImage(cliConfig.dockerImage),
-			l1cp.WithDataAvailabilityRegistryAddress(cliConfig.daRegistryAddress),
-			l1cp.WithChallengePeriod(cliConfig.challengePeriod),
-		),
-	)
+	challengePeriodCfg := l1cp.NewChallengePeriodConfig(tenCfg)
+	l1challengeperiod, err := l1cp.NewSetChallengePeriod(challengePeriodCfg)
 	if err != nil {
 		fmt.Println("unable to configure l1 contract deployer - %w", err)
 		os.Exit(1)
