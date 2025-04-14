@@ -214,7 +214,7 @@ jobs:
               --tags deploygroup="${{ env.DEPLOY_GROUP }}"  ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true \
               --vnet-name "${{ env.VNET_NAME }}" --subnet "${{ env.SUBNET_NAME }}" \
               --size Standard_DC2s_v3 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
-              --authentication-type password
+              --authentication-type password --security-type Standard 
               
             az vm open-port -g Testnet -n "${{ env.VM_NAME }}" --port 80,81,443
             
@@ -232,7 +232,7 @@ jobs:
               --tags deploygroup="${{ env.DEPLOY_GROUP }}"  ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true \
               --vnet-name "${{ env.VNET_NAME }}" --subnet "${{ env.SUBNET_NAME }}" \
               --size Standard_DC2s_v3 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
-              --authentication-type password
+              --authentication-type password --security-type Standard 
               
             az vm open-port -g Testnet -n "${{ env.VM_NAME }}" --port 80,81,443
             
