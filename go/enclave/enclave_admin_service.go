@@ -543,7 +543,7 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 
 	var rollupMetadataList []common.ExtRollupMetadata
 	if processed.HasEvents(common.RollupTx) {
-		rollupMetadataList, err = e.processRollups(ctx, processed, rollupMetadataList)
+		rollupMetadataList, err = e.processRollups(ctx, processed)
 		if err != nil && e.isCriticalError(err) {
 			// only propagate the error if we encounter a critical error on a sequencer signed rollup
 			return nil, nil, err
@@ -560,7 +560,8 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	return ingestion, rollupMetadataList, nil
 }
 
-func (e *enclaveAdminService) processRollups(ctx context.Context, processed *common.ProcessedL1Data, rollupMetadataList []common.ExtRollupMetadata) ([]common.ExtRollupMetadata, error) {
+func (e *enclaveAdminService) processRollups(ctx context.Context, processed *common.ProcessedL1Data) ([]common.ExtRollupMetadata, error) {
+	var rollupMetadataList []common.ExtRollupMetadata
 	rollupTxs := processed.GetEvents(common.RollupTx)
 	txsSeen := make(map[gethcommon.Hash]bool)
 
