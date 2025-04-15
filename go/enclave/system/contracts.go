@@ -17,7 +17,7 @@ func GenerateDeploymentTransaction(initCode []byte, logger gethlog.Logger) (*com
 	tx := &types.LegacyTx{
 		Nonce:    0, // The first transaction of the owner identity should always be deploying the contract
 		Value:    gethcommon.Big0,
-		Gas:      10_000_000,      // It's quite the expensive contract.
+		Gas:      20_000_000,      // It's quite the expensive contract.
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     initCode,        // gethcommon.FromHex(SystemDeployer.SystemDeployerMetaData.Bin),
 		To:       nil,             // Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.
@@ -30,9 +30,9 @@ func GenerateDeploymentTransaction(initCode []byte, logger gethlog.Logger) (*com
 	return stx, nil
 }
 
-func SystemDeployerInitTransaction(logger gethlog.Logger, eoaOwner gethcommon.Address) (*common.L2Tx, error) {
+func SystemDeployerInitTransaction(logger gethlog.Logger, eoaOwner gethcommon.Address, l1BridgeAddress gethcommon.Address) (*common.L2Tx, error) {
 	abi, _ := SystemDeployer.SystemDeployerMetaData.GetAbi()
-	args, err := abi.Constructor.Inputs.Pack(eoaOwner)
+	args, err := abi.Constructor.Inputs.Pack(eoaOwner, l1BridgeAddress)
 	if err != nil {
 		logger.Crit("This error is fatal. If the system contracts can't be initialized the network cannot bootstrap.", log.ErrKey, err)
 	}

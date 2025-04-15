@@ -531,7 +531,6 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 
 		if domainMap, ok := messageMap["domain"].(map[string]interface{}); ok {
 			delete(domainMap, "salt")
-			delete(domainMap, "verifyingContract")
 		}
 
 		if typesMap, ok := messageMap["types"].(map[string]interface{}); ok {

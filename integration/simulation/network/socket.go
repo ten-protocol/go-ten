@@ -115,6 +115,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry = simParams.L1TenData.DataAvailabilityRegistryAddress
 		tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract = simParams.L1TenData.EnclaveRegistryAddress
 		tenCfg.Network.L1.L1Contracts.MessageBusContract = simParams.L1TenData.MessageBusAddr
+		tenCfg.Network.L1.L1Contracts.BridgeContract = simParams.L1TenData.BridgeAddress
 		tenCfg.Network.Gas.PaymentAddress = simParams.Wallets.L2FeesWallet.Address()
 
 		tenCfg.Node.PrivateKeyString = privateKey
@@ -185,6 +186,15 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 	err = PermissionDataAvailabilityRegistryStateRoot(n.wallets.ContractOwnerWallet, n.gethClients[0], addresses.CrossChain, addresses.DataAvailabilityRegistry)
 	if err != nil {
 		return nil, fmt.Errorf("unable to permission rollup contract on merkle messagebus: %w", err)
+	}
+
+	cfg, err := n.tenClients[0].GetConfig()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get TenNetworkInfo: %w", err)
+	}
+	err = ConnectTenNetworkBridge(n.gethClients[0], n.wallets, simParams.L1TenData, cfg.L2Bridge)
+	if err != nil {
+		return nil, fmt.Errorf("unable to connect TenNetworkBridge: %w", err)
 	}
 
 	// wait for nodes to be healthy now we've permissioned

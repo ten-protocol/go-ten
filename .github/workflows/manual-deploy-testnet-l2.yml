@@ -42,6 +42,7 @@ jobs:
     outputs:
       NETWORK_CONFIG_ADDR: ${{ steps.deployContracts.outputs.NETWORK_CONFIG_ADDR }}
       MSG_BUS_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MSG_BUS_CONTRACT_ADDR }}
+      BRIDGE_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.BRIDGE_CONTRACT_ADDR }}
       CROSS_CHAIN_ADDR: ${{ steps.deployContracts.outputs.CROSS_CHAIN_ADDR }}
       DA_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.DA_REGISTRY_ADDR }}
       ENCLAVE_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.ENCLAVE_REGISTRY_ADDR }}
@@ -111,14 +112,18 @@ jobs:
           -azure_key_vault_env=$TESTNET_TYPE \
           -contracts_env_file=./testnet/.env
           
-          source ./testnet/.env
-          
+          if [ -f ./testnet/.env ]; then
+            source ./testnet/.env
+          fi          
           # Fix variable names and GITHUB_OUTPUT reference
           echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_ENV
           echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_OUTPUT
           
           echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_ENV
           echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
+          
+          echo "BRIDGE_CONTRACT_ADDR=$BRIDGECONTRACTADDR" >> $GITHUB_ENV
+          echo "BRIDGE_CONTRACT_ADDR=$BRIDGECONTRACTADDR" >> $GITHUB_OUTPUT
           
           echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_ENV
           echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_OUTPUT
@@ -397,6 +402,7 @@ jobs:
                -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
                -network_config_addr=${{needs.build.outputs.NETWORK_CONFIG_ADDR}} \
                -message_bus_contract_addr=${{needs.build.outputs.MSG_BUS_CONTRACT_ADDR}} \
+               -bridge_contract_addr=${{needs.build.outputs.BRIDGE_CONTRACT_ADDR}} \
                -da_registry_addr=${{needs.build.outputs.DA_REGISTRY_ADDR}} \
                -cross_chain_addr=${{needs.build.outputs.CROSS_CHAIN_ADDR}} \
                -enclave_registry_addr=${{needs.build.outputs.ENCLAVE_REGISTRY_ADDR}} \

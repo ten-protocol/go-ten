@@ -226,7 +226,7 @@ func (n *PosImpl) waitForMergeEvent(startTime time.Time) error {
 			}
 			return nil
 		},
-		retry.NewTimeoutStrategy(n.timeout, time.Second),
+		retry.NewTimeoutStrategy(5*time.Minute, time.Second),
 	)
 	if err != nil {
 		return err

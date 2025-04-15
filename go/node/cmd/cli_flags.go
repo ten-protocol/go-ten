@@ -25,6 +25,7 @@ const (
 	daRegistryAddrFlag          = "da_registry_addr"
 	networkConfigAddrFlag       = "network_config_addr"
 	messageBusContractAddrFlag  = "message_bus_contract_addr"
+	bridgeContractAddrFlag      = "bridge_contract_addr"
 	l1StartBlockFlag            = "l1_start"
 	pccsAddrFlag                = "pccs_addr"
 	edgelessDBImageFlag         = "edgeless_db_image"

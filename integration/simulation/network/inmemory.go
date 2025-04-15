@@ -45,6 +45,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 	params.Wallets.Tokens[testcommon.HOC].L1ContractAddress = &dummyOBXAddress
 	dummyETHAddress := datagenerator.RandomAddress()
 	params.Wallets.Tokens[testcommon.POC].L1ContractAddress = &dummyETHAddress
+	dummyBridge := datagenerator.RandomAddress()
 
 	for i := 0; i < params.NumberOfNodes; i++ {
 		isGenesis := i == 0
@@ -61,6 +62,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 			params.Wallets.NodeWallets[i],
 			miner,
 			p2pNetw.NewNode(i),
+			dummyBridge,
 			common.Hash{},
 			params.AvgBlockDuration/2,
 			incomingP2PDisabled,

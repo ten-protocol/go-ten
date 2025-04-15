@@ -50,7 +50,8 @@ func (n *ContractDeployer) Start() error {
             "live" : false,
             "saveDeployments" : true,
             "deploy": [ 
-                "deployment_scripts/core"
+                "deployment_scripts/core",
+				"deployment_scripts/testnet/layer1"
             ],
             "accounts": [ "%s" ]
         }
@@ -79,9 +80,9 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		return nil, err
 	}
 
-	tailSize := "6"
+	tailSize := "7"
 	if n.cfg.debugEnabled {
-		tailSize = "7"
+		tailSize = "8"
 	}
 
 	logsOptions := container.LogsOptions{
@@ -135,7 +136,11 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	if err != nil {
 		return nil, err
 	}
-	l1BlockHash := readValue("L1Start", lines[5])
+	bridgeAddress, err := findAddress(lines[5])
+	if err != nil {
+		return nil, err
+	}
+	l1BlockHash := readValue("L1Start", lines[6])
 
 	return &node.NetworkConfig{
 		EnclaveRegistryAddress:          enclaveRegistryAddr,
@@ -144,6 +149,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		NetworkConfigAddress:            networkConfigAddr,
 		MessageBusAddress:               messageBusAddr,
 		L1StartHash:                     l1BlockHash,
+		BridgeAddress:                   bridgeAddress,
 	}, nil
 }
 

@@ -48,6 +48,7 @@ func startInMemoryTenNodes(params *params.SimParams, l1Clients []ethadapter.EthC
 			params.Wallets.NodeWallets[i],
 			l1Clients[i],
 			mockP2PNetw.NewNode(i),
+			params.L1TenData.BridgeAddress,
 			params.L1TenData.TenStartBlock,
 			params.AvgBlockDuration/3,
 			true,

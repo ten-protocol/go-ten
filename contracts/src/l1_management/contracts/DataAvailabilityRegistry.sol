@@ -16,11 +16,17 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
  * Uses MerkleTreeMessageBus for message verification and value transfers
  */
 contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, OwnableUpgradeable {
-    
+
+    // RollupStorage: A storage structure to manage and organize MetaRollup instances in a mapping by their hash.
+    struct RollupStorage {
+        mapping(bytes32 => MetaRollup) byHash;
+        uint256 nextFreeSequenceNumber;
+    }
+
     /**
      * @dev Storage for rollups
      */
-    Structs.RollupStorage private rollups;
+    RollupStorage private rollups;
 
     /**
      * @dev Last batch sequence number
@@ -61,7 +67,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
      * @dev Appends a rollup to the registry
      * @param _r The rollup to append
      */
-    function AppendRollup(Structs.MetaRollup calldata _r) internal {
+    function AppendRollup(MetaRollup calldata _r) internal {
         rollups.byHash[_r.Hash] = _r;
 
         if (_r.LastSequenceNumber > lastBatchSeqNo) {
@@ -74,7 +80,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
      * @dev Modifier to verify the integrity of a rollup
      * @param r The rollup to verify
      */
-    modifier verifyRollupIntegrity(Structs.MetaRollup calldata r) {
+    modifier verifyRollupIntegrity(MetaRollup calldata r) {
         // Block binding checks
         require(block.number > r.BlockBindingNumber, "Cannot bind to future or current block");
         require(block.number < (r.BlockBindingNumber + 255), "Block binding too old");
@@ -106,7 +112,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
      * 
      * TODO can we make it so only attested sequencer enclaves can call this? can pass the requester ID as a param?
      */
-    function addRollup(Structs.MetaRollup calldata r) external verifyRollupIntegrity(r) {
+    function addRollup(MetaRollup calldata r) external verifyRollupIntegrity(r) {
         AppendRollup(r);
 
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
@@ -123,8 +129,8 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
      * @return bool True if the rollup exists, false otherwise
      * @return Structs.MetaRollup The rollup
      */
-    function getRollupByHash(bytes32 rollupHash) external view returns (bool, Structs.MetaRollup memory) {
-        Structs.MetaRollup memory rol = rollups.byHash[rollupHash];
+    function getRollupByHash(bytes32 rollupHash) external view returns (bool, MetaRollup memory) {
+        MetaRollup memory rol = rollups.byHash[rollupHash];
         return (rol.Hash == rollupHash , rol);
     }
 
