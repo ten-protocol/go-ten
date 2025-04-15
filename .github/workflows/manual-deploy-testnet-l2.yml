@@ -98,7 +98,7 @@ jobs:
           DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
           DEPLOY_OUTPUTENV: ./testnet/.env
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
-          DEPLOY_L1_PRIVATEPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+          DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
         run: |
           # Run deployer and capture output
           go run ./testnet/launcher/l1contractdeployer/cmd
@@ -450,7 +450,7 @@ jobs:
          env:
             DOCKER_API_VERSION: "1.45"
             DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
-            DEPLOY_L1_PRIVATEPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+            DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
             DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
             DEPLOY_L2_SEQUENCERURL: http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
             NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.build.outputs.ENCLAVE_REGISTRY_ADDR }}
@@ -480,7 +480,7 @@ jobs:
     env:
       DOCKER_API_VERSION: "1.45"
       DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
-      DEPLOY_L1_PRIVATEPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+      DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
       DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
       DEPLOY_L1_DAREGISTRY: ${{ needs.build.outputs.DA_REGISTRY_ADDR }}
       DEPLOY_L1_CHALLENGEPERIOD: ${{ vars.L1_CHALLENGE_PERIOD }}
@@ -522,11 +522,11 @@ jobs:
         env:
           DOCKER_API_VERSION: "1.45"
           DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
-          DEPLOY_L1_PRIVATEPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+          DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
-          DEPLOY_L2_PRIVATEPK: ${{ secrets.L2_DEPLOYER_KEY }}
+          DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
           DEPLOY_L2_RPCADDRESS: obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-          DEPLOY_L2_WS_PORT: 81
+          DEPLOY_L2_WSPORT: 81
           DEPLOY_L2_FAUCETFUNDS: ${{ vars.FAUCET_INITIAL_FUNDS }}
           NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.build.outputs.NETWORK_CONFIG_ADDR }}
           NETWORK_L1_CONTRACTS_MESSAGEBUS: ${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }}
