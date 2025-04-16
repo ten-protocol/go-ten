@@ -64,8 +64,8 @@ func main() {
 	}
 
 	// Store in Azure Key Vault if configured
-	if cliConfig.azureKeyVaultURL != "" {
-		if err := l1cd.StoreNetworkCfgInKeyVault(context.Background(), cliConfig.azureKeyVaultURL, cliConfig.azureKeyVaultEnv, networkConfig); err != nil {
+	if tenCfg.Deployment.OutputAzureKV != "" {
+		if err := l1cd.StoreNetworkCfgInKeyVault(context.Background(), tenCfg.Deployment.OutputAzureKV, tenCfg.Deployment.NetworkName, networkConfig); err != nil {
 			fmt.Printf("Failed to store contracts in Azure Key Vault: %v\n", err)
 			os.Exit(1)
 		}

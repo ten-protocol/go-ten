@@ -10,8 +10,10 @@ type DeploymentConfig struct {
 	L1Deploy      *L1DeployConfig `mapstructure:"l1"`
 	L2Deploy      *L2DeployConfig `mapstructure:"l2"`
 	DebugEnabled  bool            `mapstructure:"debug"`
-	DockerImage   string          `mapstructure:"dockerImage"` // the docker image to use for the hh deployment
-	OutputEnvFile string          `mapstructure:"outputEnv"`   // optional output env file to write the deployed contracts data
+	DockerImage   string          `mapstructure:"dockerImage"`   // the docker image to use for the hh deployment
+	OutputAzureKV string          `mapstructure:"outputAzureKV"` // optional output azure key vault url to write the deployed contracts data
+	OutputEnvFile string          `mapstructure:"outputEnv"`     // optional output env file to write the deployed contracts data
+	NetworkName   string          `mapstructure:"networkName"`   // the name of the testnet env, used in prefixes for KVs for example
 }
 
 // L1DeployConfig contains the configuration for the deployment of the L1 contracts
