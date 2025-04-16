@@ -2,8 +2,6 @@
 
 This repository contains the reference implementation of the [Ten Protocol](https://whitepaper.ten.xyz/).
 
-*Note that this is still very much a work in progress, so there are many rough edges and unfinished components.*
-
 ## High level overview
 
 The typical blockchain node runs multiple services in a single process. For example:
