@@ -13,7 +13,7 @@ import (
 // StoreNetworkCfgInKeyVault stores the network configuration in the Azure Key Vault.
 // It requires credentials to be set in the environment, see: https://docs.microsoft.com/en-us/azure/key-vault/general/authentication?tabs=azure-cli#set-environment-variables
 // Note: these details are not secrets, but it is convenient to store them in KV alongside network secrets for infra systems access
-func StoreNetworkCfgInKeyVault(ctx context.Context, vaultURL string, env string, networkConfig *node.NetworkConfig) error {
+func StoreNetworkCfgInKeyVault(ctx context.Context, vaultURL string, networkName string, networkConfig *node.NetworkConfig) error {
 	// Create a credential using the default Azure credential chain
 	cred, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
@@ -28,8 +28,9 @@ func StoreNetworkCfgInKeyVault(ctx context.Context, vaultURL string, env string,
 
 	// envPrefix allows us to use the same KV instance for multiple environments, if env="uat" then prefix="UAT-
 	envPrefix := ""
-	if env != "" {
-		envPrefix = strings.ToUpper(env) + "-"
+	if networkName != "" {
+		// turn testnet name into shortened key prefix. For example, sepolia-testnet -> SEPOLIA-
+		envPrefix = strings.ToUpper(strings.ReplaceAll(networkName, "-testnet", "")) + "-"
 	}
 
 	// Store each contract address as a secret (matching env var config names from TenConfig)

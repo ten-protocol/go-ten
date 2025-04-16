@@ -31,16 +31,14 @@ func (s *GrantSequencers) Start() error {
 	fmt.Printf("Starting grant sequencers with config: %s\n", s.cfg)
 	var enclaveIDs string
 	var err error
-	if s.cfg.enclaveIDs != "" {
-		enclaveIDs = s.cfg.enclaveIDs
-	} else if s.cfg.sequencerURL != "" {
-		enclaveIDs, err = fetchEnclaveIDs(s.cfg.sequencerURL)
-		if err != nil {
-			return err
-		}
-	} else {
-		return fmt.Errorf("enclaveIDs or sequencerURL must be provided")
+	if s.cfg.SequencerURL == "" {
+		return fmt.Errorf("no SequencerURL provided")
 	}
+	enclaveIDs, err = fetchEnclaveIDs(s.cfg.SequencerURL)
+	if err != nil {
+		return err
+	}
+
 	cmds := []string{
 		"npx",
 		"hardhat",
@@ -58,16 +56,16 @@ func (s *GrantSequencers) Start() error {
                 "saveDeployments": true,
                 "accounts": [ "%s" ]
             }
-        }`, s.cfg.l1HTTPURL, s.cfg.privateKey),
-		"ENCLAVE_REGISTRY_ADDR": s.cfg.enclaveRegistryAddress,
+        }`, s.cfg.L1HTTPURL, s.cfg.PrivateKey),
+		"ENCLAVE_REGISTRY_ADDR": s.cfg.EnclaveRegistryAddress,
 		"ENCLAVE_IDS":           enclaveIDs,
 	}
 
-	fmt.Printf("Starting grant sequencer script. EnclaveRegistryAddress: %s, EnclaveIDs: %s\n", s.cfg.enclaveRegistryAddress, enclaveIDs)
+	fmt.Printf("Starting grant sequencer script. EnclaveRegistryAddress: %s, EnclaveIDs: %s\n", s.cfg.EnclaveRegistryAddress, enclaveIDs)
 
 	containerID, err := docker.StartNewContainer(
 		"grant-sequencers",
-		s.cfg.dockerImage,
+		s.cfg.DockerImage,
 		cmds,
 		nil,
 		envs,

@@ -88,7 +88,7 @@ jobs:
             --tags ${{ vars.AZURE_DEPLOY_GROUP_L1 }}=true \
             --vnet-name ${{ github.event.inputs.testnet_type }}-eth2network-01VNET --subnet ${{ github.event.inputs.testnet_type }}-eth2network-01Subnet \
             --size Standard_D3_v2 --image Canonical:0001-com-ubuntu-server-jammy:22_04-lts:latest \
-            --public-ip-sku Basic --authentication-type password
+            --public-ip-sku Basic --authentication-type password --security-type Standard 
 
       - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
         uses: azure/CLI@v1

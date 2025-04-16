@@ -1,46 +1,20 @@
 package l1contractdeployer
 
-// Option is a function that applies configs to a Config Object
-type Option = func(c *Config)
+import "github.com/ten-protocol/go-ten/go/config"
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1HTTPURL    string
-	privateKey   string
-	dockerImage  string
-	debugEnabled bool
+	L1HTTPURL    string
+	PrivateKey   string
+	DockerImage  string
+	DebugEnabled bool
 }
 
-func NewContractDeployerConfig(opts ...Option) *Config {
-	defaultConfig := &Config{}
-
-	for _, opt := range opts {
-		opt(defaultConfig)
-	}
-
-	return defaultConfig
-}
-
-func WithL1HTTPURL(s string) Option {
-	return func(c *Config) {
-		c.l1HTTPURL = s
-	}
-}
-
-func WithPrivateKey(s string) Option {
-	return func(c *Config) {
-		c.privateKey = s
-	}
-}
-
-func WithDockerImage(s string) Option {
-	return func(c *Config) {
-		c.dockerImage = s
-	}
-}
-
-func WithDebugEnabled(b bool) Option {
-	return func(c *Config) {
-		c.debugEnabled = b
+func NewContractDeployerConfig(tenCfg *config.TenConfig) *Config {
+	return &Config{
+		L1HTTPURL:    tenCfg.Deployment.L1Deploy.RPCAddress,
+		PrivateKey:   tenCfg.Deployment.L1Deploy.DeployerPK,
+		DockerImage:  tenCfg.Deployment.DockerImage,
+		DebugEnabled: tenCfg.Deployment.DebugEnabled,
 	}
 }
