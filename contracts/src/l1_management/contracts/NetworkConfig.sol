@@ -46,6 +46,15 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         NamedAddress[] additionalContracts;  // Dynamic address storage
     }
 
+    /**
+     * @dev Struct for contract version information
+     */
+    struct ContractVersion {
+        string name;
+        string version;
+        address implementation;
+    }
+
     // storage slots for fixed contracts
     bytes32 public constant CROSS_CHAIN_SLOT = bytes32(uint256(keccak256("networkconfig.crossChain")) - 1);
     bytes32 public constant MESSAGE_BUS_SLOT = bytes32(uint256(keccak256("networkconfig.messageBus")) - 1);
@@ -63,6 +72,16 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
     mapping(string => address) public additionalAddresses;
 
     /**
+     * @dev Mapping of contract names to their versions
+     */
+    mapping(string => ContractVersion) private contractVersions;
+
+    /**
+     * @dev Storage slot for the fork manager
+     */
+    bytes32 public constant FORK_MANAGER_SLOT = bytes32(uint256(keccak256("networkconfig.forkManager")) - 1);
+
+    /**
      * @dev Event emitted when a network contract address is added
      * @param name The name of the contract
      * @param addr The address of the contract
@@ -75,6 +94,58 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
      * @param addr The address of the contract
      */
     event AdditionalContractAddressAdded(string name, address addr);
+
+
+    /**
+     * @dev Mapping of contract names to their versions
+     */
+    mapping(string => ContractVersion) private contractVersions;
+
+    /**
+     * @dev Event emitted when a contract is upgraded
+     * @param name The name of the contract
+     * @param oldVersion The old version
+     * @param newVersion The new version
+     * @param implementation The new implementation address
+     */
+    event ContractUpgraded(
+        string indexed name,
+        string oldVersion,
+        string newVersion,
+        address implementation
+    );
+
+    /**
+     * @dev Event emitted when multiple contracts are upgraded in a batch
+     * @param upgradeHash Hash of all upgrades in the batch
+     */
+    event BatchUpgradeCompleted(bytes32 upgradeHash);
+
+    /**
+     * @dev Event emitted when a contract is upgraded
+     * @param name The name of the contract
+     * @param oldVersion The old version
+     * @param newVersion The new version
+     * @param implementation The new implementation address
+     */
+    event ContractUpgraded(
+        string indexed name,
+        string oldVersion,
+        string newVersion,
+        address implementation
+    );
+
+    /**
+     * @dev Event emitted when multiple contracts are upgraded in a batch
+     * @param upgradeHash Hash of all upgrades in the batch
+     */
+    event BatchUpgradeCompleted(bytes32 upgradeHash);
+
+    /**
+     * @dev Event emitted when the fork manager is set
+     * @param forkManager The address of the fork manager
+     */
+    event ForkManagerSet(address forkManager);
 
     /**
      * @dev Initializes the contract
@@ -233,5 +304,67 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
             l2CrossChainMessenger: l2CrossChainMessengerAddress(),
             additionalContracts: additional
         });
+    }
+
+   /**
+     * @dev Records a contract upgrade
+     * @param name The name of the contract
+     * @param version The new version
+     * @param implementation The new implementation address
+     */
+    function recordUpgrade(
+        string calldata name,
+        string calldata version,
+        address implementation
+    ) external onlyOwner {
+        ContractVersion storage current = contractVersions[name];
+        string memory oldVersion = current.version;
+
+        contractVersions[name] = ContractVersion({
+            name: name,
+            version: version,
+            implementation: implementation
+        });
+
+        emit ContractUpgraded(name, oldVersion, version, implementation);
+    }
+
+    /**
+     * @dev Records multiple contract upgrades in a batch
+     * @param names Array of contract names
+     * @param versions Array of new versions
+     * @param implementations Array of new implementation addresses
+     */
+    function recordBatchUpgrade(
+        string[] calldata names,
+        string[] calldata versions,
+        address[] calldata implementations
+    ) external onlyOwner {
+        require(
+            names.length == versions.length && versions.length == implementations.length,
+            "Arrays length mismatch"
+        );
+
+        bytes32 upgradeHash = keccak256(abi.encodePacked(
+            block.timestamp,
+            names,
+            versions,
+            implementations
+        ));
+
+        for (uint256 i = 0; i < names.length; i++) {
+            recordUpgrade(names[i], versions[i], implementations[i]);
+        }
+
+        emit BatchUpgradeCompleted(upgradeHash);
+    }
+
+    /**
+     * @dev Gets the version information for a contract
+     * @param name The name of the contract
+     * @return ContractVersion The version information
+     */
+    function getContractVersion(string calldata name) external view returns (ContractVersion memory) {
+        return contractVersions[name];
     }
 }
