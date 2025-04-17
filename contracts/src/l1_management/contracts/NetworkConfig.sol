@@ -82,6 +82,11 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
     bytes32 public constant FORK_MANAGER_SLOT = bytes32(uint256(keccak256("networkconfig.forkManager")) - 1);
 
     /**
+     * @dev Mapping of contract names to their versions
+     */
+    mapping(string => ContractVersion) private contractVersions;
+
+    /**
      * @dev Event emitted when a network contract address is added
      * @param name The name of the contract
      * @param addr The address of the contract
@@ -97,11 +102,6 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
 
 
     /**
-     * @dev Mapping of contract names to their versions
-     */
-    mapping(string => ContractVersion) private contractVersions;
-
-    /**
      * @dev Event emitted when a contract is upgraded
      * @param name The name of the contract
      * @param oldVersion The old version
@@ -140,12 +140,6 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
      * @param upgradeHash Hash of all upgrades in the batch
      */
     event BatchUpgradeCompleted(bytes32 upgradeHash);
-
-    /**
-     * @dev Event emitted when the fork manager is set
-     * @param forkManager The address of the fork manager
-     */
-    event ForkManagerSet(address forkManager);
 
     /**
      * @dev Initializes the contract
