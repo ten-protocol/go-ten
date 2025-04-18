@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"sort"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ const (
 	METRICS_CONTAINER_NAME = "metrics"
 	METRICS_DOC_ID         = "global_metrics"
 	SHARD_PREFIX           = "user_shard_"
+	ACTIVITY_STATS_DOC_ID  = "activity_stats"
 	DEFAULT_SHARD_COUNT    = 50 // Number of shards to distribute users across
 )
 
@@ -34,6 +36,22 @@ type UserShardDocument struct {
 	ActiveUsers map[string]string `json:"activeUsers"` // double-hashed userID -> ISO timestamp
 	ShardIndex  int               `json:"shardIndex"`
 	LastUpdated string            `json:"lastUpdated"`
+}
+
+// DailyStats represents a single day's statistics
+type DailyStats struct {
+	Date          string `json:"date"`          // ISO date format YYYY-MM-DD
+	DailyActive   int    `json:"dailyActive"`   // Users active on this day
+	WeeklyActive  int    `json:"weeklyActive"`  // Users active in the past 7 days from this date
+	MonthlyActive int    `json:"monthlyActive"` // Users active in the past 30 days from this date
+}
+
+// ActivityStatsDocument contains historical user activity statistics
+type ActivityStatsDocument struct {
+	ID           string       `json:"id"`
+	LastUpdated  string       `json:"lastUpdated"`
+	DailyStats   []DailyStats `json:"dailyStats"`
+	DaysToRetain int          `json:"daysToRetain"` // How many days of history to keep
 }
 
 // MetricsStorageCosmosDB handles metrics persistence in CosmosDB
@@ -264,6 +282,121 @@ func (m *MetricsStorageCosmosDB) CountActiveUsers(activeThreshold time.Time) (in
 	return count, nil
 }
 
+// LoadActivityStats loads the activity statistics document
+func (m *MetricsStorageCosmosDB) LoadActivityStats() (*ActivityStatsDocument, error) {
+	ctx := context.Background()
+	partitionKey := azcosmos.NewPartitionKeyString(ACTIVITY_STATS_DOC_ID)
+
+	response, err := m.metricsContainer.ReadItem(ctx, partitionKey, ACTIVITY_STATS_DOC_ID, nil)
+	if err != nil {
+		if strings.Contains(err.Error(), "NotFound") {
+			// Initialize with empty stats if not found
+			return &ActivityStatsDocument{
+				ID:           ACTIVITY_STATS_DOC_ID,
+				DailyStats:   []DailyStats{},
+				DaysToRetain: 90, // Default to 90 days retention
+			}, nil
+		}
+		return nil, err
+	}
+
+	var doc ActivityStatsDocument
+	if err := json.Unmarshal(response.Value, &doc); err != nil {
+		return nil, err
+	}
+
+	return &doc, nil
+}
+
+// SaveActivityStats saves the activity statistics document
+func (m *MetricsStorageCosmosDB) SaveActivityStats(stats *ActivityStatsDocument) error {
+	ctx := context.Background()
+	partitionKey := azcosmos.NewPartitionKeyString(ACTIVITY_STATS_DOC_ID)
+
+	stats.LastUpdated = time.Now().UTC().Format(time.RFC3339)
+
+	docJSON, err := json.Marshal(stats)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.metricsContainer.UpsertItem(ctx, partitionKey, docJSON, nil)
+	return err
+}
+
+// UpdateDailyStats updates the activity stats document with current day's statistics
+func (m *MetricsStorageCosmosDB) UpdateDailyStats() error {
+	// Get current date in ISO format (YYYY-MM-DD)
+	today := time.Now().UTC().Format("2006-01-02")
+
+	// Load existing stats
+	stats, err := m.LoadActivityStats()
+	if err != nil {
+		return err
+	}
+
+	// Calculate time thresholds
+	now := time.Now().UTC()
+	dailyStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	weeklyStart := dailyStart.AddDate(0, 0, -7)
+	monthlyStart := dailyStart.AddDate(0, 0, -30)
+
+	// Count daily active users
+	dailyCount, err := m.CountActiveUsers(dailyStart)
+	if err != nil {
+		return fmt.Errorf("failed to count daily active users: %w", err)
+	}
+
+	// Count weekly active users
+	weeklyCount, err := m.CountActiveUsers(weeklyStart)
+	if err != nil {
+		return fmt.Errorf("failed to count weekly active users: %w", err)
+	}
+
+	// Count monthly active users
+	monthlyCount, err := m.CountActiveUsers(monthlyStart)
+	if err != nil {
+		return fmt.Errorf("failed to count monthly active users: %w", err)
+	}
+
+	// Create today's stats
+	todayStats := DailyStats{
+		Date:          today,
+		DailyActive:   dailyCount,
+		WeeklyActive:  weeklyCount,
+		MonthlyActive: monthlyCount,
+	}
+
+	// Check if we already have an entry for today
+	found := false
+	for i, stat := range stats.DailyStats {
+		if stat.Date == today {
+			// Update existing entry
+			stats.DailyStats[i] = todayStats
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		// Add new entry
+		stats.DailyStats = append(stats.DailyStats, todayStats)
+	}
+
+	// Sort entries by date (newest first)
+	sort.Slice(stats.DailyStats, func(i, j int) bool {
+		return stats.DailyStats[i].Date > stats.DailyStats[j].Date
+	})
+
+	// Trim old entries if needed
+	if len(stats.DailyStats) > stats.DaysToRetain {
+		stats.DailyStats = stats.DailyStats[:stats.DaysToRetain]
+	}
+
+	// Save the updated stats
+	return m.SaveActivityStats(stats)
+}
+
 // ResizeShards changes the number of shards and redistributes users
 // Warning: This is a costly operation, should be used rarely
 func (m *MetricsStorageCosmosDB) ResizeShards(newShardCount int) error {
@@ -347,6 +480,9 @@ type MetricsStorage interface {
 	GetUserActivityTimestamp(string) (time.Time, bool, error)
 	CountActiveUsers(time.Time) (int, error)
 	ResizeShards(int) error
+	LoadActivityStats() (*ActivityStatsDocument, error)
+	SaveActivityStats(*ActivityStatsDocument) error
+	UpdateDailyStats() error
 }
 
 // NoOpMetricsStorage is a no-op implementation of metrics storage
@@ -389,5 +525,17 @@ func (n *noOpMetricsStorage) CountActiveUsers(time.Time) (int, error) {
 }
 
 func (n *noOpMetricsStorage) ResizeShards(int) error {
+	return nil
+}
+
+func (n *noOpMetricsStorage) LoadActivityStats() (*ActivityStatsDocument, error) {
+	return &ActivityStatsDocument{DailyStats: []DailyStats{}}, nil
+}
+
+func (n *noOpMetricsStorage) SaveActivityStats(*ActivityStatsDocument) error {
+	return nil
+}
+
+func (n *noOpMetricsStorage) UpdateDailyStats() error {
 	return nil
 }

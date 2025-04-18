@@ -79,7 +79,7 @@ func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) Metrics {
 	go mt.updateDailyStats()
 
 	// Update stats immediately on startup
-	go mt.storage.UpdateDailyStats()
+	go mt.updateDailyStats()
 
 	return mt
 }
