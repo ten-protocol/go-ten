@@ -15,7 +15,7 @@ const (
 	METRICS_CONTAINER_NAME = "metrics"
 	METRICS_DOC_ID         = "global_metrics"
 	SHARD_PREFIX           = "user_shard_"
-	DEFAULT_SHARD_COUNT    = 10 // Number of shards to distribute users across
+	DEFAULT_SHARD_COUNT    = 50 // Number of shards to distribute users across
 )
 
 // GlobalMetricsDocument contains global metrics without user activity data
@@ -202,100 +202,6 @@ func (m *MetricsStorageCosmosDB) SaveUserShard(shard *UserShardDocument) error {
 	return err
 }
 
-// For backward compatibility with existing interface
-// LoadMetrics returns combined metrics from all shards
-func (m *MetricsStorageCosmosDB) LoadMetrics() (*MetricsDocument, error) {
-	// Load global metrics
-	global, err := m.LoadGlobalMetrics()
-	if err != nil {
-		return nil, err
-	}
-
-	// Load all shards
-	shards, err := m.LoadAllShards()
-	if err != nil {
-		return nil, err
-	}
-
-	// Combine active users from all shards
-	combinedActiveUsers := make(map[string]string)
-	for _, shard := range shards {
-		for userID, timestamp := range shard.ActiveUsers {
-			combinedActiveUsers[userID] = timestamp
-		}
-	}
-
-	// Create combined metrics document
-	return &MetricsDocument{
-		ID:                 METRICS_DOC_ID,
-		TotalUsers:         global.TotalUsers,
-		AccountsRegistered: global.AccountsRegistered,
-		ActiveUsers:        combinedActiveUsers,
-		ActiveUsersCount:   global.ActiveUsersCount,
-		LastUpdated:        global.LastUpdated,
-	}, nil
-}
-
-// SaveMetrics splits metrics into global and sharded user documents
-func (m *MetricsStorageCosmosDB) SaveMetrics(metrics *MetricsDocument) error {
-	// Create global metrics document
-	global := &GlobalMetricsDocument{
-		ID:                 METRICS_DOC_ID,
-		TotalUsers:         metrics.TotalUsers,
-		AccountsRegistered: metrics.AccountsRegistered,
-		ShardCount:         m.shardCount,
-	}
-
-	// Clean up inactive users and count active ones
-	activeThreshold := time.Now().Add(-30 * 24 * time.Hour) // 30 days
-	activeCount := 0
-
-	// Create a map of shards
-	shards := make(map[string]*UserShardDocument)
-
-	// Process each active user
-	for userID, timestampStr := range metrics.ActiveUsers {
-		if timestamp, err := time.Parse(time.RFC3339, timestampStr); err == nil {
-			if timestamp.After(activeThreshold) {
-				activeCount++
-
-				// Determine which shard this user belongs to
-				shardID := m.getShardDocumentID(userID)
-
-				// Create shard document if it doesn't exist
-				if _, exists := shards[shardID]; !exists {
-					shardIndex := m.getShardIndexFromID(shardID)
-					shards[shardID] = &UserShardDocument{
-						ID:          shardID,
-						ActiveUsers: make(map[string]string),
-						ShardIndex:  shardIndex,
-					}
-				}
-
-				// Add user to appropriate shard
-				shards[shardID].ActiveUsers[userID] = timestampStr
-			}
-		}
-	}
-
-	// Update global active user count
-	global.ActiveUsersCount = activeCount
-
-	// Save global metrics
-	if err := m.SaveGlobalMetrics(global); err != nil {
-		return err
-	}
-
-	// Save each shard
-	for _, shard := range shards {
-		if err := m.SaveUserShard(shard); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // GetUserActivityTimestamp retrieves the activity timestamp for a specific user
 func (m *MetricsStorageCosmosDB) GetUserActivityTimestamp(userID string) (time.Time, bool, error) {
 	// Determine which shard this user belongs to
@@ -365,21 +271,66 @@ func (m *MetricsStorageCosmosDB) ResizeShards(newShardCount int) error {
 		return fmt.Errorf("new shard count must be positive")
 	}
 
-	// Load all current data
-	metrics, err := m.LoadMetrics()
+	// Load all current shards to get all active users
+	allShards, err := m.LoadAllShards()
 	if err != nil {
 		return err
+	}
+
+	// Collect all active users
+	allActiveUsers := make(map[string]string)
+	for _, shard := range allShards {
+		for userID, timestamp := range shard.ActiveUsers {
+			allActiveUsers[userID] = timestamp
+		}
 	}
 
 	// Change shard count
 	oldShardCount := m.shardCount
 	m.shardCount = newShardCount
 
-	// Save metrics with new shard count, which will redistribute users
-	if err := m.SaveMetrics(metrics); err != nil {
-		// Revert on failure
+	// Update global metrics with new shard count
+	global, err := m.LoadGlobalMetrics()
+	if err != nil {
 		m.shardCount = oldShardCount
 		return err
+	}
+
+	global.ShardCount = newShardCount
+	if err := m.SaveGlobalMetrics(global); err != nil {
+		m.shardCount = oldShardCount
+		return err
+	}
+
+	// Create new shards with redistributed users
+	newShards := make(map[string]*UserShardDocument)
+
+	// Redistribute users to new shards
+	for userID, timestamp := range allActiveUsers {
+		// Determine which new shard this user belongs to
+		shardID := m.getShardDocumentID(userID)
+
+		// Create shard document if it doesn't exist
+		if _, exists := newShards[shardID]; !exists {
+			shardIndex := m.getShardIndexFromID(shardID)
+			newShards[shardID] = &UserShardDocument{
+				ID:          shardID,
+				ActiveUsers: make(map[string]string),
+				ShardIndex:  shardIndex,
+			}
+		}
+
+		// Add user to appropriate shard
+		newShards[shardID].ActiveUsers[userID] = timestamp
+	}
+
+	// Save new shards
+	for _, shard := range newShards {
+		if err := m.SaveUserShard(shard); err != nil {
+			// If there's an error, don't revert - just log and continue
+			// because we're already committed to the new shard count
+			return fmt.Errorf("error saving shard %s during resize: %w", shard.ID, err)
+		}
 	}
 
 	return nil
@@ -387,10 +338,15 @@ func (m *MetricsStorageCosmosDB) ResizeShards(newShardCount int) error {
 
 // MetricsStorage interface defines the metrics storage operations
 type MetricsStorage interface {
-	LoadMetrics() (*MetricsDocument, error)
-	SaveMetrics(*MetricsDocument) error
+	LoadGlobalMetrics() (*GlobalMetricsDocument, error)
+	SaveGlobalMetrics(*GlobalMetricsDocument) error
+	LoadUserShard(string) (*UserShardDocument, error)
+	SaveUserShard(*UserShardDocument) error
+	LoadAllShards() ([]*UserShardDocument, error)
 	UpdateUserActivity(string, time.Time) error
 	GetUserActivityTimestamp(string) (time.Time, bool, error)
+	CountActiveUsers(time.Time) (int, error)
+	ResizeShards(int) error
 }
 
 // NoOpMetricsStorage is a no-op implementation of metrics storage
@@ -400,14 +356,24 @@ func NewNoOpMetricsStorage() MetricsStorage {
 	return &noOpMetricsStorage{}
 }
 
-func (n *noOpMetricsStorage) LoadMetrics() (*MetricsDocument, error) {
-	return &MetricsDocument{
-		ActiveUsers: make(map[string]string),
-	}, nil
+func (n *noOpMetricsStorage) LoadGlobalMetrics() (*GlobalMetricsDocument, error) {
+	return &GlobalMetricsDocument{}, nil
 }
 
-func (n *noOpMetricsStorage) SaveMetrics(*MetricsDocument) error {
+func (n *noOpMetricsStorage) SaveGlobalMetrics(*GlobalMetricsDocument) error {
 	return nil
+}
+
+func (n *noOpMetricsStorage) LoadUserShard(string) (*UserShardDocument, error) {
+	return &UserShardDocument{ActiveUsers: make(map[string]string)}, nil
+}
+
+func (n *noOpMetricsStorage) SaveUserShard(*UserShardDocument) error {
+	return nil
+}
+
+func (n *noOpMetricsStorage) LoadAllShards() ([]*UserShardDocument, error) {
+	return []*UserShardDocument{}, nil
 }
 
 func (n *noOpMetricsStorage) UpdateUserActivity(string, time.Time) error {
@@ -416,4 +382,12 @@ func (n *noOpMetricsStorage) UpdateUserActivity(string, time.Time) error {
 
 func (n *noOpMetricsStorage) GetUserActivityTimestamp(string) (time.Time, bool, error) {
 	return time.Time{}, false, nil
+}
+
+func (n *noOpMetricsStorage) CountActiveUsers(time.Time) (int, error) {
+	return 0, nil
+}
+
+func (n *noOpMetricsStorage) ResizeShards(int) error {
+	return nil
 }
