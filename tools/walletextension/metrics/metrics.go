@@ -18,6 +18,9 @@ const (
 	// Cleanup intervals (how often inactive users are cleaned up)
 	InactiveUserCleanupInterval = 1 * time.Hour
 
+	// Update intervals for daily stats
+	DailyStatsUpdateInterval = 1 * time.Hour
+
 	// Activity thresholds
 	UserInactivityThreshold = 30 * 24 * time.Hour // 30 days
 	MonthlyActiveUserWindow = 30 * 24 * time.Hour // 30 days
@@ -50,6 +53,7 @@ type MetricsTracker struct {
 	storage           *cosmosdb.MetricsStorageCosmosDB
 	persistTicker     *time.Ticker
 	batchUpdateTicker *time.Ticker
+	dailyStatsTicker  *time.Ticker
 }
 
 func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) Metrics {
@@ -59,6 +63,7 @@ func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) Metrics {
 		storage:           storage,
 		persistTicker:     time.NewTicker(MetricsPersistInterval),
 		batchUpdateTicker: time.NewTicker(1 * time.Minute), // Process batches more frequently
+		dailyStatsTicker:  time.NewTicker(DailyStatsUpdateInterval),
 	}
 
 	// Load existing metrics
@@ -67,10 +72,14 @@ func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) Metrics {
 		mt.accountsRegistered.Store(global.AccountsRegistered)
 	}
 
-	// Start cleanup routine for inactive users
+	// Start background routines
 	go mt.cleanupInactiveUsers()
 	go mt.persistMetrics()
 	go mt.processBatchUpdates()
+	go mt.updateDailyStats()
+
+	// Update stats immediately on startup
+	go mt.storage.UpdateDailyStats()
 
 	return mt
 }
@@ -231,16 +240,31 @@ func (mt *MetricsTracker) cleanupInactiveUsers() {
 	}
 }
 
+// updateDailyStats periodically updates the daily activity statistics
+func (mt *MetricsTracker) updateDailyStats() {
+	for range mt.dailyStatsTicker.C {
+		if err := mt.storage.UpdateDailyStats(); err != nil {
+			log.Printf("Failed to update daily stats: %v", err)
+		}
+	}
+}
+
 // Stop cleanly stops the metrics tracker
 func (mt *MetricsTracker) Stop() {
 	mt.persistTicker.Stop()
 	mt.batchUpdateTicker.Stop()
+	mt.dailyStatsTicker.Stop()
 
 	// Process any remaining batch updates
 	mt.processBatchUpdates()
 
 	// Final save before stopping
 	mt.saveMetrics()
+
+	// Final update of daily stats
+	if err := mt.storage.UpdateDailyStats(); err != nil {
+		log.Printf("Failed to update daily stats during shutdown: %v", err)
+	}
 }
 
 // NoOpMetricsTracker implements Metrics interface but does nothing
