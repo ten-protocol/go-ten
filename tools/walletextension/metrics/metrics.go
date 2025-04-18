@@ -23,7 +23,7 @@ const (
 	MonthlyActiveUserWindow = 30 * 24 * time.Hour // 30 days
 
 	// Batch size for user activity updates
-	ActivityBatchSize = 30
+	ActivityBatchSize = 100
 )
 
 // Metrics interface defines the metrics operations
@@ -62,12 +62,9 @@ func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) Metrics {
 	}
 
 	// Load existing metrics
-	if metrics, err := storage.LoadMetrics(); err == nil {
-		mt.totalUsers.Store(metrics.TotalUsers)
-		mt.accountsRegistered.Store(metrics.AccountsRegistered)
-
-		// We no longer load all active users into memory at startup
-		// Instead, we'll populate the cache as users become active
+	if global, err := storage.LoadGlobalMetrics(); err == nil {
+		mt.totalUsers.Store(global.TotalUsers)
+		mt.accountsRegistered.Store(global.AccountsRegistered)
 	}
 
 	// Start cleanup routine for inactive users
@@ -84,7 +81,7 @@ func (mt *MetricsTracker) hashUserID(userID []byte) string {
 	firstHash := sha256.Sum256(userID)
 	// Second hash
 	secondHash := sha256.Sum256(firstHash[:])
-	// Return only first 8 bytes of the hash (sufficient for ~1M users)
+	// Return only first 8 bytes of the hash (sufficient for activity tracking)
 	return hex.EncodeToString(secondHash[:8])
 }
 
@@ -190,23 +187,27 @@ func (mt *MetricsTracker) persistMetrics() {
 }
 
 func (mt *MetricsTracker) saveMetrics() {
-	// Create metrics document with global metrics only
-	metrics := &cosmosdb.MetricsDocument{
-		ID:                 cosmosdb.METRICS_DOC_ID,
-		TotalUsers:         mt.totalUsers.Load(),
-		AccountsRegistered: mt.accountsRegistered.Load(),
-		ActiveUsers:        make(map[string]string), // Empty, will be populated from shards
-		LastUpdated:        time.Now().UTC().Format(time.RFC3339),
+	// Load the current global metrics
+	global, err := mt.storage.LoadGlobalMetrics()
+	if err != nil {
+		log.Printf("Failed to load global metrics: %v", err)
+		return
 	}
 
-	// Process active users from the database
-	if currentMetrics, err := mt.storage.LoadMetrics(); err == nil {
-		metrics.ActiveUsers = currentMetrics.ActiveUsers
-		metrics.ActiveUsersCount = currentMetrics.ActiveUsersCount
+	// Update with latest values
+	global.TotalUsers = mt.totalUsers.Load()
+	global.AccountsRegistered = mt.accountsRegistered.Load()
+
+	// Update active user count
+	activeThreshold := time.Now().Add(-MonthlyActiveUserWindow)
+	count, err := mt.storage.CountActiveUsers(activeThreshold)
+	if err == nil {
+		global.ActiveUsersCount = count
 	}
 
-	if err := mt.storage.SaveMetrics(metrics); err != nil {
-		log.Printf("Failed to persist metrics: %v", err)
+	// Save the updated global metrics
+	if err := mt.storage.SaveGlobalMetrics(global); err != nil {
+		log.Printf("Failed to persist global metrics: %v", err)
 	}
 }
 
@@ -225,7 +226,8 @@ func (mt *MetricsTracker) cleanupInactiveUsers() {
 		mt.activityCacheLock.Unlock()
 
 		// Global metrics will be saved during the regular persist cycle
-		// Inactive users in the database will be handled when loading/saving metrics
+		// Inactive users in the database will be cleaned up when each shard is loaded
+		// and written back during regular operations
 	}
 }
 
