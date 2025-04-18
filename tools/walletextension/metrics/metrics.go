@@ -78,13 +78,14 @@ func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) Metrics {
 	return mt
 }
 
-// hashUserID creates a double-hashed version of the userID
+// hashUserID creates a double-hashed version of the userID, using only the first 8 bytes of the hash
 func (mt *MetricsTracker) hashUserID(userID []byte) string {
 	// First hash
 	firstHash := sha256.Sum256(userID)
 	// Second hash
 	secondHash := sha256.Sum256(firstHash[:])
-	return hex.EncodeToString(secondHash[:])
+	// Return only first 8 bytes of the hash (sufficient for ~1M users)
+	return hex.EncodeToString(secondHash[:8])
 }
 
 func (mt *MetricsTracker) RecordNewUser() {
