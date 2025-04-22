@@ -1,4 +1,4 @@
-name: 'Build and Push Release Images (ALIBABA)'
+name: 'Build and Push Release Images'
 
 on:
   release:
