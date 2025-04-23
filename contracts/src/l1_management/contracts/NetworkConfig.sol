@@ -97,14 +97,10 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
 
     /**
      * @dev Event emitted when a hardfork upgrade occurs
-     * @param hardforkName The name of the hardfork
-     * @param proxyAddresses Array of proxy addresses that were upgraded
-     * @param implementations Array of implementation addresses for each proxy
+     * @param forkName The name of the hardfork
      */
     event HardforkUpgrade(
-        string indexed hardforkName,
-        address[] proxyAddresses,
-        address[] implementations
+        string indexed forkName
     );
 
     /**
@@ -276,34 +272,11 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @dev Records a hardfork upgrade by verifying proxy implementations
-     * @param hardforkName The name of the hardfork
-     * @param proxyAddresses Array of proxy addresses to verify
+     * @dev Emits a hardfork upgrade event that can be subscribed to by the L2
      */
-    function recordHardforkUpgrade(
-        string calldata hardforkName,
-        address[] calldata proxyAddresses
+    function recordHardfork(
+        string calldata hardforkName
     ) external onlyOwner {
-        require(proxyAddresses.length > 0, "No proxy addresses provided");
-        
-        address[] memory implementations = new address[](proxyAddresses.length);
-        
-        for (uint256 i = 0; i < proxyAddresses.length; i++) {
-            address proxy = proxyAddresses[i];
-            require(proxy != address(0), "Invalid proxy address");
-            
-            // Get the implementation address from the proxy
-            // This assumes the proxy follows the EIP-1967 standard for implementation slots
-            bytes32 implementationSlot = bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1);
-            address implementation;
-            assembly {
-                implementation := sload(implementationSlot)
-            }
-            require(implementation != address(0), "Invalid implementation address");
-            
-            implementations[i] = implementation;
-        }
-
-        emit HardforkUpgrade(hardforkName, proxyAddresses, implementations);
+        emit HardforkUpgrade(hardforkName);
     }
 }
