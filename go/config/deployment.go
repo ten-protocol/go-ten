@@ -1,7 +1,5 @@
 package config
 
-import "github.com/ethereum/go-ethereum/common"
-
 // DeploymentConfig contains the configuration for the deployment of the Ten network
 // this is used by scripts in the initial deployment and maintenance of network contracts etc.
 //
@@ -20,10 +18,9 @@ type DeploymentConfig struct {
 //
 //	yaml: `deploy.l1`
 type L1DeployConfig struct {
-	RPCAddress      string         `mapstructure:"rpcAddress"`      // an RPC address for the L1 network
-	DeployerPK      string         `mapstructure:"deployerPK"`      // the private key of the L1 deployer account
-	DARegistry      common.Address `mapstructure:"daRegistry"`      // the address of the data availability registry contract
-	ChallengePeriod int            `mapstructure:"challengePeriod"` // the rollup challenge period in seconds
+	RPCAddress      string `mapstructure:"rpcAddress"`      // an RPC address for the L1 network
+	DeployerPK      string `mapstructure:"deployerPK"`      // the private key of the L1 deployer account
+	ChallengePeriod int    `mapstructure:"challengePeriod"` // the rollup challenge period in seconds
 }
 
 // L2DeployConfig contains the configuration for the deployment of the L2 contracts

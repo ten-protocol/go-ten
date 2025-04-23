@@ -101,7 +101,6 @@ deploy:
   l1:
     rpcAddress: "http://localhost:8545" # L1 RPC address for deploying contracts
     deployerPK: 0x0 # private key for the deployer account
-    daRegistry: 0x0 # L1 address of the DA registry contract
     challengePeriod: 1 # challenge period for rollups in seconds
   l2:
     rpcAddress: "localhost" # L2 RPC address for deploying contracts

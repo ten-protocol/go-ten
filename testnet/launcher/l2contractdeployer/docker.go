@@ -22,13 +22,10 @@ type ContractDeployer struct {
 func NewDockerContractDeployer(cfg *Config) (*ContractDeployer, error) {
 	return &ContractDeployer{
 		cfg: cfg,
-	}, nil // todo (@pedro) - add validation
+	}, nil
 }
 
 func (n *ContractDeployer) Start() error {
-	configCopy := n.cfg.Obfuscate()
-	fmt.Printf("Starting L2 contract deployer with config: \n%s\n\n", configCopy)
-
 	cmds := []string{"/bin/sh"}
 	var ports []int
 

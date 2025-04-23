@@ -484,10 +484,10 @@ jobs:
       name: ${{ github.event.inputs.testnet_type }}
     env:
       DOCKER_API_VERSION: "1.45"
+      NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.build.outputs.DA_REGISTRY_ADDR }}
       DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
       DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
       DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
-      DEPLOY_L1_DAREGISTRY: ${{ needs.build.outputs.DA_REGISTRY_ADDR }}
       DEPLOY_L1_CHALLENGEPERIOD: ${{ vars.L1_CHALLENGE_PERIOD }}
     steps:
       -  uses: actions/checkout@v4
@@ -535,6 +535,9 @@ jobs:
           DEPLOY_L2_FAUCETFUNDS: ${{ vars.FAUCET_INITIAL_FUNDS }}
           NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.build.outputs.NETWORK_CONFIG_ADDR }}
           NETWORK_L1_CONTRACTS_MESSAGEBUS: ${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }}
+          NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.build.outputs.DA_REGISTRY_ADDR }}
+          NETWORK_L1_CONTRACTS_CROSSCHAIN: ${{ needs.build.outputs.CROSS_CHAIN_ADDR }}
+          NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.build.outputs.ENCLAVE_REGISTRY_ADDR }}
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd \
 
