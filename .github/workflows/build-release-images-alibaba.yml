@@ -38,7 +38,7 @@ jobs:
           elif [ -n "${{ github.event.inputs.tag }}" ]; then
             echo "VERSION=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
           else
-            # Fetch the latest tag from the repository
+            # Fetch the latest tag from the repositoryprot
             LATEST_TAG=$(git describe --tags `git rev-list --tags --max-count=1`)
             echo "VERSION=${LATEST_TAG}" >> $GITHUB_OUTPUT
           fi
