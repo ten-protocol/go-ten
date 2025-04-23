@@ -82,11 +82,6 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
     bytes32 public constant FORK_MANAGER_SLOT = bytes32(uint256(keccak256("networkconfig.forkManager")) - 1);
 
     /**
-     * @dev Mapping of contract names to their versions
-     */
-    mapping(string => ContractVersion) private contractVersions;
-
-    /**
      * @dev Event emitted when a network contract address is added
      * @param name The name of the contract
      * @param addr The address of the contract
@@ -100,46 +95,17 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
      */
     event AdditionalContractAddressAdded(string name, address addr);
 
-
     /**
-     * @dev Event emitted when a contract is upgraded
-     * @param name The name of the contract
-     * @param oldVersion The old version
-     * @param newVersion The new version
-     * @param implementation The new implementation address
+     * @dev Event emitted when a hardfork upgrade occurs
+     * @param hardforkName The name of the hardfork
+     * @param proxyAddresses Array of proxy addresses that were upgraded
+     * @param implementations Array of implementation addresses for each proxy
      */
-    event ContractUpgraded(
-        string indexed name,
-        string oldVersion,
-        string newVersion,
-        address implementation
+    event HardforkUpgrade(
+        string indexed hardforkName,
+        address[] proxyAddresses,
+        address[] implementations
     );
-
-    /**
-     * @dev Event emitted when multiple contracts are upgraded in a batch
-     * @param upgradeHash Hash of all upgrades in the batch
-     */
-    event BatchUpgradeCompleted(bytes32 upgradeHash);
-
-    /**
-     * @dev Event emitted when a contract is upgraded
-     * @param name The name of the contract
-     * @param oldVersion The old version
-     * @param newVersion The new version
-     * @param implementation The new implementation address
-     */
-    event ContractUpgraded(
-        string indexed name,
-        string oldVersion,
-        string newVersion,
-        address implementation
-    );
-
-    /**
-     * @dev Event emitted when multiple contracts are upgraded in a batch
-     * @param upgradeHash Hash of all upgrades in the batch
-     */
-    event BatchUpgradeCompleted(bytes32 upgradeHash);
 
     /**
      * @dev Initializes the contract
@@ -300,59 +266,6 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         });
     }
 
-   /**
-     * @dev Records a contract upgrade
-     * @param name The name of the contract
-     * @param version The new version
-     * @param implementation The new implementation address
-     */
-    function recordUpgrade(
-        string calldata name,
-        string calldata version,
-        address implementation
-    ) external onlyOwner {
-        ContractVersion storage current = contractVersions[name];
-        string memory oldVersion = current.version;
-
-        contractVersions[name] = ContractVersion({
-            name: name,
-            version: version,
-            implementation: implementation
-        });
-
-        emit ContractUpgraded(name, oldVersion, version, implementation);
-    }
-
-    /**
-     * @dev Records multiple contract upgrades in a batch
-     * @param names Array of contract names
-     * @param versions Array of new versions
-     * @param implementations Array of new implementation addresses
-     */
-    function recordBatchUpgrade(
-        string[] calldata names,
-        string[] calldata versions,
-        address[] calldata implementations
-    ) external onlyOwner {
-        require(
-            names.length == versions.length && versions.length == implementations.length,
-            "Arrays length mismatch"
-        );
-
-        bytes32 upgradeHash = keccak256(abi.encodePacked(
-            block.timestamp,
-            names,
-            versions,
-            implementations
-        ));
-
-        for (uint256 i = 0; i < names.length; i++) {
-            recordUpgrade(names[i], versions[i], implementations[i]);
-        }
-
-        emit BatchUpgradeCompleted(upgradeHash);
-    }
-
     /**
      * @dev Gets the version information for a contract
      * @param name The name of the contract
@@ -360,5 +273,37 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
      */
     function getContractVersion(string calldata name) external view returns (ContractVersion memory) {
         return contractVersions[name];
+    }
+
+    /**
+     * @dev Records a hardfork upgrade by verifying proxy implementations
+     * @param hardforkName The name of the hardfork
+     * @param proxyAddresses Array of proxy addresses to verify
+     */
+    function recordHardforkUpgrade(
+        string calldata hardforkName,
+        address[] calldata proxyAddresses
+    ) external onlyOwner {
+        require(proxyAddresses.length > 0, "No proxy addresses provided");
+        
+        address[] memory implementations = new address[](proxyAddresses.length);
+        
+        for (uint256 i = 0; i < proxyAddresses.length; i++) {
+            address proxy = proxyAddresses[i];
+            require(proxy != address(0), "Invalid proxy address");
+            
+            // Get the implementation address from the proxy
+            // This assumes the proxy follows the EIP-1967 standard for implementation slots
+            bytes32 implementationSlot = bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1);
+            address implementation;
+            assembly {
+                implementation := sload(implementationSlot)
+            }
+            require(implementation != address(0), "Invalid implementation address");
+            
+            implementations[i] = implementation;
+        }
+
+        emit HardforkUpgrade(hardforkName, proxyAddresses, implementations);
     }
 }
