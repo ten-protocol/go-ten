@@ -36,13 +36,11 @@ jobs:
           echo "Verifying login..."
           docker login crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com -u will@5131971543297513 -p ${{ secrets.ALIBABA_REGISTRY_PASSWORD }}
           
-          # List repositories to verify access
-          echo "Listing repositories..."
-          docker search crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet
-          
-          # Check repository permissions
-          echo "Checking repository permissions..."
-          docker pull crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/enclave:latest || true
+          # Check if we can push to the registry
+          echo "Testing push access..."
+          docker pull hello-world
+          docker tag hello-world crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/test:latest
+          docker push crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/test:latest || true
 
       - name: 'Get version'
         id: get_version
