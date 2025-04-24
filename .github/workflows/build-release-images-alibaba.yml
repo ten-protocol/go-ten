@@ -1,8 +1,5 @@
 name: 'Build and Push Release Images (ALIBABA)'
 
-#on:
-#  release:
-#    types: [published]
 on:
   workflow_dispatch:
     inputs:
@@ -26,21 +23,9 @@ jobs:
       - name: 'Login to Alibaba Cloud Container Registry'
         uses: docker/login-action@v3
         with:
-          registry: crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com
+          registry: crpi-im6sg8q4x42zs9n3-vpc.eu-west-1.personal.cr.aliyuncs.com
           username: will@5131971543297513
           password: ${{ secrets.ALIBABA_REGISTRY_PASSWORD }}
-
-      - name: 'Verify registry access'
-        run: |
-          # Verify login
-          echo "Verifying login..."
-          docker login crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com -u will@5131971543297513 -p ${{ secrets.ALIBABA_REGISTRY_PASSWORD }}
-          
-          # Check if we can push to the registry
-          echo "Testing push access..."
-          docker pull hello-world
-          docker tag hello-world crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/test:latest
-          docker push crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/test:latest || true
 
       - name: 'Get version'
         id: get_version
@@ -60,9 +45,9 @@ jobs:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
           # Build and push enclave image
-          DOCKER_BUILDKIT=1 docker build -t crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/enclave:${VERSION} -f dockerfiles/enclave.Dockerfile .
-          docker push crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/enclave:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t crpi-im6sg8q4x42zs9n3-vpc.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/enclave:${VERSION} -f dockerfiles/enclave.Dockerfile .
+          docker push crpi-im6sg8q4x42zs9n3-vpc.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/enclave:${VERSION}
           
           # Build and push host image
-          DOCKER_BUILDKIT=1 docker build -t crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/host:${VERSION} -f dockerfiles/host.Dockerfile .
-          docker push crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/host:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t crpi-im6sg8q4x42zs9n3-vpc.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/host:${VERSION} -f dockerfiles/host.Dockerfile .
+          docker push crpi-im6sg8q4x42zs9n3-vpc.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/host:${VERSION}
