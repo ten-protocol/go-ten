@@ -30,6 +30,22 @@ jobs:
           username: will@5131971543297513
           password: ${{ secrets.ALIBABA_REGISTRY_PASSWORD }}
 
+      - name: 'Verify registry access'
+        run: |
+          # Verify login
+          echo "Verifying login..."
+          docker login crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com -u will@5131971543297513 -p ${{ secrets.ALIBABA_REGISTRY_PASSWORD }}
+          
+          # List repositories to verify access
+          echo "Listing repositories..."
+          curl -X GET "https://cr.eu-west-1.aliyuncs.com/2015-12-15/namespaces/ten-testnet/repositories" \
+            -H "Authorization: Bearer ${{ secrets.ALIBABA_REGISTRY_PASSWORD }}"
+          
+          # Check repository permissions
+          echo "Checking repository permissions..."
+          curl -X GET "https://cr.eu-west-1.aliyuncs.com/2015-12-15/namespaces/ten-testnet/repositories/tentestnet" \
+            -H "Authorization: Bearer ${{ secrets.ALIBABA_REGISTRY_PASSWORD }}"
+
       - name: 'Get version'
         id: get_version
         run: |
