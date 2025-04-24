@@ -36,15 +36,21 @@ jobs:
           echo "Verifying login..."
           docker login crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com -u will@5131971543297513 -p ${{ secrets.ALIBABA_REGISTRY_PASSWORD }}
           
+          # Get Docker Registry token
+          echo "Getting Docker Registry token..."
+          TOKEN=$(curl -s -u "will@5131971543297513:${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" \
+            "https://crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/v2/auth" \
+            | jq -r '.token')
+          
           # List repositories to verify access
           echo "Listing repositories..."
           curl -X GET "https://crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/v2/_catalog" \
-            -H "Authorization: Bearer ${{ secrets.ALIBABA_REGISTRY_PASSWORD }}"
+            -H "Authorization: Bearer $TOKEN"
           
           # Check repository permissions
           echo "Checking repository permissions..."
           curl -X GET "https://crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/v2/ten-testnet/tentestnet/tags/list" \
-            -H "Authorization: Bearer ${{ secrets.ALIBABA_REGISTRY_PASSWORD }}"
+            -H "Authorization: Bearer $TOKEN"
 
       - name: 'Get version'
         id: get_version
