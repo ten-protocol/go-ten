@@ -23,10 +23,10 @@ jobs:
         with:
           go-version: 1.23.5
 
-      - name: Manual login test
-        run: echo "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" | docker login \
-          --username=will@5131971543297513 \
-          --password-stdin crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com
+#      - name: Manual login test
+#        run: echo "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" | docker login \
+#          --username=will@5131971543297513 \
+#          --password-stdin crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com
 
       - name: 'Login to Alibaba Cloud Container Registry'
         uses: docker/login-action@v3
