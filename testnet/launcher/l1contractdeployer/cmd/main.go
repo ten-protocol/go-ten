@@ -5,19 +5,19 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ten-protocol/go-ten/go/config"
 	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
 )
 
 func main() {
-	cliConfig := ParseConfigCLI()
+	tenCfg, err := config.LoadTenConfig()
+	if err != nil {
+		fmt.Println("Error loading ten config:", err)
+		os.Exit(1)
+	}
 
-	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
-		l1cd.NewContractDeployerConfig(
-			l1cd.WithL1HTTPURL(cliConfig.l1HTTPURL),     // "http://eth2network:8025"
-			l1cd.WithPrivateKey(cliConfig.privateKey),   //"f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
-			l1cd.WithDockerImage(cliConfig.dockerImage), //"testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
-		),
-	)
+	deployerConfig := l1cd.NewContractDeployerConfig(tenCfg)
+	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(deployerConfig)
 	if err != nil {
 		fmt.Printf("unable to configure l1 contract deployer - %s\n", err)
 		os.Exit(1)
@@ -45,7 +45,7 @@ func main() {
 	fmt.Printf("L1START=%s\n", networkConfig.L1StartHash)
 
 	// the responsibility of writing to disk is outside the deployers domain
-	if cliConfig.contractsEnvFile != "" {
+	if tenCfg.Deployment.OutputEnvFile != "" {
 		envFile := fmt.Sprintf("ENCLAVEREGISTRYADDR=%s\nCROSSCHAINADDR=%s\nDAREGISTRYADDR=%s\nNETWORKCONFIGADDR=%s\nMSGBUSCONTRACTADDR=%s\nBRIDGECONTRACTADDR=%s\nL1START=%s\n",
 			networkConfig.EnclaveRegistryAddress,
 			networkConfig.CrossChainAddress,
@@ -56,7 +56,7 @@ func main() {
 			networkConfig.L1StartHash)
 
 		// Write the content to a new file or override the existing file
-		err = os.WriteFile(cliConfig.contractsEnvFile, []byte(envFile), 0o644) //nolint:gosec
+		err = os.WriteFile(tenCfg.Deployment.OutputEnvFile, []byte(envFile), 0o644) //nolint:gosec
 		if err != nil {
 			fmt.Println("Error writing file:", err)
 			os.Exit(1)
@@ -64,8 +64,8 @@ func main() {
 	}
 
 	// Store in Azure Key Vault if configured
-	if cliConfig.azureKeyVaultURL != "" {
-		if err := l1cd.StoreNetworkCfgInKeyVault(context.Background(), cliConfig.azureKeyVaultURL, cliConfig.azureKeyVaultEnv, networkConfig); err != nil {
+	if tenCfg.Deployment.OutputAzureKV != "" {
+		if err := l1cd.StoreNetworkCfgInKeyVault(context.Background(), tenCfg.Deployment.OutputAzureKV, tenCfg.Deployment.NetworkName, networkConfig); err != nil {
 			fmt.Printf("Failed to store contracts in Azure Key Vault: %v\n", err)
 			os.Exit(1)
 		}

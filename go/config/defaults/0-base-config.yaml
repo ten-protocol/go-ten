@@ -92,3 +92,19 @@ enclave:
   rpc:
     bindAddress: "0.0.0.0:11000"
     timeout: 5s
+deploy:
+  debug: false # enable debug mode for deployer
+  dockerImage: "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" # docker image for L1 contract deploys
+  outputAzureKV: "" # url output azure key vault for L1 contract deploys
+  outputEnv: "" # path to output env file for L1 contract deploys (used in GH actions)
+  networkName: "" # name of the testnet env, used as a prefix for KV keys for example
+  l1:
+    rpcAddress: "http://localhost:8545" # L1 RPC address for deploying contracts
+    deployerPK: 0x0 # private key for the deployer account
+    challengePeriod: 1 # challenge period for rollups in seconds
+  l2:
+    rpcAddress: "localhost" # L2 RPC address for deploying contracts
+    wsPort: 8546 # L2 RPC port for deploying contracts
+    deployerPK: 0x0 # private key for the deployer account
+    faucetPrefund: 10000 # amount of ETH to pre-fund the faucet account
+    sequencerURL: "" # sequencer URL to fetch its HA enclave IDs
