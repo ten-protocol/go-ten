@@ -309,11 +309,11 @@ func (t *Testnet) grantSequencerStatus(enclaveRegistryAddr string) error {
 	hostURL := fmt.Sprintf("http://localhost:%d", 80)
 
 	l1grantsequencers, err := l1gs.NewGrantSequencers(
-		l1gs.NewGrantSequencerConfig(
+		l1gs.NewUpgradeContractsConfig(
 			l1gs.WithL1HTTPURL("http://eth2network:8025"),
 			l1gs.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1gs.WithDockerImage(t.cfg.contractDeployerDockerImage),
-			l1gs.WithEnclaveContractAddress(enclaveRegistryAddr),
+			l1gs.WithNetworkConfigAddress(enclaveRegistryAddr),
 			l1gs.WithSequencerURL(hostURL),
 		),
 	)
