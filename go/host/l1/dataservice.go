@@ -444,7 +444,14 @@ func (r *DataService) streamLiveBlocks() {
 				continue
 			}
 
-			r.handleNewBlock(blockHeader)
+			r.storeBlockHeader(blockHeader)
+
+			// only notify subscribers (enclave guardians) on the streamed block, because they have their own catch-up mechanism
+			r.head = blockHeader.Hash()
+			for _, handler := range r.blockSubscribers.Subscribers() {
+				go handler.HandleBlock(blockHeader)
+			}
+
 		case <-time.After(_timeoutNoBlocks):
 			r.logger.Warn("no new blocks received since timeout. Reconnecting..", "timeout", _timeoutNoBlocks)
 			if streamSub != nil {
@@ -472,6 +479,8 @@ func (r *DataService) fetchAncestors(blockHash gethcommon.Hash) error {
 		return nil
 	}
 
+	r.logger.Info("`newHeads` block ancestor not found in host db. Fetching from l1", log.BlockHashKey, blockHash)
+
 	// fetch the missing block from the l1 rpc
 	block, err := r.ethClient.HeaderByHash(blockHash)
 	if err != nil {
@@ -481,6 +490,7 @@ func (r *DataService) fetchAncestors(blockHash gethcommon.Hash) error {
 	if block.Number.Uint64() <= common.L1GenesisHeight+1 {
 		return nil
 	}
+
 	// recursively check that the ancestors
 	err = r.fetchAncestors(block.ParentHash)
 	if err != nil {
@@ -488,20 +498,15 @@ func (r *DataService) fetchAncestors(blockHash gethcommon.Hash) error {
 	}
 
 	// handle the blocks in the reverse order of the stack - from the oldest to the newest
-	r.handleNewBlock(block)
+	r.storeBlockHeader(block)
 	return nil
 }
 
-func (r *DataService) handleNewBlock(blockHeader *types.Header) {
+func (r *DataService) storeBlockHeader(blockHeader *types.Header) {
 	err := r.blockResolver.AddBlock(blockHeader)
 	if err != nil {
 		r.logger.Error("Could not add block to host db.", log.ErrKey, err)
 		// todo - handle unexpected errors here
-	}
-
-	r.head = blockHeader.Hash()
-	for _, handler := range r.blockSubscribers.Subscribers() {
-		go handler.HandleBlock(blockHeader)
 	}
 }
 
