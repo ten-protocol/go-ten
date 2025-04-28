@@ -435,7 +435,7 @@ func (r *DataService) streamLiveBlocks() {
 	for r.running.Load() {
 		select {
 		case blockHeader := <-liveStream:
-			r.logger.Info(fmt.Sprintf("received block from l1 stream: %v", blockHeader))
+			r.logger.Info("received block from l1 stream", log.BlockHashKey, blockHeader.Hash(), log.BlockHeightKey, blockHeader.Number)
 
 			// recursively check that the ancestors are available in the host db
 			err := r.fetchAncestors(blockHeader.ParentHash)
