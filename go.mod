@@ -1,6 +1,6 @@
 module github.com/ten-protocol/go-ten
 
-go 1.23.8
+go 1.23.5
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0

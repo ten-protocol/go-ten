@@ -61,7 +61,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.23.8
+          go-version: 1.23.5
 
       - name: 'Print GitHub variables'
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
