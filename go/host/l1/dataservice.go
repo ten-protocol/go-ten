@@ -435,17 +435,23 @@ func (r *DataService) streamLiveBlocks() {
 	for r.running.Load() {
 		select {
 		case blockHeader := <-liveStream:
-			r.logger.Info(fmt.Sprintf("received block from l1 stream: %v", blockHeader))
-			err := r.blockResolver.AddBlock(blockHeader)
+			r.logger.Info("received block from l1 stream", log.BlockHashKey, blockHeader.Hash(), log.BlockHeightKey, blockHeader.Number)
+
+			// recursively check that the ancestors are available in the host db
+			err := r.fetchAncestors(blockHeader.ParentHash)
 			if err != nil {
-				r.logger.Error("Could not add block to host db.", log.ErrKey, err)
-				// todo - handle unexpected errors here
+				r.logger.Error("error fetching ancestors", log.ErrKey, err)
+				continue
 			}
 
+			r.storeBlockHeader(blockHeader)
+
+			// only notify subscribers (enclave guardians) on the streamed block, because they have their own catch-up mechanism
 			r.head = blockHeader.Hash()
 			for _, handler := range r.blockSubscribers.Subscribers() {
 				go handler.HandleBlock(blockHeader)
 			}
+
 		case <-time.After(_timeoutNoBlocks):
 			r.logger.Warn("no new blocks received since timeout. Reconnecting..", "timeout", _timeoutNoBlocks)
 			if streamSub != nil {
@@ -464,6 +470,43 @@ func (r *DataService) streamLiveBlocks() {
 	}
 	if liveStream != nil {
 		close(liveStream)
+	}
+}
+
+func (r *DataService) fetchAncestors(blockHash gethcommon.Hash) error {
+	_, err := r.blockResolver.ReadBlock(&blockHash)
+	if err == nil {
+		return nil
+	}
+
+	r.logger.Info("`newHeads` block ancestor not found in host db. Fetching from l1", log.BlockHashKey, blockHash)
+
+	// fetch the missing block from the l1 rpc
+	block, err := r.ethClient.HeaderByHash(blockHash)
+	if err != nil {
+		return fmt.Errorf("error fetching block: %w", err)
+	}
+
+	if block.Number.Uint64() <= common.L1GenesisHeight+1 {
+		return nil
+	}
+
+	// recursively check that the ancestors
+	err = r.fetchAncestors(block.ParentHash)
+	if err != nil {
+		return fmt.Errorf("error fetching ancestor: %w", err)
+	}
+
+	// handle the blocks in the reverse order of the stack - from the oldest to the newest
+	r.storeBlockHeader(block)
+	return nil
+}
+
+func (r *DataService) storeBlockHeader(blockHeader *types.Header) {
+	err := r.blockResolver.AddBlock(blockHeader)
+	if err != nil {
+		r.logger.Error("Could not add block to host db.", log.ErrKey, err)
+		// todo - handle unexpected errors here
 	}
 }
 
