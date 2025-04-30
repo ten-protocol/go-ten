@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"sync"
 	"time"
 
@@ -135,7 +136,7 @@ func (p *Publisher) InitializeSecret(attestation *common.AttestationReport, encS
 		return err
 	}
 	// we block here until we confirm a successful receipt. It is important this is published before the initial rollup.
-	return p.publishTransaction(initialiseSecretTx)
+	return p.publishDynamicTxWithRetry(initialiseSecretTx)
 }
 
 func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethcommon.Hash, error) {
@@ -164,7 +165,7 @@ func (p *Publisher) RequestSecret(attestation *common.AttestationReport) (gethco
 	}
 
 	// we wait until the secret req transaction has succeeded before we start polling for the secret
-	err = p.publishTransaction(requestSecretTx)
+	err = p.publishDynamicTxWithRetry(requestSecretTx)
 	if err != nil {
 		return gethutil.EmptyHash, err
 	}
@@ -187,7 +188,7 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 
 	// fire-and-forget (track the receipt asynchronously)
 	go func() {
-		err := p.publishTransaction(respondSecretTx)
+		err := p.publishDynamicTxWithRetry(respondSecretTx)
 		if err != nil {
 			p.logger.Error("Could not broadcast secret response L1 tx", log.ErrKey, err)
 		}
@@ -267,7 +268,7 @@ func (p *Publisher) PublishBlob(result common.CreateRollupResult) error {
 		return fmt.Errorf("unexpected error waiting for bloack after rollup bound block: %w", err)
 	}
 
-	err = p.publishTransaction(rollupBlobTx)
+	err = p.publishBlobTxWithRetry(rollupBlobTx)
 	if err != nil {
 		var maxRetriesErr *MaxRetriesError
 		if errors.As(err, &maxRetriesErr) {
@@ -317,31 +318,29 @@ func (p *Publisher) ResyncImportantContracts() error {
 	return nil
 }
 
-// publishTransaction will keep trying unless the L1 seems to be unavailable or the tx is otherwise rejected
+// publishDynamicTxWithRetry will keep trying unless the L1 seems to be unavailable or the tx is otherwise rejected
 // this method is guarded by a lock to ensure that only one transaction is attempted at a time to avoid nonce conflicts
 // todo (@matt) this method should take a context so we can try to cancel if the tx is no longer required
-func (p *Publisher) publishTransaction(tx types.TxData) error {
-	p.sendingLock.Lock()
-	defer p.sendingLock.Unlock()
-
-	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
-	if err != nil {
-		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
-	}
-
-	if _, ok := tx.(*types.BlobTx); ok {
-		return p.publishBlobTxWithRetry(tx, nonce)
-	}
-	return p.publishDynamicTxWithRetry(tx, nonce)
-}
-
-func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData, nonce uint64) error {
+func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData) error {
 	err := retry.DoWithCount(func(retryCount int) error {
 		if p.hostStopper.IsStopping() {
 			return retry.FailFast(errors.New("host is stopping while publishing transaction"))
 		}
-		_, err := p.executeTransaction(tx, nonce, retryCount)
+
+		p.sendingLock.Lock()
+		defer p.sendingLock.Unlock()
+
+		nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
 		if err != nil {
+			return fmt.Errorf("could not get nonce for L1 tx: %w", err)
+		}
+
+		_, err = p.executeTransaction(tx, nonce, retryCount)
+		if err != nil {
+			// when the transaction fails because the smart contract rejects it, we abort.
+			if isSmartContractError(err) {
+				return retry.FailFast(fmt.Errorf("could not publish tx because of a smart contract error. Cause: %w", err))
+			}
 			p.logger.Info("publish L1 tx failed, retrying...", log.ErrKey, err)
 			return err
 		}
@@ -351,11 +350,19 @@ func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData, nonce uint64) err
 	return err
 }
 
-func (p *Publisher) publishBlobTxWithRetry(tx types.TxData, nonce uint64) error {
+func (p *Publisher) publishBlobTxWithRetry(tx types.TxData) error {
 	const maxRetries = 5
 	err := retry.DoWithCount(func(retryCount int) error {
 		if p.hostStopper.IsStopping() {
 			return retry.FailFast(errors.New("host is stopping while attempting to publish blob"))
+		}
+
+		p.sendingLock.Lock()
+		defer p.sendingLock.Unlock()
+
+		nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
+		if err != nil {
+			return fmt.Errorf("could not get nonce for L1 tx: %w", err)
 		}
 
 		pricedTx, err := p.executeTransaction(tx, nonce, retryCount)
@@ -481,4 +488,20 @@ type MaxRetriesError struct {
 func (e *MaxRetriesError) Error() string {
 	return fmt.Sprintf("max retries reached for nonce %d  with BlobFeeCap: %d, GasTipCap: %d, GasFeeCap: %d, Gas: %d",
 		e.BlobTx.Nonce, e.BlobTx.BlobFeeCap, e.BlobTx.GasTipCap, e.BlobTx.GasFeeCap, e.BlobTx.Gas)
+}
+
+func isSmartContractError(err error) bool {
+	contractErrorPatterns := []string{
+		"execution reverted",
+		"out of gas",
+		"invalid opcode",
+		"function selector not recognized",
+		"revert",
+	}
+	for _, pattern := range contractErrorPatterns {
+		if strings.Contains(strings.ToLower(err.Error()), pattern) {
+			return true
+		}
+	}
+	return false
 }
