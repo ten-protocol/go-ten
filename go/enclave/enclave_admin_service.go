@@ -150,8 +150,8 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 		return fmt.Errorf("only a permissioned sequencer can become active")
 	}
 	if e.activeSequencer {
-		// this enclave is already the active sequencer, return an error because this is important, the host should know
-		return fmt.Errorf("this enclave is already the active sequencer")
+		// this enclave is already the active sequencer, not a problem after a host restart but worth logging
+		e.logger.Info("Enclave is already the active sequencer.")
 	}
 
 	e.activeSequencer = true
