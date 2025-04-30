@@ -11,11 +11,11 @@ func main() {
 	cliConfig := ParseConfigCLI()
 
 	l1grantsequencers, err := l1gs.NewGrantSequencers(
-		l1gs.NewUpgradeContractsConfig(
+		l1gs.NewGrantSequencerConfig(
 			l1gs.WithL1HTTPURL(cliConfig.l1HTTPURL),
 			l1gs.WithPrivateKey(cliConfig.privateKey),
 			l1gs.WithDockerImage(cliConfig.dockerImage),
-			l1gs.WithNetworkConfigAddress(cliConfig.enclaveRegistryAddr),
+			l1gs.WithEnclaveContractAddress(cliConfig.enclaveRegistryAddr),
 			l1gs.WithEnclaveIDs(cliConfig.enclaveIDs),
 			l1gs.WithSequencerURL(cliConfig.sequencerURL),
 		),

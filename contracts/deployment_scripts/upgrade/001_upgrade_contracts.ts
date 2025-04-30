@@ -1,5 +1,18 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
+import {upgrades} from 'hardhat';
+
+async function getProxyAdminAddress(proxyAddress: string, ethers: any): Promise<string> {
+    const ADMIN_SLOT = '0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103';
+    const adminStorage = await ethers.provider.getStorage(proxyAddress, ADMIN_SLOT);
+    return ethers.getAddress(`0x${adminStorage.slice(26)}`);
+}
+
+async function getImplementationAddress(proxyAddress: string, ethers: any): Promise<string> {
+    const IMPLEMENTATION_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
+    const implementationStorage = await ethers.provider.getStorage(proxyAddress, IMPLEMENTATION_SLOT);
+    return ethers.getAddress(`0x${implementationStorage.slice(26)}`);
+}
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const {
@@ -7,89 +20,113 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         getNamedAccounts,
         ethers
     } = hre;
+    console.log('Starting upgrade process...');
     const {deployer} = await getNamedAccounts();
 
-    // Get the current proxy addresses
-    const networkConfig = await deployments.get('NetworkConfig');
-    const crossChain = await deployments.get('CrossChain');
-    const networkEnclaveRegistry = await deployments.get('NetworkEnclaveRegistry');
-    const dataAvailabilityRegistry = await deployments.get('DataAvailabilityRegistry');
+    // Get the NetworkConfig contract
+    const networkConfigAddress = process.env.NETWORK_CONFIG_ADDR;
+    if (!networkConfigAddress) {
+        throw new Error('NETWORK_CONFIG_ADDR environment variable is not set');
+    }
+
+    console.log('Getting addresses from NetworkConfig:', networkConfigAddress);
+    const networkConfig = await ethers.getContractAt('NetworkConfig', networkConfigAddress);
+    const addresses = await networkConfig.addresses();
 
     console.log('Current addresses:');
-    console.log(`NetworkConfig: ${networkConfig.address}`);
-    console.log(`CrossChain: ${crossChain.address}`);
-    console.log(`NetworkEnclaveRegistry: ${networkEnclaveRegistry.address}`);
-    console.log(`DataAvailabilityRegistry: ${dataAvailabilityRegistry.address}`);
+    console.log(`NetworkConfig: ${networkConfigAddress}`);
+    console.log(`CrossChain: ${addresses.crossChain}`);
+    console.log(`NetworkEnclaveRegistry: ${addresses.networkEnclaveRegistry}`);
+    console.log(`DataAvailabilityRegistry: ${addresses.dataAvailabilityRegistry}`);
 
     // Deploy new implementations
     console.log('\nDeploying new implementations...');
 
-    // Deploy new CrossChain implementation
-    const CrossChainFactory = await ethers.getContractFactory('CrossChain');
-    const newCrossChainImpl = await CrossChainFactory.deploy();
-    console.log(`New CrossChain implementation deployed at: ${newCrossChainImpl.target}`);
+    try {
+        // Deploy new CrossChain implementation
+        console.log('Deploying new CrossChain implementation...');
+        const CrossChainFactory = await ethers.getContractFactory('CrossChain');
+        const newCrossChainImpl = await CrossChainFactory.deploy();
+        await newCrossChainImpl.waitForDeployment();
+        const newCrossChainImplAddress = await newCrossChainImpl.getAddress();
+        console.log(`New CrossChain implementation deployed at: ${newCrossChainImplAddress}`);
 
-    // Deploy new NetworkEnclaveRegistry implementation
-    const NetworkEnclaveRegistryFactory = await ethers.getContractFactory('NetworkEnclaveRegistry');
-    const newNetworkEnclaveRegistryImpl = await NetworkEnclaveRegistryFactory.deploy();
-    console.log(`New NetworkEnclaveRegistry implementation deployed at: ${newNetworkEnclaveRegistryImpl.target}`);
+        // Deploy new NetworkEnclaveRegistry implementation
+        console.log('Deploying new NetworkEnclaveRegistry implementation...');
+        const NetworkEnclaveRegistryFactory = await ethers.getContractFactory('NetworkEnclaveRegistry');
+        const newNetworkEnclaveRegistryImpl = await NetworkEnclaveRegistryFactory.deploy();
+        await newNetworkEnclaveRegistryImpl.waitForDeployment();
+        const newNetworkEnclaveRegistryImplAddress = await newNetworkEnclaveRegistryImpl.getAddress();
+        console.log(`New NetworkEnclaveRegistry implementation deployed at: ${newNetworkEnclaveRegistryImplAddress}`);
 
-    // Deploy new DataAvailabilityRegistry implementation
-    const DataAvailabilityRegistryFactory = await ethers.getContractFactory('DataAvailabilityRegistry');
-    const newDataAvailabilityRegistryImpl = await DataAvailabilityRegistryFactory.deploy();
-    console.log(`New DataAvailabilityRegistry implementation deployed at: ${newDataAvailabilityRegistryImpl.target}`);
+        // Deploy new DataAvailabilityRegistry implementation
+        console.log('Deploying new DataAvailabilityRegistry implementation...');
+        const DataAvailabilityRegistryFactory = await ethers.getContractFactory('DataAvailabilityRegistry');
+        const newDataAvailabilityRegistryImpl = await DataAvailabilityRegistryFactory.deploy();
+        await newDataAvailabilityRegistryImpl.waitForDeployment();
+        const newDataAvailabilityRegistryImplAddress = await newDataAvailabilityRegistryImpl.getAddress();
+        console.log(`New DataAvailabilityRegistry implementation deployed at: ${newDataAvailabilityRegistryImplAddress}`);
 
-    // Deploy new NetworkConfig implementation
-    const NetworkConfigFactory = await ethers.getContractFactory('NetworkConfig');
-    const newNetworkConfigImpl = await NetworkConfigFactory.deploy();
-    console.log(`New NetworkConfig implementation deployed at: ${newNetworkConfigImpl.target}`);
+        // Deploy new NetworkConfig implementation
+        console.log('Deploying new NetworkConfig implementation...');
+        const NetworkConfigFactory = await ethers.getContractFactory('NetworkConfig');
+        const newNetworkConfigImpl = await NetworkConfigFactory.deploy();
+        await newNetworkConfigImpl.waitForDeployment();
+        const newNetworkConfigImplAddress = await newNetworkConfigImpl.getAddress();
+        console.log(`New NetworkConfig implementation deployed at: ${newNetworkConfigImplAddress}`);
 
-    // Get the ProxyAdmin contract
-    const proxyAdmin = await ethers.getContractAt('ProxyAdmin', await deployments.read('NetworkConfig', 'getProxyAdmin'));
+        // Upgrade the proxies
+        console.log('\nUpgrading proxies...');
 
-    // Upgrade the proxies
-    console.log('\nUpgrading proxies...');
+        // Upgrade CrossChain
+        console.log('Preparing upgrade...');
+        const preparedImpl = await upgrades.prepareUpgrade(addresses.crossChain, CrossChainFactory);
+        console.log('Upgrade prepared, new implementation at:', preparedImpl);
 
-    // Upgrade CrossChain
-    const crossChainInitData = CrossChainFactory.interface.encodeFunctionData('initialize', [deployer]);
-    await proxyAdmin.upgradeAndCall(crossChain.address, newCrossChainImpl.target, crossChainInitData);
-    console.log('CrossChain upgraded');
+        // Then try the upgrade
+        const crossChainUpgradeTx = await upgrades.upgradeProxy(addresses.crossChain, CrossChainFactory);
+        await crossChainUpgradeTx.waitForDeployment();
+        console.log('CrossChain upgraded');
 
-    // Upgrade NetworkEnclaveRegistry
-    const networkEnclaveRegistryInitData = NetworkEnclaveRegistryFactory.interface.encodeFunctionData('initialize', [deployer]);
-    await proxyAdmin.upgradeAndCall(networkEnclaveRegistry.address, newNetworkEnclaveRegistryImpl.target, networkEnclaveRegistryInitData);
-    console.log('NetworkEnclaveRegistry upgraded');
+        // Upgrade NetworkEnclaveRegistry
+        console.log('Upgrading NetworkEnclaveRegistry...');
+        try {
+            const networkEnclaveRegistryUpgradeTx = await upgrades.upgradeProxy(addresses.networkEnclaveRegistry, NetworkEnclaveRegistryFactory);
+            await networkEnclaveRegistryUpgradeTx.waitForDeployment();
+            console.log('NetworkEnclaveRegistry upgraded');
+        } catch (error) {
+            console.error('Error upgrading NetworkEnclaveRegistry:', error);
+            throw error;
+        }
 
-    // Upgrade DataAvailabilityRegistry
-    const merkleMessageBus = await deployments.read('CrossChain', 'merkleMessageBus');
-    const dataAvailabilityRegistryInitData = DataAvailabilityRegistryFactory.interface.encodeFunctionData('initialize', 
-        [merkleMessageBus, newNetworkEnclaveRegistryImpl.target, deployer]);
-    await proxyAdmin.upgradeAndCall(dataAvailabilityRegistry.address, newDataAvailabilityRegistryImpl.target, dataAvailabilityRegistryInitData);
-    console.log('DataAvailabilityRegistry upgraded');
+        // Upgrade DataAvailabilityRegistry
+        console.log('Upgrading DataAvailabilityRegistry...');
+        try {
+            const dataAvailabilityRegistryUpgradeTx = await upgrades.upgradeProxy(addresses.dataAvailabilityRegistry, DataAvailabilityRegistryFactory);
+            await dataAvailabilityRegistryUpgradeTx.waitForDeployment();
+            console.log('DataAvailabilityRegistry upgraded');
+        } catch (error) {
+            console.error('Error upgrading DataAvailabilityRegistry:', error);
+            throw error;
+        }
 
-    // Upgrade NetworkConfig
-    const networkConfigInitData = NetworkConfigFactory.interface.encodeFunctionData('initialize', [{
-        crossChain: crossChain.address,
-        messageBus: merkleMessageBus,
-        networkEnclaveRegistry: networkEnclaveRegistry.address,
-        dataAvailabilityRegistry: dataAvailabilityRegistry.address
-    }, deployer]);
-    await proxyAdmin.upgradeAndCall(networkConfig.address, newNetworkConfigImpl.target, networkConfigInitData);
-    console.log('NetworkConfig upgraded');
+        // Verify the upgrades
+        console.log('\nVerifying upgrades...');
+        const networkConfigContract = await ethers.getContractAt('NetworkConfig', networkConfigAddress);
+        const crossChainContract = await ethers.getContractAt('CrossChain', addresses.crossChain);
+        const networkEnclaveRegistryContract = await ethers.getContractAt('NetworkEnclaveRegistry', addresses.networkEnclaveRegistry);
+        const dataAvailabilityRegistryContract = await ethers.getContractAt('DataAvailabilityRegistry', addresses.dataAvailabilityRegistry);
 
-    // Verify the upgrades
-    console.log('\nVerifying upgrades...');
-    const networkConfigContract = await ethers.getContractAt('NetworkConfig', networkConfig.address);
-    const crossChainContract = await ethers.getContractAt('CrossChain', crossChain.address);
-    const networkEnclaveRegistryContract = await ethers.getContractAt('NetworkEnclaveRegistry', networkEnclaveRegistry.address);
-    const dataAvailabilityRegistryContract = await ethers.getContractAt('DataAvailabilityRegistry', dataAvailabilityRegistry.address);
-
-    console.log('Upgrades verified successfully!');
-    console.log('\nNew implementation addresses:');
-    console.log(`NetworkConfig: ${newNetworkConfigImpl.target}`);
-    console.log(`CrossChain: ${newCrossChainImpl.target}`);
-    console.log(`NetworkEnclaveRegistry: ${newNetworkEnclaveRegistryImpl.target}`);
-    console.log(`DataAvailabilityRegistry: ${newDataAvailabilityRegistryImpl.target}`);
+        console.log('Upgrades verified successfully!');
+        console.log('\nNew implementation addresses:');
+        console.log(`NetworkConfig: ${newNetworkConfigImplAddress}`);
+        console.log(`CrossChain: ${newCrossChainImplAddress}`);
+        console.log(`NetworkEnclaveRegistry: ${newNetworkEnclaveRegistryImplAddress}`);
+        console.log(`DataAvailabilityRegistry: ${newDataAvailabilityRegistryImplAddress}`);
+    } catch (error) {
+        console.error('Error during upgrade:', error);
+        throw error;
+    }
 };
 
 export default func;

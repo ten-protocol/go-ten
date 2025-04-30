@@ -17,6 +17,7 @@ import (
 
 	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
 	l1gs "github.com/ten-protocol/go-ten/testnet/launcher/l1grantsequencers"
+	l1upgrade "github.com/ten-protocol/go-ten/testnet/launcher/l1upgrade"
 	l2cd "github.com/ten-protocol/go-ten/testnet/launcher/l2contractdeployer"
 )
 
@@ -194,7 +195,37 @@ func (t *Testnet) Start() error {
 
 	fmt.Printf("Gateway ready to be accessed at http://127.0.0.1:%d ...\n", gatewayPort)
 
-	fmt.Println("Network successfully launched !")
+	time.Sleep(10 * time.Second)
+
+	fmt.Println("About to upgrade contracts!")
+
+	upgrade, err := l1upgrade.NewUpgradeContracts(
+		l1upgrade.NewUpgradeContractsConfig(
+			l1upgrade.WithL1HTTPURL("http://eth2network:8025"),
+			l1upgrade.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
+			l1upgrade.WithDockerImage(t.cfg.contractDeployerDockerImage),
+			l1upgrade.WithNetworkConfigAddress(networkConfig.NetworkConfigAddress),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to instantiate l1 upgrade contract - %w", err)
+	}
+
+	fmt.Println("Starting contract upgrade...")
+	if err = upgrade.Start(); err != nil {
+		return fmt.Errorf("unable to upgrade contracts - %w", err)
+	}
+
+	fmt.Println("Waiting for upgrade to complete...")
+	err = upgrade.WaitForFinish()
+	if err != nil {
+		fmt.Println("Upgrade failed. Printing container logs:")
+		upgrade.PrintLogs(nil)
+		return fmt.Errorf("unexpected error waiting for l1 contract upgrader to finish - %w", err)
+	}
+
+	fmt.Println("Contract upgrade completed successfully!")
+	fmt.Println("Network successfully launched!")
 	return nil
 }
 
@@ -309,11 +340,11 @@ func (t *Testnet) grantSequencerStatus(enclaveRegistryAddr string) error {
 	hostURL := fmt.Sprintf("http://localhost:%d", 80)
 
 	l1grantsequencers, err := l1gs.NewGrantSequencers(
-		l1gs.NewUpgradeContractsConfig(
+		l1gs.NewGrantSequencerConfig(
 			l1gs.WithL1HTTPURL("http://eth2network:8025"),
 			l1gs.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
 			l1gs.WithDockerImage(t.cfg.contractDeployerDockerImage),
-			l1gs.WithNetworkConfigAddress(enclaveRegistryAddr),
+			l1gs.WithEnclaveContractAddress(enclaveRegistryAddr),
 			l1gs.WithSequencerURL(hostURL),
 		),
 	)
