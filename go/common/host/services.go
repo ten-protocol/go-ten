@@ -164,10 +164,7 @@ type EnclaveService interface {
 	// GetEnclaveClients returns a list of all enclave clients
 	GetEnclaveClients() []common.Enclave
 
-	// EvictEnclave will remove the enclave from the list of enclaves, it is used when an enclave is unhealthy
-	// - the enclave guardians are responsible for calling this method when they detect an enclave is unhealthy to notify
-	//	 the service that it should failover if possible
-	NotifyUnavailable(enclaveID *common.EnclaveID)
+	GetActiveSequencerID() *common.EnclaveID // if host is a sequencer, return the enclave ID of the curr active sequencer
 
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to other hosts on the network (in particular, to the sequencer)
 	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error)

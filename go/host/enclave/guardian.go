@@ -40,6 +40,9 @@ const (
 
 	// when we have submitted request to L1 for the secret, how long do we wait for an answer before we retry
 	_maxWaitForSecretResponse = 2 * time.Minute
+
+	// if this time has passed and enclave seems healthy we will clear sequencer error as stale.
+	_sequencerErrorReset = 1 * time.Minute
 )
 
 // This private interface enforces the services that the guardian depends on
@@ -60,6 +63,11 @@ type Guardian struct {
 	hostData      host.Identity
 	state         *StateTracker // state machine that tracks our view of the enclave's state
 	enclaveClient common.Enclave
+	// sequencer error is an atomic string, it is set when the enclave is unavailable or misbehaving so that the host
+	// can failover to an alternative if possible. It gets cleared whenever the seq produces a batch successfully.
+	// This field is not read for validators.
+	seqError   atomic.Pointer[string]
+	seqErrTime atomic.Pointer[time.Time] // timestamp of the last error so we can check if it is stale
 
 	sl      guardianServiceLocator
 	storage storage.Storage
@@ -222,8 +230,7 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 // stopping batch and rollup production. The enclave can be promoted again later if it catches up and failover is needed.
 func (g *Guardian) DemoteFromActiveSequencer() {
 	if !g.state.IsEnclaveActiveSequencer() {
-		g.logger.Info("Cannot demote from active sequencer - not currently active")
-		return
+		g.logger.Warn("Guardian demoted when not currently active - this is unexpected")
 	}
 	g.logger.Info("Guardian demoted from active sequencer")
 	g.state.SetActiveSequencer(false)
@@ -322,7 +329,7 @@ func (g *Guardian) mainLoop() {
 			// todo make this demotion trigger configurable once we've settled on how it should work
 			if unavailableCounter > 10 {
 				// enclave has been unavailable for a while, evict it from the HA pool
-				g.notifyEnclaveUnavailable("enclave has been unavailable for too long")
+				g.markSequencerUnavailable("enclave has been unavailable for too long")
 				// reset the counter so we don't spam the log
 				unavailableCounter = 0
 			}
@@ -642,7 +649,7 @@ func (g *Guardian) periodicBatchProduction() {
 		}
 		select {
 		case <-batchProdTicker.C:
-			if !g.state.IsEnclaveActiveSequencer() {
+			if !g.isActiveSequencer() {
 				// only active sequencer produces batches
 				continue
 			}
@@ -655,7 +662,9 @@ func (g *Guardian) periodicBatchProduction() {
 			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
 			if err != nil {
 				g.logger.Error("Unable to produce batch", log.ErrKey, err)
-				g.notifyEnclaveUnavailable("seq enclave could not produce batch")
+				g.markSequencerUnavailable("seq enclave could not produce batch")
+			} else {
+				g.markSequencerHealthy()
 			}
 		case <-g.hostInterrupter.Done():
 			// interrupted by host stopping
@@ -719,12 +728,38 @@ func (g *Guardian) streamEnclaveData() {
 	}
 }
 
-// notifyEnclaveUnavailable evicts a failing enclave from the HA pool if appropriate
+// markSequencerUnavailable marks a failing enclave for failover from the HA seq pool
 // This is called when the enclave is unavailable or failing to perform its duties if it is active sequencer.
-// We want to notify the host that it should failover if an alternative enclave is available.
-func (g *Guardian) notifyEnclaveUnavailable(reason string) {
-	g.logger.Debug("Enclave is unavailable - notifying enclave service to evict it from HA pool if necessary", log.ErrKey, reason)
-	go g.sl.Enclaves().NotifyUnavailable(g.enclaveID)
+// HA sequencer hosts will check the enclave status and promote a different enclave if possible.
+func (g *Guardian) markSequencerUnavailable(reason string) {
+	g.logger.Info("Enclave is unavailable - flagging the guardian as unavailable for sequencing", log.ErrKey, reason)
+	// store the error in the atomic string as a marker for the host to flag this enclave as failing
+	g.seqError.Store(&reason)
+	now := time.Now()
+	g.seqErrTime.Store(&now)
+}
+
+// markSequencerHealthy clears the error marker for the host to flag this enclave as healthy
+func (g *Guardian) markSequencerHealthy() {
+	g.seqError.Store(nil)
+}
+
+// IsSequencerOperational checks if the enclave is operational and can produce batches.
+// This is used by the enclave service on the host to check if the enclave is eligible for promotion to active sequencer.
+// This status is separate from the enclave's own status deliberately to give us better control over when to trigger failover.
+func (g *Guardian) IsSequencerOperational() bool {
+	if g.seqError.Load() != nil {
+		// check if the error is stale
+		errTime := g.seqErrTime.Load()
+		if time.Since(*errTime) > _sequencerErrorReset && g.state.IsLive() {
+			g.logger.Debug("Sequencer failure error is stale, clearing it")
+			g.markSequencerHealthy()
+		} else {
+			g.logger.Trace("Sequencer error is not stale, sequencer is NOT operational", log.ErrKey, *g.seqError.Load())
+			return false // error is not stale, so we are not operational
+		}
+	}
+	return true
 }
 
 func (g *Guardian) getRollupTxs(processed common.ProcessedL1Data) []*common.L1RollupTx {
@@ -752,4 +787,20 @@ func (g *Guardian) shouldSyncContracts(processed common.ProcessedL1Data) bool {
 
 func (g *Guardian) shouldSyncAdditionalContracts(processed common.ProcessedL1Data) bool {
 	return len(processed.GetEvents(common.AdditionalContractAddressAddedTx)) > 0
+}
+
+// isActiveSequencer checks if the guardian is the active sequencer enclave (including checking it is expected to be the current active sequencer on the host)
+// this check should be performed before any action that requires the enclave to be the active sequencer (e.g. batch production)
+func (g *Guardian) isActiveSequencer() bool {
+	if !g.state.IsEnclaveActiveSequencer() {
+		return false
+	}
+	hostExpectedActiveID := g.sl.Enclaves().GetActiveSequencerID()
+	if hostExpectedActiveID == nil || hostExpectedActiveID.Hex() != g.enclaveID.Hex() {
+		// This should not happen. If expected active sequencer has changed, then the old one should have been restarted
+		// to come back to the pool as a standby
+		g.logger.Warn("Enclave is not the active sequencer, but guardian is marked as active", "expectedID", hostExpectedActiveID)
+		return false
+	}
+	return true
 }
