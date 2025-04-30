@@ -249,7 +249,6 @@ func (e *Service) ensureActiveSequencer() {
 						continue
 					}
 					e.activeSequencerID.Store(enclID)
-					return
 				} else {
 					e.logger.Debug("Found healthy guardian but not operational, skipping promotion", log.EnclaveIDKey, guardian.GetEnclaveID())
 				}
