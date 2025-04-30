@@ -322,17 +322,17 @@ func (p *Publisher) ResyncImportantContracts() error {
 // this method is guarded by a lock to ensure that only one transaction is attempted at a time to avoid nonce conflicts
 // todo (@matt) this method should take a context so we can try to cancel if the tx is no longer required
 func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData) error {
-	err := retry.DoWithCount(func(retryCount int) error {
+	p.sendingLock.Lock()
+	defer p.sendingLock.Unlock()
+
+	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
+	if err != nil {
+		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
+	}
+
+	err = retry.DoWithCount(func(retryCount int) error {
 		if p.hostStopper.IsStopping() {
 			return retry.FailFast(errors.New("host is stopping while publishing transaction"))
-		}
-
-		p.sendingLock.Lock()
-		defer p.sendingLock.Unlock()
-
-		nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
-		if err != nil {
-			return fmt.Errorf("could not get nonce for L1 tx: %w", err)
 		}
 
 		_, err = p.executeTransaction(tx, nonce, retryCount)
@@ -352,17 +352,18 @@ func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData) error {
 
 func (p *Publisher) publishBlobTxWithRetry(tx types.TxData) error {
 	const maxRetries = 5
-	err := retry.DoWithCount(func(retryCount int) error {
+
+	p.sendingLock.Lock()
+	defer p.sendingLock.Unlock()
+
+	nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
+	if err != nil {
+		return fmt.Errorf("could not get nonce for L1 tx: %w", err)
+	}
+
+	err = retry.DoWithCount(func(retryCount int) error {
 		if p.hostStopper.IsStopping() {
 			return retry.FailFast(errors.New("host is stopping while attempting to publish blob"))
-		}
-
-		p.sendingLock.Lock()
-		defer p.sendingLock.Unlock()
-
-		nonce, err := p.ethClient.Nonce(p.hostWallet.Address())
-		if err != nil {
-			return fmt.Errorf("could not get nonce for L1 tx: %w", err)
 		}
 
 		pricedTx, err := p.executeTransaction(tx, nonce, retryCount)
