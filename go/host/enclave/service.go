@@ -235,10 +235,11 @@ func (e *Service) ensureActiveSequencer() {
 		if newSequencerRequired {
 			// loop through the guardians, find the first one that is healthy and promote it
 			// if none are healthy the active sequencer flag will be cleared, and we will try again next time
+			newSequencerPromoted := false
 			for _, guardian := range e.enclaveGuardians {
 				enclID := guardian.GetEnclaveID()
 				if activeSeqID != nil && enclID.Hex() == activeSeqID.Hex() {
-					// skip this sequencer since it was just demoted
+					// skip this enclave since it was just demoted
 					continue
 				}
 				if guardian.IsSequencerOperational() {
@@ -249,13 +250,17 @@ func (e *Service) ensureActiveSequencer() {
 						continue
 					}
 					e.activeSequencerID.Store(enclID)
+					newSequencerPromoted = true
+					break // we found a healthy guardian to promote, so break out of the loop
 				} else {
 					e.logger.Debug("Found healthy guardian but not operational, skipping promotion", log.EnclaveIDKey, guardian.GetEnclaveID())
 				}
 			}
 
-			// if we get here, we didn't find a healthy guardian to promote, so clear the active sequencer ID
-			e.activeSequencerID.Store(_noActiveSequencer)
+			if !newSequencerPromoted {
+				// we didn't find a healthy guardian to promote, so clear any active sequencer ID and we'll try again next time
+				e.activeSequencerID.Store(_noActiveSequencer)
+			}
 		}
 
 		// wait for the interval and then check again
