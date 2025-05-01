@@ -15,6 +15,8 @@ func main() {
 		fmt.Println("Error loading ten config:", err)
 		os.Exit(1)
 	}
+	fmt.Println("Starting L1 contract deployer with the following TenConfig:")
+	tenCfg.PrettyPrint() // dump config to stdout
 
 	deployerConfig := l1cd.NewContractDeployerConfig(tenCfg)
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(deployerConfig)
