@@ -1,0 +1,63 @@
+import { BaseContract } from 'ethers';
+import { ethers, upgrades } from 'hardhat';
+
+
+export async function upgradeContract(
+    upgraderAddress: string,
+    contractName: string,
+    proxyAddress: string
+): Promise<BaseContract> {
+    console.log(
+        `Upgrading proxy ${proxyAddress} to new implementation of ${contractName} (sent from ${upgraderAddress})`
+    );
+
+    const factory = await ethers.getContractFactory(contractName);
+    const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, { kind: 'uups' });
+
+    console.log(`${contractName} upgraded — new implementation at ${upgraded.getAddress()}`);
+    return upgraded;
+}
+
+const upgradeContracts = async function (): Promise<void> {
+    console.log('=== Starting upgrade process ===');
+
+    const [deployer] = await ethers.getSigners();
+    if (!deployer) {
+        throw new Error('No deployer signer found');
+    }
+    const upgrader = deployer.address;
+    console.log(`Using signer: ${upgrader}`);
+
+    // get addresses from network config
+    const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR;
+    if (!networkConfigAddr) {
+        throw new Error('NETWORK_CONFIG_ADDR environment variable is not set');
+    }
+
+    const networkConfig = await ethers.getContractAt('NetworkConfig', networkConfigAddr);
+    const addresses = await networkConfig.addresses();
+
+    console.log('\nCurrent proxy addresses');
+    console.table({
+        NetworkConfig: networkConfigAddr,
+        CrossChain: addresses.crossChain,
+        NetworkEnclaveRegistry: addresses.networkEnclaveRegistry,
+        DataAvailabilityRegistry: addresses.dataAvailabilityRegistry
+    });
+
+    // Perform upgrades
+    await upgradeContract(upgrader, 'CrossChain', addresses.crossChain);
+    await upgradeContract(upgrader, 'NetworkEnclaveRegistry', addresses.networkEnclaveRegistry);
+    await upgradeContract(upgrader, 'DataAvailabilityRegistry', addresses.dataAvailabilityRegistry);
+    // await upgradeContract(upgrader, 'NetworkConfig', networkConfigAddr);
+    console.log('All upgrades completed successfully');
+}
+
+upgradeContracts()
+    .then(() => process.exit(0))
+    .catch((error) => {
+        console.error(error);
+        process.exit(1);
+    });
+
+export default upgradeContracts

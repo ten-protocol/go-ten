@@ -197,34 +197,11 @@ func (t *Testnet) Start() error {
 
 	time.Sleep(10 * time.Second)
 
-	fmt.Println("About to upgrade contracts!")
-
-	upgrade, err := l1upgrade.NewUpgradeContracts(
-		l1upgrade.NewUpgradeContractsConfig(
-			l1upgrade.WithL1HTTPURL("http://eth2network:8025"),
-			l1upgrade.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
-			l1upgrade.WithDockerImage(t.cfg.contractDeployerDockerImage),
-			l1upgrade.WithNetworkConfigAddress(networkConfig.NetworkConfigAddress),
-		),
-	)
+	fmt.Println("About to upgrade contracts ....")
+	err = t.upgradeContracts(networkConfig.NetworkConfigAddress)
 	if err != nil {
-		return fmt.Errorf("unable to instantiate l1 upgrade contract - %w", err)
+		return fmt.Errorf("failed to upgrade contracts: %w", err)
 	}
-
-	fmt.Println("Starting contract upgrade...")
-	if err = upgrade.Start(); err != nil {
-		return fmt.Errorf("unable to upgrade contracts - %w", err)
-	}
-
-	fmt.Println("Waiting for upgrade to complete...")
-	err = upgrade.WaitForFinish()
-	if err != nil {
-		fmt.Println("Upgrade failed. Printing container logs:")
-		upgrade.PrintLogs(nil)
-		return fmt.Errorf("unexpected error waiting for l1 contract upgrader to finish - %w", err)
-	}
-
-	fmt.Println("Contract upgrade completed successfully!")
 	fmt.Println("Network successfully launched!")
 	return nil
 }
@@ -363,6 +340,34 @@ func (t *Testnet) grantSequencerStatus(enclaveRegistryAddr string) error {
 	}
 
 	fmt.Println("Enclaves were successfully granted sequencer roles...")
+
+	return nil
+}
+
+func (t *Testnet) upgradeContracts(networkConfigAddress string) error {
+	upgrade, err := l1upgrade.NewUpgradeContracts(
+		l1upgrade.NewUpgradeContractsConfig(
+			l1upgrade.WithL1HTTPURL("http://eth2network:8025"),
+			l1upgrade.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
+			l1upgrade.WithDockerImage(t.cfg.contractDeployerDockerImage),
+			l1upgrade.WithNetworkConfigAddress(networkConfigAddress),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to configure l1 upgrade contracts - %w", err)
+	}
+
+	err = upgrade.Start()
+	if err != nil {
+		return fmt.Errorf("unable to start l1 upgrade contracts - %w", err)
+	}
+
+	err = upgrade.WaitForFinish()
+	if err != nil {
+		return fmt.Errorf("unable to wait for l1 upgrade contracts to finish - %w", err)
+	}
+
+	fmt.Println("Contracts were successfully upgraded...")
 
 	return nil
 }
