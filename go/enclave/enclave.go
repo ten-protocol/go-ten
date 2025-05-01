@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
+	"time"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
@@ -309,7 +311,17 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 }
 
 func (e *enclaveImpl) Stop() common.SystemError {
-	return e.adminAPI.Stop()
+	defer func() {
+		// todo: need to inject a 'shutdown' function to the enclave for this, so it can be called in tests
+		// after a graceful stop of services has been attempted, we need to shut down the enclave process
+		time.Sleep(1 * time.Second)
+		os.Exit(0)
+	}()
+	err := e.adminAPI.Stop()
+	if err != nil {
+		return responses.ToInternalError(err)
+	}
+	return nil
 }
 
 func checkStopping(s *stopcontrol.StopControl) common.SystemError {

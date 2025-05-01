@@ -72,8 +72,6 @@ func (e *Service) Start() error {
 		}
 	}
 
-	e.loadActiveSequencer()
-
 	if e.hostData.IsSequencer {
 		go e.ensureActiveSequencer()
 		go e.managePeriodicRollups()
@@ -186,86 +184,80 @@ func (e *Service) Unsubscribe(id rpc.ID) error {
 	return e.GetEnclaveClient().Unsubscribe(id)
 }
 
-// loadActiveSequencer is called at startup.
-// It will check to see if any of the enclaves think they are the Active Sequencer, and set the ID appropriately.
-// We don't need to worry about edge cases at this point, if something is wrong we will fix it in the
-// ensureActiveSequencer loop, but on the happy path this is much smoother
-func (e *Service) loadActiveSequencer() {
-	for _, guardian := range e.enclaveGuardians {
-		if guardian.state.IsEnclaveActiveSequencer() {
-			e.logger.Info("Found active sequencer enclave", log.EnclaveIDKey, guardian.GetEnclaveID())
-			e.activeSequencerID.Store(guardian.GetEnclaveID())
-			return
-		}
-	}
-}
-
 // ensureActiveSequencer is a background goroutine that attempts to ensure there is always exactly one
 // active sequencer enclave. It will promote a new active sequencer if the current one fails or is unavailable.
 func (e *Service) ensureActiveSequencer() {
 	for e.running.Load() {
-		activeSeqID := e.activeSequencerID.Load()
-		newSequencerRequired := true // this will be set false if we find the expected active sequencer is healthy
+		activeSeqID := e.activeSequencerID.Load() // (this may be _noActiveSequencer)
+		activeSequencerHealthy := false           // this will be set true if there is a healthy active sequencer
 
 		// do a pass through all guardians to see if they are in their expected state
 		for _, guardian := range e.enclaveGuardians {
-			if guardian.state.IsEnclaveActiveSequencer() {
-				if guardian.GetEnclaveID().Hex() == activeSeqID.Hex() {
-					// active seq ID is set, and there is a matching guardian whose enclave reports it is the active sequencer
-					if guardian.IsSequencerOperational() {
-						// this is the expected state, so we can skip the rest of the checks
-						e.logger.Trace("Found active sequencer operational", log.EnclaveIDKey, activeSeqID)
-						newSequencerRequired = false
-					} else {
-						// sequencer is not operational, so we need to promote a new one
-						e.logger.Warn("Found active sequencer in guardians but not operational", log.EnclaveIDKey, activeSeqID)
-						guardian.DemoteFromActiveSequencer()
-					}
-				} else { // guardian thinks it is the active sequencer, but it is not the expected one
-					// demoting it will restart it and clear the active sequencer flag on the enclave.
-					// We don't have to worry about two batch producers, the guardian always checks it is expected to
-					// be the active seq before producing.
-					e.logger.Warn("Found unexpected active sequencer in guardians, demoting",
-						log.EnclaveIDKey, guardian.GetEnclaveID(), "expectedActiveID", activeSeqID.Hex())
+			if !guardian.state.IsEnclaveActiveSequencer() {
+				// skip, we are just checking any guardians that think they are the active sequencer
+				continue
+			}
+
+			enclID := guardian.GetEnclaveID()
+			switch *enclID {
+			case *activeSeqID:
+				// this active sequencer is the expected active sequencer, so check if it is healthy
+				if guardian.IsSequencerEnclaveHealthy() {
+					activeSequencerHealthy = true
+				} else {
+					// sequencer is not healthy, we will try to promote a new one when we finish checking all guardians
+					e.logger.Warn("Active sequencer is not healthy, demoting...", log.EnclaveIDKey, activeSeqID)
 					guardian.DemoteFromActiveSequencer()
 				}
+			default:
+				// guardian thinks it is the active sequencer, but it is not the expected one
+				// demoting it will restart it and clear the active sequencer flag on the enclave.
+				// We don't have to worry about two batch producers, the guardian always checks it is expected to
+				// be the active seq before producing.
+				e.logger.Warn("Found unexpected active sequencer in guardians, demoting...",
+					log.EnclaveIDKey, guardian.GetEnclaveID(), "expectedActiveID", activeSeqID.Hex())
+				guardian.DemoteFromActiveSequencer()
 			}
 		}
 
-		if newSequencerRequired {
-			// loop through the guardians, find the first one that is healthy and promote it
-			// if none are healthy the active sequencer flag will be cleared, and we will try again next time
-			newSequencerPromoted := false
-			for _, guardian := range e.enclaveGuardians {
-				enclID := guardian.GetEnclaveID()
-				if activeSeqID != nil && enclID.Hex() == activeSeqID.Hex() {
-					// skip this enclave since it was just demoted
-					continue
-				}
-				if guardian.IsSequencerOperational() {
-					e.logger.Debug("Found healthy guardian, promoting to active sequencer", log.EnclaveIDKey, enclID)
-					err := guardian.PromoteToActiveSequencer()
-					if err != nil {
-						e.logger.Error("Failed to promote guardian to active sequencer", log.ErrKey, err)
-						continue
-					}
-					e.activeSequencerID.Store(enclID)
-					newSequencerPromoted = true
-					break // we found a healthy guardian to promote, so break out of the loop
-				} else {
-					e.logger.Debug("Found healthy guardian but not operational, skipping promotion", log.EnclaveIDKey, guardian.GetEnclaveID())
-				}
-			}
-
-			if !newSequencerPromoted {
-				// we didn't find a healthy guardian to promote, so clear any active sequencer ID and we'll try again next time
-				e.activeSequencerID.Store(_noActiveSequencer)
-			}
+		// if there was no active sequencer **or** if it was not healthy, then we will try to promote a new one
+		if !activeSequencerHealthy {
+			newSeqID := e.tryPromoteNewSequencer()
+			e.activeSequencerID.Store(newSeqID) // this may be _noActiveSequencer if no sequencer was promoted
 		}
 
 		// wait for the interval and then check again
 		time.Sleep(_activeSeqMonitoringInterval)
 	}
+}
+
+func (e *Service) tryPromoteNewSequencer() *common.EnclaveID {
+	// loop through the guardians, find the first one that is healthy and promote it
+	// if none are healthy the active sequencer flag will be cleared, and we will try again next time
+	prevActiveSeqID := e.activeSequencerID.Load()
+
+	for _, guardian := range e.enclaveGuardians {
+		enclID := guardian.GetEnclaveID()
+		if prevActiveSeqID != nil && *enclID == *prevActiveSeqID {
+			// skip this enclave since we are replacing it
+			continue
+		}
+
+		if guardian.IsSequencerEnclaveHealthy() {
+			e.logger.Debug("Attempting to promote enclave to active sequencer", log.EnclaveIDKey, enclID)
+			err := guardian.PromoteToActiveSequencer()
+			if err != nil {
+				e.logger.Error("Failed to promote enclave to active sequencer", log.ErrKey, err)
+				continue
+			}
+			return enclID
+		} else {
+			e.logger.Debug("Enclave not healthy, skipping promotion", log.EnclaveIDKey, guardian.GetEnclaveID())
+		}
+	}
+
+	// if we get here, we didn't find a healthy guardian to promote
+	return _noActiveSequencer
 }
 
 const batchCompressionFactor = 0.85

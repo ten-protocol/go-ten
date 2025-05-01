@@ -481,7 +481,8 @@ func (g *Guardian) catchupWithL1() error {
 			}
 			if errors.Is(err, l1.ErrNoNextBlock) {
 				if g.state.GetHostL1Head() == gethutil.EmptyHash {
-					return fmt.Errorf("no L1 blocks found in repository")
+					// this is usually temporary after a restart until new heads stream starts receiving blocks
+					return fmt.Errorf("host not received any new L1 blocks since startup, cannot catch up with L1")
 				}
 				return nil // we are up-to-date
 			}
@@ -744,10 +745,10 @@ func (g *Guardian) markSequencerHealthy() {
 	g.seqError.Store(nil)
 }
 
-// IsSequencerOperational checks if the enclave is operational and can produce batches.
+// IsSequencerEnclaveHealthy checks if the enclave is live and seems able to produce batches.
 // This is used by the enclave service on the host to check if the enclave is eligible for promotion to active sequencer.
 // This status is separate from the enclave's own status deliberately to give us better control over when to trigger failover.
-func (g *Guardian) IsSequencerOperational() bool {
+func (g *Guardian) IsSequencerEnclaveHealthy() bool {
 	if g.seqError.Load() != nil {
 		// check if the error is stale
 		errTime := g.seqErrTime.Load()
@@ -755,8 +756,8 @@ func (g *Guardian) IsSequencerOperational() bool {
 			g.logger.Debug("Sequencer failure error is stale, clearing it")
 			g.markSequencerHealthy()
 		} else {
-			g.logger.Trace("Sequencer error is not stale, sequencer is NOT operational", log.ErrKey, *g.seqError.Load())
-			return false // error is not stale, so we are not operational
+			g.logger.Trace("Sequencer error is not stale, sequencer is NOT healthy", log.ErrKey, *g.seqError.Load())
+			return false // error is not stale, so enclave is not healthy
 		}
 	}
 	return true
