@@ -50,7 +50,8 @@ type enclaveImpl struct {
 	adminAPI common.EnclaveAdmin
 	rpcAPI   common.EnclaveClientRPC
 
-	stopControl *stopcontrol.StopControl
+	stopControl  *stopcontrol.StopControl
+	shutdownFunc func() // function to call when stopping the enclave (e.g. sys exit for docker but not for tests)
 }
 
 // NewEnclave creates and initializes all the services of the enclave.
@@ -128,6 +129,17 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	// signal to stop the enclave
 	stopControl := stopcontrol.New()
 
+	// shutdownFunc is called after services attempt a graceful shutdown.
+	// For tests, we don't want the process to exit, but in docker we do
+	shutdownFunc := func() {}
+	if config.WillAttest { // using attestation as a signal that this is a production enclave
+		shutdownFunc = func() {
+			time.Sleep(1 * time.Second)
+			fmt.Println("enclave shutdown complete")
+			os.Exit(0)
+		}
+	}
+
 	err = storage.DeleteDirtyBlocks(context.Background())
 	if err != nil {
 		logger.Crit("failed to clean dirty blocks", log.ErrKey, err)
@@ -140,10 +152,11 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{
-		initAPI:     initAPI,
-		adminAPI:    adminAPI,
-		rpcAPI:      rpcAPI,
-		stopControl: stopControl,
+		initAPI:      initAPI,
+		adminAPI:     adminAPI,
+		rpcAPI:       rpcAPI,
+		stopControl:  stopControl,
+		shutdownFunc: shutdownFunc,
 	}
 }
 
@@ -311,12 +324,7 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 }
 
 func (e *enclaveImpl) Stop() common.SystemError {
-	defer func() {
-		// todo: need to inject a 'shutdown' function to the enclave for this, so it can be called in tests
-		// after a graceful stop of services has been attempted, we need to shut down the enclave process
-		time.Sleep(1 * time.Second)
-		os.Exit(0)
-	}()
+	defer e.shutdownFunc()
 	err := e.adminAPI.Stop()
 	if err != nil {
 		return responses.ToInternalError(err)

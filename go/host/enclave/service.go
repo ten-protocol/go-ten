@@ -186,6 +186,7 @@ func (e *Service) Unsubscribe(id rpc.ID) error {
 
 // ensureActiveSequencer is a background goroutine that attempts to ensure there is always exactly one
 // active sequencer enclave. It will promote a new active sequencer if the current one fails or is unavailable.
+// @matt todo tomorrow: tone down the HA stuff for single-enclave setups, especially the demotion since that kills the enclave
 func (e *Service) ensureActiveSequencer() {
 	for e.running.Load() {
 		activeSeqID := e.activeSequencerID.Load() // (this may be _noActiveSequencer)
