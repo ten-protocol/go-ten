@@ -5,8 +5,8 @@
 #
 # To deploy sepolia the user must type 'confirm' in the confirmation field
 
-name: '[M] Deploy Testnet L2'
-run-name: '[M] Deploy Testnet L2 ( ${{ github.event.inputs.testnet_type }} )'
+name: '[M] k8s Prepare testnet setup'
+run-name: '[M] k8s Prepare testnet setup ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:
