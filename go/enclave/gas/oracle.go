@@ -14,7 +14,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 )
 
-const MovingAverageWindow = 50
+// MovingAverageWindow - the more traffic on the network, the lower this number can get. Should be roughly the number of blocks between rollups.
+const MovingAverageWindow = 300 // `3600 / 12` - last 1 hour
 
 // L1TxGas - a crude estimation of the cost of publishing an L1 tx
 const L1TxGas = 150_000
@@ -86,6 +87,7 @@ func (o *oracle) updateMA(baseFee *big.Int, blobFeePerByte *big.Int) {
 
 	baseFeeSum := big.NewInt(0)
 	count := 0
+
 	for _, fee := range o.baseFees {
 		if fee != nil {
 			baseFeeSum.Add(baseFeeSum, fee)
@@ -97,7 +99,6 @@ func (o *oracle) updateMA(baseFee *big.Int, blobFeePerByte *big.Int) {
 	for _, fee := range o.blobFees {
 		if fee != nil {
 			blobFeeSum.Add(blobFeeSum, fee)
-			count++
 		}
 	}
 
