@@ -237,6 +237,10 @@ func (e *Service) tryPromoteNewSequencer() *common.EnclaveID {
 	// if none are healthy the active sequencer flag will be cleared, and we will try again next time
 	prevActiveSeqID := e.activeSequencerID.Load()
 
+	// prepare a list of guardians to try, starting with the one that thinks it is active (if there is one, e.g. after host restart)
+	// and skipping the one that just got demoted (if there was one)
+	guardiansToTry := make([]*Guardian, 0, len(e.enclaveGuardians))
+
 	for _, guardian := range e.enclaveGuardians {
 		enclID := guardian.GetEnclaveID()
 		if prevActiveSeqID != nil && *enclID == *prevActiveSeqID {
@@ -245,16 +249,25 @@ func (e *Service) tryPromoteNewSequencer() *common.EnclaveID {
 		}
 
 		if guardian.IsSequencerEnclaveHealthy() {
-			e.logger.Debug("Attempting to promote enclave to active sequencer", log.EnclaveIDKey, enclID)
-			err := guardian.PromoteToActiveSequencer()
-			if err != nil {
-				e.logger.Error("Failed to promote enclave to active sequencer", log.ErrKey, err)
-				continue
+			if guardian.state.IsEnclaveActiveSequencer() {
+				// prepend this guardian to the list of guardians to try because it was active
+				guardiansToTry = append([]*Guardian{guardian}, guardiansToTry...)
+			} else {
+				guardiansToTry = append(guardiansToTry, guardian)
 			}
-			return enclID
-		} else {
-			e.logger.Debug("Enclave not healthy, skipping promotion", log.EnclaveIDKey, guardian.GetEnclaveID())
 		}
+	}
+
+	// attempt to promote one of the candidate guardians
+	for _, guardian := range guardiansToTry {
+		enclID := guardian.GetEnclaveID()
+		e.logger.Debug("Attempting to promote enclave to active sequencer", log.EnclaveIDKey, enclID)
+		err := guardian.PromoteToActiveSequencer()
+		if err != nil {
+			e.logger.Error("Failed to promote enclave to active sequencer", log.ErrKey, err)
+			continue
+		}
+		return enclID
 	}
 
 	// if we get here, we didn't find a healthy guardian to promote
