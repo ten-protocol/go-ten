@@ -39,7 +39,7 @@ contract TransactionPostProcessor is Initializable, AccessControl{
         _grantRole(EOA_ADMIN_ROLE, eoaAdmin);
     }
 
-    function addOnBlockEndCallback(address callbackAddress) public {
+    function addOnBlockEndCallback(address callbackAddress) public onlyRole(EOA_ADMIN_ROLE) {
         onBlockEndListeners.push(IOnBlockEndCallback(callbackAddress));
     }
 
