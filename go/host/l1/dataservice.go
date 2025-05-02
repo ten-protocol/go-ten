@@ -48,17 +48,13 @@ type DataService struct {
 	contractRegistry contractlib.ContractRegistryLib
 	blobResolver     BlobResolver
 	blockResolver    storage.BlockResolver
+	l1StartHash      gethcommon.Hash
 
 	running atomic.Bool
 	head    gethcommon.Hash
 }
 
-func NewL1DataService(
-	ethClient ethadapter.EthClient,
-	logger gethlog.Logger,
-	contractRegistry contractlib.ContractRegistryLib,
-	blobResolver BlobResolver,
-) *DataService {
+func NewL1DataService(ethClient ethadapter.EthClient, logger gethlog.Logger, contractRegistry contractlib.ContractRegistryLib, blobResolver BlobResolver, l1StartHash gethcommon.Hash) *DataService {
 	return &DataService{
 		blockSubscribers: subscription.NewManager[host.L1BlockHandler](),
 		ethClient:        ethClient,
@@ -66,6 +62,7 @@ func NewL1DataService(
 		logger:           logger,
 		contractRegistry: contractRegistry,
 		blobResolver:     blobResolver,
+		l1StartHash:      l1StartHash,
 	}
 }
 
@@ -474,6 +471,11 @@ func (r *DataService) streamLiveBlocks() {
 }
 
 func (r *DataService) fetchAncestors(blockHash gethcommon.Hash) error {
+	// stop at the first l1 block
+	if blockHash == r.l1StartHash {
+		return nil
+	}
+
 	_, err := r.blockResolver.ReadBlock(&blockHash)
 	if err == nil {
 		return nil
@@ -485,10 +487,6 @@ func (r *DataService) fetchAncestors(blockHash gethcommon.Hash) error {
 	block, err := r.ethClient.HeaderByHash(blockHash)
 	if err != nil {
 		return fmt.Errorf("error fetching block: %w", err)
-	}
-
-	if block.Number.Uint64() <= common.L1GenesisHeight+1 {
-		return nil
 	}
 
 	// recursively check that the ancestors
