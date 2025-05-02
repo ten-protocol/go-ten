@@ -133,7 +133,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 
 	// these services are directly exposed as the API of the Enclave
 	initAPI := NewEnclaveInitAPI(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider, sharedSecretService, daEncryptionService, rpcKeyService)
-	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, attestationProvider, sharedSecretService, daEncryptionService, contractRegistryLib)
+	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, attestationProvider, sharedSecretService, daEncryptionService, contractRegistryLib, gasOracle)
 	rpcAPI := NewEnclaveRPCAPI(config, storage, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, rpcKeyService, evmFacade)
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
