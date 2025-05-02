@@ -664,8 +664,6 @@ func (g *Guardian) periodicBatchProduction() {
 			if err != nil {
 				g.logger.Error("Unable to produce batch", log.ErrKey, err)
 				g.markSequencerUnavailable("seq enclave could not produce batch")
-			} else {
-				g.markSequencerHealthy()
 			}
 		case <-g.hostInterrupter.Done():
 			// interrupted by host stopping
