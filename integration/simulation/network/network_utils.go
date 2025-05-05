@@ -95,7 +95,7 @@ func createInMemTenNode(
 		BridgeAddress:                   l1BridgeAddress,
 		DataAvailabilityRegistryAddress: contracts.DataAvailabilityRegistry,
 		EnclaveRegistryAddress:          contracts.EnclaveRegistry,
-		SystemContractOwner:             gethcommon.BigToAddress(big.NewInt(1)), // Irrelevant for in-mem nodes
+		SystemContractOwner:             gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"), // Irrelevant for in-mem nodes
 		MaxBatchSize:                    1024 * 55,
 		MaxRollupSize:                   1024 * 128,
 		BaseFee:                         big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
