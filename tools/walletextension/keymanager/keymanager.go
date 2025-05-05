@@ -92,7 +92,6 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		logger.Info("unsealed existing encryption key")
 		return encryptionKey, nil
 	}
-
 }
 
 // tryUnsealKey attempts to unseal an encryption key from disk
