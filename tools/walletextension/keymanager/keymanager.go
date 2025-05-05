@@ -53,10 +53,10 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return nil, nil
 	}
 
-	var encryptionKey []byte
-	var err error
-
 	if config.KeyExchangeURL != "" {
+		var encryptionKey []byte
+		var err error
+
 		if config.KeyExchangeURL == "new" {
 			logger.Info("ketExchangeUrl set to 'new', generating new encryption key")
 			encryptionKey, err = common.GenerateRandomKey()
@@ -72,25 +72,27 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 				return nil, err
 			}
 		}
+
+		// Seal the key that we generated / got from the key exchange from another enclave
+		err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave)
+		if err != nil {
+			logger.Crit("unable to seal encryption key", log.ErrKey, err)
+			return nil, err
+		}
+		logger.Info("sealed new encryption key")
+
+		return encryptionKey, nil
 	} else {
-		var found bool
 		logger.Info("no key exchange url set, try to unseal existing encryption key")
-		encryptionKey, found, err = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
+		encryptionKey, found, err := tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
 		if !found {
 			logger.Crit("no sealed encryption key found", log.ErrKey, err)
 			return nil, fmt.Errorf("no sealed encryption key found: %w", err)
 		}
+		logger.Info("unsealed existing encryption key")
+		return encryptionKey, nil
 	}
 
-	// Seal the key that we generated / got from the key exchange from another enclave
-	err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave)
-	if err != nil {
-		logger.Crit("unable to seal encryption key", log.ErrKey, err)
-		return nil, err
-	}
-	logger.Info("sealed new encryption key")
-
-	return encryptionKey, nil
 }
 
 // tryUnsealKey attempts to unseal an encryption key from disk
