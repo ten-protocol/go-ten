@@ -33,6 +33,13 @@ contract PublicCallbacks is Initializable {
     uint256 private nextCallbackId;
     uint256 private lastUnusedCallbackId;
 
+    mapping(uint256 => uint256) public callbackBlockNumber;
+
+    modifier canReattemptCallback(uint256 callbackId) {
+        require(callbackBlockNumber[callbackId] < block.number, "Callback cannot be reattempted yet");
+        _;
+    }
+
     function initialize() external initializer {
         nextCallbackId = 0;
         lastUnusedCallbackId = 0;
@@ -41,6 +48,7 @@ contract PublicCallbacks is Initializable {
     function addCallback(address callback, bytes calldata data, uint256 value) internal returns (uint256 callbackId) {
         callbackId = nextCallbackId;
         callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value, baseFee: block.basefee});
+        callbackBlockNumber[callbackId] = block.number;
     }
 
     function getCurrentCallbackToExecute() internal view returns (Callback memory, uint256) {
@@ -73,7 +81,7 @@ contract PublicCallbacks is Initializable {
 
     // reattempt a callback that failed to execute.
     // This is callable from external users and fully passes over the gas given to this call.
-    function reattemptCallback(uint256 callbackId) external {
+    function reattemptCallback(uint256 callbackId) external canReattemptCallback(callbackId) {
         Callback memory callback = callbacks[callbackId];
         (bool success, ) = callback.target.call(callback.data);
         require(success, "Callback execution failed");
