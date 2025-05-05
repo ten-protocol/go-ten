@@ -65,7 +65,7 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 				return nil, err
 			}
 		} else {
-			logger.Info("keyExchangeUrl set to a specific url, trying to get encryption key from key provider")
+			logger.Info(fmt.Sprintf("keyExchangeUrl set to '%s', trying to get encryption key from key provider", config.KeyExchangeURL))
 			encryptionKey, err = HandleKeyExchange(config, logger)
 			if err != nil {
 				logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
