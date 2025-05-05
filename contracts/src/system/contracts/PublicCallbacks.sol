@@ -35,6 +35,8 @@ contract PublicCallbacks is Initializable {
 
     mapping(uint256 => uint256) public callbackBlockNumber;
 
+    // This modifier prevents using the callback in the same block it was registered (before the automation has a chance to do it)
+    // this ensures that one can't commit and uncommit in the same transaction based on the outcome of reattempting.
     modifier canReattemptCallback(uint256 callbackId) {
         require(callbackBlockNumber[callbackId] < block.number, "Callback cannot be reattempted yet");
         _;
@@ -57,6 +59,7 @@ contract PublicCallbacks is Initializable {
 
     function popCurrentCallback() internal {
         delete callbacks[lastUnusedCallbackId];
+        delete callbackBlockNumber[lastUnusedCallbackId];
     }
 
     function moveToNextCallback() internal {
@@ -86,6 +89,7 @@ contract PublicCallbacks is Initializable {
         (bool success, ) = callback.target.call(callback.data);
         require(success, "Callback execution failed");
         delete callbacks[callbackId];
+        delete callbackBlockNumber[callbackId];
         // nothing to refund; the callback was already paid for during its failure
     }
 
