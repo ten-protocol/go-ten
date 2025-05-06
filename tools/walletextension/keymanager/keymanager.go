@@ -40,12 +40,12 @@ type KeyExchangeResponse struct {
 	EncryptedKey string `json:"encrypted_key"` // Base64 encoded encrypted encryption key
 }
 
-// GetEncryptionKey returns encryption key for the database
-// 1.) If we use an SQLite database, no encryption key is needed as SQLite typically runs in development or testing environments.
-// 2.) If a key exchange URL is provided, attempt to obtain the encryption key from the specified URL.
-// 3.) If the key exchange URL is set to "new", generate a new encryption key.
-// 4.) If no key exchange URL is provided, attempt to unseal an existing encryption key.
-// 5.) If a new key is generated or obtained, seal it for future use.
+// GetEncryptionKey returns the encryption key for the database
+// - If we use an SQLite database, no encryption key is needed as SQLite typically runs in development or testing environments.
+// - If a key exchange URL is provided, attempt to obtain the encryption key from the specified URL.
+// - If the key exchange URL is set to "new", check for an existing encryption key and generate a new one if not found.
+// - If no key exchange URL is provided, attempt to unseal an existing encryption key.
+// - If a new key is generated or obtained, seal it for future use.
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
 	// check if we are using sqlite database and no encryption key needed
 	if config.DBType == "sqlite" {
@@ -60,7 +60,7 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		if config.EncryptionKeySource == "new" {
 			logger.Info("encryptionKeySource set to 'new' -> checking if there is an existing encryption key that we can use")
 			var found bool
-			encryptionKey, found, err = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
+			encryptionKey, found, _ = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
 			if !found {
 				logger.Info("No existing encryption key found, generating new random encryption key")
 				encryptionKey, err = common.GenerateRandomKey()
