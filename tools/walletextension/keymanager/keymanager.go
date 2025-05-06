@@ -53,12 +53,12 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return nil, nil
 	}
 
-	if config.KeyExchangeURL != "" {
+	if config.EncryptionKeySource != "" {
 		var encryptionKey []byte
 		var err error
 
-		if config.KeyExchangeURL == "new" {
-			logger.Info("keyExchangeUrl set to 'new' -> checking if there is an existing encryption key that we can use")
+		if config.EncryptionKeySource == "new" {
+			logger.Info("encryptionKeySource set to 'new' -> checking if there is an existing encryption key that we can use")
 			var found bool
 			encryptionKey, found, err = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
 			if !found {
@@ -70,7 +70,7 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 				}
 			}
 		} else {
-			logger.Info(fmt.Sprintf("keyExchangeUrl set to '%s', trying to get encryption key from key provider", config.KeyExchangeURL))
+			logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
 			encryptionKey, err = HandleKeyExchange(config, logger)
 			if err != nil {
 				logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
@@ -178,7 +178,7 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 8: Send the message to KeyProvider via HTTP POST
-	resp, err := http.Post(config.KeyExchangeURL+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
+	resp, err := http.Post(config.EncryptionKeySource+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
 	if err != nil {
 		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err)
 		return nil, fmt.Errorf("failed to send message to KeyProvider: %w", err)
