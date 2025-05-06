@@ -186,7 +186,6 @@ func (e *Service) Unsubscribe(id rpc.ID) error {
 
 // ensureActiveSequencer is a background goroutine that attempts to ensure there is always exactly one
 // active sequencer enclave. It will promote a new active sequencer if the current one fails or is unavailable.
-// @matt todo tomorrow: tone down the HA stuff for single-enclave setups, especially the demotion since that kills the enclave
 func (e *Service) ensureActiveSequencer() {
 	for e.running.Load() {
 		activeSeqID := e.activeSequencerID.Load() // (this may be _noActiveSequencer)
@@ -233,8 +232,6 @@ func (e *Service) ensureActiveSequencer() {
 }
 
 func (e *Service) tryPromoteNewSequencer() *common.EnclaveID {
-	// loop through the guardians, find the first one that is healthy and promote it
-	// if none are healthy the active sequencer flag will be cleared, and we will try again next time
 	prevActiveSeqID := e.activeSequencerID.Load()
 
 	// prepare a list of guardians to try, starting with the one that thinks it is active (if there is one, e.g. after host restart)
@@ -271,6 +268,7 @@ func (e *Service) tryPromoteNewSequencer() *common.EnclaveID {
 	}
 
 	// if we get here, we didn't find a healthy guardian to promote
+	// clear the active sequencer ID and we will try again later
 	return _noActiveSequencer
 }
 
