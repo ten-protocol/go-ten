@@ -3,11 +3,11 @@ package metrics
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"log"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/cosmosdb"
 )
 
@@ -54,9 +54,10 @@ type MetricsTracker struct {
 	persistTicker     *time.Ticker
 	batchUpdateTicker *time.Ticker
 	dailyStatsTicker  *time.Ticker
+	logger            gethlog.Logger
 }
 
-func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) Metrics {
+func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB, logger gethlog.Logger) Metrics {
 	mt := &MetricsTracker{
 		activityCache:     make(map[string]time.Time),
 		activityBatch:     make(map[string]time.Time),
@@ -64,6 +65,7 @@ func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB) Metrics {
 		persistTicker:     time.NewTicker(MetricsPersistInterval),
 		batchUpdateTicker: time.NewTicker(1 * time.Minute), // Process batches more frequently
 		dailyStatsTicker:  time.NewTicker(DailyStatsUpdateInterval),
+		logger:            logger,
 	}
 
 	// Load existing metrics
@@ -141,7 +143,7 @@ func (mt *MetricsTracker) GetMonthlyActiveUsers() int {
 	activeThreshold := time.Now().Add(-MonthlyActiveUserWindow)
 	count, err := mt.storage.CountActiveUsers(activeThreshold)
 	if err != nil {
-		log.Printf("Failed to count active users: %v", err)
+		mt.logger.Error("Failed to count active users", "error", err)
 
 		// Fall back to in-memory cache if database query fails
 		mt.activityCacheLock.RLock()
@@ -178,7 +180,7 @@ func (mt *MetricsTracker) processBatchUpdates() {
 	// Process each user activity update
 	for userID, timestamp := range currentBatch {
 		if err := mt.storage.UpdateUserActivity(userID, timestamp); err != nil {
-			log.Printf("Failed to update user activity: %v", err)
+			mt.logger.Error("Failed to update user activity", "error", err)
 
 			// Put back in batch on failure
 			mt.activityBatchLock.Lock()
@@ -199,7 +201,7 @@ func (mt *MetricsTracker) saveMetrics() {
 	// Load the current global metrics
 	global, err := mt.storage.LoadGlobalMetrics()
 	if err != nil {
-		log.Printf("Failed to load global metrics: %v", err)
+		mt.logger.Error("Failed to load global metrics", "error", err)
 		return
 	}
 
@@ -216,7 +218,7 @@ func (mt *MetricsTracker) saveMetrics() {
 
 	// Save the updated global metrics
 	if err := mt.storage.SaveGlobalMetrics(global); err != nil {
-		log.Printf("Failed to persist global metrics: %v", err)
+		mt.logger.Error("Failed to persist global metrics", "error", err)
 	}
 }
 
@@ -244,7 +246,7 @@ func (mt *MetricsTracker) cleanupInactiveUsers() {
 func (mt *MetricsTracker) updateDailyStats() {
 	for range mt.dailyStatsTicker.C {
 		if err := mt.storage.UpdateDailyStats(); err != nil {
-			log.Printf("Failed to update daily stats: %v", err)
+			mt.logger.Error("Failed to update daily stats", "error", err)
 		}
 	}
 }
@@ -263,15 +265,19 @@ func (mt *MetricsTracker) Stop() {
 
 	// Final update of daily stats
 	if err := mt.storage.UpdateDailyStats(); err != nil {
-		log.Printf("Failed to update daily stats during shutdown: %v", err)
+		mt.logger.Error("Failed to update daily stats during shutdown", "error", err)
 	}
 }
 
 // NoOpMetricsTracker implements Metrics interface but does nothing
-type NoOpMetricsTracker struct{}
+type NoOpMetricsTracker struct {
+	logger gethlog.Logger
+}
 
-func NewNoOpMetricsTracker() Metrics {
-	return &NoOpMetricsTracker{}
+func NewNoOpMetricsTracker(logger gethlog.Logger) Metrics {
+	return &NoOpMetricsTracker{
+		logger: logger,
+	}
 }
 
 func (mt *NoOpMetricsTracker) RecordNewUser()                     {}
