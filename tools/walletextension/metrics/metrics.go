@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -87,13 +86,13 @@ func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB, logger gethlog.
 }
 
 // hashUserID creates a double-hashed version of the userID, using only the first 8 bytes of the hash
-func (mt *MetricsTracker) hashUserID(userID []byte) string {
+func (mt *MetricsTracker) hashUserID(userID []byte) []byte {
 	// First hash
 	firstHash := sha256.Sum256(userID)
 	// Second hash
 	secondHash := sha256.Sum256(firstHash[:])
 	// Return only first 8 bytes of the hash (sufficient for activity tracking)
-	return hex.EncodeToString(secondHash[:8])
+	return secondHash[:8]
 }
 
 func (mt *MetricsTracker) RecordNewUser() {
@@ -112,12 +111,12 @@ func (mt *MetricsTracker) RecordUserActivity(anonymousID string) {
 
 	// Update in-memory cache
 	mt.activityCacheLock.Lock()
-	mt.activityCache[hashedUserID] = now
+	mt.activityCache[string(hashedUserID)] = now
 	mt.activityCacheLock.Unlock()
 
 	// Add to batch for efficient storage updates
 	mt.activityBatchLock.Lock()
-	mt.activityBatch[hashedUserID] = now
+	mt.activityBatch[string(hashedUserID)] = now
 	batchSize := len(mt.activityBatch)
 	mt.activityBatchLock.Unlock()
 
