@@ -58,11 +58,16 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		var err error
 
 		if config.KeyExchangeURL == "new" {
-			logger.Info("ketExchangeUrl set to 'new', generating new encryption key")
-			encryptionKey, err = common.GenerateRandomKey()
-			if err != nil {
-				logger.Crit("unable to generate random encryption key", log.ErrKey, err)
-				return nil, err
+			logger.Info("keyExchangeUrl set to 'new' -> checking if there is an existing encryption key that we can use")
+			var found bool
+			encryptionKey, found, err = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
+			if !found {
+				logger.Info("No existing encryption key found, generating new random encryption key")
+				encryptionKey, err = common.GenerateRandomKey()
+				if err != nil {
+					logger.Crit("unable to generate random encryption key", log.ErrKey, err)
+					return nil, err
+				}
 			}
 		} else {
 			logger.Info(fmt.Sprintf("keyExchangeUrl set to '%s', trying to get encryption key from key provider", config.KeyExchangeURL))
