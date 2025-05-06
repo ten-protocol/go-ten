@@ -1,0 +1,137 @@
+# First step to deploying a new testnet, deploys the L1 contracts
+#
+# This script uses GitHub Environments for variables (vars) and secrets - these are configured on GitHub and
+#  the environments match the input.testnet_type options
+#
+# To deploy sepolia the user must type 'confirm' in the confirmation field
+
+name: '[M] k8s Prepare testnet setup'
+run-name: '[M] k8s Prepare testnet setup ( ${{ github.event.inputs.testnet_type }} )'
+on:
+  workflow_dispatch:
+    inputs:
+      testnet_type:
+        description: 'Testnet Type'
+        required: true
+        default: 'dev-testnet'
+        type: choice
+        options:
+          - 'dev-testnet'
+          - 'uat-testnet'
+          - 'sepolia-testnet'
+      log_level:
+        description: 'Log Level 1-Error 5-Trace'
+        required: true
+        default: 3
+        type: number
+      confirmation:
+          description: 'Type "confirm" if deploying sepolia'
+          required: false
+          type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+
+    # Map a step output to a job output
+    outputs:
+      NETWORK_CONFIG_ADDR: ${{ steps.deployContracts.outputs.NETWORK_CONFIG_ADDR }}
+      MSG_BUS_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MSG_BUS_CONTRACT_ADDR }}
+      BRIDGE_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.BRIDGE_CONTRACT_ADDR }}
+      CROSS_CHAIN_ADDR: ${{ steps.deployContracts.outputs.CROSS_CHAIN_ADDR }}
+      DA_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.DA_REGISTRY_ADDR }}
+      ENCLAVE_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.ENCLAVE_REGISTRY_ADDR }}
+      L1_START_HASH: ${{ steps.deployContracts.outputs.L1_START_HASH }}
+
+
+    steps:
+      - name: 'Check confirmation'
+        # if env is sepolia then confirmation field needs to say 'confirm'
+        run: |
+          if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+            echo "Confirmation field must say 'confirm' to deploy sepolia to avoid accidental deployments"
+            exit 1
+          fi
+
+      - name: 'Print GitHub variables'
+        # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference
+        run: |
+          echo "GitHub Variables = ${{ toJSON(vars) }}"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.5
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Build and push obscuro node images'
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_HOST }} -f dockerfiles/host.Dockerfile .
+          docker push ${{ vars.DOCKER_BUILD_TAG_HOST }}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
+          docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+
+      - name: 'Deploy Contracts'
+        id: deployContracts
+        shell: bash
+        env:
+          DOCKER_API_VERSION: "1.45"
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+          DEPLOY_NETWORKNAME: ${{ github.event.inputs.testnet_type }}
+          DEPLOY_OUTPUTAZUREKV: ${{ secrets.AZURE_KEY_VAULT_URL }}
+          DEPLOY_OUTPUTENV: ./testnet/.env
+          DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+          DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+        run: |
+          # Run deployer and capture output
+          go run ./testnet/launcher/l1contractdeployer/cmd
+          
+          if [ -f ./testnet/.env ]; then
+            source ./testnet/.env
+          fi          
+          # Fix variable names and GITHUB_OUTPUT reference
+          echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_ENV
+          echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_OUTPUT
+          
+          echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_ENV
+          echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
+          
+          echo "BRIDGE_CONTRACT_ADDR=$BRIDGECONTRACTADDR" >> $GITHUB_ENV
+          echo "BRIDGE_CONTRACT_ADDR=$BRIDGECONTRACTADDR" >> $GITHUB_OUTPUT
+          
+          echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_ENV
+          echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_OUTPUT
+          
+          echo "DA_REGISTRY_ADDR=$DAREGISTRYADDR" >> $GITHUB_ENV
+          echo "DA_REGISTRY_ADDR=$DAREGISTRYADDR" >> $GITHUB_OUTPUT
+          
+          echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_ENV
+          echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_OUTPUT
+          
+          echo "L1_START_HASH=$L1START" >> $GITHUB_ENV
+          echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
+
+      - name: 'Save L1 deployer container logs'
+        # Wait to make sure the logs are available in the container
+        run: |
+          sleep 60
+          docker logs `docker ps -aqf "name=hh-l1-deployer"` > deploy-l1-contracts.out 2>&1

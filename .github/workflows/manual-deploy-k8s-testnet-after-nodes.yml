@@ -1,0 +1,215 @@
+# Last step deploying a new testnet, deploys L2 contracts and faucet etc.
+#
+# This script uses GitHub Environments for variables (vars) and secrets - these are configured on GitHub and
+#  the environments match the input.testnet_type options
+#
+# To deploy sepolia the user must type 'confirm' in the confirmation field
+
+# TODO: this is a placeholder, not ready yet! We need to wire in contract addresses etc.
+
+name: '[M] k8s Complete testnet setup'
+run-name: '[M] k8s Complete testnet setup ( ${{ github.event.inputs.testnet_type }} )'
+on:
+   workflow_dispatch:
+      inputs:
+         testnet_type:
+            description: 'Testnet Type'
+            required: true
+            default: 'dev-testnet'
+            type: choice
+            options:
+               - 'dev-testnet'
+               - 'uat-testnet'
+               - 'sepolia-testnet'
+         log_level:
+            description: 'Log Level 1-Error 5-Trace'
+            required: true
+            default: 3
+            type: number
+         confirmation:
+            description: 'Type "confirm" if deploying sepolia'
+            required: false
+            type: string
+
+jobs:
+   check-obscuro-is-healthy:
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      steps:
+         - uses: actions/checkout@v4
+
+         - name: "Wait until obscuro node is healthy"
+           shell: bash
+           run: |
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-2-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+   
+
+   grant-sequencer-enclaves:
+      needs:
+         - check-obscuro-is-healthy
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      steps:
+         -  uses: actions/checkout@v4
+
+         -  name: 'Grant permission to sequencer enclave(s)'
+            id: grantSequencerPermission
+            shell: bash
+            env:
+               DOCKER_API_VERSION: "1.45"
+               DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+               DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+               DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+               DEPLOY_L2_SEQUENCERURL: http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
+               NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.build.outputs.ENCLAVE_REGISTRY_ADDR }}
+
+            run: |
+               go run ./testnet/launcher/l1grantsequencers/cmd
+
+         -  name: 'Save sequencer permissioning container logs'
+            run: |
+               docker logs `docker ps -aqf "name=grant-sequencers"` > grant-sequencers.out 2>&1
+
+         -  name: 'Upload sequencer permissioning container logs'
+            uses: actions/upload-artifact@v4
+            with:
+               name: grant-sequencers
+               path: |
+                  grant-sequencers.out
+               retention-days: 7
+
+   set-challenge-period:
+      needs:
+         - build
+         - check-obscuro-is-healthy
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      env:
+         DOCKER_API_VERSION: "1.45"
+         NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.build.outputs.DA_REGISTRY_ADDR }}
+         DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+         DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+         DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+         DEPLOY_L1_CHALLENGEPERIOD: ${{ vars.L1_CHALLENGE_PERIOD }}
+      steps:
+         -  uses: actions/checkout@v4
+
+         -  name: 'Set challenge period on rollup contract'
+            id: setChallengePeriod
+            shell: bash
+            run: |
+               go run ./testnet/launcher/l1challengeperiod/cmd
+               echo "Setting challenge period to ${{ vars.L1_CHALLENGE_PERIOD }}"
+
+         -  name: 'Save challenge period container logs'
+            run: |
+               docker logs `docker ps -aqf "name=set-challenge-period"` > set-challenge-period.out 2>&1
+
+         -  name: 'Upload challenge period container logs'
+            uses: actions/upload-artifact@v4
+            with:
+               name: set-challenge-period
+               path: |
+                  set-challenge-period.out
+               retention-days: 7
+
+   deploy-l2-contracts:
+      needs:
+         - build
+         - grant-sequencer-enclaves
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      steps:
+         - uses: actions/checkout@v4
+
+         - name: 'Deploy L2 contracts'
+           id: deployL2Contracts
+           shell: bash
+           env:
+              DOCKER_API_VERSION: "1.45"
+              DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+              DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+              DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+              DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
+              DEPLOY_L2_RPCADDRESS: obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+              DEPLOY_L2_WSPORT: 81
+              DEPLOY_L2_FAUCETFUNDS: ${{ vars.FAUCET_INITIAL_FUNDS }}
+              NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.build.outputs.NETWORK_CONFIG_ADDR }}
+              NETWORK_L1_CONTRACTS_MESSAGEBUS: ${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }}
+              NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.build.outputs.DA_REGISTRY_ADDR }}
+              NETWORK_L1_CONTRACTS_CROSSCHAIN: ${{ needs.build.outputs.CROSS_CHAIN_ADDR }}
+              NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.build.outputs.ENCLAVE_REGISTRY_ADDR }}
+           run: |
+              go run ./testnet/launcher/l2contractdeployer/cmd \
+
+         - name: 'Save L2 deployer container logs'
+           run: |
+              docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
+
+         - name: 'Upload L2 deployer container logs'
+           uses: actions/upload-artifact@v4
+           with:
+              name: deploy-l2-artifacts
+              path: |
+                 deploy-l2-contracts.out
+              retention-days: 7
+
+   update-loadbalancer:
+      needs:
+         - grant-sequencer-enclaves
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      steps:
+         - uses: actions/checkout@v4
+
+         - name: 'Login via Azure CLI'
+           uses: azure/login@v1
+           with:
+              creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+         - name: 'Remove existing backend nodes from the load balancer'
+           run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{ github.event.inputs.testnet_type }}
+
+         - name: 'Add load balancer address pool to the IP configuration'
+           uses: azure/CLI@v1
+           with:
+              inlineScript: |
+                 az network nic ip-config address-pool add \
+                   --address-pool ${{ github.event.inputs.testnet_type }}-backend-pool \
+                   --ip-config-name ipconfig${{ vars.AZURE_RESOURCE_PREFIX }}-1-${{ GITHUB.RUN_NUMBER }} \
+                   --nic-name ${{ vars.AZURE_RESOURCE_PREFIX }}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
+                   --resource-group Testnet \
+                   --lb-name ${{ github.event.inputs.testnet_type }}-loadbalancer
+
+   deploy-faucet:
+      name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
+      uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
+      with:
+         testnet_type: ${{ github.event.inputs.testnet_type }}
+      secrets: inherit
+      needs:
+         - grant-sequencer-enclaves
+
+   obscuro-test-repository-dispatch:
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      needs:
+         - deploy-faucet
+      steps:
+         - name: 'Send a repository dispatch to obscuro-test on deployment of dev-testnet'
+           if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
+           run: |
+              curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "dev_testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'
+
+         - name: 'Send a repository dispatch to obscuro-test on deployment of testnet'
+           if: ${{ (github.event.inputs.testnet_type == 'uat-testnet') }}
+           run: |
+              curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "uat_testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'
