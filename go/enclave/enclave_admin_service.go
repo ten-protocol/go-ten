@@ -198,10 +198,6 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 	// in phase 1, only if the enclave is a sequencer, it can respond to shared secret requests
 	canShareSecret := e.isBackupSequencer(ctx) || e.isActiveSequencer(ctx) || e.sharedSecretService.IsGenesis()
 
-	err = e.gasOracle.SubmitL1Block(ctx, blockHeader)
-	if err != nil {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block to gas oracle. Cause: %w", err))
-	}
 	bsr := &common.BlockSubmissionResponse{
 		RollupMetadata:          rollupMetadata,
 		ProducedSecretResponses: e.sharedSecretProcessor.ProcessNetworkSecretMsgs(ctx, blockData, canShareSecret),
@@ -565,6 +561,12 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 			return nil, nil, err
 		}
 	}
+
+	err = e.gasOracle.SubmitL1Block(ctx, processed.BlockHeader)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not submit L1 block to gas oracle. Cause: %w", err)
+	}
+
 	return ingestion, rollupMetadataList, nil
 }
 

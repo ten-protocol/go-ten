@@ -2,7 +2,6 @@ package gas
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"sync"
 
@@ -19,7 +18,10 @@ import (
 )
 
 // MovingAverageWindow - the more traffic on the network, the lower this number can get. Should be roughly the number of blocks between rollups.
-const MovingAverageWindow = 1 // `3600 / 12` - last 1 hour
+const MovingAverageWindow = 300 // `3600 / 12` - last 1 hour
+
+// MaxHistoricMA - the maximum number of historic blocks
+const MaxHistoricMA = 50
 
 // L1TxGas - a crude estimation of the cost of publishing an L1 tx
 const L1TxGas = 300_000
@@ -40,8 +42,9 @@ type oracle struct {
 	storage    storage.BlockResolver
 	headMutex  sync.RWMutex
 	headBlock  *types.Header
-	blobFeeMA  map[uint64]*big.Int
-	baseFeeMA  map[uint64]*big.Int
+	// hold the moving average of the base fee and blob fee per block
+	blobFeeMA map[uint64]*big.Int
+	baseFeeMA map[uint64]*big.Int
 }
 
 func NewGasOracle(l1ChainCfg *params.ChainConfig, storage storage.BlockResolver) Oracle {
@@ -90,10 +93,8 @@ func (o *oracle) SubmitL1Block(ctx context.Context, headBlock *types.Header) err
 		if calculateBlobs {
 			blobFeeSum = blobFeeSum.Add(blobFeeSum, eip4844.CalcBlobFee(o.l1ChainCfg, b))
 		}
-		parent := b.ParentHash
 		b, err = o.storage.FetchBlock(ctx, b.ParentHash)
 		if err != nil {
-			fmt.Printf("Block %s, Err %v\n", parent.Hex(), err)
 			break
 		}
 	}
@@ -106,8 +107,15 @@ func (o *oracle) SubmitL1Block(ctx context.Context, headBlock *types.Header) err
 		}
 	}
 
-	o.baseFeeMA[headBlock.Number.Uint64()] = baseFeeMA
+	blockNum := headBlock.Number.Uint64()
+	o.baseFeeMA[blockNum] = baseFeeMA
+	if blockNum > MaxHistoricMA {
+		// cleanup entries older than MaxHistoricMA
+		delete(o.baseFeeMA, blockNum-MaxHistoricMA)
+		delete(o.blobFeeMA, blockNum-MaxHistoricMA)
+	}
 	o.blobFeeMA[headBlock.Number.Uint64()] = blobFeeMA
+
 	return nil
 }
 
