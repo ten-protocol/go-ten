@@ -272,6 +272,8 @@ var ErrLowBalance = errors.New("insufficient account balance")
 // toPricedTx - this function estimates the l1 fees for the transaction in a given batch execution context. It does so by taking the price of the
 // pinned L1 block and using it as the cost per gas for the estimated gas of the calldata encoding of a transaction.
 func (executor *batchExecutor) toPricedTx(ec *BatchExecutionContext, tx *common.L2Tx) (*common.L2PricedTransaction, error) {
+	block, _ := executor.storage.FetchBlock(ec.ctx, ec.BlockPtr)
+
 	sender, err := core.GetAuthenticatedSender(ec.ChainConfig.ChainID.Int64(), tx)
 	if err != nil {
 		executor.logger.Error("Unable to extract sender for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
@@ -279,7 +281,7 @@ func (executor *batchExecutor) toPricedTx(ec *BatchExecutionContext, tx *common.
 	}
 	accBalance := ec.stateDB.GetBalance(*sender)
 
-	cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, ec.currentBatch.Header)
+	cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block, ec.currentBatch.Header)
 	if err != nil {
 		executor.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
 		return nil, fmt.Errorf("unable to get gas cost for tx. Cause: %w", err)

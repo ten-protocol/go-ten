@@ -93,7 +93,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	}
 
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
-	gasOracle := gas.NewGasOracle(l1ChainCfg)
+	gasOracle := gas.NewGasOracle(l1ChainCfg, storage)
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 
 	// start the mempool in validate only. Based on the config, it might become sequencer

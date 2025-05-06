@@ -322,8 +322,12 @@ func (t *TxPool) validateL1Gas(tx *common.L2Tx) error {
 	if err != nil {
 		return fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 	}
+	headBlock, err := t.l1BlockProcessor.GetHead(context.Background())
+	if err != nil {
+		return fmt.Errorf("could not retrieve head block. Cause: %w", err)
+	}
 
-	l1Cost, err := t.gasOracle.EstimateL1StorageGasCost(tx, headBatch)
+	l1Cost, err := t.gasOracle.EstimateL1StorageGasCost(tx, headBlock, headBatch)
 	if err != nil {
 		t.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
 		return fmt.Errorf("unable to get gas cost for tx. Cause: %w", err)
