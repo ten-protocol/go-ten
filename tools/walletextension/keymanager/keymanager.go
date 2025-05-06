@@ -42,9 +42,9 @@ type KeyExchangeResponse struct {
 
 // GetEncryptionKey returns the encryption key for the database
 // - If we use an SQLite database, no encryption key is needed as SQLite typically runs in development or testing environments.
-// - If a key exchange URL is provided, attempt to obtain the encryption key from the specified URL.
-// - If the key exchange URL is set to "new", check for an existing encryption key and generate a new one if not found.
-// - If no key exchange URL is provided, attempt to unseal an existing encryption key.
+// - If an encryptionKeySource is provided, attempt to obtain the encryption key from the specified source.
+// - If the encryptionKeySource is set to "new", check for an existing encryption key and generate a new one if not found.
+// - If no encryptionKeySource is provided, attempt to unseal an existing encryption key.
 // - If a new key is generated or obtained, seal it for future use.
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
 	// check if we are using sqlite database and no encryption key needed
@@ -57,6 +57,10 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		var encryptionKey []byte
 		var err error
 
+		// If the "new" keyword is used for the encryptionKeySource, we first check if there is an existing encryption key
+		// that can be unsealed and used. If no such key is found, we proceed to generate a new random encryption key.
+		// This ensures that we do not overwrite an existing key unless necessary, and a new key is only generated when
+		// there is no existing key available.
 		if config.EncryptionKeySource == "new" {
 			logger.Info("encryptionKeySource set to 'new' -> checking if there is an existing encryption key that we can use")
 			var found bool
@@ -70,6 +74,8 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 				}
 			}
 		} else {
+			// Attempt to perform key exchange with the specified key provider.
+			// This step is crucial, and the process should fail if the key exchange is not successful.
 			logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
 			encryptionKey, err = HandleKeyExchange(config, logger)
 			if err != nil {
@@ -88,6 +94,8 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 
 		return encryptionKey, nil
 	} else {
+		// If no encryptionKeySource is provided, attempt to unseal an existing encryption key and fail if no key is found
+		// (in this case operator needs to provide a source for the encryption key or decide to generate a new one)
 		logger.Info("no key exchange url set, try to unseal existing encryption key")
 		encryptionKey, found, err := tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
 		if !found {
