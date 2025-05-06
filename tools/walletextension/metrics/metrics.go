@@ -32,7 +32,7 @@ const (
 type Metrics interface {
 	RecordNewUser()
 	RecordAccountRegistered()
-	RecordUserActivity(anonymousID string)
+	RecordUserActivity(anonymousID []byte)
 	GetTotalUsers() uint64
 	GetTotalAccountsRegistered() uint64
 	GetMonthlyActiveUsers() int
@@ -105,8 +105,8 @@ func (mt *MetricsTracker) RecordAccountRegistered() {
 }
 
 // RecordUserActivity updates the last activity timestamp for a user
-func (mt *MetricsTracker) RecordUserActivity(anonymousID string) {
-	hashedUserID := mt.hashUserID([]byte(anonymousID))
+func (mt *MetricsTracker) RecordUserActivity(anonymousID []byte) {
+	hashedUserID := mt.hashUserID(anonymousID)
 	now := time.Now()
 
 	// Update in-memory cache
@@ -281,7 +281,7 @@ func NewNoOpMetricsTracker(logger gethlog.Logger) Metrics {
 
 func (mt *NoOpMetricsTracker) RecordNewUser()                     {}
 func (mt *NoOpMetricsTracker) RecordAccountRegistered()           {}
-func (mt *NoOpMetricsTracker) RecordUserActivity(string)          {}
+func (mt *NoOpMetricsTracker) RecordUserActivity([]byte)          {}
 func (mt *NoOpMetricsTracker) GetTotalUsers() uint64              { return 0 }
 func (mt *NoOpMetricsTracker) GetTotalAccountsRegistered() uint64 { return 0 }
 func (mt *NoOpMetricsTracker) GetMonthlyActiveUsers() int         { return 0 }
