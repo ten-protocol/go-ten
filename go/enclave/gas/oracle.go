@@ -134,7 +134,7 @@ func (o *oracle) calculateL1Cost(block *types.Header, l2Batch *common.BatchHeade
 	shareOfBlobCost := big.NewInt(0)
 	txL1Size := CalculateL1Size(encodedTx)
 	bl := o.blobFeeMA[block.Number.Uint64()]
-	if bl != nil && bl.Sign() > 0 {
+	if isNonZero(bl) {
 		shareOfBlobCost = big.NewInt(0).Mul(txL1Size, o.blobFeeMA[block.Number.Uint64()])
 	}
 
@@ -142,7 +142,7 @@ func (o *oracle) calculateL1Cost(block *types.Header, l2Batch *common.BatchHeade
 	shareOfL1TxGas := big.NewInt(L1TxGas / TxsPerRollup)
 	shareOfL1TxCost := big.NewInt(0)
 	bf := o.baseFeeMA[block.Number.Uint64()]
-	if bf != nil && bf.Sign() > 0 {
+	if isNonZero(bf) {
 		shareOfL1TxCost = big.NewInt(0).Mul(shareOfL1TxGas, bf)
 	}
 
@@ -156,4 +156,8 @@ func (o *oracle) calculateL1Cost(block *types.Header, l2Batch *common.BatchHeade
 	}
 
 	return totalCost, nil
+}
+
+func isNonZero(nr *big.Int) bool {
+	return nr != nil && nr.Sign() > 0
 }
