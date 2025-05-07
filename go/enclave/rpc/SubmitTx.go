@@ -24,9 +24,13 @@ func SubmitTxValidate(reqParams []any, builder *CallBuilder[common.L2Tx, gethcom
 }
 
 func SubmitTxExecute(builder *CallBuilder[common.L2Tx, gethcommon.Hash], rpc *EncryptionManager) error {
-	if err := rpc.mempool.SubmitTx(builder.Param); err != nil {
-		rpc.logger.Debug("Could not submit transaction", log.TxKey, builder.Param.Hash(), log.ErrKey, err)
-		builder.Err = err
+	userErr, sysErr := rpc.mempool.SubmitTx(builder.Param)
+	if sysErr != nil {
+		return fmt.Errorf("could not submit transaction. Cause: %w", sysErr)
+	}
+	if userErr != nil {
+		rpc.logger.Debug("Could not submit transaction", log.TxKey, builder.Param.Hash(), log.ErrKey, userErr)
+		builder.Err = userErr
 		return nil
 	}
 	h := builder.Param.Hash()
