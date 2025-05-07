@@ -18,6 +18,7 @@ import (
 )
 
 // MovingAverageWindow - the more traffic on the network, the lower this number can get. Should be roughly the number of blocks between rollups.
+// - note that increasing this value will have to increase the number of cached blocks in the cache_service
 const MovingAverageWindow = 300 // `3600 / 12` - last 1 hour
 
 // MaxHistoricMA - the maximum number of historic blocks
