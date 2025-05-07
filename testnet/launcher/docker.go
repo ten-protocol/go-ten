@@ -133,6 +133,14 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("failed to grant sequencer status: %w", err)
 	}
 
+	time.Sleep(10 * time.Second)
+
+	fmt.Println("About to upgrade contracts ....")
+	err = t.upgradeContracts(networkConfig.NetworkConfigAddress)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade contracts: %w", err)
+	}
+
 	err = l2ContractDeployer.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start the l2 contract deployer - %w", err)
@@ -197,11 +205,6 @@ func (t *Testnet) Start() error {
 
 	time.Sleep(10 * time.Second)
 
-	fmt.Println("About to upgrade contracts ....")
-	err = t.upgradeContracts(networkConfig.NetworkConfigAddress)
-	if err != nil {
-		return fmt.Errorf("failed to upgrade contracts: %w", err)
-	}
 	fmt.Println("Network successfully launched!")
 	return nil
 }

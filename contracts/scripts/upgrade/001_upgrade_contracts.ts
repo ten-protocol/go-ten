@@ -1,6 +1,7 @@
 import { BaseContract } from 'ethers';
-import { ethers, upgrades } from 'hardhat';
-
+import { ethers } from 'hardhat';
+import { upgrades } from 'hardhat';
+import { UpgradeOptions } from '@openzeppelin/hardhat-upgrades/dist/utils';
 
 export async function upgradeContract(
     upgraderAddress: string,
@@ -12,7 +13,19 @@ export async function upgradeContract(
     );
 
     const factory = await ethers.getContractFactory(contractName);
-    const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, { kind: 'uups' });
+    
+    // prepare the upgrade to get the implementation address
+    const implementationAddress = await upgrades.prepareUpgrade(proxyAddress, factory, {
+        kind: 'uups',
+        unsafeAllow: ['constructor']
+    } as UpgradeOptions);
+
+    console.log(`New implementation will be deployed at: ${implementationAddress}`);
+
+    const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, {
+        kind: 'uups',
+        unsafeAllow: ['constructor']
+    } as UpgradeOptions);
 
     console.log(`${contractName} upgraded — new implementation at ${upgraded.getAddress()}`);
     return upgraded;
