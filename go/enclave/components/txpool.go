@@ -3,7 +3,9 @@ package components
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/core/vm"
 	"math/big"
 	"reflect"
 	"strings"
@@ -350,6 +352,11 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 	ge := NewGasEstimator(t.storage, t.tenChain, t.gasOracle, t.logger)
 	latest := gethrpc.LatestBlockNumber
 	leastGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, &latest, headBatch, t.config.GasLocalExecutionCapFlag)
+
+	// if the transaction reverts we let it through
+	if userErr != nil && errors.Is(userErr, vm.ErrExecutionReverted) {
+		return nil, nil
+	}
 
 	if userErr != nil || sysErr != nil {
 		return userErr, sysErr
