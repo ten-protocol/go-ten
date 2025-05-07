@@ -16,7 +16,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
-	"github.com/ten-protocol/go-ten/go/enclave/l2chain"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -47,18 +46,7 @@ type enclaveRPCService struct {
 	logger               gethlog.Logger
 }
 
-func NewEnclaveRPCAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, batchRegistry components.BatchRegistry, gethEncodingService gethencoding.EncodingService, cachingService *storage.CacheService, mempool *components.TxPool, chainConfig *params.ChainConfig, crossChainProcessors *crosschain.Processors, scb system.SystemContractCallbacks, subscriptionManager *events.SubscriptionManager, genesis *genesis.Genesis, gasOracle gas.Oracle, rpcKeyService *crypto.RPCKeyService, evmFacade evm.EVMFacade) common.EnclaveClientRPC {
-	// TODO ensure debug is allowed/disallowed
-	chain := l2chain.NewChain(
-		storage,
-		config,
-		evmFacade,
-		gethEncodingService,
-		chainConfig,
-		genesis,
-		logger,
-		batchRegistry,
-	)
+func NewEnclaveRPCAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, chain components.TENChain, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, batchRegistry components.BatchRegistry, gethEncodingService gethencoding.EncodingService, cachingService *storage.CacheService, mempool *components.TxPool, chainConfig *params.ChainConfig, crossChainProcessors *crosschain.Processors, scb system.SystemContractCallbacks, subscriptionManager *events.SubscriptionManager, genesis *genesis.Genesis, gasOracle gas.Oracle, rpcKeyService *crypto.RPCKeyService, evmFacade evm.EVMFacade) common.EnclaveClientRPC {
 	debug := debugger.New(chain, storage, chainConfig)
 
 	rpcEncryptionManager := rpc.NewEncryptionManager(storage, cachingService, batchRegistry, mempool, crossChainProcessors, config, gasOracle, storage, blockProcessor, chain, rpcKeyService, logger)

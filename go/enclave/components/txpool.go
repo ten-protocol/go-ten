@@ -2,6 +2,7 @@ package components
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -10,6 +11,11 @@ import (
 	"sync/atomic"
 	"time"
 	"unsafe"
+
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
+	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
+	tencore "github.com/ten-protocol/go-ten/go/enclave/core"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -64,10 +70,12 @@ type TxPool struct {
 	stateMutex       sync.Mutex
 	logger           gethlog.Logger
 	validateOnly     atomic.Bool
+	config           *enclaveconfig.EnclaveConfig
+	tenChain         TENChain
 }
 
 // NewTxPool returns a new instance of the tx pool
-func NewTxPool(blockchain *EthChainAdapter, storage storage.Storage, batchRegistry BatchRegistry, l1BlockProcessor L1BlockProcessor, gasOracle gas.Oracle, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
+func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig, tenChain TENChain, storage storage.Storage, batchRegistry BatchRegistry, l1BlockProcessor L1BlockProcessor, gasOracle gas.Oracle, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
 	txPoolConfig := legacypool.Config{
 		Locals:       nil,
 		NoLocals:     false,
@@ -85,6 +93,8 @@ func NewTxPool(blockchain *EthChainAdapter, storage storage.Storage, batchRegist
 
 	txp := &TxPool{
 		Chain:            blockchain,
+		config:           config,
+		tenChain:         tenChain,
 		chainconfig:      blockchain.Config(),
 		txPoolConfig:     txPoolConfig,
 		storage:          storage,
@@ -159,16 +169,16 @@ func (t *TxPool) _startInternalPool() error {
 	return nil
 }
 
-func (t *TxPool) SubmitTx(transaction *common.L2Tx) error {
+func (t *TxPool) SubmitTx(transaction *common.L2Tx) (error, error) {
 	err := t.waitUntilPoolRunning()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if t.validateOnly.Load() {
 		return t.validate(transaction)
 	}
-	return t.add(transaction)
+	return t.add(transaction), nil
 }
 
 func (t *TxPool) waitUntilPoolRunning() error {
@@ -249,11 +259,11 @@ func (t *TxPool) add(transaction *common.L2Tx) error {
 func validateTx(_ *legacypool.LegacyPool, _ *types.Transaction, _ bool) error
 
 // Validate - run the underlying tx pool validation logic
-func (t *TxPool) validate(tx *common.L2Tx) error {
+func (t *TxPool) validate(tx *common.L2Tx) (error, error) {
 	// validate against the consensus rules
 	err := t.validateTxBasics(tx, false)
 	if err != nil {
-		return err
+		return err, nil
 	}
 
 	t.stateMutex.Lock()
@@ -261,10 +271,10 @@ func (t *TxPool) validate(tx *common.L2Tx) error {
 	err = validateTx(t.legacyPool, tx, false)
 	if err != nil {
 		t.stateMutex.Unlock()
-		return err
+		return err, nil
 	}
 	t.stateMutex.Unlock()
-	return t.validateL1Gas(tx)
+	return t.validateTotalGas(tx)
 }
 
 func (t *TxPool) Stats() (int, int) {
@@ -310,43 +320,46 @@ func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 }
 
 // check that the tx gas can pay for the l1
-func (t *TxPool) validateL1Gas(tx *common.L2Tx) error {
+func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 	headBatchSeq := t.batchRegistry.HeadBatchSeq()
 
 	// don't perform the check while the network is initialising
 	if headBatchSeq == nil {
-		return nil
+		return nil, nil
 	}
 
 	headBatch, err := t.storage.FetchBatchHeaderBySeqNo(context.Background(), headBatchSeq.Uint64())
 	if err != nil {
-		return fmt.Errorf("could not retrieve head batch. Cause: %w", err)
+		return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 	}
-	headBlock, err := t.l1BlockProcessor.GetHead(context.Background())
+
+	serTx, err := tx.MarshalJSON()
 	if err != nil {
-		return fmt.Errorf("could not retrieve head block. Cause: %w", err)
+		return fmt.Errorf("could not marshal tx. Cause: %w", err), nil
 	}
-
-	l1Cost, err := t.gasOracle.EstimateL1StorageGasCost(tx, headBlock, headBatch)
+	txArgs := gethapi.TransactionArgs{}
+	err = json.Unmarshal(serTx, &txArgs)
 	if err != nil {
-		t.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
-		return fmt.Errorf("unable to get gas cost for tx. Cause: %w", err)
+		return nil, fmt.Errorf("could not unmarshal tx. Cause: %w", err)
 	}
-
-	// calculate the cost in l2 gas
-	l2Gas := big.NewInt(0).Div(l1Cost, headBatch.BaseFee)
-
-	intrGas, err := core.IntrinsicGas(tx.Data(), tx.AccessList(), tx.SetCodeAuthorizations(), tx.To() == nil, true, true, true)
+	from, err := tencore.GetExternalTxSigner(tx)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("could not extract sender from transaction. Cause: %w", err)
+	}
+	txArgs.From = &from
+	ge := NewGasEstimator(t.storage, t.tenChain, t.gasOracle, t.logger)
+	latest := gethrpc.LatestBlockNumber
+	leastGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, &latest, headBatch, t.config.GasLocalExecutionCapFlag)
+
+	if userErr != nil || sysErr != nil {
+		return userErr, sysErr
 	}
 
-	leastGas := l2Gas.Uint64() + intrGas
 	// The gas limit of the transaction (evm message) should always be higher than the gas overhead
 	// used to cover the l1 cost
 	if tx.Gas() < leastGas {
-		return fmt.Errorf("insufficient gas. Want at least: %d have: %d", leastGas, tx.Gas())
+		return fmt.Errorf("insufficient gas. Want at least: %d have: %d", leastGas, tx.Gas()), nil
 	}
 
-	return nil
+	return nil, nil
 }
