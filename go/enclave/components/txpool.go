@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ethereum/go-ethereum/core/vm"
 	"math/big"
 	"reflect"
 	"strings"
@@ -13,6 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 	"unsafe"
+
+	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
