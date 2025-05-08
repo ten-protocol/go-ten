@@ -65,42 +65,6 @@ func (s *UpgradeContracts) Start() error {
 		return err
 	}
 	s.containerID = containerID
-	//
-	//// Give the container a moment to start
-	//time.Sleep(5 * time.Second)
-	//
-	//// Check if container is still running
-	//cli, err := client.NewClientWithOpts(client.FromEnv)
-	//if err != nil {
-	//	return fmt.Errorf("failed to create docker client: %w", err)
-	//}
-	//defer cli.Close()
-	//
-	//ctr, err := cli.ContainerInspect(context.Background(), containerID)
-	//if err != nil {
-	//	return fmt.Errorf("failed to inspect container: %w", err)
-	//}
-	//
-	//if !ctr.State.Running {
-	//	// Get logs if container has stopped
-	//	logsOptions := container.LogsOptions{
-	//		ShowStdout: true,
-	//		ShowStderr: true,
-	//	}
-	//	out, err := cli.ContainerLogs(context.Background(), containerID, logsOptions)
-	//	if err != nil {
-	//		return fmt.Errorf("failed to get container logs: %w", err)
-	//	}
-	//	defer out.Close()
-	//
-	//	var buf bytes.Buffer
-	//	_, err = io.Copy(&buf, out)
-	//	if err != nil {
-	//		return fmt.Errorf("failed to read container logs: %w", err)
-	//	}
-	//
-	//	return fmt.Errorf("container stopped unexpectedly. Logs:\n%s", buf.String())
-	//}
 
 	return nil
 }
@@ -118,10 +82,10 @@ func (s *UpgradeContracts) WaitForFinish() error {
 		return fmt.Errorf("error waiting for container to finish: %w", err)
 	}
 
-	// Get the container logs after it finishes
 	logsOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
+		Tail:       "all",
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
