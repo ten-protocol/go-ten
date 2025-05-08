@@ -31,9 +31,10 @@ func (s *UpgradeContracts) Start() error {
 		"npx",
 		"hardhat",
 		"run",
+		"scripts/upgrade/001_upgrade_contracts.ts",
 		"--network",
 		"layer1",
-		"scripts/upgrade/001_upgrade_contracts.ts",
+		"--verbose",
 	}
 
 	envs := map[string]string{

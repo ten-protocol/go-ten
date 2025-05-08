@@ -2,12 +2,10 @@ import { BaseContract } from 'ethers';
 import { ethers } from 'hardhat';
 import { upgrades } from 'hardhat';
 import { UpgradeOptions } from '@openzeppelin/hardhat-upgrades/dist/utils';
-import * as fs from 'fs';
 import * as path from 'path';
+const hre = require("hardhat");
 
 console.log('=== Script started ===');
-console.log('Current working directory:', process.cwd());
-console.log('Directory contents:', fs.readdirSync(process.cwd()));
 
 export async function upgradeContract(
     upgraderAddress: string,
@@ -18,27 +16,10 @@ export async function upgradeContract(
         `Upgrading proxy ${proxyAddress} to new implementation of ${contractName} (sent from ${upgraderAddress})`
     );
 
-    // Check if .openzeppelin directory exists and print its contents
-    const openzeppelinDir = path.join(process.cwd(), '.openzeppelin');
-    console.log(`Checking .openzeppelin directory at: ${openzeppelinDir}`);
-    if (fs.existsSync(openzeppelinDir)) {
-        console.log('Contents of .openzeppelin directory:');
-        const files = fs.readdirSync(openzeppelinDir);
-        files.forEach(file => {
-            console.log(`- ${file}`);
-            if (file.endsWith('.json')) {
-                const content = fs.readFileSync(path.join(openzeppelinDir, file), 'utf8');
-                console.log(`  Content: ${content}`);
-            }
-        });
-    } else {
-        console.log('.openzeppelin directory does not exist!');
-    }
-
     const factory = await ethers.getContractFactory(contractName);
     
     // Get the current implementation address
-    const currentImpl = await upgrades.erc1967.getImplementationAddress(proxyAddress);
+    const currentImpl = await hre.upgrades.erc1967.getImplementationAddress(proxyAddress);
     console.log(`Current implementation address: ${currentImpl}`);
 
     // Force import the existing proxy with its current implementation
