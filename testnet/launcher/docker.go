@@ -17,6 +17,7 @@ import (
 
 	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
 	l1gs "github.com/ten-protocol/go-ten/testnet/launcher/l1grantsequencers"
+	l1upgrade "github.com/ten-protocol/go-ten/testnet/launcher/l1upgrade"
 	l2cd "github.com/ten-protocol/go-ten/testnet/launcher/l2contractdeployer"
 )
 
@@ -132,6 +133,14 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("failed to grant sequencer status: %w", err)
 	}
 
+	time.Sleep(10 * time.Second)
+
+	fmt.Println("About to upgrade contracts ....")
+	err = t.upgradeContracts(networkConfig.NetworkConfigAddress)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade contracts: %w", err)
+	}
+
 	err = l2ContractDeployer.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start the l2 contract deployer - %w", err)
@@ -194,7 +203,9 @@ func (t *Testnet) Start() error {
 
 	fmt.Printf("Gateway ready to be accessed at http://127.0.0.1:%d ...\n", gatewayPort)
 
-	fmt.Println("Network successfully launched !")
+	time.Sleep(10 * time.Second)
+
+	fmt.Println("Network successfully launched!")
 	return nil
 }
 
@@ -332,6 +343,34 @@ func (t *Testnet) grantSequencerStatus(enclaveRegistryAddr string) error {
 	}
 
 	fmt.Println("Enclaves were successfully granted sequencer roles...")
+
+	return nil
+}
+
+func (t *Testnet) upgradeContracts(networkConfigAddress string) error {
+	upgrade, err := l1upgrade.NewUpgradeContracts(
+		l1upgrade.NewUpgradeContractsConfig(
+			l1upgrade.WithL1HTTPURL("http://eth2network:8025"),
+			l1upgrade.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
+			l1upgrade.WithDockerImage(t.cfg.contractDeployerDockerImage),
+			l1upgrade.WithNetworkConfigAddress(networkConfigAddress),
+		),
+	)
+	if err != nil {
+		return fmt.Errorf("unable to configure l1 upgrade contracts - %w", err)
+	}
+
+	err = upgrade.Start()
+	if err != nil {
+		return fmt.Errorf("unable to start l1 upgrade contracts - %w", err)
+	}
+
+	err = upgrade.WaitForFinish()
+	if err != nil {
+		return fmt.Errorf("unable to wait for l1 upgrade contracts to finish - %w", err)
+	}
+
+	fmt.Println("Contracts were successfully upgraded...")
 
 	return nil
 }
