@@ -40,7 +40,7 @@ func (n *ContractDeployer) Start() error {
 		ports = append(ports, 9229)
 	}
 
-	cmds = append(cmds, "hardhat", "deploy", "--network", "layer1", "--verbose")
+	cmds = append(cmds, "hardhat", "deploy", "--network", "layer1")
 
 	envs := map[string]string{
 		"NETWORK_JSON": fmt.Sprintf(`

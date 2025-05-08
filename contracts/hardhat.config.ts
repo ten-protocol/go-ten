@@ -7,8 +7,8 @@ import "@solidstate/hardhat-bytecode-exporter";
 
 // Hardhat-deploy plugin - https://www.npmjs.com/package/hardhat-deploy
 import 'hardhat-deploy';
-// Hardhat upgrade plugin - https://www.npmjs.com/package/hardhat-upgrades
-import "@openzeppelin/hardhat-upgrades";
+// // Hardhat upgrade plugin - https://www.npmjs.com/package/hardhat-upgrades
+// import "@openzeppelin/hardhat-upgrades";
 // Hardhat ignore warnings plugin - https://www.npmjs.com/package/hardhat-ignore-warnings
 import 'hardhat-ignore-warnings';
 
