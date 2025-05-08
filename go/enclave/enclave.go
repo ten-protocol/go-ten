@@ -85,6 +85,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 
 	crossChainProcessors := crosschain.New(&config.MessageBusAddress, &config.BridgeAddress, storage, logger)
 
+	println("CONFIG SYSTEMCONTRACT OWNER: ", config.SystemContractOwner.Hex())
 	// initialise system contracts
 	scb := system.NewSystemContractCallbacks(storage, &config.SystemContractOwner, logger)
 	err = scb.Load(crossChainProcessors.Local)

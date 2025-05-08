@@ -37,8 +37,9 @@ message EnclavePublicConfigRequest {}
 message EnclavePublicConfigResponse{
   bytes l2MessageBusAddress = 1;
   bytes transactionPostProcessorAddress = 2;
-  map<string, bytes> publicSystemContracts = 3;
-  SystemError systemError = 4;
+  bytes systemContractsUpgraderAddress = 3;
+  map<string, bytes> publicSystemContracts = 4;
+  SystemError systemError = 5;
 }
 
 message GetBatchRequest {

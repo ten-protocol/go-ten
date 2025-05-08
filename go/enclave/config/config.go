@@ -95,6 +95,8 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 		panic(fmt.Sprintf("failed to parse decompression limit: %v", err))
 	}
 
+	println("EnclaveConfigFromTenConfig: ", tenCfg.Network.Sequencer.SystemContractsUpgrader.Hex())
+
 	return &EnclaveConfig{
 		NodeID:                    tenCfg.Node.ID,
 		HostAddress:               tenCfg.Node.HostAddress,
