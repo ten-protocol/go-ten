@@ -183,36 +183,37 @@ func (e *Service) managePeriodicBatches() {
 	if interval == 0 {
 		interval = 1 * time.Second
 	}
+	// we use ticks rathen than sleeps to maintain batch production cadence
 	batchProductionTicker := time.NewTicker(interval)
 
 	for e.running.Load() {
-		select {
-		case <-batchProductionTicker.C:
-			activeSeq, err := e.getActiveSequencerGuardian()
+		// wait for the next tick
+		<-batchProductionTicker.C
+
+		activeSeq, err := e.getActiveSequencerGuardian()
+		if err != nil {
+			e.logger.Info("No active sequencer found, trying to promote a new one", log.ErrKey, err)
+			e.tryPromoteNewSequencer()
+			continue
+		}
+
+		if activeSeq.InSyncWithL1() {
+			err = activeSeq.ProduceBatch()
 			if err != nil {
-				e.logger.Info("No active sequencer found, trying to promote a new one", log.ErrKey, err)
+				// todo: do we want to have a few failed attempts before looking to promote a new one?
+				e.logger.Error("Sequencer failed to produce batch", log.ErrKey, err)
+				// if the active sequencer fails, we will try to promote a new one
 				e.tryPromoteNewSequencer()
 				continue
 			}
+		}
 
-			if activeSeq.InSyncWithL1() {
-				err = activeSeq.ProduceBatch()
-				if err != nil {
-					// todo: do we want to have a few failed attempts before looking to promote a new one?
-					e.logger.Error("Sequencer failed to produce batch", log.ErrKey, err)
-					// if the active sequencer fails, we will try to promote a new one
-					e.tryPromoteNewSequencer()
-					continue
-				}
-			}
-
-			// sanity check: make sure there are no enclaves, which think they are active sequencers
-			for _, guardian := range e.enclaveGuardians {
-				if guardian.state.IsEnclaveActiveSequencer() && guardian != activeSeq {
-					e.logger.Warn("Found unexpected active sequencer in guardians, demoting...",
-						log.EnclaveIDKey, guardian.GetEnclaveID(), "expectedActiveID", activeSeq.GetEnclaveID().Hex())
-					guardian.DemoteFromActiveSequencer()
-				}
+		// sanity check: make sure there are no enclaves, which think they are active sequencers
+		for _, guardian := range e.enclaveGuardians {
+			if guardian.state.IsEnclaveActiveSequencer() && guardian != activeSeq {
+				e.logger.Warn("Found unexpected active sequencer in guardians, demoting...",
+					log.EnclaveIDKey, guardian.GetEnclaveID(), "expectedActiveID", activeSeq.GetEnclaveID().Hex())
+				guardian.DemoteFromActiveSequencer()
 			}
 		}
 	}
