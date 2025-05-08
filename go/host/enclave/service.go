@@ -19,10 +19,6 @@ import (
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-const (
-	_activeSeqMonitoringInterval = 1 * time.Second
-)
-
 var _noActiveSequencer = &common.EnclaveID{}
 
 // This private interface enforces the services that the enclaves service depends on
@@ -42,7 +38,8 @@ type Service struct {
 	enclaveGuardians  []*Guardian
 	activeSequencerID atomic.Pointer[common.EnclaveID] // atomic pointer for thread safety
 
-	// rollup config
+	// batch and rollup production config
+	batchInterval  time.Duration
 	rollupInterval time.Duration
 	blockTime      time.Duration
 	maxRollupSize  uint64
@@ -56,6 +53,7 @@ func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLo
 		hostData:         hostData,
 		sl:               serviceLocator,
 		enclaveGuardians: enclaveGuardians,
+		batchInterval:    config.BatchInterval,
 		rollupInterval:   config.RollupInterval,
 		blockTime:        config.L1BlockTime,
 		maxRollupSize:    config.MaxRollupSize,
@@ -73,7 +71,8 @@ func (e *Service) Start() error {
 	}
 
 	if e.hostData.IsSequencer {
-		go e.ensureActiveSequencer()
+		e.activeSequencerID.Store(_noActiveSequencer)
+		go e.managePeriodicBatches()
 		go e.managePeriodicRollups()
 	}
 	return nil
@@ -145,14 +144,6 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 	return clients
 }
 
-// GetActiveSequencerID returns the enclave ID of the current active sequencer enclave if host is a seq, else nil
-func (e *Service) GetActiveSequencerID() *common.EnclaveID {
-	if e.activeSequencerID.Load() == _noActiveSequencer {
-		return nil
-	}
-	return e.activeSequencerID.Load()
-}
-
 func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 
@@ -184,54 +175,52 @@ func (e *Service) Unsubscribe(id rpc.ID) error {
 	return e.GetEnclaveClient().Unsubscribe(id)
 }
 
-// ensureActiveSequencer is a background goroutine that attempts to ensure there is always exactly one
-// active sequencer enclave. It will promote a new active sequencer if the current one fails or is unavailable.
-func (e *Service) ensureActiveSequencer() {
-	for e.running.Load() {
-		activeSeqID := e.activeSequencerID.Load() // (this may be _noActiveSequencer)
-		activeSequencerHealthy := false           // this will be set true if there is a healthy active sequencer
+// managePeriodicBatches is a background goroutine that triggers periodic batch production and ensures there is always
+// exactly one active sequencer enclave for that.
+// It will promote a new active sequencer if the current one fails or is unavailable.
+func (e *Service) managePeriodicBatches() {
+	interval := e.batchInterval
+	if interval == 0 {
+		interval = 1 * time.Second
+	}
+	batchProductionTicker := time.NewTicker(interval)
 
-		// do a pass through all guardians to see if they are in their expected state
-		for _, guardian := range e.enclaveGuardians {
-			if !guardian.state.IsEnclaveActiveSequencer() {
-				// skip, we are just checking any guardians that think they are the active sequencer
+	for e.running.Load() {
+		select {
+		case <-batchProductionTicker.C:
+			activeSeq, err := e.getActiveSequencerGuardian()
+			if err != nil {
+				e.logger.Info("No active sequencer found, trying to promote a new one", log.ErrKey, err)
+				e.tryPromoteNewSequencer()
 				continue
 			}
 
-			enclID := guardian.GetEnclaveID()
-			switch *enclID {
-			case *activeSeqID:
-				// this active sequencer is the expected active sequencer, so check if it is healthy
-				if guardian.IsSequencerEnclaveHealthy() {
-					activeSequencerHealthy = true
-				} else {
-					// sequencer is not healthy, we will try to promote a new one when we finish checking all guardians
-					e.logger.Warn("Active sequencer is not healthy, demoting...", log.EnclaveIDKey, activeSeqID)
+			if activeSeq.InSyncWithL1() {
+				err = activeSeq.ProduceBatch()
+				if err != nil {
+					// todo: do we want to have a few failed attempts before looking to promote a new one?
+					e.logger.Error("Sequencer failed to produce batch", log.ErrKey, err)
+					// if the active sequencer fails, we will try to promote a new one
+					e.tryPromoteNewSequencer()
+					continue
+				}
+			}
+
+			// sanity check: make sure there are no enclaves, which think they are active sequencers
+			for _, guardian := range e.enclaveGuardians {
+				if guardian.state.IsEnclaveActiveSequencer() && guardian != activeSeq {
+					e.logger.Warn("Found unexpected active sequencer in guardians, demoting...",
+						log.EnclaveIDKey, guardian.GetEnclaveID(), "expectedActiveID", activeSeq.GetEnclaveID().Hex())
 					guardian.DemoteFromActiveSequencer()
 				}
-			default:
-				// guardian thinks it is the active sequencer, but it is not the expected one
-				// demoting it will restart it and clear the active sequencer flag on the enclave.
-				// We don't have to worry about two batch producers, the guardian always checks it is expected to
-				// be the active seq before producing.
-				e.logger.Warn("Found unexpected active sequencer in guardians, demoting...",
-					log.EnclaveIDKey, guardian.GetEnclaveID(), "expectedActiveID", activeSeqID.Hex())
-				guardian.DemoteFromActiveSequencer()
 			}
 		}
-
-		// if there was no active sequencer **or** if it was not healthy, then we will try to promote a new one
-		if !activeSequencerHealthy {
-			newSeqID := e.tryPromoteNewSequencer()
-			e.activeSequencerID.Store(newSeqID) // this may be _noActiveSequencer if no sequencer was promoted
-		}
-
-		// wait for the interval and then check again
-		time.Sleep(_activeSeqMonitoringInterval)
 	}
+	batchProductionTicker.Stop()
+	e.logger.Info("Stopping periodic batch production.")
 }
 
-func (e *Service) tryPromoteNewSequencer() *common.EnclaveID {
+func (e *Service) tryPromoteNewSequencer() {
 	prevActiveSeqID := e.activeSequencerID.Load()
 
 	// prepare a list of guardians to try, starting with the one that thinks it is active (if there is one, e.g. after host restart)
@@ -245,7 +234,9 @@ func (e *Service) tryPromoteNewSequencer() *common.EnclaveID {
 			continue
 		}
 
-		if guardian.IsSequencerEnclaveHealthy() {
+		// if the network is just starting up the candidate just needs to be in sync with L1
+		networkStartingUp := e.sl.L2Repo().FetchLatestBatchSeqNo().Cmp(big.NewInt(1)) < 0
+		if networkStartingUp && guardian.InSyncWithL1() || guardian.IsLive() {
 			if guardian.state.IsEnclaveActiveSequencer() {
 				// prepend this guardian to the list of guardians to try because it was active
 				guardiansToTry = append([]*Guardian{guardian}, guardiansToTry...)
@@ -264,13 +255,26 @@ func (e *Service) tryPromoteNewSequencer() *common.EnclaveID {
 			e.logger.Error("Failed to promote enclave to active sequencer", log.ErrKey, err)
 			continue
 		}
-		return enclID
+		prevActiveGuardian, err := e.getActiveSequencerGuardian()
+		if err == nil {
+			// if we have a previous active guardian, demote it now (makes sure the enclave is stopped/restarted)
+			e.logger.Info("Demoting previous active sequencer", log.EnclaveIDKey, prevActiveGuardian.GetEnclaveID())
+			prevActiveGuardian.DemoteFromActiveSequencer()
+		}
+
+		e.logger.Info("Successfully promoted enclave to active sequencer", log.EnclaveIDKey, enclID)
+		e.activeSequencerID.Store(enclID)
+		return
 	}
 
 	// if we get here, we didn't find a healthy guardian to promote
 	// clear the active sequencer ID and we will try again later
-	return _noActiveSequencer
+	e.logger.Info("Unable to find healthy sequencer to promote, will try again later")
+	e.activeSequencerID.Store(_noActiveSequencer)
 }
+
+// getFailoverCandidates returns a list of guardians that are not the active sequencer that seem healthy
+// it is used to check if failing over to a new active sequencer is possible
 
 const batchCompressionFactor = 0.85
 
