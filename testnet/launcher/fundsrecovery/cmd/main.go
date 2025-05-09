@@ -14,7 +14,6 @@ func main() {
 		funds.NewFundsRecoveryConfig(
 			funds.WithL1HTTPURL(cliConfig.l1HTTPURL),
 			funds.WithL1PrivateKey(cliConfig.privateKey),
-			funds.WithBridgeContractAddress(cliConfig.bridgeContractAddress),
 			funds.WithDockerImage(cliConfig.dockerImage),
 		),
 	)

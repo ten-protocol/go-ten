@@ -34,8 +34,6 @@ func (n *FundsRecovery) Start() error {
 	}
 
 	envs := map[string]string{
-		"ACC_TO_PAY":              n.cfg.accToPay,
-		"BIRDGE_CONTRACT_ADDRESS": n.cfg.bridgeContractAddress,
 		"NETWORK_JSON": fmt.Sprintf(`
 {
         "layer1" : {
