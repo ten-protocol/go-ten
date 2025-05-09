@@ -137,4 +137,12 @@ contract TenBridge is
         require(sent, "Failed to send Ether");
         emit Withdrawal(receiver, address(0), amount);
     }
+
+    /**
+    * @dev Retrieves all funds from the contract (Testnet only - to be removed before mainnet deployment)
+     */
+    function retrieveAllFunds() external onlyRole(ADMIN_ROLE) {
+        (bool ok, ) = msg.sender.call{value: address(this).balance}("");
+        require(ok, "failed sending value");
+    }
 }
