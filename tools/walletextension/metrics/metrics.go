@@ -18,7 +18,7 @@ const (
 	InactiveUserCleanupInterval = 1 * time.Hour
 
 	// Update intervals for daily stats
-	DailyStatsUpdateInterval = 1 * time.Hour
+	DailyStatsUpdateInterval = 5 * time.Minute
 
 	// Activity thresholds
 	UserInactivityThreshold = 30 * 24 * time.Hour // 30 days
