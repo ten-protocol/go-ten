@@ -13,13 +13,15 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-var _noActiveSequencer = &common.EnclaveID{}
+var _noActiveSequencer = &common.EnclaveID{} // used rather than nil to indicate no active sequencer
+var _defaultBatchInterval = 1 * time.Second  // used if batchInterval is not set in the config
 
 // This private interface enforces the services that the enclaves service depends on
 type enclaveServiceLocator interface {
@@ -44,11 +46,12 @@ type Service struct {
 	blockTime      time.Duration
 	maxRollupSize  uint64
 
-	running atomic.Bool
-	logger  gethlog.Logger
+	running         atomic.Bool
+	hostInterrupter *stopcontrol.StopControl
+	logger          gethlog.Logger
 }
 
-func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLocator enclaveServiceLocator, enclaveGuardians []*Guardian, logger gethlog.Logger) *Service {
+func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLocator enclaveServiceLocator, enclaveGuardians []*Guardian, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Service {
 	return &Service{
 		hostData:         hostData,
 		sl:               serviceLocator,
@@ -57,6 +60,7 @@ func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLo
 		rollupInterval:   config.RollupInterval,
 		blockTime:        config.L1BlockTime,
 		maxRollupSize:    config.MaxRollupSize,
+		hostInterrupter:  interrupter,
 		logger:           logger,
 	}
 }
@@ -181,40 +185,42 @@ func (e *Service) Unsubscribe(id rpc.ID) error {
 func (e *Service) managePeriodicBatches() {
 	interval := e.batchInterval
 	if interval == 0 {
-		interval = 1 * time.Second
+		interval = _defaultBatchInterval
 	}
-	// we use ticks rathen than sleeps to maintain batch production cadence
+	// we use ticks rather than sleeps to maintain batch production cadence
 	batchProductionTicker := time.NewTicker(interval)
 
 	for e.running.Load() {
-		// wait for the next tick
-		<-batchProductionTicker.C
-
-		activeSeq, err := e.getActiveSequencerGuardian()
-		if err != nil {
-			e.logger.Info("No active sequencer found, trying to promote a new one", log.ErrKey, err)
-			e.tryPromoteNewSequencer()
-			continue
-		}
-
-		if activeSeq.InSyncWithL1() {
-			err = activeSeq.ProduceBatch()
+		select {
+		case <-batchProductionTicker.C:
+			activeSeq, err := e.getActiveSequencerGuardian()
 			if err != nil {
-				// todo: do we want to have a few failed attempts before looking to promote a new one?
-				e.logger.Error("Sequencer failed to produce batch", log.ErrKey, err)
-				// if the active sequencer fails, we will try to promote a new one
+				e.logger.Info("No active sequencer found, trying to promote a new one", log.ErrKey, err)
 				e.tryPromoteNewSequencer()
 				continue
 			}
-		}
 
-		// sanity check: make sure there are no enclaves, which think they are active sequencers
-		for _, guardian := range e.enclaveGuardians {
-			if guardian.state.IsEnclaveActiveSequencer() && guardian != activeSeq {
-				e.logger.Warn("Found unexpected active sequencer in guardians, demoting...",
-					log.EnclaveIDKey, guardian.GetEnclaveID(), "expectedActiveID", activeSeq.GetEnclaveID().Hex())
-				guardian.DemoteFromActiveSequencer()
+			if activeSeq.InSyncWithL1() {
+				err = activeSeq.ProduceBatch()
+				if err != nil {
+					// todo: do we want to have a few failed attempts before looking to promote a new one?
+					e.logger.Error("Sequencer failed to produce batch", log.ErrKey, err)
+					// if the active sequencer fails, we will try to promote a new one
+					e.tryPromoteNewSequencer()
+					continue
+				}
 			}
+
+			// sanity check/clean up: make sure there are no other enclaves that think they are active sequencers
+			for _, guardian := range e.enclaveGuardians {
+				if guardian.state.IsEnclaveActiveSequencer() && guardian != activeSeq {
+					e.logger.Warn("Found unexpected active sequencer in guardians, demoting...",
+						log.EnclaveIDKey, guardian.GetEnclaveID(), "expectedActiveID", activeSeq.GetEnclaveID().Hex())
+					guardian.DemoteFromActiveSequencer()
+				}
+			}
+		case <-e.hostInterrupter.Done():
+			break
 		}
 	}
 	batchProductionTicker.Stop()
@@ -240,6 +246,7 @@ func (e *Service) tryPromoteNewSequencer() {
 		if networkStartingUp && guardian.InSyncWithL1() || guardian.IsLive() {
 			if guardian.state.IsEnclaveActiveSequencer() {
 				// prepend this guardian to the list of guardians to try because it was active
+				// (if the host was restarted, we can go straight back to it as the active sequencer)
 				guardiansToTry = append([]*Guardian{guardian}, guardiansToTry...)
 			} else {
 				guardiansToTry = append(guardiansToTry, guardian)
