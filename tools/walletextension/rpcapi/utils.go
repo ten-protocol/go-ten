@@ -16,8 +16,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
 
-	"github.com/status-im/keycard-go/hexutils"
-
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 
@@ -57,7 +55,6 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	if ctx == nil {
 		return nil, errors.New("invalid call. nil Context")
 	}
-	audit(w, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	cacheArgs := []any{method}
 	cacheArgs = append(cacheArgs, args...)
@@ -80,13 +77,10 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 		return nil, err
 	}
 
-	audit(w, "RPC call succeeded. method=%s args=%v result=%+v time=%d", method, args, res, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
-	audit(w, "RPC start method=%s args=%v", method, args)
-	requestStartTime := time.Now()
 	user, err := extractUserForRequest(ctx, w)
 	if err != nil {
 		return nil, err
@@ -151,7 +145,6 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 		}
 		return nil, rpcErr
 	})
-	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(user.ID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
