@@ -93,6 +93,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 	}
 
 	w.MetricsTracker.RecordUserActivity(user.ID)
+	audit(w, "LOGGING USER ACTIVITY")
 
 	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
 	if !rateLimitAllowed {
