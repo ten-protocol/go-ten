@@ -1,7 +1,7 @@
 // Requires: npm install axios
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
-import {TenBridge} from "../../../typechain-types";
+import {MessageBus, TenBridge} from "../../../typechain-types";
 import axios from 'axios';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -17,9 +17,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const response = await axios.post(rpcUrl, rpcPayload, {
         headers: { 'Content-Type': 'application/json' }
     });
-    const bridgeContractAddress = response.data.result.L1Bridge;
-    const bridgeContract = (await hre.ethers.getContractFactory('TenBridge')).attach(bridgeContractAddress) as TenBridge;
-    const tx = await bridgeContract.retrieveAllFunds();
+    const bridgeContractAddress = response.data.result.L1MessageBus;
+    const bridgeContract = (await hre.ethers.getContractFactory('MessageBus')).attach(bridgeContractAddress) as MessageBus;
+    const tx = await bridgeContract.retrieveAllFunds("0x72788F3596dfdd656D64e337F6fdD72A0DEf9775");
     const receipt = await tx.wait();
 
     if (receipt && receipt.status === 1) {
