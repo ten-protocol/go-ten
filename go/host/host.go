@@ -256,7 +256,6 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 
 // TenConfig returns info on the TEN network
 func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
-
 	if h.l2MessageBusAddress == nil || h.transactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
 		publicCfg, err := h.EnclaveClient().EnclavePublicConfig(context.Background())
 		if err != nil {
