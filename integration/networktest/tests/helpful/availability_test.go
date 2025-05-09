@@ -21,7 +21,7 @@ func TestNetworkAvailability(t *testing.T) {
 	networktest.Run(
 		"network-availability",
 		t,
-		env.DevTestnet(),
+		env.LocalDevNetwork(),
 		actions.RunOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 			client, err := network.GetL1Client()
 			if err != nil {

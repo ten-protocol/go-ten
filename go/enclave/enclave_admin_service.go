@@ -149,14 +149,18 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	if !e.isBackupSequencer(context.Background()) {
+	if e.getNodeType(context.Background()) != common.Sequencer {
 		// host may see this if it tries to promote its enclave before its ID has been added to the permission pool
-		return fmt.Errorf("only backup sequencer can become active")
+		return fmt.Errorf("only a permissioned sequencer can become active")
+	}
+	if e.activeSequencer {
+		// this enclave is already the active sequencer, not a problem after a host restart but worth logging
+		e.logger.Info("Enclave is already the active sequencer.")
 	}
 
 	e.activeSequencer = true
 	e.service = e.sequencerService
-	e.logger.Info("Enclave is now active sequencer.")
+	e.logger.Info("Enclave is now the active sequencer.")
 
 	return nil
 }

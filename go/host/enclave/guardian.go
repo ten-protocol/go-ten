@@ -76,10 +76,8 @@ type Guardian struct {
 	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
 	running         atomic.Bool
 
-	logger           gethlog.Logger
-	maxBatchInterval time.Duration
-	lastBatchCreated time.Time
-	enclaveID        *common.EnclaveID
+	logger    gethlog.Logger
+	enclaveID *common.EnclaveID
 
 	cleanupFuncs []func()
 }
@@ -91,7 +89,6 @@ func NewGuardian(cfg *hostconfig.HostConfig, hostData host.Identity, serviceLoca
 		enclaveClient:      enclaveClient,
 		sl:                 serviceLocator,
 		batchInterval:      cfg.BatchInterval,
-		maxBatchInterval:   cfg.MaxBatchInterval,
 		rollupInterval:     cfg.RollupInterval,
 		l1StartHash:        cfg.L1StartHash,
 		maxRollupSize:      cfg.MaxRollupSize,
@@ -134,11 +131,6 @@ func (g *Guardian) Start() error {
 	}
 
 	go g.mainLoop()
-
-	if g.hostData.IsSequencer {
-		// if host is a sequencer then start the sequencer processes, but they will not do anything unless the enclave becomes an active sequencer
-		go g.periodicBatchProduction()
-	}
 
 	// subscribe for L1 and P2P data
 	txUnsub := g.sl.P2P().SubscribeForTx(g)
@@ -184,6 +176,14 @@ func (g *Guardian) HealthStatus(context.Context) host.HealthStatus {
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
+func (g *Guardian) IsLive() bool {
+	return g.state.IsLive()
+}
+
+func (g *Guardian) InSyncWithL1() bool {
+	return g.state.InSyncWithL1()
+}
+
 func (g *Guardian) GetEnclaveState() *StateTracker {
 	return g.state
 }
@@ -222,8 +222,7 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 // stopping batch and rollup production. The enclave can be promoted again later if it catches up and failover is needed.
 func (g *Guardian) DemoteFromActiveSequencer() {
 	if !g.state.IsEnclaveActiveSequencer() {
-		g.logger.Info("Cannot demote from active sequencer - not currently active")
-		return
+		g.logger.Warn("Guardian demoted when not currently active - this is unexpected")
 	}
 	g.logger.Info("Guardian demoted from active sequencer")
 	g.state.SetActiveSequencer(false)
@@ -319,13 +318,6 @@ func (g *Guardian) mainLoop() {
 		g.logger.Trace("mainLoop - enclave status", "status", g.state.GetStatus())
 		switch g.state.GetStatus() {
 		case Disconnected, Unavailable:
-			// todo make this demotion trigger configurable once we've settled on how it should work
-			if unavailableCounter > 10 {
-				// enclave has been unavailable for a while, evict it from the HA pool
-				g.notifyEnclaveUnavailable("enclave has been unavailable for too long")
-				// reset the counter so we don't spam the log
-				unavailableCounter = 0
-			}
 			// nothing to do, we are waiting for the enclave to be available
 			time.Sleep(_retryInterval)
 			unavailableCounter++
@@ -474,7 +466,8 @@ func (g *Guardian) catchupWithL1() error {
 			}
 			if errors.Is(err, l1.ErrNoNextBlock) {
 				if g.state.GetHostL1Head() == gethutil.EmptyHash {
-					return fmt.Errorf("no L1 blocks found in repository")
+					// this is usually temporary after a restart until new heads stream starts receiving blocks
+					return fmt.Errorf("host not received any new L1 blocks since startup, cannot catch up with L1")
 				}
 				return nil // we are up-to-date
 			}
@@ -627,42 +620,9 @@ func (g *Guardian) submitL2Batch(batch *common.ExtBatch) error {
 	return nil
 }
 
-func (g *Guardian) periodicBatchProduction() {
-	defer g.logger.Info("Stopping batch production")
-
-	interval := g.batchInterval
-	if interval == 0 {
-		interval = 1 * time.Second
-	}
-	batchProdTicker := time.NewTicker(interval)
-	for {
-		if !g.running.Load() {
-			batchProdTicker.Stop()
-			return
-		}
-		select {
-		case <-batchProdTicker.C:
-			if !g.state.IsEnclaveActiveSequencer() {
-				// only active sequencer produces batches
-				continue
-			}
-			if !g.state.InSyncWithL1() {
-				g.logger.Debug("Skipping batch production because L1 is not up to date")
-				continue
-			}
-			g.logger.Debug("Create batch")
-			skipBatchIfEmpty := g.maxBatchInterval > g.batchInterval && time.Since(g.lastBatchCreated) < g.maxBatchInterval
-			err := g.enclaveClient.CreateBatch(context.Background(), skipBatchIfEmpty)
-			if err != nil {
-				g.logger.Error("Unable to produce batch", log.ErrKey, err)
-				g.notifyEnclaveUnavailable("seq enclave could not produce batch")
-			}
-		case <-g.hostInterrupter.Done():
-			// interrupted by host stopping
-			batchProdTicker.Stop()
-			return
-		}
-	}
+func (g *Guardian) ProduceBatch() error {
+	// todo @matt remove skipIfEmpty flag and get rid of relevant config
+	return g.enclaveClient.CreateBatch(context.Background(), false)
 }
 
 func (g *Guardian) streamEnclaveData() {
@@ -693,7 +653,6 @@ func (g *Guardian) streamEnclaveData() {
 				}
 
 				if g.hostData.IsSequencer { // if we are the sequencer we need to broadcast this new batch to the network
-					g.lastBatchCreated = time.Now()
 					g.logger.Info("Batch produced. Sending to peers..", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash())
 
 					err = g.sl.P2P().BroadcastBatches([]*common.ExtBatch{resp.Batch})
@@ -717,14 +676,6 @@ func (g *Guardian) streamEnclaveData() {
 			return
 		}
 	}
-}
-
-// notifyEnclaveUnavailable evicts a failing enclave from the HA pool if appropriate
-// This is called when the enclave is unavailable or failing to perform its duties if it is active sequencer.
-// We want to notify the host that it should failover if an alternative enclave is available.
-func (g *Guardian) notifyEnclaveUnavailable(reason string) {
-	g.logger.Debug("Enclave is unavailable - notifying enclave service to evict it from HA pool if necessary", log.ErrKey, reason)
-	go g.sl.Enclaves().NotifyUnavailable(g.enclaveID)
 }
 
 func (g *Guardian) getRollupTxs(processed common.ProcessedL1Data) []*common.L1RollupTx {

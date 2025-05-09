@@ -95,7 +95,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		enclGuardians = append(enclGuardians, enclGuardian)
 	}
 
-	enclService := enclave.NewService(config, hostIdentity, hostServices, enclGuardians, logger)
+	enclService := enclave.NewService(config, hostIdentity, hostServices, enclGuardians, host.stopControl, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
