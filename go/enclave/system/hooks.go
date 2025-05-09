@@ -59,7 +59,6 @@ type systemContractCallbacks struct {
 }
 
 func NewSystemContractCallbacks(storage storage.Storage, upgrader *gethcommon.Address, logger gethlog.Logger) SystemContractCallbacks {
-	println("NewSystemContractCallbacks: ", upgrader.Hex())
 	return &systemContractCallbacks{
 		transactionsPostProcessorAddress: nil,
 		logger:                           logger,

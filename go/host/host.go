@@ -47,6 +47,7 @@ type host struct {
 	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
 	l2MessageBusAddress             *gethcommon.Address
 	transactionPostProcessorAddress gethcommon.Address
+	systemContractUpgradeAddress    gethcommon.Address
 	publicSystemContracts           map[string]gethcommon.Address
 	newHeads                        chan *common.BatchHeader
 	contractRegistry                contractlib.ContractRegistryLib
@@ -255,6 +256,7 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 
 // TenConfig returns info on the TEN network
 func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
+
 	if h.l2MessageBusAddress == nil || h.transactionPostProcessorAddress.Cmp(gethcommon.Address{}) == 0 {
 		publicCfg, err := h.EnclaveClient().EnclavePublicConfig(context.Background())
 		if err != nil {
@@ -264,6 +266,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		h.l2MessageBusAddress = &publicCfg.L2MessageBusAddress
 		h.transactionPostProcessorAddress = publicCfg.TransactionPostProcessorAddress
 		h.publicSystemContracts = publicCfg.PublicSystemContracts
+		h.systemContractUpgradeAddress = publicCfg.SystemContractsUpgrader
 	}
 
 	importantContractAddresses := h.services.L1Publisher().GetImportantContracts()
@@ -281,6 +284,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		L1StartHash:               h.config.L1StartHash,
 		L2MessageBus:              *h.l2MessageBusAddress,
 		TransactionsPostProcessor: h.transactionPostProcessorAddress,
+		SystemContractsUpgrader:   h.systemContractUpgradeAddress,
 		PublicSystemContracts:     h.publicSystemContracts,
 		AdditionalContracts:       importantContractAddresses.AdditionalContracts,
 	}, nil

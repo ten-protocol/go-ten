@@ -143,7 +143,6 @@ func (e *enclaveRPCService) EnclavePublicConfig(context.Context) (*common.Enclav
 
 	systemContractsUpgraderAddress := e.scb.SystemContractsUpgrader()
 
-	println("SystemContractsUpgrader(): ", systemContractsUpgraderAddress.Hex())
 	if systemContractsUpgraderAddress == nil {
 		systemContractsUpgraderAddress = &gethcommon.Address{}
 	}
