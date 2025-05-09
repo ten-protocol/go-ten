@@ -1,16 +1,28 @@
+// Requires: npm install axios
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {TenBridge} from "../../../typechain-types";
+import axios from 'axios';
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const {deployer} = await hre.getNamedAccounts();
 
-    const bridgeContractAddress = process.env.BRIDGE_CONTRACT_ADDRESS!!
+    const rpcUrl = 'http://erpc.sepolia-testnet.obscu.ro:80';
+    const rpcPayload = {
+        jsonrpc: '2.0',
+        method: 'ten_config',
+        params: [],
+        id: 1
+    };
+    const response = await axios.post(rpcUrl, rpcPayload, {
+        headers: { 'Content-Type': 'application/json' }
+    });
+    const bridgeContractAddress = response.data.result.L1Bridge;
     const bridgeContract = (await hre.ethers.getContractFactory('TenBridge')).attach(bridgeContractAddress) as TenBridge;
     const tx = await bridgeContract.retrieveAllFunds();
     const receipt = await tx.wait();
 
-    // Check the receipt for success, logs, etc.
-    if (receipt.status === 1) {
+    if (receipt && receipt.status === 1) {
         console.log("Successfully recovered funds from the bridge.");
     } else {
         console.log("Recovery transaction failed");
