@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"crypto/sha256"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,7 +18,7 @@ const (
 	InactiveUserCleanupInterval = 1 * time.Hour
 
 	// Update intervals for daily stats
-	DailyStatsUpdateInterval = 5 * time.Minute
+	DailyStatsUpdateInterval = 8 * time.Hour
 
 	// Activity thresholds
 	UserInactivityThreshold = 30 * 24 * time.Hour // 30 days
@@ -63,7 +62,7 @@ func NewMetricsTracker(storage *cosmosdb.MetricsStorageCosmosDB, logger gethlog.
 		activityBatch:     make(map[string]time.Time),
 		storage:           storage,
 		persistTicker:     time.NewTicker(MetricsPersistInterval),
-		batchUpdateTicker: time.NewTicker(1 * time.Minute), // Process batches more frequently
+		batchUpdateTicker: time.NewTicker(5 * time.Minute),
 		dailyStatsTicker:  time.NewTicker(DailyStatsUpdateInterval),
 		logger:            logger,
 	}
@@ -112,7 +111,6 @@ func (mt *MetricsTracker) RecordAccountRegistered() {
 
 // RecordUserActivity updates the last activity timestamp for a user
 func (mt *MetricsTracker) RecordUserActivity(anonymousID []byte) {
-	fmt.Println("RECORDING USER ACTIVITY")
 	hashedUserID := mt.hashUserID(anonymousID)
 	now := time.Now()
 
@@ -129,7 +127,6 @@ func (mt *MetricsTracker) RecordUserActivity(anonymousID []byte) {
 
 	// If batch size exceeds threshold, trigger immediate processing
 	if batchSize >= ActivityBatchSize {
-		fmt.Println("PROCESSING BATCH UPDATES")
 		go mt.processBatchUpdates()
 	}
 }
@@ -170,7 +167,6 @@ func (mt *MetricsTracker) GetMonthlyActiveUsers() int {
 
 // processBatchUpdates handles batch updates to the database
 func (mt *MetricsTracker) processBatchUpdates() {
-	fmt.Println("PROCESSING BATCH UPDATES function called")
 	// Get current batch and reset
 	mt.activityBatchLock.Lock()
 	if len(mt.activityBatch) == 0 {
