@@ -55,9 +55,9 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 			logger.Crit("unable to create metrics storage", log.ErrKey, err)
 			os.Exit(1)
 		}
-		metricsTracker = metrics.NewMetricsTracker(metricsStorage)
+		metricsTracker = metrics.NewMetricsTracker(metricsStorage, logger)
 	} else {
-		metricsTracker = metrics.NewNoOpMetricsTracker()
+		metricsTracker = metrics.NewNoOpMetricsTracker(logger)
 	}
 
 	// start the database with the encryption key
