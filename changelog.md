@@ -5,6 +5,8 @@
 # May 2025-05-05 (v1.2.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
+    * `6cae3418` Prevent reattempting callbacks in same block as they are added (#2451)
+    * `2f2f167a` Fix access control for transaction post processor (#2449)
     * `82c39f27` Fix name to avoid chaos (#2448)
     * `5774a7e7` K8s: placeholder scripts for initialise and finalise testnet (#2447)
     * `dad0bd23` Fix newheads logic for fetchancestors (#2445)
