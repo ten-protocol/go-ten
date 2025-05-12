@@ -56,7 +56,6 @@ jobs:
         run: |
           # strip the -testnet suffix from the testnet type
           short_name=${TESTNET_TYPE%-testnet}
-          echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_ENV
           echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_OUTPUT
 
       - name: 'Check confirmation'
@@ -108,7 +107,7 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
-          DEPLOY_NETWORKNAME: $TESTNET_SHORT_NAME
+          DEPLOY_NETWORKNAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
           DEPLOY_GITHUBPAT: ${{ secrets.DEPLOY_ACTIONS_PAT }}
           DEPLOY_OUTPUTENV: ./testnet/.env
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
