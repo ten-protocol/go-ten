@@ -48,6 +48,14 @@ jobs:
 
 
     steps:
+      - name: 'Check confirmation'
+        # if env is sepolia then confirmation field needs to say 'confirm'
+        run: |
+          if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+            echo "Confirmation field must say 'confirm' to deploy sepolia to avoid accidental deployments"
+            exit 1
+          fi
+
       - name: 'Prepare testnet short name'
         id: prepareTestnetShortName
         shell: bash
@@ -57,14 +65,6 @@ jobs:
           # strip the -testnet suffix from the testnet type
           short_name=${TESTNET_TYPE%-testnet}
           echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_OUTPUT
-
-      - name: 'Check confirmation'
-        # if env is sepolia then confirmation field needs to say 'confirm'
-        run: |
-          if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
-            echo "Confirmation field must say 'confirm' to deploy sepolia to avoid accidental deployments"
-            exit 1
-          fi
 
       - name: 'Print GitHub variables'
         # This is a useful record of what the environment variables were at the time the job ran, for debugging and reference

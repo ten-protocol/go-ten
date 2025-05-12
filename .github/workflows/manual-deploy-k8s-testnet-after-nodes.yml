@@ -5,8 +5,6 @@
 #
 # To deploy sepolia the user must type 'confirm' in the confirmation field
 
-# TODO: this is a placeholder, not ready yet! We need to wire in contract addresses etc.
-
 name: '[M] k8s complete testnet setup'
 run-name: '[M] k8s complete testnet setup ( ${{ github.event.inputs.testnet_type }} )'
 on:
@@ -46,6 +44,14 @@ jobs:
          start_hash: ${{ steps.parse.outputs.start_hash }}
 
       steps:
+         # first, we check the confirmation field if deploying sepolia
+         - name: 'Check confirmation'
+           run: |
+            if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+               echo "Confirmation field must say 'confirm' to deploy sepolia to avoid accidental deployments"
+               exit 1
+            fi
+
          -  name: 'Prepare testnet short name'
             id: prepareTestnetShortName
             shell: bash
@@ -54,7 +60,7 @@ jobs:
             run: |
                # strip the -testnet suffix from the testnet type
                short_name=${TESTNET_TYPE%-testnet}
-               echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_ENV
+               echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_OUTPUT
 
          # checkout *this* repo (so subsequent steps can still see it)
          -  uses: actions/checkout@v4
@@ -75,6 +81,8 @@ jobs:
          # parse YAML and emit outputs
          -  name: Parse l1-config.yaml
             id: parse
+            env:
+               TESTNET_SHORT_NAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
             run: |
                CFG=cfg/nonprod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
                
