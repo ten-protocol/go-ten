@@ -97,7 +97,7 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
           DEPLOY_NETWORKNAME: ${{ github.event.inputs.testnet_type }}
-          DEPLOY_GITHUBPATH: ${{ secrets.DEPLOY_ACTIONS_PAT }}
+          DEPLOY_GITHUBPAT: ${{ secrets.DEPLOY_ACTIONS_PAT }}
           DEPLOY_OUTPUTENV: ./testnet/.env
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
           DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
