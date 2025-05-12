@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
 
@@ -63,10 +62,10 @@ func main() {
 		}
 	}
 
-	// Store in Azure Key Vault if configured
-	if tenCfg.Deployment.OutputAzureKV != "" {
-		if err := l1cd.StoreNetworkCfgInKeyVault(context.Background(), tenCfg.Deployment.OutputAzureKV, tenCfg.Deployment.NetworkName, networkConfig); err != nil {
-			fmt.Printf("Failed to store contracts in Azure Key Vault: %v\n", err)
+	// if Github PAT is provided, store deployment config in Github repo
+	if tenCfg.Deployment.GithubPAT != "" {
+		if err := l1cd.StoreNetworkCfgInGithub(tenCfg.Deployment.GithubPAT, tenCfg.Deployment.NetworkName, networkConfig); err != nil {
+			fmt.Printf("Failed to store contracts in Github: %v\n", err)
 			os.Exit(1)
 		}
 	}

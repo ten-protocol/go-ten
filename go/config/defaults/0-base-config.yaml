@@ -95,7 +95,7 @@ enclave:
 deploy:
   debug: false # enable debug mode for deployer
   dockerImage: "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" # docker image for L1 contract deploys
-  outputAzureKV: "" # url output azure key vault for L1 contract deploys
+  githubPAT: "" # optional GitHub personal access token for committing deployed contract addresses
   outputEnv: "" # path to output env file for L1 contract deploys (used in GH actions)
   networkName: "" # name of the testnet env, used as a prefix for KV keys for example
   l1:
