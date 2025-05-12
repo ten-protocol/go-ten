@@ -2,7 +2,7 @@
 ---
 # Ten Testnet Change Log
 
-# May 2025-05-05 (v1.2.0)
+# May 2025-05-12 (v1.2.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
     * `b3df0c07` Add recover funds for ten bridge (sepolia only) (#2457)
