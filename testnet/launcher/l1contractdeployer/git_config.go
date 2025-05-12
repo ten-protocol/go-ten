@@ -58,15 +58,17 @@ func StoreNetworkCfgInGithub(githubPAT string, networkName string, networkConfig
 		return fmt.Errorf("failed to clone repo: %w", err)
 	}
 
-	filePath := filepath.Join(tmpDir, fmt.Sprintf(_githubFilePath, networkName))
-	f, err := os.ReadFile(filePath)
+	relFilePath := fmt.Sprintf(_githubFilePath, networkName)
+	absFilePath := filepath.Join(tmpDir, relFilePath)
+
+	f, err := os.ReadFile(absFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to read file %s: %w", filePath, err)
+		return fmt.Errorf("failed to read file %s: %w", absFilePath, err)
 	}
 	var l1Config GitL1Config
 	err = yaml.Unmarshal(f, &l1Config)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal file %s: %w", filePath, err)
+		return fmt.Errorf("failed to unmarshal file %s: %w", absFilePath, err)
 	}
 
 	l1Config.NetworkConfig = networkConfig.NetworkConfigAddress
@@ -80,13 +82,13 @@ func StoreNetworkCfgInGithub(githubPAT string, networkName string, networkConfig
 	// marshal the struct back to yaml
 	yamlData, err := yaml.Marshal(l1Config)
 	if err != nil {
-		return fmt.Errorf("failed to marshal file %s: %w", filePath, err)
+		return fmt.Errorf("failed to marshal file %s: %w", absFilePath, err)
 	}
 
 	// write the changes to the file
-	err = os.WriteFile(filePath, yamlData, 0o644) //nolint:gosec
+	err = os.WriteFile(absFilePath, yamlData, 0o644) //nolint:gosec
 	if err != nil {
-		return fmt.Errorf("failed to write updated config file %s: %w", filePath, err)
+		return fmt.Errorf("failed to write updated config file %s: %w", absFilePath, err)
 	}
 
 	// stage and commit the changes
@@ -95,7 +97,7 @@ func StoreNetworkCfgInGithub(githubPAT string, networkName string, networkConfig
 		return fmt.Errorf("failed to get worktree: %w", err)
 	}
 
-	_, err = wt.Add(filePath)
+	_, err = wt.Add(relFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to add file to worktree: %w", err)
 	}
