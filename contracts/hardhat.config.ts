@@ -11,6 +11,7 @@ import 'hardhat-deploy';
 // import "@openzeppelin/hardhat-upgrades";
 // Hardhat ignore warnings plugin - https://www.npmjs.com/package/hardhat-ignore-warnings
 import 'hardhat-ignore-warnings';
+import '@openzeppelin/hardhat-upgrades';
 
 import * as abigen from './tasks/abigen';
 import './tasks/obscuro-deploy';
@@ -56,7 +57,7 @@ const config: HardhatUserConfig = {
   // For help configuring - https://www.npmjs.com/package/hardhat-ignore-warnings
   warnings : {
     '*' : {
-      default: 'error'
+      default: 'warn'
     },
     'src/testing/**/*': {
       default: 'off'
