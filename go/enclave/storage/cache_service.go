@@ -74,7 +74,7 @@ type CacheService struct {
 }
 
 func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
-	nrL1Blocks := 100        // ~200k
+	nrL1Blocks := 500        // ~1M - note that the value needs to be more than the moving average window of the gas oracle
 	nrBatches := 10_000      // ~25M
 	nrConvertedEth := 10_000 // ~25M
 

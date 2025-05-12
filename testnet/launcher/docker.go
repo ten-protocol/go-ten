@@ -108,21 +108,21 @@ func (t *Testnet) Start() error {
 	}
 
 	l2ContractDeployer, err := l2cd.NewDockerContractDeployer(
-		l2cd.NewContractDeployerConfig(
-			l2cd.WithL1HTTPURL("http://eth2network:8025"),
-			l2cd.WithL2Host("sequencer-host"),
-			l2cd.WithL2WSPort(81),
-			l2cd.WithL1PrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
-			l2cd.WithMessageBusContractAddress(networkConfig.MessageBusAddress),
-			l2cd.WithNetworkConfigAddress(networkConfig.NetworkConfigAddress),
-			l2cd.WithEnclaveRegistryAddress(networkConfig.EnclaveRegistryAddress),
-			l2cd.WithDataAvailabilityRegistryAddress(networkConfig.DataAvailabilityRegistryAddress),
-			l2cd.WithCrossChainAddress(networkConfig.CrossChainAddress),
-			l2cd.WithL2PrivateKey("8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
-			l2cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
-			l2cd.WithDebugEnabled(t.cfg.contractDeployerDebug),
-			l2cd.WithFaucetFunds("10000"),
-		),
+		&l2cd.Config{
+			L1HTTPURL:              "http://eth2network:8025",
+			L2Host:                 "sequencer-host",
+			L2Port:                 81,
+			L1PrivateKey:           "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
+			MessageBusAddress:      networkConfig.MessageBusAddress,
+			NetworkConfigAddress:   networkConfig.NetworkConfigAddress,
+			EnclaveRegistryAddress: networkConfig.EnclaveRegistryAddress,
+			DaRegistryAddress:      networkConfig.DataAvailabilityRegistryAddress,
+			CrossChainAddress:      networkConfig.CrossChainAddress,
+			L2PrivateKey:           "8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b",
+			DockerImage:            t.cfg.contractDeployerDockerImage,
+			DebugEnabled:           t.cfg.contractDeployerDebug,
+			FaucetPrefundAmount:    "10000",
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("unable to configure the l2 contract deployer - %w", err)
@@ -243,12 +243,12 @@ func startEth2Network() error {
 
 func (t *Testnet) deployL1Contracts() (*node.NetworkConfig, error) {
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
-		l1cd.NewContractDeployerConfig(
-			l1cd.WithL1HTTPURL("http://eth2network:8025"),
-			l1cd.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
-			l1cd.WithDockerImage(t.cfg.contractDeployerDockerImage),
-			l1cd.WithDebugEnabled(t.cfg.contractDeployerDebug),
-		),
+		&l1cd.Config{
+			L1HTTPURL:    "http://eth2network:8025",
+			PrivateKey:   "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
+			DockerImage:  t.cfg.contractDeployerDockerImage,
+			DebugEnabled: t.cfg.contractDeployerDebug,
+		},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("unable to configure l1 contract deployer - %w", err)
@@ -320,13 +320,13 @@ func (t *Testnet) grantSequencerStatus(enclaveRegistryAddr string) error {
 	hostURL := fmt.Sprintf("http://localhost:%d", 80)
 
 	l1grantsequencers, err := l1gs.NewGrantSequencers(
-		l1gs.NewGrantSequencerConfig(
-			l1gs.WithL1HTTPURL("http://eth2network:8025"),
-			l1gs.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
-			l1gs.WithDockerImage(t.cfg.contractDeployerDockerImage),
-			l1gs.WithEnclaveContractAddress(enclaveRegistryAddr),
-			l1gs.WithSequencerURL(hostURL),
-		),
+		&l1gs.Config{
+			L1HTTPURL:              "http://eth2network:8025",
+			PrivateKey:             "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
+			DockerImage:            t.cfg.contractDeployerDockerImage,
+			EnclaveRegistryAddress: enclaveRegistryAddr,
+			SequencerURL:           hostURL,
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("unable to configure l1 grant sequencersr - %w", err)

@@ -126,7 +126,7 @@ func (n *basicNetworkOfInMemoryNodes) Create(params *params.SimParams, stats *st
 
 		// the nodes are healthy, we can continue
 		return nil
-	}, retry.NewTimeoutStrategy(30*params.AvgBlockDuration, params.AvgBlockDuration))
+	}, retry.NewTimeoutStrategy(50*params.AvgBlockDuration, params.AvgBlockDuration))
 	if err != nil {
 		panic(err)
 	}

@@ -203,7 +203,7 @@ func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
 		w.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
 		return nil, err
 	}
-	// w.MetricsTracker.RecordNewUser()
+	w.MetricsTracker.RecordNewUser()
 
 	requestEndTime := time.Now()
 	duration := requestEndTime.Sub(requestStartTime)
@@ -213,7 +213,7 @@ func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
 
 // AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
 func (w *Services) AddAddressToUser(userID []byte, address string, signature []byte, signatureType viewingkey.SignatureType) error {
-	// w.MetricsTracker.RecordUserActivity(hexutils.BytesToHex(userID))
+	w.MetricsTracker.RecordUserActivity(userID)
 	audit(w, "Adding address to user: %s, address: %s", common.HashForLogging(userID), address)
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
@@ -233,7 +233,7 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 		w.Logger().Error(fmt.Errorf("error while storing account (%s) for user (%s): %w", addressFromMessage.Hex(), userID, err).Error())
 		return err
 	}
-	// w.MetricsTracker.RecordAccountRegistered()
+	w.MetricsTracker.RecordAccountRegistered()
 
 	audit(w, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, time.Since(requestStartTime).Milliseconds())
 	return nil
@@ -241,7 +241,7 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 
 // UserHasAccount checks if provided account exist in the database for given userID
 func (w *Services) UserHasAccount(userID []byte, address string) (bool, error) {
-	// w.MetricsTracker.RecordUserActivity(hexutils.BytesToHex(userID))
+	w.MetricsTracker.RecordUserActivity(userID)
 	audit(w, "Checking if user has account: %s, address: %s", common.HashForLogging(userID), address)
 	addressBytes, err := hex.DecodeString(address[2:]) // remove 0x prefix from address
 	if err != nil {

@@ -62,7 +62,7 @@ extracts useful information from them, such as published rollups, deposits to th
 at this level to rollback the TEN state accordingly.
 
 To avoid the risk of the Enclave being fed invalid blocks which an attacker can use to probe for information, or to shorten the 
-[revelation period](https://whitepaper.ten.xyz/ten-whitepaper/detailed-design.html#revelation-mechanism), the blocks have to be checked for validity, which includes checking that enough "work" went into them.
+[revelation period](https://whitepaper.ten.xyz/obscuro-whitepaper/detailed-design.html#revelation-mechanism), the blocks have to be checked for validity, which includes checking that enough "work" went into them.
 To achieve this we depend on the [Blockchain](https://github.com/ethereum/go-ethereum/blob/e6fa102eb08c2b83ab75e85ca7860eea3a10dab0/core/blockchain.go) 
 logic.
 

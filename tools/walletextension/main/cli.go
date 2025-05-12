@@ -77,9 +77,9 @@ const (
 	insideEnclaveFlagDefault = false
 	insideEnclaveFlagUsage   = "Flag to indicate if the program is running inside an enclave. Default: false"
 
-	keyExchangeURLFlagName    = "keyExchangeURL"
-	keyExchangeURLFlagDefault = ""
-	keyExchangeURLFlagUsage   = "URL to exchange the key with another enclave. If set to 'new', a new key will be generated. If empty, it will try to read from sealed key. Default: empty"
+	encryptionKeySourceFlagName    = "encryptionKeySource"
+	encryptionKeySourceFlagDefault = ""
+	encryptionKeySourceFlagUsage   = "Source of the encryption key for the gateway database. It can be set to empty (read from the sealed key), URL of another gateway with which we can exchange the key or 'new' to generate a new key (but only if sealed key is not present). Default: empty"
 
 	enableTLSFlagName    = "enableTLS"
 	enableTLSFlagDefault = false
@@ -116,7 +116,7 @@ func parseCLIArgs() wecommon.Config {
 	rateLimitWindow := flag.Duration(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
 	insideEnclaveFlag := flag.Bool(insideEnclaveFlagName, insideEnclaveFlagDefault, insideEnclaveFlagUsage)
-	keyExchangeURL := flag.String(keyExchangeURLFlagName, keyExchangeURLFlagDefault, keyExchangeURLFlagUsage)
+	encryptionKeySource := flag.String(encryptionKeySourceFlagName, encryptionKeySourceFlagDefault, encryptionKeySourceFlagUsage)
 	enableTLSFlag := flag.Bool(enableTLSFlagName, enableTLSFlagDefault, enableTLSFlagUsage)
 	tlsDomainFlag := flag.String(tlsDomainFlagName, tlsDomainFlagDefault, tlsDomainFlagUsage)
 	encryptingCertificateEnabled := flag.Bool(encryptingCertificateEnabledFlagName, encryptingCertificateEnabledFlagDefault, encryptingCertificateEnabledFlagUsage)
@@ -140,7 +140,7 @@ func parseCLIArgs() wecommon.Config {
 		RateLimitWindow:                *rateLimitWindow,
 		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
 		InsideEnclave:                  *insideEnclaveFlag,
-		KeyExchangeURL:                 *keyExchangeURL,
+		EncryptionKeySource:            *encryptionKeySource,
 		EnableTLS:                      *enableTLSFlag,
 		TLSDomain:                      *tlsDomainFlag,
 		EncryptingCertificateEnabled:   *encryptingCertificateEnabled,

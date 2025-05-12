@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/enclave/gas"
+
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
@@ -58,10 +60,11 @@ type enclaveAdminService struct {
 	enclaveKeyService      *crypto.EnclaveAttestedKeyService
 	mempool                *components.TxPool
 	sharedSecretService    *crypto.SharedSecretService
+	gasOracle              gas.Oracle
 	activeSequencer        bool
 }
 
-func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *components.TxPool, chainConfig *params.ChainConfig, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService, contractRegistry contractlib.ContractRegistryLib) common.EnclaveAdmin {
+func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *components.TxPool, chainConfig *params.ChainConfig, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService, contractRegistry contractlib.ContractRegistryLib, gasOracle gas.Oracle) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -115,6 +118,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 		enclaveKeyService:      enclaveKeyService,
 		mempool:                mempool,
 		sharedSecretService:    sharedSecretService,
+		gasOracle:              gasOracle,
 	}
 
 	// if the current enclave was already marked as an active/backup sequencer, it needs to set the right mempool mode
@@ -145,14 +149,18 @@ func (e *enclaveAdminService) MakeActive() common.SystemError {
 	e.mainMutex.Lock()
 	defer e.mainMutex.Unlock()
 
-	if !e.isBackupSequencer(context.Background()) {
+	if e.getNodeType(context.Background()) != common.Sequencer {
 		// host may see this if it tries to promote its enclave before its ID has been added to the permission pool
-		return fmt.Errorf("only backup sequencer can become active")
+		return fmt.Errorf("only a permissioned sequencer can become active")
+	}
+	if e.activeSequencer {
+		// this enclave is already the active sequencer, not a problem after a host restart but worth logging
+		e.logger.Info("Enclave is already the active sequencer.")
 	}
 
 	e.activeSequencer = true
 	e.service = e.sequencerService
-	e.logger.Info("Enclave is now active sequencer.")
+	e.logger.Info("Enclave is now the active sequencer.")
 
 	return nil
 }
@@ -557,6 +565,12 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 			return nil, nil, err
 		}
 	}
+
+	err = e.gasOracle.SubmitL1Block(ctx, processed.BlockHeader)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not submit L1 block to gas oracle. Cause: %w", err)
+	}
+
 	return ingestion, rollupMetadataList, nil
 }
 
