@@ -278,7 +278,7 @@ func (enc *gethEncodingServiceImpl) CreateEthHeaderForBatch(ctx context.Context,
 		if h.SequencerOrderNo.Uint64() > common.L2GenesisSeqNo {
 			convertedParentHash, err = enc.storage.FetchConvertedHash(ctx, h.ParentHash)
 			if err != nil {
-				enc.logger.Error("Cannot find the converted value for the parent of", log.BatchSeqNoKey, h.SequencerOrderNo)
+				enc.logger.Error("Cannot find the converted value for the parent of", log.BatchSeqNoKey, h.SequencerOrderNo, "parentHash", h.ParentHash, log.ErrKey, err)
 				return nil, err
 			}
 		}
@@ -335,7 +335,7 @@ type localBlock struct {
 func (enc *gethEncodingServiceImpl) CreateEthBlockFromBatch(ctx context.Context, b *core.Batch) (*types.Block, error) {
 	blockHeader, err := enc.CreateEthHeaderForBatch(ctx, b.Header)
 	if err != nil {
-		return nil, fmt.Errorf("unable to create eth block from batch - %w", err)
+		return nil, fmt.Errorf("ge: unable to create eth block from batch - %w", err)
 	}
 
 	// adjust the header of the returned block to make sure the hashes align

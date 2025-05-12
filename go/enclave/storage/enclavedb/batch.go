@@ -23,8 +23,8 @@ func WriteBatchHeader(ctx context.Context, dbtx *sql.Tx, batch *core.Batch, conv
 	}
 	args := []any{
 		batch.Header.SequencerOrderNo.Uint64(), // sequence
-		convertedHash,                          // converted_hash
-		batch.Hash(),                           // hash
+		convertedHash.Bytes(),                  // converted_hash
+		batch.Hash().Bytes(),                   // hash
 		batch.Header.Number.Uint64(),           // height
 		isCanonical,                            // is_canonical
 		header,                                 // header blob
