@@ -19,9 +19,8 @@ const (
 	_githubFilePath = "nonprod-argocd-config/apps/envs/%s/valuesFile/l1-values.yaml"
 )
 
-// GitL1Config matches a yaml file structure in the ten-apps config repo which looks like this:
+// GitL1ConfigWrapper matches a yaml file structure in the ten-apps config repo which looks like this:
 // l1Config:
-//
 //	networkConfig:  "0x5E13D7dC06C534a3dED5Fd74cd8020067F203c41"
 //	messagebus:  "0x7548DB7ceD159D0FA59b9897b4F043E68a0FBf19"
 //	bridge:  "0xA87CAB536dB553F7D06adf2886304390108e70bb"
@@ -29,6 +28,11 @@ const (
 //	rollup:  "0x3ECA99c12f8252378E1DE0fA717b527FE74DEf12"
 //	enclaveRegistry:  "0x9a73334FFb1d3942817DEaC7f96bEfd9230E77aA"
 //	starthash:  "0xfeddfd4719e39270913071f12127096397f8cba57eb800881fcfb4c367510551"
+
+type GitL1ConfigWrapper struct {
+	L1Config GitL1Config `yaml:"l1Config"`
+}
+
 type GitL1Config struct {
 	NetworkConfig   string `yaml:"networkConfig"`
 	MessageBus      string `yaml:"messagebus"`
@@ -65,22 +69,22 @@ func StoreNetworkCfgInGithub(githubPAT string, networkName string, networkConfig
 	if err != nil {
 		return fmt.Errorf("failed to read file %s: %w", absFilePath, err)
 	}
-	var l1Config GitL1Config
-	err = yaml.Unmarshal(f, &l1Config)
+	var data GitL1ConfigWrapper
+	err = yaml.Unmarshal(f, &data)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal file %s: %w", absFilePath, err)
 	}
 
-	l1Config.NetworkConfig = networkConfig.NetworkConfigAddress
-	l1Config.MessageBus = networkConfig.MessageBusAddress
-	l1Config.Bridge = networkConfig.BridgeAddress
-	l1Config.CrossChain = networkConfig.CrossChainAddress
-	l1Config.Rollup = networkConfig.DataAvailabilityRegistryAddress
-	l1Config.EnclaveRegistry = networkConfig.EnclaveRegistryAddress
-	l1Config.Starthash = networkConfig.L1StartHash
+	data.L1Config.NetworkConfig = networkConfig.NetworkConfigAddress
+	data.L1Config.MessageBus = networkConfig.MessageBusAddress
+	data.L1Config.Bridge = networkConfig.BridgeAddress
+	data.L1Config.CrossChain = networkConfig.CrossChainAddress
+	data.L1Config.Rollup = networkConfig.DataAvailabilityRegistryAddress
+	data.L1Config.EnclaveRegistry = networkConfig.EnclaveRegistryAddress
+	data.L1Config.Starthash = networkConfig.L1StartHash
 
 	// marshal the struct back to yaml
-	yamlData, err := yaml.Marshal(l1Config)
+	yamlData, err := yaml.Marshal(data)
 	if err != nil {
 		return fmt.Errorf("failed to marshal file %s: %w", absFilePath, err)
 	}
@@ -102,7 +106,7 @@ func StoreNetworkCfgInGithub(githubPAT string, networkName string, networkConfig
 		return fmt.Errorf("failed to add file to worktree: %w", err)
 	}
 
-	_, err = wt.Commit("[GH actions] prepare network - update l1 config", &git.CommitOptions{
+	_, err = wt.Commit(fmt.Sprintf("[GH actions] prepare '%s' network - update l1 config", networkName), &git.CommitOptions{
 		Author: &object.Signature{
 			Name: "github-actions",
 			When: time.Now(),
