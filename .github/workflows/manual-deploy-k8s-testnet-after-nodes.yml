@@ -46,6 +46,16 @@ jobs:
          start_hash: ${{ steps.parse.outputs.start_hash }}
 
       steps:
+         -  name: 'Prepare testnet short name'
+            id: prepareTestnetShortName
+            shell: bash
+            env:
+               TESTNET_TYPE: ${{ github.event.inputs.testnet_type }}
+            run: |
+               # strip the -testnet suffix from the testnet type
+               short_name=${TESTNET_TYPE%-testnet}
+               echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_ENV
+
          # checkout *this* repo (so subsequent steps can still see it)
          -  uses: actions/checkout@v4
 
@@ -66,7 +76,7 @@ jobs:
          -  name: Parse l1-config.yaml
             id: parse
             run: |
-               CFG=cfg/nonprod-argocd-config/apps/envs/${{ replace(github.event.inputs.testnet_type, '-testnet', '') }}/valuesFile/l1-values.yaml
+               CFG=cfg/nonprod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
                
                echo "network_config=$(yq -r '.l1Config.networkConfig'    "$CFG")"   >> $GITHUB_OUTPUT
                echo "message_bus=$(yq -r '.l1Config.messagebus'          "$CFG")"   >> $GITHUB_OUTPUT
