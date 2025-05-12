@@ -32,6 +32,50 @@ on:
             type: string
 
 jobs:
+   read-l1-config:
+      runs-on: ubuntu-latest
+
+      # Expose everything we read as job-level outputs
+      outputs:
+         network_config: ${{ steps.parse.outputs.network_config }}
+         message_bus: ${{ steps.parse.outputs.message_bus }}
+         bridge: ${{ steps.parse.outputs.bridge }}
+         crosschain: ${{ steps.parse.outputs.crosschain }}
+         rollup: ${{ steps.parse.outputs.rollup }}
+         enclave_registry: ${{ steps.parse.outputs.enclave_registry }}
+         start_hash: ${{ steps.parse.outputs.start_hash }}
+
+      steps:
+         # checkout *this* repo (so subsequent steps can still see it)
+         -  uses: actions/checkout@v4
+
+         # checkout the repo that **contains the YAML** under ./cfg/
+         -  uses: actions/checkout@v4
+            with:
+               repository: ten-protocol/ten-apps
+               token: ${{ secrets.DEPLOY_ACTIONS_PAT }}
+               path: cfg
+
+         -  name: Install yq
+            run: |
+               sudo wget -qO /usr/local/bin/yq \
+                 https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
+               sudo chmod +x /usr/local/bin/yq
+
+         # parse YAML and emit outputs
+         -  name: Parse l1-config.yaml
+            id: parse
+            run: |
+               CFG=cfg/nonprod-argocd-config/apps/envs/${{ replace(github.event.inputs.testnet_type, '-testnet', '') }}/valuesFile/l1-values.yaml
+               
+               echo "network_config=$(yq -r '.l1Config.networkConfig'    "$CFG")"   >> $GITHUB_OUTPUT
+               echo "message_bus=$(yq -r '.l1Config.messagebus'          "$CFG")"   >> $GITHUB_OUTPUT
+               echo "bridge=$(yq -r '.l1Config.bridge'                   "$CFG")"   >> $GITHUB_OUTPUT
+               echo "crosschain=$(yq -r '.l1Config.crosschain'           "$CFG")"   >> $GITHUB_OUTPUT
+               echo "rollup=$(yq -r '.l1Config.rollup'                   "$CFG")"   >> $GITHUB_OUTPUT
+               echo "enclave_registry=$(yq -r '.l1Config.enclaveRegistry'"$CFG")"   >> $GITHUB_OUTPUT
+               echo "start_hash=$(yq -r '.l1Config.starthash'            "$CFG")"   >> $GITHUB_OUTPUT
+
    check-obscuro-is-healthy:
       runs-on: ubuntu-latest
       environment:
@@ -49,6 +93,7 @@ jobs:
 
    grant-sequencer-enclaves:
       needs:
+         - read-l1-config
          - check-obscuro-is-healthy
       runs-on: ubuntu-latest
       environment:
@@ -65,7 +110,7 @@ jobs:
                DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
                DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
                DEPLOY_L2_SEQUENCERURL: http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
-               NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.build.outputs.ENCLAVE_REGISTRY_ADDR }}
+               NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.read-l1-config.outputs.enclave_registry }}
 
             run: |
                go run ./testnet/launcher/l1grantsequencers/cmd
@@ -84,14 +129,14 @@ jobs:
 
    set-challenge-period:
       needs:
-         - build
+         - read-l1-config
          - check-obscuro-is-healthy
       runs-on: ubuntu-latest
       environment:
          name: ${{ github.event.inputs.testnet_type }}
       env:
          DOCKER_API_VERSION: "1.45"
-         NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.build.outputs.DA_REGISTRY_ADDR }}
+         NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.read-l1-config.outputs.rollup }}
          DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
          DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
          DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
@@ -120,7 +165,7 @@ jobs:
 
    deploy-l2-contracts:
       needs:
-         - build
+         - read-l1-config
          - grant-sequencer-enclaves
       runs-on: ubuntu-latest
       environment:
@@ -140,11 +185,11 @@ jobs:
               DEPLOY_L2_RPCADDRESS: obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
               DEPLOY_L2_WSPORT: 81
               DEPLOY_L2_FAUCETFUNDS: ${{ vars.FAUCET_INITIAL_FUNDS }}
-              NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.build.outputs.NETWORK_CONFIG_ADDR }}
-              NETWORK_L1_CONTRACTS_MESSAGEBUS: ${{ needs.build.outputs.MSG_BUS_CONTRACT_ADDR }}
-              NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.build.outputs.DA_REGISTRY_ADDR }}
-              NETWORK_L1_CONTRACTS_CROSSCHAIN: ${{ needs.build.outputs.CROSS_CHAIN_ADDR }}
-              NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.build.outputs.ENCLAVE_REGISTRY_ADDR }}
+              NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.read-l1-config.outputs.network_config }}
+              NETWORK_L1_CONTRACTS_MESSAGEBUS: ${{ needs.read-l1-config.outputs.message_bus }}
+              NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.read-l1-config.outputs.rollup }}
+              NETWORK_L1_CONTRACTS_CROSSCHAIN: ${{ needs.read-l1-config.outputs.crosschain }}
+              NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.read-l1-config.outputs.enclave_registry }}
            run: |
               go run ./testnet/launcher/l2contractdeployer/cmd \
 
