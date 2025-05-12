@@ -45,6 +45,10 @@ const (
 	verboseFlagDefault = false
 	verboseFlagUsage   = "Flag to enable verbose logging of wallet extension traffic"
 
+	logLevelFlagName    = "logLevel"
+	logLevelFlagDefault = "info"
+	logLevelFlagUsage   = "Log level for wallet extension (critical, error, warn, info, debug, trace). Default: info"
+
 	dbTypeFlagName    = "dbType"
 	dbTypeFlagDefault = "sqlite"
 	dbTypeFlagUsage   = "Defined the db type (sqlite or mariaDB)"
@@ -98,6 +102,26 @@ const (
 	disableCachingFlagUsage   = "Flag to disable response caching in the gateway. Default: false"
 )
 
+// getLogLevelInt converts string log level to integer value
+func getLogLevelInt(level string) int {
+	switch level {
+	case "critical":
+		return 0
+	case "error":
+		return 1
+	case "warn":
+		return 2
+	case "info":
+		return 3
+	case "debug":
+		return 4
+	case "trace":
+		return 5
+	default:
+		return 3 // default to info level
+	}
+}
+
 func parseCLIArgs() wecommon.Config {
 	walletExtensionHost := flag.String(walletExtensionHostName, walletExtensionHostDefault, walletExtensionHostUsage)
 	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
@@ -107,7 +131,7 @@ func parseCLIArgs() wecommon.Config {
 	nodeWebsocketPort := flag.Int(nodeWebsocketPortName, nodeWebsocketPortDefault, nodeWebsocketPortUsage)
 	logPath := flag.String(logPathName, logPathDefault, logPathUsage)
 	databasePath := flag.String(databasePathName, databasePathDefault, databasePathUsage)
-	verboseFlag := flag.Bool(verboseFlagName, verboseFlagDefault, verboseFlagUsage)
+	logLevel := flag.String(logLevelFlagName, logLevelFlagDefault, logLevelFlagUsage)
 	dbType := flag.String(dbTypeFlagName, dbTypeFlagDefault, dbTypeFlagUsage)
 	dbConnectionURL := flag.String(dbConnectionURLFlagName, dbConnectionURLFlagDefault, dbConnectionURLFlagUsage)
 	tenChainID := flag.Int(tenChainIDName, tenChainIDDefault, tenChainIDFlagUsage)
@@ -131,7 +155,7 @@ func parseCLIArgs() wecommon.Config {
 		NodeRPCWebsocketAddress:        fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
 		LogPath:                        *logPath,
 		DBPathOverride:                 *databasePath,
-		VerboseFlag:                    *verboseFlag,
+		LogLevel:                       getLogLevelInt(*logLevel),
 		DBType:                         *dbType,
 		DBConnectionURL:                *dbConnectionURL,
 		TenChainID:                     *tenChainID,

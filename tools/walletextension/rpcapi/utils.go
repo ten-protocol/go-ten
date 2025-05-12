@@ -230,18 +230,18 @@ func generateCacheKey(params []any) []byte {
 }
 
 func audit(services *services.Services, msg string, params ...any) {
-	if services.Config.VerboseFlag {
-		// Sanitize params to handle nil values
-		safeParams := make([]any, len(params))
-		for i, p := range params {
-			if p == nil {
-				safeParams[i] = "<nil>"
-			} else {
-				safeParams[i] = p
-			}
+	//if services.Config.VerboseFlag { // TODO: Ziga - fix this
+	// Sanitize params to handle nil values
+	safeParams := make([]any, len(params))
+	for i, p := range params {
+		if p == nil {
+			safeParams[i] = "<nil>"
+		} else {
+			safeParams[i] = p
 		}
-		services.Logger().Info(fmt.Sprintf(msg, safeParams...))
 	}
+	services.Logger().Info(fmt.Sprintf(msg, safeParams...))
+	//}
 }
 
 func cacheBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) cache.Strategy {
