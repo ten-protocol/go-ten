@@ -5,6 +5,13 @@
 # May 2025-05-05 (v1.2.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
+    * `b3df0c07` Add recover funds for ten bridge (sepolia only) (#2457)
+    * `4f3bf0bd` Host: ensure maximum 1 active sequencer (#2442)
+    * `2378a591` Fix gateway metrics (#2435)
+    * `43e3df62` Update readme.md (#2454)
+    * `c0c58697` Estimate gas on tx pool validation (#2453)
+    * `c27e816a` Use moving average of l1 gas pricing to avoid spikes (#2446)
+    * `e266998f` Fix gateway encryption key handling (#2452)
     * `6cae3418` Prevent reattempting callbacks in same block as they are added (#2451)
     * `2f2f167a` Fix access control for transaction post processor (#2449)
     * `82c39f27` Fix name to avoid chaos (#2448)
