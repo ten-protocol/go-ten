@@ -155,7 +155,7 @@ func (cs *CacheService) CacheBatch(ctx context.Context, batch *core.Batch) {
 	// should always contain the canonical batch because the cache is overwritten by each new batch after a reorg
 	cacheValue(ctx, cs.seqCacheByHeight, cs.logger, batch.NumberU64()+1, batch.SeqNo())
 
-	cs.lastBatchesCache.Set(fmt.Sprintf("%d", batch.SeqNo().Uint64()), batch)
+	cacheValue(ctx, cs.lastBatchesCache, cs.logger, batch.SeqNo(), batch)
 }
 
 func (cs *CacheService) ReadBlock(ctx context.Context, key gethcommon.Hash, onCacheMiss func() (*types.Header, error)) (*types.Header, error) {
@@ -236,7 +236,7 @@ func (cs *CacheService) CacheReceipts(results core.TxExecResults) {
 }
 
 func (cs *CacheService) ReceiptDoesNotExist(txHash gethcommon.Hash) {
-	cs.receiptCache.Set(txHash.String(), &CachedReceipt{})
+	cacheValue(context.Background(), cs.receiptCache, cs.logger, txHash.Bytes(), &CachedReceipt{})
 }
 
 func (cs *CacheService) ReadReceipt(_ context.Context, txHash gethcommon.Hash) (*CachedReceipt, error) {
