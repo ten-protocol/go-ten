@@ -44,6 +44,8 @@ jobs:
          rollup: ${{ steps.parse.outputs.rollup }}
          enclave_registry: ${{ steps.parse.outputs.enclave_registry }}
          start_hash: ${{ steps.parse.outputs.start_hash }}
+        # This is the short name of the env without suffix, e.g. dev-testnet -> dev
+         TESTNET_SHORT_NAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
 
       steps:
          # first, we check the confirmation field if deploying sepolia
@@ -106,9 +108,9 @@ jobs:
          - name: "Wait until obscuro node is healthy"
            shell: bash
            run: |
-              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-2-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-sequencer.ten.xyz
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-validator-1.ten.xyz
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-validator-2.ten.xyz
    
 
    grant-sequencer-enclaves:
@@ -129,7 +131,7 @@ jobs:
                DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
                DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
                DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
-               DEPLOY_L2_SEQUENCERURL: http://obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
+               DEPLOY_L2_SEQUENCERURL: http://${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-sequencer.ten.xyz:80
                NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.read-l1-config.outputs.enclave_registry }}
 
             run: |
@@ -202,7 +204,7 @@ jobs:
               DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
               DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
               DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
-              DEPLOY_L2_RPCADDRESS: obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+              DEPLOY_L2_RPCADDRESS: ${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-validator-1.ten.xyz
               DEPLOY_L2_WSPORT: 81
               DEPLOY_L2_FAUCETFUNDS: ${{ vars.FAUCET_INITIAL_FUNDS }}
               NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.read-l1-config.outputs.network_config }}
