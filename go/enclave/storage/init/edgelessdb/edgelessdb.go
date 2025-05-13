@@ -472,6 +472,14 @@ func ConnectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logg
 	cfg.User = dbUser
 	cfg.DBName = dbName
 	cfg.TLSConfig = "custom"
+
+	cfg.Params = map[string]string{
+		"stmtCacheSize":      "250",  // Cache 250 prepared statements per connection
+		"cachePrepStmts":     "true", // Enable prepared statement caching
+		"useServerPrepStmts": "true", // Use server-side prepared statements
+		"compress":           "true",
+	}
+
 	dsn := cfg.FormatDSN()
 	logger.Info(fmt.Sprintf("Configuring mysql connection: %s", dsn))
 	db, err := sql.Open(driverName, dsn)
@@ -479,6 +487,7 @@ func ConnectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logg
 		return nil, fmt.Errorf("failed to initialize mysql connection to edb - %w", err)
 	}
 	db.SetMaxOpenConns(maxDBPoolSize)
+	db.SetMaxIdleConns(maxDBPoolSize / 2)
 	return db, nil
 }
 
