@@ -227,34 +227,6 @@ jobs:
                  deploy-l2-contracts.out
               retention-days: 7
 
-   update-loadbalancer:
-      needs:
-         - grant-sequencer-enclaves
-      runs-on: ubuntu-latest
-      environment:
-         name: ${{ github.event.inputs.testnet_type }}
-      steps:
-         - uses: actions/checkout@v4
-
-         - name: 'Login via Azure CLI'
-           uses: azure/login@v1
-           with:
-              creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-         - name: 'Remove existing backend nodes from the load balancer'
-           run: ./.github/workflows/runner-scripts/testnet-clear-loadbalancer.sh ${{ github.event.inputs.testnet_type }}
-
-         - name: 'Add load balancer address pool to the IP configuration'
-           uses: azure/CLI@v1
-           with:
-              inlineScript: |
-                 az network nic ip-config address-pool add \
-                   --address-pool ${{ github.event.inputs.testnet_type }}-backend-pool \
-                   --ip-config-name ipconfig${{ vars.AZURE_RESOURCE_PREFIX }}-1-${{ GITHUB.RUN_NUMBER }} \
-                   --nic-name ${{ vars.AZURE_RESOURCE_PREFIX }}-1-${{ GITHUB.RUN_NUMBER }}VMNic \
-                   --resource-group Testnet \
-                   --lb-name ${{ github.event.inputs.testnet_type }}-loadbalancer
-
    deploy-faucet:
       name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
       uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
