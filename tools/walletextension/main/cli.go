@@ -41,10 +41,6 @@ const (
 	databasePathDefault = ".obscuro/gateway_database.db"
 	databasePathUsage   = "The path for the wallet extension's database file. Default: .obscuro/gateway_database.db"
 
-	verboseFlagName    = "verbose"
-	verboseFlagDefault = false
-	verboseFlagUsage   = "Flag to enable verbose logging of wallet extension traffic"
-
 	logLevelFlagName    = "logLevel"
 	logLevelFlagDefault = "info"
 	logLevelFlagUsage   = "Log level for wallet extension (critical, error, warn, info, debug, trace). Default: info"
