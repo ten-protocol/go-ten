@@ -474,9 +474,8 @@ func ConnectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logg
 	cfg.TLSConfig = "custom"
 
 	cfg.Params = map[string]string{
-		"prepStmtCacheSize":  "250",  // Cache 250 prepared statements per connection
-		"useServerPrepStmts": "true", // Use server-side prepared statements
-		"compress":           "true",
+		"prepStmtCacheSize": "250", // Cache 250 prepared statements per connection
+		"compress":          "true",
 	}
 
 	dsn := cfg.FormatDSN()
