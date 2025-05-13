@@ -87,7 +87,5 @@ func load(filePaths []string) (*TenConfig, error) {
 		return nil, err
 	}
 
-	fmt.Println("Successfully loaded Ten config.")
-	tenCfg.PrettyPrint()
 	return &tenCfg, nil
 }
