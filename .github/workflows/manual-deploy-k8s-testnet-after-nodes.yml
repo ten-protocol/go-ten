@@ -132,7 +132,7 @@ jobs:
                DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
                DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
                DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
-               DEPLOY_L2_SEQUENCERURL: http://${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-sequencer.ten.xyz:8025
+               DEPLOY_L2_SEQUENCERURL: http://${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-sequencer.ten.xyz:8085
                NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.read-l1-config.outputs.enclave_registry }}
 
             run: |
@@ -206,7 +206,7 @@ jobs:
               DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
               DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
               DEPLOY_L2_RPCADDRESS: ${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-validator-01.ten.xyz
-              DEPLOY_L2_WSPORT: 8026
+              DEPLOY_L2_WSPORT: 8089
               DEPLOY_L2_FAUCETFUNDS: ${{ vars.FAUCET_INITIAL_FUNDS }}
               NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.read-l1-config.outputs.network_config }}
               NETWORK_L1_CONTRACTS_MESSAGEBUS: ${{ needs.read-l1-config.outputs.message_bus }}
