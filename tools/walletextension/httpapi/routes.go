@@ -119,7 +119,6 @@ func readyRequestHandler(_ *services.Services, _ UserConn) {}
 
 // This function handles request to /join endpoint. It is responsible to create new user (new key-pair) and store it to the db
 func joinRequestHandler(walletExt *services.Services, conn UserConn) {
-	// audit()
 	// todo (@ziga) add protection against DDOS attacks
 	_, err := conn.ReadRequest()
 	if err != nil {

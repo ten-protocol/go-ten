@@ -65,7 +65,7 @@ func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
 }
 
 func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rpc.Subscription, error) {
-	audit(api.we, "start Logs subscription %v", crit)
+	services.Audit(api.we, "start Logs subscription %v", crit)
 	subNotifier, user, err := getUserAndNotifier(ctx, api)
 	if err != nil {
 		return nil, err
@@ -195,7 +195,7 @@ func (api *FilterAPI) NewFilter(crit common.FilterCriteria) (rpc.ID, error) {
 
 func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) ([]*types.Log, error) {
 	method := rpc2.ERPCGetLogs
-	audit(api.we, "RPC start method=%s args=%v", method, ctx)
+	services.Audit(api.we, "RPC start method=%s args=%v", method, ctx)
 	requestStartTime := time.Now()
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
@@ -267,7 +267,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	if err != nil {
 		return nil, err
 	}
-	audit(api.we, "RPC call. uid=%s, method=%s args=%v result=%v error=%v time=%d", hexutils.BytesToHex(user.ID), method, crit, res, err, time.Since(requestStartTime).Milliseconds())
+	services.Audit(api.we, "RPC call. uid=%s, method=%s args=%v result=%v error=%v time=%d", hexutils.BytesToHex(user.ID), method, crit, res, err, time.Since(requestStartTime).Milliseconds())
 	return *res, err
 }
 
