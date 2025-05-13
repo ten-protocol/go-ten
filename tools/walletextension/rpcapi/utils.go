@@ -57,7 +57,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	if ctx == nil {
 		return nil, errors.New("invalid call. nil Context")
 	}
-	services.Audit(w, "RPC start method=%s args=%v", method, args)
+	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	cacheArgs := []any{method}
 	cacheArgs = append(cacheArgs, args...)
@@ -76,16 +76,16 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 		})
 	})
 	if err != nil {
-		services.Audit(w, "RPC call failed. method=%s args=%v error=%+v time=%d", method, args, err, time.Since(requestStartTime).Milliseconds())
+		services.Audit(w, services.ErrorLevel, "RPC call failed. method=%s args=%v error=%+v time=%d", method, args, err, time.Since(requestStartTime).Milliseconds())
 		return nil, err
 	}
 
-	services.Audit(w, "RPC call succeeded. method=%s args=%v result=%+v time=%d", method, args, res, time.Since(requestStartTime).Milliseconds())
+	services.Audit(w, services.InfoLevel, "RPC call succeeded. method=%s args=%v result=%+v time=%d", method, args, res, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
-	services.Audit(w, "RPC start method=%s args=%v", method, args)
+	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	user, err := extractUserForRequest(ctx, w)
 	if err != nil {
@@ -96,6 +96,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 
 	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
 	if !rateLimitAllowed {
+		services.Audit(w, services.WarnLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
 		return nil, fmt.Errorf("rate limit exceeded")
 	}
 	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
@@ -151,7 +152,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 		}
 		return nil, rpcErr
 	})
-	services.Audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(user.ID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
+	services.Audit(w, services.InfoLevel, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(user.ID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
