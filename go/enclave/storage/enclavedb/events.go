@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"sync"
 
 	"github.com/jmoiron/sqlx"
 
@@ -38,11 +37,6 @@ const (
 		"left join event_topic t3 on e.topic3=t3.id and et.id=t3.event_type " +
 		"   left join externally_owned_account eoa3 on t3.rel_address=eoa3.id " +
 		"where b.is_canonical=true "
-)
-
-var (
-	eventQueryStatementCache = map[string]*sqlx.Stmt{}
-	eventQueryStatementMutex = sync.RWMutex{}
 )
 
 func WriteEventType(ctx context.Context, dbTX *sqlx.Tx, et *EventType) (uint64, error) {
@@ -117,7 +111,7 @@ func WriteEventLog(ctx context.Context, dbTX *sqlx.Tx, eventTypeId uint64, userT
 	return err
 }
 
-func FilterLogs(ctx context.Context, db *sqlx.DB, requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
+func FilterLogs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
 	queryParams := []any{}
 	query := ""
 
@@ -160,7 +154,7 @@ func FilterLogs(ctx context.Context, db *sqlx.DB, requestingAccount *gethcommon.
 		}
 	}
 
-	_, logs, err := loadReceiptsAndEventLogs(ctx, db, requestingAccount, query, queryParams, false)
+	_, logs, err := loadReceiptsAndEventLogs(ctx, stmtCache, requestingAccount, query, queryParams, false)
 	return logs, err
 }
 
@@ -313,7 +307,7 @@ func onRowWithReceipt(rows *sql.Rows) (*core.InternalReceipt, error) {
 // returns either receipts with logs, or only logs
 // this complexity is necessary to avoid executing multiple queries.
 // todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
-func loadReceiptsAndEventLogs(ctx context.Context, db *sqlx.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
+func loadReceiptsAndEventLogs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
 	logsQuery := " et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address "
 	receiptQuery := " rec.post_state, rec.status, rec.gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
 
@@ -355,23 +349,14 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sqlx.DB, requestingAccoun
 		queryParams = append(queryParams, whereParams...)
 	}
 
-	eventQueryStatementMutex.RLock()
-	stmt, found := eventQueryStatementCache[query]
-	eventQueryStatementMutex.RUnlock()
-	if !found {
-		var err error
-		stmt, err = db.Preparex(query)
-		if err != nil {
-			return nil, nil, fmt.Errorf("could not prepare query: %w", err)
-		}
-		eventQueryStatementMutex.Lock()
-		eventQueryStatementCache[query] = stmt
-		eventQueryStatementMutex.Unlock()
+	stmt, err := stmtCache.GetOrPrepare(query)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not prepare query: %w", err)
 	}
 
 	rows, err := stmt.QueryContext(ctx, queryParams...)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("could not execute query: %w", err)
 	}
 	defer rows.Close()
 

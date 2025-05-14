@@ -258,8 +258,8 @@ func fetchBatches(ctx context.Context, db *sqlx.DB, whereQuery string, args ...a
 	return result, nil
 }
 
-func ReadReceipt(ctx context.Context, db *sqlx.DB, txHash common.L2TxHash, requester *gethcommon.Address) (*core.InternalReceipt, error) {
-	rec, _, err := loadReceiptsAndEventLogs(ctx, db, requester, " AND curr_tx.hash=?", []any{txHash.Bytes()}, true)
+func ReadReceipt(ctx context.Context, stmtCache *PreparedStatementCache, txHash common.L2TxHash, requester *gethcommon.Address) (*core.InternalReceipt, error) {
+	rec, _, err := loadReceiptsAndEventLogs(ctx, stmtCache, requester, " AND curr_tx.hash=?", []any{txHash.Bytes()}, true)
 	if err != nil {
 		return nil, err
 	}

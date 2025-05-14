@@ -1,10 +1,11 @@
 package enclavedb
 
 import (
-	"database/sql"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/jmoiron/sqlx"
 
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
@@ -151,7 +152,7 @@ func setupSQLite(t *testing.T) *sqlx.DB {
 	// create temp sqlite db
 	d := t.TempDir()
 	f := filepath.Join(d, "test.db")
-	db, err := sql.Open("sqlite3", f)
+	db, err := sqlx.Open("sqlite3", f)
 	if err != nil {
 		panic(err)
 	}
