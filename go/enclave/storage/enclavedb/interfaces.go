@@ -2,8 +2,9 @@ package enclavedb
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
+
+	"github.com/jmoiron/sqlx"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -16,8 +17,8 @@ import (
 // The EnclaveDB - can be a factory that returns an Sql implementation of the ethdb.Database
 type EnclaveDB interface {
 	ethdb.Database
-	GetSQLDB() *sql.DB
-	NewDBTransaction(ctx context.Context) (*sql.Tx, error)
+	GetSQLDB() *sqlx.DB
+	NewDBTransaction(ctx context.Context) (*sqlx.Tx, error)
 }
 
 // Contract - maps to the “contract“ table
