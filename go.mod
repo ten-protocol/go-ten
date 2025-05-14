@@ -28,6 +28,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/holiman/uint256 v1.3.2
+	github.com/jmoiron/sqlx v1.4.0
 	github.com/jolestar/go-commons-pool/v2 v2.1.2
 	github.com/lib/pq v1.10.9
 	github.com/mattn/go-colorable v0.1.14

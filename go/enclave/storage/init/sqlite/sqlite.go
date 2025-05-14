@@ -1,11 +1,12 @@
 package sqlite
 
 import (
-	"database/sql"
 	"embed"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/jmoiron/sqlx"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
@@ -59,7 +60,7 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config *enclavecon
 
 	path := fmt.Sprintf("file:%s?mode=rw&%s", dbPath, dbOptions)
 	logger.Info("Connect to sqlite", "path", path)
-	rwdb, err := sql.Open("sqlite3", path)
+	rwdb, err := sqlx.Open("sqlite3", path)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
@@ -84,7 +85,7 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config *enclavecon
 
 	roPath := fmt.Sprintf("file:%s?mode=ro&%s", dbPath, dbOptions)
 	logger.Info("Connect to sqlite", "ro_path", roPath)
-	rodb, err := sql.Open("sqlite3", roPath)
+	rodb, err := sqlx.Open("sqlite3", roPath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
@@ -93,7 +94,7 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config *enclavecon
 	return enclavedb.NewEnclaveDB(rodb, rwdb, config, logger)
 }
 
-func initialiseDB(db *sql.DB) error {
+func initialiseDB(db *sqlx.DB) error {
 	sqlInitFile, err := sqlFiles.ReadFile(initFile)
 	if err != nil {
 		return err

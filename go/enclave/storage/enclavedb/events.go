@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"sync"
+
+	"github.com/jmoiron/sqlx"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
@@ -37,7 +40,12 @@ const (
 		"where b.is_canonical=true "
 )
 
-func WriteEventType(ctx context.Context, dbTX *sql.Tx, et *EventType) (uint64, error) {
+var (
+	eventQueryStatementCache = map[string]*sqlx.Stmt{}
+	eventQueryStatementMutex = sync.RWMutex{}
+)
+
+func WriteEventType(ctx context.Context, dbTX *sqlx.Tx, et *EventType) (uint64, error) {
 	res, err := dbTX.ExecContext(ctx, "insert into event_type (contract, event_sig, auto_visibility,auto_public, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view) values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
 		et.Contract.Id, et.EventSignature.Bytes(), et.AutoVisibility, et.AutoPublic, et.ConfigPublic, et.Topic1CanView, et.Topic2CanView, et.Topic3CanView, et.SenderCanView)
 	if err != nil {
@@ -50,7 +58,7 @@ func WriteEventType(ctx context.Context, dbTX *sql.Tx, et *EventType) (uint64, e
 	return uint64(id), nil
 }
 
-func ReadEventType(ctx context.Context, dbTX *sql.Tx, contract *Contract, eventSignature gethcommon.Hash) (*EventType, error) {
+func ReadEventType(ctx context.Context, dbTX *sqlx.Tx, contract *Contract, eventSignature gethcommon.Hash) (*EventType, error) {
 	et := EventType{Contract: contract}
 	err := dbTX.QueryRowContext(ctx,
 		"select id, event_sig, auto_visibility, auto_public, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
@@ -63,7 +71,7 @@ func ReadEventType(ctx context.Context, dbTX *sql.Tx, contract *Contract, eventS
 	return &et, err
 }
 
-func WriteEventTopic(ctx context.Context, dbTX *sql.Tx, topic *gethcommon.Hash, addressId *uint64, eventTypeId uint64) (uint64, error) {
+func WriteEventTopic(ctx context.Context, dbTX *sqlx.Tx, topic *gethcommon.Hash, addressId *uint64, eventTypeId uint64) (uint64, error) {
 	res, err := dbTX.ExecContext(ctx, "insert into event_topic (event_type, topic, rel_address) values (?, ?, ?)", eventTypeId, topic.Bytes(), addressId)
 	if err != nil {
 		return 0, err
@@ -75,12 +83,12 @@ func WriteEventTopic(ctx context.Context, dbTX *sql.Tx, topic *gethcommon.Hash, 
 	return uint64(id), nil
 }
 
-func UpdateEventTypeAutoPublic(ctx context.Context, dbTx *sql.Tx, etId uint64, isPublic bool) error {
+func UpdateEventTypeAutoPublic(ctx context.Context, dbTx *sqlx.Tx, etId uint64, isPublic bool) error {
 	_, err := dbTx.ExecContext(ctx, "update event_type set auto_public=? where id=?", isPublic, etId)
 	return err
 }
 
-func ReadEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte, eventTypeId uint64) (*EventTopic, error) {
+func ReadEventTopic(ctx context.Context, dbTX *sqlx.Tx, topic []byte, eventTypeId uint64) (*EventTopic, error) {
 	var id uint64
 	var address *uint64
 	err := dbTX.QueryRowContext(ctx,
@@ -92,7 +100,7 @@ func ReadEventTopic(ctx context.Context, dbTX *sql.Tx, topic []byte, eventTypeId
 	return &EventTopic{Id: id, RelevantAddressId: address}, err
 }
 
-func ReadRelevantAddressFromEventTopic(ctx context.Context, dbTX *sql.Tx, id uint64) (*uint64, error) {
+func ReadRelevantAddressFromEventTopic(ctx context.Context, dbTX *sqlx.Tx, id uint64) (*uint64, error) {
 	var address *uint64
 	err := dbTX.QueryRowContext(ctx,
 		"select rel_address from event_topic where id=?", id).Scan(&address)
@@ -103,13 +111,13 @@ func ReadRelevantAddressFromEventTopic(ctx context.Context, dbTX *sql.Tx, id uin
 	return address, err
 }
 
-func WriteEventLog(ctx context.Context, dbTX *sql.Tx, eventTypeId uint64, userTopics []*uint64, data []byte, logIdx uint, execTx uint64) error {
+func WriteEventLog(ctx context.Context, dbTX *sqlx.Tx, eventTypeId uint64, userTopics []*uint64, data []byte, logIdx uint, execTx uint64) error {
 	_, err := dbTX.ExecContext(ctx, "insert into event_log (event_type, topic1, topic2, topic3, datablob, log_idx, receipt) values (?,?,?,?,?,?,?)",
 		eventTypeId, userTopics[0], userTopics[1], userTopics[2], data, logIdx, execTx)
 	return err
 }
 
-func FilterLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
+func FilterLogs(ctx context.Context, db *sqlx.DB, requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
 	queryParams := []any{}
 	query := ""
 
@@ -156,7 +164,7 @@ func FilterLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.A
 	return logs, err
 }
 
-func DebugGetLogs(ctx context.Context, db *sql.DB, fromBlock *big.Int, toBlock *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error) {
+func DebugGetLogs(ctx context.Context, db *sqlx.DB, fromBlock *big.Int, toBlock *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error) {
 	var queryParams []any
 	query := "select c.transparent, c.auto_visibility, et.config_public, et.topic1_can_view, et.topic2_can_view, et.topic3_can_view, et.sender_can_view, et.auto_visibility, et.auto_public, eoa1.address, eoa2.address, eoa3.address, b.height, curr_tx.hash, curr_tx.idx, b.hash, log_idx " +
 		baseReceiptJoin + baseEventJoin
@@ -232,7 +240,7 @@ func DebugGetLogs(ctx context.Context, db *sql.DB, fromBlock *big.Int, toBlock *
 	return result, nil
 }
 
-func loadReceiptList(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any) ([]*core.InternalReceipt, error) {
+func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any) ([]*core.InternalReceipt, error) {
 	if requestingAccount == nil {
 		return nil, fmt.Errorf("you have to specify requestingAccount")
 	}
@@ -305,7 +313,7 @@ func onRowWithReceipt(rows *sql.Rows) (*core.InternalReceipt, error) {
 // returns either receipts with logs, or only logs
 // this complexity is necessary to avoid executing multiple queries.
 // todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
-func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
+func loadReceiptsAndEventLogs(ctx context.Context, db *sqlx.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
 	logsQuery := " et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address "
 	receiptQuery := " rec.post_state, rec.status, rec.gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
 
@@ -347,7 +355,21 @@ func loadReceiptsAndEventLogs(ctx context.Context, db *sql.DB, requestingAccount
 		queryParams = append(queryParams, whereParams...)
 	}
 
-	rows, err := db.QueryContext(ctx, query, queryParams...)
+	eventQueryStatementMutex.RLock()
+	stmt, found := eventQueryStatementCache[query]
+	eventQueryStatementMutex.RUnlock()
+	if !found {
+		var err error
+		stmt, err = db.Preparex(query)
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not prepare query: %w", err)
+		}
+		eventQueryStatementMutex.Lock()
+		eventQueryStatementCache[query] = stmt
+		eventQueryStatementMutex.Unlock()
+	}
+
+	rows, err := stmt.QueryContext(ctx, queryParams...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -504,7 +526,7 @@ func logsVisibilityQuery(requestingAccount *gethcommon.Address, withReceipts boo
 	return visibQuery, visibParams
 }
 
-func WriteEoa(ctx context.Context, dbTX *sql.Tx, sender gethcommon.Address) (uint64, error) {
+func WriteEoa(ctx context.Context, dbTX *sqlx.Tx, sender gethcommon.Address) (uint64, error) {
 	insert := "insert into externally_owned_account (address) values (?)"
 	res, err := dbTX.ExecContext(ctx, insert, sender.Bytes())
 	if err != nil {
@@ -517,7 +539,7 @@ func WriteEoa(ctx context.Context, dbTX *sql.Tx, sender gethcommon.Address) (uin
 	return uint64(id), nil
 }
 
-func ReadEoa(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (uint64, error) {
+func ReadEoa(ctx context.Context, dbTx *sqlx.Tx, addr gethcommon.Address) (uint64, error) {
 	row := dbTx.QueryRowContext(ctx, "select id from externally_owned_account where address = ?", addr.Bytes())
 
 	var id uint64
@@ -533,7 +555,7 @@ func ReadEoa(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (uint64
 	return id, nil
 }
 
-func WriteContractConfig(ctx context.Context, dbTX *sql.Tx, contractAddress gethcommon.Address, eoaId uint64, cfg *core.ContractVisibilityConfig, txId uint64) (*uint64, error) {
+func WriteContractConfig(ctx context.Context, dbTX *sqlx.Tx, contractAddress gethcommon.Address, eoaId uint64, cfg *core.ContractVisibilityConfig, txId uint64) (*uint64, error) {
 	insert := "insert into contract (address, creator, auto_visibility, transparent, tx) values (?,?,?,?,?)"
 	res, err := dbTX.ExecContext(ctx, insert, contractAddress.Bytes(), eoaId, cfg.AutoConfig, cfg.Transparent, txId)
 	if err != nil {
@@ -547,7 +569,7 @@ func WriteContractConfig(ctx context.Context, dbTX *sql.Tx, contractAddress geth
 	return &v, nil
 }
 
-func ReadContractByAddress(ctx context.Context, dbTx *sql.Tx, addr gethcommon.Address) (*Contract, error) {
+func ReadContractByAddress(ctx context.Context, dbTx *sqlx.Tx, addr gethcommon.Address) (*Contract, error) {
 	row := dbTx.QueryRowContext(ctx, "select c.id, c.address, c.auto_visibility, c.transparent, eoa.address from contract c join externally_owned_account eoa on c.creator=eoa.id where c.address = ?", addr.Bytes())
 
 	var c Contract

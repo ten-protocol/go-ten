@@ -147,7 +147,7 @@ func failIfError(t *testing.T, err error, msg string) {
 	}
 }
 
-func setupSQLite(t *testing.T) *sql.DB {
+func setupSQLite(t *testing.T) *sqlx.DB {
 	// create temp sqlite db
 	d := t.TempDir()
 	f := filepath.Join(d, "test.db")

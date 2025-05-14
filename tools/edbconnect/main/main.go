@@ -46,7 +46,7 @@ func main() {
 	}
 	fmt.Println("Connected to Edgeless DB.")
 
-	startREPL(db)
+	startREPL(db.DB)
 
 	err = db.Close()
 	if err != nil {

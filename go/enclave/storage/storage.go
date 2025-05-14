@@ -12,6 +12,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -673,7 +675,7 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	return nil
 }
 
-func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, transactionsWithSenders []*core.TxWithSender, dbTx *sql.Tx) ([]uint64, []*uint64, error) {
+func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, transactionsWithSenders []*core.TxWithSender, dbTx *sqlx.Tx) ([]uint64, []*uint64, error) {
 	senders := make([]uint64, len(transactionsWithSenders))
 	toContracts := make([]*uint64, len(transactionsWithSenders))
 	// insert the tx signers as externally owned accounts
@@ -927,7 +929,7 @@ func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *
 	return enclavedb.CountTransactionsPerAddress(ctx, s.db.GetSQLDB(), address)
 }
 
-func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (*uint64, error) {
+func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sqlx.Tx, addr gethcommon.Address) (*uint64, error) {
 	defer s.logDuration("readOrWriteEOA", measure.NewStopwatch())
 	return s.cachingService.ReadEOA(ctx, addr, func() (*uint64, error) {
 		id, err := enclavedb.ReadEoa(ctx, dbTX, addr)
