@@ -52,6 +52,7 @@ type (
 	L2CrossChainMessengerAddress    = common.Address
 	L2MessageBusAddress             = common.Address
 	TransactionPostProcessorAddress = common.Address
+	SystemContractsUpgraderAddress  = common.Address
 
 	// Local Obscuro aliases
 	L2BatchHash              = common.Hash
