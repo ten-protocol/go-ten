@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/jmoiron/sqlx"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,7 +19,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
-func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
+func WriteBlock(ctx context.Context, dbtx *sqlx.Tx, b *types.Header) error {
 	header, err := encodeHeader(b)
 	if err != nil {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
@@ -33,7 +35,7 @@ func WriteBlock(ctx context.Context, dbtx *sql.Tx, b *types.Header) error {
 	return err
 }
 
-func UpdateCanonicalBlock(ctx context.Context, dbtx *sql.Tx, isCanonical bool, blocks []common.L1BlockHash) error {
+func UpdateCanonicalBlock(ctx context.Context, dbtx *sqlx.Tx, isCanonical bool, blocks []common.L1BlockHash) error {
 	if len(blocks) == 0 {
 		return nil
 	}
@@ -48,7 +50,7 @@ func UpdateCanonicalBlock(ctx context.Context, dbtx *sql.Tx, isCanonical bool, b
 	return err
 }
 
-func IsCanonicalBlock(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) (bool, error) {
+func IsCanonicalBlock(ctx context.Context, dbtx *sqlx.Tx, hash *gethcommon.Hash) (bool, error) {
 	var isCanon bool
 	err := dbtx.QueryRowContext(ctx, "select is_canonical from block where hash=? ", hash.Bytes()).Scan(&isCanon)
 	if err != nil {
@@ -61,7 +63,7 @@ func IsCanonicalBlock(ctx context.Context, dbtx *sql.Tx, hash *gethcommon.Hash) 
 }
 
 /*// CheckCanonicalValidity - expensive but useful for debugging races
-func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx, batchId int64) error {
+func CheckCanonicalValidity(ctx context.Context, dbtx *sqlx.Tx, batchId int64) error {
 	rows, err := dbtx.QueryContext(ctx, "select count(*), height from batch where height >=? AND is_canonical=true group by height having count(*) >1", batchId)
 	if err != nil {
 		return err
@@ -84,24 +86,24 @@ func CheckCanonicalValidity(ctx context.Context, dbtx *sql.Tx, batchId int64) er
 */
 
 // HandleBlockArrivedAfterBatches - handle the corner case where the block wasn't available when the batch was received
-func HandleBlockArrivedAfterBatches(ctx context.Context, dbtx *sql.Tx, _ int64, blockHash common.L1BlockHash) error {
+func HandleBlockArrivedAfterBatches(ctx context.Context, dbtx *sqlx.Tx, _ int64, blockHash common.L1BlockHash) error {
 	_, err := dbtx.ExecContext(ctx, "update batch set is_canonical=true where l1_proof_hash=?", blockHash.Bytes())
 	return err
 }
 
-func FetchBlockHeader(ctx context.Context, db *sql.DB, hash common.L1BlockHash) (*types.Header, error) {
+func FetchBlockHeader(ctx context.Context, db *sqlx.DB, hash common.L1BlockHash) (*types.Header, error) {
 	return fetchBlock(ctx, db, " where hash=?", hash.Bytes())
 }
 
-func FetchHeadBlock(ctx context.Context, db *sql.DB) (*types.Header, error) {
+func FetchHeadBlock(ctx context.Context, db *sqlx.DB) (*types.Header, error) {
 	return fetchBlock(ctx, db, "order by id desc limit 1")
 }
 
-func FetchBlockHeaderByHeight(ctx context.Context, db *sql.DB, height *big.Int) (*types.Header, error) {
+func FetchBlockHeaderByHeight(ctx context.Context, db *sqlx.DB, height *big.Int) (*types.Header, error) {
 	return fetchBlockHeader(ctx, db, "where is_canonical=true and height=?", height.Int64())
 }
 
-func GetBlockId(ctx context.Context, db *sql.Tx, hash common.L1BlockHash) (int64, error) {
+func GetBlockId(ctx context.Context, db *sqlx.Tx, hash common.L1BlockHash) (int64, error) {
 	var id int64
 	err := db.QueryRowContext(ctx, "select id from block where hash=? ", hash.Bytes()).Scan(&id)
 	if err != nil {
@@ -110,7 +112,7 @@ func GetBlockId(ctx context.Context, db *sql.Tx, hash common.L1BlockHash) (int64
 	return id, err
 }
 
-func WriteL1Messages[T any](ctx context.Context, db *sql.Tx, blockId int64, messages []T, isValueTransfer bool) error {
+func WriteL1Messages[T any](ctx context.Context, db *sqlx.Tx, blockId int64, messages []T, isValueTransfer bool) error {
 	insert := "insert into l1_msg (message, block, is_transfer) values " + repeat("(?,?,?)", ",", len(messages))
 
 	args := make([]any, 0)
@@ -131,7 +133,7 @@ func WriteL1Messages[T any](ctx context.Context, db *sql.Tx, blockId int64, mess
 	return nil
 }
 
-func FetchL1Messages[T any](ctx context.Context, db *sql.DB, blockHash common.L1BlockHash, isTransfer bool) ([]T, error) {
+func FetchL1Messages[T any](ctx context.Context, db *sqlx.DB, blockHash common.L1BlockHash, isTransfer bool) ([]T, error) {
 	var result []T
 	query := "select message from l1_msg m join block b on m.block=b.id where b.hash = ? and is_transfer = ?"
 	rows, err := db.QueryContext(ctx, query, blockHash.Bytes(), isTransfer)
@@ -162,7 +164,7 @@ func FetchL1Messages[T any](ctx context.Context, db *sql.DB, blockHash common.L1
 	return result, nil
 }
 
-func WriteRollup(ctx context.Context, dbtx *sql.Tx, rollup *common.RollupHeader, blockId int64, internalHeader *common.CalldataRollupHeader) error {
+func WriteRollup(ctx context.Context, dbtx *sqlx.Tx, rollup *common.RollupHeader, blockId int64, internalHeader *common.CalldataRollupHeader) error {
 	// Write the encoded header
 	data, err := rlp.EncodeToBytes(rollup)
 	if err != nil {
@@ -183,7 +185,7 @@ func WriteRollup(ctx context.Context, dbtx *sql.Tx, rollup *common.RollupHeader,
 	return nil
 }
 
-func FetchReorgedRollup(ctx context.Context, db *sql.DB, reorgedBlocks []common.L1BlockHash) (*common.L2BatchHash, error) {
+func FetchReorgedRollup(ctx context.Context, db *sqlx.DB, reorgedBlocks []common.L1BlockHash) (*common.L2BatchHash, error) {
 	whereClause := repeat(" b.hash=? ", "OR", len(reorgedBlocks))
 
 	query := "select r.hash from rollup r join block b on r.compression_block=b.id where " + whereClause
@@ -204,7 +206,7 @@ func FetchReorgedRollup(ctx context.Context, db *sql.DB, reorgedBlocks []common.
 	return rollup, nil
 }
 
-func FetchRollupMetadata(ctx context.Context, db *sql.DB, hash common.L2RollupHash) (*common.PublicRollupMetadata, error) {
+func FetchRollupMetadata(ctx context.Context, db *sqlx.DB, hash common.L2RollupHash) (*common.PublicRollupMetadata, error) {
 	var startSeq int64
 	var startTime uint64
 
@@ -223,7 +225,7 @@ func FetchRollupMetadata(ctx context.Context, db *sql.DB, hash common.L2RollupHa
 	return rollup, nil
 }
 
-func fetchBlockHeader(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*types.Header, error) {
+func fetchBlockHeader(ctx context.Context, db *sqlx.DB, whereQuery string, args ...any) (*types.Header, error) {
 	var header string
 	query := "select header from block " + whereQuery
 	var err error
@@ -242,7 +244,7 @@ func fetchBlockHeader(ctx context.Context, db *sql.DB, whereQuery string, args .
 	return decodeHeader([]byte(header))
 }
 
-func fetchBlock(ctx context.Context, db *sql.DB, whereQuery string, args ...any) (*types.Header, error) {
+func fetchBlock(ctx context.Context, db *sqlx.DB, whereQuery string, args ...any) (*types.Header, error) {
 	return fetchBlockHeader(ctx, db, whereQuery, args...)
 }
 
@@ -259,12 +261,12 @@ func decodeHeader(b []byte) (*types.Header, error) {
 	return h, nil
 }
 
-func UpdateBlockProcessed(ctx context.Context, dbtx *sql.Tx, block common.L1BlockHash) error {
+func UpdateBlockProcessed(ctx context.Context, dbtx *sqlx.Tx, block common.L1BlockHash) error {
 	_, err := dbtx.ExecContext(ctx, "update block set processed=true where hash=?", block.Bytes())
 	return err
 }
 
-func SelectUnprocessedBlocks(ctx context.Context, dbtx *sql.Tx) ([]uint64, error) {
+func SelectUnprocessedBlocks(ctx context.Context, dbtx *sqlx.Tx) ([]uint64, error) {
 	query := "select id from block where processed=false"
 	rows, err := dbtx.QueryContext(ctx, query)
 	if err != nil {
@@ -284,17 +286,17 @@ func SelectUnprocessedBlocks(ctx context.Context, dbtx *sql.Tx) ([]uint64, error
 	return ids, rows.Err()
 }
 
-func DeleteUnprocessedRollups(ctx context.Context, tx *sql.Tx) error {
+func DeleteUnprocessedRollups(ctx context.Context, tx *sqlx.Tx) error {
 	_, err := tx.ExecContext(ctx, "delete from rollup where compression_block in (select id from block where processed=false)")
 	return err
 }
 
-func DeleteUnprocessedL1Messages(ctx context.Context, tx *sql.Tx) error {
+func DeleteUnprocessedL1Messages(ctx context.Context, tx *sqlx.Tx) error {
 	_, err := tx.ExecContext(ctx, "delete from l1_msg where block in (select id from block where processed=false)")
 	return err
 }
 
-func DeleteUnProcessedBlock(ctx context.Context, tx *sql.Tx) error {
+func DeleteUnProcessedBlock(ctx context.Context, tx *sqlx.Tx) error {
 	_, err := tx.ExecContext(ctx, "delete from block where processed=false")
 	return err
 }

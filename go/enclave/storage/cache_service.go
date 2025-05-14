@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -15,7 +16,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	"github.com/TwiN/gocache/v2"
-	"github.com/dgraph-io/ristretto/v2"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -23,38 +23,34 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
-const (
-	cacheCost = 1
-)
-
 type CacheService struct {
 	// cache for the immutable blocks headers
-	blockCache *ristretto.Cache[[]byte, *types.Header]
+	blockCache *gocache.Cache
 
 	// stores batches using the sequence number as key
-	batchCacheBySeqNo *ristretto.Cache[uint64, *common.BatchHeader]
+	batchCacheBySeqNo *gocache.Cache
 
 	// mapping between the hash and the sequence number
 	// note:  to fetch a batch by hash will require 2 cache hits
-	seqCacheByHash *ristretto.Cache[[]byte, *big.Int]
+	seqCacheByHash *gocache.Cache
 
 	// mapping between the height and the sequence number
 	// note: to fetch a batch by height will require 2 cache hits
-	seqCacheByHeight *ristretto.Cache[uint64, *big.Int]
+	seqCacheByHeight *gocache.Cache
 
 	// store the converted ethereum header which is passed to the evm
-	convertedGethHeaderCache *ristretto.Cache[[]byte, *types.Header]
+	convertedGethHeaderCache *gocache.Cache
 
 	// batch hash - geth converted hash
-	convertedHashCache *ristretto.Cache[[]byte, *gethcommon.Hash]
+	convertedHashCache *gocache.Cache
 
 	// from address ( either eoa or contract) to the id of the db entry
-	eoaCache             *ristretto.Cache[[]byte, *uint64]
-	contractAddressCache *ristretto.Cache[[]byte, *enclavedb.Contract]
-	eventTopicCache      *ristretto.Cache[[]byte, *enclavedb.EventTopic]
+	eoaCache             *gocache.Cache
+	contractAddressCache *gocache.Cache
+	eventTopicCache      *gocache.Cache
 
 	// from contract_address||event_sig to the event_type object
-	eventTypeCache *ristretto.Cache[[]byte, *enclavedb.EventType]
+	eventTypeCache *gocache.Cache
 
 	// store the last few batches together with the content
 	lastBatchesCache *gocache.Cache
@@ -65,7 +61,7 @@ type CacheService struct {
 	receiptCache *gocache.Cache
 
 	// store the enclaves from the network
-	attestedEnclavesCache *ristretto.Cache[[]byte, *AttestedEnclave]
+	attestedEnclavesCache *gocache.Cache
 
 	// cache for sequencer enclave IDs
 	sequencerIDsCache []common.EnclaveID
@@ -93,25 +89,25 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 	}
 
 	return &CacheService{
-		blockCache: newLFUCache[[]byte, *types.Header](logger, nrL1Blocks),
+		blockCache: newFifoCache(logger, nrL1Blocks, gocache.NoExpiration),
 
-		batchCacheBySeqNo: newLFUCache[uint64, *common.BatchHeader](logger, nrBatches),
-		seqCacheByHash:    newLFUCache[[]byte, *big.Int](logger, nrBatches),
-		seqCacheByHeight:  newLFUCache[uint64, *big.Int](logger, nrBatches),
+		batchCacheBySeqNo: newFifoCache(logger, nrBatches, gocache.NoExpiration),
+		seqCacheByHash:    newFifoCache(logger, nrBatches, gocache.NoExpiration),
+		seqCacheByHeight:  newFifoCache(logger, nrBatches, gocache.NoExpiration),
 
-		convertedGethHeaderCache: newLFUCache[[]byte, *types.Header](logger, nrConvertedEth),
-		convertedHashCache:       newLFUCache[[]byte, *gethcommon.Hash](logger, nrConvertedEth),
+		convertedGethHeaderCache: newFifoCache(logger, nrConvertedEth, gocache.NoExpiration),
+		convertedHashCache:       newFifoCache(logger, nrConvertedEth, gocache.NoExpiration),
 
-		eoaCache:             newLFUCache[[]byte, *uint64](logger, nrEOA),
-		contractAddressCache: newLFUCache[[]byte, *enclavedb.Contract](logger, nrContractAddresses),
-		eventTypeCache:       newLFUCache[[]byte, *enclavedb.EventType](logger, nrEventTypes),
-		eventTopicCache:      newLFUCache[[]byte, *enclavedb.EventTopic](logger, nrEventTypes),
+		eoaCache:             newFifoCache(logger, nrEOA, gocache.NoExpiration),
+		contractAddressCache: newFifoCache(logger, nrContractAddresses, gocache.NoExpiration),
+		eventTypeCache:       newFifoCache(logger, nrEventTypes, gocache.NoExpiration),
+		eventTopicCache:      newFifoCache(logger, nrEventTypes, gocache.NoExpiration),
 
-		receiptCache:          newFifoCache(nrReceipts, receiptsTimeout),
-		attestedEnclavesCache: newLFUCache[[]byte, *AttestedEnclave](logger, nrEnclaves),
+		receiptCache:          newFifoCache(logger, nrReceipts, receiptsTimeout),
+		attestedEnclavesCache: newFifoCache(logger, nrEnclaves, gocache.NoExpiration),
 
 		// cache the latest received batches to avoid a lookup when streaming it back to the host after processing
-		lastBatchesCache: newFifoCache(nrBatchesWithContent, gocache.NoExpiration),
+		lastBatchesCache: newFifoCache(logger, nrBatchesWithContent, gocache.NoExpiration),
 
 		sequencerIDsCache: make([]common.EnclaveID, 0),
 
@@ -122,26 +118,24 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 func (cs *CacheService) Stop() {
 	cs.receiptCache.StopJanitor()
 	cs.lastBatchesCache.StopJanitor()
+	cs.blockCache.StopJanitor()
+	cs.batchCacheBySeqNo.StopJanitor()
+	cs.seqCacheByHash.StopJanitor()
+	cs.seqCacheByHeight.StopJanitor()
+	cs.convertedGethHeaderCache.StopJanitor()
+	cs.convertedHashCache.StopJanitor()
+	cs.eoaCache.StopJanitor()
+	cs.contractAddressCache.StopJanitor()
+	cs.eventTopicCache.StopJanitor()
+	cs.eventTypeCache.StopJanitor()
+	cs.attestedEnclavesCache.StopJanitor()
 }
 
-func newLFUCache[K ristretto.Key, V any](logger gethlog.Logger, nrElem int) *ristretto.Cache[K, V] {
-	ristrettoCache, err := ristretto.NewCache(&ristretto.Config[K, V]{
-		NumCounters: int64(10 * nrElem), // 10 times the expected elements
-		MaxCost:     int64(nrElem),      // calculate the max cost
-		BufferItems: 64,                 // number of keys per Get buffer.
-		Metrics:     true,
-	})
-	if err != nil {
-		logger.Crit("Could not initialise ristretto cache", log.ErrKey, err)
-	}
-	return ristrettoCache
-}
-
-func newFifoCache(nrElem int, ttl time.Duration) *gocache.Cache {
+func newFifoCache(logger gethlog.Logger, nrElem int, ttl time.Duration) *gocache.Cache {
 	cache := gocache.NewCache().WithMaxSize(nrElem).WithEvictionPolicy(gocache.FirstInFirstOut).WithDefaultTTL(ttl)
 	err := cache.StartJanitor()
 	if err != nil {
-		panic("failed to start cache.")
+		logger.Crit("Could not initialise fifo cache", log.ErrKey, err)
 	}
 	return cache
 }
@@ -161,7 +155,7 @@ func (cs *CacheService) CacheBatch(ctx context.Context, batch *core.Batch) {
 	// should always contain the canonical batch because the cache is overwritten by each new batch after a reorg
 	cacheValue(ctx, cs.seqCacheByHeight, cs.logger, batch.NumberU64()+1, batch.SeqNo())
 
-	cs.lastBatchesCache.Set(fmt.Sprintf("%d", batch.SeqNo().Uint64()), batch)
+	cacheValue(ctx, cs.lastBatchesCache, cs.logger, batch.SeqNo(), batch)
 }
 
 func (cs *CacheService) ReadBlock(ctx context.Context, key gethcommon.Hash, onCacheMiss func() (*types.Header, error)) (*types.Header, error) {
@@ -242,7 +236,7 @@ func (cs *CacheService) CacheReceipts(results core.TxExecResults) {
 }
 
 func (cs *CacheService) ReceiptDoesNotExist(txHash gethcommon.Hash) {
-	cs.receiptCache.Set(txHash.String(), &CachedReceipt{})
+	cacheValue(context.Background(), cs.receiptCache, cs.logger, txHash.Bytes(), &CachedReceipt{})
 }
 
 func (cs *CacheService) ReadReceipt(_ context.Context, txHash gethcommon.Hash) (*CachedReceipt, error) {
@@ -307,13 +301,22 @@ func (cs *CacheService) ReadSequencerIDs(_ context.Context, onCacheMiss func() (
 
 // getCachedValue - returns the cached value for the provided key. If the key is not found, then invoke the 'onCacheMiss' function
 // which returns the value, and cache it
-func getCachedValue[K ristretto.Key, V any](ctx context.Context, cache *ristretto.Cache[K, V], logger gethlog.Logger, key K, onCacheMiss func() (V, error), cacheIfMissing bool) (V, error) {
-	value, found := cache.Get(key)
+func getCachedValue[V any](ctx context.Context, cache *gocache.Cache, logger gethlog.Logger, key any, onCacheMiss func() (V, error), cacheIfMissing bool) (V, error) {
+	var result V
+
+	value, found := cache.Get(toString(key))
 	if found {
-		return value, nil
+		// Safely convert the cached value to type V
+		if typedValue, ok := value.(V); ok {
+			return typedValue, nil
+		}
+		// Log the type mismatch
+		logger.Crit("Cached value type mismatch", "key", key, "expected", fmt.Sprintf("%T", result), "actual", fmt.Sprintf("%T", value))
+		// Continue to fetch fresh value
 	}
+
 	if onCacheMiss == nil {
-		return value, errutil.ErrNotFound
+		return result, errutil.ErrNotFound
 	}
 
 	v, err := onCacheMiss()
@@ -326,15 +329,22 @@ func getCachedValue[K ristretto.Key, V any](ctx context.Context, cache *ristrett
 	return v, nil
 }
 
-func cacheValue[K ristretto.Key, V any](_ context.Context, cache *ristretto.Cache[K, V], logger gethlog.Logger, key K, v V) {
-	added := cache.Set(key, v, cacheCost)
-	if !added {
-		logger.Debug("Did not store value in cache")
-	}
+func cacheValue(_ context.Context, cache *gocache.Cache, _ gethlog.Logger, key any, v any) {
+	cache.Set(toString(key), v)
 }
 
-//func logCacheMetrics(c *ristretto.Cache, name string, logger gethlog.Logger) {
-//	metrics := c.Metrics
-//	logger.Info(fmt.Sprintf("Cache %s metrics: Hits: %d, Misses: %d, Cost Added: %d",
-//		name, metrics.Hits(), metrics.Misses(), metrics.CostAdded()))
-//}
+// if anything else is presented, it will use MD5
+func toString(key any) string {
+	switch k := key.(type) {
+	case string:
+		return k
+	case []byte:
+		return base64.StdEncoding.EncodeToString(k)
+	case uint64, int64, int, uint:
+		return fmt.Sprint(k)
+	case *big.Int:
+		return fmt.Sprint(k)
+	default:
+		panic("should not happen. Invalid cache type")
+	}
+}

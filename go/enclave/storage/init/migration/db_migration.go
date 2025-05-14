@@ -2,7 +2,6 @@ package migration
 
 import (
 	"context"
-	"database/sql"
 	"embed"
 	"errors"
 	"fmt"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
@@ -19,7 +20,7 @@ import (
 
 const currentMigrationVersionKey = "CURRENT_MIGRATION_VERSION"
 
-func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
+func DBMigration(db *sqlx.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 	migrationFiles, err := readMigrationFiles(sqlFiles)
 	if err != nil {
 		return err
@@ -57,8 +58,8 @@ func DBMigration(db *sql.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 	return nil
 }
 
-func executeMigration(db *sql.DB, content string, migrationOrder int64) error {
-	tx, err := db.Begin()
+func executeMigration(db *sqlx.DB, content string, migrationOrder int64) error {
+	tx, err := db.Beginx()
 	if err != nil {
 		return err
 	}
