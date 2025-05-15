@@ -105,7 +105,7 @@ jobs:
            -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
            -enclave_registry_addr=0x88950F0D58B832fafb6164c0D56fA18Bd3570cf3 \
            -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
-           -sequencer_url=http://obscuronode-2-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:80
+           -enclave_ids=0x89632f5e4e3e22e7f94387138cc92d287e95a6f9
 
       -  name: 'Save sequencer permissioning container logs'
          run: |
