@@ -113,46 +113,22 @@ jobs:
 
     strategy:
       matrix:
-        host_id: [ 0,1,2 ]
+        host_id: [ 2 ]
         include:
           # Ensure there is a single genesis node
           - is_genesis: true
-            host_id: 0
-          - is_genesis: false
-            host_id: 1
-          - is_genesis: false
             host_id: 2
           # Ensure there is a single sequencer
           - node_type: sequencer
-            host_id: 0
-          - node_type: validator
-            host_id: 1
-          - node_type: validator
             host_id: 2
           # Hardcoded lookup keys because GH actions doesn't let you build them inline with the host_id
-          - node_pk_lookup: ACCOUNT_PK_NODE_0
-            host_id: 0
-          - node_pk_lookup: ACCOUNT_PK_NODE_1
-            host_id: 1
           - node_pk_lookup: ACCOUNT_PK_NODE_2
             host_id: 2
-          - node_addr_lookup: ACCOUNT_ADDR_NODE_0
-            host_id: 0
-          - node_addr_lookup: ACCOUNT_ADDR_NODE_1
-            host_id: 1
           - node_addr_lookup: ACCOUNT_ADDR_NODE_2
             host_id: 2
-          - node_l1_ws_lookup: L1_WS_URL_0
-            host_id: 0
-          - node_l1_ws_lookup: L1_WS_URL_1
-            host_id: 1
           - node_l1_ws_lookup: L1_WS_URL_2
             host_id: 2
           # sequencer has an HA setup with 2 enclaves
-          - num_enclaves: 2
-            host_id: 0
-          - num_enclaves: 1
-            host_id: 1
           - num_enclaves: 1
             host_id: 2
 
@@ -191,7 +167,7 @@ jobs:
               -host_id=${{ vars[matrix.node_addr_lookup] }} \
               -l1_ws_url=${{ secrets[matrix.node_l1_ws_lookup] }} \
               -private_key=${{ secrets[matrix.node_pk_lookup] }} \
-              -sequencer_addr=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
+              -sequencer_addr=obscuronode-2-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
               -host_public_p2p_addr=obscuronode-${{ matrix.host_id }}-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com:10000 \
               -host_p2p_port=10000 \
               -enclave_docker_image=${{ vars.L2_ENCLAVE_DOCKER_BUILD_TAG }} \
@@ -206,65 +182,3 @@ jobs:
               -l1_blob_archive_url=${{ vars.L1_BLOB_ARCHIVE_URL }} \
               -postgres_db_host=postgres://tenuser:${{ secrets.TEN_POSTGRES_USER_PWD }}@postgres-ten-${{  github.event.inputs.testnet_type }}.postgres.database.azure.com:5432/ \
               upgrade'
-
-  check-obscuro-is-healthy:
-    needs:
-      - build
-      - deploy
-    runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.testnet_type }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: "Wait until obscuro node is healthy"
-        shell: bash
-        run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-
-  deploy-faucet-on-dispatch:
-    uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
-    if: ${{ github.event_name == 'workflow_dispatch' }}
-    with:
-      testnet_type:  ${{ github.event.inputs.testnet_type }}
-    secrets: inherit
-    needs:
-      - check-obscuro-is-healthy
-
-  deploy-faucet-on-schedule:
-    uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
-    if: ${{ github.event_name == 'schedule' }}
-    with:
-      testnet_type:  'dev-testnet'
-    secrets: inherit
-    needs:
-      - check-obscuro-is-healthy
-
-  obscuro-test-signal-on-dispatch:
-    runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.testnet_type }}
-    needs:
-      - deploy-faucet-on-dispatch
-    steps:
-      - name: 'Send a repository dispatch to obscuro-test on upgrade of dev-testnet'
-        if: ${{ github.event.inputs.testnet_type == 'dev-testnet' }}
-        run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
-
-      - name: 'Send a repository dispatch to obscuro-test on upgrade of uat-testnet'
-        if: ${{ github.event.inputs.testnet_type == 'uat-testnet' }}
-        run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "uat_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
-
-  obscuro-test-signal-on-schedule:
-    runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.testnet_type }}
-    needs:
-      - deploy-faucet-on-schedule
-    steps:
-      - name: 'Send a repository dispatch to obscuro-test on upgrade of dev-testnet'
-        run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "dev_testnet_upgraded", "client_payload": { "ref": "${{ github.ref_name }}" }'
