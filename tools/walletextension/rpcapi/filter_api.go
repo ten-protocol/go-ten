@@ -68,7 +68,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 	services.Audit(api.we, services.DebugLevel, "start Logs subscription %v", crit)
 	subNotifier, user, err := getUserAndNotifier(ctx, api)
 	if err != nil {
-		services.Audit(api.we, services.ErrorLevel, "Failed to get user and notifier: %v", err)
+		services.Audit(api.we, services.DebugLevel, "Failed to get user and notifier: %v", err)
 		return nil, err
 	}
 
@@ -200,14 +200,14 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	requestStartTime := time.Now()
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
-		services.Audit(api.we, services.ErrorLevel, "Failed to extract user: %v", err)
+		services.Audit(api.we, services.DebugLevel, "Failed to extract user: %v", err)
 		return nil, err
 	}
 
 	rateLimitAllowed, requestUUID := api.we.RateLimiter.Allow(gethcommon.Address(user.ID))
 	defer api.we.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	if !rateLimitAllowed {
-		services.Audit(api.we, services.WarnLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
+		services.Audit(api.we, services.DebugLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
 		return nil, fmt.Errorf("rate limit exceeded")
 	}
 
@@ -270,7 +270,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	if err != nil {
 		return nil, err
 	}
-	services.Audit(api.we, services.InfoLevel, "RPC call. uid=%s, method=%s args=%v result=%v error=%v time=%d", hexutils.BytesToHex(user.ID), method, crit, res, err, time.Since(requestStartTime).Milliseconds())
+	services.Audit(api.we, services.DebugLevel, "RPC call. uid=%s, method=%s args=%v result=%v error=%v time=%d", hexutils.BytesToHex(user.ID), method, crit, res, err, time.Since(requestStartTime).Milliseconds())
 	return *res, err
 }
 
