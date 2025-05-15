@@ -230,7 +230,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 		NodeRPCHTTPAddress:      validatorHTTP,
 		NodeRPCWebsocketAddress: validatorWS,
 		LogPath:                 "sys_out",
-		VerboseFlag:             false,
+		LogLevel:                3, // info level
 		DBType:                  "sqlite",
 		TenChainID:              integration.TenChainID,
 	}

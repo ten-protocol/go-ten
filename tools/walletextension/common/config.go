@@ -12,8 +12,8 @@ type Config struct {
 	NodeRPCWebsocketAddress string
 
 	LogPath        string
+	LogLevel       int    // Log level for the application (0=critical, 1=error, 2=warn, 3=info, 4=debug)
 	DBPathOverride string // Overrides the database file location. Used in tests.
-	VerboseFlag    bool
 
 	DBType          string
 	DBConnectionURL string
