@@ -1,86 +1,106 @@
-import {useLocalStorage} from "@/hooks/useLocalStorage";
-import {useEffect, useState} from "react";
-import { useSignTypedData} from "wagmi";
-import {accountIsAuthenticated, authenticateUser} from "@/api/gateway";
-import {getAddress} from "viem";
-import {useQuery} from "@tanstack/react-query";
-import {generateEIP712} from "@/lib/eip712";
-import {toast} from "sonner";
+import { useEffect, useState } from 'react';
+import { useAccount, useSignTypedData } from 'wagmi';
+import { accountIsAuthenticated, authenticateUser, revokeAccountsApi } from '@/api/gateway';
+import { Address, getAddress } from 'viem';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { generateEIP712 } from '@/lib/eip712';
+import { useUiStore } from '@/stores/ui.store';
+import { useLocalStorage } from 'usehooks-ts';
 
-
-
-
-export function useTenChainAuth(address: `0x${string}`) {
-    const [tenToken] = useLocalStorage<string|null>('ten_token', null)
-    const [signature, setSignature] = useState<`0x${string}` | null>(null);
-    const { signTypedDataAsync } = useSignTypedData()
+export function useTenChainAuth(walletAddress?: Address) {
+    const { connector } = useAccount();
+    const authEvents = useUiStore((state) => state.authEvents);
+    const [address, setAddress] = useState<Address | undefined>(walletAddress);
+    const [tenToken] = useLocalStorage<string | null>('ten_token', null);
+    const {
+        data: signature,
+        signTypedData,
+        error: signError,
+        isSuccess: signSuccess,
+    } = useSignTypedData();
     const [isLoading, setIsLoading] = useState<boolean>(false);
 
     const {
-        data:beAuthCheck,
-        isPending: beAuthCheckLoading,
+        data: beAuthCheck,
         error: beAuthCheckError,
-        isSuccess: beAuthCheckSuccess,
         refetch: beAuthCheckRefetch,
-    } = useQuery({queryKey:[`beAuthCheck`, address, signature], queryFn: () => accountIsAuthenticated(tenToken ?? '', address)})
+    } = useQuery({
+        queryKey: [`beAuthCheck`, address, signature, authEvents],
+        queryFn: () => accountIsAuthenticated(tenToken ?? '', address ?? ''),
+        enabled: !!address,
+    });
 
-
-    useEffect(() => {
-        toast.error("Authentication error", {
-            description: "Error: "+beAuthCheckError?.message,
-        })
-
-        if (beAuthCheckSuccess) {
-            toast("Address successfully authenticated", {
-                description: "You're now ready to explore TEN."
-            })
-        }
-    }, [beAuthCheckError, beAuthCheckSuccess])
-
+    const authenticationMutation = useMutation({
+        mutationFn: (signature) => {
+            return authenticateWalletWithBE(signature);
+        },
+    });
 
     const getSignature = async () => {
         if (!tenToken) return null;
 
         const tokenValue = tenToken.startsWith('0x') ? tenToken : '0x' + tenToken;
-        let signature = null
 
         try {
             const checksummedAddress = getAddress(tokenValue);
-
-            signature  = await signTypedDataAsync(generateEIP712(checksummedAddress));
-
-            setSignature(signature);
+            signTypedData(generateEIP712(checksummedAddress));
         } catch (err) {
-            console.error('Invalid address format:', err);
+            throw err;
         }
-
-        return signature
-    }
+    };
 
     const authenticateWalletWithBE = async (signature: string) => {
         if (!tenToken) return null;
 
-        await authenticateUser(tenToken, {
+        const response = await authenticateUser(tenToken, {
             signature,
-            address
+            address,
         });
 
-        await beAuthCheckRefetch()
-    }
-
-    const authenticateAccount = async () => {
-        setIsLoading(true);
-        const newSignature = await getSignature()
-        if (newSignature) {
-            await authenticateWalletWithBE(newSignature)
+        if (response === 'internal error') {
+            setIsLoading(false);
+            throw Error('Unable to authenticate wallet with the network.');
+        } else if (response === 'success') {
+            await beAuthCheckRefetch();
+            setIsLoading(false);
         }
-        setIsLoading(false);
-    }
+    };
 
+    const authenticateAccount = async (walletAddress?: Address) => {
+        setIsLoading(true);
+
+        if (walletAddress) {
+            setAddress(walletAddress);
+        }
+        await getSignature();
+    };
+
+    useEffect(() => {
+        if (signSuccess) {
+            authenticationMutation.mutate(signature);
+        }
+    }, [signTypedData, signSuccess]);
+
+    useEffect(() => {
+        if (authenticationMutation.isSuccess || authenticationMutation.isError) {
+            setIsLoading(false);
+        }
+    }, [authenticationMutation.status]);
+
+    const revokeAccount = async () => {
+        if (!tenToken) {
+            throw Error('Ten token not found.');
+        }
+
+        await revokeAccountsApi(tenToken);
+    };
 
     return {
         isAuthenticated: !!beAuthCheck?.status,
         isAuthenticatedLoading: isLoading,
-        authenticateAccount
-    }
+        authenticateAccount,
+        revokeAccount,
+        beAuthCheckError,
+        authenticationError: authenticationMutation.error || signError,
+    };
 }

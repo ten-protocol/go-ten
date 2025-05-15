@@ -1,44 +1,25 @@
 export const supportedWallets = [
     {
-        name: "MetaMask",
-        logo: "/assets/walletLogos/metamaskLogo.png",
-        supported: true,
-        supportStatus: ""
+        name: 'MetaMask',
+        logo: '/assets/walletLogos/metamaskLogo.png',
+        supportStatus: '',
     },
     {
-        name: "Trust Wallet",
-        logo: "/assets/walletLogos/trustLogo.png",
-        supported: false,
-        supportStatus: ""
+        name: 'Coinbase Wallet',
+        logo: '/assets/walletLogos/coinbaseLogo.png',
+        supportStatus: '',
+        id: 'com.coinbase.wallet',
     },
     {
-        name: "Coinbase Wallet",
-        logo: "/assets/walletLogos/coinbaseLogo.png",
-        supported: true,
-        supportStatus: ""
+        name: 'Rabby Wallet',
+        logo: '/assets/walletLogos/rabbyLogo.png',
+        supportStatus: '',
+        id: 'io.rabby',
     },
     {
-        name: "Rabby",
-        logo: "/assets/walletLogos/rabbyLogo.png",
-        supported: true,
-        supportStatus: ""
+        name: 'Brave Wallet',
+        logo: '/assets/walletLogos/braveLogo.png',
+        supportStatus: '',
+        id: 'com.brave.wallet',
     },
-    {
-        name: "Rainbow",
-        logo: "/assets/walletLogos/rainbowLogo.png",
-        supported: true,
-        supportStatus: ""
-    },
-    {
-        name: "BitGet",
-        logo: "/assets/walletLogos/bitgetLogo.png",
-        supported: true,
-        supportStatus: ""
-    },
-    {
-        name: "Brave",
-        logo: "/assets/walletLogos/braveLogo.png",
-        supported: true,
-        supportStatus: ""
-    }
-]
+];

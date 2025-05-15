@@ -28,7 +28,7 @@ export default function PrimaryCard({ children }: Props) {
                 />
 
                 <div
-                    className="z-0 m-8 grow"
+                    className="z-0 m-10 grow"
                     style={{
                         opacity: isInView ? 1 : 0,
                         filter: isInView ? 'blur(0)' : 'blur(3rem)',
