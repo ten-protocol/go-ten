@@ -13,7 +13,7 @@
 #
 # To upgrade sepolia the user must type 'confirm' in the confirmation field
 
-name: '[M] Upgrade Testnet L2'
+name: '[M] Upgrade Testnet L2 - emergency branch val2->seq'
 run-name: '[M] Upgrade Testnet L2 ( ${{ github.event.inputs.testnet_type }} )'
 on:
 #  schedule:
