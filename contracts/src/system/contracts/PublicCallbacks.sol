@@ -29,11 +29,11 @@ contract PublicCallbacks is Initializable {
         uint256 baseFee;
     }
 
-    mapping(uint256 => Callback) public callbacks;
+    mapping(uint256 callbackId => Callback callback) public callbacks;
     uint256 private nextCallbackId;
     uint256 private lastUnusedCallbackId;
 
-    mapping(uint256 => uint256) public callbackBlockNumber;
+    mapping(uint256 callbackId => uint256 blockNumber) public callbackBlockNumber;
 
     // This modifier prevents using the callback in the same block it was registered (before the automation has a chance to do it)
     // this ensures that one can't commit and uncommit in the same transaction based on the outcome of reattempting.
@@ -43,8 +43,6 @@ contract PublicCallbacks is Initializable {
     }
 
     function initialize() external initializer {
-        nextCallbackId = 0;
-        lastUnusedCallbackId = 0;
     }
 
     function addCallback(address callback, bytes calldata data, uint256 value) internal returns (uint256 callbackId) {

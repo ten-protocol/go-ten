@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
 import "../interfaces/IFees.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -40,7 +40,8 @@ contract Fees is Initializable, OwnableUpgradeable, IFees {
 
     // The EOA owner can collect the fees
     function withdrawalCollectedFees() external onlyOwner {
-        payable(owner()).transfer(address(this).balance);
+        (bool success, ) = payable(owner()).call{value: address(this).balance}("");
+        require(success, "Failed to send Ether");
     }
 
     // For now just the whole balance as we only collect fees

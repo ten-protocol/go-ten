@@ -24,12 +24,12 @@ contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable, Reentranc
      /**
      * @dev Mapping to track spent withdrawals and prevent double-spending
      */
-    mapping(bytes32 => bool) public isWithdrawalSpent;
+    mapping(bytes32 withdrawalHash => bool isWithdrawalSpent) public isWithdrawalSpent;
     
     /**
      * @dev Mapping to track saved bundles and prevent double-spending
      */
-    mapping(bytes32 =>bool) public isBundleSaved;
+    mapping(bytes32 bundleHash => bool isBundleSaved) public isBundleSaved;
 
     MessageBus.IMessageBus public messageBus;
     MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;

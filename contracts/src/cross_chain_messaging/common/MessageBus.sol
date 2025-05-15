@@ -46,15 +46,15 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
 
     // This mapping contains the block timestamps where messages become valid
     // It is used in order to have challenge period.
-    mapping(bytes32 => uint256) messageFinalityTimestamps;
+    mapping(bytes32 messageHash => uint256 messageFinalityTimestamp) messageFinalityTimestamps;
 
     // The stored messages, currently unconsumed.
-    mapping(address => mapping(uint32 => Structs.CrossChainMessage[])) messages;
+    mapping(address sender => mapping(uint32 topic => Structs.CrossChainMessage[] messages)) messages;
 
     // This stores the current sequence number that each address has reached.
     // Whenever a message is published, this sequence number increments.
     // This gives ordering to messages, guaranteed by us.
-    mapping(address => uint64) addressSequences;
+    mapping(address sender => uint64 sequence) addressSequences;
 
     IFees fees;
 

@@ -26,14 +26,14 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Ownab
     /**
      * @dev Mapping of enclaveID to whether it is attested
      */
-    mapping(address => bool) private attested;
+    mapping(address enclaveID => bool isAttested) private attested;
 
     /**
      * @dev Mapping of enclaveID to whether it is permissioned as a sequencer enclave. The enclaveID which initialises
      * the network secret is automatically permissioned as a sequencer. Beyond that, the contract owner can grant and revoke
      * sequencer status.
      */
-    mapping(address => bool) private sequencerEnclave;
+    mapping(address sequencerID => bool isSequencer) private sequencerEnclave;
 
     constructor() {
         _transferOwnership(msg.sender);

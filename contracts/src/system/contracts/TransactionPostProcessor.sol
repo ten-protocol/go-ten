@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: Apache 2
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
 import "../../lib/Transaction.sol";
 import "../interfaces/IOnBlockEndCallback.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title TransactionPostProcessor
@@ -32,18 +31,20 @@ contract TransactionPostProcessor is Initializable, AccessControl{
         _;
     }
 
-    IOnBlockEndCallback[] onBlockEndListeners;
+    IOnBlockEndCallback[] public onBlockEndListeners;
 
     function initialize(address eoaAdmin) public initializer {
         _grantRole(DEFAULT_ADMIN_ROLE, eoaAdmin);
         _grantRole(EOA_ADMIN_ROLE, eoaAdmin);
     }
 
-    function addOnBlockEndCallback(address callbackAddress) public onlyRole(EOA_ADMIN_ROLE) {
+    function addOnBlockEndCallback(address callbackAddress) external onlyRole(EOA_ADMIN_ROLE) {
+        require(callbackAddress != address(0), "Invalid callback address");
+        require(callbackAddress.code.length > 0, "Callback address must be a contract");
         onBlockEndListeners.push(IOnBlockEndCallback(callbackAddress));
     }
 
-    function onBlock(Structs.Transaction[] calldata transactions) public onlySelf {
+    function onBlock(Structs.Transaction[] calldata transactions) external onlySelf {
         if (transactions.length == 0) {
             revert("No transactions to convert");
         }

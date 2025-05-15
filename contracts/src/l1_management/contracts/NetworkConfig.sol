@@ -69,12 +69,12 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
 
     // simple storage for additional addresses
     string[] public addressNames;
-    mapping(string => address) public additionalAddresses;
+    mapping(string contractName => address contractAddress) public additionalAddresses;
 
     /**
      * @dev Mapping of contract names to their versions
      */
-    mapping(string => ContractVersion) private contractVersions;
+    mapping(string contractName => ContractVersion contractVersion) private contractVersions;
 
     /**
      * @dev Storage slot for the fork manager
