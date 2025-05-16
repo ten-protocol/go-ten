@@ -77,6 +77,7 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		logger.Info("encryptionKeySource set to 'new' -> checking if there is an existing encryption key that we can use")
 		var found bool
 		encryptionKey, found, _ = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
+		logger.Info("Encryption key status", "found", found, "error", err)
 		if !found {
 			logger.Info("No existing encryption key found, generating new random encryption key")
 			encryptionKey, err = common.GenerateRandomKey()

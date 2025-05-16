@@ -72,7 +72,7 @@ func TestTenGateway(t *testing.T) {
 		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
 		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
 		LogPath:                        "sys_out",
-		VerboseFlag:                    false,
+		LogLevel:                       3, // info level
 		DBType:                         "sqlite",
 		TenChainID:                     443,
 		StoreIncomingTxs:               true,
