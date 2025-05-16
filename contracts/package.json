@@ -26,7 +26,7 @@
     "@openzeppelin/merkle-tree": "~1.0.7",
     "ethers": "^6.6.0",
     "hardhat-ignore-warnings": "^0.2.6",
-    "ten-hardhat-plugin": "^0.0.9"
+    "ten-hardhat-plugin": "^0.0.13"
   },
   "peerDependencies": {
     "@nomicfoundation/hardhat-verify" : "2.0.8",
