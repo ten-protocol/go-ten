@@ -40,8 +40,13 @@ Note: SGX itself cannot control the clock of a server. The trust element is more
 - The contract can check the signature against the TTO and will know to trust the timestamp of transctions from that "from".
 - The tx timestamp can be exposed to the smart contract via a precompile.
 - On receiving a tx, the contract will read the "from" and compare it against the trusted addressed that registered to play.
-- 
+ 
 
+## TL;DR:
 
+Session Keys are signed by a well-known cert. So the "Time" field from the tx object is populated and certified by the Gateway. 
+Via a precompile, we expose the "Time" field to the smart contracts.
+The certificate signature over the session key must also be submitted to the SC, when the game starts.
+The game will know that a tx signed by a session key was created on the gateway at the declared time.
 
 
