@@ -140,7 +140,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 
 	ethHeader, err := exec.gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("evmf: could not convert to eth header: %w", err)
 	}
 
 	gp := gethcore.GasPool(exec.gasEstimationCap)

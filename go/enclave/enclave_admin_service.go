@@ -255,7 +255,7 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 	// calculate the converted hash, and store it in the db for chaining of the converted chain
 	convertedHeader, err := e.gethEncodingService.CreateEthHeaderForBatch(ctx, extBatch.Header)
 	if err != nil {
-		return err
+		return fmt.Errorf("eas: could not create eth header for batch. Cause: %w", err)
 	}
 
 	// todo - review whether we need to lock here.

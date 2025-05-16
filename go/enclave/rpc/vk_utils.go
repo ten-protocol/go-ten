@@ -122,9 +122,11 @@ func withVKEncryption[P any, R any](
 	// 4. Call the function that knows how to validate the request
 	builder := &CallBuilder[P, R]{Status: NotSet, VK: vk, ctx: ctx}
 
+	callName := decodedRequest.Method
+
 	err := validate(decodedRequest.Params, builder, encManager)
 	if err != nil {
-		return responses.AsPlaintextError(errInt), responses.ToInternalError(err)
+		return responses.AsPlaintextError(errInt), responses.ToInternalError(fmt.Errorf("%s: error validating: %w", callName, err))
 	}
 	if builder.Err != nil {
 		return responses.AsEncryptedError(builder.Err, vk), nil //nolint:nilerr
@@ -134,7 +136,7 @@ func withVKEncryption[P any, R any](
 	// Note - it is the responsibility of this function to check that the authenticated address is authorised to view the data
 	err = execute(builder, encManager)
 	if err != nil {
-		return responses.AsPlaintextError(errInt), responses.ToInternalError(err)
+		return responses.AsPlaintextError(errInt), responses.ToInternalError(fmt.Errorf("%s: error executing: %w", callName, err))
 	}
 	if builder.Err != nil {
 		return responses.AsEncryptedError(builder.Err, vk), nil //nolint:nilerr
