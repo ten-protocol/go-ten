@@ -22,7 +22,10 @@ This game mechanics can only work on a chain with private shared state (the targ
 TEN already has the private state. 
 
 The TEN Gateway is a service running in SGX, which manages Viewing Keys and Session Keys on behalf of users.
-Because it is running SGX it can act as a timestamping oracle.
+
+Because it is the first point of contact for a user, it can act as a Timestamp oracle.
+
+Note: SGX itself cannot control the clock of a server. The trust element is more around it being a neutral central point.
 
 **The proposal is for the TEN GW to attest the timestamps from the transactions.**
 
