@@ -41,12 +41,12 @@ func NewGasEstimator(storage storage.Storage, chain TENChain, gasOracle gas.Orac
 	}
 }
 
-func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber, batch *common.BatchHeader, globalGasCap uint64) (uint64, error, common.SystemError) {
+func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber, batch *common.BatchHeader, globalGasCap uint64) (uint64, uint64, error, common.SystemError) {
 	// The message is run through the l1 publishing cost estimation for the current
 	// known head BlockHeader.
 	l1Cost, err := ge.gasOracle.EstimateL1CostForMsg(args, batch)
 	if err != nil {
-		return 0, nil, fmt.Errorf("failed to estimate L1 cost: %w", err)
+		return 0, 0, nil, fmt.Errorf("failed to estimate L1 cost: %w", err)
 	}
 
 	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
@@ -66,28 +66,28 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// but is quick.
 	executionGasEstimate, revert, gasPrice, userErr, sysErr := ge.EstimateGasSinglePass(ctx, args, blockNumber, globalGasCap)
 	if sysErr != nil {
-		return 0, nil, fmt.Errorf("system error during gas estimation: %w", sysErr)
+		return 0, 0, nil, fmt.Errorf("system error during gas estimation: %w", sysErr)
 	}
 
 	if userErr != nil {
-		return 0, userErr, nil
+		return 0, 0, userErr, nil
 	}
 
 	if len(revert) > 0 {
-		return 0, newRevertError(revert), nil
+		return 0, 0, newRevertError(revert), nil
 	}
 
 	totalGasEstimateUint64 := publishingGas.Uint64() + uint64(executionGasEstimate)
 	balance, err := ge.chain.GetBalanceAtBlock(ctx, *args.From, blockNumber)
 	if err != nil {
-		return 0, nil, fmt.Errorf("failed to get account balance: %w", err)
+		return 0, 0, nil, fmt.Errorf("failed to get account balance: %w", err)
 	}
 
 	if balance.ToInt().Cmp(big.NewInt(0).Mul(gasPrice, big.NewInt(0).SetUint64(totalGasEstimateUint64))) < 0 {
-		return 0, errors.New("insufficient balance for transaction"), nil
+		return 0, 0, errors.New("insufficient balance for transaction"), nil
 	}
 
-	return totalGasEstimateUint64, nil, nil
+	return totalGasEstimateUint64, publishingGas.Uint64(), nil, nil
 }
 
 // EstimateGasSinglePass - deduces the simulation params from the call parameters and the local environment configuration.

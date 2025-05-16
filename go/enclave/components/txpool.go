@@ -352,7 +352,7 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 	txArgs.From = &from
 	ge := NewGasEstimator(t.storage, t.tenChain, t.gasOracle, t.logger)
 	latest := gethrpc.LatestBlockNumber
-	leastGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, &latest, headBatch, t.config.GasLocalExecutionCapFlag)
+	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, &latest, headBatch, t.config.GasLocalExecutionCapFlag)
 
 	// if the transaction reverts we let it through
 	if userErr != nil && errors.Is(userErr, vm.ErrExecutionReverted) {
@@ -363,10 +363,15 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 		return userErr, sysErr
 	}
 
-	// The gas limit of the transaction (evm message) should always be higher than the gas overhead
-	// used to cover the l1 cost
+	// make sure the tx has enough gas to cover the execution and the tx won't be rejected by the sequencer
+	leastGas = leastGas * 8 / 10 // reduce gas estimate by 20%
 	if tx.Gas() < leastGas {
 		return fmt.Errorf("insufficient gas. Want at least: %d have: %d", leastGas, tx.Gas()), nil
+	}
+
+	// make sure the tx has enough gas to cover the publishing cost even if by some chance the 20% deducted was too much
+	if tx.Gas() < publishingGas+params.TxGas {
+		return fmt.Errorf("insufficient gas to publish the transaction to the DA. Want at least: %d have: %d", publishingGas, tx.Gas()), nil
 	}
 
 	return nil, nil
