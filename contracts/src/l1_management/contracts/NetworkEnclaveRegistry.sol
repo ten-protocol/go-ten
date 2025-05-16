@@ -2,11 +2,10 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "../interfaces/INetworkEnclaveRegistry.sol";
-
+import "../../common/UnrenouncableOwnable2Step.sol";
 /**
  * @title NetworkEnclaveRegistry
  * @dev Contract for managing network enclave registry
@@ -14,7 +13,7 @@ import "../interfaces/INetworkEnclaveRegistry.sol";
  * Allows enclaves to request and respond to the network secret
  * Provides sequencer enclave status management
 */
-contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, OwnableUpgradeable {
+contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, UnrenouncableOwnable2Step {
     
     using MessageHashUtils for bytes32;
 

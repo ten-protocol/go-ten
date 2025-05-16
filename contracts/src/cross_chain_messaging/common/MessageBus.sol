@@ -6,15 +6,16 @@ import "../../system/contracts/Fees.sol";
 
 import "../../system/interfaces/IFees.sol";
 import "./IMessageBus.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../../common/UnrenouncableOwnable2Step.sol";
 
 /**
  * @title MessageBus
  * @dev Implementation of the IMessageBus interface for cross-layer message handling.
  * Manages message publishing, verification, and value transfers between L1 and L2.
  */
-contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
+contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
 
     constructor() {
         _transferOwnership(msg.sender);

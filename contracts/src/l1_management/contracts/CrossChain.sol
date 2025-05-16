@@ -1,20 +1,19 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import "../interfaces/ICrossChain.sol";
 import * as MessageBus from "../../cross_chain_messaging/common/MessageBus.sol";
 import * as MerkleTreeMessageBus from "../../cross_chain_messaging/L1/MerkleTreeMessageBus.sol";
-
+import "../../common/UnrenouncableOwnable2Step.sol";
 /**
  * @title CrossChain
  * @dev Contract managing cross-chain value transfers and message verification
  * Implements reentrancy protection and pausable withdrawals for security
  * Uses MerkleTreeMessageBus for message verification and value transfers
  */
-contract CrossChain is ICrossChain, Initializable, OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, ReentrancyGuardUpgradeable {
 
     /**
      * @dev Flag to control withdrawal functionality

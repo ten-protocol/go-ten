@@ -17,6 +17,7 @@ contract PublicCallbacks is Initializable {
         _;
     }
 
+    event CallbackRegistered(uint256 callbackId);
 
     constructor() {
         _disableInitializers();
@@ -27,6 +28,7 @@ contract PublicCallbacks is Initializable {
         bytes data;
         uint256 value;
         uint256 baseFee;
+        address owner;
     }
 
     mapping(uint256 callbackId => Callback callback) public callbacks;
@@ -47,8 +49,17 @@ contract PublicCallbacks is Initializable {
 
     function addCallback(address callback, bytes calldata data, uint256 value) internal returns (uint256 callbackId) {
         callbackId = nextCallbackId;
-        callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value, baseFee: block.basefee});
+        callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value, baseFee: block.basefee, owner: msg.sender});
         callbackBlockNumber[callbackId] = block.number;
+        emit CallbackRegistered(callbackId);
+    }
+
+    function removeCallback(uint256 callbackId) external {
+        Callback memory callback = callbacks[callbackId];
+        require(callback.owner == msg.sender, "Not owner"); //This also ensures callback exists.
+
+        delete callbacks[callbackId];
+        delete callbackBlockNumber[callbackId];
     }
 
     function getCurrentCallbackToExecute() internal view returns (Callback memory, uint256) {
@@ -84,6 +95,8 @@ contract PublicCallbacks is Initializable {
     // This is callable from external users and fully passes over the gas given to this call.
     function reattemptCallback(uint256 callbackId) external canReattemptCallback(callbackId) {
         Callback memory callback = callbacks[callbackId];
+        require(callback.target != address(0), "Callback does not exist");
+        require(callback.owner == msg.sender, "Not owner");
         (bool success, ) = callback.target.call(callback.data);
         require(success, "Callback execution failed");
         delete callbacks[callbackId];
@@ -130,6 +143,7 @@ contract PublicCallbacks is Initializable {
 
         internalRefund(gasRefundValue, target, callbackId);
         payForCallback(paymentToCoinbase);
+        emit CallbackExecuted(callbackId, gasBefore, gasAfter);
     }
 
     function internalRefund(uint256 gasRefund, address to, uint256 callbackId) internal {
