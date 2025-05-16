@@ -38,7 +38,7 @@ Note: SGX itself cannot control the clock of a server. The trust element is more
 - Session Keys will be signed with this timestamp certificate (TCS). This is a signature by the GW over the "from" address.
 - The TCS will be submitted to the game smart contract.
 - The contract can check the signature against the TTO and will know to trust the timestamp of transctions from that "from".
-- On receiving the TX, the TEN enclave needs to do something(?) to extract the timestamp declared inside the TX and compare it with the timestamp of the "Transaction" object. And reject if it's more then x ms older.
+- The tx timestamp can be exposed to the smart contract via a precompile.
 - On receiving a tx, the contract will read the "from" and compare it against the trusted addressed that registered to play.
 - 
 
