@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
 import "../system/interfaces/IPublicCallbacks.sol";
 
@@ -35,8 +35,8 @@ contract PublicCallbacksTest {
         allCallbacksRan = true;
     }
 
-    mapping(uint256 => address) public callbackRefundees;
-    mapping(address=>uint256) public pendingRefunds;
+    mapping(uint256 callbackId => address callbackRefundees) public callbackRefundees;
+    mapping(address callbackRefundees => uint256 pendingRefunds) public pendingRefunds;
 
     // This is called by the system to refund the callbac
     function handleRefund(uint256 callbackId) external payable {

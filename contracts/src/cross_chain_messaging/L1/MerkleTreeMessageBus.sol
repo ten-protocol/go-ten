@@ -29,7 +29,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @dev Mapping of state roots to their activation timestamps
      * A value of 0 indicates either the root doesn't exist or has been disabled
      */
-    mapping(bytes32 => uint256) rootValidAfter;
+    mapping(bytes32 stateRoot => uint256 activationTime) rootValidAfter;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() MessageBus() {

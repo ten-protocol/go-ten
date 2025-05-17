@@ -2,11 +2,10 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "../interfaces/INetworkEnclaveRegistry.sol";
-
+import "../../common/UnrenouncableOwnable2Step.sol";
 /**
  * @title NetworkEnclaveRegistry
  * @dev Contract for managing network enclave registry
@@ -14,7 +13,7 @@ import "../interfaces/INetworkEnclaveRegistry.sol";
  * Allows enclaves to request and respond to the network secret
  * Provides sequencer enclave status management
 */
-contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, OwnableUpgradeable {
+contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, UnrenouncableOwnable2Step {
     
     using MessageHashUtils for bytes32;
 
@@ -26,14 +25,14 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Ownab
     /**
      * @dev Mapping of enclaveID to whether it is attested
      */
-    mapping(address => bool) private attested;
+    mapping(address enclaveID => bool isAttested) private attested;
 
     /**
      * @dev Mapping of enclaveID to whether it is permissioned as a sequencer enclave. The enclaveID which initialises
      * the network secret is automatically permissioned as a sequencer. Beyond that, the contract owner can grant and revoke
      * sequencer status.
      */
-    mapping(address => bool) private sequencerEnclave;
+    mapping(address sequencerID => bool isSequencer) private sequencerEnclave;
 
     constructor() {
         _transferOwnership(msg.sender);
