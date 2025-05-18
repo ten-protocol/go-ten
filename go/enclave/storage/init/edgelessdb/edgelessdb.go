@@ -497,7 +497,7 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 			&mysql.MySQLDriver{},
 			logger,
 			func(err error) bool {
-				return strings.Contains(err.Error(), "connection refused")
+				return strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "invalid connection")
 			}),
 	)
 	return driverName
