@@ -77,6 +77,12 @@ func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
 }
 
 func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
+	if key == nil {
+		return errors.New("key cannot be nil")
+	}
+	if value == nil {
+		return fmt.Errorf("value cannot be nil. key: %x", key)
+	}
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
 	return Put(ctx, sqlDB.sqldb, key, value)
