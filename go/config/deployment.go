@@ -28,6 +28,7 @@ type L1DeployConfig struct {
 //	yaml: `deploy.l2`
 type L2DeployConfig struct {
 	RPCAddress    string `mapstructure:"rpcAddress"`    // an RPC address for the L2 network
+	HTTPPort      int    `mapstructure:"httpPort"`      // the port for the L2 network RPC (http)
 	WSPort        int    `mapstructure:"wsPort"`        // the port for the L2 network RPC websocket
 	DeployerPK    string `mapstructure:"deployerPK"`    // the private key of the L2 deployer account
 	FaucetPrefund string `mapstructure:"faucetPrefund"` // initial amount of funds to pre-fund the faucet account
