@@ -98,6 +98,29 @@ jobs:
                echo "enclave_registry=$(yq -r '.l1Config.enclaveRegistry' "$CFG")"   >> $GITHUB_OUTPUT
                echo "start_hash=$(yq -r '.l1Config.starthash'             "$CFG")"   >> $GITHUB_OUTPUT
 
+   build:
+        runs-on: ubuntu-latest
+        needs: read-l1-config
+        environment:
+            name: ${{ github.event.inputs.testnet_type }}
+        steps:
+         -  name: 'Login via Azure CLI'
+            uses: azure/login@v1
+            with:
+               creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+         -  name: 'Login to Azure docker registry'
+            uses: azure/docker-login@v1
+            with:
+               login-server: testnetobscuronet.azurecr.io
+               username: testnetobscuronet
+               password: ${{ secrets.REGISTRY_PASSWORD }}
+
+         -  name: 'Build and push obscuro node images'
+            run: |
+               DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
+               docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+
    check-obscuro-is-healthy:
       runs-on: ubuntu-latest
       needs: read-l1-config
