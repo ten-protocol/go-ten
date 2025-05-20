@@ -104,7 +104,8 @@ deploy:
     challengePeriod: 1 # challenge period for rollups in seconds
   l2:
     rpcAddress: "localhost" # L2 RPC address for deploying contracts
-    wsPort: 8546 # L2 RPC port for deploying contracts
+    httpPort: 8085 # L2 RPC port for deploying contracts
+    wsPort: 8089 # L2 RPC port for deploying contracts
     deployerPK: 0x0 # private key for the deployer account
     faucetPrefund: 10000 # amount of ETH to pre-fund the faucet account
     sequencerURL: "" # sequencer URL to fetch its HA enclave IDs
