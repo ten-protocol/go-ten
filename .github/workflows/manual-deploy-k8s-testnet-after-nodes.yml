@@ -116,6 +116,11 @@ jobs:
                username: testnetobscuronet
                password: ${{ secrets.REGISTRY_PASSWORD }}
 
+         -  uses: actions/checkout@v4
+
+         -  uses: actions/setup-go@v5
+            with:
+               go-version: 1.23.5
          -  name: 'Build and push obscuro node images'
             run: |
                DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
