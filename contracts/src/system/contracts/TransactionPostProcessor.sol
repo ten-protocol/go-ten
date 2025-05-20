@@ -17,8 +17,6 @@ contract TransactionPostProcessor is Initializable, AccessControl{
 
     bytes32 public constant EOA_ADMIN_ROLE = keccak256("EOA_ADMIN_ROLE");
 
-    event TransactionsConverted(uint256 transactionsLength);
-
     event CallbackAdded(address callbackAddress);
 
     struct Receipt {
@@ -67,9 +65,7 @@ contract TransactionPostProcessor is Initializable, AccessControl{
         if (transactions.length == 0) {
             revert("No transactions to convert");
         }
-        
-//        emit TransactionsConverted(transactions.length);
-        
+                
         for (uint256 i = 0; i < onBlockEndListeners.length; ++i) {
             IOnBlockEndCallback callback = onBlockEndListeners[i];
             // All on block end callbacks are admin contracts, thus success is required.
