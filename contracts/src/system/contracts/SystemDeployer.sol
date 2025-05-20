@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache 2
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
 import "./TransactionPostProcessor.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -21,12 +21,14 @@ contract SystemDeployer {
     event SystemContractDeployed(string name, address contractAddress);
 
     constructor(address eoaAdmin, address remoteBridgeAddress) {
-       deployAnalyzer(eoaAdmin);
-       address feesProxy = deployFees(eoaAdmin, 0);
-       address messageBusProxy = deployMessageBus(eoaAdmin, feesProxy);
-       deployPublicCallbacks(eoaAdmin);
-       address crossChainMessengerProxy = deployCrossChainMessenger(eoaAdmin, messageBusProxy);
-       deployEthereumBridge(eoaAdmin, crossChainMessengerProxy, remoteBridgeAddress);
+        require(eoaAdmin != address(0), "Invalid EOA admin address");
+        require(remoteBridgeAddress != address(0), "Invalid remote bridge address");
+        deployAnalyzer(eoaAdmin);
+        address feesProxy = deployFees(eoaAdmin, 0);
+        address messageBusProxy = deployMessageBus(eoaAdmin, feesProxy);
+        deployPublicCallbacks(eoaAdmin);
+        address crossChainMessengerProxy = deployCrossChainMessenger(eoaAdmin, messageBusProxy);
+        deployEthereumBridge(eoaAdmin, crossChainMessengerProxy, remoteBridgeAddress);
     }
 
     function deployAnalyzer(address eoaAdmin) internal {

@@ -2,16 +2,15 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "../../lib/Storage.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-
+import "../../common/UnrenouncableOwnable2Step.sol";
 /**
  * @title NetworkConfig
  * @dev Contract for managing network configuration and addresses
  * Implements a storage mechanism for fixed and dynamic addresses
  * Allows for adding and retrieving additional addresses
  */
-contract NetworkConfig is Initializable, OwnableUpgradeable {
+contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
 
     /**
      * @dev Struct for system addresses that we don't expect to change
@@ -69,12 +68,12 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
 
     // simple storage for additional addresses
     string[] public addressNames;
-    mapping(string => address) public additionalAddresses;
+    mapping(string contractName => address contractAddress) public additionalAddresses;
 
     /**
      * @dev Mapping of contract names to their versions
      */
-    mapping(string => ContractVersion) private contractVersions;
+    mapping(string contractName => ContractVersion contractVersion) private contractVersions;
 
     /**
      * @dev Storage slot for the fork manager

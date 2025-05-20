@@ -6,15 +6,16 @@ import "../../system/contracts/Fees.sol";
 
 import "../../system/interfaces/IFees.sol";
 import "./IMessageBus.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../../common/UnrenouncableOwnable2Step.sol";
 
 /**
  * @title MessageBus
  * @dev Implementation of the IMessageBus interface for cross-layer message handling.
  * Manages message publishing, verification, and value transfers between L1 and L2.
  */
-contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
+contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
 
     constructor() {
         _transferOwnership(msg.sender);
@@ -46,15 +47,15 @@ contract MessageBus is IMessageBus, Initializable, OwnableUpgradeable {
 
     // This mapping contains the block timestamps where messages become valid
     // It is used in order to have challenge period.
-    mapping(bytes32 => uint256) messageFinalityTimestamps;
+    mapping(bytes32 messageHash => uint256 messageFinalityTimestamp) messageFinalityTimestamps;
 
     // The stored messages, currently unconsumed.
-    mapping(address => mapping(uint32 => Structs.CrossChainMessage[])) messages;
+    mapping(address sender => mapping(uint32 topic => Structs.CrossChainMessage[] messages)) messages;
 
     // This stores the current sequence number that each address has reached.
     // Whenever a message is published, this sequence number increments.
     // This gives ordering to messages, guaranteed by us.
-    mapping(address => uint64) addressSequences;
+    mapping(address sender => uint64 sequence) addressSequences;
 
     IFees fees;
 
