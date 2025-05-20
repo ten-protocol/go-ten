@@ -128,7 +128,7 @@ jobs:
 
    check-obscuro-is-healthy:
       runs-on: ubuntu-latest
-      needs: read-l1-config
+      needs: build
       environment:
          name: ${{ github.event.inputs.testnet_type }}
       steps:
