@@ -5,9 +5,12 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 
 /**
  * @title PublicCallbacks
- * @dev Contract that allows to register callbacks that can be executed by the system
- * 
- * TODO stefan to add docs
+ * @dev Contract that enables registering callbacks to be executed at the end of the same block.
+ * This Layer 2 system contract provides commit-reveal functionality by allowing important actions
+ * to be split across multiple transactions. Without this separation, actions that should remain
+ * private until committed could be predicted by analyzing gas costs of a single wrapped call.
+ * If a callback fails during execution, it will not be processed in that block and can be 
+ * reattempted later.
  */
 contract PublicCallbacks is Initializable {
 
@@ -82,12 +85,9 @@ contract PublicCallbacks is Initializable {
     // This function is callable from external dApps to register a callback.
     // The bytes passed in the param are the calldata for the call to be made
     // to msg.sender. 
-    // todo: Consider making the callback function named in order to avoid
-    // weird potential attacks if any? 
     function register(bytes calldata callback) external payable returns (uint256) { 
         require(msg.value > 0, "No value sent");
         require(calculateGas(msg.value) > 21000, "Gas too low compared to cost of call");
-        // todo - add maximum value to limit
         return addCallback(msg.sender, callback, msg.value);
     }
 
@@ -117,7 +117,7 @@ contract PublicCallbacks is Initializable {
 
     function executeNextCallback() internal {
         if (nextCallbackId == lastUnusedCallbackId) {
-            return; // todo: change to revert if possible
+            return;
         }
 
         (Callback memory callback, uint256 callbackId) = getCurrentCallbackToExecute();

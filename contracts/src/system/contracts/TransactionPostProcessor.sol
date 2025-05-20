@@ -10,7 +10,13 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
  * @title TransactionPostProcessor
  * @dev Contract that processes transactions after they are converted
  * 
- * TODO stefan to add docs
+ * This contract is called at the end of each batch to perform post-processing steps on the transactions.
+ * After transaction execution is complete, this contract applies necessary post-batch operations like
+ * distributing zen tokens to users based on their activity. The onBlockEndListeners array is public
+ * to allow anyone to verify that registered callbacks do not violate privacy guarantees.
+ * 
+ * The contract is designed to be extensible through callbacks while maintaining transparency about
+ * what post-processing operations are performed.
  */
 contract TransactionPostProcessor is Initializable, AccessControl{
     using Structs for Structs.Transaction;
