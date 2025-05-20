@@ -110,7 +110,8 @@ func (t *Testnet) Start() error {
 		&l2cd.Config{
 			L1HTTPURL:              "http://eth2network:8025",
 			L2Host:                 "sequencer-host",
-			L2Port:                 81,
+			L2HTTPPort:             80,
+			L2WSPort:               81,
 			L1PrivateKey:           "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
 			MessageBusAddress:      networkConfig.MessageBusAddress,
 			NetworkConfigAddress:   networkConfig.NetworkConfigAddress,

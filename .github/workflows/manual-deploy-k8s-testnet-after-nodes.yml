@@ -98,9 +98,39 @@ jobs:
                echo "enclave_registry=$(yq -r '.l1Config.enclaveRegistry' "$CFG")"   >> $GITHUB_OUTPUT
                echo "start_hash=$(yq -r '.l1Config.starthash'             "$CFG")"   >> $GITHUB_OUTPUT
 
+   build:
+        runs-on: ubuntu-latest
+        needs: read-l1-config
+        environment:
+            name: ${{ github.event.inputs.testnet_type }}
+        steps:
+         -  name: 'Login via Azure CLI'
+            uses: azure/login@v1
+            with:
+               creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+         -  name: 'Login to Azure docker registry'
+            uses: azure/docker-login@v1
+            with:
+               login-server: testnetobscuronet.azurecr.io
+               username: testnetobscuronet
+               password: ${{ secrets.REGISTRY_PASSWORD }}
+
+         -  uses: actions/checkout@v4
+
+         -  uses: actions/setup-go@v5
+            with:
+               go-version: 1.23.5
+         -  name: 'Build and push obscuro node images'
+            run: |
+               DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
+               docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+
    check-obscuro-is-healthy:
       runs-on: ubuntu-latest
-      needs: read-l1-config
+      needs:
+         - read-l1-config
+         - build
       environment:
          name: ${{ github.event.inputs.testnet_type }}
       steps:
@@ -206,6 +236,7 @@ jobs:
               DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
               DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
               DEPLOY_L2_RPCADDRESS: ${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-validator-01.ten.xyz
+              DEPLOY_L2_HTTPPORT: 8085
               DEPLOY_L2_WSPORT: 8089
               DEPLOY_L2_FAUCETFUNDS: ${{ vars.FAUCET_INITIAL_FUNDS }}
               NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.read-l1-config.outputs.network_config }}
