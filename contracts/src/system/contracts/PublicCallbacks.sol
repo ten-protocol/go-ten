@@ -5,9 +5,12 @@ import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Ini
 
 /**
  * @title PublicCallbacks
- * @dev Contract that allows to register callbacks that can be executed by the system
- * 
- * TODO stefan to add docs
+ * @dev Contract that enables registering callbacks to be executed at the end of the same block.
+ * This Layer 2 system contract provides commit-reveal functionality by allowing important actions
+ * to be split across multiple transactions. Without this separation, actions that should remain
+ * private until committed could be predicted by analyzing gas costs of a single wrapped call.
+ * If a callback fails during execution, it will not be processed in that block and can be 
+ * reattempted later.
  */
 contract PublicCallbacks is Initializable {
 
@@ -17,6 +20,7 @@ contract PublicCallbacks is Initializable {
         _;
     }
 
+    event CallbackRegistered(uint256 callbackId);
 
     constructor() {
         _disableInitializers();
@@ -27,13 +31,14 @@ contract PublicCallbacks is Initializable {
         bytes data;
         uint256 value;
         uint256 baseFee;
+        address owner;
     }
 
-    mapping(uint256 => Callback) public callbacks;
+    mapping(uint256 callbackId => Callback callback) public callbacks;
     uint256 private nextCallbackId;
     uint256 private lastUnusedCallbackId;
 
-    mapping(uint256 => uint256) public callbackBlockNumber;
+    mapping(uint256 callbackId => uint256 blockNumber) public callbackBlockNumber;
 
     // This modifier prevents using the callback in the same block it was registered (before the automation has a chance to do it)
     // this ensures that one can't commit and uncommit in the same transaction based on the outcome of reattempting.
@@ -43,14 +48,21 @@ contract PublicCallbacks is Initializable {
     }
 
     function initialize() external initializer {
-        nextCallbackId = 0;
-        lastUnusedCallbackId = 0;
     }
 
     function addCallback(address callback, bytes calldata data, uint256 value) internal returns (uint256 callbackId) {
         callbackId = nextCallbackId;
-        callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value, baseFee: block.basefee});
+        callbacks[nextCallbackId++] = Callback({target: callback, data: data, value: value, baseFee: block.basefee, owner: msg.sender});
         callbackBlockNumber[callbackId] = block.number;
+        emit CallbackRegistered(callbackId);
+    }
+
+    function removeCallback(uint256 callbackId) external {
+        Callback memory callback = callbacks[callbackId];
+        require(callback.owner == msg.sender, "Not owner"); //This also ensures callback exists.
+
+        delete callbacks[callbackId];
+        delete callbackBlockNumber[callbackId];
     }
 
     function getCurrentCallbackToExecute() internal view returns (Callback memory, uint256) {
@@ -73,12 +85,9 @@ contract PublicCallbacks is Initializable {
     // This function is callable from external dApps to register a callback.
     // The bytes passed in the param are the calldata for the call to be made
     // to msg.sender. 
-    // todo: Consider making the callback function named in order to avoid
-    // weird potential attacks if any? 
     function register(bytes calldata callback) external payable returns (uint256) { 
         require(msg.value > 0, "No value sent");
         require(calculateGas(msg.value) > 21000, "Gas too low compared to cost of call");
-        // todo - add maximum value to limit
         return addCallback(msg.sender, callback, msg.value);
     }
 
@@ -86,6 +95,8 @@ contract PublicCallbacks is Initializable {
     // This is callable from external users and fully passes over the gas given to this call.
     function reattemptCallback(uint256 callbackId) external canReattemptCallback(callbackId) {
         Callback memory callback = callbacks[callbackId];
+        require(callback.target != address(0), "Callback does not exist");
+        require(callback.owner == msg.sender, "Not owner");
         (bool success, ) = callback.target.call(callback.data);
         require(success, "Callback execution failed");
         delete callbacks[callbackId];
@@ -106,7 +117,7 @@ contract PublicCallbacks is Initializable {
 
     function executeNextCallback() internal {
         if (nextCallbackId == lastUnusedCallbackId) {
-            return; // todo: change to revert if possible
+            return;
         }
 
         (Callback memory callback, uint256 callbackId) = getCurrentCallbackToExecute();
@@ -132,6 +143,7 @@ contract PublicCallbacks is Initializable {
 
         internalRefund(gasRefundValue, target, callbackId);
         payForCallback(paymentToCoinbase);
+        emit CallbackExecuted(callbackId, gasBefore, gasAfter);
     }
 
     function internalRefund(uint256 gasRefund, address to, uint256 callbackId) internal {

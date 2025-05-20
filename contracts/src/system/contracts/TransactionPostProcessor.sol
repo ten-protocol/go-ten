@@ -1,24 +1,29 @@
 // SPDX-License-Identifier: Apache 2
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
 import "../../lib/Transaction.sol";
 import "../interfaces/IOnBlockEndCallback.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title TransactionPostProcessor
  * @dev Contract that processes transactions after they are converted
  * 
- * TODO stefan to add docs
+ * This contract is called at the end of each batch to perform post-processing steps on the transactions.
+ * After transaction execution is complete, this contract applies necessary post-batch operations like
+ * distributing zen tokens to users based on their activity. The onBlockEndListeners array is public
+ * to allow anyone to verify that registered callbacks do not violate privacy guarantees.
+ * 
+ * The contract is designed to be extensible through callbacks while maintaining transparency about
+ * what post-processing operations are performed.
  */
 contract TransactionPostProcessor is Initializable, AccessControl{
     using Structs for Structs.Transaction;
 
     bytes32 public constant EOA_ADMIN_ROLE = keccak256("EOA_ADMIN_ROLE");
 
-    event TransactionsConverted(uint256 transactionsLength);
+    event CallbackAdded(address callbackAddress);
 
     struct Receipt {
         uint8 _type;
@@ -32,27 +37,48 @@ contract TransactionPostProcessor is Initializable, AccessControl{
         _;
     }
 
-    IOnBlockEndCallback[] onBlockEndListeners;
+    IOnBlockEndCallback[] public onBlockEndListeners;
 
     function initialize(address eoaAdmin) public initializer {
         _grantRole(DEFAULT_ADMIN_ROLE, eoaAdmin);
         _grantRole(EOA_ADMIN_ROLE, eoaAdmin);
     }
 
-    function addOnBlockEndCallback(address callbackAddress) public onlyRole(EOA_ADMIN_ROLE) {
+    function addOnBlockEndCallback(address callbackAddress) external onlyRole(EOA_ADMIN_ROLE) {
+        require(callbackAddress != address(0), "Invalid callback address");
+        require(callbackAddress.code.length > 0, "Callback address must be a contract");
         onBlockEndListeners.push(IOnBlockEndCallback(callbackAddress));
+        emit CallbackAdded(callbackAddress);
     }
 
-    function onBlock(Structs.Transaction[] calldata transactions) public onlySelf {
+    function removeOnBlockEndCallback(address callbackAddress) external onlyRole(EOA_ADMIN_ROLE) {
+        require(callbackAddress != address(0), "Invalid callback address");
+        
+        uint256 length = onBlockEndListeners.length;
+        for (uint256 i = 0; i < length; ++i) {
+            if (address(onBlockEndListeners[i]) == callbackAddress) {
+                // Move the last element to the position being deleted
+                onBlockEndListeners[i] = onBlockEndListeners[length - 1];
+                // Remove the last element
+                onBlockEndListeners.pop();
+                return;
+            }
+        }
+        revert("Callback not found");
+    }
+
+    function onBlock(Structs.Transaction[] calldata transactions) external onlySelf {
         if (transactions.length == 0) {
             revert("No transactions to convert");
         }
-        
-//        emit TransactionsConverted(transactions.length);
-        
+                
         for (uint256 i = 0; i < onBlockEndListeners.length; ++i) {
             IOnBlockEndCallback callback = onBlockEndListeners[i];
-            callback.onBlockEnd(transactions);
+            // All on block end callbacks are admin contracts, thus success is required.
+            // All failures from such contracts are treated as general node failure and should revert this transaction.
+            // This in turn will block the batch production. In practice no contract registered here should be able to revert
+            // unless it detects some serious issue.
+            callback.onBlockEnd(transactions); 
         }
     }
 }
