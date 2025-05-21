@@ -67,8 +67,6 @@ jobs:
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
-          -azure_key_vault_url=${{secrets.AZURE_KEY_VAULT_URL}} \
-          -azure_key_vault_env=$TESTNET_TYPE \
           -network_config_addr=${{ vars.NETWORK_CONFIG_ADDR }}
 
       - name: 'Save upgrade container logs'
