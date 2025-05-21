@@ -18,7 +18,7 @@ func ParseConfigCLI() *L1UpgradeContractsConfigCLI {
 	flagUsageMap := getFlagUsageMap()
 
 	l1HTTPURL := flag.String(l1HTTPURLFlag, "http://eth2network:8025", flagUsageMap[l1HTTPURLFlag])
-	privateKey := flag.String(privateKeyFlag, "", flagUsageMap[privateKeyFlag])
+	privateKey := flag.String(privateKeyFlag, "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb", flagUsageMap[privateKeyFlag])
 	neworkConfigAddr := flag.String(networkConfigAddrFlag, "", flagUsageMap[networkConfigAddrFlag])
 	dockerImage := flag.String(dockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", flagUsageMap[dockerImageFlag])
 	flag.Parse()

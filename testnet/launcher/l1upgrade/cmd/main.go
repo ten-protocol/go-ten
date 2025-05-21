@@ -34,6 +34,6 @@ func main() {
 		fmt.Println("unexpected error waiting for grant sequnecer permission script to finish - %w", err)
 		os.Exit(1)
 	}
-	fmt.Println("L1 Sequencer permissions were successfully granted...")
+	fmt.Println("L1 upgrades were successfully completed...")
 	os.Exit(0)
 }
