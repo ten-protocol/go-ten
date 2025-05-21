@@ -36,6 +36,7 @@ const (
 	MessageUserIDLenWithPrefix    = 42
 	EthereumAddressLen            = 42
 	SuccessMsg                    = "success"
+	AccountAlreadyExistsMsg       = "account already exists"
 	APIVersion1                   = "/v1"
 	PathVersion                   = "/version/"
 	DeduplicationBufferSize       = 20
