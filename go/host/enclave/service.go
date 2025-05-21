@@ -20,8 +20,10 @@ import (
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-var _noActiveSequencer = &common.EnclaveID{} // used rather than nil to indicate no active sequencer
-var _defaultBatchInterval = 1 * time.Second  // used if batchInterval is not set in the config
+var (
+	_noActiveSequencer    = &common.EnclaveID{} // used rather than nil to indicate no active sequencer
+	_defaultBatchInterval = 1 * time.Second     // used if batchInterval is not set in the config
+)
 
 // This private interface enforces the services that the enclaves service depends on
 type enclaveServiceLocator interface {

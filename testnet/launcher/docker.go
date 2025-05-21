@@ -17,7 +17,6 @@ import (
 
 	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
 	l1gs "github.com/ten-protocol/go-ten/testnet/launcher/l1grantsequencers"
-	l1upgrade "github.com/ten-protocol/go-ten/testnet/launcher/l1upgrade"
 	l2cd "github.com/ten-protocol/go-ten/testnet/launcher/l2contractdeployer"
 )
 
@@ -335,35 +334,6 @@ func (t *Testnet) grantSequencerStatus(enclaveRegistryAddr string) error {
 	}
 
 	fmt.Println("Enclaves were successfully granted sequencer roles...")
-
-	return nil
-}
-
-// useful function for testing contracts upgrades locally
-func (t *Testnet) upgradeContracts(networkConfigAddress string) error {
-	upgrade, err := l1upgrade.NewUpgradeContracts(
-		l1upgrade.NewUpgradeContractsConfig(
-			l1upgrade.WithL1HTTPURL("http://eth2network:8025"),
-			l1upgrade.WithPrivateKey("f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"),
-			l1upgrade.WithDockerImage(t.cfg.contractDeployerDockerImage),
-			l1upgrade.WithNetworkConfigAddress(networkConfigAddress),
-		),
-	)
-	if err != nil {
-		return fmt.Errorf("unable to configure l1 upgrade contracts - %w", err)
-	}
-
-	err = upgrade.Start()
-	if err != nil {
-		return fmt.Errorf("unable to start l1 upgrade contracts - %w", err)
-	}
-
-	err = upgrade.WaitForFinish()
-	if err != nil {
-		return fmt.Errorf("unable to wait for l1 upgrade contracts to finish - %w", err)
-	}
-
-	fmt.Println("Contracts were successfully upgraded...")
 
 	return nil
 }
