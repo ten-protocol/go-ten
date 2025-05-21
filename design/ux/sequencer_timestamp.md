@@ -42,7 +42,7 @@ The contract will process transactions, and can use the time-window to determine
 
 ### Estimate gas
 
-The gas estimation should ignore the time window.
+The gas estimation will not check the time window against the current clock.
 
 ### Tx is submitted to the TEN Gateway
 
