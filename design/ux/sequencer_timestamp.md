@@ -84,6 +84,6 @@ A function that uses this feature will have as first parameter a `bytes32` param
       (from,to)=extractTimeWindow(timeWindow); // utility that converts from the above format to a time window 
       // more stuff
     }
-
-
 ```
+
+Note that only a 32 byte parameter with the above format will be authenticated by the protocol. 
