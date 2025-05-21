@@ -133,14 +133,6 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("failed to grant sequencer status: %w", err)
 	}
 
-	time.Sleep(10 * time.Second)
-
-	fmt.Println("About to upgrade contracts ....")
-	err = t.upgradeContracts(networkConfig.NetworkConfigAddress)
-	if err != nil {
-		return fmt.Errorf("failed to upgrade contracts: %w", err)
-	}
-
 	err = l2ContractDeployer.Start()
 	if err != nil {
 		return fmt.Errorf("unable to start the l2 contract deployer - %w", err)
@@ -347,6 +339,7 @@ func (t *Testnet) grantSequencerStatus(enclaveRegistryAddr string) error {
 	return nil
 }
 
+// useful function for testing contracts upgrades locally
 func (t *Testnet) upgradeContracts(networkConfigAddress string) error {
 	upgrade, err := l1upgrade.NewUpgradeContracts(
 		l1upgrade.NewUpgradeContractsConfig(

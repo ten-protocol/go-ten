@@ -109,7 +109,7 @@ func (s *UpgradeContracts) WaitForFinish() error {
 	fmt.Println(logs)
 
 	// Check if the upgrade was successful
-	if !strings.Contains(logs, "Upgrades verified successfully") {
+	if !strings.Contains(logs, "All upgrades completed successfully") {
 		return fmt.Errorf("upgrade verification not found in logs")
 	}
 
