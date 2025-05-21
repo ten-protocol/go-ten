@@ -5,6 +5,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./ICrossChainMessenger.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../L1/IMerkleTreeMessageBus.sol";
+import "./IL2MessageBus.sol";
 
 
 /**
@@ -53,7 +54,7 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
         Structs.CrossChainMessage calldata message
     ) private {
         require(
-            IMessageBus(address(messageBusContract)).verifyMessageFinalized(message),
+            IL2MessageBus(address(messageBusContract)).verifyMessageFinalized(message),
             "Message not found or finalized."
         );
         bytes32 msgHash = keccak256(abi.encode(message));
