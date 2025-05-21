@@ -32,6 +32,7 @@ type ConfigResponseJson struct {
 	L2Bridge                        string            `json:"L2Bridge"`
 	L1CrossChainMessenger           string            `json:"L1CrossChainMessenger"`
 	L2CrossChainMessenger           string            `json:"L2CrossChainMessenger"`
+	SystemContractsUpgrader         string            `json:"SystemContractsUpgrader"`
 	L1StartHash                     string            `json:"L1StartHash"`
 	PublicSystemContracts           map[string]string `json:"PublicSystemContracts"`
 	AdditionalContracts             interface{}       `json:"AdditionalContracts"`

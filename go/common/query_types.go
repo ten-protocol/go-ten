@@ -122,6 +122,7 @@ type TenNetworkInfo struct {
 	L1CrossChainMessenger     L1CrossChainMessengerAddress
 	L2CrossChainMessenger     L2CrossChainMessengerAddress
 	TransactionsPostProcessor TransactionPostProcessorAddress
+	SystemContractsUpgrader   SystemContractsUpgraderAddress
 	L1StartHash               common.Hash
 	PublicSystemContracts     map[string]common.Address
 	AdditionalContracts       []*NamedAddress

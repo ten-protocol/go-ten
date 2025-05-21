@@ -410,6 +410,7 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 	return &generated.EnclavePublicConfigResponse{
 		L2MessageBusAddress:             enclaveCfg.L2MessageBusAddress.Bytes(),
 		TransactionPostProcessorAddress: enclaveCfg.TransactionPostProcessorAddress.Bytes(),
+		SystemContractsUpgraderAddress:  enclaveCfg.SystemContractsUpgrader.Bytes(),
 		PublicSystemContracts:           publicContracts,
 	}, nil
 }

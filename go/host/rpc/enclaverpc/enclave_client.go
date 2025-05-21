@@ -504,6 +504,7 @@ func (c *Client) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublic
 	return &common.EnclavePublicConfig{
 		L2MessageBusAddress:             gethcommon.BytesToAddress(response.L2MessageBusAddress),
 		TransactionPostProcessorAddress: gethcommon.BytesToAddress(response.TransactionPostProcessorAddress),
+		SystemContractsUpgrader:         gethcommon.BytesToAddress(response.SystemContractsUpgraderAddress),
 		PublicSystemContracts:           publicSystemContracts,
 	}, nil
 }

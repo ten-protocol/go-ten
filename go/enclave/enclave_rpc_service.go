@@ -141,6 +141,12 @@ func (e *enclaveRPCService) EnclavePublicConfig(context.Context) (*common.Enclav
 		analyzerAddress = &gethcommon.Address{}
 	}
 
+	systemContractsUpgraderAddress := e.scb.SystemContractsUpgrader()
+
+	if systemContractsUpgraderAddress == nil {
+		systemContractsUpgraderAddress = &gethcommon.Address{}
+	}
+
 	publicContractsMap := make(map[string]gethcommon.Address)
 	for name, address := range e.scb.PublicSystemContracts() {
 		publicContractsMap[name] = *address
@@ -149,6 +155,7 @@ func (e *enclaveRPCService) EnclavePublicConfig(context.Context) (*common.Enclav
 	return &common.EnclavePublicConfig{
 		L2MessageBusAddress:             address,
 		TransactionPostProcessorAddress: *analyzerAddress,
+		SystemContractsUpgrader:         *systemContractsUpgraderAddress,
 		PublicSystemContracts:           publicContractsMap,
 	}, nil
 }
