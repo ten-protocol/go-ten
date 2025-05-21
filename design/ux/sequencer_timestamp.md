@@ -80,6 +80,7 @@ A function that uses this feature will have as first parameter a `bytes32` param
 ```solidity
 
     function makeMove(bytes32 timeWindow, .. other stuff) public returns (bool) {
+        require (tx.origin=msg.sender)
       uint from,to;
       (from,to)=extractTimeWindow(timeWindow); // utility that converts from the above format to a time window 
       // more stuff
@@ -87,3 +88,5 @@ A function that uses this feature will have as first parameter a `bytes32` param
 ```
 
 Note that only a 32 byte parameter with the above format will be authenticated by the protocol. 
+
+Note: this only works if the function is directly called by the end user
