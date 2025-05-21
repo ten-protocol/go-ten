@@ -2,7 +2,7 @@
 ---
 # Ten Testnet Change Log
 
-# May 2025-05-12 (v1.2.0)
+# May 2025-05-21 (v1.2.2)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
     * `89fc61e6` Changes according to audit review (#2462)
