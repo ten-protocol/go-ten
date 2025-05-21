@@ -5,6 +5,15 @@
 # May 2025-05-12 (v1.2.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
+    * `89fc61e6` Changes according to audit review (#2462)
+    * `1a6296cb` Implement key-value nil check (#2467)
+    * `a1591b71` Add new catastrophic error to edb (#2466)
+    * `a9371607` Read and write l1 config from git (#2460)
+    * `8851ef2c` Tweak mempool validation (#2464)
+    * `2c7ac5c3` Improve error reporting (#2459)
+    * `d5b231d7` Make gateway loglevel configurable (#2458)
+    * `c4a9da50` Performance tweaks (#2461)
+    * `68fe2761` Performance tweaks (#2461)
     * `b3df0c07` Add recover funds for ten bridge (sepolia only) (#2457)
     * `4f3bf0bd` Host: ensure maximum 1 active sequencer (#2442)
     * `2378a591` Fix gateway metrics (#2435)
