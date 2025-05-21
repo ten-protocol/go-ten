@@ -195,7 +195,9 @@ func (t *Testnet) Start() error {
 
 	fmt.Printf("Gateway ready to be accessed at http://127.0.0.1:%d ...\n", gatewayPort)
 
-	fmt.Println("Network successfully launched !")
+	time.Sleep(10 * time.Second)
+
+	fmt.Println("Network successfully launched!")
 	return nil
 }
 
