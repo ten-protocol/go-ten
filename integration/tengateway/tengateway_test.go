@@ -1026,12 +1026,16 @@ func testDifferentMessagesOnRegister(t *testing.T, _ int, httpURL, wsURL string,
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user.tgClient.UserID())
 
+	user2, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	testlog.Logger().Info("Created user with encryption token: %s\n", user2.tgClient.UserID())
+
 	// register all the accounts for the user with EIP-712 message format
 	err = user.RegisterAccounts()
 	require.NoError(t, err)
 
-	// register all the accounts for the user with personal sign message format
-	err = user.RegisterAccountsPersonalSign()
+	// register all the accounts for the user2 with personal sign message format
+	err = user2.RegisterAccountsPersonalSign()
 	require.NoError(t, err)
 }
 
