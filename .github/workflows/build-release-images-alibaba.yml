@@ -8,6 +8,9 @@ on:
         required: true
         default: ''
 
+env:
+  CONTAINER_REGISTRY: crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -23,7 +26,7 @@ jobs:
       - name: 'Login to Alibaba Cloud Container Registry'
         run: |
           # Login to Docker with credentials
-          echo "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" | docker login crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com -u will@5131971543297513 --password-stdin
+          echo "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" | docker login ${{ env.CONTAINER_REGISTRY }} -u will@5131971543297513 --password-stdin
 
       - name: 'Get version'
         id: get_version
@@ -43,9 +46,9 @@ jobs:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
           # Build and push enclave image
-          DOCKER_BUILDKIT=1 docker build -t crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/enclave:${VERSION} -f dockerfiles/enclave.Dockerfile .
-          docker push crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/enclave:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet/enclave:${VERSION} -f dockerfiles/enclave.Dockerfile .
+          docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet/enclave:${VERSION}
           
           # Build and push host image
-          DOCKER_BUILDKIT=1 docker build -t crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/host:${VERSION} -f dockerfiles/host.Dockerfile .
-          docker push crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com/ten-testnet/tentestnet/host:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet/host:${VERSION} -f dockerfiles/host.Dockerfile .
+          docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet/host:${VERSION}
