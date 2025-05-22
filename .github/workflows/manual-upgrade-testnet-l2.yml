@@ -220,8 +220,8 @@ jobs:
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com --port=80
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com --port=80
 
   deploy-faucet-on-dispatch:
     uses: ./.github/workflows/manual-deploy-testnet-faucet.yml

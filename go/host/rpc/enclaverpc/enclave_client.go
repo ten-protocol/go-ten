@@ -14,7 +14,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
-	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/common/rpc"
 	"github.com/ten-protocol/go-ten/go/common/rpc/generated"
 	"github.com/ten-protocol/go-ten/go/common/syserr"
@@ -43,27 +42,9 @@ func NewClient(enclaveRPCAddress string, enclaveRPCTimeout time.Duration, logger
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	connection, err := grpc.NewClient(enclaveRPCAddress, opts...)
 	if err != nil {
-		logger.Crit("Failed to connect to enclave RPC service.", log.ErrKey, err)
+		logger.Warn("Failed initial connection attempt to enclave RPC service.", log.ErrKey, err)
 	}
 	connection.Connect()
-	// perform an initial sleep because that Connect() method is not blocking and the retry immediately checks the status
-	time.Sleep(500 * time.Millisecond)
-
-	// We wait for the RPC connection to be ready.
-	err = retry.Do(func() error {
-		currState := connection.GetState()
-		if currState != connectivity.Ready {
-			logger.Info("retrying connection until enclave is available", "status", currState.String(), "rpcAddr", enclaveRPCAddress)
-			connection.Connect()
-			return fmt.Errorf("connection is not ready, status=%s", currState)
-		}
-		// connection is ready, break out of the loop
-		return nil
-	}, retry.NewBackoffAndRetryForeverStrategy([]time.Duration{500 * time.Millisecond, 1 * time.Second, 5 * time.Second}, 10*time.Second))
-	if err != nil {
-		// this should not happen as we retry forever...
-		logger.Crit("failed to connect to enclave", log.ErrKey, err)
-	}
 
 	return &Client{
 		protoClient:       generated.NewEnclaveProtoClient(connection),
