@@ -181,6 +181,12 @@ func (t *TxPool) SubmitTx(transaction *common.L2Tx) (error, error) {
 	if t.validateOnly.Load() {
 		return t.validate(transaction)
 	}
+
+	// this code runs only on the sequencer
+	// it sets the time of entry into the mempool
+	// so it can be checked in the smart contract
+	transaction.SetTime(time.Now())
+
 	return t.add(transaction), nil
 }
 

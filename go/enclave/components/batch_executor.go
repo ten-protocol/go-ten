@@ -8,10 +8,8 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/ten-protocol/go-ten/go/common/compression"
-
 	gethcore "github.com/ethereum/go-ethereum/core"
-
+	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 
 	"github.com/ethereum/go-ethereum/trie"
@@ -726,6 +724,7 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 	ethHeader := *ec.EthHeader
 	before := ethHeader.MixDigest
 	ethHeader.MixDigest = executor.entropyService.TxEntropy(before.Bytes(), offset)
+	ethHeader.Difficulty = big.NewInt(tx.Tx.Time().UnixMilli())
 
 	// if the tx fails, it handles the revert
 	txResult := executor.evmFacade.ExecuteTx(tx, ec.stateDB, &ethHeader, ec.GasPool, ec.usedGas, offset, noBaseFee)
