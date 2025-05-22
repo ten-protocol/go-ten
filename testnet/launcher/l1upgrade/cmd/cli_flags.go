@@ -4,10 +4,8 @@ package main
 const (
 	l1HTTPURLFlag         = "l1_http_url"
 	privateKeyFlag        = "private_key"
-	daRegistryAddressFlag = "da_registry_addr"
+	networkConfigAddrFlag = "network_config_addr"
 	dockerImageFlag       = "docker_image"
-	contractsEnvFileFlag  = "contracts_env_file"
-	challengePeriodFlag   = "l1_challenge_period"
 )
 
 // Returns a map of the flag usages.
@@ -16,9 +14,7 @@ func getFlagUsageMap() map[string]string {
 	return map[string]string{
 		l1HTTPURLFlag:         "Layer 1 network http RPC addr",
 		privateKeyFlag:        "L1 and L2 private key used in the node",
-		daRegistryAddressFlag: "L1 data availability contract address",
+		networkConfigAddrFlag: "L1 enclave registry contract address",
 		dockerImageFlag:       "Docker image to run",
-		contractsEnvFileFlag:  "If set, it will write the contract addresses to the file",
-		challengePeriodFlag:   "L1 delay when setting message bus root for the challenge period",
 	}
 }

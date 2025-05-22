@@ -1,4 +1,4 @@
-package l2chain
+package components
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/enclave/components"
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -34,7 +33,7 @@ type tenChain struct {
 
 	logger gethlog.Logger
 
-	Registry components.BatchRegistry
+	Registry BatchRegistry
 }
 
 func NewChain(
@@ -45,8 +44,8 @@ func NewChain(
 	chainConfig *params.ChainConfig,
 	genesis *genesis.Genesis,
 	logger gethlog.Logger,
-	registry components.BatchRegistry,
-) ObscuroChain {
+	registry BatchRegistry,
+) TENChain {
 	return &tenChain{
 		storage:             storage,
 		evmFacade:           evmFacade,

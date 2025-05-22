@@ -12,13 +12,12 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/enclave/components"
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
-	"github.com/ten-protocol/go-ten/go/enclave/l2chain"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 )
 
 // EncryptionManager manages the decryption and encryption of enclave comms.
 type EncryptionManager struct {
-	chain                l2chain.ObscuroChain
+	chain                components.TENChain
 	rpcKeyService        *crypto.RPCKeyService
 	storage              storage.Storage
 	cacheService         *storage.CacheService
@@ -33,7 +32,7 @@ type EncryptionManager struct {
 	storageSlotWhitelist *privacy.Whitelist
 }
 
-func NewEncryptionManager(storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, mempool *components.TxPool, processors *crosschain.Processors, config *enclaveconfig.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain l2chain.ObscuroChain, rpcKeyService *crypto.RPCKeyService, logger gethlog.Logger) *EncryptionManager {
+func NewEncryptionManager(storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, mempool *components.TxPool, processors *crosschain.Processors, config *enclaveconfig.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain components.TENChain, rpcKeyService *crypto.RPCKeyService, logger gethlog.Logger) *EncryptionManager {
 	return &EncryptionManager{
 		storage:              storage,
 		cacheService:         cacheService,

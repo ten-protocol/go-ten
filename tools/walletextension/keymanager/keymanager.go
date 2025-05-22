@@ -40,61 +40,70 @@ type KeyExchangeResponse struct {
 	EncryptedKey string `json:"encrypted_key"` // Base64 encoded encrypted encryption key
 }
 
-// GetEncryptionKey returns encryption key for the database
-// If we use sqlite database we don't need to do anything since sqlite does not need encryption and is usually running in dev environments / for testing
-// By default, we try to read from the sealed key
-// If KeyExchangeURL equals "new" we generate a new key
-// If KeyExchangeURL is a URL we try to perform key exchange
+// GetEncryptionKey returns the encryption key for the database
+// - If we use an SQLite database, no encryption key is needed as SQLite typically runs in development or testing environments.
+// - If an encryptionKeySource is provided, attempt to obtain the encryption key from the specified source.
+// - If the encryptionKeySource is set to "new", check for an existing encryption key and generate a new one if not found.
+// - If no encryptionKeySource is provided, attempt to unseal an existing encryption key.
+// - If a new key is generated or obtained, seal it for future use.
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
-	// 1.) check if we are using sqlite database and no encryption key needed
+	// check if we are using sqlite database and no encryption key needed
 	if config.DBType == "sqlite" {
 		logger.Info("using sqlite database, no encryption key needed - exiting key exchange process")
 		return nil, nil
 	}
 
-	var encryptionKey []byte
-	var err error
-
-	// 2.) Try to read from sealed key by default
-	encryptionKey, found, err := tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
-	if err != nil {
-		logger.Error("unable to unseal encryption key", log.ErrKey, err)
-		return nil, fmt.Errorf("failed to unseal encryption key: %w", err)
-	}
-	// If we found a sealed key we can return it
-	if found {
-		logger.Info("found sealed encryption key")
+	// If no encryptionKeySource is provided, attempt to unseal an existing encryption key and fail if no key is found
+	// (in this case operator needs to provide a source for the encryption key or decide to generate a new one)
+	if config.EncryptionKeySource == "" {
+		logger.Info("no key exchange url set, try to unseal existing encryption key")
+		encryptionKey, found, err := tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
+		if !found {
+			logger.Crit("no sealed encryption key found", log.ErrKey, err)
+			return nil, fmt.Errorf("no sealed encryption key found: %w", err)
+		}
+		logger.Info("unsealed existing encryption key")
 		return encryptionKey, nil
 	}
 
-	// 3.) If KeyExchangeURL is "new", generate a new key
-	if config.KeyExchangeURL == "new" {
-		encryptionKey, err = common.GenerateRandomKey()
-		if err != nil {
-			logger.Error("unable to generate random encryption key", log.ErrKey, err)
-			return nil, fmt.Errorf("failed to generate random encryption key: %w", err)
+	var encryptionKey []byte
+	var err error
+
+	// If the "new" keyword is used for the encryptionKeySource, we first check if there is an existing encryption key
+	// that can be unsealed and used. If no such key is found, we proceed to generate a new random encryption key.
+	// This ensures that we do not overwrite an existing key unless necessary, and a new key is only generated when
+	// there is no existing key available.
+	if config.EncryptionKeySource == "new" {
+		logger.Info("encryptionKeySource set to 'new' -> checking if there is an existing encryption key that we can use")
+		var found bool
+		encryptionKey, found, _ = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
+		logger.Info("Encryption key status", "found", found, "error", err)
+		if !found {
+			logger.Info("No existing encryption key found, generating new random encryption key")
+			encryptionKey, err = common.GenerateRandomKey()
+			if err != nil {
+				logger.Crit("unable to generate random encryption key", log.ErrKey, err)
+				return nil, err
+			}
 		}
-		logger.Info("generated new encryption key")
-	} else if config.KeyExchangeURL != "" {
-		// 4.) If KeyExchangeURL is a URL, try to perform key exchange
+	} else {
+		// Attempt to perform key exchange with the specified key provider.
+		// This step is crucial, and the process should fail if the key exchange is not successful.
+		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
 		encryptionKey, err = HandleKeyExchange(config, logger)
 		if err != nil {
-			logger.Error("unable to exchange key", log.ErrKey, err)
-			return nil, fmt.Errorf("failed to exchange key: %w", err)
+			logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
+			return nil, err
 		}
-		logger.Info("successfully exchanged key with another enclave")
-	} else {
-		// If no key was found and no action specified, return error
-		return nil, fmt.Errorf("no encryption key found and no action specified (use 'new' to generate a new key or provide a key exchange URL)")
 	}
 
-	// Seal the key that we generated / got from the key exchange
+	// Seal the key that we generated / got from the key exchange from another enclave
 	err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave)
 	if err != nil {
-		logger.Error("unable to seal encryption key", log.ErrKey, err)
-		return nil, fmt.Errorf("failed to seal encryption key: %w", err)
+		logger.Crit("unable to seal encryption key", log.ErrKey, err)
+		return nil, err
 	}
-	logger.Info("sealed encryption key")
+	logger.Info("sealed new encryption key")
 
 	return encryptionKey, nil
 }
@@ -178,7 +187,7 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 8: Send the message to KeyProvider via HTTP POST
-	resp, err := http.Post(config.KeyExchangeURL+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
+	resp, err := http.Post(config.EncryptionKeySource+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
 	if err != nil {
 		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err)
 		return nil, fmt.Errorf("failed to send message to KeyProvider: %w", err)

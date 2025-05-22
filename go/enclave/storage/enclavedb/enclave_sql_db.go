@@ -2,9 +2,10 @@ package enclavedb
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/jmoiron/sqlx"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -14,8 +15,8 @@ import (
 // enclaveDB - Implements the key-value ethdb.Database and also exposes the underlying sql database
 // should not be used directly outside the db package
 type enclaveDB struct {
-	sqldb   *sql.DB
-	rwSqldb *sql.DB // required only by sqlite. For a normal db, it will be the same instance as sqldb
+	sqldb   *sqlx.DB
+	rwSqldb *sqlx.DB // required only by sqlite. For a normal db, it will be the same instance as sqldb
 	config  *enclaveconfig.EnclaveConfig
 	logger  gethlog.Logger
 }
@@ -55,11 +56,11 @@ func (sqlDB *enclaveDB) AncientDatadir() (string, error) {
 	panic("implement me")
 }
 
-func NewEnclaveDB(db *sql.DB, rwdb *sql.DB, config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) (EnclaveDB, error) {
+func NewEnclaveDB(db *sqlx.DB, rwdb *sqlx.DB, config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) (EnclaveDB, error) {
 	return &enclaveDB{sqldb: db, rwSqldb: rwdb, config: config, logger: logger}, nil
 }
 
-func (sqlDB *enclaveDB) GetSQLDB() *sql.DB {
+func (sqlDB *enclaveDB) GetSQLDB() *sqlx.DB {
 	return sqlDB.sqldb
 }
 
@@ -76,6 +77,12 @@ func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
 }
 
 func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
+	if key == nil {
+		return errors.New("key cannot be nil")
+	}
+	if value == nil {
+		return fmt.Errorf("value cannot be nil. key: %x", key)
+	}
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
 	return Put(ctx, sqlDB.sqldb, key, value)
@@ -94,8 +101,8 @@ func (sqlDB *enclaveDB) Close() error {
 	return nil
 }
 
-func (sqlDB *enclaveDB) NewDBTransaction(ctx context.Context) (*sql.Tx, error) {
-	tx, err := sqlDB.rwSqldb.BeginTx(ctx, nil)
+func (sqlDB *enclaveDB) NewDBTransaction(ctx context.Context) (*sqlx.Tx, error) {
+	tx, err := sqlDB.rwSqldb.Beginx()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create db transaction - %w", err)
 	}

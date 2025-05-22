@@ -119,7 +119,6 @@ func readyRequestHandler(_ *services.Services, _ UserConn) {}
 
 // This function handles request to /join endpoint. It is responsible to create new user (new key-pair) and store it to the db
 func joinRequestHandler(walletExt *services.Services, conn UserConn) {
-	// audit()
 	// todo (@ziga) add protection against DDOS attacks
 	_, err := conn.ReadRequest()
 	if err != nil {
@@ -376,6 +375,7 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 		L2BridgeAddress                 string            `json:"L2Bridge"`
 		L1CrossChainMessengerAddress    string            `json:"L1CrossChainMessenger"`
 		L2CrossChainMessengerAddress    string            `json:"L2CrossChainMessenger"`
+		SystemContractsUpgrader         string            `json:"SystemContractsUpgrader"`
 		L1StartHash                     string            `json:"L1StartHash"`
 		AdditionalContracts             map[string]string `json:"AdditionalContracts"`
 	}
@@ -399,6 +399,7 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 		L2BridgeAddress:                 networkConfig.L2Bridge.Hex(),
 		L1CrossChainMessengerAddress:    networkConfig.L1CrossChainMessenger.Hex(),
 		L2CrossChainMessengerAddress:    networkConfig.L2CrossChainMessenger.Hex(),
+		SystemContractsUpgrader:         networkConfig.SystemContractsUpgrader.Hex(),
 		L1StartHash:                     networkConfig.L1StartHash.Hex(),
 		AdditionalContracts:             additionalContracts,
 	}

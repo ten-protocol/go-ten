@@ -227,7 +227,7 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 
 	ec.EthHeader, err = executor.gethEncodingService.CreateEthHeaderForBatch(ec.ctx, ec.currentBatch.Header)
 	if err != nil {
-		return fmt.Errorf("could not create eth header for batch. Cause: %w", err)
+		return fmt.Errorf("be: could not create eth header for batch. Cause: %w", err)
 	}
 	ec.Chain = evm.NewTenChainContext(executor.storage, executor.gethEncodingService, executor.config, executor.chainConfig, executor.logger)
 

@@ -2,16 +2,15 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "../../lib/Storage.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-
+import "../../common/UnrenouncableOwnable2Step.sol";
 /**
  * @title NetworkConfig
  * @dev Contract for managing network configuration and addresses
  * Implements a storage mechanism for fixed and dynamic addresses
  * Allows for adding and retrieving additional addresses
  */
-contract NetworkConfig is Initializable, OwnableUpgradeable {
+contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
 
     /**
      * @dev Struct for system addresses that we don't expect to change
@@ -46,6 +45,15 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
         NamedAddress[] additionalContracts;  // Dynamic address storage
     }
 
+    /**
+     * @dev Struct for contract version information
+     */
+    struct ContractVersion {
+        string name;
+        string version;
+        address implementation;
+    }
+
     // storage slots for fixed contracts
     bytes32 public constant CROSS_CHAIN_SLOT = bytes32(uint256(keccak256("networkconfig.crossChain")) - 1);
     bytes32 public constant MESSAGE_BUS_SLOT = bytes32(uint256(keccak256("networkconfig.messageBus")) - 1);
@@ -60,7 +68,17 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
 
     // simple storage for additional addresses
     string[] public addressNames;
-    mapping(string => address) public additionalAddresses;
+    mapping(string contractName => address contractAddress) public additionalAddresses;
+
+    /**
+     * @dev Mapping of contract names to their versions
+     */
+    mapping(string contractName => ContractVersion contractVersion) private contractVersions;
+
+    /**
+     * @dev Storage slot for the fork manager
+     */
+    bytes32 public constant FORK_MANAGER_SLOT = bytes32(uint256(keccak256("networkconfig.forkManager")) - 1);
 
     /**
      * @dev Event emitted when a network contract address is added
@@ -75,6 +93,14 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
      * @param addr The address of the contract
      */
     event AdditionalContractAddressAdded(string name, address addr);
+
+    /**
+     * @dev Event emitted when a hardfork upgrade occurs
+     * @param forkName The name of the hardfork
+     */
+    event HardforkUpgrade(
+        string indexed forkName
+    );
 
     /**
      * @dev Initializes the contract
@@ -233,5 +259,23 @@ contract NetworkConfig is Initializable, OwnableUpgradeable {
             l2CrossChainMessenger: l2CrossChainMessengerAddress(),
             additionalContracts: additional
         });
+    }
+
+    /**
+     * @dev Gets the version information for a contract
+     * @param name The name of the contract
+     * @return ContractVersion The version information
+     */
+    function getContractVersion(string calldata name) external view returns (ContractVersion memory) {
+        return contractVersions[name];
+    }
+
+    /**
+     * @dev Emits a hardfork upgrade event that can be subscribed to by the L2
+     */
+    function recordHardfork(
+        string calldata hardforkName
+    ) external onlyOwner {
+        emit HardforkUpgrade(hardforkName);
     }
 }

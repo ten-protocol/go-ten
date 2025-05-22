@@ -1,4 +1,3 @@
-
 # TEN Gateway Documentation
 
 For a comprehensive overview, refer to the [official documentation](https://docs.ten.xyz/docs/tools-infrastructure/hosted-gateway).
@@ -41,7 +40,7 @@ Example:
 - **`--nodePortWS`**: The port on which to connect to the Obscuro node via RPC over websockets. Default: `81`.
 - **`--logPath`**: The path to use for the wallet extension's log file. Default: `sys_out`.
 - **`--databasePath`**: The path for the wallet extension's database file. Default: `.obscuro/gateway_database.db`.
-- **`--verbose`**: Flag to enable verbose logging of wallet extension traffic. Default: `false`.
+- **`--logLevel`**: Sets the logging level for the wallet extension. Acceptable values are `critical`, `error`, `warning`, `info`, `debug`, and `trace`. Default: `info`.
 - **`--dbType`**: Define the database type (`sqlite` or `mariaDB`). Default: `sqlite`.
 - **`--dbConnectionURL`**: If `dbType` is set to `mariaDB`, this must be set.
 - **`--tenChainID`**: ChainID of the TEN network that the gateway is communicating with. Default: `443`.
@@ -49,7 +48,6 @@ Example:
 - **`--rateLimitUserComputeTime`**: Represents how much compute time a user is allowed to use within the `rateLimitWindow` time. Set to `0` to disable rate limiting. Default: `10s`.
 - **`--rateLimitWindow`**: Time window in which a user is allowed to use the defined compute time. Default: `1m`.
 - **`--maxConcurrentRequestsPerUser`**: Number of concurrent requests allowed per user. Default: `3`.
-
 
 ### Frontend
 
@@ -92,4 +90,3 @@ TEN Gateway exposes several HTTP endpoints for interaction:
 
 - **`GET /v1/getmessage`**  
   Generates and returns a message for the user to sign based on the provided encryption token.
-

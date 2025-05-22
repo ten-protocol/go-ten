@@ -33,8 +33,8 @@ func SepoliaTestnet(opts ...TestnetEnvOption) networktest.Environment {
 
 func UATTestnet(opts ...TestnetEnvOption) networktest.Environment {
 	connector := newTestnetConnector(
-		"http://erpc.uat-testnet.ten.xyz:80", // this is actually a validator...
-		[]string{"http://erpc.uat-testnet.ten.xyz:80"},
+		"http://uat-sequencer.ten.xyz:8085",
+		[]string{"http://uat-validator-01.ten.xyz:8085"},
 		"http://uat-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"wss://ethereum-sepolia-rpc.publicnode.com",
 		"https://rpc.uat-testnet.ten.xyz",
@@ -110,7 +110,7 @@ func (t *testnetEnv) startTenGateway() {
 		NodeRPCHTTPAddress:      validatorHTTP,
 		NodeRPCWebsocketAddress: validatorWS,
 		LogPath:                 "sys_out",
-		VerboseFlag:             false,
+		LogLevel:                3, // info level
 		DBType:                  "sqlite",
 		TenChainID:              integration.TenChainID,
 	}
