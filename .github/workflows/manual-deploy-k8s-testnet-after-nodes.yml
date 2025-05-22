@@ -1,0 +1,286 @@
+# Last step deploying a new testnet, deploys L2 contracts and faucet etc.
+#
+# This script uses GitHub Environments for variables (vars) and secrets - these are configured on GitHub and
+#  the environments match the input.testnet_type options
+#
+# To deploy sepolia the user must type 'confirm' in the confirmation field
+
+name: '[M] k8s complete testnet setup'
+run-name: '[M] k8s complete testnet setup ( ${{ github.event.inputs.testnet_type }} )'
+on:
+   workflow_dispatch:
+      inputs:
+         testnet_type:
+            description: 'Testnet Type'
+            required: true
+            default: 'dev-testnet'
+            type: choice
+            options:
+               - 'dev-testnet'
+               - 'uat-testnet'
+               - 'sepolia-testnet'
+         log_level:
+            description: 'Log Level 1-Error 5-Trace'
+            required: true
+            default: 3
+            type: number
+         confirmation:
+            description: 'Type "confirm" if deploying sepolia'
+            required: false
+            type: string
+
+jobs:
+   read-l1-config:
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+
+      # Expose everything we read as job-level outputs
+      outputs:
+         network_config: ${{ steps.parse.outputs.network_config }}
+         message_bus: ${{ steps.parse.outputs.message_bus }}
+         bridge: ${{ steps.parse.outputs.bridge }}
+         crosschain: ${{ steps.parse.outputs.crosschain }}
+         rollup: ${{ steps.parse.outputs.rollup }}
+         enclave_registry: ${{ steps.parse.outputs.enclave_registry }}
+         start_hash: ${{ steps.parse.outputs.start_hash }}
+        # This is the short name of the env without suffix, e.g. dev-testnet -> dev
+         TESTNET_SHORT_NAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
+
+      steps:
+         # first, we check the confirmation field if deploying sepolia
+         - name: 'Check confirmation'
+           run: |
+            if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+               echo "Confirmation field must say 'confirm' to deploy sepolia to avoid accidental deployments"
+               exit 1
+            fi
+
+         -  name: 'Prepare testnet short name'
+            id: prepareTestnetShortName
+            shell: bash
+            env:
+               TESTNET_TYPE: ${{ github.event.inputs.testnet_type }}
+            run: |
+               # strip the -testnet suffix from the testnet type
+               short_name=${TESTNET_TYPE%-testnet}
+               echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_OUTPUT
+
+         # checkout *this* repo (so subsequent steps can still see it)
+         -  uses: actions/checkout@v4
+
+         # checkout the repo that **contains the YAML** under ./cfg/
+         -  uses: actions/checkout@v4
+            with:
+               repository: ten-protocol/ten-apps
+               token: ${{ secrets.DEPLOY_ACTIONS_PAT }}
+               path: cfg
+
+         -  name: Install yq
+            run: |
+               sudo wget -qO /usr/local/bin/yq \
+                 https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
+               sudo chmod +x /usr/local/bin/yq
+
+         # parse YAML and emit outputs
+         -  name: Parse l1-config.yaml
+            id: parse
+            env:
+               TESTNET_SHORT_NAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
+            run: |
+               CFG=cfg/nonprod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
+               
+               echo "network_config=$(yq -r '.l1Config.networkConfig'     "$CFG")"   >> $GITHUB_OUTPUT
+               echo "message_bus=$(yq -r '.l1Config.messagebus'           "$CFG")"   >> $GITHUB_OUTPUT
+               echo "bridge=$(yq -r '.l1Config.bridge'                    "$CFG")"   >> $GITHUB_OUTPUT
+               echo "crosschain=$(yq -r '.l1Config.crosschain'            "$CFG")"   >> $GITHUB_OUTPUT
+               echo "rollup=$(yq -r '.l1Config.rollup'                    "$CFG")"   >> $GITHUB_OUTPUT
+               echo "enclave_registry=$(yq -r '.l1Config.enclaveRegistry' "$CFG")"   >> $GITHUB_OUTPUT
+               echo "start_hash=$(yq -r '.l1Config.starthash'             "$CFG")"   >> $GITHUB_OUTPUT
+
+   build:
+        runs-on: ubuntu-latest
+        needs: read-l1-config
+        environment:
+            name: ${{ github.event.inputs.testnet_type }}
+        steps:
+         -  name: 'Login via Azure CLI'
+            uses: azure/login@v1
+            with:
+               creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+         -  name: 'Login to Azure docker registry'
+            uses: azure/docker-login@v1
+            with:
+               login-server: testnetobscuronet.azurecr.io
+               username: testnetobscuronet
+               password: ${{ secrets.REGISTRY_PASSWORD }}
+
+         -  uses: actions/checkout@v4
+
+         -  uses: actions/setup-go@v5
+            with:
+               go-version: 1.23.5
+         -  name: 'Build and push obscuro node images'
+            run: |
+               DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
+               docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+
+   check-obscuro-is-healthy:
+      runs-on: ubuntu-latest
+      needs:
+         - read-l1-config
+         - build
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      steps:
+         - uses: actions/checkout@v4
+
+         - name: "Wait until obscuro node is healthy"
+           shell: bash
+           run: |
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-sequencer.ten.xyz
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-validator-01.ten.xyz
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-validator-02.ten.xyz
+   
+
+   grant-sequencer-enclaves:
+      needs:
+         - read-l1-config
+         - check-obscuro-is-healthy
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      steps:
+         -  uses: actions/checkout@v4
+
+         -  name: 'Grant permission to sequencer enclave(s)'
+            id: grantSequencerPermission
+            shell: bash
+            env:
+               DOCKER_API_VERSION: "1.45"
+               DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+               DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+               DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+               DEPLOY_L2_SEQUENCERURL: http://${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-sequencer.ten.xyz:8085
+               NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.read-l1-config.outputs.enclave_registry }}
+
+            run: |
+               go run ./testnet/launcher/l1grantsequencers/cmd
+
+         -  name: 'Save sequencer permissioning container logs'
+            run: |
+               docker logs `docker ps -aqf "name=grant-sequencers"` > grant-sequencers.out 2>&1
+
+         -  name: 'Upload sequencer permissioning container logs'
+            uses: actions/upload-artifact@v4
+            with:
+               name: grant-sequencers
+               path: |
+                  grant-sequencers.out
+               retention-days: 7
+
+   set-challenge-period:
+      needs:
+         - read-l1-config
+         - check-obscuro-is-healthy
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      env:
+         DOCKER_API_VERSION: "1.45"
+         NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.read-l1-config.outputs.rollup }}
+         DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+         DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+         DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+         DEPLOY_L1_CHALLENGEPERIOD: ${{ vars.L1_CHALLENGE_PERIOD }}
+      steps:
+         -  uses: actions/checkout@v4
+
+         -  name: 'Set challenge period on rollup contract'
+            id: setChallengePeriod
+            shell: bash
+            run: |
+               go run ./testnet/launcher/l1challengeperiod/cmd
+               echo "Setting challenge period to ${{ vars.L1_CHALLENGE_PERIOD }}"
+
+         -  name: 'Save challenge period container logs'
+            run: |
+               docker logs `docker ps -aqf "name=set-challenge-period"` > set-challenge-period.out 2>&1
+
+         -  name: 'Upload challenge period container logs'
+            uses: actions/upload-artifact@v4
+            with:
+               name: set-challenge-period
+               path: |
+                  set-challenge-period.out
+               retention-days: 7
+
+   deploy-l2-contracts:
+      needs:
+         - read-l1-config
+         - grant-sequencer-enclaves
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      steps:
+         - uses: actions/checkout@v4
+
+         - name: 'Deploy L2 contracts'
+           id: deployL2Contracts
+           shell: bash
+           env:
+              DOCKER_API_VERSION: "1.45"
+              DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+              DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+              DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+              DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
+              DEPLOY_L2_RPCADDRESS: ${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-validator-01.ten.xyz
+              DEPLOY_L2_HTTPPORT: 8085
+              DEPLOY_L2_WSPORT: 8089
+              DEPLOY_L2_FAUCETFUNDS: ${{ vars.FAUCET_INITIAL_FUNDS }}
+              NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.read-l1-config.outputs.network_config }}
+              NETWORK_L1_CONTRACTS_MESSAGEBUS: ${{ needs.read-l1-config.outputs.message_bus }}
+              NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.read-l1-config.outputs.rollup }}
+              NETWORK_L1_CONTRACTS_CROSSCHAIN: ${{ needs.read-l1-config.outputs.crosschain }}
+              NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.read-l1-config.outputs.enclave_registry }}
+           run: |
+              go run ./testnet/launcher/l2contractdeployer/cmd \
+
+         - name: 'Save L2 deployer container logs'
+           run: |
+              docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
+
+         - name: 'Upload L2 deployer container logs'
+           uses: actions/upload-artifact@v4
+           with:
+              name: deploy-l2-artifacts
+              path: |
+                 deploy-l2-contracts.out
+              retention-days: 7
+
+   deploy-faucet:
+      name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
+      uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
+      with:
+         testnet_type: ${{ github.event.inputs.testnet_type }}
+      secrets: inherit
+      needs:
+         - grant-sequencer-enclaves
+
+   obscuro-test-repository-dispatch:
+      runs-on: ubuntu-latest
+      environment:
+         name: ${{ github.event.inputs.testnet_type }}
+      needs:
+         - deploy-faucet
+      steps:
+         - name: 'Send a repository dispatch to obscuro-test on deployment of dev-testnet'
+           if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
+           run: |
+              curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "dev_testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'
+
+         - name: 'Send a repository dispatch to obscuro-test on deployment of testnet'
+           if: ${{ (github.event.inputs.testnet_type == 'uat-testnet') }}
+           run: |
+              curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "uat_testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'

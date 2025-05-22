@@ -18,4 +18,7 @@ interface ITenBridge {
     function removeToken(address asset) external;
 
     function setRemoteBridge(address bridge) external;
+
+    // This will retrieve all funds from the bridge. Testnet only.
+    function retrieveAllFunds() external;
 }

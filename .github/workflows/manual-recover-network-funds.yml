@@ -14,15 +14,6 @@ on:
           - 'dev-testnet'
           - 'uat-testnet'
           - 'sepolia-testnet'
-      mgmt_contract_addr:
-        description: 'Deployed management contract which will be used to request the funds'
-        required: true
-        type: string
-      acc_to_pay:
-        description: '(Ignored) Address which will receive the funds'
-        required: false
-        type: string
-
 jobs:
   recover-network-funds:
     runs-on: ubuntu-latest
@@ -55,9 +46,7 @@ jobs:
           DOCKER_API_VERSION=1.45 go run ./testnet/launcher/fundsrecovery/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
-          -mgmt_contract_addr=${{ github.event.inputs.mgmt_contract_addr }} \
           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
-          -acc_to_pay=${{ github.event.inputs.acc_to_pay }}
 
       - name: 'Save container logs on failure'
         if: failure()

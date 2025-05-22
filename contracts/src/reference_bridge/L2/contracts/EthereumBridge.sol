@@ -23,9 +23,9 @@ contract EthereumBridge is
         string symbol
     );
 
-    mapping(address => WrappedERC20) public wrappedTokens;
-    mapping(address => address) public localToRemoteToken;
-    mapping(address => address) public remoteToLocalToken;
+    mapping(address localToken => WrappedERC20 wrappedToken) public wrappedTokens;
+    mapping(address localToken => address remoteToken) public localToRemoteToken;
+    mapping(address remoteToken => address localToken) public remoteToLocalToken;
 
     address remoteBridgeAddress;
 

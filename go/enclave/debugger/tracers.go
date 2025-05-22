@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json"
 
+	"github.com/ten-protocol/go-ten/go/enclave/components"
+
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/tracers"
-	"github.com/ten-protocol/go-ten/go/enclave/l2chain"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -25,12 +26,12 @@ const (
 )
 
 type Debugger struct {
-	chain       l2chain.ObscuroChain
+	chain       components.TENChain
 	storage     storage.Storage
 	chainConfig *params.ChainConfig
 }
 
-func New(chain l2chain.ObscuroChain, storage storage.Storage, config *params.ChainConfig) *Debugger {
+func New(chain components.TENChain, storage storage.Storage, config *params.ChainConfig) *Debugger {
 	return &Debugger{
 		chain:       chain,
 		chainConfig: config,

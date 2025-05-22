@@ -41,10 +41,11 @@ import (
 // ```
 // For ease of reading only the top-level struct is defined in this file, the nested structs are defined in their own files.
 type TenConfig struct {
-	Network *NetworkConfig `mapstructure:"network"`
-	Node    *NodeConfig    `mapstructure:"node"`
-	Host    *HostConfig    `mapstructure:"host"`
-	Enclave *EnclaveConfig `mapstructure:"enclave"`
+	Network    *NetworkConfig    `mapstructure:"network"`
+	Node       *NodeConfig       `mapstructure:"node"`
+	Host       *HostConfig       `mapstructure:"host"`
+	Enclave    *EnclaveConfig    `mapstructure:"enclave"`
+	Deployment *DeploymentConfig `mapstructure:"deploy"`
 }
 
 //

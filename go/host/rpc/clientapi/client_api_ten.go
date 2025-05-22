@@ -110,6 +110,7 @@ type ChecksumFormattedTenNetworkConfig struct {
 	L1CrossChainMessenger     gethcommon.AddressEIP55
 	L2CrossChainMessenger     gethcommon.AddressEIP55
 	TransactionsPostProcessor gethcommon.AddressEIP55
+	SystemContractsUpgrader   gethcommon.AddressEIP55
 	L1StartHash               gethcommon.Hash
 	PublicSystemContracts     map[string]gethcommon.AddressEIP55
 	AdditionalContracts       []*common.NamedAddress
@@ -135,6 +136,7 @@ func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetwork
 		L1CrossChainMessenger:     gethcommon.AddressEIP55(info.L1CrossChainMessenger),
 		L2CrossChainMessenger:     gethcommon.AddressEIP55(info.L2CrossChainMessenger),
 		TransactionsPostProcessor: gethcommon.AddressEIP55(info.TransactionsPostProcessor),
+		SystemContractsUpgrader:   gethcommon.AddressEIP55(info.SystemContractsUpgrader),
 		L1StartHash:               info.L1StartHash,
 		PublicSystemContracts:     publicSystemContracts,
 		AdditionalContracts:       additionalContracts,

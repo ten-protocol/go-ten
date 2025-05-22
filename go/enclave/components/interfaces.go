@@ -2,8 +2,10 @@ package components
 
 import (
 	"context"
-	"errors"
 	"math/big"
+
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ten-protocol/go-ten/go/common/gethapi"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
@@ -17,8 +19,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
-
-var ErrDuplicateRollup = errors.New("duplicate rollup received")
 
 type BlockIngestionType struct {
 	// FirstL1Block is true if there is no stored L1 head block.
@@ -159,4 +159,17 @@ type RollupConsumer interface {
 	// blobs, compares this with the hashes seen in the block. Checks the sequencer signature over the composite hash of
 	// the rollup components.
 	ExtractAndVerifyRollupData(rollupTx *common.L1TxData) (*common.ExtRollup, error)
+}
+
+// TENChain - the interface that provides the data access layer to the obscuro l2.
+// Operations here should be read only.
+type TENChain interface {
+	// GetBalanceAtBlock - will return the balance of a specific address at the specific given block number (batch number).
+	GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error)
+
+	// Call - The interface for executing eth_call RPC commands against obscuro.
+	Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError)
+
+	// ObsCallAtBlock - Execute eth_call RPC against obscuro for a specific block (batch) number.
+	ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError)
 }

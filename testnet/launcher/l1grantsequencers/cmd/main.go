@@ -4,22 +4,19 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ten-protocol/go-ten/go/config"
 	l1gs "github.com/ten-protocol/go-ten/testnet/launcher/l1grantsequencers"
 )
 
 func main() {
-	cliConfig := ParseConfigCLI()
+	tenCfg, err := config.LoadTenConfig()
+	if err != nil {
+		fmt.Println("Error loading ten config:", err)
+		os.Exit(1)
+	}
 
-	l1grantsequencers, err := l1gs.NewGrantSequencers(
-		l1gs.NewGrantSequencerConfig(
-			l1gs.WithL1HTTPURL(cliConfig.l1HTTPURL),
-			l1gs.WithPrivateKey(cliConfig.privateKey),
-			l1gs.WithDockerImage(cliConfig.dockerImage),
-			l1gs.WithEnclaveContractAddress(cliConfig.enclaveRegistryAddr),
-			l1gs.WithEnclaveIDs(cliConfig.enclaveIDs),
-			l1gs.WithSequencerURL(cliConfig.sequencerURL),
-		),
-	)
+	grantSeqCfg := l1gs.NewGrantSequencerConfig(tenCfg)
+	l1grantsequencers, err := l1gs.NewGrantSequencers(grantSeqCfg)
 	if err != nil {
 		fmt.Println("unable to configure l1 contract deployer - %w", err)
 		os.Exit(1)

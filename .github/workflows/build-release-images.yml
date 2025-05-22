@@ -12,7 +12,7 @@ on:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: arc-runner-set
     environment: production
 
     steps:
@@ -50,3 +50,12 @@ jobs:
           docker push testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION}
           DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/host:${VERSION} -f dockerfiles/host.Dockerfile .
           docker push testnetobscuronet.azurecr.io/obscuronet/host:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/l1challengeperiod:${VERSION} -f dockerfiles/l1challengeperiod.Dockerfile .
+          docker push testnetobscuronet.azurecr.io/obscuronet/l1challengeperiod:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/l1contractdeployer:${VERSION} -f dockerfiles/l1contractdeployer.Dockerfile .
+          docker push testnetobscuronet.azurecr.io/obscuronet/l1contractdeployer:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/l1grantsequencers:${VERSION} -f dockerfiles/l1grantsequencers.Dockerfile .
+          docker push testnetobscuronet.azurecr.io/obscuronet/l1grantsequencers:${VERSION}
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/l2contractdeployer:${VERSION} -f dockerfiles/l2contractdeployer.Dockerfile .
+          docker push testnetobscuronet.azurecr.io/obscuronet/l2contractdeployer:${VERSION}
+          
