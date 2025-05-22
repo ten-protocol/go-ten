@@ -40,9 +40,8 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
     IMerkleTreeMessageBus public merkleMessageBus;
     INetworkEnclaveRegistry public enclaveRegistry;
 
-    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _disableInitializers();
+        _transferOwnership(msg.sender);
     }
 
     /**

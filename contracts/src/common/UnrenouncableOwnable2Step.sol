@@ -9,18 +9,13 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
  * @dev Contract that extends Ownable2StepUpgradeable but prevents renouncing ownership
  */
 contract UnrenouncableOwnable2Step is Ownable2StepUpgradeable {
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
     /**
      * @dev Initializes the contract setting the deployer as the initial owner.
      * @param initialOwner The address that will be the initial owner
      */
     function __UnrenouncableOwnable2Step_init(address initialOwner) internal onlyInitializing {
-        __Ownable2Step_init();  // Initialize Ownable2StepUpgradeable without owner
-        _transferOwnership(initialOwner);  // Set the owner explicitly
+        __Ownable2Step_init();
+        _transferOwnership(initialOwner);
     }
 
     /**
