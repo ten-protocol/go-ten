@@ -3,7 +3,7 @@ package faucet
 import (
 	"fmt"
 
-	"github.com/golang-jwt/jwt/v5"
+	"github.com/golang-jwt/jwt"
 )
 
 func ValidateToken(tokenString string, secret []byte) (*jwt.Token, error) {
