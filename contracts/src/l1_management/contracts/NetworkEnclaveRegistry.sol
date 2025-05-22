@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.7.0 <0.9.0;
+pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -34,16 +34,17 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
      */
     mapping(address sequencerID => bool isSequencer) private sequencerEnclave;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _transferOwnership(msg.sender);
+        _disableInitializers();
     }
 
     /**
-     * @dev Initializes the contract
-     * @param owner The owner of the contract
+     * @dev Initializes the contract with the owner
+     * @param _owner Address of the contract owner
      */
-    function initialize(address owner) public initializer {
-        __Ownable_init(owner);
+    function initialize(address _owner) public initializer {
+        __UnrenouncableOwnable2Step_init(_owner);  // Initialize UnrenouncableOwnable2Step
         networkSecretInitialized = false;
     }
 

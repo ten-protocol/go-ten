@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0
-pragma solidity >=0.7.0 <0.9.0;
+pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 
 import "../interfaces/ICrossChain.sol";
 import * as MessageBus from "../../cross_chain_messaging/common/MessageBus.sol";
@@ -33,8 +35,9 @@ contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, Re
     MessageBus.IMessageBus public messageBus;
     MerkleTreeMessageBus.IMerkleTreeMessageBus public merkleMessageBus;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _transferOwnership(msg.sender);
+        _disableInitializers();
     }
 
     /**
@@ -42,7 +45,7 @@ contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, Re
      * @param owner Address that will own the contract
      */
     function initialize(address owner) public initializer {
-        __Ownable_init(owner);
+        __UnrenouncableOwnable2Step_init(owner);
         __ReentrancyGuard_init();
         merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus();
         merkleMessageBus.initialize(owner, address(this));

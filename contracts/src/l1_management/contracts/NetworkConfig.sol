@@ -102,14 +102,18 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
         string indexed forkName
     );
 
-    /**
-     * @dev Initializes the contract
-     * @param _addresses The fixed addresses
-     * @param owner The owner of the contract
-     */
-    function initialize( NetworkConfig.FixedAddresses memory _addresses, address owner) public initializer {
-        __Ownable_init(owner);
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
+    /**
+     * @dev Initializes the contract with addresses and owner
+     * @param _addresses The fixed addresses
+     * @param _owner Address of the contract owner
+     */
+    function initialize(NetworkConfig.FixedAddresses memory _addresses, address _owner) public initializer {
+        __UnrenouncableOwnable2Step_init(_owner);  // Initialize UnrenouncableOwnable2Step
         Storage.setAddress(CROSS_CHAIN_SLOT, _addresses.crossChain);
         Storage.setAddress(MESSAGE_BUS_SLOT, _addresses.messageBus);
         Storage.setAddress(NETWORK_ENCLAVE_REGISTRY_SLOT, _addresses.networkEnclaveRegistry);
