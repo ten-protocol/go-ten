@@ -41,7 +41,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
     INetworkEnclaveRegistry public enclaveRegistry;
 
     constructor() {
-        _transferOwnership(msg.sender);
+        _disableInitializers();
     }
 
     /**
