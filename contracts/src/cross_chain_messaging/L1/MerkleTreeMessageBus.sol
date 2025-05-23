@@ -69,6 +69,13 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
         revokeRole(STATE_ROOT_MANAGER_ROLE, manager);
     }
 
+    function addWithdrawalManager(address withdrawalManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
+    }
+
+    function removeWithdrawalManager(address withdrawalManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        revokeRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
+    }
     /**
      * @dev Adds a new state root with its activation time
      * @param stateRoot The state root to be added
