@@ -42,6 +42,7 @@ type BatchHeader struct {
 	Signature      []byte                   `json:"signature"`
 	CrossChainRoot common.Hash              `json:"crossChainTreeHash"` // This is the root hash of a merkle tree, built from all the cross chain messages and transfers that need to go on MainNet.
 	CrossChainTree SerializedCrossChainTree `json:"crossChainTree"`     // Those are the leafs of the merkle tree hashed for privacy. Necessary for clients to be able to build proofs as they have no access to all transactions in a batch or their receipts.
+	// todo - add hash of the payload - because we now have timestamps that are not signed
 }
 
 // TODO - use exposed headers once #3987 is completed.

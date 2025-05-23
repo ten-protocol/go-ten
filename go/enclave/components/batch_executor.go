@@ -720,12 +720,35 @@ func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions c
 	return nil
 }
 
+// 28 bytes entropy || 4 bytes timestamp (50 days)
+func buildMixDigest(entropy gethcommon.Hash, timeDelta int32) []byte {
+	digest := make([]byte, 32)
+	copy(digest[:28], entropy[:28])
+	copy(digest[28:], []byte{byte(timeDelta >> 24), byte(timeDelta >> 16), byte(timeDelta >> 8), byte(timeDelta)})
+	return digest
+}
+
 func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L2PricedTransaction, offset int, noBaseFee bool) (*core.TxExecResult, error) {
 	ethHeader := *ec.EthHeader
-	before := ethHeader.MixDigest
-	ethHeader.MixDigest = executor.entropyService.TxEntropy(before.Bytes(), offset)
-	//	ethHeader.Difficulty = big.NewInt(tx.Tx.Time().UnixMilli())
+	fullEntropy := executor.entropyService.TxEntropy(ethHeader.MixDigest.Bytes(), offset)
 
+	// we use the "mixdigest" field to transport both the unique transaction entropy and the unique transaction timestamp
+
+	txTime := tx.Tx.Time().UnixMilli()
+	if tx.FromSelf {
+		txTime = int64(ethHeader.Time) * 1000
+	}
+	// the block time is measured in seconds
+	timeDelta := int64(ethHeader.Time)*1000 - txTime
+	timeDeltaFourBytes := int32(timeDelta)
+
+	if int64(timeDeltaFourBytes) != timeDelta {
+		return nil, fmt.Errorf("should not happen. The transaction is older than 50 days. Block time: %d, tx time: %d", ethHeader.Time, tx.Tx.Time().UnixMilli())
+	}
+	digest := buildMixDigest(fullEntropy, timeDeltaFourBytes)
+	ethHeader.MixDigest = gethcommon.Hash(digest)
+
+	// fmt.Printf("block %s, height %d, time %d\n", ethHeader.Hash().Hex(), ethHeader.Number, ethHeader.Time)
 	// if the tx fails, it handles the revert
 	txResult := executor.evmFacade.ExecuteTx(tx, ec.stateDB, &ethHeader, ec.GasPool, ec.usedGas, offset, noBaseFee)
 
@@ -743,6 +766,8 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 		txResult.Receipt.GasUsed = gasUsed
 	}
 
+	// use the full entropy as the basis for the next transaction
+	ethHeader.MixDigest = fullEntropy
 	return txResult, nil
 }
 

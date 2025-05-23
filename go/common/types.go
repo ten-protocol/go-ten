@@ -249,25 +249,25 @@ func (s *SystemContractAddresses) ToString() string {
 	return str
 }
 
-// TxAndTimeStamp - RLP serializes a transaction together with the timestamp
-type TxAndTimeStamp struct {
+// TxWithTimestamp - RLP serializes a transaction together with the timestamp
+type TxWithTimestamp struct {
 	Tx   *L2Tx
 	Time *big.Int
 }
 
-func CreateTxAndTimeStamp(tx *L2Tx) *TxAndTimeStamp {
-	return &TxAndTimeStamp{
+func CreateTxwithTimestamp(tx *L2Tx) *TxWithTimestamp {
+	return &TxWithTimestamp{
 		Tx:   tx,
-		Time: big.NewInt(tx.Time().Unix()), // todo delta
+		Time: big.NewInt(tx.Time().UnixMilli()), // todo delta
 	}
 }
 
-func (t *TxAndTimeStamp) L2Tx() *L2Tx {
+func (t *TxWithTimestamp) L2Tx() *L2Tx {
 	t.Tx.SetTime(time.UnixMilli(t.Time.Int64()))
 	return t.Tx
 }
 
-type TxsWithTimeStamp []*TxAndTimeStamp
+type TxsWithTimeStamp []*TxWithTimestamp
 
 func (txs TxsWithTimeStamp) Txs() []*L2Tx {
 	txsOnly := make([]*L2Tx, len(txs))
@@ -280,7 +280,7 @@ func (txs TxsWithTimeStamp) Txs() []*L2Tx {
 func CreateTxsAndTimeStamp(tx []*L2Tx) *TxsWithTimeStamp {
 	txs := make(TxsWithTimeStamp, len(tx))
 	for i, t := range tx {
-		txs[i] = CreateTxAndTimeStamp(t)
+		txs[i] = CreateTxwithTimestamp(t)
 	}
 	return &txs
 }
