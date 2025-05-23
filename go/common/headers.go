@@ -42,7 +42,7 @@ type BatchHeader struct {
 	Signature      []byte                   `json:"signature"`
 	CrossChainRoot common.Hash              `json:"crossChainTreeHash"` // This is the root hash of a merkle tree, built from all the cross chain messages and transfers that need to go on MainNet.
 	CrossChainTree SerializedCrossChainTree `json:"crossChainTree"`     // Those are the leafs of the merkle tree hashed for privacy. Necessary for clients to be able to build proofs as they have no access to all transactions in a batch or their receipts.
-	// todo - add hash of the payload - because we now have timestamps that are not signed
+	PayloadHash    common.Hash              `json:"payloadHash"`        // hash of the payload - because it contains tx timestamps that are not signed
 }
 
 // TODO - use exposed headers once #3987 is completed.
@@ -108,6 +108,7 @@ type batchHeaderEncoding struct {
 	Signature          []byte                   `json:"signature"`
 	CrossChainRootHash common.Hash              `json:"crossChainTreeHash"`
 	CrossChainTree     SerializedCrossChainTree `json:"crossChainTree"`
+	PayloadHash        common.Hash              `json:"payloadHash"`
 }
 
 // MarshalJSON custom marshals the BatchHeader into a json
@@ -130,6 +131,7 @@ func (b *BatchHeader) MarshalJSON() ([]byte, error) {
 		b.Signature,
 		b.CrossChainRoot,
 		b.CrossChainTree,
+		b.PayloadHash,
 	})
 }
 
@@ -156,6 +158,7 @@ func (b *BatchHeader) UnmarshalJSON(data []byte) error {
 	b.Signature = dec.Signature
 	b.CrossChainRoot = dec.CrossChainRootHash
 	b.CrossChainTree = dec.CrossChainTree
+	b.PayloadHash = dec.PayloadHash
 	return nil
 }
 

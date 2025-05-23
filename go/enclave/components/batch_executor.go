@@ -43,7 +43,10 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 )
 
-var ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")
+var (
+	EmptyPayloadHash           = gethcommon.Hash{}
+	ErrNoTransactionsToProcess = fmt.Errorf("no transactions to process")
+)
 
 // batchExecutor - the component responsible for executing batches
 type batchExecutor struct {
@@ -586,8 +589,10 @@ func (executor *batchExecutor) createBatch(ec *BatchExecutionContext) (*core.Bat
 
 	if len(batch.Transactions) == 0 {
 		batch.Header.TxHash = types.EmptyTxsHash
+		batch.Header.PayloadHash = EmptyPayloadHash
 	} else {
 		batch.Header.TxHash = types.DeriveSha(types.Transactions(batch.Transactions), trie.NewStackTrie(nil))
+		batch.Header.PayloadHash = types.DeriveSha(common.CreateTxsAndTimeStamp(batch.Transactions), trie.NewStackTrie(nil))
 	}
 
 	return &batch, allResults, nil
@@ -652,6 +657,7 @@ func (executor *batchExecutor) CreateGenesisState(
 			Coinbase:         coinbase,
 			BaseFee:          baseFee,
 			GasLimit:         executor.batchGasLimit,
+			PayloadHash:      gethcommon.Hash{},
 		},
 		Transactions: []*common.L2Tx{},
 	}

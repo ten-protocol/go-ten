@@ -1,10 +1,13 @@
 package common
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
 	"time"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -283,4 +286,12 @@ func CreateTxsAndTimeStamp(tx []*L2Tx) *TxsWithTimeStamp {
 		txs[i] = CreateTxwithTimestamp(t)
 	}
 	return &txs
+}
+
+func (txs TxsWithTimeStamp) EncodeIndex(i int, w *bytes.Buffer) {
+	rlp.Encode(w, txs[i])
+}
+
+func (txs TxsWithTimeStamp) Len() int {
+	return len(txs)
 }
