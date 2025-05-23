@@ -754,7 +754,6 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 	digest := buildMixDigest(fullEntropy, timeDeltaFourBytes)
 	ethHeader.MixDigest = gethcommon.Hash(digest)
 
-	// fmt.Printf("block %s, height %d, time %d\n", ethHeader.Hash().Hex(), ethHeader.Number, ethHeader.Time)
 	// if the tx fails, it handles the revert
 	txResult := executor.evmFacade.ExecuteTx(tx, ec.stateDB, &ethHeader, ec.GasPool, ec.usedGas, offset, noBaseFee)
 
