@@ -10,6 +10,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         getNamedAccounts
     } = hre;
     const {deployer} = await getNamedAccounts();
+
+    // Deploy MerkleTreeMessageBus first
+    const merkleMessageBusDeployment = await deployments.deploy('MerkleTreeMessageBus', {
+        from: deployer,
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [deployer, deployer] // initialOwner and withdrawalManager
+                }
+            }
+        },
+        log: true,
+    });
+
     // Deploy CrossChain with MessageBus address
     const crossChainDeployment = await deployments.deploy('CrossChain', {
         from: deployer,
@@ -18,7 +34,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             execute: {
                 init: {
                     methodName: "initialize",
-                    args: [deployer]
+                    args: [deployer, merkleMessageBusDeployment.address]
                 }
             }
         },

@@ -41,15 +41,16 @@ contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, Re
     }
 
     /**
-     * @dev Initializes the contract with an owner
+     * @dev Initializes the contract with an owner and message bus
      * @param owner Address that will own the contract
+     * @param _messageBus Address of the message bus contract
      */
-    function initialize(address owner) public initializer {
-        __UnrenouncableOwnable2Step_init(owner);
+    function initialize(address owner, address _messageBus) public initializer {
+        require(_messageBus != address(0), "Invalid message bus address");
+        __UnrenouncableOwnable2Step_init(owner);  // This will initialize OwnableUpgradeable and Ownable2StepUpgradeable
         __ReentrancyGuard_init();
-        merkleMessageBus = new MerkleTreeMessageBus.MerkleTreeMessageBus();
-        merkleMessageBus.initialize(owner, address(this));
-        messageBus = MessageBus.IMessageBus(address(merkleMessageBus));
+        merkleMessageBus = MerkleTreeMessageBus.IMerkleTreeMessageBus(_messageBus);
+        messageBus = MessageBus.IMessageBus(_messageBus);
         paused = false; // Default to withdrawals enabled
     }
 

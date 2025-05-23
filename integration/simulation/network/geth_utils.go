@@ -100,18 +100,18 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		return nil, err
 	}
 
+	//TODO will need to deploy merkle message bus and pass address to crosschain
+
 	crossChainContract, crossChainReceipt, err := deployCrossChainContract(client, wallets.ContractOwnerWallet)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get the MessageBus address from the CrossChain contract
 	messageBusAddr, err := crossChainContract.MessageBus(&bind.CallOpts{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch MessageBus address. Cause: %w", err)
 	}
 
-	// Wait for MessageBus contract to be deployed
 	err = waitForContractDeployment(context.Background(), client, messageBusAddr)
 	if err != nil {
 		return nil, fmt.Errorf("MessageBus contract not available after deployment: %w", err)
