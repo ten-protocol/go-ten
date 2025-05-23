@@ -99,23 +99,16 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	if err != nil {
 		return nil, err
 	}
-
-	//TODO will need to deploy merkle message bus and pass address to crosschain
-
-	crossChainContract, crossChainReceipt, err := deployCrossChainContract(client, wallets.ContractOwnerWallet)
+	_, merkleMessageBusReceipt, err := deploMerkleMessageBusContract(client, wallets.ContractOwnerWallet)
+	if err != nil {
+		return nil, err
+	}
+	_, crossChainReceipt, err := deployCrossChainContract(client, wallets.ContractOwnerWallet, merkleMessageBusReceipt.ContractAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	messageBusAddr, err := crossChainContract.MessageBus(&bind.CallOpts{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch MessageBus address. Cause: %w", err)
-	}
-
-	err = waitForContractDeployment(context.Background(), client, messageBusAddr)
-	if err != nil {
-		return nil, fmt.Errorf("MessageBus contract not available after deployment: %w", err)
-	}
+	messageBusAddr := merkleMessageBusReceipt.ContractAddress
 
 	_, daRegistryReceipt, err := deployDataAvailabilityRegistry(client, wallets.ContractOwnerWallet, messageBusAddr, enclaveRegistryReceipt.ContractAddress)
 	if err != nil {
@@ -132,12 +125,23 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		return nil, err
 	}
 
+	// add stateroot manager
 	tx, err := merkleTreeMessageBus.AddStateRootManager(opts, daRegistryReceipt.ContractAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add state root manager to MerkleTreeMessageBus contract. Cause: %w", err)
 	}
 
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("no receipt for MerkleTreeMessageBus contract state root manager addition")
+	}
+
+	tx1, err := merkleTreeMessageBus.AddWithdrawalManager(opts, crossChainReceipt.ContractAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add state root manager to MerkleTreeMessageBus contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx1.Hash(), 25*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("no receipt for MerkleTreeMessageBus contract state root manager addition")
 	}
@@ -385,7 +389,44 @@ func deployDataAvailabilityRegistry(client ethadapter.EthClient, contractOwner w
 	return daRegistryContract, daRegistryContractReceipt, nil
 }
 
-func deployCrossChainContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*CrossChain.CrossChain, *types.Receipt, error) {
+func deploMerkleMessageBusContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*CrossChain.CrossChain, *types.Receipt, error) {
+	bytecode, err := constants.MerkleTreeMessageBusBytecode()
+	if err != nil {
+		return nil, nil, err
+	}
+	merkleMessageBusReceipt, err := DeployContract(client, contractOwner, bytecode)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to deploy CrossChain contract from %s. Cause: %w", contractOwner.Address(), err)
+	}
+	merkleMessageBusContract, err := CrossChain.NewCrossChain(merkleMessageBusReceipt.ContractAddress, client.EthClient())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to instantiate CrossChain contract. Cause: %w", err)
+	}
+
+	opts, err := createTransactor(contractOwner)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	tx, err := merkleMessageBusContract.Initialize(opts, contractOwner.Address(), contractOwner.Address())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to initialize CrossChain contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, nil, fmt.Errorf("no receipt for CrossChain initialization")
+	}
+
+	err = waitForContractDeployment(context.Background(), client, merkleMessageBusReceipt.ContractAddress)
+	if err != nil {
+		return nil, nil, fmt.Errorf("CrossChain contract not available after time. Cause: %w", err)
+	}
+
+	return merkleMessageBusContract, merkleMessageBusReceipt, nil
+}
+
+func deployCrossChainContract(client ethadapter.EthClient, contractOwner wallet.Wallet, messageBus common.Address) (*CrossChain.CrossChain, *types.Receipt, error) {
 	bytecode, err := constants.CrossChainBytecode()
 	if err != nil {
 		return nil, nil, err
@@ -404,7 +445,7 @@ func deployCrossChainContract(client ethadapter.EthClient, contractOwner wallet.
 		return nil, nil, err
 	}
 
-	tx, err := crossChainContract.Initialize(opts, contractOwner.Address())
+	tx, err := crossChainContract.Initialize(opts, contractOwner.Address(), messageBus)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to initialize CrossChain contract. Cause: %w", err)
 	}
