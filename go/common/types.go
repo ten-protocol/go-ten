@@ -3,7 +3,11 @@ package common
 import (
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
+	"time"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -246,4 +250,48 @@ func (s *SystemContractAddresses) ToString() string {
 		str += fmt.Sprintf("%s: %s; ", name, addr.Hex())
 	}
 	return str
+}
+
+// TxAndTimeStamp - RLP serializes a transaction together with the timestamp
+type TxAndTimeStamp struct {
+	tx   *L2Tx
+	time *big.Int
+}
+
+func CreateTxAndTimeStamp(tx *L2Tx) *TxAndTimeStamp {
+	return &TxAndTimeStamp{
+		tx:   tx,
+		time: big.NewInt(tx.Time().Unix()), // todo delta
+	}
+}
+
+func (t *TxAndTimeStamp) Tx() *L2Tx {
+	t.tx.SetTime(time.UnixMilli(t.time.Int64()))
+	return t.tx
+}
+
+func (t *TxAndTimeStamp) DecodeRLP(s *rlp.Stream) error {
+	return s.Decode(t)
+}
+
+func (t *TxAndTimeStamp) EncodeRLP(w io.Writer) error {
+	return rlp.Encode(w, t)
+}
+
+type TxsWithTimeStamp []*TxAndTimeStamp
+
+func (txs TxsWithTimeStamp) Txs() []*L2Tx {
+	txsOnly := make([]*L2Tx, len(txs))
+	for i, tx := range txs {
+		txsOnly[i] = tx.Tx()
+	}
+	return txsOnly
+}
+
+func CreateTxsAndTimeStamp(tx []*L2Tx) *TxsWithTimeStamp {
+	txs := make(TxsWithTimeStamp, len(tx))
+	for i, t := range tx {
+		txs[i] = CreateTxAndTimeStamp(t)
+	}
+	return &txs
 }

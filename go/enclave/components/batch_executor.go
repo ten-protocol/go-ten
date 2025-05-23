@@ -724,7 +724,7 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 	ethHeader := *ec.EthHeader
 	before := ethHeader.MixDigest
 	ethHeader.MixDigest = executor.entropyService.TxEntropy(before.Bytes(), offset)
-	ethHeader.Difficulty = big.NewInt(tx.Tx.Time().UnixMilli())
+	//	ethHeader.Difficulty = big.NewInt(tx.Tx.Time().UnixMilli())
 
 	// if the tx fails, it handles the revert
 	txResult := executor.evmFacade.ExecuteTx(tx, ec.stateDB, &ethHeader, ec.GasPool, ec.usedGas, offset, noBaseFee)

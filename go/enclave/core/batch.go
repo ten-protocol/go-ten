@@ -3,7 +3,6 @@ package core
 import (
 	"math/big"
 	"sync/atomic"
-	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/compression"
 
@@ -50,33 +49,14 @@ func (b *Batch) NumberU64() uint64 { return b.Header.Number.Uint64() }
 func (b *Batch) Number() *big.Int  { return new(big.Int).Set(b.Header.Number) }
 func (b *Batch) SeqNo() *big.Int   { return new(big.Int).Set(b.Header.SequencerOrderNo) }
 
-type txAndTimeStamp struct {
-	Tx   *common.L2Tx
-	Time *big.Int
-}
-
-func transactions(txs []*txAndTimeStamp) []*common.L2Tx {
-	txsOnly := make([]*common.L2Tx, len(txs))
-	for i, tx := range txs {
-		txsOnly[i] = tx.Tx
-		txsOnly[i].SetTime(time.UnixMilli(tx.Time.Int64()))
-	}
-	return txsOnly
-}
-
 func (b *Batch) ToExtBatch(transactionBlobCrypto *crypto.DAEncryptionService, compression compression.DataCompressionService) (*common.ExtBatch, error) {
 	txHashes := make([]gethcommon.Hash, len(b.Transactions))
-	txsAndTimestamps := make([]*txAndTimeStamp, len(b.Transactions))
 
 	for idx, tx := range b.Transactions {
 		txHashes[idx] = tx.Hash()
-		txsAndTimestamps[idx] = &txAndTimeStamp{
-			Tx: tx,
-			// Time: big.NewInt(int64(b.Header.Time*1000) - time.Now().UnixMilli()),
-			Time: big.NewInt(tx.Time().UnixMilli()),
-		}
 	}
 
+	txsAndTimestamps := common.CreateTxsAndTimeStamp(b.Transactions)
 	txBytes, err := rlp.EncodeToBytes(txsAndTimestamps)
 	if err != nil {
 		return nil, err
@@ -105,14 +85,14 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto *crypto.DAEncrypti
 	if err != nil {
 		return nil, err
 	}
-	var txs []*txAndTimeStamp
+	var txs *common.TxsWithTimeStamp
 	err = rlp.DecodeBytes(encoded, &txs)
 	if err != nil {
 		return nil, err
 	}
 	return &Batch{
 		Header:       extBatch.Header,
-		Transactions: transactions(txs),
+		Transactions: txs.Txs(),
 	}, nil
 }
 

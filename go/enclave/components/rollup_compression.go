@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"time"
 
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
@@ -103,23 +102,6 @@ type batchFromRollup struct {
 	header *common.BatchHeader // for reorgs
 }
 
-type txAndTimeStamp struct {
-	Tx   *common.L2Tx
-	Time *big.Int
-}
-
-func transactions(txs [][]*txAndTimeStamp) [][]*common.L2Tx {
-	txsOnly := make([][]*common.L2Tx, len(txs))
-	for i, batchTxs := range txs {
-		txsOnly[i] = make([]*common.L2Tx, len(batchTxs))
-		for i2, tx := range batchTxs {
-			txsOnly[i][i2] = tx.Tx
-			txsOnly[i][i2].SetTime(time.UnixMilli(tx.Time.Int64()))
-		}
-	}
-	return txsOnly
-}
-
 // CreateExtRollup - creates a compressed and encrypted External rollup from the internal data structure
 func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup) (*common.ExtRollup, error) {
 	header, err := rc.createRollupHeader(ctx, r)
@@ -131,15 +113,9 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 		return nil, err
 	}
 
-	transactions := make([][]*txAndTimeStamp, len(r.Batches))
+	transactions := make([]*common.TxsWithTimeStamp, len(r.Batches))
 	for i, batch := range r.Batches {
-		transactions[i] = make([]*txAndTimeStamp, len(batch.Transactions))
-		for i2 := range transactions[i] {
-			transactions[i][i2] = &txAndTimeStamp{
-				Tx:   batch.Transactions[i2],
-				Time: big.NewInt(batch.Transactions[i2].Time().UnixMilli()),
-			}
-		}
+		transactions[i] = common.CreateTxsAndTimeStamp(batch.Transactions)
 	}
 	encryptedTransactions, err := rc.serialiseCompressAndEncrypt(transactions)
 	if err != nil {
@@ -155,16 +131,21 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 
 // ProcessExtRollup - given an External rollup, responsible with checking and saving all batches found inside
 func (rc *RollupCompression) ProcessExtRollup(ctx context.Context, rollup *common.ExtRollup, calldataRollupHeader *common.CalldataRollupHeader) error {
-	transactionsPerBatch := make([][]*txAndTimeStamp, 0)
-	err := rc.DecryptDecompressAndDeserialise(rollup.BatchPayloads, &transactionsPerBatch)
+	txsWithTsPerBatch := make([]*common.TxsWithTimeStamp, 0)
+	err := rc.DecryptDecompressAndDeserialise(rollup.BatchPayloads, &txsWithTsPerBatch)
 	if err != nil {
 		return err
+	}
+
+	transactionsPerBatch := make([][]*common.L2Tx, len(txsWithTsPerBatch))
+	for i, txsWithTimeStamp := range txsWithTsPerBatch {
+		transactionsPerBatch[i] = txsWithTimeStamp.Txs()
 	}
 
 	// The recreation of batches is a 2-step process:
 
 	// 1. calculate fields like: sequence, height, time, l1Proof, from the implicit and explicit information from the metadata
-	incompleteBatches, err := rc.createIncompleteBatches(ctx, rollup.Header, calldataRollupHeader, transactions(transactionsPerBatch), rollup.Header.CompressionL1Head)
+	incompleteBatches, err := rc.createIncompleteBatches(ctx, rollup.Header, calldataRollupHeader, transactionsPerBatch, rollup.Header.CompressionL1Head)
 	if err != nil {
 		return err
 	}
