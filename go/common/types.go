@@ -252,38 +252,43 @@ func (s *SystemContractAddresses) ToString() string {
 	return str
 }
 
+// to avoid negative numbers in the timestamp delta, we adjust by a block time so that it's impossible to have negative values
+const MillisAdjustment = 5000
+
 // TxWithTimestamp - RLP serializes a transaction together with the timestamp
 type TxWithTimestamp struct {
 	Tx   *L2Tx
 	Time *big.Int
 }
 
-func CreateTxwithTimestamp(tx *L2Tx) *TxWithTimestamp {
+func createTxWithTimestamp(tx *L2Tx, blockTimeMs uint64) *TxWithTimestamp {
 	return &TxWithTimestamp{
 		Tx:   tx,
-		Time: big.NewInt(tx.Time().UnixMilli()), // todo delta
+		Time: big.NewInt(MillisAdjustment + tx.Time().UnixMilli() - int64(blockTimeMs)),
 	}
 }
 
-func (t *TxWithTimestamp) L2Tx() *L2Tx {
-	t.Tx.SetTime(time.UnixMilli(t.Time.Int64()))
+func (t *TxWithTimestamp) l2Tx(blockTimeMs uint64) *L2Tx {
+	t.Tx.SetTime(time.UnixMilli(t.Time.Int64() + int64(blockTimeMs) - MillisAdjustment))
 	return t.Tx
 }
 
 type TxsWithTimeStamp []*TxWithTimestamp
 
-func (txs TxsWithTimeStamp) Txs() []*L2Tx {
+func (txs TxsWithTimeStamp) Txs(blockTime uint64) []*L2Tx {
 	txsOnly := make([]*L2Tx, len(txs))
+	blockTimeMs := blockTime * 1000
 	for i, tx := range txs {
-		txsOnly[i] = tx.L2Tx()
+		txsOnly[i] = tx.l2Tx(blockTimeMs)
 	}
 	return txsOnly
 }
 
-func CreateTxsAndTimeStamp(tx []*L2Tx) *TxsWithTimeStamp {
+func CreateTxsAndTimeStamp(tx []*L2Tx, blockTime uint64) *TxsWithTimeStamp {
 	txs := make(TxsWithTimeStamp, len(tx))
+	blockTimeMs := blockTime * 1000
 	for i, t := range tx {
-		txs[i] = CreateTxwithTimestamp(t)
+		txs[i] = createTxWithTimestamp(t, blockTimeMs)
 	}
 	return &txs
 }

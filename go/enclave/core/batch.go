@@ -56,7 +56,7 @@ func (b *Batch) ToExtBatch(transactionBlobCrypto *crypto.DAEncryptionService, co
 		txHashes[idx] = tx.Hash()
 	}
 
-	txsAndTimestamps := common.CreateTxsAndTimeStamp(b.Transactions)
+	txsAndTimestamps := common.CreateTxsAndTimeStamp(b.Transactions, b.Header.Time)
 	txBytes, err := rlp.EncodeToBytes(txsAndTimestamps)
 	if err != nil {
 		return nil, err
@@ -92,7 +92,7 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto *crypto.DAEncrypti
 	}
 	return &Batch{
 		Header:       extBatch.Header,
-		Transactions: txs.Txs(),
+		Transactions: txs.Txs(extBatch.Header.Time),
 	}, nil
 }
 

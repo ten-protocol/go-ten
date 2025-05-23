@@ -592,7 +592,7 @@ func (executor *batchExecutor) createBatch(ec *BatchExecutionContext) (*core.Bat
 		batch.Header.PayloadHash = EmptyPayloadHash
 	} else {
 		batch.Header.TxHash = types.DeriveSha(types.Transactions(batch.Transactions), trie.NewStackTrie(nil))
-		batch.Header.PayloadHash = types.DeriveSha(common.CreateTxsAndTimeStamp(batch.Transactions), trie.NewStackTrie(nil))
+		batch.Header.PayloadHash = types.DeriveSha(common.CreateTxsAndTimeStamp(batch.Transactions, batch.Header.Time), trie.NewStackTrie(nil))
 	}
 
 	return &batch, allResults, nil
