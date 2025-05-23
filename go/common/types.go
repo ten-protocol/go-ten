@@ -1,9 +1,13 @@
 package common
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -246,4 +250,53 @@ func (s *SystemContractAddresses) ToString() string {
 		str += fmt.Sprintf("%s: %s; ", name, addr.Hex())
 	}
 	return str
+}
+
+// to avoid negative numbers in the timestamp delta, we adjust by a block time so that it's impossible to have negative values
+const MillisAdjustment = 5000
+
+// TxWithTimestamp - RLP serializes a transaction together with the timestamp
+type TxWithTimestamp struct {
+	Tx   *L2Tx
+	Time *big.Int
+}
+
+func createTxWithTimestamp(tx *L2Tx, blockTimeMs uint64) *TxWithTimestamp {
+	return &TxWithTimestamp{
+		Tx:   tx,
+		Time: big.NewInt(MillisAdjustment + tx.Time().UnixMilli() - int64(blockTimeMs)),
+	}
+}
+
+func (t *TxWithTimestamp) l2Tx(blockTimeMs uint64) *L2Tx {
+	t.Tx.SetTime(time.UnixMilli(t.Time.Int64() + int64(blockTimeMs) - MillisAdjustment))
+	return t.Tx
+}
+
+type TxsWithTimeStamp []*TxWithTimestamp
+
+func (txs TxsWithTimeStamp) Txs(blockTime uint64) []*L2Tx {
+	txsOnly := make([]*L2Tx, len(txs))
+	blockTimeMs := blockTime * 1000
+	for i, tx := range txs {
+		txsOnly[i] = tx.l2Tx(blockTimeMs)
+	}
+	return txsOnly
+}
+
+func CreateTxsAndTimeStamp(tx []*L2Tx, blockTime uint64) *TxsWithTimeStamp {
+	txs := make(TxsWithTimeStamp, len(tx))
+	blockTimeMs := blockTime * 1000
+	for i, t := range tx {
+		txs[i] = createTxWithTimestamp(t, blockTimeMs)
+	}
+	return &txs
+}
+
+func (txs TxsWithTimeStamp) EncodeIndex(i int, w *bytes.Buffer) {
+	rlp.Encode(w, txs[i])
+}
+
+func (txs TxsWithTimeStamp) Len() int {
+	return len(txs)
 }

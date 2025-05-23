@@ -51,19 +51,21 @@ func (b *Batch) SeqNo() *big.Int   { return new(big.Int).Set(b.Header.SequencerO
 
 func (b *Batch) ToExtBatch(transactionBlobCrypto *crypto.DAEncryptionService, compression compression.DataCompressionService) (*common.ExtBatch, error) {
 	txHashes := make([]gethcommon.Hash, len(b.Transactions))
+
 	for idx, tx := range b.Transactions {
 		txHashes[idx] = tx.Hash()
 	}
 
-	bytes, err := rlp.EncodeToBytes(b.Transactions)
+	txsAndTimestamps := common.CreateTxsAndTimeStamp(b.Transactions, b.Header.Time)
+	txBytes, err := rlp.EncodeToBytes(txsAndTimestamps)
 	if err != nil {
 		return nil, err
 	}
-	compressed, err := compression.CompressBatch(bytes)
+	compressedTxs, err := compression.CompressBatch(txBytes)
 	if err != nil {
 		return nil, err
 	}
-	enc, err := transactionBlobCrypto.Encrypt(compressed)
+	enc, err := transactionBlobCrypto.Encrypt(compressedTxs)
 	if err != nil {
 		return nil, err
 	}
@@ -83,14 +85,14 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto *crypto.DAEncrypti
 	if err != nil {
 		return nil, err
 	}
-	var txs []*common.L2Tx
+	var txs *common.TxsWithTimeStamp
 	err = rlp.DecodeBytes(encoded, &txs)
 	if err != nil {
 		return nil, err
 	}
 	return &Batch{
 		Header:       extBatch.Header,
-		Transactions: txs,
+		Transactions: txs.Txs(extBatch.Header.Time),
 	}, nil
 }
 

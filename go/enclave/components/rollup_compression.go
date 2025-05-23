@@ -98,6 +98,7 @@ type batchFromRollup struct {
 	coinbase     gethcommon.Address
 	baseFee      *big.Int
 	gasLimit     uint64
+	payloadHash  gethcommon.Hash
 
 	header *common.BatchHeader // for reorgs
 }
@@ -113,9 +114,9 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 		return nil, err
 	}
 
-	transactions := make([][]*common.L2Tx, len(r.Batches))
+	transactions := make([]*common.TxsWithTimeStamp, len(r.Batches))
 	for i, batch := range r.Batches {
-		transactions[i] = batch.Transactions
+		transactions[i] = common.CreateTxsAndTimeStamp(batch.Transactions, batch.Header.Time)
 	}
 	encryptedTransactions, err := rc.serialiseCompressAndEncrypt(transactions)
 	if err != nil {
@@ -131,8 +132,8 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 
 // ProcessExtRollup - given an External rollup, responsible with checking and saving all batches found inside
 func (rc *RollupCompression) ProcessExtRollup(ctx context.Context, rollup *common.ExtRollup, calldataRollupHeader *common.CalldataRollupHeader) error {
-	transactionsPerBatch := make([][]*common.L2Tx, 0)
-	err := rc.DecryptDecompressAndDeserialise(rollup.BatchPayloads, &transactionsPerBatch)
+	txsWithTsPerBatch := make([]*common.TxsWithTimeStamp, 0)
+	err := rc.DecryptDecompressAndDeserialise(rollup.BatchPayloads, &txsWithTsPerBatch)
 	if err != nil {
 		return err
 	}
@@ -140,7 +141,7 @@ func (rc *RollupCompression) ProcessExtRollup(ctx context.Context, rollup *commo
 	// The recreation of batches is a 2-step process:
 
 	// 1. calculate fields like: sequence, height, time, l1Proof, from the implicit and explicit information from the metadata
-	incompleteBatches, err := rc.createIncompleteBatches(ctx, rollup.Header, calldataRollupHeader, transactionsPerBatch, rollup.Header.CompressionL1Head)
+	incompleteBatches, err := rc.createIncompleteBatches(ctx, rollup.Header, calldataRollupHeader, txsWithTsPerBatch, rollup.Header.CompressionL1Head)
 	if err != nil {
 		return err
 	}
@@ -266,7 +267,7 @@ func (rc *RollupCompression) createRollupHeader(ctx context.Context, rollup *cor
 }
 
 // the main logic to recreate the batches from the header. The logical pair of: `createRollupHeader`
-func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, header *common.RollupHeader, calldataRollupHeader *common.CalldataRollupHeader, transactionsPerBatch [][]*common.L2Tx, compressionL1Head common.L1BlockHash) ([]*batchFromRollup, error) {
+func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, header *common.RollupHeader, calldataRollupHeader *common.CalldataRollupHeader, transactionsPerBatch []*common.TxsWithTimeStamp, compressionL1Head common.L1BlockHash) ([]*batchFromRollup, error) {
 	incompleteBatches := make([]*batchFromRollup, len(transactionsPerBatch))
 
 	startAtSeq := header.FirstBatchSeqNo
@@ -333,16 +334,20 @@ func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, header
 			currentHeight = currentHeight + 1
 		}
 
+		transactions := batchTransactions.Txs(uint64(currentTime))
 		// calculate the hash of the txs
 		var txHash gethcommon.Hash
-		if len(batchTransactions) == 0 {
+		var payloadHash gethcommon.Hash
+		if len(transactions) == 0 {
 			txHash = types.EmptyRootHash
+			payloadHash = EmptyPayloadHash
 		} else {
-			txHash = types.DeriveSha(types.Transactions(batchTransactions), trie.NewStackTrie(nil))
+			txHash = types.DeriveSha(types.Transactions(transactions), trie.NewStackTrie(nil))
+			payloadHash = types.DeriveSha(batchTransactions, trie.NewStackTrie(nil))
 		}
 
 		incompleteBatches[currentBatchIdx] = &batchFromRollup{
-			transactions: batchTransactions,
+			transactions: transactions,
 			seqNo:        currentSeqNo,
 			height:       big.NewInt(currentHeight),
 			txHash:       txHash,
@@ -352,13 +357,14 @@ func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, header
 			coinbase:     calldataRollupHeader.Coinbase,
 			baseFee:      calldataRollupHeader.BaseFee,
 			gasLimit:     calldataRollupHeader.GasLimit,
+			payloadHash:  payloadHash,
 		}
 		rc.logger.Info("Rollup decompressed batch", log.BatchSeqNoKey, currentSeqNo, log.BatchHeightKey, currentHeight, "rollup_idx", currentBatchIdx, "l1_height", block.Number, "l1_hash", block.Hash())
 	}
 	return incompleteBatches, nil
 }
 
-func (rc *RollupCompression) calculateL1HeightsFromDeltas(calldataRollupHeader *common.CalldataRollupHeader, transactionsPerBatch [][]*common.L2Tx) ([]uint64, error) {
+func (rc *RollupCompression) calculateL1HeightsFromDeltas(calldataRollupHeader *common.CalldataRollupHeader, transactionsPerBatch []*common.TxsWithTimeStamp) ([]uint64, error) {
 	referenceHeight := big.NewInt(0)
 	// the first element in the deltas is the actual height
 	err := referenceHeight.GobDecode(calldataRollupHeader.L1HeightDeltas[0])
@@ -507,6 +513,7 @@ func (rc *RollupCompression) executeAndSaveIncompleteBatches(ctx context.Context
 					rc.logger.Crit("Rollup decompression failure. The check hashes don't match")
 				}*/
 
+			computedBatch.Batch.Header.PayloadHash = incompleteBatch.payloadHash
 			convertedHeader, err := rc.gethEncodingService.CreateEthHeaderForBatch(ctx, computedBatch.Batch.Header)
 			if err != nil {
 				return err
