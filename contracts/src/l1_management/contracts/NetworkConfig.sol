@@ -103,13 +103,12 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
     );
 
     /**
-     * @dev Initializes the contract
+     * @dev Initializes the contract with addresses and owner
      * @param _addresses The fixed addresses
-     * @param owner The owner of the contract
+     * @param _owner Address of the contract owner
      */
-    function initialize( NetworkConfig.FixedAddresses memory _addresses, address owner) public initializer {
-        __Ownable_init(owner);
-
+    function initialize(NetworkConfig.FixedAddresses memory _addresses, address _owner) public initializer {
+        __UnrenouncableOwnable2Step_init(_owner);
         Storage.setAddress(CROSS_CHAIN_SLOT, _addresses.crossChain);
         Storage.setAddress(MESSAGE_BUS_SLOT, _addresses.messageBus);
         Storage.setAddress(NETWORK_ENCLAVE_REGISTRY_SLOT, _addresses.networkEnclaveRegistry);

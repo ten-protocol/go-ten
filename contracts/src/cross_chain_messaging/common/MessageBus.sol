@@ -16,18 +16,18 @@ import "../../common/UnrenouncableOwnable2Step.sol";
  * Manages message publishing, verification, and value transfers between L1 and L2.
  */
 contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
-
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
-        _transferOwnership(msg.sender);
+        _disableInitializers();
     }
 
-     /**
+    /**
      * @dev Initializes the contract with an owner and fees contract
      * @param caller The address to set as the owner
      * @param feesAddress The address of the fees contract
      */
     function initialize(address caller, address feesAddress) public virtual initializer {
-        __Ownable_init(caller);
+        __UnrenouncableOwnable2Step_init(caller);  // Initialize UnrenouncableOwnable2Step
         fees = IFees(feesAddress);
     }
 

@@ -1,5 +1,6 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
+import {ethers} from "hardhat";
 
 /*
     This deployment script instantiates the network contracts and stores them in the deployed NetworkConfig contract.
@@ -10,6 +11,22 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         getNamedAccounts
     } = hre;
     const {deployer} = await getNamedAccounts();
+
+    // Deploy MerkleTreeMessageBus first
+    const merkleMessageBusDeployment = await deployments.deploy('MerkleTreeMessageBus', {
+        from: deployer,
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [deployer, deployer] // initialOwner and withdrawalManager
+                }
+            }
+        },
+        log: true,
+    });
+
     // Deploy CrossChain with MessageBus address
     const crossChainDeployment = await deployments.deploy('CrossChain', {
         from: deployer,
@@ -18,14 +35,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             execute: {
                 init: {
                     methodName: "initialize",
-                    args: [deployer]
+                    args: [deployer, merkleMessageBusDeployment.address]
                 }
             }
         },
         log: true,
     });
-
-    const merkleMessageBusAddress = await deployments.read('CrossChain', 'merkleMessageBus');
 
     const networkEnclaveRegistryDeployment = await deployments.deploy('NetworkEnclaveRegistry', {
         from: deployer,
@@ -49,7 +64,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
                 init: {
                     methodName: "initialize",
                     args: [
-                        merkleMessageBusAddress,
+                        merkleMessageBusDeployment.address,
                         networkEnclaveRegistryDeployment.address,
                         deployer
                     ]
@@ -69,7 +84,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
                     methodName: "initialize",
                     args: [{
                         crossChain: crossChainDeployment.address,
-                        messageBus: merkleMessageBusAddress,
+                        messageBus: merkleMessageBusDeployment.address,
                         networkEnclaveRegistry: networkEnclaveRegistryDeployment.address,
                         dataAvailabilityRegistry: daRegistryDeployment.address
                     }, deployer]
@@ -81,17 +96,23 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     console.log(`NetworkConfig= ${networkConfigDeployment.address}`); // line[0] in docker container
     console.log(`CrossChain= ${crossChainDeployment.address}`);
-    console.log(`MerkleMessageBus= ${merkleMessageBusAddress}`);
+    console.log(`MerkleMessageBus= ${merkleMessageBusDeployment.address}`);
     console.log(`NetworkEnclaveRegistry= ${networkEnclaveRegistryDeployment.address}`);
     console.log(`DataAvailabilityRegistry= ${daRegistryDeployment.address}`);
     console.log(`L1Start= ${networkConfigDeployment.receipt!!.blockHash}`);
 
     // Grant the DataAvailabilityRegistry the stateRootManager permission on MerkleMessageBus so it can publish rollups
-    const merkleMessageBusContract = await hre.ethers.getContractAt('MerkleTreeMessageBus', merkleMessageBusAddress);
+    const merkleMessageBusContract = await hre.ethers.getContractAt('MerkleTreeMessageBus', merkleMessageBusDeployment.address);
     const tx = await merkleMessageBusContract.addStateRootManager(daRegistryDeployment.address);
     const receipt = await tx.wait();
     if (receipt!.status !== 1) {
         throw new Error('Failed to add DataAvailabilityRegistry as stateRootManager to MerkleMessageBus');
+    }
+    // Grant the CrossChain contract the withdrawalManager permission on MerkleMessageBus so it can perform withdrawals
+    const tx1 = await merkleMessageBusContract.addWithdrawalManager(crossChainDeployment.address);
+    const receipt1 = await tx1.wait();
+    if (receipt1!.status !== 1) {
+        throw new Error('Failed to add CrossChain as withdrawalManager to MerkleMessageBus');
     }
 };
 

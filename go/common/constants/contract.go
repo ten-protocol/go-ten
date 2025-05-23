@@ -4,6 +4,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
 	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
+	"github.com/ten-protocol/go-ten/contracts/generated/MerkleTreeMessageBus"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkEnclaveRegistry"
 )
@@ -57,5 +58,18 @@ func CrossChainBytecode() ([]byte, error) {
 		return nil, err
 	}
 	bytecode := common.FromHex(CrossChain.CrossChainMetaData.Bin)
+	return append(bytecode, input...), nil
+}
+
+func MerkleTreeMessageBusBytecode() ([]byte, error) {
+	parsed, err := MerkleTreeMessageBus.MerkleTreeMessageBusMetaData.GetAbi()
+	if err != nil {
+		return nil, err
+	}
+	input, err := parsed.Pack("")
+	if err != nil {
+		return nil, err
+	}
+	bytecode := common.FromHex(MerkleTreeMessageBus.MerkleTreeMessageBusMetaData.Bin)
 	return append(bytecode, input...), nil
 }
