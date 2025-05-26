@@ -9,10 +9,15 @@ contract TenSystemCalls is Initializable {
     }
 
     function getRandomNumber() external view returns (uint256) {
-        return block.prevrandao; // We inject randomness in prevrandao
+        // We inject randomness in prevrandao as the first 28 bytes followed by the last 4 bytes are the timestamp delta
+        // In practice this means the whole can be used for randomness if we go through a hash function.
+        return uint256(keccak256(abi.encodePacked(block.prevrandao))); 
     }
 
     function getTransactionTimestamp() external view returns (uint256) {
-        return block.difficulty; // We override block.difficulty in the sequencer to inject exact time of arrival
+        // Extract last 4 bytes from difficulty which contains timestamp delta
+        int32 timeDelta = int32(uint32(uint256(block.prevrandao)));
+        // Real timestamp is current block time minus the delta
+        return uint256(int256(block.timestamp) - timeDelta);
     }
 }
