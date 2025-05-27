@@ -252,9 +252,10 @@ func (s *SystemContractAddresses) ToString() string {
 	return str
 }
 
-// MillisAdjustment - to avoid negative numbers in the timestamp delta (block.time - tx.time), we adjust by a 5s so that it's impossible to have negative values
+// MaxNegativeTxTimeDeltaMs - to avoid negative numbers in the timestamp delta (block.time - tx.time), we adjust by 10s so that it's impossible to have negative values
 // This represents the period until which transactions will come in *after* the sequencer started building a new batch.
-const MillisAdjustment = 5000
+// this constant is used by the mempool as well.
+const MaxNegativeTxTimeDeltaMs = 10 * 1000
 
 // TxWithTimestamp - RLP serializes a transaction together with the timestamp delta from the block time
 type TxWithTimestamp struct {
@@ -265,12 +266,12 @@ type TxWithTimestamp struct {
 func createTxWithTimestamp(tx *L2Tx, blockTimeMs uint64) *TxWithTimestamp {
 	return &TxWithTimestamp{
 		Tx:          tx,
-		TimeDeltaMs: big.NewInt(MillisAdjustment + tx.Time().UnixMilli() - int64(blockTimeMs)),
+		TimeDeltaMs: big.NewInt(MaxNegativeTxTimeDeltaMs + tx.Time().UnixMilli() - int64(blockTimeMs)),
 	}
 }
 
 func (t *TxWithTimestamp) l2Tx(blockTimeMs uint64) *L2Tx {
-	t.Tx.SetTime(time.UnixMilli(t.TimeDeltaMs.Int64() + int64(blockTimeMs) - MillisAdjustment))
+	t.Tx.SetTime(time.UnixMilli(t.TimeDeltaMs.Int64() + int64(blockTimeMs) - MaxNegativeTxTimeDeltaMs))
 	return t.Tx
 }
 

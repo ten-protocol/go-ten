@@ -211,7 +211,7 @@ func (t *TxPool) waitUntilPoolRunning() error {
 }
 
 // PendingTransactions returns all pending transactions grouped per address and ordered per nonce
-func (t *TxPool) PendingTransactions() map[gethcommon.Address][]*gethtxpool.LazyTransaction {
+func (t *TxPool) PendingTransactions(batchTime uint64) map[gethcommon.Address][]*gethtxpool.LazyTransaction {
 	if !t.running.Load() {
 		t.logger.Error("tx pool not running")
 		return nil
@@ -228,10 +228,31 @@ func (t *TxPool) PendingTransactions() map[gethcommon.Address][]*gethtxpool.Lazy
 		return make(map[gethcommon.Address][]*gethtxpool.LazyTransaction)
 	}
 	baseFee := currentBlock.BaseFee
-	return t.pool.Pending(gethtxpool.PendingFilter{
+	txs := t.pool.Pending(gethtxpool.PendingFilter{
 		BaseFee:      uint256.NewInt(baseFee.Uint64()),
 		OnlyPlainTxs: true,
 	})
+
+	// Filter out transactions that have "Time" greater than batchTime + MaxNegativeTxTimeDeltaMs
+	// this is required for serialising the transactiong together with their timestamp delta (which can't be negative).
+	maxDeltaSec := (common.MaxNegativeTxTimeDeltaMs / 1000) - 1
+	maxTime := time.Unix(int64(batchTime)+int64(maxDeltaSec), 0)
+
+	filteredTxs := make(map[gethcommon.Address][]*gethtxpool.LazyTransaction)
+	for addr, addrTxs := range txs {
+		var validTxs []*gethtxpool.LazyTransaction
+		for _, tx := range addrTxs {
+			if tx.Time.Before(maxTime) {
+				validTxs = append(validTxs, tx)
+			} else {
+				t.logger.Warn("Transaction excluded from PendingTransactions for being too recent. Should not happen", log.TxKey, tx.Hash, "tx_time", tx.Time, "block_time", batchTime)
+			}
+		}
+		if len(validTxs) > 0 {
+			filteredTxs[addr] = validTxs
+		}
+	}
+	return filteredTxs
 }
 
 func (t *TxPool) Close() error {
