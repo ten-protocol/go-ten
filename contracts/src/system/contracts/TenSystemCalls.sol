@@ -5,13 +5,15 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 contract TenSystemCalls is Initializable {
 
+    uint256 private randomnessCounter;
+
     function initialize() external initializer {
     }
 
-    function getRandomNumber() external view returns (uint256) {
+    function getRandomNumber() external returns (uint256) {
         // We inject randomness in prevrandao as the first 28 bytes followed by the last 4 bytes are the timestamp delta
         // In practice this means the whole can be used for randomness if we go through a hash function.
-        return uint256(keccak256(abi.encodePacked(block.prevrandao))); 
+        return uint256(keccak256(abi.encodePacked(randomnessCounter++, block.prevrandao))); 
     }
 
     function getTransactionTimestamp() external view returns (uint256) {

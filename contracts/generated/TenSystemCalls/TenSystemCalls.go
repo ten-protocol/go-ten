@@ -31,8 +31,8 @@ var (
 
 // TenSystemCallsMetaData contains all meta data concerning the TenSystemCalls contract.
 var TenSystemCallsMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"getRandomNumber\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getTransactionTimestamp\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
-	Bin: "0x6080604052348015600e575f5ffd5b506102f28061001c5f395ff3fe608060405234801561000f575f5ffd5b506004361061003f575f3560e01c80638129fc1c1461004357806381ccf4c41461004d578063dbdff2c11461006b575b5f5ffd5b61004b610073565b005b6100556101a9565b6040516100629190610203565b60405180910390f35b6100556101cc565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000810460ff16159067ffffffffffffffff165f811580156100bd5750825b90505f8267ffffffffffffffff1660011480156100d95750303b155b9050811580156100e7575080155b1561011e576040517ff92ee8a900000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b845467ffffffffffffffff19166001178555831561015257845468ff00000000000000001916680100000000000000001785555b83156101a257845468ff0000000000000000191685556040517fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d29061019990600190610231565b60405180910390a15b5050505050565b5f44600381900b6101bc426103e861026c565b6101c69190610283565b91505090565b5f446040516020016101de91906102aa565b604051602081830303815290604052805190602001205f1c905090565b805b82525050565b6020810161021182846101fb565b92915050565b5f67ffffffffffffffff8216610211565b6101fd81610217565b602081016102118284610228565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52601160045260245ffd5b81810281158282048414176102115761021161023f565b8181035f83128015838313168383129190911617156102115761021161023f565b806101fd565b6102b481836102a4565b60200191905056fea26469706673582212201a281cfe3c185531f289b8e269853225e67c00015204139c5b505700011a6a0e64736f6c634300081c0033",
+	ABI: "[{\"inputs\":[],\"name\":\"InvalidInitialization\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"NotInitializing\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint64\",\"name\":\"version\",\"type\":\"uint64\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"getRandomNumber\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getTransactionTimestamp\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	Bin: "0x6080604052348015600e575f5ffd5b5061032a8061001c5f395ff3fe608060405234801561000f575f5ffd5b506004361061003f575f3560e01c80638129fc1c1461004357806381ccf4c41461004d578063dbdff2c11461006b575b5f5ffd5b61004b610073565b005b6100556101a9565b6040516100629190610215565b60405180910390f35b6100556101cc565b7ff0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00805468010000000000000000810460ff16159067ffffffffffffffff165f811580156100bd5750825b90505f8267ffffffffffffffff1660011480156100d95750303b155b9050811580156100e7575080155b1561011e576040517ff92ee8a900000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b845467ffffffffffffffff19166001178555831561015257845468ff00000000000000001916680100000000000000001785555b83156101a257845468ff0000000000000000191685556040517fc7f505b2f371ae2175ee4913f4499e1f2633a7b5936321eed1cdaeb6115181d29061019990600190610243565b60405180910390a15b5050505050565b5f44600381900b6101bc426103e861027e565b6101c69190610295565b91505090565b5f805481806101da836102b6565b91905055446040516020016101f09291906102d4565b604051602081830303815290604052805190602001205f1c905090565b805b82525050565b60208101610223828461020d565b92915050565b5f67ffffffffffffffff8216610223565b61020f81610229565b60208101610223828461023a565b7f4e487b71000000000000000000000000000000000000000000000000000000005f52601160045260245ffd5b818102811582820484141761022357610223610251565b8181035f831280158383131683831291909116171561022357610223610251565b5f600182016102c7576102c7610251565b5060010190565b8061020f565b6102de81846102ce565b6020016102eb81836102ce565b6020019291505056fea26469706673582212201d5e3140f17febf33856a9762e81b1e56dd5a66c4f340b95ea248e0718296c8764736f6c634300081c0033",
 }
 
 // TenSystemCallsABI is the input ABI used to generate the binding from.
@@ -202,37 +202,6 @@ func (_TenSystemCalls *TenSystemCallsTransactorRaw) Transact(opts *bind.Transact
 	return _TenSystemCalls.Contract.contract.Transact(opts, method, params...)
 }
 
-// GetRandomNumber is a free data retrieval call binding the contract method 0xdbdff2c1.
-//
-// Solidity: function getRandomNumber() view returns(uint256)
-func (_TenSystemCalls *TenSystemCallsCaller) GetRandomNumber(opts *bind.CallOpts) (*big.Int, error) {
-	var out []interface{}
-	err := _TenSystemCalls.contract.Call(opts, &out, "getRandomNumber")
-
-	if err != nil {
-		return *new(*big.Int), err
-	}
-
-	out0 := *abi.ConvertType(out[0], new(*big.Int)).(**big.Int)
-
-	return out0, err
-
-}
-
-// GetRandomNumber is a free data retrieval call binding the contract method 0xdbdff2c1.
-//
-// Solidity: function getRandomNumber() view returns(uint256)
-func (_TenSystemCalls *TenSystemCallsSession) GetRandomNumber() (*big.Int, error) {
-	return _TenSystemCalls.Contract.GetRandomNumber(&_TenSystemCalls.CallOpts)
-}
-
-// GetRandomNumber is a free data retrieval call binding the contract method 0xdbdff2c1.
-//
-// Solidity: function getRandomNumber() view returns(uint256)
-func (_TenSystemCalls *TenSystemCallsCallerSession) GetRandomNumber() (*big.Int, error) {
-	return _TenSystemCalls.Contract.GetRandomNumber(&_TenSystemCalls.CallOpts)
-}
-
 // GetTransactionTimestamp is a free data retrieval call binding the contract method 0x81ccf4c4.
 //
 // Solidity: function getTransactionTimestamp() view returns(uint256)
@@ -262,6 +231,27 @@ func (_TenSystemCalls *TenSystemCallsSession) GetTransactionTimestamp() (*big.In
 // Solidity: function getTransactionTimestamp() view returns(uint256)
 func (_TenSystemCalls *TenSystemCallsCallerSession) GetTransactionTimestamp() (*big.Int, error) {
 	return _TenSystemCalls.Contract.GetTransactionTimestamp(&_TenSystemCalls.CallOpts)
+}
+
+// GetRandomNumber is a paid mutator transaction binding the contract method 0xdbdff2c1.
+//
+// Solidity: function getRandomNumber() returns(uint256)
+func (_TenSystemCalls *TenSystemCallsTransactor) GetRandomNumber(opts *bind.TransactOpts) (*types.Transaction, error) {
+	return _TenSystemCalls.contract.Transact(opts, "getRandomNumber")
+}
+
+// GetRandomNumber is a paid mutator transaction binding the contract method 0xdbdff2c1.
+//
+// Solidity: function getRandomNumber() returns(uint256)
+func (_TenSystemCalls *TenSystemCallsSession) GetRandomNumber() (*types.Transaction, error) {
+	return _TenSystemCalls.Contract.GetRandomNumber(&_TenSystemCalls.TransactOpts)
+}
+
+// GetRandomNumber is a paid mutator transaction binding the contract method 0xdbdff2c1.
+//
+// Solidity: function getRandomNumber() returns(uint256)
+func (_TenSystemCalls *TenSystemCallsTransactorSession) GetRandomNumber() (*types.Transaction, error) {
+	return _TenSystemCalls.Contract.GetRandomNumber(&_TenSystemCalls.TransactOpts)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0x8129fc1c.
