@@ -29,6 +29,7 @@ contract SystemDeployer {
         deployPublicCallbacks(eoaAdmin);
         address crossChainMessengerProxy = deployCrossChainMessenger(eoaAdmin, messageBusProxy);
         deployEthereumBridge(eoaAdmin, crossChainMessengerProxy, remoteBridgeAddress);
+        deployTenSystemCalls(eoaAdmin);
     }
 
     function deployAnalyzer(address eoaAdmin) internal {
