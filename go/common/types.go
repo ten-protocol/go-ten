@@ -252,24 +252,24 @@ func (s *SystemContractAddresses) ToString() string {
 	return str
 }
 
-// to avoid negative numbers in the timestamp delta, we adjust by a block time so that it's impossible to have negative values
+// MillisAdjustment - to avoid negative numbers in the timestamp delta, we adjust by a 5s so that it's impossible to have negative values
 const MillisAdjustment = 5000
 
-// TxWithTimestamp - RLP serializes a transaction together with the timestamp
+// TxWithTimestamp - RLP serializes a transaction together with the timestamp delta from the block time
 type TxWithTimestamp struct {
-	Tx   *L2Tx
-	Time *big.Int
+	Tx          *L2Tx
+	TimeDeltaMs *big.Int
 }
 
 func createTxWithTimestamp(tx *L2Tx, blockTimeMs uint64) *TxWithTimestamp {
 	return &TxWithTimestamp{
-		Tx:   tx,
-		Time: big.NewInt(MillisAdjustment + tx.Time().UnixMilli() - int64(blockTimeMs)),
+		Tx:          tx,
+		TimeDeltaMs: big.NewInt(MillisAdjustment + tx.Time().UnixMilli() - int64(blockTimeMs)),
 	}
 }
 
 func (t *TxWithTimestamp) l2Tx(blockTimeMs uint64) *L2Tx {
-	t.Tx.SetTime(time.UnixMilli(t.Time.Int64() + int64(blockTimeMs) - MillisAdjustment))
+	t.Tx.SetTime(time.UnixMilli(t.TimeDeltaMs.Int64() + int64(blockTimeMs) - MillisAdjustment))
 	return t.Tx
 }
 
