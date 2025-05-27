@@ -128,7 +128,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}
 
 	// add rollup contract as stateroot manager
-	//opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
+	// opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
 	tx, err := merkleTreeMessageBus.AddStateRootManager(opts, daRegistryReceipt.ContractAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add state root manager to MerkleTreeMessageBus contract. Cause: %w", err)
