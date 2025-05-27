@@ -11,22 +11,25 @@ import "../../common/UnrenouncableOwnable2Step.sol";
  * 
  * TODO stefan to add explanation
  */
-contract Fees is Initializable, UnrenouncableOwnable2Step, IFees {
+contract Fees is IFees, Initializable, UnrenouncableOwnable2Step {
 
     uint256 private _messageFee;
 
     event FeeChanged(uint256 oldFee, uint256 newFee);
     event FeeWithdrawn(uint256 amount);
 
-    // Constructor disables initializer;
-    // Only owner functions will not be callable on implementation
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    // initialization function to be used by the proxy.
+    /**
+     * @dev Initializes the contract with fees and owner
+     * @param flatFee Initial message fee
+     * @param eoaOwner Address that will own the contract
+     */
     function initialize(uint256 flatFee, address eoaOwner) public initializer {
-        __Ownable_init(eoaOwner);
+        __UnrenouncableOwnable2Step_init(eoaOwner);
         _messageFee = flatFee;
         emit FeeChanged(0, flatFee);
     }

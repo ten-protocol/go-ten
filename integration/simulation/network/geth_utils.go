@@ -10,13 +10,16 @@ import (
 	"github.com/ten-protocol/go-ten/contracts/generated/CrossChainMessenger"
 	"github.com/ten-protocol/go-ten/contracts/generated/MerkleTreeMessageBus"
 	"github.com/ten-protocol/go-ten/contracts/generated/TenBridge"
+	"github.com/ten-protocol/go-ten/contracts/generated/TransparentUpgradeableProxy"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkEnclaveRegistry"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ten-protocol/go-ten/contracts/generated/CrossChain"
 	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
 	"github.com/ten-protocol/go-ten/go/common/constants"
@@ -99,30 +102,22 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	if err != nil {
 		return nil, err
 	}
-
-	crossChainContract, crossChainReceipt, err := deployCrossChainContract(client, wallets.ContractOwnerWallet)
+	_, merkleMessageBusReceipt, err := deploMerkleMessageBusContract(client, wallets.ContractOwnerWallet)
+	if err != nil {
+		return nil, err
+	}
+	crossChainContract, crossChainReceipt, err := deployCrossChainContract(client, wallets.ContractOwnerWallet, merkleMessageBusReceipt.ContractAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get the MessageBus address from the CrossChain contract
-	messageBusAddr, err := crossChainContract.MessageBus(&bind.CallOpts{})
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch MessageBus address. Cause: %w", err)
-	}
-
-	// Wait for MessageBus contract to be deployed
-	err = waitForContractDeployment(context.Background(), client, messageBusAddr)
-	if err != nil {
-		return nil, fmt.Errorf("MessageBus contract not available after deployment: %w", err)
-	}
-
-	_, daRegistryReceipt, err := deployDataAvailabilityRegistry(client, wallets.ContractOwnerWallet, messageBusAddr, enclaveRegistryReceipt.ContractAddress)
+	_, daRegistryReceipt, err := deployDataAvailabilityRegistry(client, wallets.ContractOwnerWallet, merkleMessageBusReceipt.ContractAddress, enclaveRegistryReceipt.ContractAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	merkleTreeMessageBus, err := MerkleTreeMessageBus.NewMerkleTreeMessageBus(messageBusAddr, client.EthClient())
+	// Create a new instance of MerkleTreeMessageBus bound to the proxy address
+	merkleTreeMessageBus, err := MerkleTreeMessageBus.NewMerkleTreeMessageBus(merkleMessageBusReceipt.ContractAddress, client.EthClient())
 	if err != nil {
 		return nil, fmt.Errorf("failed to instantiate MerkleTreeMessageBus contract. Cause: %w", err)
 	}
@@ -132,6 +127,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		return nil, err
 	}
 
+	// add rollup contract as stateroot manager
 	tx, err := merkleTreeMessageBus.AddStateRootManager(opts, daRegistryReceipt.ContractAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add state root manager to MerkleTreeMessageBus contract. Cause: %w", err)
@@ -140,6 +136,18 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("no receipt for MerkleTreeMessageBus contract state root manager addition")
+	}
+
+	// add cross chain contract as withdrawal manager
+	opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
+	tx1, err := merkleTreeMessageBus.AddWithdrawalManager(opts, crossChainReceipt.ContractAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to add withdrawal manager to MerkleTreeMessageBus contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx1.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("no receipt for MerkleTreeMessageBus contract withdrawal manager addition")
 	}
 
 	opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
@@ -154,14 +162,14 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}
 
 	opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
-	tx, err = ccCtr.Initialize(opts, messageBusAddr)
+	tx, err = ccCtr.Initialize(opts, merkleMessageBusReceipt.ContractAddress)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize CrossChainMessenger contract. Cause: %w", err)
 	}
 
 	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
 	if err != nil {
-		return nil, fmt.Errorf("no receipt for CrossChainMessenger contract deployment")
+		return nil, fmt.Errorf("no receipt for CrossChainMessenger contract initialization")
 	}
 
 	opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
@@ -186,6 +194,12 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		return nil, fmt.Errorf("no receipt for TenBridge contract initialization")
 	}
 
+	// Get the MessageBus address from the CrossChain contract
+	messageBusAddr, err := crossChainContract.MessageBus(&bind.CallOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch MessageBus address. Cause: %w", err)
+	}
+
 	// Create the Addresses struct to pass to initialize
 	addresses := NetworkConfig.NetworkConfigFixedAddresses{
 		CrossChain:               crossChainReceipt.ContractAddress,
@@ -198,10 +212,12 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	if err != nil {
 		return nil, err
 	}
+
 	opts, err = createTransactor(wallets.ContractOwnerWallet)
 	if err != nil {
 		return nil, err
 	}
+
 	tx, err = networkConfigContract.SetL1CrossChainMessengerAddress(opts, ccAddress)
 	if err != nil {
 		return nil, err
@@ -278,18 +294,18 @@ func ConnectTenNetworkBridge(client ethadapter.EthClient, wallets *params.SimWal
 	return nil
 }
 
-func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
-	bytecode, err := constants.EnclaveRegistryBytecode()
+// deployProxyContract handles the common pattern of deploying a contract with a proxy
+func deployProxyContract[T any](
+	client ethadapter.EthClient,
+	contractOwner wallet.Wallet,
+	bytecode []byte,
+	contractMetadata interface{ GetAbi() (*abi.ABI, error) },
+	initArgs ...interface{},
+) (*T, *types.Receipt, error) {
+	// deploy implementation
+	implReceipt, err := DeployContract(client, contractOwner, bytecode)
 	if err != nil {
-		return nil, nil, err
-	}
-	networkEnclaveRegistryReceipt, err := DeployContract(client, contractOwner, bytecode)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to deploy NetworkEnclaveRegistry contract from %s. Cause: %w", contractOwner.Address(), err)
-	}
-	networkEnclaveRegistryContract, err := NetworkEnclaveRegistry.NewNetworkEnclaveRegistry(networkEnclaveRegistryReceipt.ContractAddress, client.EthClient())
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to instantiate NetworkEnclaveRegistry contract. Cause: %w", err)
+		return nil, nil, fmt.Errorf("failed to deploy implementation from %s. Cause: %w", contractOwner.Address(), err)
 	}
 
 	opts, err := createTransactor(contractOwner)
@@ -297,21 +313,83 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wa
 		return nil, nil, err
 	}
 
-	tx, err := networkEnclaveRegistryContract.Initialize(opts, contractOwner.Address())
+	// encode the initialization data
+	parsed, err := contractMetadata.GetAbi()
 	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize NetworkEnclaveRegistry contract. Cause: %w", err)
+		return nil, nil, fmt.Errorf("failed to get contract ABI. Cause: %w", err)
 	}
 
-	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	initData, err := parsed.Pack("initialize", initArgs...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("no receipt for NetworkEnclaveRegistry contract initialization")
+		return nil, nil, fmt.Errorf("failed to encode initialization data. Cause: %w", err)
 	}
 
-	err = waitForContractDeployment(context.Background(), client, networkEnclaveRegistryReceipt.ContractAddress)
+	// deploy proxy
+	proxyAddr, tx, _, err := TransparentUpgradeableProxy.DeployTransparentUpgradeableProxy(
+		opts,
+		client.EthClient(),
+		implReceipt.ContractAddress,
+		contractOwner.Address(),
+		initData,
+	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("NetworkEnclaveRegistry contract not available after time. Cause: %w", err)
+		return nil, nil, fmt.Errorf("failed to deploy proxy contract. Cause: %w", err)
 	}
-	return networkEnclaveRegistryContract, networkEnclaveRegistryReceipt, nil
+
+	receipt, err := integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, nil, fmt.Errorf("no receipt for proxy contract deployment")
+	}
+
+	// bind contract instance to proxy
+	contract, err := NewContract[T](proxyAddr, client.EthClient())
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to instantiate contract at proxy address. Cause: %w", err)
+	}
+
+	err = waitForContractDeployment(context.Background(), client, proxyAddr)
+	if err != nil {
+		return nil, nil, fmt.Errorf("proxy contract not available after time. Cause: %w", err)
+	}
+
+	return contract, receipt, nil
+}
+
+// NewContract is a type constraint helper to create new contract instances
+func NewContract[T any](address common.Address, client *ethclient.Client) (*T, error) {
+	switch any(new(T)).(type) {
+	case *NetworkEnclaveRegistry.NetworkEnclaveRegistry:
+		contract, err := NetworkEnclaveRegistry.NewNetworkEnclaveRegistry(address, client)
+		return any(contract).(*T), err
+	case *CrossChain.CrossChain:
+		contract, err := CrossChain.NewCrossChain(address, client)
+		return any(contract).(*T), err
+	case *DataAvailabilityRegistry.DataAvailabilityRegistry:
+		contract, err := DataAvailabilityRegistry.NewDataAvailabilityRegistry(address, client)
+		return any(contract).(*T), err
+	case *MerkleTreeMessageBus.MerkleTreeMessageBus:
+		contract, err := MerkleTreeMessageBus.NewMerkleTreeMessageBus(address, client)
+		return any(contract).(*T), err
+	case *NetworkConfig.NetworkConfig:
+		contract, err := NetworkConfig.NewNetworkConfig(address, client)
+		return any(contract).(*T), err
+	default:
+		return nil, fmt.Errorf("unsupported contract type")
+	}
+}
+
+func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
+	bytecode, err := constants.EnclaveRegistryBytecode()
+	if err != nil {
+		return nil, nil, err
+	}
+	return deployProxyContract[NetworkEnclaveRegistry.NetworkEnclaveRegistry](
+		client,
+		contractOwner,
+		bytecode,
+		NetworkEnclaveRegistry.NetworkEnclaveRegistryMetaData,
+		contractOwner.Address(),
+	)
 }
 
 func deployNetworkConfigContract(client ethadapter.EthClient, contractOwner wallet.Wallet, addresses NetworkConfig.NetworkConfigFixedAddresses) (*NetworkConfig.NetworkConfig, *types.Receipt, error) {
@@ -319,34 +397,14 @@ func deployNetworkConfigContract(client ethadapter.EthClient, contractOwner wall
 	if err != nil {
 		return nil, nil, err
 	}
-	networkConfigReceipt, err := DeployContract(client, contractOwner, bytecode)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to deploy NetworkConfig contract from %s. Cause: %w", contractOwner.Address(), err)
-	}
-	networkConfigContract, err := NetworkConfig.NewNetworkConfig(networkConfigReceipt.ContractAddress, client.EthClient())
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to instantiate NetworkConfig contract. Cause: %w", err)
-	}
-
-	opts, err := createTransactor(contractOwner)
-	if err != nil {
-		return nil, nil, err
-	}
-	tx, err := networkConfigContract.Initialize(opts, addresses, contractOwner.Address())
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize NetworkConfig contract. Cause: %w", err)
-	}
-
-	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
-	if err != nil {
-		return nil, nil, fmt.Errorf("no receipt for NetworkConfig contract initialization")
-	}
-
-	err = waitForContractDeployment(context.Background(), client, networkConfigReceipt.ContractAddress)
-	if err != nil {
-		return nil, nil, fmt.Errorf("NetworkConfig contract not available after time. Cause: %w", err)
-	}
-	return networkConfigContract, networkConfigReceipt, nil
+	return deployProxyContract[NetworkConfig.NetworkConfig](
+		client,
+		contractOwner,
+		bytecode,
+		NetworkConfig.NetworkConfigMetaData,
+		addresses,
+		contractOwner.Address(),
+	)
 }
 
 func deployDataAvailabilityRegistry(client ethadapter.EthClient, contractOwner wallet.Wallet, messageBus common.Address, enclaveRegistryAddress common.Address) (*DataAvailabilityRegistry.DataAvailabilityRegistry, *types.Receipt, error) {
@@ -354,72 +412,45 @@ func deployDataAvailabilityRegistry(client ethadapter.EthClient, contractOwner w
 	if err != nil {
 		return nil, nil, err
 	}
-	daRegistryContractReceipt, err := DeployContract(client, contractOwner, bytecode)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to deploy DataAvailabilityRegistry from %s. Cause: %w", contractOwner.Address(), err)
-	}
-	daRegistryContract, err := DataAvailabilityRegistry.NewDataAvailabilityRegistry(daRegistryContractReceipt.ContractAddress, client.EthClient())
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to instantiate DataAvailabilityRegistry. Cause: %w", err)
-	}
+	return deployProxyContract[DataAvailabilityRegistry.DataAvailabilityRegistry](
+		client,
+		contractOwner,
+		bytecode,
+		DataAvailabilityRegistry.DataAvailabilityRegistryMetaData,
+		messageBus,
+		enclaveRegistryAddress,
+		contractOwner.Address(),
+	)
+}
 
-	opts, err := createTransactor(contractOwner)
+func deploMerkleMessageBusContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*MerkleTreeMessageBus.MerkleTreeMessageBus, *types.Receipt, error) {
+	bytecode, err := constants.MerkleTreeMessageBusBytecode()
 	if err != nil {
 		return nil, nil, err
 	}
-	tx, err := daRegistryContract.Initialize(opts, messageBus, enclaveRegistryAddress, contractOwner.Address())
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize DataAvailabilityRegistry. Cause: %w", err)
-	}
-
-	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
-	if err != nil {
-		return nil, nil, fmt.Errorf("no receipt for DataAvailabilityRegistry initialization")
-	}
-
-	err = waitForContractDeployment(context.Background(), client, daRegistryContractReceipt.ContractAddress)
-	if err != nil {
-		return nil, nil, fmt.Errorf("DataAvailabilityRegistry contract not available after time. Cause: %w", err)
-	}
-
-	return daRegistryContract, daRegistryContractReceipt, nil
+	return deployProxyContract[MerkleTreeMessageBus.MerkleTreeMessageBus](
+		client,
+		contractOwner,
+		bytecode,
+		CrossChain.CrossChainMetaData,
+		contractOwner.Address(),
+		contractOwner.Address(),
+	)
 }
 
-func deployCrossChainContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*CrossChain.CrossChain, *types.Receipt, error) {
+func deployCrossChainContract(client ethadapter.EthClient, contractOwner wallet.Wallet, messageBus common.Address) (*CrossChain.CrossChain, *types.Receipt, error) {
 	bytecode, err := constants.CrossChainBytecode()
 	if err != nil {
 		return nil, nil, err
 	}
-	crossChainReceipt, err := DeployContract(client, contractOwner, bytecode)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to deploy CrossChain contract from %s. Cause: %w", contractOwner.Address(), err)
-	}
-	crossChainContract, err := CrossChain.NewCrossChain(crossChainReceipt.ContractAddress, client.EthClient())
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to instantiate CrossChain contract. Cause: %w", err)
-	}
-
-	opts, err := createTransactor(contractOwner)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	tx, err := crossChainContract.Initialize(opts, contractOwner.Address())
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to initialize CrossChain contract. Cause: %w", err)
-	}
-
-	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
-	if err != nil {
-		return nil, nil, fmt.Errorf("no receipt for CrossChain initialization")
-	}
-
-	err = waitForContractDeployment(context.Background(), client, crossChainReceipt.ContractAddress)
-	if err != nil {
-		return nil, nil, fmt.Errorf("CrossChain contract not available after time. Cause: %w", err)
-	}
-
-	return crossChainContract, crossChainReceipt, nil
+	return deployProxyContract[CrossChain.CrossChain](
+		client,
+		contractOwner,
+		bytecode,
+		CrossChain.CrossChainMetaData,
+		contractOwner.Address(),
+		messageBus,
+	)
 }
 
 func PermissionTenSequencerEnclave(contractOwner wallet.Wallet, client ethadapter.EthClient, enclaveRegistryAddr common.Address, seqEnclaveID common.Address) error {
