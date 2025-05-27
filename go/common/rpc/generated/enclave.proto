@@ -300,6 +300,7 @@ message BatchHeaderMsg {
   bytes CrossChainRoot = 17;
   bytes Coinbase = 18;
   bytes CrossChainTree = 19;
+  bytes PayloadHash = 20;
 }
 
 message ExtRollupMsg {
