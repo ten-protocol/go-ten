@@ -367,6 +367,9 @@ func NewContract[T any](address common.Address, client *ethclient.Client) (*T, e
 	case *DataAvailabilityRegistry.DataAvailabilityRegistry:
 		contract, err := DataAvailabilityRegistry.NewDataAvailabilityRegistry(address, client)
 		return any(contract).(*T), err
+	case *MerkleTreeMessageBus.MerkleTreeMessageBus:
+		contract, err := MerkleTreeMessageBus.NewMerkleTreeMessageBus(address, client)
+		return any(contract).(*T), err
 	case *NetworkConfig.NetworkConfig:
 		contract, err := NetworkConfig.NewNetworkConfig(address, client)
 		return any(contract).(*T), err
