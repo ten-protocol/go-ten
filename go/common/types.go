@@ -252,7 +252,8 @@ func (s *SystemContractAddresses) ToString() string {
 	return str
 }
 
-// MillisAdjustment - to avoid negative numbers in the timestamp delta, we adjust by a 5s so that it's impossible to have negative values
+// MillisAdjustment - to avoid negative numbers in the timestamp delta (block.time - tx.time), we adjust by a 5s so that it's impossible to have negative values
+// This represents the period until which transactions will come in *after* the sequencer started building a new batch.
 const MillisAdjustment = 5000
 
 // TxWithTimestamp - RLP serializes a transaction together with the timestamp delta from the block time
