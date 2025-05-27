@@ -420,12 +420,12 @@ func deployDataAvailabilityRegistry(client ethadapter.EthClient, contractOwner w
 	)
 }
 
-func deploMerkleMessageBusContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*CrossChain.CrossChain, *types.Receipt, error) {
+func deploMerkleMessageBusContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*MerkleTreeMessageBus.MerkleTreeMessageBus, *types.Receipt, error) {
 	bytecode, err := constants.MerkleTreeMessageBusBytecode()
 	if err != nil {
 		return nil, nil, err
 	}
-	return deployProxyContract[CrossChain.CrossChain](
+	return deployProxyContract[MerkleTreeMessageBus.MerkleTreeMessageBus](
 		client,
 		contractOwner,
 		bytecode,
