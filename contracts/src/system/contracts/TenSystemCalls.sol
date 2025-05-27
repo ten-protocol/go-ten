@@ -18,6 +18,6 @@ contract TenSystemCalls is Initializable {
         // Extract last 4 bytes from difficulty which contains timestamp delta
         int32 timeDelta = int32(uint32(uint256(block.prevrandao)));
         // Real timestamp is current block time minus the delta
-        return uint256(int256(block.timestamp) - timeDelta);
+        return uint256(int256(block.timestamp*1000) - timeDelta);
     }
 }
