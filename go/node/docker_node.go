@@ -36,7 +36,7 @@ func NewDockerNode(cfg *config.TenConfig, hostImage, enclaveImage, edgelessDBIma
 }
 
 func (d *DockerNode) Start() error {
-	// todo (@pedro) - this should probably be removed in the future
+	fmt.Printf("Starting node (%s) with the following config:\n", d.cfg.Node.Name)
 	d.cfg.PrettyPrint() // dump config to stdout
 
 	var err error

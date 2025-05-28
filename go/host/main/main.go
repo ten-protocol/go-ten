@@ -17,6 +17,8 @@ func main() {
 		fmt.Println("Error loading ten config:", err)
 		os.Exit(1)
 	}
+	fmt.Println("Starting host with the following TenConfig:")
+	tenCfg.PrettyPrint() // dump config to stdout
 
 	hostCfg := hostconfig.HostConfigFromTenConfig(tenCfg)
 	hostContainer := hostcontainer.NewHostContainerFromConfig(hostCfg, nil)
