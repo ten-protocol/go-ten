@@ -61,10 +61,14 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          # Build and push enclave image
-          DOCKER_BUILDKIT=1 docker build -t ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet/enclave:${VERSION} -f dockerfiles/enclave.Dockerfile .
-          docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet/enclave:${VERSION}
+          # Build enclave image
+          DOCKER_BUILDKIT=1 docker build -t enclave:${VERSION} -f dockerfiles/enclave.Dockerfile .
+          # Tag and push enclave image
+          docker tag enclave:${VERSION} ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:enclave-${VERSION}
+          docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:enclave-${VERSION}
           
-          # Build and push host image
-          DOCKER_BUILDKIT=1 docker build -t ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet/host:${VERSION} -f dockerfiles/host.Dockerfile .
-          docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet/host:${VERSION}
+          # Build host image
+          DOCKER_BUILDKIT=1 docker build -t host:${VERSION} -f dockerfiles/host.Dockerfile .
+          # Tag and push host image
+          docker tag host:${VERSION} ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:host-${VERSION}
+          docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:host-${VERSION}
