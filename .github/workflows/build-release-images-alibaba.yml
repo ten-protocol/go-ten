@@ -26,14 +26,13 @@ jobs:
       - name: 'Login to Alibaba Cloud Container Registry'
         run: |
           # Login to Docker with credentials
-          echo "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" | docker login ${{ env.CONTAINER_REGISTRY }} -u will@5131971543297513 --password-stdin
-
-      - name: 'Verify Docker Login'
-        run: |
-          # Check if we're logged in
           docker login ${{ env.CONTAINER_REGISTRY }} -u will@5131971543297513 --password-stdin <<< "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}"
-          # List available repositories (this will fail if not authenticated)
-          docker search ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet
+
+#      - name: 'Verify Docker LogigitNTAINER_REGISTRY }} -u will@5131971543297513 --password-stdin <<< "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}"
+#          # Verify we can access the registry by trying to list tags
+#          echo "Verifying registry access..."
+#          curl -u "will@5131971543297513:${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" \
+#            "https://${{ env.CONTAINER_REGISTRY }}/v2/ten-testnet/tentestnet/enclave/tags/list" || true
 
       - name: 'Get version'
         id: get_version
