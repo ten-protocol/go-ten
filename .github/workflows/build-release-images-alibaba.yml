@@ -27,6 +27,13 @@ jobs:
         run: |
           # Login to Docker with credentials
           echo "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" | docker login ${{ env.CONTAINER_REGISTRY }} -u will@5131971543297513 --password-stdin
+          
+      - name: 'Verify Docker Login'
+        run: |
+          # Check if we're logged in
+          docker login ${{ env.CONTAINER_REGISTRY }} --password-stdin <<< "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}"
+          # List available repositories (this will fail if not authenticated)
+          docker search ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet
 
       - name: 'Get version'
         id: get_version
