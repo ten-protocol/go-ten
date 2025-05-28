@@ -27,6 +27,16 @@ jobs:
         run: |
           # Login to Docker with credentials
           docker login ${{ env.CONTAINER_REGISTRY }} -u will@5131971543297513 --password-stdin <<< "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}"
+          
+      - name: 'Create Repository if Not Exists'
+        run: |
+          # Create namespace if it doesn't exist
+          curl -X POST -u "will@5131971543297513:${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" \
+            "https://${{ env.CONTAINER_REGISTRY }}/v2/ten-testnet/tentestnet" || true
+          
+          # Create repository if it doesn't exist
+          curl -X PUT -u "will@5131971543297513:${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" \
+            "https://${{ env.CONTAINER_REGISTRY }}/v2/ten-testnet/tentestnet/enclave" || true
 
 #      - name: 'Verify Docker LogigitNTAINER_REGISTRY }} -u will@5131971543297513 --password-stdin <<< "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}"
 #          # Verify we can access the registry by trying to list tags
