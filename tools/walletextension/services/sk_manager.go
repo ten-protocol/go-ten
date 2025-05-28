@@ -26,6 +26,7 @@ type SKManager interface {
 	ActivateSessionKey(user *common.GWUser) (bool, error)
 	DeactivateSessionKey(user *common.GWUser) (bool, error)
 	DeleteSessionKey(user *common.GWUser) (bool, error)
+	ListSessionKey(user *common.GWUser) (string, error)
 	SignTx(ctx context.Context, user *common.GWUser, input *types.Transaction) (*types.Transaction, error)
 }
 
@@ -138,6 +139,13 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 			SignatureType: viewingkey.EIP712Signature,
 		},
 	}, nil
+}
+
+func (m *skManager) ListSessionKey(user *common.GWUser) (string, error) {
+	if user.SessionKey == nil {
+		return "", nil
+	}
+	return user.SessionKey.Account.Address.Hex(), nil
 }
 
 func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, tx *types.Transaction) (*types.Transaction, error) {
