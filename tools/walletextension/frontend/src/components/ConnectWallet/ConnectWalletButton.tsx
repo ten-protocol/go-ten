@@ -5,7 +5,7 @@ import { useAccount, useBalance } from 'wagmi';
 import { Loader2 } from 'lucide-react';
 import { tenChainIDDecimal, tenNetworkName } from '@/lib/constants';
 import { useUiStore } from '@/stores/ui.store';
-import { useShallow } from 'zustand/react/shallow';
+import { shallow } from 'zustand/shallow';
 import { TbPrompt } from 'react-icons/tb';
 import Image from 'next/image';
 import { useLocalStorage } from 'usehooks-ts';
@@ -18,7 +18,8 @@ type Props = {
 export default function ConnectWalletButton({ className }: Props) {
     const { address, isConnected, chain, connector } = useAccount();
     const [setConnectionModal, setSettingsModal] = useUiStore(
-        useShallow((state) => [state.setConnectionModal, state.setSettingsModal])
+        (state) => [state.setConnectionModal, state.setSettingsModal],
+        shallow
     );
     const [tenToken] = useLocalStorage('ten_token', '');
 

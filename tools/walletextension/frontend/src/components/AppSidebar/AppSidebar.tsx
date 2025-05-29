@@ -19,6 +19,7 @@ import { LuTextSearch } from 'react-icons/lu';
 import { GrDocumentText } from 'react-icons/gr';
 import { CgWebsite } from 'react-icons/cg';
 import { FaDiscord } from 'react-icons/fa';
+import * as React from 'react';
 
 export function AppSidebar() {
     const zenItems = [

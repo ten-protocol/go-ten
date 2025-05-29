@@ -8,7 +8,7 @@ import PromoApps from '@/components/PromoApps/PromoApps';
 import { tenChainIDDecimal } from '@/lib/constants';
 import ConnectWalletModal from '@/components/ConnectWallet/ConnectWalletModal';
 import { useUiStore } from '@/stores/ui.store';
-import { useShallow } from 'zustand/react/shallow';
+import { shallow } from 'zustand/shallow';
 import { useEffect, useState } from 'react';
 import WalletSettingsModal from '@/components/ConnectWallet/WalletSettingsModal';
 import { useLocalStorage } from 'usehooks-ts';
@@ -19,12 +19,13 @@ export default function Home() {
 
     const [isConnectionModalOpen, isSettingsModalOpen, setConnectionModal, setSettingsModal] =
         useUiStore(
-            useShallow((state) => [
+            (state) => [
                 state.isConnectionModalOpen,
                 state.isSettingsModalOpen,
                 state.setConnectionModal,
                 state.setSettingsModal,
-            ])
+            ],
+            shallow
         );
     const isOnTen = chainId === tenChainIDDecimal;
     const [isWalletReady, setIsWalletReady] = useState(false);

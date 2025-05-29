@@ -12,10 +12,10 @@ import { joinTestnet } from '@/api/gateway';
 import { useTenChainAuth } from '@/hooks/useTenChainAuth';
 import { useUiStore } from '@/stores/ui.store';
 import sleep from '@/utils/sleep';
-import { useShallow } from 'zustand/react/shallow';
+import { shallow } from 'zustand/shallow';
 
 export default function useConnectToTenChain() {
-    const incrementAuthEvents = useUiStore(useShallow((state) => state.incrementAuthEvents));
+    const incrementAuthEvents = useUiStore((state) => state.incrementAuthEvents, shallow);
     const { address, connector, isConnected, chainId } = useAccount();
     const connectors = useConnectors();
     const setStoreTenToken = useUiStore((state) => state.setTenToken);

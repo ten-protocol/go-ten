@@ -1,11 +1,11 @@
 'use client';
 
-import { ReactNode, useRef } from 'react';
+import React, { useRef } from 'react';
 
 import { useInView } from 'framer-motion';
 
 type Props = {
-    children: ReactNode;
+    children: React.ReactNode;
 };
 
 export default function PrimaryCard({ children }: Props) {
