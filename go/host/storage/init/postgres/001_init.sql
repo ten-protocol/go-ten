@@ -1,4 +1,4 @@
-docker login crpi-im6sg8q4x42zs9n3.eu-west-1.personal.cr.aliyuncs.com -u will@5131971543297513CREATE TABLE IF NOT EXISTS block_host
+CREATE TABLE IF NOT EXISTS block_host
 (
     id          SERIAL PRIMARY KEY,
     hash        BYTEA          NOT NULL,

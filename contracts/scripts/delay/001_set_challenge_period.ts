@@ -10,7 +10,12 @@ const setChallengePeriod = async function (daRegistryAddress: string, challengPe
 
     console.log(`Setting challenge period to: ${challengPeriod}`);
     const tx = await daRegistryContract.setChallengePeriod(BigInt(challengPeriod));
-    await tx.wait();
+    const receipt = await tx.wait();
+    // check if the transaction was successful
+    if (!receipt.status) {
+        console.error(`Transaction failed, receipt: ${JSON.stringify(receipt)}`);
+        throw new Error(`Set challenge period transaction failed: ${tx.hash}`);
+    }
     console.log(`Successfully set challenge period to: ${challengPeriod}`);
 
     const rollupChallengePeriod = await daRegistryContract.getChallengePeriod();

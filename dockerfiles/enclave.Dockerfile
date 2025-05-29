@@ -35,7 +35,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 RUN ego sign enclave.json
 
 # Trigger a new build stage and use the smaller ego version:
-FROM ghcr.io/edgelesssys/ego-deploy:v1.7.0 as final
+FROM ghcr.io/edgelesssys/ego-deploy:v1.7.0
 
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \
