@@ -5,21 +5,20 @@ import "../../common/Structs.sol";
 import "../../cross_chain_messaging/L1/IMerkleTreeMessageBus.sol";
 import "../interfaces/IDataAvailabilityRegistry.sol";
 import "../interfaces/INetworkEnclaveRegistry.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-
+import "../../common/UnrenouncableOwnable2Step.sol";
 /**
  * @title DataAvailabilityRegistry
  * @dev Contract for managing data availability and rollup validation
  * Implements a challenge period for state root disputes
  * Uses MerkleTreeMessageBus for message verification and value transfers
  */
-contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, OwnableUpgradeable {
+contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, UnrenouncableOwnable2Step {
 
     // RollupStorage: A storage structure to manage and organize MetaRollup instances in a mapping by their hash.
     struct RollupStorage {
-        mapping(bytes32 => MetaRollup) byHash;
+        mapping(bytes32 rollupHash => MetaRollup rollup) byHash;
         uint256 nextFreeSequenceNumber;
     }
 
@@ -42,7 +41,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
     INetworkEnclaveRegistry public enclaveRegistry;
 
     constructor() {
-        _transferOwnership(msg.sender);
+        _disableInitializers();
     }
 
     /**
@@ -56,7 +55,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, O
         address _enclaveRegistry,
         address _owner
     ) public initializer {
-        __Ownable_init(_owner);
+        __UnrenouncableOwnable2Step_init(_owner);
         merkleMessageBus = IMerkleTreeMessageBus(_merkleMessageBus);
         enclaveRegistry = INetworkEnclaveRegistry(_enclaveRegistry);
         lastBatchSeqNo = 0;

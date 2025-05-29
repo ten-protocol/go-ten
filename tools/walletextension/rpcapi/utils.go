@@ -57,7 +57,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	if ctx == nil {
 		return nil, errors.New("invalid call. nil Context")
 	}
-	audit(w, "RPC start method=%s args=%v", method, args)
+	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	cacheArgs := []any{method}
 	cacheArgs = append(cacheArgs, args...)
@@ -76,26 +76,27 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 		})
 	})
 	if err != nil {
-		audit(w, "RPC call failed. method=%s args=%v error=%+v time=%d", method, args, err, time.Since(requestStartTime).Milliseconds())
+		services.Audit(w, services.ErrorLevel, "RPC call failed. method=%s args=%v error=%+v time=%d", method, args, err, time.Since(requestStartTime).Milliseconds())
 		return nil, err
 	}
 
-	audit(w, "RPC call succeeded. method=%s args=%v result=%+v time=%d", method, args, res, time.Since(requestStartTime).Milliseconds())
+	services.Audit(w, services.InfoLevel, "RPC call succeeded. method=%s args=%v result=%+v time=%d", method, args, res, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
-	audit(w, "RPC start method=%s args=%v", method, args)
+	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
 	user, err := extractUserForRequest(ctx, w)
 	if err != nil {
 		return nil, err
 	}
 
-	// w.MetricsTracker.RecordUserActivity(hexutils.BytesToHex(user.ID))
+	w.MetricsTracker.RecordUserActivity(user.ID)
 
 	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
 	if !rateLimitAllowed {
+		services.Audit(w, services.WarnLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
 		return nil, fmt.Errorf("rate limit exceeded")
 	}
 	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
@@ -151,7 +152,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 		}
 		return nil, rpcErr
 	})
-	audit(w, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(user.ID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
+	services.Audit(w, services.InfoLevel, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(user.ID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
@@ -227,21 +228,6 @@ func generateCacheKey(params []any) []byte {
 	hasher.Write(rawKey)
 
 	return hasher.Sum(nil)
-}
-
-func audit(services *services.Services, msg string, params ...any) {
-	if services.Config.VerboseFlag {
-		// Sanitize params to handle nil values
-		safeParams := make([]any, len(params))
-		for i, p := range params {
-			if p == nil {
-				safeParams[i] = "<nil>"
-			} else {
-				safeParams[i] = p
-			}
-		}
-		services.Logger().Info(fmt.Sprintf(msg, safeParams...))
-	}
 }
 
 func cacheBlockNumberOrHash(blockNrOrHash rpc.BlockNumberOrHash) cache.Strategy {

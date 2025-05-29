@@ -25,7 +25,7 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
 
     IMerkleTreeMessageBus messageBusContract;
     address public crossChainSender;
-    mapping(bytes32 => bool) messageConsumed;
+    mapping(bytes32 messageHash => bool messageConsumed) messageConsumed;
 
     /**
      * @dev Initializes the contract with a message bus address

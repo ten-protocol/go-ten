@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache 2
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
 import "./TransactionPostProcessor.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -8,7 +8,7 @@ import {CrossChainMessenger} from "../../cross_chain_messaging/common/CrossChain
 import {EthereumBridge} from "../../reference_bridge/L2/contracts/EthereumBridge.sol";
 import {MessageBus} from "../../cross_chain_messaging/common/MessageBus.sol";
 import {PublicCallbacks} from "./PublicCallbacks.sol";
-
+import {TenSystemCalls} from "./TenSystemCalls.sol";
 /**
  * @title SystemDeployer
  * @dev Contract that deploys the system contracts
@@ -21,12 +21,15 @@ contract SystemDeployer {
     event SystemContractDeployed(string name, address contractAddress);
 
     constructor(address eoaAdmin, address remoteBridgeAddress) {
-       deployAnalyzer(eoaAdmin);
-       address feesProxy = deployFees(eoaAdmin, 0);
-       address messageBusProxy = deployMessageBus(eoaAdmin, feesProxy);
-       deployPublicCallbacks(eoaAdmin);
-       address crossChainMessengerProxy = deployCrossChainMessenger(eoaAdmin, messageBusProxy);
-       deployEthereumBridge(eoaAdmin, crossChainMessengerProxy, remoteBridgeAddress);
+        require(eoaAdmin != address(0), "Invalid EOA admin address");
+        require(remoteBridgeAddress != address(0), "Invalid remote bridge address");
+        deployAnalyzer(eoaAdmin);
+        address feesProxy = deployFees(eoaAdmin, 0);
+        address messageBusProxy = deployMessageBus(eoaAdmin, feesProxy);
+        deployPublicCallbacks(eoaAdmin);
+        address crossChainMessengerProxy = deployCrossChainMessenger(eoaAdmin, messageBusProxy);
+        deployEthereumBridge(eoaAdmin, crossChainMessengerProxy, remoteBridgeAddress);
+        deployTenSystemCalls(eoaAdmin);
     }
 
     function deployAnalyzer(address eoaAdmin) internal {
@@ -78,6 +81,14 @@ contract SystemDeployer {
         address ethereumBridgeProxy = deployProxy(address(ethereumBridge), eoaAdmin, callData);
 
         emit SystemContractDeployed("EthereumBridge", ethereumBridgeProxy);
+    }
+
+    function deployTenSystemCalls(address eoaAdmin) internal {
+        TenSystemCalls tenSystemCalls = new TenSystemCalls();
+        bytes memory callData = abi.encodeWithSelector(tenSystemCalls.initialize.selector);
+        address tenSystemCallsProxy = deployProxy(address(tenSystemCalls), eoaAdmin, callData);
+
+        emit SystemContractDeployed("TenSystemCalls", tenSystemCallsProxy);
     }
 
     function deployProxy(address _logic, address _admin, bytes memory _data) internal returns (address proxyAddress) {

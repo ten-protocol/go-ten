@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"os"
+	"time"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
@@ -48,7 +50,8 @@ type enclaveImpl struct {
 	adminAPI common.EnclaveAdmin
 	rpcAPI   common.EnclaveClientRPC
 
-	stopControl *stopcontrol.StopControl
+	stopControl  *stopcontrol.StopControl
+	shutdownFunc func() // function to call when stopping the enclave (e.g. sys exit for docker but not for tests)
 }
 
 // NewEnclave creates and initializes all the services of the enclave.
@@ -93,21 +96,24 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	}
 
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
-	gasOracle := gas.NewGasOracle(l1ChainCfg)
+	gasOracle := gas.NewGasOracle(l1ChainCfg, storage)
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 
 	// start the mempool in validate only. Based on the config, it might become sequencer
 	evmEntropyService := crypto.NewEvmEntropyService(sharedSecretService, logger)
 	gethEncodingService := gethencoding.NewGethEncodingService(storage, cachingService, evmEntropyService, logger)
 	batchRegistry := components.NewBatchRegistry(storage, config, gethEncodingService, logger)
-	mempool, err := components.NewTxPool(batchRegistry.EthChain(), storage, batchRegistry, blockProcessor, gasOracle, config.MinGasPrice, true, logger)
-	if err != nil {
-		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
-	}
 
 	chainContext := evm.NewTenChainContext(storage, gethEncodingService, config, chainConfig, logger)
 	visibilityReader := evm.NewContractVisibilityReader(logger)
 	evmFacade := evm.NewEVMExecutor(chainContext, chainConfig, config, config.GasLocalExecutionCapFlag, storage, gethEncodingService, visibilityReader, logger)
+
+	tenChain := components.NewChain(storage, config, evmFacade, gethEncodingService, chainConfig, genesis, logger, batchRegistry)
+
+	mempool, err := components.NewTxPool(batchRegistry.EthChain(), config, tenChain, storage, batchRegistry, blockProcessor, gasOracle, config.MinGasPrice, true, logger)
+	if err != nil {
+		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
+	}
 
 	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, evmFacade, config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, logger)
@@ -126,6 +132,17 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	// signal to stop the enclave
 	stopControl := stopcontrol.New()
 
+	// shutdownFunc is called after services attempt a graceful shutdown.
+	// For tests, we don't want the process to exit, but in docker we do
+	shutdownFunc := func() {}
+	if config.WillAttest { // using attestation as a signal that this is a production enclave
+		shutdownFunc = func() {
+			time.Sleep(1 * time.Second)
+			fmt.Println("enclave shutdown complete")
+			os.Exit(0)
+		}
+	}
+
 	err = storage.DeleteDirtyBlocks(context.Background())
 	if err != nil {
 		logger.Crit("failed to clean dirty blocks", log.ErrKey, err)
@@ -133,15 +150,16 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 
 	// these services are directly exposed as the API of the Enclave
 	initAPI := NewEnclaveInitAPI(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider, sharedSecretService, daEncryptionService, rpcKeyService)
-	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, attestationProvider, sharedSecretService, daEncryptionService, contractRegistryLib)
-	rpcAPI := NewEnclaveRPCAPI(config, storage, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, rpcKeyService, evmFacade)
+	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, attestationProvider, sharedSecretService, daEncryptionService, contractRegistryLib, gasOracle)
+	rpcAPI := NewEnclaveRPCAPI(config, storage, tenChain, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, rpcKeyService, evmFacade)
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{
-		initAPI:     initAPI,
-		adminAPI:    adminAPI,
-		rpcAPI:      rpcAPI,
-		stopControl: stopControl,
+		initAPI:      initAPI,
+		adminAPI:     adminAPI,
+		rpcAPI:       rpcAPI,
+		stopControl:  stopControl,
+		shutdownFunc: shutdownFunc,
 	}
 }
 
@@ -309,7 +327,12 @@ func (e *enclaveImpl) StopClient() common.SystemError {
 }
 
 func (e *enclaveImpl) Stop() common.SystemError {
-	return e.adminAPI.Stop()
+	defer e.shutdownFunc()
+	err := e.adminAPI.Stop()
+	if err != nil {
+		return responses.ToInternalError(err)
+	}
+	return nil
 }
 
 func checkStopping(s *stopcontrol.StopControl) common.SystemError {

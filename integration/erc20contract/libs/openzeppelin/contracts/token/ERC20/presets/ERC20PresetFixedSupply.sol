@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts (last updated v4.5.0) (token/ERC20/presets/ERC20PresetFixedSupply.sol)
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.28;
 
 import "../extensions/ERC20Burnable.sol";
 

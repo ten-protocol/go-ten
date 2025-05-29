@@ -95,7 +95,7 @@ func createInMemTenNode(
 		BridgeAddress:                   l1BridgeAddress,
 		DataAvailabilityRegistryAddress: contracts.DataAvailabilityRegistry,
 		EnclaveRegistryAddress:          contracts.EnclaveRegistry,
-		SystemContractOwner:             gethcommon.BigToAddress(big.NewInt(1)), // Irrelevant for in-mem nodes
+		SystemContractOwner:             gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"), // Irrelevant for in-mem nodes
 		MaxBatchSize:                    1024 * 55,
 		MaxRollupSize:                   1024 * 128,
 		BaseFee:                         big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
@@ -112,7 +112,7 @@ func createInMemTenNode(
 	hostLogger := testlog.Logger().New(log.NodeIDKey, id, log.CmpKey, log.HostCmp)
 	// create an in memory TEN node
 	metricsService := metrics.New(hostConfig.MetricsEnabled, hostConfig.MetricsHTTPPort, hostLogger)
-	l1Data := l1.NewL1DataService(ethClient, hostLogger, contractRegistryLib, blobResolver)
+	l1Data := l1.NewL1DataService(ethClient, hostLogger, contractRegistryLib, blobResolver, hostConfig.L1StartHash)
 	currentContainer := hostcontainer.NewHostContainer(hostConfig, host.NewServicesRegistry(hostLogger), mockP2P, ethClient, l1Data, enclaveClients, ethWallet, nil, hostLogger, metricsService, blobResolver, contractRegistryLib)
 
 	return currentContainer

@@ -7,8 +7,11 @@ import "@solidstate/hardhat-bytecode-exporter";
 
 // Hardhat-deploy plugin - https://www.npmjs.com/package/hardhat-deploy
 import 'hardhat-deploy';
+// Hardhat upgrade plugin - https://www.npmjs.com/package/hardhat-upgrades
+// import "@openzeppelin/hardhat-upgrades";
 // Hardhat ignore warnings plugin - https://www.npmjs.com/package/hardhat-ignore-warnings
 import 'hardhat-ignore-warnings';
+import '@openzeppelin/hardhat-upgrades';
 
 import * as abigen from './tasks/abigen';
 import './tasks/obscuro-deploy';
@@ -54,7 +57,7 @@ const config: HardhatUserConfig = {
   // For help configuring - https://www.npmjs.com/package/hardhat-ignore-warnings
   warnings : {
     '*' : {
-      default: 'error'
+      default: 'warn'
     },
     'src/testing/**/*': {
       default: 'off'

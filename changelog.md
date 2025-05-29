@@ -2,6 +2,36 @@
 ---
 # Ten Testnet Change Log
 
+# May 2025-05-05 (v1.2.0)
+* This is an L2 deployment release meaning state will be lost in order to upgrade the network.
+* A full list of the PRs merged in this release is as below;
+    * `6cae3418` Prevent reattempting callbacks in same block as they are added (#2451)
+    * `2f2f167a` Fix access control for transaction post processor (#2449)
+    * `82c39f27` Fix name to avoid chaos (#2448)
+    * `5774a7e7` K8s: placeholder scripts for initialise and finalise testnet (#2447)
+    * `dad0bd23` Fix newheads logic for fetchancestors (#2445)
+    * `514de3ce` Improve l1 publishing reliability (#2441)
+    * `b4ba31a7` Upgrade dependencies (#2440)
+    * `5a4d779c` Fix missing blocks from l1 "newheads" subscription (#2439)
+    * `b44f21cf` Deploy: allow hardhat scripts to be run in docker containers (#2430)
+    * `3cdfc5c6` Temporary new workflow for alibaba container registry migration (#2436)
+    * `55ca099b` L1 contract deployer: add network details to azure key vault (#2291)
+    * `bb0c26a8` Don't remove verifyingcontract from getmessage response (#2432)
+    * `8a00a04d` Fix rollup not found errors and tweak duration logging (#2429)
+    * `9bf1ed9c` Reworked bridging. no dead code removal (#2420)
+    * `0c4418df` Fix displayed contract addresses on tenscan (#2428)
+    * `8b0dc49d` Add readme for smart contracts and small `common` refactor (#2427)
+    * `ae746879` Add testnet.pem to gateway to allow reading sealed encryption key  (#2426)
+    * `8b9bb5b5` Add verifying contract to gateway eip712 message (#2424)
+    * `c1daca20` Short term fix for issue in metamask v12.14+ which prevented accounts (#2421)
+    * `42268573` Host: include estimated transactions size in batches table (#2419)
+    * `c8ab938d` Enclave: tweak to allow non-active sequencer to use sequencer createrollup method (#2417)
+    * `b5ee4a55` Protect the filter command which feeds into xargs for the az resource deletion  (#2418)
+    * `cc446f15` Add ten token (#2415)
+    * `8330354c` Host: fix missing '?' in sql query (#2414)
+    * `a4e20d1a` Fix intermittent deployment failures on pr build (#2412)
+    * `1f60ea56` Host: rework rollup triggering to prefer backup enclave (#2407)
+
 # March 2025-03-26 (v1.1.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;

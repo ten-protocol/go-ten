@@ -1,15 +1,11 @@
 package common
 
-import (
-	"sync/atomic"
-)
-
 // ExtRollup is an encrypted form of rollup used when passing the rollup around outside an enclave.
 type ExtRollup struct {
 	Header               *RollupHeader // the fields required by the management contract
 	CalldataRollupHeader []byte        // encrypted header useful for recreating the batches
 	BatchPayloads        []byte        // The transactions included in the rollup, in external/encrypted form.
-	hash                 atomic.Value
+	// hash                 atomic.Pointer[L2RollupHash]
 }
 
 // ExtRollupMetadata metadata that should not be in the rollup, but rather is derived from one.
@@ -20,12 +16,12 @@ type ExtRollupMetadata struct {
 }
 
 // Hash returns the keccak256 hash of the rollup's header.
-// The hash is computed on the first call and cached thereafter.
+// The hash is computed on the first call and cached thereafter - disabled because we mutate the header
 func (r *ExtRollup) Hash() L2RollupHash {
-	if hash := r.hash.Load(); hash != nil {
-		return hash.(L2RollupHash)
-	}
-	v := r.Header.Hash()
-	r.hash.Store(v)
-	return v
+	//if hash := r.hash.Load(); hash != nil {
+	//	return *hash
+	//}
+	h := r.Header.Hash()
+	// r.hash.Store(&h)
+	return h
 }

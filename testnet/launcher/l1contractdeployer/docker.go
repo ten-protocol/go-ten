@@ -35,7 +35,7 @@ func (n *ContractDeployer) Start() error {
 	var ports []int
 
 	// inspect stops operation until debugger is hooked on port 9229 if debug is enabled
-	if n.cfg.debugEnabled {
+	if n.cfg.DebugEnabled {
 		cmds = append(cmds, "--node-options=\"--inspect-brk=0.0.0.0:9229\"")
 		ports = append(ports, 9229)
 	}
@@ -56,10 +56,10 @@ func (n *ContractDeployer) Start() error {
             "accounts": [ "%s" ]
         }
     }
-`, n.cfg.l1HTTPURL, n.cfg.privateKey),
+`, n.cfg.L1HTTPURL, n.cfg.PrivateKey),
 	}
 
-	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.dockerImage, cmds, ports, envs, nil, nil, false)
+	containerID, err := docker.StartNewContainer("hh-l1-deployer", n.cfg.DockerImage, cmds, ports, envs, nil, nil, false)
 	if err != nil {
 		return err
 	}
@@ -74,14 +74,14 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	}
 	defer cli.Close()
 
-	// make sure the container has finished execution (3 minutes allows time for L1 transactions to be mined)
-	err = docker.WaitForContainerToFinish(n.containerID, 3*time.Minute)
+	// make sure the container has finished execution (5 minutes allows time for L1 transactions to be mined)
+	err = docker.WaitForContainerToFinish(n.containerID, 5*time.Minute)
 	if err != nil {
 		return nil, err
 	}
 
 	tailSize := "7"
-	if n.cfg.debugEnabled {
+	if n.cfg.DebugEnabled {
 		tailSize = "8"
 	}
 
@@ -111,7 +111,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 
 	lines := strings.Split(output, "\n")
 
-	if n.cfg.debugEnabled {
+	if n.cfg.DebugEnabled {
 		// remove debugger lines
 		lines = lines[:len(lines)-2]
 	}

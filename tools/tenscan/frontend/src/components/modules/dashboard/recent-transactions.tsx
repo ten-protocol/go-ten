@@ -10,7 +10,7 @@ import { pageLinks } from "@/src/routes";
 export function RecentTransactions({ transactions }: { transactions: any }) {
   return (
     <div className="space-y-8">
-      {transactions?.result?.TransactionsData.map(
+      {(transactions?.result?.TransactionsData || []).map(
         (transaction: Transaction, i: number) => (
           <div className="flex items-center" key={i}>
             <Avatar className="h-9 w-9">

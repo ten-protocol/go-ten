@@ -34,27 +34,27 @@ func GetAuthenticatedSender(chainID int64, tx *types.Transaction) (*gethcommon.A
 }
 
 type DurationThresholds struct {
-	Error int64
-	Warn  int64
-	Info  int64
-	Debug int64
+	High    int64
+	Medium  int64
+	Low     int64
+	Trivial int64
 }
 
 var (
 	// default thresholds for quick operations
 	DefaultThresholds = DurationThresholds{
-		Error: 500,
-		Warn:  200,
-		Info:  100,
-		Debug: 50,
+		High:    500,
+		Medium:  200,
+		Low:     100,
+		Trivial: 50,
 	}
 
 	// relaxed thresholds for known longer operations
 	RelaxedThresholds = DurationThresholds{
-		Error: 4000,
-		Warn:  1000,
-		Info:  100,
-		Debug: 50,
+		High:    4000,
+		Medium:  1000,
+		Low:     100,
+		Trivial: 50,
 	}
 )
 
@@ -74,20 +74,26 @@ func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg 
 	var f func(msg string, ctx ...interface{})
 	durationMillis := stopWatch.Measure().Milliseconds()
 
+	var label string
 	switch {
-	case durationMillis > thresholds.Error:
-		f = logger.Error
-	case durationMillis > thresholds.Warn:
-		f = logger.Warn
-	case durationMillis > thresholds.Info:
+	case durationMillis > thresholds.High:
 		f = logger.Info
-	case durationMillis > thresholds.Debug:
+		label = "High"
+	case durationMillis > thresholds.Medium:
+		f = logger.Info
+		label = "Medium"
+	case durationMillis > thresholds.Low:
 		f = logger.Debug
+		label = "Low"
+	case durationMillis > thresholds.Trivial:
+		f = logger.Debug
+		label = "Trivial"
 	default:
 		f = logger.Trace
+		label = "Nothing"
 	}
 	newArgs := append([]any{log.DurationKey, stopWatch}, args...)
-	f(fmt.Sprintf("LogMethodDuration::%s", msg), newArgs...)
+	f(fmt.Sprintf("Duration::%s::%s", label, msg), newArgs...)
 }
 
 // GetExternalTxSigner returns the address that signed a transaction

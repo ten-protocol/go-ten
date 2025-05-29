@@ -113,6 +113,8 @@ func (rc *rollupConsumerImpl) ProcessRollup(ctx context.Context, rollup *common.
 		return rc.storeRollupAndGenerateMetadata(ctx, rollup, internalHeader)
 	}
 
+	rc.logger.Info("Catching up from rollup", log.RollupHashKey, rollup.Hash())
+
 	// read batch data from rollup, verify and store it
 	err = rc.rollupCompression.ProcessExtRollup(ctx, rollup, internalHeader)
 	if err != nil {

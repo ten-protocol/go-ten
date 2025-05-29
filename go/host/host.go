@@ -47,6 +47,7 @@ type host struct {
 	// l2MessageBusAddress is fetched from the enclave but cache it here because it never changes
 	l2MessageBusAddress             *gethcommon.Address
 	transactionPostProcessorAddress gethcommon.Address
+	systemContractUpgradeAddress    gethcommon.Address
 	publicSystemContracts           map[string]gethcommon.Address
 	newHeads                        chan *common.BatchHeader
 	contractRegistry                contractlib.ContractRegistryLib
@@ -95,7 +96,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		enclGuardians = append(enclGuardians, enclGuardian)
 	}
 
-	enclService := enclave.NewService(config, hostIdentity, hostServices, enclGuardians, logger)
+	enclService := enclave.NewService(config, hostIdentity, hostServices, enclGuardians, host.stopControl, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
@@ -264,6 +265,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		h.l2MessageBusAddress = &publicCfg.L2MessageBusAddress
 		h.transactionPostProcessorAddress = publicCfg.TransactionPostProcessorAddress
 		h.publicSystemContracts = publicCfg.PublicSystemContracts
+		h.systemContractUpgradeAddress = publicCfg.SystemContractsUpgrader
 	}
 
 	importantContractAddresses := h.services.L1Publisher().GetImportantContracts()
@@ -281,6 +283,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		L1StartHash:               h.config.L1StartHash,
 		L2MessageBus:              *h.l2MessageBusAddress,
 		TransactionsPostProcessor: h.transactionPostProcessorAddress,
+		SystemContractsUpgrader:   h.systemContractUpgradeAddress,
 		PublicSystemContracts:     h.publicSystemContracts,
 		AdditionalContracts:       importantContractAddresses.AdditionalContracts,
 	}, nil

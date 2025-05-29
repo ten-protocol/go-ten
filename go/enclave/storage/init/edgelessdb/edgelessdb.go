@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -460,7 +461,7 @@ func verifyEdgelessDB(edbHost string, m *manifest, httpClient *http.Client, logg
 	return nil
 }
 
-func ConnectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logger) (*sql.DB, error) {
+func ConnectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logger) (*sqlx.DB, error) {
 	driverName := registerPanicOnConnectionRefusedDriver(logger)
 	err := mysql.RegisterTLSConfig("custom", tlsCfg)
 	if err != nil {
@@ -472,13 +473,19 @@ func ConnectToEdgelessDB(edbHost string, tlsCfg *tls.Config, logger gethlog.Logg
 	cfg.User = dbUser
 	cfg.DBName = dbName
 	cfg.TLSConfig = "custom"
+
+	cfg.Params = map[string]string{
+		"compress": "true",
+	}
+
 	dsn := cfg.FormatDSN()
 	logger.Info(fmt.Sprintf("Configuring mysql connection: %s", dsn))
-	db, err := sql.Open(driverName, dsn)
+	db, err := sqlx.Open(driverName, dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize mysql connection to edb - %w", err)
 	}
 	db.SetMaxOpenConns(maxDBPoolSize)
+	db.SetMaxIdleConns(maxDBPoolSize / 2)
 	return db, nil
 }
 
@@ -490,7 +497,7 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 			&mysql.MySQLDriver{},
 			logger,
 			func(err error) bool {
-				return strings.Contains(err.Error(), "connection refused")
+				return strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "invalid connection")
 			}),
 	)
 	return driverName

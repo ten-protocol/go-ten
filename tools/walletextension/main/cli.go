@@ -41,9 +41,9 @@ const (
 	databasePathDefault = ".obscuro/gateway_database.db"
 	databasePathUsage   = "The path for the wallet extension's database file. Default: .obscuro/gateway_database.db"
 
-	verboseFlagName    = "verbose"
-	verboseFlagDefault = false
-	verboseFlagUsage   = "Flag to enable verbose logging of wallet extension traffic"
+	logLevelFlagName    = "logLevel"
+	logLevelFlagDefault = "info"
+	logLevelFlagUsage   = "Log level for wallet extension (critical, error, warn, info, debug, trace). Default: info"
 
 	dbTypeFlagName    = "dbType"
 	dbTypeFlagDefault = "sqlite"
@@ -77,9 +77,9 @@ const (
 	insideEnclaveFlagDefault = false
 	insideEnclaveFlagUsage   = "Flag to indicate if the program is running inside an enclave. Default: false"
 
-	keyExchangeURLFlagName    = "keyExchangeURL"
-	keyExchangeURLFlagDefault = ""
-	keyExchangeURLFlagUsage   = "URL to exchange the key with another enclave. If set to 'new', a new key will be generated. If empty, it will try to read from sealed key. Default: empty"
+	encryptionKeySourceFlagName    = "encryptionKeySource"
+	encryptionKeySourceFlagDefault = ""
+	encryptionKeySourceFlagUsage   = "Source of the encryption key for the gateway database. It can be set to empty (read from the sealed key), URL of another gateway with which we can exchange the key or 'new' to generate a new key (but only if sealed key is not present). Default: empty"
 
 	enableTLSFlagName    = "enableTLS"
 	enableTLSFlagDefault = false
@@ -98,6 +98,26 @@ const (
 	disableCachingFlagUsage   = "Flag to disable response caching in the gateway. Default: false"
 )
 
+// getLogLevelInt converts string log level to integer value
+func getLogLevelInt(level string) int {
+	switch level {
+	case "critical":
+		return 0
+	case "error":
+		return 1
+	case "warn":
+		return 2
+	case "info":
+		return 3
+	case "debug":
+		return 4
+	case "trace":
+		return 5
+	default:
+		return 3 // default to info level
+	}
+}
+
 func parseCLIArgs() wecommon.Config {
 	walletExtensionHost := flag.String(walletExtensionHostName, walletExtensionHostDefault, walletExtensionHostUsage)
 	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
@@ -107,7 +127,7 @@ func parseCLIArgs() wecommon.Config {
 	nodeWebsocketPort := flag.Int(nodeWebsocketPortName, nodeWebsocketPortDefault, nodeWebsocketPortUsage)
 	logPath := flag.String(logPathName, logPathDefault, logPathUsage)
 	databasePath := flag.String(databasePathName, databasePathDefault, databasePathUsage)
-	verboseFlag := flag.Bool(verboseFlagName, verboseFlagDefault, verboseFlagUsage)
+	logLevel := flag.String(logLevelFlagName, logLevelFlagDefault, logLevelFlagUsage)
 	dbType := flag.String(dbTypeFlagName, dbTypeFlagDefault, dbTypeFlagUsage)
 	dbConnectionURL := flag.String(dbConnectionURLFlagName, dbConnectionURLFlagDefault, dbConnectionURLFlagUsage)
 	tenChainID := flag.Int(tenChainIDName, tenChainIDDefault, tenChainIDFlagUsage)
@@ -116,7 +136,7 @@ func parseCLIArgs() wecommon.Config {
 	rateLimitWindow := flag.Duration(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
 	insideEnclaveFlag := flag.Bool(insideEnclaveFlagName, insideEnclaveFlagDefault, insideEnclaveFlagUsage)
-	keyExchangeURL := flag.String(keyExchangeURLFlagName, keyExchangeURLFlagDefault, keyExchangeURLFlagUsage)
+	encryptionKeySource := flag.String(encryptionKeySourceFlagName, encryptionKeySourceFlagDefault, encryptionKeySourceFlagUsage)
 	enableTLSFlag := flag.Bool(enableTLSFlagName, enableTLSFlagDefault, enableTLSFlagUsage)
 	tlsDomainFlag := flag.String(tlsDomainFlagName, tlsDomainFlagDefault, tlsDomainFlagUsage)
 	encryptingCertificateEnabled := flag.Bool(encryptingCertificateEnabledFlagName, encryptingCertificateEnabledFlagDefault, encryptingCertificateEnabledFlagUsage)
@@ -131,7 +151,7 @@ func parseCLIArgs() wecommon.Config {
 		NodeRPCWebsocketAddress:        fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
 		LogPath:                        *logPath,
 		DBPathOverride:                 *databasePath,
-		VerboseFlag:                    *verboseFlag,
+		LogLevel:                       getLogLevelInt(*logLevel),
 		DBType:                         *dbType,
 		DBConnectionURL:                *dbConnectionURL,
 		TenChainID:                     *tenChainID,
@@ -140,7 +160,7 @@ func parseCLIArgs() wecommon.Config {
 		RateLimitWindow:                *rateLimitWindow,
 		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
 		InsideEnclave:                  *insideEnclaveFlag,
-		KeyExchangeURL:                 *keyExchangeURL,
+		EncryptionKeySource:            *encryptionKeySource,
 		EnableTLS:                      *enableTLSFlag,
 		TLSDomain:                      *tlsDomainFlag,
 		EncryptingCertificateEnabled:   *encryptingCertificateEnabled,

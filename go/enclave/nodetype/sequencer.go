@@ -275,7 +275,7 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 
 	convertedHeader, err := s.gethEncoding.CreateEthHeaderForBatch(ctx, batch.Header)
 	if err != nil {
-		return err
+		return fmt.Errorf("seq: failed to create eth header for batch. Cause: %w", err)
 	}
 
 	if err := s.storage.StoreBatch(ctx, batch, convertedHeader.Hash()); err != nil {

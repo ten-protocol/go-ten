@@ -12,6 +12,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -55,9 +57,10 @@ type AttestedEnclave struct {
 
 // todo - this file needs splitting up based on concerns
 type storageImpl struct {
-	db             enclavedb.EnclaveDB
-	cachingService *CacheService
-	eventsStorage  *eventsStorage
+	db                     enclavedb.EnclaveDB
+	preparedStatementCache *enclavedb.PreparedStatementCache
+	cachingService         *CacheService
+	eventsStorage          *eventsStorage
 
 	stateCache  state.Database
 	chainConfig *params.ChainConfig
@@ -97,14 +100,16 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	// todo - figure out the snapshot tree
 	stateDB := state.NewDatabase(triedb, nil)
 
+	prepStatementCache := enclavedb.NewStatementCache(backingDB.GetSQLDB(), logger)
 	return &storageImpl{
-		db:             backingDB,
-		stateCache:     stateDB,
-		chainConfig:    chainConfig,
-		config:         config,
-		cachingService: cachingService,
-		eventsStorage:  newEventsStorage(cachingService, backingDB, logger),
-		logger:         logger,
+		db:                     backingDB,
+		stateCache:             stateDB,
+		chainConfig:            chainConfig,
+		config:                 config,
+		cachingService:         cachingService,
+		eventsStorage:          newEventsStorage(cachingService, backingDB, logger),
+		preparedStatementCache: prepStatementCache,
+		logger:                 logger,
 	}
 }
 
@@ -118,6 +123,7 @@ func (s *storageImpl) StateDB() state.Database {
 
 func (s *storageImpl) Close() error {
 	s.cachingService.Stop()
+	s.preparedStatementCache.Clear()
 	return s.db.GetSQLDB().Close()
 }
 
@@ -495,7 +501,7 @@ func (s *storageImpl) GetFilteredInternalReceipt(ctx context.Context, txHash com
 	if !syntheticTx && requester == nil {
 		return nil, errors.New("requester address is required for non-synthetic transactions")
 	}
-	return enclavedb.ReadReceipt(ctx, s.db.GetSQLDB(), txHash, requester)
+	return enclavedb.ReadReceipt(ctx, s.preparedStatementCache, txHash, requester)
 }
 
 func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error) {
@@ -673,7 +679,7 @@ func (s *storageImpl) StoreBatch(ctx context.Context, batch *core.Batch, convert
 	return nil
 }
 
-func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, transactionsWithSenders []*core.TxWithSender, dbTx *sql.Tx) ([]uint64, []*uint64, error) {
+func (s *storageImpl) handleTxSendersAndReceivers(ctx context.Context, transactionsWithSenders []*core.TxWithSender, dbTx *sqlx.Tx) ([]uint64, []*uint64, error) {
 	senders := make([]uint64, len(transactionsWithSenders))
 	toContracts := make([]*uint64, len(transactionsWithSenders))
 	// insert the tx signers as externally owned accounts
@@ -872,7 +878,7 @@ func (s *storageImpl) FilterLogs(
 	topics [][]gethcommon.Hash,
 ) ([]*types.Log, error) {
 	defer s.logDuration("FilterLogs", measure.NewStopwatch())
-	logs, err := enclavedb.FilterLogs(ctx, s.db.GetSQLDB(), requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
+	logs, err := enclavedb.FilterLogs(ctx, s.preparedStatementCache, requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
 	if err != nil {
 		return nil, err
 	}
@@ -927,7 +933,7 @@ func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *
 	return enclavedb.CountTransactionsPerAddress(ctx, s.db.GetSQLDB(), address)
 }
 
-func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sql.Tx, addr gethcommon.Address) (*uint64, error) {
+func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sqlx.Tx, addr gethcommon.Address) (*uint64, error) {
 	defer s.logDuration("readOrWriteEOA", measure.NewStopwatch())
 	return s.cachingService.ReadEOA(ctx, addr, func() (*uint64, error) {
 		id, err := enclavedb.ReadEoa(ctx, dbTX, addr)
