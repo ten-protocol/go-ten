@@ -1,5 +1,4 @@
 import { useTenChainAuth } from '@/hooks/useTenChainAuth';
-import { useEffect } from 'react';
 import { shortenAddress } from '@/lib/utils';
 import classNames from 'classnames';
 import { Badge } from '@/components/ui/badge';

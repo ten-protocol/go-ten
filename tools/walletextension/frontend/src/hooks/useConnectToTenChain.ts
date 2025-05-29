@@ -1,4 +1,4 @@
-import { Connector, useAccount, useConnections, useConnectors } from 'wagmi';
+import { Connector, useAccount, useConnectors } from 'wagmi';
 import { useEffect, useState } from 'react';
 import {
     nativeCurrency,
@@ -13,12 +13,10 @@ import { useTenChainAuth } from '@/hooks/useTenChainAuth';
 import { useUiStore } from '@/stores/ui.store';
 import sleep from '@/utils/sleep';
 import { useShallow } from 'zustand/react/shallow';
-import { is } from 'immutable';
 
 export default function useConnectToTenChain() {
     const incrementAuthEvents = useUiStore(useShallow((state) => state.incrementAuthEvents));
     const { address, connector, isConnected, chainId } = useAccount();
-    const connections = useConnections();
     const connectors = useConnectors();
     const setStoreTenToken = useUiStore((state) => state.setTenToken);
     const [step, setStep] = useState<number>(0);
@@ -51,7 +49,7 @@ export default function useConnectToTenChain() {
         if (step !== 1) return;
 
         async function switchToTen() {
-            if (!tenToken) {
+            if (!tenToken && connector) {
                 const chainExists = await chainExistsCheck(connector);
 
                 if (chainExists) {
@@ -92,6 +90,12 @@ export default function useConnectToTenChain() {
             }
             let switchSuccess = true;
 
+            if (!connector) {
+                throw 'Connector is undefined!';
+                return;
+            }
+
+            //@ts-expect-error Revisit later
             await connector
                 .switchChain({
                     chainId: tenChainIDDecimal,
@@ -116,14 +120,10 @@ export default function useConnectToTenChain() {
                 });
 
             if (switchSuccess) {
-                console.log('SLLEEEEE');
-                console.log(connections);
                 await sleep(500);
                 setStep(3);
             }
         }
-
-        console.log({ selectedConnector, connector, isConnected });
 
         if (isConnected && selectedConnector?.uid === connector?.uid) {
             switchToTen();
@@ -146,7 +146,6 @@ export default function useConnectToTenChain() {
         if (!isAuthenticated && !isAuthenticatedLoading && !authenticationError) {
             authenticateAccount(address);
         } else if (isAuthenticated && !isAuthenticatedLoading) {
-            console.log('ARE WE HEREERE????');
             setStep(4);
             incrementAuthEvents();
         }
@@ -162,7 +161,12 @@ export default function useConnectToTenChain() {
         const provider = await connector.getProvider();
         let chainExists = true;
 
+        if (!provider) {
+            throw 'Provider not found!';
+        }
+
         await provider
+            //@ts-expect-error Revisit later
             .request({
                 method: 'wallet_switchEthereumChain',
                 params: [{ chainId: tenChainIDHex }],

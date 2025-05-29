@@ -4,11 +4,10 @@ import { Button } from '@/components/ui/button';
 import { useLocalStorage } from 'usehooks-ts';
 import { AlertCircle, Copy } from 'lucide-react';
 import { useState } from 'react';
-import { EthereumProvider } from 'hardhat/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
-import { trackEvent } from '@/utils/trackEvent';
 import { RiExternalLinkLine } from 'react-icons/ri';
+import EthereumProvider from '@walletconnect/ethereum-provider';
 
 type Props = {
     insufficientBalance?: boolean;
@@ -67,13 +66,6 @@ export default function ZenToken({ insufficientBalance }: Props) {
         }
     };
 
-    const handleFaucetClick = () => {
-        trackEvent('clicked_faucet_link', {
-            wallet_address: address,
-            wallet_used: connector?.name,
-        });
-    };
-
     if (!showAddTokenCTA && !insufficientBalance) return null;
 
     if (showAddTokenCTA) {
@@ -121,7 +113,6 @@ export default function ZenToken({ insufficientBalance }: Props) {
                 <Link
                     href="https://faucet.ten.xyz/"
                     target="_blank"
-                    onClick={handleFaucetClick}
                     className="underline font-bold inline-flex gap-x-1 items-center text-white/80  hover:text-white"
                 >
                     TEN Faucet

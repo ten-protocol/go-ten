@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAccount, useSignTypedData } from 'wagmi';
+import { useSignTypedData } from 'wagmi';
 import { accountIsAuthenticated, authenticateUser, revokeAccountsApi } from '@/api/gateway';
 import { Address, getAddress } from 'viem';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -8,7 +8,6 @@ import { useUiStore } from '@/stores/ui.store';
 import { useLocalStorage } from 'usehooks-ts';
 
 export function useTenChainAuth(walletAddress?: Address) {
-    const { connector } = useAccount();
     const authEvents = useUiStore((state) => state.authEvents);
     const [address, setAddress] = useState<Address | undefined>(walletAddress);
     const [tenToken] = useLocalStorage<string | null>('ten_token', null);
@@ -31,7 +30,7 @@ export function useTenChainAuth(walletAddress?: Address) {
     });
 
     const authenticationMutation = useMutation({
-        mutationFn: (signature) => {
+        mutationFn: (signature: string) => {
             return authenticateWalletWithBE(signature);
         },
     });
@@ -50,7 +49,7 @@ export function useTenChainAuth(walletAddress?: Address) {
     };
 
     const authenticateWalletWithBE = async (signature: string) => {
-        if (!tenToken) return null;
+        if (!tenToken || !address) return null;
 
         const response = await authenticateUser(tenToken, {
             signature,

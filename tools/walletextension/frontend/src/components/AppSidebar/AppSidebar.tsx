@@ -10,16 +10,15 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { ChevronDown, Search, Settings } from 'lucide-react';
-import { TbHexagons, TbPigMoney, TbUniverse } from 'react-icons/tb';
+import { ChevronDown } from 'lucide-react';
+import { TbHexagons, TbUniverse } from 'react-icons/tb';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { RiPokerSpadesFill } from 'react-icons/ri';
 import { GiCableStayedBridge } from 'react-icons/gi';
 import { LuTextSearch } from 'react-icons/lu';
-import ConnectWalletButton from '@/components/ConnectWallet/ConnectWalletButton';
-import AccountSettings from '@/components/AccountSettings/AccountSettings';
 import { GrDocumentText } from 'react-icons/gr';
 import { CgWebsite } from 'react-icons/cg';
+import { FaDiscord } from 'react-icons/fa';
 
 export function AppSidebar() {
     const zenItems = [
@@ -39,21 +38,16 @@ export function AppSidebar() {
             icon: TbUniverse,
         },
     ];
-    const aItems = [
+    const toolItems = [
         {
             title: 'Bridge',
-            url: 'https://bridge.ten.xyz',
+            url: 'https://bridge-testnet.ten.xyz',
             icon: GiCableStayedBridge,
         },
         {
             title: 'TenScan',
             url: 'https://scan.ten.xyz',
             icon: LuTextSearch,
-        },
-        {
-            title: 'staking',
-            url: 'https://staking.ten.xyz',
-            icon: TbPigMoney,
         },
     ];
     const learnItems = [
@@ -68,28 +62,18 @@ export function AppSidebar() {
             icon: CgWebsite,
         },
     ];
+    const communityItems = [
+        {
+            title: 'Discord',
+            url: 'https://discord.com/invite/tenprotocol',
+            icon: FaDiscord,
+        },
+    ];
 
     return (
         <Sidebar>
             <SidebarHeader className="mt-24">{/*<ConnectWalletButton />*/}</SidebarHeader>
             <SidebarContent>
-                <SidebarGroup>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {aItems.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild>
-                                        <a href={item.url}>
-                                            <item.icon />
-                                            <span>{item.title}</span>
-                                        </a>
-                                    </SidebarMenuButton>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
-
                 <Collapsible defaultOpen className="group/collapsible">
                     <SidebarGroup>
                         <SidebarGroupLabel asChild>
@@ -144,7 +128,7 @@ export function AppSidebar() {
                     </SidebarGroup>
                 </Collapsible>
 
-                <Collapsible className="group/collapsible">
+                <Collapsible defaultOpen className="group/collapsible">
                     <SidebarGroup>
                         <SidebarGroupLabel asChild>
                             <CollapsibleTrigger className="w-full">
@@ -154,13 +138,24 @@ export function AppSidebar() {
                         </SidebarGroupLabel>
                         <CollapsibleContent>
                             <SidebarGroupContent>
-                                <SidebarMenu></SidebarMenu>
+                                <SidebarMenu>
+                                    {toolItems.map((item) => (
+                                        <SidebarMenuItem key={item.title}>
+                                            <SidebarMenuButton asChild>
+                                                <a href={item.url}>
+                                                    <item.icon />
+                                                    <span>{item.title}</span>
+                                                </a>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                    ))}
+                                </SidebarMenu>
                             </SidebarGroupContent>
                         </CollapsibleContent>
                     </SidebarGroup>
                 </Collapsible>
 
-                <Collapsible className="group/collapsible">
+                <Collapsible defaultOpen className="group/collapsible">
                     <SidebarGroup>
                         <SidebarGroupLabel asChild>
                             <CollapsibleTrigger className="w-full">
@@ -170,7 +165,18 @@ export function AppSidebar() {
                         </SidebarGroupLabel>
                         <CollapsibleContent>
                             <SidebarGroupContent>
-                                <SidebarMenu></SidebarMenu>
+                                <SidebarMenu>
+                                    {communityItems.map((item) => (
+                                        <SidebarMenuItem key={item.title}>
+                                            <SidebarMenuButton asChild>
+                                                <a href={item.url}>
+                                                    <item.icon />
+                                                    <span>{item.title}</span>
+                                                </a>
+                                            </SidebarMenuButton>
+                                        </SidebarMenuItem>
+                                    ))}
+                                </SidebarMenu>
                             </SidebarGroupContent>
                         </CollapsibleContent>
                     </SidebarGroup>

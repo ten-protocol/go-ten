@@ -43,7 +43,10 @@ export const httpRequest = async <ResponseData>(
             )
         );
         if (Object.keys(filteredParams).length) {
-            query = new URLSearchParams(filteredParams).toString();
+            const stringParams = Object.fromEntries(
+                Object.entries(filteredParams).map(([key, value]) => [key, String(value)])
+            );
+            query = new URLSearchParams(stringParams).toString();
         }
     }
 

@@ -8,7 +8,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Copy, Check } from 'lucide-react';
 import { Connector } from 'wagmi';
 import { supportedWallets } from '@/lib/supportedWallets';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -21,6 +21,8 @@ import EncryptedTextAnimation from '@/components/EncryptedTextAnimation/Encrypte
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { RiExternalLinkLine } from 'react-icons/ri';
+import { useMemo, useState } from 'react';
+import { useLocalStorage } from 'usehooks-ts';
 
 type Props = {
     isOpen: boolean;
@@ -28,8 +30,9 @@ type Props = {
 };
 
 export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
-    const { connectors, connectToTen, loading, step, reset, error, selectedConnector } =
-        useConnectToTenChain();
+    const { connectors, connectToTen, step, reset, error } = useConnectToTenChain();
+    const [tenToken] = useLocalStorage<string>('ten_token', '');
+    const [isCopied, setIsCopied] = useState(false);
 
     const handleChange = () => {
         reset();
@@ -59,10 +62,42 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
         }
     });
 
+    const unsupportedWalletList = useMemo(
+        () =>
+            unsupportedWallets
+                .filter((connector) => connector.icon)
+                .map((connector) => {
+                    return (
+                        <ConnectWalletListItem
+                            key={connector.id}
+                            onClick={() => {}}
+                            connector={connector}
+                            supported={false}
+                        />
+                    );
+                }),
+        [connectors]
+    );
+
+    const usableWalletList = useMemo(
+        () =>
+            usableWallets.map((connector) => {
+                return (
+                    <ConnectWalletListItem
+                        key={connector.id}
+                        onClick={() => connectToTen(connector)}
+                        connector={connector}
+                        supported={true}
+                    />
+                );
+            }),
+        [connectors]
+    );
+
     const WalletList = () => {
         return (
             <div className="grid gap-4 py-4">
-                {usableWallets.length === 0 ? (
+                {usableWalletList.length === 0 ? (
                     <Card>
                         <CardHeader>
                             <CardTitle className="text-center">
@@ -75,35 +110,21 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
                     </Card>
                 ) : (
                     <div className="flex flex-col gap-4">
-                        <h4>Supported Wallets</h4>
-                        {usableWallets.map((connector) => {
-                            return (
-                                <ConnectWalletListItem
-                                    key={connector.id}
-                                    onClick={() => connectToTen(connector)}
-                                    connector={connector}
-                                    supported={true}
-                                />
-                            );
-                        })}
+                        {usableWalletList.length > 0 && <h4>Your Supported Wallets</h4>}
+                        {usableWalletList}
                     </div>
                 )}
 
-                <h4>Unsupported Wallets</h4>
-                {unsupportedWallets
-                    .filter((connector) => connector.icon)
-                    .map((connector) => {
-                        return (
-                            <ConnectWalletListItem
-                                key={connector.id}
-                                onClick={() => {}}
-                                connector={connector}
-                                supported={false}
-                            />
-                        );
-                    })}
+                {unsupportedWalletList.length > 0 && <h4>Your Unsupported Wallets</h4>}
+                {unsupportedWalletList}
             </div>
         );
+    };
+
+    const copyToClipboard = () => {
+        navigator.clipboard.writeText(tenToken);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
     };
 
     return (
@@ -124,7 +145,6 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
                             >
                                 <ConnectWalletProgressAnimation
                                     progress={(100 / 4) * step}
-                                    complete={step === 4}
                                     error={!!error}
                                 />
                             </motion.div>
@@ -144,6 +164,22 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
                         transition={{ duration: 0.6, delay: 1, ease: 'easeOut' }}
                         className="w-full mb-2"
                     >
+                        <div className="bg-white/5 rounded p-1 mb-4">
+                            <p className="text-center text-sm text-red-300">
+                                Keep this token safe and private - do not share it with anyone
+                            </p>
+                            <div className="flex items-center justify-center gap-2">
+                                <code className="text-xs">{tenToken}</code>
+                                <Button variant="ghost" size="icon" onClick={copyToClipboard}>
+                                    {isCopied ? (
+                                        <Check className="h-4 w-4" />
+                                    ) : (
+                                        <Copy className="h-4 w-4" />
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+
                         <h4 className="text-center font-medium mb-2">Next Steps</h4>
                         <p className="text-center text-muted-foreground mb-4">
                             Visit the TEN Protocol faucet to get test tokens or close this dialog to

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Chakra_Petch, Geist, Geist_Mono } from 'next/font/google';
 import './globals.scss';
 import { Providers } from '@/providers';
+import { siteMetadata } from '@/lib/siteMetadata';
 
 const geistSans = Geist({
     variable: '--font-geist-sans',
@@ -20,10 +21,7 @@ const chakra = Chakra_Petch({
     weight: ['300', '400', '500', '600', '700'],
 });
 
-export const metadata: Metadata = {
-    title: 'Next.js RainbowKit Demo',
-    description: 'A Next.js app with RainbowKit wallet integration',
-};
+export const metadata: Metadata = siteMetadata;
 
 export default function RootLayout({
     children,
@@ -31,7 +29,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }>) {
     return (
-        <html lang="en" className="dark" style={{colorScheme: "dark"}}>
+        <html lang="en" className="dark" style={{ colorScheme: 'dark' }}>
             <body
                 className={`${geistSans.variable} ${geistMono.variable} ${chakra.variable} antialiased`}
             >

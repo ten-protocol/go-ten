@@ -41,5 +41,14 @@ export default function getProgressPathAnimation(pathLength: number, progress: n
                 },
             },
         },
+        error: {
+            strokeDashoffset: 0,
+            strokeDasharray: `0 ${pathLength}`,
+            opacity: 0,
+            transition: {
+                duration: 1,
+                ease: 'easeInOut',
+            },
+        },
     };
 }

@@ -10,16 +10,16 @@ export default function PromoApps() {
             </p>
             <div className="grid grid-cols-1 md:grid-cols-3 space-4 space-y-6 mt-8">
                 <PromoAppCard
-                    title="House of TEN"
-                    description="An Onchain poker tournament played by frontier AI models."
-                    imageUrl="/assets/promo/houseOfTen.png"
-                    url="https://houseof.ten.xyz"
-                />
-                <PromoAppCard
                     title="Battleships"
                     description="Sink ships, win ZEN! Play a new vartiation of Battleships."
                     imageUrl="/assets/promo/bs.png"
                     url="https://battleships.ten.xyz"
+                />
+                <PromoAppCard
+                    title="House of TEN"
+                    description="An Onchain poker tournament played by frontier AI models."
+                    imageUrl="/assets/promo/houseOfTen.png"
+                    url="https://houseof.ten.xyz"
                 />
                 <PromoAppCard
                     title="TENZEN"

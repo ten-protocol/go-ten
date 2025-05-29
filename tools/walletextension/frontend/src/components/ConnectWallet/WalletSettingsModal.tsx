@@ -8,7 +8,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import {Loader2, AlertCircle, Wallet} from 'lucide-react';
+import { Loader2, AlertCircle, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAccount, useDisconnect, useSwitchChain, useBalance } from 'wagmi';
@@ -17,7 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import ZenToken from '@/components/ConnectWallet/ZenToken';
 import numeral from 'numeral';
 import { tenChainIDDecimal } from '@/lib/constants';
-import Image from "next/image";
+import Image from 'next/image';
 
 type Props = {
     isOpen: boolean;
@@ -46,17 +46,13 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
         try {
             switchChain({ chainId: tenChainIDDecimal });
         } catch (error) {
-            console.error('Failed to switch chain:', error);
-            toast.error(
+            console.error(
                 'Failed to switch to TEN Protocol. Please make sure you have added TEN Protocol to your wallet.',
-                {
-                    duration: 5000,
-                    action: {
-                        label: 'Visit TEN Gateway',
-                        onClick: () => window.open(tenChainIDDecimal, '_blank'),
-                    },
-                }
+                error
             );
+            toast.error('Failed to switch to TEN Protocol.', {
+                duration: 5000,
+            });
         }
     };
 
@@ -123,11 +119,10 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
                                     unoptimized
                                 />
                             ) : (
-                                <Wallet className="h-6 w-6"/>
+                                <Wallet className="h-6 w-6" />
                             )}
                             <p className="text-sm text-muted-foreground break-all">{address}</p>
                         </div>
-
                     </div>
 
                     <div className="space-y-3">

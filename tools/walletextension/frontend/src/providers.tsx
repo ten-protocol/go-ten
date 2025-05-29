@@ -51,7 +51,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
             [tenChainIDDecimal]: fallback([unstable_connector(injected), http()]),
         },
         ssr: true,
-        autoConnect: true,
         storage: createStorage({
             storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         }),
