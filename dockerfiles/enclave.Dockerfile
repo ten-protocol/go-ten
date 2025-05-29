@@ -31,6 +31,7 @@ WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
     ego-go build
 
+FROM build-enclave as build-enclave
 # Sign the enclave executable
 RUN ego sign enclave.json
 
