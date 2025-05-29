@@ -33,8 +33,8 @@ func SepoliaTestnet(opts ...TestnetEnvOption) networktest.Environment {
 
 func UATTestnet(opts ...TestnetEnvOption) networktest.Environment {
 	connector := newTestnetConnector(
-		"http://uat-sequencer.ten.xyz:8085",
-		[]string{"http://uat-validator-01.ten.xyz:8085"},
+		"http://uat-sequencer.ten.xyz:80",
+		[]string{"http://uat-validator-01.ten.xyz:80"},
 		"http://uat-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"wss://ethereum-sepolia-rpc.publicnode.com",
 		"https://rpc.uat-testnet.ten.xyz",

@@ -27,7 +27,7 @@ start_path="$(cd "$(dirname "${0}")" && pwd)"
 testnet_path="${start_path}"
 
 # Defaults
-port=8085
+port=80
 timeout=5*60
 
 # Fetch options
