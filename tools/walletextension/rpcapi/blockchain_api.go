@@ -173,16 +173,8 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 	return *resp, err
 }
 
-// GetStorageAt is not compatible with ETH RPC tooling. TEN network does not getStorageAt because it would
-// violate the privacy guarantees of the network.
-//
-// However, we can repurpose this method to be able to route TEN-specific requests through from an ETH RPC client.
-// We call these requests Custom Queries.
-//
-// This method signature matches eth_getStorageAt, but we use the address field to specify the custom query method,
+// GetStorageAt - This method signature matches eth_getStorageAt, but we use the address field to specify the custom query method,
 // the hex-encoded position field to specify the parameters json, and nil for the block number.
-//
-// In the future, we can support both CustomQueries and some debug version of eth_getStorageAt if needed.
 func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.Address, params string, _ rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
@@ -227,6 +219,32 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return nil, err
 		}
 		return []byte(sk), nil
+	case common.SendUnsignedTxCQMethod:
+		if user.ActiveSK && user.SessionKey != nil {
+			input, err := base64.StdEncoding.DecodeString(params)
+			if err != nil {
+				return nil, fmt.Errorf("unable to decode base64 params: %w", err)
+			}
+
+			tx := new(types.Transaction)
+			if err = tx.UnmarshalBinary(input); err != nil {
+				return gethcommon.Hash{}.Bytes(), err
+			}
+			signedTx, err := api.we.SKManager.SignTx(ctx, user, tx)
+			if err != nil {
+				return gethcommon.Hash{}.Bytes(), err
+			}
+			signedTxBlob, err := signedTx.MarshalBinary()
+			if err != nil {
+				return gethcommon.Hash{}.Bytes(), err
+			}
+			hash, err := SendRawTx(ctx, api.we, signedTxBlob)
+			if err != nil {
+				return gethcommon.Hash{}.Bytes(), err
+			}
+			return hash.Bytes(), nil
+		}
+		return gethcommon.Hash{}.Bytes(), fmt.Errorf("please create a session key before sending unsigned transactions")
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
 		if err != nil {

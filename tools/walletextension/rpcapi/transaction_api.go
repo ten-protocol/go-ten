@@ -125,7 +125,7 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.Trans
 		return common.Hash{}, err
 	}
 
-	return s.sendRawTx(ctx, blob)
+	return SendRawTx(ctx, s.we, blob)
 }
 
 type SignTransactionResult struct {
@@ -160,15 +160,7 @@ func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.B
 		}
 	}
 
-	return s.sendRawTx(ctx, signedTxBlob)
-}
-
-func (s *TransactionAPI) sendRawTx(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
-	txRec, err := ExecAuthRPC[common.Hash](ctx, s.we, &AuthExecCfg{tryAll: true, timeout: sendTransactionDuration}, tenrpc.ERPCSendRawTransaction, input)
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return *txRec, err
+	return SendRawTx(ctx, s.we, signedTxBlob)
 }
 
 func (s *TransactionAPI) PendingTransactions() ([]*rpc.RpcTransaction, error) {
