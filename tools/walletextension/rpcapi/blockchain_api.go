@@ -154,7 +154,6 @@ func (api *BlockChainAPI) GetBlockByHash(ctx context.Context, hash gethcommon.Ha
 }
 
 func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
-	// todo - must be authenticated
 	resp, err := UnauthenticatedTenRPCCall[hexutil.Bytes](
 		ctx,
 		api.we,
