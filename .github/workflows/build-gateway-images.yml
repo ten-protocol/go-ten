@@ -1,0 +1,238 @@
+# Builds and publishes TEN Gateway images (Backend and Frontend) to Docker registry
+# This action builds both the gateway backend and frontend images and pushes them to the registry
+# without deploying to Azure - suitable for Kubernetes deployments
+
+name: "[M] Build and Publish TEN Gateway Images"
+run-name: "[M] Build and Publish TEN Gateway Images ( ${{ github.event.inputs.testnet_type }} )"
+
+on:
+  workflow_dispatch:
+    inputs:
+      testnet_type:
+        description: "Environment"
+        required: true
+        default: "dev-testnet"
+        type: choice
+        options:
+          - "dev-testnet"
+          - "uat-testnet"
+          - "sepolia-testnet"
+      instance_type:
+        description: "Instance"
+        required: true
+        default: "primary"
+        type: choice
+        options:
+          - "primary"
+      build_backend:
+        description: "Build Backend Gateway"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+      build_frontend:
+        description: "Build Frontend Gateway"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+jobs:
+  setup-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      instance_suffix: ${{ steps.setup_env.outputs.instance_suffix }}
+      instance_prefix: ${{ steps.setup_env.outputs.instance_prefix }}
+      k8s_docker_build_tag_gateway: ${{ steps.setup_env.outputs.k8s_docker_build_tag_gateway }}
+      k8s_docker_build_tag_gateway_fe: ${{ steps.setup_env.outputs.k8s_docker_build_tag_gateway_fe }}
+      gateway_url: ${{ steps.setup_env.outputs.gateway_url }}
+      network_name: ${{ steps.setup_env.outputs.network_name }}
+      tenscan_url: ${{ steps.setup_env.outputs.tenscan_url }}
+    steps:
+      - name: "Set up environment variables"
+        id: setup_env
+        run: |
+          INSTANCE_SUFFIX=""
+          INSTANCE_PREFIX=""
+
+          if [[ "${{ github.event.inputs.instance_type }}" != "primary" ]]; then
+            INSTANCE_TYPE_LOWER=$(echo "${{ github.event.inputs.instance_type }}" | tr '[:upper:]' '[:lower:]')
+            INSTANCE_SUFFIX="-${INSTANCE_TYPE_LOWER}"
+            INSTANCE_PREFIX="${{ github.event.inputs.instance_type }}_"
+          fi
+
+          echo "instance_suffix=$INSTANCE_SUFFIX" >> $GITHUB_OUTPUT
+          echo "instance_prefix=$INSTANCE_PREFIX" >> $GITHUB_OUTPUT
+
+          # Backend variables
+          declare -a BACKEND_VAR_NAMES=(
+            "K8S_DOCKER_BUILD_TAG_GATEWAY"
+          )
+
+          for VAR_NAME in "${BACKEND_VAR_NAMES[@]}"; do
+            FULL_VAR_NAME="${INSTANCE_PREFIX}${VAR_NAME}"
+            VAR_VALUE=$(jq -r --arg key "$FULL_VAR_NAME" '.[$key] // empty' <<< '${{ toJson(vars) }}')
+            if [[ -n "$VAR_VALUE" ]]; then
+              echo "${VAR_NAME,,}=${VAR_VALUE}" >> $GITHUB_OUTPUT
+            else
+              echo "Warning: ${FULL_VAR_NAME} not found in vars" >&2
+            fi
+          done
+
+          # Frontend variables
+          declare -a FRONTEND_VAR_NAMES=(
+            "K8S_DOCKER_BUILD_TAG_GATEWAY_FE"
+            "GATEWAY_URL"
+            "NETWORK_NAME"
+            "TENSCAN_URL"
+          )
+
+          for VAR_NAME in "${FRONTEND_VAR_NAMES[@]}"; do
+            FULL_VAR_NAME="${INSTANCE_PREFIX}${VAR_NAME}"
+            VAR_VALUE=$(jq -r --arg key "$FULL_VAR_NAME" '.[$key] // empty' <<< '${{ toJson(vars) }}')
+            if [[ -n "$VAR_VALUE" ]]; then
+              echo "${VAR_NAME,,}=${VAR_VALUE}" >> $GITHUB_OUTPUT
+            else
+              echo "Warning: ${FULL_VAR_NAME} not found in vars" >&2
+            fi
+          done
+
+  build-backend:
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    if: ${{ github.event.inputs.build_backend == 'true' }}
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - name: "Print build information"
+        run: |
+          echo "Building Backend Gateway Image"
+          echo "Testnet Type: ${{ github.event.inputs.testnet_type }}"
+          echo "Instance Type: ${{ github.event.inputs.instance_type }}"
+          echo "Docker Tag: ${{ needs.setup-environment.outputs.k8s_docker_build_tag_gateway }}"
+
+      - uses: actions/checkout@v4
+
+      - name: "Extract branch name"
+        shell: bash
+        run: |
+          echo "Branch Name: ${GITHUB_REF_NAME}"
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+      - name: "Set up Docker"
+        uses: docker/setup-buildx-action@v3.6.1
+
+      - name: "Login to Azure docker registry"
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: "Build and Push Backend Docker Image"
+        run: |
+          echo "Building backend gateway image..."
+          DOCKER_BUILDKIT=1 docker build \
+            --build-arg TESTNET_TYPE=${{ github.event.inputs.testnet_type }} \
+            -t ${{ needs.setup-environment.outputs.k8s_docker_build_tag_gateway }} \
+            -f ./tools/walletextension/enclave.Dockerfile .
+
+          echo "Pushing backend gateway image..."
+          docker push ${{ needs.setup-environment.outputs.k8s_docker_build_tag_gateway }}
+
+          echo "✅ Backend gateway image built and pushed successfully!"
+          echo "Image: ${{ needs.setup-environment.outputs.k8s_docker_build_tag_gateway }}"
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: setup-environment
+    if: ${{ github.event.inputs.build_frontend == 'true' }}
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - name: "Print build information"
+        run: |
+          echo "Building Frontend Gateway Image"
+          echo "Testnet Type: ${{ github.event.inputs.testnet_type }}"
+          echo "Instance Type: ${{ github.event.inputs.instance_type }}"
+          echo "Docker Tag: ${{ needs.setup-environment.outputs.k8s_docker_build_tag_gateway_fe }}"
+          echo "Gateway URL: ${{ needs.setup-environment.outputs.gateway_url }}"
+          echo "Network Name: ${{ needs.setup-environment.outputs.network_name }}"
+          echo "Tenscan URL: ${{ needs.setup-environment.outputs.tenscan_url }}"
+
+      - uses: actions/checkout@v4
+
+      - name: "Extract branch name"
+        shell: bash
+        run: |
+          echo "Branch Name: ${GITHUB_REF_NAME}"
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+
+      - name: "Set up Docker"
+        uses: docker/setup-buildx-action@v3.6.1
+
+      - name: "Login to Azure docker registry"
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: "Build and Push Frontend Docker Image"
+        run: |
+          echo "Building frontend gateway image..."
+          DOCKER_BUILDKIT=1 docker build \
+            --build-arg NEXT_PUBLIC_NETWORK_NAME="${{ needs.setup-environment.outputs.network_name }}" \
+            --build-arg NEXT_PUBLIC_TENSCAN_URL="${{ needs.setup-environment.outputs.tenscan_url }}" \
+            --build-arg NEXT_PUBLIC_GATEWAY_URL="${{ needs.setup-environment.outputs.gateway_url }}" \
+            -t ${{ needs.setup-environment.outputs.k8s_docker_build_tag_gateway_fe }} \
+            -f ./tools/walletextension/frontend/Dockerfile .
+
+          echo "Pushing frontend gateway image..."
+          docker push ${{ needs.setup-environment.outputs.k8s_docker_build_tag_gateway_fe }}
+
+          echo "✅ Frontend gateway image built and pushed successfully!"
+          echo "Image: ${{ needs.setup-environment.outputs.k8s_docker_build_tag_gateway_fe }}"
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: [setup-environment, build-backend, build-frontend]
+    if: always()
+    steps:
+      - name: "Build Summary"
+        run: |
+          echo "## 📦 TEN Gateway Build Summary"
+          echo ""
+          echo "**Environment:** ${{ github.event.inputs.testnet_type }}"
+          echo "**Instance:** ${{ github.event.inputs.instance_type }}"
+          echo "**Branch:** ${GITHUB_REF_NAME}"
+          echo ""
+
+          if [[ "${{ github.event.inputs.build_backend }}" == "true" ]]; then
+            if [[ "${{ needs.build-backend.result }}" == "success" ]]; then
+              echo "✅ **Backend Gateway:** Built and pushed successfully"
+              echo "   - Image: ${{ needs.setup-environment.outputs.k8s_docker_build_tag_gateway }}"
+            else
+              echo "❌ **Backend Gateway:** Build failed"
+            fi
+          else
+            echo "⏭️ **Backend Gateway:** Skipped"
+          fi
+
+          if [[ "${{ github.event.inputs.build_frontend }}" == "true" ]]; then
+            if [[ "${{ needs.build-frontend.result }}" == "success" ]]; then
+              echo "✅ **Frontend Gateway:** Built and pushed successfully"
+              echo "   - Image: ${{ needs.setup-environment.outputs.k8s_docker_build_tag_gateway_fe }}"
+            else
+              echo "❌ **Frontend Gateway:** Build failed"
+            fi
+          else
+            echo "⏭️ **Frontend Gateway:** Skipped"
+          fi
+
+          echo ""
+          echo "🚀 **Ready for Kubernetes deployment!**
