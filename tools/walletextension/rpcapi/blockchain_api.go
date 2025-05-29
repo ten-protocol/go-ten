@@ -221,6 +221,12 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 	case common.DeleteSessionKeyCQMethod:
 		res, err := api.we.SKManager.DeleteSessionKey(user)
 		return []byte{boolToByte(res)}, err
+	case common.ListSessionKeyCQMethod:
+		sk, err := api.we.SKManager.ListSessionKey(user)
+		if err != nil {
+			return nil, err
+		}
+		return []byte(sk), nil
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
 		if err != nil {

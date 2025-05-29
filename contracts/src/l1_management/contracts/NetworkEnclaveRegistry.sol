@@ -34,16 +34,12 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
      */
     mapping(address sequencerID => bool isSequencer) private sequencerEnclave;
 
-    constructor() {
-        _transferOwnership(msg.sender);
-    }
-
     /**
-     * @dev Initializes the contract
-     * @param owner The owner of the contract
+     * @dev Initializes the contract with the owner
+     * @param _owner Address of the contract owner
      */
-    function initialize(address owner) public initializer {
-        __Ownable_init(owner);
+    function initialize(address _owner) public initializer {
+        __UnrenouncableOwnable2Step_init(_owner);
         networkSecretInitialized = false;
     }
 

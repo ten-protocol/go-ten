@@ -15,6 +15,9 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
  * Manages message publishing, verification, and value transfers between L1 and L2.
  */
 contract MessageBus is BaseMessageBus, IL2MessageBus {
+    constructor() {
+        _disableInitializers();
+    }
 
     /**
      * @dev Modifier to restrict access to owner or self
