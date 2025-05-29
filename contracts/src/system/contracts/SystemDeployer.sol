@@ -8,7 +8,7 @@ import {CrossChainMessenger} from "../../cross_chain_messaging/common/CrossChain
 import {EthereumBridge} from "../../reference_bridge/L2/contracts/EthereumBridge.sol";
 import {MessageBus} from "../../cross_chain_messaging/common/MessageBus.sol";
 import {PublicCallbacks} from "./PublicCallbacks.sol";
-
+import {TenSystemCalls} from "./TenSystemCalls.sol";
 /**
  * @title SystemDeployer
  * @dev Contract that deploys the system contracts
@@ -29,6 +29,7 @@ contract SystemDeployer {
         deployPublicCallbacks(eoaAdmin);
         address crossChainMessengerProxy = deployCrossChainMessenger(eoaAdmin, messageBusProxy);
         deployEthereumBridge(eoaAdmin, crossChainMessengerProxy, remoteBridgeAddress);
+        deployTenSystemCalls(eoaAdmin);
     }
 
     function deployAnalyzer(address eoaAdmin) internal {
@@ -80,6 +81,14 @@ contract SystemDeployer {
         address ethereumBridgeProxy = deployProxy(address(ethereumBridge), eoaAdmin, callData);
 
         emit SystemContractDeployed("EthereumBridge", ethereumBridgeProxy);
+    }
+
+    function deployTenSystemCalls(address eoaAdmin) internal {
+        TenSystemCalls tenSystemCalls = new TenSystemCalls();
+        bytes memory callData = abi.encodeWithSelector(tenSystemCalls.initialize.selector);
+        address tenSystemCallsProxy = deployProxy(address(tenSystemCalls), eoaAdmin, callData);
+
+        emit SystemContractDeployed("TenSystemCalls", tenSystemCallsProxy);
     }
 
     function deployProxy(address _logic, address _admin, bytes memory _data) internal returns (address proxyAddress) {

@@ -19,19 +19,19 @@ func main() {
 		),
 	)
 	if err != nil {
-		fmt.Println("unable to configure l1 contract deployer - %w", err)
+		fmt.Println("unable to configure l1 upgrade script - %w", err)
 		os.Exit(1)
 	}
 
 	err = l1Upgrade.Start()
 	if err != nil {
-		fmt.Println("unable to start l1 contract deployer - %w", err)
+		fmt.Println("unable to start l1 upgrade script - %w", err)
 		os.Exit(1)
 	}
 
 	err = l1Upgrade.WaitForFinish()
 	if err != nil {
-		fmt.Println("unexpected error waiting for grant sequnecer permission script to finish - %w", err)
+		fmt.Println("unexpected error waiting for l1 upgrade script to finish - %w", err)
 		os.Exit(1)
 	}
 	fmt.Println("L1 upgrades were successfully completed...")

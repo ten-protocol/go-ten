@@ -38,12 +38,6 @@ jobs:
           curl -X PUT -u "will@5131971543297513:${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" \
             "https://${{ env.CONTAINER_REGISTRY }}/v2/ten-testnet/tentestnet/enclave" || true
 
-#      - name: 'Verify Docker LogigitNTAINER_REGISTRY }} -u will@5131971543297513 --password-stdin <<< "${{ secrets.ALIBABA_REGISTRY_PASSWORD }}"
-#          # Verify we can access the registry by trying to list tags
-#          echo "Verifying registry access..."
-#          curl -u "will@5131971543297513:${{ secrets.ALIBABA_REGISTRY_PASSWORD }}" \
-#            "https://${{ env.CONTAINER_REGISTRY }}/v2/ten-testnet/tentestnet/enclave/tags/list" || true
-
       - name: 'Get version'
         id: get_version
         run: |
@@ -61,14 +55,32 @@ jobs:
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
         run: |
-          # Build enclave image
+          # Build and push enclave image
           DOCKER_BUILDKIT=1 docker build -t enclave:${VERSION} -f dockerfiles/enclave.Dockerfile .
-          # Tag and push enclave image
           docker tag enclave:${VERSION} ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:enclave-${VERSION}
           docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:enclave-${VERSION}
           
-          # Build host image
+          # Build and push host image
           DOCKER_BUILDKIT=1 docker build -t host:${VERSION} -f dockerfiles/host.Dockerfile .
-          # Tag and push host image
           docker tag host:${VERSION} ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:host-${VERSION}
           docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:host-${VERSION}
+
+          # Build and push l1challengeperiod image
+          DOCKER_BUILDKIT=1 docker build -t l1challengeperiod:${VERSION} -f dockerfiles/l1challengeperiod.Dockerfile .
+          docker tag l1challengeperiod:${VERSION} ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:l1challengeperiod-${VERSION}
+          docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:l1challengeperiod-${VERSION}
+
+          # Build and push l1contractdeployer image
+          DOCKER_BUILDKIT=1 docker build -t l1contractdeployer:${VERSION} -f dockerfiles/l1contractdeployer.Dockerfile .
+          docker tag l1contractdeployer:${VERSION} ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:l1contractdeployer-${VERSION}
+          docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:l1contractdeployer-${VERSION}
+
+          # Build and push l1grantsequencers image
+          DOCKER_BUILDKIT=1 docker build -t l1grantsequencers:${VERSION} -f dockerfiles/l1grantsequencers.Dockerfile .
+          docker tag l1grantsequencers:${VERSION} ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:l1grantsequencers-${VERSION}
+          docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:l1grantsequencers-${VERSION}
+
+          # Build and push l2contractdeployer image
+          DOCKER_BUILDKIT=1 docker build -t l2contractdeployer:${VERSION} -f dockerfiles/l2contractdeployer.Dockerfile .
+          docker tag l2contractdeployer:${VERSION} ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:l2contractdeployer-${VERSION}
+          docker push ${{ env.CONTAINER_REGISTRY }}/ten-testnet/tentestnet:l2contractdeployer-${VERSION}
