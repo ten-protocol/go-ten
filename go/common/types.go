@@ -1,9 +1,13 @@
 package common
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -246,4 +250,55 @@ func (s *SystemContractAddresses) ToString() string {
 		str += fmt.Sprintf("%s: %s; ", name, addr.Hex())
 	}
 	return str
+}
+
+// MaxNegativeTxTimeDeltaMs - to avoid negative numbers in the timestamp delta (block.time - tx.time), we adjust by 10s so that it's impossible to have negative values
+// This represents the period until which transactions will come in *after* the sequencer started building a new batch.
+// this constant is used by the mempool as well.
+const MaxNegativeTxTimeDeltaMs = 10 * 1000
+
+// TxWithTimestamp - RLP serializes a transaction together with the timestamp delta from the block time
+type TxWithTimestamp struct {
+	Tx          *L2Tx
+	TimeDeltaMs *big.Int
+}
+
+func createTxWithTimestamp(tx *L2Tx, blockTimeMs uint64) *TxWithTimestamp {
+	return &TxWithTimestamp{
+		Tx:          tx,
+		TimeDeltaMs: big.NewInt(MaxNegativeTxTimeDeltaMs + tx.Time().UnixMilli() - int64(blockTimeMs)),
+	}
+}
+
+func (t *TxWithTimestamp) l2Tx(blockTimeMs uint64) *L2Tx {
+	t.Tx.SetTime(time.UnixMilli(t.TimeDeltaMs.Int64() + int64(blockTimeMs) - MaxNegativeTxTimeDeltaMs))
+	return t.Tx
+}
+
+type TxsWithTimeStamp []*TxWithTimestamp
+
+func (txs TxsWithTimeStamp) Txs(blockTime uint64) []*L2Tx {
+	txsOnly := make([]*L2Tx, len(txs))
+	blockTimeMs := blockTime * 1000
+	for i, tx := range txs {
+		txsOnly[i] = tx.l2Tx(blockTimeMs)
+	}
+	return txsOnly
+}
+
+func CreateTxsAndTimeStamp(tx []*L2Tx, blockTime uint64) *TxsWithTimeStamp {
+	txs := make(TxsWithTimeStamp, len(tx))
+	blockTimeMs := blockTime * 1000
+	for i, t := range tx {
+		txs[i] = createTxWithTimestamp(t, blockTimeMs)
+	}
+	return &txs
+}
+
+func (txs TxsWithTimeStamp) EncodeIndex(i int, w *bytes.Buffer) {
+	rlp.Encode(w, txs[i])
+}
+
+func (txs TxsWithTimeStamp) Len() int {
+	return len(txs)
 }
