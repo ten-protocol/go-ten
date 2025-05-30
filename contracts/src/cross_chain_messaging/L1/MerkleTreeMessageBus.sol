@@ -3,7 +3,7 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "../../common/Structs.sol";
 import "./IMerkleTreeMessageBus.sol";
-import "../common/MessageBus.sol";
+import "../common/BaseMessageBus.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
  * This contract manages state roots and verifies message inclusion through Merkle proofs.
  * It implements a role-based access control system for state root and withdrawal management.
  */
-contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessControlUpgradeable {
+contract MerkleTreeMessageBus is IMerkleTreeMessageBus, BaseMessageBus, AccessControlUpgradeable {
 
     /**
      * @dev Role identifier for accounts that can manage state roots
@@ -32,7 +32,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
     mapping(bytes32 stateRoot => uint256 activationTime) rootValidAfter;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() MessageBus() {
+    constructor() BaseMessageBus() {
         // Constructor intentionally left empty
     }
 
@@ -40,7 +40,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @dev Initializes the contract with provided owner
      * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
      */
-    function initialize(address initialOwner, address withdrawalManager) public override(IMerkleTreeMessageBus, MessageBus) initializer {
+    function initialize(address initialOwner, address withdrawalManager) public override(IMerkleTreeMessageBus, BaseMessageBus) initializer {
         // Initialize parent contracts
         //super.initialize(initialOwner, address(0));
         __Ownable_init(initialOwner);
