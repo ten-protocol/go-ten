@@ -102,8 +102,9 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
 	hostServices.RegisterService(hostcommon.P2PName, p2p)
 	hostServices.RegisterService(hostcommon.L1DataServiceName, l1Repo)
-	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
-	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
+	maxWaitForL1Receipt := 6 * config.L1BlockTime      // wait ~10 blocks to see if tx gets published before retrying
+	retryIntervalForL1Receipt := config.L1BlockTime    // retry ~every block
+	blobRetryWaitInterval := config.RollupInterval / 2 // half the rollup interval to allow time for blob gas prices to drop
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
 	l1Publisher := l1.NewL1Publisher(
 		hostIdentity,
@@ -116,6 +117,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		logger,
 		maxWaitForL1Receipt,
 		retryIntervalForL1Receipt,
+		blobRetryWaitInterval,
 		hostStorage,
 		l1ChainCfg,
 	)
