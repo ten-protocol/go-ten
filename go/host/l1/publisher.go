@@ -50,6 +50,7 @@ type Publisher struct {
 
 	maxWaitForL1Receipt       time.Duration
 	retryIntervalForL1Receipt time.Duration
+	blobRetryWaitInterval     time.Duration
 
 	// we only allow one transaction in-flight at a time to avoid nonce conflicts
 	// We also have a context to cancel the tx if host stops
@@ -69,6 +70,7 @@ func NewL1Publisher(
 	logger gethlog.Logger,
 	maxWaitForL1Receipt time.Duration,
 	retryIntervalForL1Receipt time.Duration,
+	blobRetryWaitInterval time.Duration,
 	storage storage.Storage,
 	l1ChainCfg *params.ChainConfig,
 ) *Publisher {
@@ -84,6 +86,7 @@ func NewL1Publisher(
 		logger:                    logger,
 		maxWaitForL1Receipt:       maxWaitForL1Receipt,
 		retryIntervalForL1Receipt: retryIntervalForL1Receipt,
+		blobRetryWaitInterval:     blobRetryWaitInterval,
 		storage:                   storage,
 		l1ChainCfg:                l1ChainCfg,
 
@@ -392,7 +395,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData) error {
 
 		// success, we're done
 		return nil
-	}, retry.NewBackoffAndRetryForeverStrategy([]time.Duration{0, 0}, 1*time.Second)) // couple of instant retries then 1sec intervals
+	}, retry.NewBackoffAndRetryForeverStrategy([]time.Duration{0, 30 * time.Second}, p.blobRetryWaitInterval)) // instant retry, 30s wait then config wait interval to avoid blob pool filling up
 
 	return err
 }
