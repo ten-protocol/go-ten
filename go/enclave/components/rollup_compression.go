@@ -334,7 +334,7 @@ func (rc *RollupCompression) createIncompleteBatches(ctx context.Context, header
 			currentHeight = currentHeight + 1
 		}
 
-		transactions := batchTransactions.Txs(uint64(currentTime))
+		transactions := batchTransactions.Txs()
 		// calculate the hash of the txs
 		var txHash gethcommon.Hash
 		var payloadHash gethcommon.Hash
