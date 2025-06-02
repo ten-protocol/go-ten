@@ -410,7 +410,7 @@ func (p *Publisher) waitForReceipt(signedTx *types.Transaction, isBlobTx bool) (
 
 	// for blob transactions, use longer timeouts since they're not time-critical
 	if isBlobTx {
-		maxWait = p.retryIntervalForBlobReceipt * 2
+		maxWait = p.retryIntervalForBlobReceipt * 4
 		retryInterval = p.retryIntervalForBlobReceipt
 	}
 

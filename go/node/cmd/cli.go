@@ -55,6 +55,7 @@ type NodeConfigCLI struct {
 	batchInterval           string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	maxBatchInterval        string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	rollupInterval          string // format like 500ms or 2s (any time parsable by time.ParseDuration())
+	rollupRetryInterval     string // format like 500ms or 2s (any time parsable by time.ParseDuration())
 	l1ChainID               int
 	postgresDBHost          string
 	l1BeaconUrl             string
@@ -99,6 +100,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	batchInterval := flag.String(batchIntervalFlag, "1s", flagUsageMap[batchIntervalFlag])
 	maxBatchInterval := flag.String(maxBatchIntervalFlag, "1s", flagUsageMap[maxBatchIntervalFlag])
 	rollupInterval := flag.String(rollupIntervalFlag, "3s", flagUsageMap[rollupIntervalFlag])
+	rollupRetryInterval := flag.String(rollupRetryIntervalFlag, "120s", flagUsageMap[rollupRetryIntervalFlag])
 	l1ChainID := flag.Int(l1ChainIDFlag, 1337, flagUsageMap[l1ChainIDFlag])
 	postgresDBHost := flag.String(postgresDBHostFlag, "dd", flagUsageMap[postgresDBHostFlag])
 	l1BeaconUrl := flag.String(l1BeaconUrlFlag, "eth2network:126000", flagUsageMap[l1BeaconUrlFlag])
@@ -138,6 +140,7 @@ func ParseConfigCLI() *NodeConfigCLI {
 	cfg.batchInterval = *batchInterval
 	cfg.maxBatchInterval = *maxBatchInterval
 	cfg.rollupInterval = *rollupInterval
+	cfg.rollupRetryInterval = *rollupRetryInterval
 	cfg.l1ChainID = *l1ChainID
 	cfg.postgresDBHost = *postgresDBHost
 	cfg.l1BeaconUrl = *l1BeaconUrl

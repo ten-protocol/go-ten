@@ -53,9 +53,10 @@ type GasConfig struct {
 //
 //	yaml: `network.l1`
 type L1Config struct {
-	ChainID   int64           `mapstructure:"chainId"`   // chainID for the L1 network
-	BlockTime time.Duration   `mapstructure:"blockTime"` // average expected block time for the L1 network
-	StartHash gethcommon.Hash `mapstructure:"startHash"` // hash of the first block on the L1 network relevant to the Ten network
+	ChainID          int64           `mapstructure:"chainId"`          // chainID for the L1 network
+	BlockTime        time.Duration   `mapstructure:"blockTime"`        // average expected block time for the L1 network
+	RollupRetryDelay time.Duration   `mapstructure:"rollupRetryDelay"` // delay rollup publishing when gas price spikes
+	StartHash        gethcommon.Hash `mapstructure:"startHash"`        // hash of the first block on the L1 network relevant to the Ten network
 
 	L1Contracts *L1Contracts `mapstructure:"contracts"`
 }
