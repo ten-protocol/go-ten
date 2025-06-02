@@ -230,9 +230,11 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 			healthErrors = append(healthErrors, fmt.Sprintf("[%s] not healthy - %s", name, status.Message()))
 		}
 	}
+	overallHealth := len(healthErrors) == 0
 
 	// fetch all enclaves and check status of each
 	enclaveStatus := make([]common.Status, 0)
+	atLeastOneHealthyEnclave := false
 	for _, client := range h.services.Enclaves().GetEnclaveClients() {
 		status, err := client.Status(ctx)
 		if err != nil {
@@ -244,11 +246,15 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 
 		if status.StatusCode == common.Unavailable {
 			healthErrors = append(healthErrors, fmt.Sprintf("Enclave with ID [%s] is unavailable", status.EnclaveID))
+			continue
 		}
+		atLeastOneHealthyEnclave = true
 	}
 
+	overallHealth = overallHealth && atLeastOneHealthyEnclave
+
 	return &hostcommon.HealthCheck{
-		OverallHealth: len(healthErrors) == 0,
+		OverallHealth: overallHealth,
 		Errors:        healthErrors,
 		Enclaves:      enclaveStatus,
 	}, nil
