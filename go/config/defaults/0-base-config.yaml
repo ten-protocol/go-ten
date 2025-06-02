@@ -22,7 +22,7 @@ network:
   l1:
     chainId: 1337
     blockTime: 15s
-    rollupRetryDelay: 60s
+    rollupRetryDelay: 5s
     startHash: 0x0 # hash of the L1 block that Ten can safely start processing from to get entire L2 history
     contracts:
       networkConfig: 0x0 # L1 address of the Ten network config contract
