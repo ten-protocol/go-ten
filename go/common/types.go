@@ -265,42 +265,46 @@ type TxWithTimestamp struct {
 
 // createTxWithTimestamp - delta=blockTimeMs - txTimeMs + MaxNegativeTxTimeDeltaMs
 func createTxWithTimestamp(tx *L2Tx, blockTimeMs uint64) *TxWithTimestamp {
+	val := (int64(blockTimeMs) + MaxNegativeTxTimeDeltaMs) - tx.Time().UnixMilli()
 	return &TxWithTimestamp{
 		Tx:          tx,
-		TimeDeltaMs: big.NewInt((int64(blockTimeMs) + MaxNegativeTxTimeDeltaMs) - tx.Time().UnixMilli()),
+		TimeDeltaMs: big.NewInt(val),
 	}
 }
 
 // l2Tx - txTimeMs=blockTimeMs - delta + MaxNegativeTxTimeDeltaMs
 func (t *TxWithTimestamp) l2Tx(blockTimeMs uint64) *L2Tx {
-	t.Tx.SetTime(time.UnixMilli((int64(blockTimeMs) - MaxNegativeTxTimeDeltaMs) - t.TimeDeltaMs.Int64()))
+	val := (int64(blockTimeMs) + MaxNegativeTxTimeDeltaMs) - t.TimeDeltaMs.Int64()
+	t.Tx.SetTime(time.UnixMilli(val))
 	return t.Tx
 }
 
-type TxsWithTimeStamp []*TxWithTimestamp
+type TxsWithTimeStamp struct {
+	TxsTst      []*TxWithTimestamp
+	BlockTimeMs uint64
+}
 
-func (txs TxsWithTimeStamp) Txs(blockTime uint64) []*L2Tx {
-	txsOnly := make([]*L2Tx, len(txs))
-	blockTimeMs := blockTime * 1000
-	for i, tx := range txs {
-		txsOnly[i] = tx.l2Tx(blockTimeMs)
+func (txs TxsWithTimeStamp) Txs() []*L2Tx {
+	txsOnly := make([]*L2Tx, len(txs.TxsTst))
+	for i, tx := range txs.TxsTst {
+		txsOnly[i] = tx.l2Tx(txs.BlockTimeMs)
 	}
 	return txsOnly
 }
 
 func CreateTxsAndTimeStamp(tx []*L2Tx, blockTime uint64) *TxsWithTimeStamp {
-	txs := make(TxsWithTimeStamp, len(tx))
+	txs := make([]*TxWithTimestamp, len(tx))
 	blockTimeMs := blockTime * 1000
 	for i, t := range tx {
 		txs[i] = createTxWithTimestamp(t, blockTimeMs)
 	}
-	return &txs
+	return &TxsWithTimeStamp{TxsTst: txs, BlockTimeMs: blockTimeMs}
 }
 
 func (txs TxsWithTimeStamp) EncodeIndex(i int, w *bytes.Buffer) {
-	rlp.Encode(w, txs[i])
+	_ = rlp.Encode(w, txs.TxsTst[i])
 }
 
 func (txs TxsWithTimeStamp) Len() int {
-	return len(txs)
+	return len(txs.TxsTst)
 }

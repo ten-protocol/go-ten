@@ -92,7 +92,7 @@ func ToBatch(extBatch *common.ExtBatch, transactionBlobCrypto *crypto.DAEncrypti
 	}
 	return &Batch{
 		Header:       extBatch.Header,
-		Transactions: txs.Txs(extBatch.Header.Time),
+		Transactions: txs.Txs(),
 	}, nil
 }
 
