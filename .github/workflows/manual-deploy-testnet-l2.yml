@@ -413,6 +413,7 @@ jobs:
                -batch_interval=${{ vars.L2_BATCH_INTERVAL }} \
                -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
                -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
+               -rollup_retry_interval=${{ vars.L1_ROLLUP_RETRY_INTERVAL }} \
                -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
                -l1_beacon_url=${{ vars.L1_BEACON_URL }} \
                -l1_blob_archive_url=${{ vars.L1_BLOB_ARCHIVE_URL }} \

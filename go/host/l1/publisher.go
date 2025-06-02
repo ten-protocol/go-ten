@@ -48,8 +48,9 @@ type Publisher struct {
 
 	hostStopper *stopcontrol.StopControl
 
-	maxWaitForL1Receipt       time.Duration
-	retryIntervalForL1Receipt time.Duration
+	maxWaitForL1Receipt         time.Duration
+	retryIntervalForL1Receipt   time.Duration
+	retryIntervalForBlobReceipt time.Duration
 
 	// we only allow one transaction in-flight at a time to avoid nonce conflicts
 	// We also have a context to cancel the tx if host stops
@@ -69,23 +70,25 @@ func NewL1Publisher(
 	logger gethlog.Logger,
 	maxWaitForL1Receipt time.Duration,
 	retryIntervalForL1Receipt time.Duration,
+	retryIntervalForBlobReceipt time.Duration,
 	storage storage.Storage,
 	l1ChainCfg *params.ChainConfig,
 ) *Publisher {
 	sendingCtx, cancelSendingCtx := context.WithCancel(context.Background())
 	return &Publisher{
-		hostData:                  hostData,
-		hostWallet:                hostWallet,
-		ethClient:                 client,
-		contractRegistry:          contractRegistry,
-		repository:                repository,
-		blobResolver:              blobResolver,
-		hostStopper:               hostStopper,
-		logger:                    logger,
-		maxWaitForL1Receipt:       maxWaitForL1Receipt,
-		retryIntervalForL1Receipt: retryIntervalForL1Receipt,
-		storage:                   storage,
-		l1ChainCfg:                l1ChainCfg,
+		hostData:                    hostData,
+		hostWallet:                  hostWallet,
+		ethClient:                   client,
+		contractRegistry:            contractRegistry,
+		repository:                  repository,
+		blobResolver:                blobResolver,
+		hostStopper:                 hostStopper,
+		logger:                      logger,
+		maxWaitForL1Receipt:         maxWaitForL1Receipt,
+		retryIntervalForL1Receipt:   retryIntervalForL1Receipt,
+		retryIntervalForBlobReceipt: retryIntervalForBlobReceipt,
+		storage:                     storage,
+		l1ChainCfg:                  l1ChainCfg,
 
 		importantAddressesMutex: sync.RWMutex{},
 		importantAddresses:      &common.NetworkConfigAddresses{},
@@ -371,6 +374,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData) error {
 			// even if there was an error we expect pricedTx to be populated for common failures
 			return retry.FailFast(fmt.Errorf("could not price transaction. Cause: %w", err))
 		}
+
 		if err != nil {
 			if retryCount > maxRetries {
 				blobTx, ok := pricedTx.(*types.BlobTx)
@@ -397,8 +401,36 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData) error {
 	return err
 }
 
-// executeTransaction handles the common flow of pricing, signing, sending and waiting for receipt. Returns the priced
-// transaction so we can log the values in the event we exceed the maximum number of retries.
+// waitForReceipt waits for a transaction receipt with appropriate timeout based on transaction type
+func (p *Publisher) waitForReceipt(signedTx *types.Transaction, isBlobTx bool) (*types.Receipt, error) {
+	var receipt *types.Receipt
+
+	maxWait := p.maxWaitForL1Receipt
+	retryInterval := p.retryIntervalForL1Receipt
+
+	// for blob transactions, use longer timeouts since they're not time-critical
+	if isBlobTx {
+		maxWait = p.retryIntervalForBlobReceipt * 4
+		retryInterval = p.retryIntervalForBlobReceipt
+	}
+
+	err := retry.Do(
+		func() error {
+			if p.hostStopper.IsStopping() {
+				return retry.FailFast(errors.New("host is stopping or context canceled"))
+			}
+			var err error
+			receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
+			if err != nil {
+				return fmt.Errorf("could not get receipt publishing tx for L1 tx=%s: %w", signedTx.Hash(), err)
+			}
+			return err
+		},
+		retry.NewTimeoutStrategy(maxWait, retryInterval),
+	)
+	return receipt, err
+}
+
 func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) (types.TxData, error) {
 	// Set gas prices and create transaction
 	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, p.l1ChainCfg, p.logger)
@@ -421,8 +453,10 @@ func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum i
 		return pricedTx, errors.Wrap(err, "could not broadcast L1 tx")
 	}
 
+	_, isBlobTx := tx.(*types.BlobTx)
+
 	// Wait for receipt
-	receipt, err := p.waitForReceipt(signedTx)
+	receipt, err := p.waitForReceipt(signedTx, isBlobTx)
 	if err != nil || receipt.Status != types.ReceiptStatusSuccessful {
 		return pricedTx, fmt.Errorf("receipt not received for tx: %s ", signedTx.Hash().Hex()) // Return hash for MaxRetriesError
 	}
@@ -430,26 +464,6 @@ func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum i
 	p.logger.Debug("L1 transaction successful receipt found.", log.TxKey, signedTx.Hash(),
 		log.BlockHeightKey, receipt.BlockNumber, log.BlockHashKey, receipt.BlockHash)
 	return pricedTx, nil
-}
-
-// Helper functions to reduce duplication
-func (p *Publisher) waitForReceipt(signedTx *types.Transaction) (*types.Receipt, error) {
-	var receipt *types.Receipt
-	err := retry.Do(
-		func() error {
-			if p.hostStopper.IsStopping() {
-				return retry.FailFast(errors.New("host is stopping or context canceled"))
-			}
-			var err error
-			receipt, err = p.ethClient.TransactionReceipt(signedTx.Hash())
-			if err != nil {
-				return fmt.Errorf("could not get receipt publishing tx for L1 tx=%s: %w", signedTx.Hash(), err)
-			}
-			return err
-		},
-		retry.NewTimeoutStrategy(p.maxWaitForL1Receipt, p.retryIntervalForL1Receipt),
-	)
-	return receipt, err
 }
 
 // waitForBlockAfter waits until the current block number is greater than the target block number
