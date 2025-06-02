@@ -263,15 +263,17 @@ type TxWithTimestamp struct {
 	TimeDeltaMs *big.Int
 }
 
+// createTxWithTimestamp - delta=blockTimeMs - txTimeMs + MaxNegativeTxTimeDeltaMs
 func createTxWithTimestamp(tx *L2Tx, blockTimeMs uint64) *TxWithTimestamp {
 	return &TxWithTimestamp{
 		Tx:          tx,
-		TimeDeltaMs: big.NewInt(MaxNegativeTxTimeDeltaMs + tx.Time().UnixMilli() - int64(blockTimeMs)),
+		TimeDeltaMs: big.NewInt((int64(blockTimeMs) + MaxNegativeTxTimeDeltaMs) - tx.Time().UnixMilli()),
 	}
 }
 
+// l2Tx - txTimeMs=blockTimeMs - delta + MaxNegativeTxTimeDeltaMs
 func (t *TxWithTimestamp) l2Tx(blockTimeMs uint64) *L2Tx {
-	t.Tx.SetTime(time.UnixMilli(t.TimeDeltaMs.Int64() + int64(blockTimeMs) - MaxNegativeTxTimeDeltaMs))
+	t.Tx.SetTime(time.UnixMilli((int64(blockTimeMs) - MaxNegativeTxTimeDeltaMs) - t.TimeDeltaMs.Int64()))
 	return t.Tx
 }
 
