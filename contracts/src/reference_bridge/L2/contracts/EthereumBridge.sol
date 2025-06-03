@@ -3,7 +3,7 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "../../../cross_chain_messaging/lib/CrossChainEnabledTEN.sol";
-import "../../../testing/WrappedERC20.sol";
+import "./WrappedERC20.sol";
 
 import "../../common/IBridge.sol";
 import "../interfaces/ITokenFactory.sol";
