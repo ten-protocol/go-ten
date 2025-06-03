@@ -2,15 +2,10 @@
 pragma solidity ^0.8.4;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "../cross_chain_messaging/common/IMessageBus.sol";
 
 // This is an implementation of a canonical ERC20 as used in the TEN network
 // where access to data has to be restricted.
 contract TenERC20 is ERC20 {
-    address bridge = 0xdeB34A740ECa1eC42C8b8204CBEC0bA34FDD27f3;
-
-    IMessageBus bus;
-
     enum Topics {
         MINT,
         TRANSFER
