@@ -2,7 +2,42 @@
 ---
 # Ten Testnet Change Log
 
-# May 2025-05-05 (v1.2.0)
+# June 2025-06-03 (v1.3.0)
+* This is an L2 deployment release meaning state will be lost in order to upgrade the network.
+* A full list of the PRs merged in this release is as below;
+    * `3c058637` Moved contracts (#2497)
+    * `10218b6f` Reduce default rollup retry interval for local testnet (#2496)
+    * `6a63b648` Add config param for rollup retry interval (#2492)
+    * `1093f7b5` Host: pass health check with any enclave healthy (#2493)
+    * `2c7131ab` Fix the timestamp delta formula (#2494)
+    * `c11d227a` Revert port default ports change (#2486)
+    * `cbf3fc11` Fix gateway builds for kubernetes (#2490)
+    * `feeb1e94` Add "sendtransaction" functionality via "getstorageat" to bypass the wallet provider (#2485)
+    * `025d7eec` Build gateway images for kubernetes deployment (#2487)
+    * `3ce55d3d` No need for getcode to be authenticated (#2488)
+    * `cc055120` Increased zen mint (#2477)
+    * `9a838526` Return session key address in list endpoint (#2484)
+    * `63b430e8` Adding missing deployment (#2482)
+    * `c4d02ff0` Make unrenouncableownable2step upgradable (#2473)
+    * `723abb82` Host: no need to wait for enclave to be up to start host services (#2469)
+    * `98fd1423` Config: default faucet prefunding to zero (#2478)
+    * `eadf68d1` Fix empty transactions issue on tenscan frontend (#2476) (#2479)
+    * `e05cbb19` Tx timestamp (#2474)
+    * `e4e866d9` Added wrapper contract for ten system calls (#2475)
+    * `264164dd` Fix incorrect log messages in upgrade docker scripts (#2472)
+    * `128b28f9` L1 contract upgrade scripts (#2444)
+    * `8028a257` Add systemcontractsupgrader to ten_config endpoint (#2456)
+    * `fdc1a726` Changes according to audit review (#2462)
+    * `ab57ac2c` L2 contract deploy: update node http port (#2468)
+    * `705210d0` Implement key-value nil check (#2467)
+    * `e461e179` Add new catastrophic error to edb (#2466)
+    * `2f3d0f6f` Read and write l1 config from git (#2460)
+    * `fb9899ab` Tweak mempool validation (#2464)
+    * `213f1e2d` Improve error reporting (#2459)
+    * `d5b231d7` Make gateway loglevel configurable (#2458)
+    * `68fe2761` Performance tweaks (#2461)
+  
+# May 2025-05-05 (v1.2.0, unreleased)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
     * `6cae3418` Prevent reattempting callbacks in same block as they are added (#2451)
