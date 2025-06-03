@@ -16,14 +16,16 @@ export default function Footer() {
 
             <div className="flex flex-col gap-4 md:flex-row justify-between border-t border-[rgab(255,255,255,.2)] pt-4 mt-4">
                 <div className="flex gap-4">
-                    <Link href="/privacy-policy" className="text-sm">
+                    <Link href="https://ten.xyz/privacy-policy" className="text-sm" target="_blank">
                         Privacy Policy
                     </Link>
-                    <Link href="/tos" className="text-sm">
+                    <Link href="https://ten.xyz/tos" className="text-sm" target="_blank">
                         Terms of Service
                     </Link>
                 </div>
-                <p className="text-sm">© 2025 TEN Protocol. All right reserved.</p>
+                <p className="text-sm">
+                    © {new Date().getFullYear()} TEN Protocol. All right reserved.
+                </p>
             </div>
         </footer>
     );
