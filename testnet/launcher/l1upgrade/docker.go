@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -73,44 +72,14 @@ func (s *UpgradeContracts) Start() error {
 func (s *UpgradeContracts) WaitForFinish() error {
 	cli, err := client.NewClientWithOpts(client.FromEnv)
 	if err != nil {
-		return fmt.Errorf("failed to create docker client: %w", err)
+		return err
 	}
 	defer cli.Close()
 
-	// make sure the container has finished execution
 	err = docker.WaitForContainerToFinish(s.containerID, 15*time.Minute)
 	if err != nil {
-		return fmt.Errorf("error waiting for container to finish: %w", err)
-	}
-
-	logsOptions := container.LogsOptions{
-		ShowStdout: true,
-		ShowStderr: true,
-		Tail:       "all",
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	out, err := cli.ContainerLogs(ctx, s.containerID, logsOptions)
-	if err != nil {
-		return fmt.Errorf("failed to get container logs: %w", err)
-	}
-	defer out.Close()
-
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, out)
-	if err != nil {
-		return fmt.Errorf("failed to read container logs: %w", err)
-	}
-
-	logs := buf.String()
-	fmt.Println("Container logs:")
-	fmt.Println(logs)
-
-	// Check if the upgrade was successful
-	if !strings.Contains(logs, "All upgrades completed successfully") {
-		return fmt.Errorf("upgrade verification not found in logs")
+		s.PrintLogs(cli)
+		return err
 	}
 
 	return nil

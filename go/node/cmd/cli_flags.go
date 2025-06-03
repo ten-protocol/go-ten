@@ -35,6 +35,7 @@ const (
 	batchIntervalFlag           = "batch_interval"
 	maxBatchIntervalFlag        = "max_batch_interval"
 	rollupIntervalFlag          = "rollup_interval"
+	rollupRetryIntervalFlag     = "rollup_retry_interval"
 	l1ChainIDFlag               = "l1_chain_id"
 	postgresDBHostFlag          = "postgres_db_host"
 	l1BeaconUrlFlag             = "l1_beacon_url"
@@ -78,6 +79,7 @@ func getFlagUsageMap() map[string]string {
 		batchIntervalFlag:           "Duration between each batch. Can be formatted like 500ms or 1s",
 		maxBatchIntervalFlag:        "Max interval between batches, if greater than batchInterval then some empty batches will be skipped. Can be formatted like 500ms or 1s",
 		rollupIntervalFlag:          "Duration between each rollup. Can be formatted like 500ms or 1s",
+		rollupRetryIntervalFlag:     "Duration to wait before retrying publishing a rollup. Can be formatted like 500ms or 1s",
 		l1ChainIDFlag:               "Chain ID of the L1 network",
 		postgresDBHostFlag:          "Host connection details for Postgres DB",
 		l1BeaconUrlFlag:             "Url for the beacon chain API",

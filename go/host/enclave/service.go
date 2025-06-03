@@ -103,24 +103,28 @@ func (e *Service) HealthStatus(ctx context.Context) host.HealthStatus {
 		return &host.BasicErrHealthStatus{ErrMsg: "not running"}
 	}
 
-	errors := make([]error, 0, len(e.enclaveGuardians))
+	errs := make([]error, 0, len(e.enclaveGuardians))
+	atLeastOneEnclaveHealthy := false
 
 	for i, guardian := range e.enclaveGuardians {
 		// check the enclave health, which in turn checks the DB health
 		enclaveHealthy, err := guardian.enclaveClient.HealthCheck(ctx)
 		if err != nil {
-			errors = append(errors, fmt.Errorf("unable to HealthCheck enclave[%d] - %w", i, err))
+			errs = append(errs, fmt.Errorf("unable to HealthCheck enclave[%d] - %w", i, err))
+			continue
 		} else if !enclaveHealthy {
-			errors = append(errors, fmt.Errorf("enclave[%d] reported itself not healthy", i))
+			errs = append(errs, fmt.Errorf("enclave[%d] reported itself not healthy", i))
+			continue
 		}
 
 		if !guardian.GetEnclaveState().InSyncWithL1() {
-			errors = append(errors, fmt.Errorf("enclave[%d - %s] not in sync with L1 - %s", i, guardian.GetEnclaveID(), guardian.GetEnclaveState()))
+			errs = append(errs, fmt.Errorf("enclave[%d - %s] not in sync with L1 - %s", i, guardian.GetEnclaveID(), guardian.GetEnclaveState()))
+			continue
 		}
+		atLeastOneEnclaveHealthy = true
 	}
 
-	// empty error msg means healthy
-	return &host.GroupErrsHealthStatus{Errors: errors}
+	return &host.GroupErrsHealthStatus{IsHealthy: atLeastOneEnclaveHealthy, Errors: errs}
 }
 
 // LookupBatchBySeqNo is used to fetch batch data from the enclave - it is only used as a fallback for the sequencer

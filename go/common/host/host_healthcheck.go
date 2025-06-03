@@ -31,11 +31,12 @@ func (l *BasicErrHealthStatus) Message() string {
 }
 
 type GroupErrsHealthStatus struct {
-	Errors []error
+	IsHealthy bool // override health status of the group (used because some issues may exist but be non-critical)
+	Errors    []error
 }
 
 func (g *GroupErrsHealthStatus) OK() bool {
-	return len(g.Errors) == 0
+	return g.IsHealthy || len(g.Errors) == 0
 }
 
 func (g *GroupErrsHealthStatus) Message() string {

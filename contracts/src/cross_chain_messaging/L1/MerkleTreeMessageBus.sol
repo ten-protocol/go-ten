@@ -39,7 +39,6 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
     /**
      * @dev Initializes the contract with provided owner
      * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
-     * @param withdrawalManager Address that will be granted the WITHDRAWAL_MANAGER_ROLE
      */
     function initialize(address initialOwner, address withdrawalManager) public override(IMerkleTreeMessageBus, MessageBus) initializer {
         // Initialize parent contracts
@@ -69,6 +68,21 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
         revokeRole(STATE_ROOT_MANAGER_ROLE, manager);
     }
 
+    /**
+     * @dev Grants WITHDRAWAL_MANAGER_ROLE to a new address
+     * @param withdrawalManager Address to be granted the role
+     */
+    function addWithdrawalManager(address withdrawalManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
+    }
+
+    /**
+     * @dev Revokes WITHDRAWAL_MANAGER_ROLE from an address
+     * @param withdrawalManager Address to have the role revoked
+     */
+    function removeWithdrawalManager(address withdrawalManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        revokeRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
+    }
     /**
      * @dev Adds a new state root with its activation time
      * @param stateRoot The state root to be added

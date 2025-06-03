@@ -10,6 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	tencommonrpc "github.com/ten-protocol/go-ten/go/common/rpc"
+
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -51,6 +54,14 @@ type AuthExecCfg struct {
 	adjustArgs func(acct *common.GWAccount) []any
 	cacheCfg   *cache.Cfg
 	timeout    time.Duration
+}
+
+func SendRawTx(ctx context.Context, w *services.Services, input hexutil.Bytes) (gethcommon.Hash, error) {
+	txRec, err := ExecAuthRPC[gethcommon.Hash](ctx, w, &AuthExecCfg{tryAll: true, timeout: sendTransactionDuration}, tencommonrpc.ERPCSendRawTransaction, input)
+	if err != nil {
+		return gethcommon.Hash{}, err
+	}
+	return *txRec, err
 }
 
 func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services, cfg *cache.Cfg, method string, args ...any) (*R, error) {

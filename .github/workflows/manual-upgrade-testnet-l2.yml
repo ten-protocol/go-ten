@@ -201,6 +201,7 @@ jobs:
               -batch_interval=${{ vars.L2_BATCH_INTERVAL }} \
               -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
               -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
+              -rollup_retry_interval=${{ vars.L1_ROLLUP_RETRY_INTERVAL }} \
               -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
               -l1_beacon_url=${{ vars.L1_BEACON_URL }} \
               -l1_blob_archive_url=${{ vars.L1_BLOB_ARCHIVE_URL }} \
@@ -220,8 +221,8 @@ jobs:
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com --port=80
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com --port=80
 
   deploy-faucet-on-dispatch:
     uses: ./.github/workflows/manual-deploy-testnet-faucet.yml

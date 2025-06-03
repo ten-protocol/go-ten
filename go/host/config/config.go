@@ -37,6 +37,8 @@ type HostConfig struct {
 	MaxRollupSize uint64
 	// The expected time between blocks on the L1 network
 	L1BlockTime time.Duration
+	// Delay for retrying rollups to handle blob gas spikes
+	L1RollupRetryDelay time.Duration
 	// CrossChainInterval - The interval at which the host will check for new cross chain data to submit
 	CrossChainInterval time.Duration
 
@@ -120,6 +122,7 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 
 		L1StartHash:          tenCfg.Network.L1.StartHash,
 		L1BlockTime:          tenCfg.Network.L1.BlockTime,
+		L1RollupRetryDelay:   tenCfg.Network.L1.RollupRetryDelay,
 		SequencerP2PAddress:  tenCfg.Network.Sequencer.P2PAddress,
 		NetworkConfigAddress: tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
 

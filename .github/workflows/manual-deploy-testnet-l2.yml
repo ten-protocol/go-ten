@@ -413,6 +413,7 @@ jobs:
                -batch_interval=${{ vars.L2_BATCH_INTERVAL }} \
                -max_batch_interval=${{ vars.L2_MAX_BATCH_INTERVAL }} \
                -rollup_interval=${{ vars.L2_ROLLUP_INTERVAL }} \
+               -rollup_retry_interval=${{ vars.L1_ROLLUP_RETRY_INTERVAL }} \
                -l1_chain_id=${{ vars.L1_CHAIN_ID }} \
                -l1_beacon_url=${{ vars.L1_BEACON_URL }} \
                -l1_blob_archive_url=${{ vars.L1_BLOB_ARCHIVE_URL }} \
@@ -433,9 +434,9 @@ jobs:
       - name: "Wait until obscuro node is healthy"
         shell: bash
         run: |
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
-          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-2-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-0-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com --port=80
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com --port=80
+          ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=obscuronode-2-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com --port=80
           
 
   grant-sequencer-enclaves:
@@ -530,6 +531,7 @@ jobs:
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
           DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
           DEPLOY_L2_RPCADDRESS: obscuronode-1-${{ github.event.inputs.testnet_type }}.uksouth.cloudapp.azure.com
+          DEPLOY_L2_HTTPPORT: 80
           DEPLOY_L2_WSPORT: 81
           DEPLOY_L2_FAUCETFUNDS: ${{ vars.FAUCET_INITIAL_FUNDS }}
           NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ needs.build.outputs.NETWORK_CONFIG_ADDR }}

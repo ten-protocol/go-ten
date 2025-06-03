@@ -104,6 +104,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 	hostServices.RegisterService(hostcommon.L1DataServiceName, l1Repo)
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
 	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
+	retryIntervalForBlobReceipt := config.L1RollupRetryDelay
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
 	l1Publisher := l1.NewL1Publisher(
 		hostIdentity,
@@ -116,6 +117,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		logger,
 		maxWaitForL1Receipt,
 		retryIntervalForL1Receipt,
+		retryIntervalForBlobReceipt,
 		hostStorage,
 		l1ChainCfg,
 	)
@@ -230,9 +232,11 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 			healthErrors = append(healthErrors, fmt.Sprintf("[%s] not healthy - %s", name, status.Message()))
 		}
 	}
+	overallHealth := len(healthErrors) == 0
 
 	// fetch all enclaves and check status of each
 	enclaveStatus := make([]common.Status, 0)
+	atLeastOneHealthyEnclave := false
 	for _, client := range h.services.Enclaves().GetEnclaveClients() {
 		status, err := client.Status(ctx)
 		if err != nil {
@@ -244,11 +248,15 @@ func (h *host) HealthCheck(ctx context.Context) (*hostcommon.HealthCheck, error)
 
 		if status.StatusCode == common.Unavailable {
 			healthErrors = append(healthErrors, fmt.Sprintf("Enclave with ID [%s] is unavailable", status.EnclaveID))
+			continue
 		}
+		atLeastOneHealthyEnclave = true
 	}
 
+	overallHealth = overallHealth && atLeastOneHealthyEnclave
+
 	return &hostcommon.HealthCheck{
-		OverallHealth: len(healthErrors) == 0,
+		OverallHealth: overallHealth,
 		Errors:        healthErrors,
 		Enclaves:      enclaveStatus,
 	}, nil
