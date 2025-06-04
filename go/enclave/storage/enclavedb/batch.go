@@ -77,15 +77,20 @@ func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.
 			return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
 		}
 
-		args = append(args, transaction.Tx.Hash().Bytes())     // tx_hash
-		args = append(args, txBytes)                           // content
-		args = append(args, toContractIds[i])                  // To
-		args = append(args, transaction.Tx.Type())             // Type
-		args = append(args, senderIds[i])                      // sender_address
-		args = append(args, fromIdx+i)                         // idx
-		args = append(args, height)                            // the batch height which contained it
-		args = append(args, isSynthetic)                       // is_synthetic if the transaction is a synthetic (internally derived transaction)
-		args = append(args, transaction.Tx.Time().UnixMilli()) // tx timestamp
+		txTime := transaction.Tx.Time().UnixMilli()
+		if transaction.IsSynthetic {
+			txTime = 0 // synthetic transactions do not have a timestamp
+		}
+
+		args = append(args, transaction.Tx.Hash().Bytes()) // tx_hash
+		args = append(args, txBytes)                       // content
+		args = append(args, toContractIds[i])              // To
+		args = append(args, transaction.Tx.Type())         // Type
+		args = append(args, senderIds[i])                  // sender_address
+		args = append(args, fromIdx+i)                     // idx
+		args = append(args, height)                        // the batch height which contained it
+		args = append(args, isSynthetic)                   // is_synthetic if the transaction is a synthetic (internally derived transaction)
+		args = append(args, txTime)                        // tx timestamp
 	}
 	_, err := dbtx.ExecContext(ctx, insert, args...)
 	if err != nil {
