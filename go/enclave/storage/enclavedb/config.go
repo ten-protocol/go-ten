@@ -20,6 +20,8 @@ const (
 const (
 	attInsert           = "insert into attestation (enclave_id, pub_key, node_type)  values (?,?,?)"
 	attSelect           = "select pub_key, node_type from attestation where enclave_id=?"
+	attExists           = "select EXISTS(select 1 from attestation where enclave_id = ?)"
+	attUpdateKey        = "update attestation set pub_key = ? where enclave_id = ?"
 	attUpdate           = "update attestation set node_type=? where enclave_id=?"
 	attSelectSequencers = "select enclave_id from attestation where node_type = ?"
 )
@@ -40,7 +42,11 @@ func WriteAttestation(ctx context.Context, db *sqlx.Tx, enclaveId common.Enclave
 	return db.ExecContext(ctx, attInsert, enclaveId.Bytes(), key, nodeType)
 }
 
-func UpdateAttestation(ctx context.Context, db *sqlx.Tx, enclaveId common.EnclaveID, nodeType common.NodeType) (sql.Result, error) {
+func UpdateAttestationKey(ctx context.Context, db *sqlx.Tx, enclaveId common.EnclaveID, key []byte) (sql.Result, error) {
+	return db.ExecContext(ctx, attUpdateKey, key, enclaveId.Bytes())
+}
+
+func UpdateAttestationType(ctx context.Context, db *sqlx.Tx, enclaveId common.EnclaveID, nodeType common.NodeType) (sql.Result, error) {
 	return db.ExecContext(ctx, attUpdate, nodeType, enclaveId.Bytes())
 }
 
@@ -57,6 +63,13 @@ func FetchAttestation(ctx context.Context, db *sqlx.DB, enclaveId common.Enclave
 		return nil, 0, err
 	}
 	return pubKey, nodeType, nil
+}
+
+// AttestationExists checks if an attestation exists for the given enclave ID
+func AttestationExists(ctx context.Context, db *sqlx.Tx, enclaveId common.EnclaveID) (bool, error) {
+	var exists bool
+	err := db.QueryRowContext(ctx, attExists, enclaveId.Bytes()).Scan(&exists)
+	return exists, err
 }
 
 func readSingleRow(ctx context.Context, db *sqlx.DB, query string, v any) ([]byte, error) {

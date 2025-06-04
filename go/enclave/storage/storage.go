@@ -533,7 +533,7 @@ func (s *storageImpl) StoreNodeType(ctx context.Context, enclaveId common.Enclav
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	res, err := enclavedb.UpdateAttestation(ctx, dbTx, enclaveId, nodeType)
+	res, err := enclavedb.UpdateAttestationType(ctx, dbTx, enclaveId, nodeType)
 	if err != nil {
 		return err
 	}
@@ -569,10 +569,22 @@ func (s *storageImpl) StoreNewEnclave(ctx context.Context, enclaveId common.Encl
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.WriteAttestation(ctx, dbTx, enclaveId, gethcrypto.CompressPubkey(key), common.Validator)
+
+	alreadyExists, err := enclavedb.AttestationExists(ctx, dbTx, enclaveId)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to check if attestation exists - %w", err)
 	}
+
+	compressedKey := gethcrypto.CompressPubkey(key)
+	if alreadyExists {
+		_, err = enclavedb.UpdateAttestationKey(ctx, dbTx, enclaveId, compressedKey)
+	} else {
+		_, err = enclavedb.WriteAttestation(ctx, dbTx, enclaveId, compressedKey, common.Validator)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to write/update attestation - %w", err)
+	}
+
 	return dbTx.Commit()
 }
 
