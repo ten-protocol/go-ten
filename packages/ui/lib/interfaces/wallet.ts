@@ -17,15 +17,23 @@ export interface IToken {
 }
 
 export interface INetworkConfig {
-  ManagementContractAddress: string;
+  NetworkConfig: string;
+  EnclaveRegistry: string;
+  DataAvailabilityRegistry: string;
+  CrossChain: string;
+  L1MessageBus: string;
+  L2MessageBus: string;
+  L1Bridge: string;
+  L2Bridge: string;
+  L1CrossChainMessenger: string;
+  L2CrossChainMessenger: string;
+  SystemContractsUpgrader: string;
   L1StartHash: string;
-  MessageBusAddress: string;
-  L2MessageBusAddress: string;
-  ImportantContracts: {
-    L1Bridge: string;
-    L1CrossChainMessenger: string;
-    L2Bridge: string;
-    L2CrossChainMessenger: string;
+  PublicSystemContracts: {
+      Fees: string;
+      MessageBus: string;
+      PublicCallbacks: string;
+      TransactionsPostProcessor: string;
   };
 }
 
