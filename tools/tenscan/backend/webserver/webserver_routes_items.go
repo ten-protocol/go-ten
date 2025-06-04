@@ -272,13 +272,13 @@ func (w *WebServer) getRollupBatches(c *gin.Context) {
 		return
 	}
 
-	batchListing, err := w.backend.GetRollupBatches(parsedHash, offset, size)
+	rollupBatchesListing, err := w.backend.GetRollupBatches(parsedHash, offset, size)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute getRollupBatches request %w", err), w.logger)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"result": batchListing})
+	c.JSON(http.StatusOK, gin.H{"result": rollupBatchesListing})
 }
 
 func (w *WebServer) getBatchTransactions(c *gin.Context) {

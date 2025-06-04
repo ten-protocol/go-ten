@@ -211,7 +211,7 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.
 	query := selectRollupBatches + whereQuery + orderQuery + limitQuery
 
 	// First get total count
-	countQuery := "SELECT COUNT(*) FROM rollups r JOIN batches b ON r.hash = b.rollup_hash" + whereQuery
+	countQuery := "SELECT COUNT(*) FROM rollup_host r JOIN batches b ON r.hash = b.rollup_hash" + whereQuery
 	var total uint64
 	err := db.GetSQLDB().QueryRow(countQuery, rollupHash.Bytes()).Scan(&total)
 	if err != nil {

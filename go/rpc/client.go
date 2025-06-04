@@ -39,7 +39,7 @@ const (
 	GetTransaction           = "scan_getTransaction"
 
 	GetRollupListing        = "scan_getRollupListing"
-	GetBatchListingNew      = "scan_getBatchListingNew"
+	GetBatchListingNew      = "scan_getBatchListing"
 	GetRollupByHash         = "scan_getRollupByHash"
 	GetRollupBatches        = "scan_getRollupBatches"
 	GetRollupBySeqNo        = "scan_getRollupBySeqNo"
