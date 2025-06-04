@@ -234,7 +234,7 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 	query := selectBatchTxs + whereQuery + orderQuery + limitQuery
 
 	// First get total count
-	countQuery := "SELECT COUNT(*) FROM transactions_host t JOIN batches b ON t.batch_hash = b.hash" + whereQuery
+	countQuery := "SELECT COUNT(*) FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence" + whereQuery
 	var total uint64
 	err := db.GetSQLDB().QueryRow(countQuery, batchHash.Bytes()).Scan(&total)
 	if err != nil {

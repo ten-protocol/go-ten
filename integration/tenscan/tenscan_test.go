@@ -212,6 +212,8 @@ func TestTenscan(t *testing.T) {
 	secondPageBatches := batchlistingObj.Result.BatchesData
 
 	// verify different pages have different batches
+	println("first page batch: ", firstPageBatches[0].FullHash.Hex())
+	println("second page batch: ", secondPageBatches[0].FullHash.Hex())
 	assert.NotEqual(t, firstPageBatches[0].FullHash, secondPageBatches[0].FullHash)
 
 	// test pagination for batch transactions
