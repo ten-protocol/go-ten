@@ -83,7 +83,8 @@ create table if not exists tx
     sender_address int        NOT NULL REFERENCES externally_owned_account,
     idx            int        NOT NULL,
     batch_height   int        NOT NULL,
-    is_synthetic   boolean    NOT NULL
+    is_synthetic   boolean    NOT NULL,
+    time           int
 );
 create index IDX_TX_HASH on tx (hash);
 create index IDX_TX_SENDER_ADDRESS on tx (sender_address);

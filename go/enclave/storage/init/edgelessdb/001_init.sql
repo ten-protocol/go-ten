@@ -95,6 +95,7 @@ create table if not exists tendb.tx
     idx            int        NOT NULL,
     batch_height   int        NOT NULL,
     is_synthetic   boolean    NOT NULL,
+    time           int,
     INDEX USING HASH (hash),
     INDEX (sender_address),
     INDEX (batch_height, idx),
