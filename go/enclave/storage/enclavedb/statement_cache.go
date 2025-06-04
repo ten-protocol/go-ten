@@ -34,7 +34,7 @@ func (sc *PreparedStatementCache) GetOrPrepare(query string) (*sqlx.Stmt, error)
 	sc.mutex.RUnlock()
 
 	if found {
-		sc.logger.Debug("Using cached prepared statement", "query", query)
+		sc.logger.Trace("Using cached prepared statement", "query", query)
 		return stmt, nil
 	}
 
