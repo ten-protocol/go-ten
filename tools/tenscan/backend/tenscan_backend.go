@@ -111,12 +111,18 @@ func (b *Backend) GetRollupByHash(hash gethcommon.Hash) (*common.PublicRollup, e
 	return b.obsClient.GetRollupByHash(hash)
 }
 
-func (b *Backend) GetRollupBatches(hash gethcommon.Hash) (*common.BatchListingResponse, error) {
-	return b.obsClient.GetRollupBatches(hash)
+func (b *Backend) GetRollupBatches(hash gethcommon.Hash, offset uint64, size uint64) (*common.BatchListingResponse, error) {
+	return b.obsClient.GetRollupBatches(hash, &common.QueryPagination{
+		Offset: offset,
+		Size:   uint(size),
+	})
 }
 
-func (b *Backend) GetBatchTransactions(hash gethcommon.Hash) (*common.TransactionListingResponse, error) {
-	return b.obsClient.GetBatchTransactions(hash)
+func (b *Backend) GetBatchTransactions(hash gethcommon.Hash, offset uint64, size uint64) (*common.TransactionListingResponse, error) {
+	return b.obsClient.GetBatchTransactions(hash, &common.QueryPagination{
+		Offset: offset,
+		Size:   uint(size),
+	})
 }
 
 /*func (b *Backend) DecryptTxBlob(payload string) ([]*common.L2Tx, error) {

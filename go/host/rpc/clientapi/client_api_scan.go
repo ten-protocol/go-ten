@@ -44,13 +44,8 @@ func (s *ScanAPI) GetTotalTransactionsQuery() (*big.Int, error) {
 }
 
 // GetBatchListingNew returns a paginated list of batches
-func (s *ScanAPI) GetBatchListingNew(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	return s.host.Storage().FetchBatchListing(pagination)
-}
-
-// GetBatchListing returns the deprecated version of batch listing
-func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	return s.host.Storage().FetchBatchListingDeprecated(pagination)
 }
 
 // GetPublicBatchByHash returns the public batch

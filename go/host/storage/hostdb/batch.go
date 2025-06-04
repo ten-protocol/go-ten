@@ -273,9 +273,59 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 }
 
 // GetBatchTransactions returns the TransactionListingResponse for a given batch hash
-func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
+func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	whereQuery := " WHERE b.hash=" + db.GetSQLStatement().Placeholder
-	return fetchBatchTxs(db.GetSQLDB(), whereQuery, batchHash.Bytes())
+	orderQuery := " ORDER BY t.timestamp DESC"
+	limitQuery := fmt.Sprintf(" LIMIT %d OFFSET %d", pagination.Size, pagination.Offset)
+	query := selectBatchTxs + whereQuery + orderQuery + limitQuery
+
+	// First get total count
+	countQuery := "SELECT COUNT(*) FROM transactions t JOIN batches b ON t.batch_hash = b.hash" + whereQuery
+	var total uint64
+	err := db.GetSQLDB().QueryRow(countQuery, batchHash.Bytes()).Scan(&total)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get total count: %w", err)
+	}
+
+	rows, err := db.GetSQLDB().Query(query, batchHash.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("query execution for select batch transactions failed: %w", err)
+	}
+	defer rows.Close()
+
+	var transactions []common.PublicTransaction
+	for rows.Next() {
+		var (
+			txHash         gethcommon.Hash
+			batchHeight    int64
+			batchTimestamp uint64
+			finality       string
+		)
+		err := rows.Scan(&txHash, &batchHeight, &batchTimestamp, &finality)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, errutil.ErrNotFound
+			}
+			return nil, fmt.Errorf("failed to fetch batch transactions: %w", err)
+		}
+
+		tx := common.PublicTransaction{
+			TransactionHash: txHash,
+			BatchHeight:     new(big.Int).SetInt64(batchHeight),
+			BatchTimestamp:  batchTimestamp,
+			Finality:        common.FinalityType(finality),
+		}
+		transactions = append(transactions, tx)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &common.TransactionListingResponse{
+		TransactionsData: transactions,
+		Total:           total,
+	}, nil
 }
 
 func EstimateRollupSize(db HostDB, fromSeqNo *big.Int) (uint64, error) {

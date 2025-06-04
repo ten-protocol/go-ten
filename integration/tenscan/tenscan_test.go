@@ -132,24 +132,6 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	type batchlistingDeprecated struct {
-		Result common.BatchListingResponseDeprecated `json:"result"`
-	}
-
-	batchlistingObjDeprecated := batchlistingDeprecated{}
-	err = json.Unmarshal(body, &batchlistingObjDeprecated)
-	assert.NoError(t, err)
-	assert.LessOrEqual(t, 9, len(batchlistingObjDeprecated.Result.BatchesData))
-	assert.LessOrEqual(t, uint64(9), batchlistingObjDeprecated.Result.Total)
-	// check results are descending order (latest first)
-	assert.LessOrEqual(t, batchlistingObjDeprecated.Result.BatchesData[1].Number.Cmp(batchlistingObjDeprecated.Result.BatchesData[0].Number), 0)
-	// check "hash" field is included in json response
-	assert.Contains(t, string(body), "\"hash\"")
-
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/v2/batches/?offset=0&size=10", serverAddress))
-	assert.NoError(t, err)
-	assert.Equal(t, 200, statusCode)
-
 	type batchlisting struct {
 		Result common.BatchListingResponse `json:"result"`
 	}
@@ -207,7 +189,7 @@ func TestTenscan(t *testing.T) {
 	assert.LessOrEqual(t, uint64(1), rollupListingObj.Result.Total)
 	assert.Contains(t, string(body), "\"hash\"")
 
-	// fetch batches in rollup
+	//FIXME add pagination to batch txs and rollup batches
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
