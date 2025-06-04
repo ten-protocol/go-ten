@@ -86,13 +86,6 @@ func (b *Backend) GetBatchesListing(offset uint64, size uint64) (*common.BatchLi
 	})
 }
 
-func (b *Backend) GetBatchesListingDeprecated(offset uint64, size uint64) (*common.BatchListingResponseDeprecated, error) {
-	return b.obsClient.GetBatchesListingDeprecated(&common.QueryPagination{
-		Offset: offset,
-		Size:   uint(size),
-	})
-}
-
 func (b *Backend) GetBlockListing(offset uint64, size uint64) (*common.BlockListingResponse, error) {
 	return b.obsClient.GetBlockListing(&common.QueryPagination{
 		Offset: offset,

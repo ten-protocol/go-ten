@@ -36,8 +36,6 @@ type BatchResolver interface {
 	FetchLatestBatch() (*common.BatchHeader, error)
 	// FetchBatchListing returns a paginated list of the public batch data
 	FetchBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error)
-	// FetchBatchListingDeprecated backwards compatible API to return batch data
-	FetchBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error)
 	// FetchBatchHeaderByHeight returns the `BatchHeader` with the given height
 	FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error)
 	// FetchBatchByHeight returns the `PublicBatch` with the given height

@@ -172,19 +172,19 @@ func (w *WebServer) getBatchListing(c *gin.Context) {
 
 	offset, err := strconv.ParseUint(offsetStr, 10, 32)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to parse getBatchListingNew offset units %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getBatchListing offset units %w", err), w.logger)
 		return
 	}
 
 	parseUint, err := strconv.ParseUint(sizeStr, 10, 64)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to parse getBatchListingNew size units %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to parse getBatchListing size units %w", err), w.logger)
 		return
 	}
 
 	batchesListing, err := w.backend.GetBatchesListing(offset, parseUint)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute getBatchListingNew request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getBatchListing request %w", err), w.logger)
 		return
 	}
 

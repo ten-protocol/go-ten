@@ -25,11 +25,6 @@ type BatchListingResponse struct {
 	Total       uint64
 }
 
-type BatchListingResponseDeprecated struct {
-	BatchesData []PublicBatchDeprecated
-	Total       uint64
-}
-
 type BlockListingResponse struct {
 	BlocksData []PublicBlock
 	Total      uint64
@@ -54,12 +49,6 @@ type PublicBatch struct {
 	TxCount          *big.Int              `json:"txCount"`
 	Header           *BatchHeader          `json:"header"`
 	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
-}
-
-// TODO (@will) remove when tenscan UI has been updated
-type PublicBatchDeprecated struct {
-	BatchHeader
-	TxHashes []TxHash `json:"txHashes"`
 }
 
 type PublicRollup struct {

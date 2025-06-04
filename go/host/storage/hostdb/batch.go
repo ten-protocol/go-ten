@@ -105,52 +105,6 @@ func GetBatchListing(db HostDB, pagination *common.QueryPagination) (*common.Bat
 	}, nil
 }
 
-// GetBatchListingDeprecated returns latest batches given a pagination.
-// For example, page 0, size 10 will return the latest 10 batches.
-func GetBatchListingDeprecated(db HostDB, pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	headBatch, err := GetCurrentHeadBatch(db)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch head batch - %w", err)
-	}
-	batchesFrom := headBatch.SequencerOrderNo.Uint64() - pagination.Offset
-	batchesTo := int(batchesFrom) - int(pagination.Size) + 1
-
-	if batchesTo <= 0 {
-		batchesTo = 1
-	}
-
-	var batches []common.PublicBatchDeprecated
-	var txHashes []common.TxHash
-	for i := batchesFrom; i >= uint64(batchesTo); i-- {
-		batch, err := GetPublicBatchBySequenceNumber(db, i)
-		if batch == nil {
-			continue
-		}
-		if err != nil {
-			return nil, fmt.Errorf("failed to get batch by seq no: %w", err)
-		}
-
-		txHashes, err = GetTxsBySequenceNumber(db, batch.Header.SequencerOrderNo.Uint64())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get tx hashes by seq no: %w", err)
-		}
-		if batch == nil || batch.Header == nil {
-			return nil, fmt.Errorf("batch or batch header is nil")
-		} else {
-			publicBatchDeprecated := common.PublicBatchDeprecated{
-				BatchHeader: *batch.Header,
-				TxHashes:    txHashes,
-			}
-			batches = append(batches, publicBatchDeprecated)
-		}
-	}
-
-	return &common.BatchListingResponseDeprecated{
-		BatchesData: batches,
-		Total:       uint64(len(batches)),
-	}, nil
-}
-
 // GetPublicBatchBySequenceNumber returns the batch with the given sequence number.
 func GetPublicBatchBySequenceNumber(db HostDB, seqNo uint64) (*common.PublicBatch, error) {
 	whereQuery := " WHERE sequence=" + db.GetSQLStatement().Placeholder
@@ -324,7 +278,7 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 
 	return &common.TransactionListingResponse{
 		TransactionsData: transactions,
-		Total:           total,
+		Total:            total,
 	}, nil
 }
 

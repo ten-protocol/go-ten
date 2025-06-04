@@ -199,16 +199,6 @@ func (oc *ObsClient) GetBatchesListing(pagination *common.QueryPagination) (*com
 	return &result, nil
 }
 
-// GetBatchesListingDeprecated returns a list of batches
-func (oc *ObsClient) GetBatchesListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	var result common.BatchListingResponseDeprecated
-	err := oc.rpcClient.Call(&result, rpc.GetBatchListing, pagination)
-	if err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-
 // GetBlockListing returns a list of block headers
 func (oc *ObsClient) GetBlockListing(pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
 	var result common.BlockListingResponse

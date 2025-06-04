@@ -185,10 +185,6 @@ func (s *storageImpl) FetchBatchListing(pagination *common.QueryPagination) (*co
 	return hostdb.GetBatchListing(s.db, pagination)
 }
 
-func (s *storageImpl) FetchBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	return hostdb.GetBatchListingDeprecated(s.db, pagination)
-}
-
 func (s *storageImpl) FetchLatestRollupHeader() (*common.RollupHeader, error) {
 	return hostdb.GetLatestRollup(s.db)
 }

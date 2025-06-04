@@ -104,11 +104,11 @@ func (s *ScanAPI) GetRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRol
 }
 
 // GetRollupBatches returns the list of batches included in a rollup given its hash
-func (s *ScanAPI) GetRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
-	return s.host.Storage().FetchRollupBatches(rollupHash)
+func (s *ScanAPI) GetRollupBatches(rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	return s.host.Storage().FetchRollupBatches(rollupHash, pagination)
 }
 
 // GetBatchTransactions returns the public tx data of all txs present in a rollup given its hash
-func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
-	return s.host.Storage().FetchBatchTransactions(batchHash)
+func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	return s.host.Storage().FetchBatchTransactions(batchHash, pagination)
 }
