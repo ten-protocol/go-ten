@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 
@@ -67,13 +68,18 @@ func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.
 		return nil
 	}
 	// creates a batch insert statement for all entries
-	insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height, is_synthetic) values " + repeat("(?,?,?,?,?,?,?,?)", ",", len(transactions))
+	insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height, is_synthetic, time) values " + repeat("(?,?,?,?,?,?,?,?,?)", ",", len(transactions))
 
 	args := make([]any, 0)
 	for i, transaction := range transactions {
 		txBytes, err := rlp.EncodeToBytes(transaction.Tx)
 		if err != nil {
 			return fmt.Errorf("failed to encode block receipts. Cause: %w", err)
+		}
+
+		txTime := transaction.Tx.Time().UnixMilli()
+		if transaction.IsSynthetic {
+			txTime = 0 // synthetic transactions do not have a timestamp
 		}
 
 		args = append(args, transaction.Tx.Hash().Bytes()) // tx_hash
@@ -84,6 +90,7 @@ func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.
 		args = append(args, fromIdx+i)                     // idx
 		args = append(args, height)                        // the batch height which contained it
 		args = append(args, isSynthetic)                   // is_synthetic if the transaction is a synthetic (internally derived transaction)
+		args = append(args, txTime)                        // tx timestamp
 	}
 	_, err := dbtx.ExecContext(ctx, insert, args...)
 	if err != nil {
@@ -315,7 +322,7 @@ func ReadTransaction(ctx context.Context, db *sqlx.DB, txHash gethcommon.Hash) (
 func ReadBatchTransactions(ctx context.Context, db *sqlx.DB, height uint64) ([]*common.L2Tx, error) {
 	var txs []*common.L2Tx
 
-	rows, err := db.QueryContext(ctx, "select content from tx where batch_height=? and is_synthetic=? order by idx", height, false)
+	rows, err := db.QueryContext(ctx, "select content, time from tx where batch_height=? and is_synthetic=? order by idx", height, false)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -327,7 +334,8 @@ func ReadBatchTransactions(ctx context.Context, db *sqlx.DB, height uint64) ([]*
 	for rows.Next() {
 		// receipt, tx, batch, height
 		var txContent []byte
-		err := rows.Scan(&txContent)
+		var timestamp int
+		err := rows.Scan(&txContent, &timestamp)
 		if err != nil {
 			return nil, err
 		}
@@ -335,6 +343,7 @@ func ReadBatchTransactions(ctx context.Context, db *sqlx.DB, height uint64) ([]*
 		if err := rlp.DecodeBytes(txContent, tx); err != nil {
 			return nil, fmt.Errorf("could not decode L2 transaction. Cause: %w", err)
 		}
+		tx.SetTime(time.UnixMilli(int64(timestamp)))
 		txs = append(txs, tx)
 	}
 	if rows.Err() != nil {

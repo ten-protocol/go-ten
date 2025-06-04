@@ -265,10 +265,13 @@ type TxWithTimestamp struct {
 
 // createTxWithTimestamp - delta=blockTimeMs - txTimeMs + MaxNegativeTxTimeDeltaMs
 func createTxWithTimestamp(tx *L2Tx, blockTimeMs uint64) *TxWithTimestamp {
-	val := (int64(blockTimeMs) + MaxNegativeTxTimeDeltaMs) - tx.Time().UnixMilli()
+	delta := (int64(blockTimeMs) + MaxNegativeTxTimeDeltaMs) - tx.Time().UnixMilli()
+	if delta < 0 {
+		panic(fmt.Sprintf("Should not happen. Negative delta: txTimeMs=%d, blockTimeMs=%d, delta=%d", tx.Time().UnixMilli(), blockTimeMs, delta))
+	}
 	return &TxWithTimestamp{
 		Tx:          tx,
-		TimeDeltaMs: big.NewInt(val),
+		TimeDeltaMs: big.NewInt(delta),
 	}
 }
 
