@@ -61,7 +61,13 @@ describe("Bridge", function () {
     messengerL2 = await Messenger.deploy();
     await messengerL2.initialize(busL2.getAddress())
 
-    bridgeL1 = await upgrades.deployProxy(L1Bridge, [await messengerL1.getAddress(), owner.address]);
+    bridgeL1 = await upgrades.deployProxy(
+      L1Bridge,
+      [await messengerL1.getAddress(), owner.address],
+      {
+        unsafeAllow: ["state-variable-assignment"],
+      }
+    )
     await bridgeL1.waitForDeployment();
     bridgeL2 = await L2Bridge.deploy();
     bridgeL2.initialize(messengerL2.getAddress(), bridgeL1.getAddress());
