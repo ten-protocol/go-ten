@@ -61,8 +61,14 @@ describe("Bridge", function () {
     messengerL2 = await Messenger.deploy();
     await messengerL2.initialize(busL2.getAddress())
 
-    bridgeL1 = await L1Bridge.deploy();
-    bridgeL1.initialize(messengerL1.getAddress());
+    bridgeL1 = await upgrades.deployProxy(
+      L1Bridge,
+      [await messengerL1.getAddress(), owner.address],
+      {
+        unsafeAllow: ["state-variable-assignment"],
+      }
+    )
+    await bridgeL1.waitForDeployment();
     bridgeL2 = await L2Bridge.deploy();
     bridgeL2.initialize(messengerL2.getAddress(), bridgeL1.getAddress());
 
@@ -272,7 +278,7 @@ describe("Bridge", function () {
       })).to.be.revertedWith("Message not found or finalized.");
   });
 
-  it("MessageBus retrieveAllFunds method should allow owner to extract all native funds from the message bus", async function() {
+  it("Bridge retrieveAllFunds method should allow owner to extract all native funds from the message bus", async function() {
     const [owner] = await ethers.getSigners();
     const amount = ethers.parseEther("0.01");
 
@@ -285,7 +291,7 @@ describe("Bridge", function () {
     await expect(await ethers.provider.getBalance(bridgeL1.getAddress())).to.equal(amount);
 
     // retrieve all native funds from the message bus contract on the L1
-    const retrieveAllFundsTx = bridgeL1.retrieveAllFunds();
+    const retrieveAllFundsTx = bridgeL1.retrieveAllFunds(owner.address);
     await expect(retrieveAllFundsTx).to.not.be.reverted;
 
     // check that the funds were drained

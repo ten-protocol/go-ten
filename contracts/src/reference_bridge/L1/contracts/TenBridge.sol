@@ -32,9 +32,9 @@ contract TenBridge is
 
     address remoteBridgeAddress;
 
-    function initialize(address messenger) public initializer {
+    function initialize(address messenger, address owner) public initializer {
         CrossChainEnabledTEN.configure(messenger);
-        _grantRole(ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, owner);
         _grantRole(NATIVE_TOKEN_ROLE, address(0x0));
     }
 
@@ -140,9 +140,10 @@ contract TenBridge is
 
     /**
     * @dev Retrieves all funds from the contract (Testnet only - to be removed before mainnet deployment)
+    * @param receiver The address to receive the funds
      */
-    function retrieveAllFunds() external onlyRole(ADMIN_ROLE) {
-        (bool ok, ) = msg.sender.call{value: address(this).balance}("");
+    function retrieveAllFunds(address receiver) external onlyRole(ADMIN_ROLE) {
+        (bool ok, ) = receiver.call{value: address(this).balance}("");
         require(ok, "failed sending value");
     }
 }

@@ -165,17 +165,6 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
         );
     }
 
-    /**
-     * @dev Retrieves all funds from the contract (Testnet only - to be removed before mainnet deployment)
-     * @param receiver The address to receive the funds
-     */
-    function retrieveAllFunds(
-        address receiver
-    ) external onlyOwner {
-        (bool ok, ) = receiver.call{value: address(this).balance}("");
-        require(ok, "failed sending value");
-    }
-
     fallback() external {
         revert("unsupported");
     }
