@@ -68,6 +68,16 @@ export const useContractsService = () => {
       address: contracts?.item.TransactionsPostProcessor,
       confirmed: true,
     },
+    {
+      name: "Public Callbacks",
+      address: contracts?.item?.PublicSystemContracts.PublicCallbacks,
+      confirmed: true,
+    },
+    {
+      name: "System Contracts Upgrader",
+      address: contracts?.item.SystemContractsUpgrader,
+      confirmed: true,
+    },
   ];
 
   const sequencerData = [
