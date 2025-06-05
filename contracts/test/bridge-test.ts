@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import hre, { ethers } from "hardhat";
+import hre, { ethers, upgrades } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { bridge } from "../typechain-types/src";
 import { MessageBus, TenBridge, WrappedERC20__factory } from "../typechain-types";
@@ -14,7 +14,7 @@ import type {
 } from 'ethers';
 import { WrappedERC20 } from "../typechain-types/src/common";
 
-describe.skip("Bridge", function () {
+describe("Bridge", function () {
 
   let busL1: MessageBus
   let busL2: MessageBus
@@ -32,14 +32,17 @@ describe.skip("Bridge", function () {
     const Messenger = await hre.ethers.getContractFactory("CrossChainMessenger");
     const L1Bridge = await hre.ethers.getContractFactory("TenBridge");
     const L2Bridge = await hre.ethers.getContractFactory("EthereumBridge");
+    const Fees = await hre.ethers.getContractFactory("Fees");
 
     const [owner] = await ethers.getSigners();
+    if (!owner) {
+      throw new Error("Owner not found");
+    }
 
     const ERC20 = await hre.ethers.getContractFactory("ConstantSupplyERC20", owner);
 
-    console.log(`Deploying erc20`);
     try {
-      const erc20 = await ERC20.deploy("XXX", "XXX", 100000);
+      const erc20 = await ERC20.deploy("XXX", "XXX", 100000n);
       await erc20.waitForDeployment();
       erc20address = await erc20.getAddress();
     } catch(err) {
@@ -47,11 +50,11 @@ describe.skip("Bridge", function () {
       throw err;
     }
 
-
-    console.log(`Deployed erc20`);
-
-    busL1 = await MessageBus.deploy();
-    busL2 = await MessageBus.deploy();
+    const fees = await Fees.deploy();
+    busL1 = await upgrades.deployProxy(MessageBus, [owner.address, await fees.getAddress()]);
+    busL2 = await upgrades.deployProxy(MessageBus, [owner.address, await fees.getAddress()]);
+    const busL1Tx = await busL1.waitForDeployment();
+    const busL2Tx = await busL2.waitForDeployment();
 
     messengerL1 = await Messenger.deploy();
     await messengerL1.initialize(busL1.getAddress());
@@ -112,7 +115,11 @@ describe.skip("Bridge", function () {
           // same for messenger.
           let bus : MessageBus = event.address == await busL1.getAddress() ? busL2 : busL1;
           let messenger : CrossChainMessenger = event.address == await busL1.getAddress() ? messengerL2 : messengerL1;
-          await (await bus.storeCrossChainMessage(xchainMessage, 1)).wait();
+          const [owner] = await ethers.getSigners();
+          if (!owner) {
+            throw new Error("Owner not found");
+          }
+          await (await bus.connect(owner).storeCrossChainMessage(xchainMessage, 1)).wait();
            
           return { 
               msg: xchainMessage,
@@ -206,68 +213,6 @@ describe.skip("Bridge", function () {
         .revertedWith("Message not found or finalized.");
   });
 
-  /* //TODO: @siliev - reenable; new ethers is fucking it up, but e2e tests pass so they cover this
-  it("Bridge mock environment full test.", async function () {
-      const [owner] = await ethers.getSigners();
-
-      const wrappedERC20 = await hre.ethers.getContractFactory("WrappedERC20");
-      const l1Erc20 : WrappedERC20 = await wrappedERC20.deploy("ZZZ", "ZZZ");
-      const whitelistTx = bridgeL1.whitelistToken(await l1Erc20.getAddress(), "o.ZZZ", "o.ZZZ");
-      
-      
-      await expect(whitelistTx, "Transaction whitelisting the erc20 token failed!").to.not.be.reverted;
-      let messages = await submitMessagesFromTx(await whitelistTx);
-      await expect(messages, "Missing message to create wrapped tokens on L2 bridge.").not.null;
-      await messages!.relayAll();
-
-      await expect(await bridgeL2.wrappedTokens(erc20address), "L2 bridge should return zero for non whitelisted contracts.")
-        .to.hexEqual(ethers.ZeroAddress);
-        
-      const localErc = await bridgeL2.remoteToLocalToken(await l1Erc20.getAddress());
-      const l2Erc20 : WrappedERC20 = wrappedERC20.attach(localErc);
-
-      const l2Erc20ForOwner = l2Erc20.connect(owner);
-      const l1Erc20ForOwner = l1Erc20.connect(owner);
-
-
-      expect(await bridgeL2.wrappedTokens(await l2Erc20.getAddress()), "L2 bridge should not return zero for whitelisted contract.")
-        .to.not.hexEqual(ethers.ZeroAddress);
-
-      await expect(l1Erc20.issueFor(owner.address, 10_000_000), "Failed to mint L1 token").not.reverted;
-      await expect(l1Erc20.approve(bridgeL1.getAddress(), 9_000_000), "Failed to increase allowance!").not.reverted;
-
-      await expect(bridgeL1.sendERC20(l1Erc20.getAddress(), 10_000_000, owner.address), "Sending more than allowed should revert").reverted;
-
-      const sendAssetsTx = bridgeL1.sendERC20(l1Erc20.getAddress(), 9_000_000, owner.address);      
-      await expect(sendAssetsTx, "Sending as much as allowed should not revert").not.reverted;
-
-      await expect(await l1Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "Remaining L1 balance should be initial minus bridged amount!")
-        .to.equal(10_000_000 - 9_000_000);
-
-      messages = await submitMessagesFromTx(await sendAssetsTx);
-      await expect(messages, "Sending assets to L2 resulted in no messages!").not.null;
-
-
-      await expect(await l2Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "There should be no balance before relaying stored messages!").to.equal(0);
-
-      await messages!.relayAll();
-
-      await expect(await l2Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "Relay should have granted balance").to.equal(9_000_000);
-
-      await expect(l2Erc20.approve(bridgeL2.address, 8_000_000), "L2 allowance increase should not revert.").not.reverted;
-
-      const bridgeBackTx = bridgeL2.sendERC20(l2Erc20.getAddress(), 8_000_000, owner.address);
-      await expect(bridgeBackTx, "Sending assets back to L1 should not revert").not.reverted;
-    
-      messages = await submitMessagesFromTx(await bridgeBackTx);
-      await expect(messages, "Sending assets back to L1 should produce cross chain messages").not.null;
-      await messages!.relayAll();
-
-      await expect(await l2Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "Remaining L2 balance should be reduced!").to.equal(1_000_000);
-      await expect(await l1Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "New L1 balance should match leftover + bridged amount")
-        .to.equal(1_000_000 + 8_000_000);
-  }); */
-
   it("Whitelisting tokens works and relaying creates L2 contracts.", async function () {
 
       const whitelistTx = bridgeL1.whitelistToken(erc20address, "XXX", "XXX");
@@ -331,19 +276,88 @@ describe.skip("Bridge", function () {
     const [owner] = await ethers.getSigners();
     const amount = ethers.parseEther("0.01");
 
-    const tx = await busL1.sendValueToL2(owner.address, amount, {
+    const tx = bridgeL1.sendNative(owner?.address, {
       value: amount
     });
     await expect(tx).to.not.be.reverted;
 
     // check that the funds were received
-    await expect(await ethers.provider.getBalance(busL1.getAddress())).to.equal(amount);
+    await expect(await ethers.provider.getBalance(bridgeL1.getAddress())).to.equal(amount);
 
     // retrieve all native funds from the message bus contract on the L1
-    const retrieveAllFundsTx = busL1.retrieveAllFunds(owner.address);
+    const retrieveAllFundsTx = bridgeL1.retrieveAllFunds();
     await expect(retrieveAllFundsTx).to.not.be.reverted;
 
     // check that the funds were drained
-    await expect(await ethers.provider.getBalance(busL1.getAddress())).to.equal(0);
+    await expect(await ethers.provider.getBalance(bridgeL1.getAddress())).to.equal(0);
+  });
+
+  it("Bridge mock environment full test.", async function () {
+    const [owner] = await ethers.getSigners();
+    if (!owner) {
+      throw new Error("Owner not found");
+    }
+
+    const wrappedERC20 = await hre.ethers.getContractFactory("WrappedERC20");
+    const l1Erc20 : WrappedERC20 = await wrappedERC20.deploy("ZZZ", "ZZZ");
+    const whitelistTx = bridgeL1.whitelistToken(await l1Erc20.getAddress(), "o.ZZZ", "o.ZZZ");
+    
+    
+    await expect(whitelistTx, "Transaction whitelisting the erc20 token failed!").to.not.be.reverted;
+    let messages = await submitMessagesFromTx(await whitelistTx);
+    await expect(messages, "Missing message to create wrapped tokens on L2 bridge.").not.null;
+    await messages!.relayAll();
+
+    console.log(`Created whitelisted token`);
+
+    await expect(await bridgeL2.wrappedTokens(erc20address), "L2 bridge should return zero for non whitelisted contracts.")
+      .to.hexEqual(ethers.ZeroAddress);
+      
+    const localErc = await bridgeL2.remoteToLocalToken(await l1Erc20.getAddress());
+    const l2Erc20 : WrappedERC20 = wrappedERC20.attach(localErc);
+
+    const l2Erc20ForOwner = l2Erc20.connect(owner);
+    const l1Erc20ForOwner = l1Erc20.connect(owner);
+
+
+    expect(await bridgeL2.wrappedTokens(await l2Erc20.getAddress()), "L2 bridge should not return zero for whitelisted contract.")
+      .to.not.hexEqual(ethers.ZeroAddress);
+
+    await expect(l1Erc20.issueFor(owner.address, 10_000_000), "Failed to mint L1 token").not.reverted;
+    await expect(l1Erc20.approve(bridgeL1.getAddress(), 9_000_000), "Failed to increase allowance!").not.reverted;
+
+    await expect(bridgeL1.sendERC20(l1Erc20.getAddress(), 10_000_000, owner.address), "Sending more than allowed should revert").reverted;
+
+    const sendAssetsTx = bridgeL1.sendERC20(l1Erc20.getAddress(), 9_000_000, owner.address);      
+    await expect(sendAssetsTx, "Sending as much as allowed should not revert").not.reverted;
+
+    expect(await l1Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "Remaining L1 balance should be initial minus bridged amount!")
+      .to.equal(10_000_000 - 9_000_000);
+
+    messages = await submitMessagesFromTx(await sendAssetsTx);
+    expect(messages, "Sending assets to L2 resulted in no messages!").not.null;
+
+
+    expect(await l2Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "There should be no balance before relaying stored messages!").to.equal(0);
+
+    await messages!.relayAll();
+
+    console.log(`Bridged to L2`);
+
+    expect(await l2Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "Relay should have granted balance").to.equal(9_000_000);
+
+    await expect(l2Erc20.approve(bridgeL2.getAddress(), 8_000_000), "L2 allowance increase should not revert.").not.reverted;
+
+    const bridgeBackTx = await bridgeL2.sendERC20(l2Erc20.getAddress(), 8_000_000, owner.address);
+    await expect(bridgeBackTx, "Sending assets back to L1 should not revert").not.reverted;
+  
+    console.log(`before last relay`);
+    messages = await submitMessagesFromTx(bridgeBackTx);
+    expect(messages, "Sending assets back to L1 should produce cross chain messages").not.null;
+    await messages!.relayAll();
+
+    expect(await l2Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "Remaining L2 balance should be reduced!").to.equal(1_000_000);
+    expect(await l1Erc20ForOwner.balanceOf(owner.address, { from: owner.address }), "New L1 balance should match leftover + bridged amount")
+      .to.equal(1_000_000 + 8_000_000);
   });
 });
