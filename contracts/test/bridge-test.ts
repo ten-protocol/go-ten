@@ -61,8 +61,8 @@ describe("Bridge", function () {
     messengerL2 = await Messenger.deploy();
     await messengerL2.initialize(busL2.getAddress())
 
-    bridgeL1 = await L1Bridge.deploy();
-    bridgeL1.initialize(messengerL1.getAddress());
+    bridgeL1 = await upgrades.deployProxy(L1Bridge, [await messengerL1.getAddress(), owner.address]);
+    await bridgeL1.waitForDeployment();
     bridgeL2 = await L2Bridge.deploy();
     bridgeL2.initialize(messengerL2.getAddress(), bridgeL1.getAddress());
 

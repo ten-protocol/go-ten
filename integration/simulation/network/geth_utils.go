@@ -184,7 +184,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 	}
 
 	opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
-	tx, err = tenBridge.Initialize(opts, ccAddress)
+	tx, err = tenBridge.Initialize(opts, ccAddress, wallets.ContractOwnerWallet.Address())
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize TenBridge contract. Cause: %w", err)
 	}
