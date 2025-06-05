@@ -111,6 +111,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Network.GenesisJSON = genesis
 		tenCfg.Network.Sequencer.P2PAddress = fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultHostP2pOffset)
 		tenCfg.Network.L1.BlockTime = simParams.AvgBlockDuration
+		tenCfg.Network.L1.RollupRetryDelay = simParams.AvgBlockDuration
 		tenCfg.Network.L1.L1Contracts.NetworkConfigContract = simParams.L1TenData.NetworkConfigAddress
 		tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry = simParams.L1TenData.DataAvailabilityRegistryAddress
 		tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract = simParams.L1TenData.EnclaveRegistryAddress

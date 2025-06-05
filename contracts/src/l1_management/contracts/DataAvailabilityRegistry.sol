@@ -41,7 +41,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
     INetworkEnclaveRegistry public enclaveRegistry;
 
     constructor() {
-        _transferOwnership(msg.sender);
+        _disableInitializers();
     }
 
     /**
@@ -55,7 +55,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
         address _enclaveRegistry,
         address _owner
     ) public initializer {
-        __Ownable_init(_owner);
+        __UnrenouncableOwnable2Step_init(_owner);
         merkleMessageBus = IMerkleTreeMessageBus(_merkleMessageBus);
         enclaveRegistry = INetworkEnclaveRegistry(_enclaveRegistry);
         lastBatchSeqNo = 0;

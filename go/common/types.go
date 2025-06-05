@@ -1,9 +1,13 @@
 package common
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
+
+	"github.com/ethereum/go-ethereum/rlp"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -246,4 +250,64 @@ func (s *SystemContractAddresses) ToString() string {
 		str += fmt.Sprintf("%s: %s; ", name, addr.Hex())
 	}
 	return str
+}
+
+// MaxNegativeTxTimeDeltaMs - to avoid negative numbers in the timestamp delta (block.time - tx.time), we adjust by 10s so that it's impossible to have negative values
+// This represents the period until which transactions will come in *after* the sequencer started building a new batch.
+// this constant is used by the mempool as well.
+const MaxNegativeTxTimeDeltaMs = 10 * 1000
+
+// TxWithTimestamp - RLP serializes a transaction together with the timestamp delta from the block time
+type TxWithTimestamp struct {
+	Tx          *L2Tx
+	TimeDeltaMs *big.Int
+}
+
+// createTxWithTimestamp - delta=blockTimeMs - txTimeMs + MaxNegativeTxTimeDeltaMs
+func createTxWithTimestamp(tx *L2Tx, blockTimeMs uint64) *TxWithTimestamp {
+	delta := (int64(blockTimeMs) + MaxNegativeTxTimeDeltaMs) - tx.Time().UnixMilli()
+	if delta < 0 {
+		panic(fmt.Sprintf("Should not happen. Negative delta: txTimeMs=%d, blockTimeMs=%d, delta=%d", tx.Time().UnixMilli(), blockTimeMs, delta))
+	}
+	return &TxWithTimestamp{
+		Tx:          tx,
+		TimeDeltaMs: big.NewInt(delta),
+	}
+}
+
+// l2Tx - txTimeMs=blockTimeMs - delta + MaxNegativeTxTimeDeltaMs
+func (t *TxWithTimestamp) l2Tx(blockTimeMs uint64) *L2Tx {
+	val := (int64(blockTimeMs) + MaxNegativeTxTimeDeltaMs) - t.TimeDeltaMs.Int64()
+	t.Tx.SetTime(time.UnixMilli(val))
+	return t.Tx
+}
+
+type TxsWithTimeStamp struct {
+	TxsTst      []*TxWithTimestamp
+	BlockTimeMs uint64
+}
+
+func (txs TxsWithTimeStamp) Txs() []*L2Tx {
+	txsOnly := make([]*L2Tx, len(txs.TxsTst))
+	for i, tx := range txs.TxsTst {
+		txsOnly[i] = tx.l2Tx(txs.BlockTimeMs)
+	}
+	return txsOnly
+}
+
+func CreateTxsAndTimeStamp(tx []*L2Tx, blockTime uint64) *TxsWithTimeStamp {
+	txs := make([]*TxWithTimestamp, len(tx))
+	blockTimeMs := blockTime * 1000
+	for i, t := range tx {
+		txs[i] = createTxWithTimestamp(t, blockTimeMs)
+	}
+	return &TxsWithTimeStamp{TxsTst: txs, BlockTimeMs: blockTimeMs}
+}
+
+func (txs TxsWithTimeStamp) EncodeIndex(i int, w *bytes.Buffer) {
+	_ = rlp.Encode(w, txs.TxsTst[i])
+}
+
+func (txs TxsWithTimeStamp) Len() int {
+	return len(txs.TxsTst)
 }

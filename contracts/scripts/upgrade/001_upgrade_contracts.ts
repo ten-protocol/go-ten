@@ -34,7 +34,8 @@ export async function upgradeContract(
         unsafeAllow: ['constructor']
     } as UpgradeOptions);
 
-    console.log(`${contractName} upgraded — new implementation at ${upgraded.getAddress()}`);
+    const address = await upgraded.getAddress();
+    console.log(`${contractName} upgraded — new implementation at ${address}`);
     return upgraded;
 }
 

@@ -564,6 +564,12 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 }
 
 func listSKRequestHandler(walletExt *services.Services, conn UserConn) {
+	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
+		if user.SessionKey == nil {
+			return []byte{}, nil
+		}
+		return []byte(hexutils.BytesToHex(user.SessionKey.Account.Address.Bytes())), nil
+	})
 }
 
 func createSKRequestHandler(walletExt *services.Services, conn UserConn) {

@@ -24,7 +24,7 @@ values ('CURRENT_SEQ', -1);
 create table if not exists tendb.attestation
 (
     id         INTEGER AUTO_INCREMENT,
-    enclave_id binary(20),
+    enclave_id binary(20) UNIQUE NOT NULL,
     pub_key    binary(33) NOT NULL,
     node_type  smallint   NOT NULL,
     primary key (id)
@@ -95,6 +95,7 @@ create table if not exists tendb.tx
     idx            int        NOT NULL,
     batch_height   int        NOT NULL,
     is_synthetic   boolean    NOT NULL,
+    time           bigint,
     INDEX USING HASH (hash),
     INDEX (sender_address),
     INDEX (batch_height, idx),
