@@ -206,7 +206,7 @@ func GetCrossChainMessagesTree(db HostDB, messageHash gethcommon.Hash) ([][]inte
 
 func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	whereQuery := " WHERE r.hash=" + db.GetSQLStatement().Placeholder
-	orderQuery := " ORDER BY b.height DESC"
+	orderQuery := " ORDER BY b.sequence DESC"
 	limitQuery := fmt.Sprintf(" LIMIT %d OFFSET %d", pagination.Size, pagination.Offset)
 	query := selectRollupBatches + whereQuery + orderQuery + limitQuery
 

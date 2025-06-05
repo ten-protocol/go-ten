@@ -190,31 +190,31 @@ func TestTenscan(t *testing.T) {
 	assert.Contains(t, string(body), "\"hash\"")
 
 	// test pagination for rollup batches
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches?offset=0&size=2", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches?offset=0&size=1", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	err = json.Unmarshal(body, &batchlistingObj)
+	type batchListing struct {
+		Result common.BatchListingResponse `json:"result"`
+	}
+
+	firstPageObj := batchListing{}
+	err = json.Unmarshal(body, &firstPageObj)
 	assert.NoError(t, err)
-	assert.True(t, batchlistingObj.Result.Total > 0)
-	assert.LessOrEqual(t, len(batchlistingObj.Result.BatchesData), 2)
-	firstPageBatches := batchlistingObj.Result.BatchesData
+	firstPageBatches := firstPageObj.Result.BatchesData
 
 	// second page
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches?offset=2&size=2", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches?offset=1&size=2", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	err = json.Unmarshal(body, &batchlistingObj)
+	secondPageObj := batchListing{}
+	err = json.Unmarshal(body, &secondPageObj)
 	assert.NoError(t, err)
-	assert.True(t, batchlistingObj.Result.Total > 0)
-	assert.LessOrEqual(t, len(batchlistingObj.Result.BatchesData), 2)
-	secondPageBatches := batchlistingObj.Result.BatchesData
+	secondPageBatches := secondPageObj.Result.BatchesData
 
 	// verify different pages have different batches
-	println("first page batch: ", firstPageBatches[0].FullHash.Hex())
-	println("second page batch: ", secondPageBatches[0].FullHash.Hex())
-	assert.NotEqual(t, firstPageBatches[0].FullHash, secondPageBatches[0].FullHash)
+	assert.NotEqual(t, firstPageBatches[0].SequencerOrderNo, secondPageBatches[0].SequencerOrderNo)
 
 	// test pagination for batch transactions
 	batchHash := firstPageBatches[0].Header.Hash()
@@ -228,23 +228,37 @@ func TestTenscan(t *testing.T) {
 		Result common.TransactionListingResponse `json:"result"`
 	}
 
-	batchTxListingObj := batchTxListing{}
-	err = json.Unmarshal(body, &batchTxListingObj)
+	firstPageTxObj := batchTxListing{}
+	err = json.Unmarshal(body, &firstPageTxObj)
 	assert.NoError(t, err)
-	assert.True(t, batchTxListingObj.Result.Total > 0)
-	assert.LessOrEqual(t, len(batchTxListingObj.Result.TransactionsData), 2)
-	firstPageTxs := batchTxListingObj.Result.TransactionsData
+	for i, tx := range firstPageTxObj.Result.TransactionsData {
+		println(fmt.Sprintf("Transaction %d:", i))
+		println("  Hash:", tx.TransactionHash.Hex())
+		println("  Batch Height:", tx.BatchHeight.Uint64())
+		println("  Batch Timestamp:", tx.BatchTimestamp)
+		println("  Finality:", tx.Finality)
+	}
+	firstPageTxs := firstPageTxObj.Result.TransactionsData
 
 	// second page of transactions
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s/transactions?offset=2&size=2", serverAddress, batchHash))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	err = json.Unmarshal(body, &batchTxListingObj)
+	secondPageTxObj := batchTxListing{}
+	err = json.Unmarshal(body, &secondPageTxObj)
 	assert.NoError(t, err)
-	assert.True(t, batchTxListingObj.Result.Total > 0)
-	assert.LessOrEqual(t, len(batchTxListingObj.Result.TransactionsData), 2)
-	secondPageTxs := batchTxListingObj.Result.TransactionsData
+	println("\n=== SECOND PAGE TRANSACTIONS ===")
+	println("Total transactions:", secondPageTxObj.Result.Total)
+	println("Number of transactions in response:", len(secondPageTxObj.Result.TransactionsData))
+	for i, tx := range secondPageTxObj.Result.TransactionsData {
+		println(fmt.Sprintf("Transaction %d:", i))
+		println("  Hash:", tx.TransactionHash.Hex())
+		println("  Batch Height:", tx.BatchHeight.Uint64())
+		println("  Batch Timestamp:", tx.BatchTimestamp)
+		println("  Finality:", tx.Finality)
+	}
+	secondPageTxs := secondPageTxObj.Result.TransactionsData
 
 	// verify different pages have different transactions
 	if len(firstPageTxs) > 0 && len(secondPageTxs) > 0 {

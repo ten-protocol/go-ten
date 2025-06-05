@@ -229,7 +229,7 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 // GetBatchTransactions returns the TransactionListingResponse for a given batch hash
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	whereQuery := " WHERE b.hash=" + db.GetSQLStatement().Placeholder
-	orderQuery := " ORDER BY t.timestamp DESC"
+	orderQuery := " ORDER BY t.id DESC"
 	limitQuery := fmt.Sprintf(" LIMIT %d OFFSET %d", pagination.Size, pagination.Offset)
 	query := selectBatchTxs + whereQuery + orderQuery + limitQuery
 
