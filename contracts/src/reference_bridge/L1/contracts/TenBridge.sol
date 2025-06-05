@@ -32,9 +32,9 @@ contract TenBridge is
 
     address remoteBridgeAddress;
 
-    function initialize(address messenger) public initializer {
+    function initialize(address messenger, address owner) public initializer {
         CrossChainEnabledTEN.configure(messenger);
-        _grantRole(ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, owner);
         _grantRole(NATIVE_TOKEN_ROLE, address(0x0));
     }
 

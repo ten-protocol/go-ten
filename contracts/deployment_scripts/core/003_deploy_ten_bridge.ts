@@ -27,7 +27,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             execute: {
                 init: {
                     methodName: "initialize",
-                    args: [ messengerL1.address ]
+                    args: [ messengerL1.address, deployer ]
                 }
             }
         }
