@@ -9,6 +9,16 @@ on:
         description: 'Tag to build and push (leave empty for latest)'
         required: true
         default: ''
+      azure_tenant_id:
+        description: 'Azure Tenant ID'
+        required: false
+        type: string
+        default: ''
+      azure_subscription_id:
+        description: 'Azure Subscription ID'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   build-and-push:
@@ -45,8 +55,13 @@ jobs:
       - name: 'Build and push obscuro node images'
         env:
           VERSION: ${{ steps.get_version.outputs.VERSION }}
+          AZURE_TENANT_ID: ${{ github.event.inputs.azure_tenant_id }}
+          AZURE_SUBSCRIPTION_ID: ${{ github.event.inputs.azure_subscription_id }}
         run: |
-          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION} -f dockerfiles/enclave.Dockerfile .
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION} \
+            --build-arg AZURE_TENANT_ID=${AZURE_TENANT_ID} \
+            --build-arg AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID} \
+            -f dockerfiles/enclave.Dockerfile .
           docker push testnetobscuronet.azurecr.io/obscuronet/enclave:${VERSION}
           DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/host:${VERSION} -f dockerfiles/host.Dockerfile .
           docker push testnetobscuronet.azurecr.io/obscuronet/host:${VERSION}
