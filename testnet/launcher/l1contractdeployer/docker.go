@@ -74,7 +74,7 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	}
 	defer cli.Close()
 
-	// make sure the container has finished execution (5 minutes allows time for L1 transactions to be mined)
+	// make sure the container has finished execution (10 minutes allows time for L1 transactions to be mined)
 	err = docker.WaitForContainerToFinish(n.containerID, 10*time.Minute)
 	if err != nil {
 		return nil, err
