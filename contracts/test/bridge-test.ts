@@ -278,7 +278,7 @@ describe("Bridge", function () {
       })).to.be.revertedWith("Message not found or finalized.");
   });
 
-  it("MessageBus retrieveAllFunds method should allow owner to extract all native funds from the message bus", async function() {
+  it("Bridge retrieveAllFunds method should allow owner to extract all native funds from the message bus", async function() {
     const [owner] = await ethers.getSigners();
     const amount = ethers.parseEther("0.01");
 
@@ -291,7 +291,7 @@ describe("Bridge", function () {
     await expect(await ethers.provider.getBalance(bridgeL1.getAddress())).to.equal(amount);
 
     // retrieve all native funds from the message bus contract on the L1
-    const retrieveAllFundsTx = bridgeL1.retrieveAllFunds();
+    const retrieveAllFundsTx = bridgeL1.retrieveAllFunds(owner.address);
     await expect(retrieveAllFundsTx).to.not.be.reverted;
 
     // check that the funds were drained
