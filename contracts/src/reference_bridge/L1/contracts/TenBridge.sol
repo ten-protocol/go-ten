@@ -140,9 +140,10 @@ contract TenBridge is
 
     /**
     * @dev Retrieves all funds from the contract (Testnet only - to be removed before mainnet deployment)
+    * @param receiver The address to receive the funds
      */
-    function retrieveAllFunds() external onlyRole(ADMIN_ROLE) {
-        (bool ok, ) = msg.sender.call{value: address(this).balance}("");
+    function retrieveAllFunds(address receiver) external onlyRole(ADMIN_ROLE) {
+        (bool ok, ) = receiver.call{value: address(this).balance}("");
         require(ok, "failed sending value");
     }
 }
