@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import hre, { ethers } from "hardhat";
+import hre, { ethers, upgrades } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { bridge } from "../typechain-types/src";
 import { MessageBus, TenBridge, WrappedERC20__factory } from "../typechain-types";
@@ -51,9 +51,10 @@ describe("Bridge", function () {
     }
 
     const fees = await Fees.deploy();
-    busL1 = await MessageBus.deploy();
-    busL2 = await MessageBus.deploy();
-    busL2.initialize(owner.address, fees.getAddress());
+    busL1 = await upgrades.deployProxy(MessageBus, [owner.address, await fees.getAddress()]);
+    busL2 = await upgrades.deployProxy(MessageBus, [owner.address, await fees.getAddress()]);
+    const busL1Tx = await busL1.waitForDeployment();
+    const busL2Tx = await busL2.waitForDeployment();
 
     messengerL1 = await Messenger.deploy();
     await messengerL1.initialize(busL1.getAddress());
@@ -114,7 +115,11 @@ describe("Bridge", function () {
           // same for messenger.
           let bus : MessageBus = event.address == await busL1.getAddress() ? busL2 : busL1;
           let messenger : CrossChainMessenger = event.address == await busL1.getAddress() ? messengerL2 : messengerL1;
-          await (await bus.storeCrossChainMessage(xchainMessage, 1)).wait();
+          const [owner] = await ethers.getSigners();
+          if (!owner) {
+            throw new Error("Owner not found");
+          }
+          await (await bus.connect(owner).storeCrossChainMessage(xchainMessage, 1)).wait();
            
           return { 
               msg: xchainMessage,
