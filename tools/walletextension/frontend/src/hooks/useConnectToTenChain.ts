@@ -81,8 +81,8 @@ export default function useConnectToTenChain() {
 
             setStep(2);
 
-            setTenToken(newTenToken);
-            setStoreTenToken(newTenToken);
+            setTenToken(`0x${newTenToken}`);
+            setStoreTenToken(`0x${newTenToken}`);
 
             if (chainId === tenChainIDDecimal) {
                 setStep(3);
