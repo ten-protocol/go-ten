@@ -10,12 +10,12 @@ on:
         required: true
         default: ''
       azure_tenant_id:
-        description: 'Azure Tenant ID'
+        description: 'Azure Tenant ID (leave empty to use the local testing key)'
         required: false
         type: string
         default: ''
       azure_subscription_id:
-        description: 'Azure Subscription ID'
+        description: 'Azure Subscription ID (leave empty to use the local testing key)'
         required: false
         type: string
         default: ''
