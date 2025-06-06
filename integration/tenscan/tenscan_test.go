@@ -77,17 +77,8 @@ func TestTenscan(t *testing.T) {
 		t,
 		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
 		wallet.NewInMemoryWalletFromConfig(testcommon.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
-		50,
+		5,
 	)
-
-	//Timer for running local tests
-	countdownDuration := 2 * time.Hour
-	tickDuration := 30 * time.Second
-
-	for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
-		fmt.Printf("Shutting down in %s...\n", remaining)
-		time.Sleep(tickDuration)
-	}
 
 	err = waitForFirstRollup(serverAddress)
 	require.NoError(t, err)
