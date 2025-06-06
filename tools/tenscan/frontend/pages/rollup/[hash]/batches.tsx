@@ -39,6 +39,7 @@ export default function RollupBatches() {
             refetch={refetchRollupBatches}
             total={+Total}
             isLoading={isRollupBatchesLoading}
+            noResultsText="batches"
           />
         ) : (
           <p>Loading...</p>
