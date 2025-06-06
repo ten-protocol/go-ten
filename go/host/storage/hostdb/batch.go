@@ -233,7 +233,6 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 	limitQuery := fmt.Sprintf(" LIMIT %d OFFSET %d", pagination.Size, pagination.Offset)
 	query := selectBatchTxs + whereQuery + orderQuery + limitQuery
 
-	// First get total count
 	countQuery := "SELECT COUNT(*) FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence" + whereQuery
 	var total uint64
 	err := db.GetSQLDB().QueryRow(countQuery, batchHash.Bytes()).Scan(&total)
@@ -460,49 +459,6 @@ func fetchTx(db HostDB, seqNo uint64) ([]common.TxHash, error) {
 	}
 
 	return transactions, nil
-}
-
-func fetchBatchTxs(db *sql.DB, whereQuery string, batchHash []byte) (*common.TransactionListingResponse, error) {
-	query := selectBatchTxs + whereQuery
-	rows, err := db.Query(query, batchHash)
-	if err != nil {
-		return nil, fmt.Errorf("query execution for select batch txs failed: %w", err)
-	}
-	defer rows.Close()
-
-	var transactions []common.PublicTransaction
-	for rows.Next() {
-		var (
-			fullHash []byte
-			sequence int
-			height   int
-			extBatch []byte
-		)
-		err := rows.Scan(&fullHash, &sequence, &height, &extBatch)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan with query %s - %w", query, err)
-		}
-		extBatchDecoded := new(common.ExtBatch)
-		if err := rlp.DecodeBytes(extBatch, extBatchDecoded); err != nil {
-			return nil, fmt.Errorf("could not decode batch. Cause: %w", err)
-		}
-		transaction := common.PublicTransaction{
-			TransactionHash: gethcommon.BytesToHash(fullHash),
-			BatchHeight:     big.NewInt(int64(height)),
-			BatchTimestamp:  extBatchDecoded.Header.Time,
-			Finality:        common.BatchFinal,
-		}
-		transactions = append(transactions, transaction)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error looping through transacion rows: %w", err)
-	}
-
-	return &common.TransactionListingResponse{
-		TransactionsData: transactions,
-		Total:            uint64(len(transactions)),
-	}, nil
 }
 
 func IsRowExistsError(err error) bool {
