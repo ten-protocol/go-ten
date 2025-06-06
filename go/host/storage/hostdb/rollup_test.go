@@ -393,7 +393,7 @@ func TestGetRollupBatches(t *testing.T) {
 	dbtx.Write()
 
 	// rollup one contains batches 1 & 2
-	batchListing, err := GetRollupBatches(db, rollup1.Hash())
+	batchListing, err := GetRollupBatches(db, rollup1.Hash(), &common.QueryPagination{Offset: 0, Size: 2})
 	if err != nil {
 		t.Errorf("could not get rollup batches. Cause: %s", err)
 	}
@@ -409,7 +409,7 @@ func TestGetRollupBatches(t *testing.T) {
 	}
 
 	// rollup one contains batches 3 & 4
-	batchListing1, err := GetRollupBatches(db, rollup2.Hash())
+	batchListing1, err := GetRollupBatches(db, rollup2.Hash(), &common.QueryPagination{Offset: 0, Size: 2})
 	if err != nil {
 		t.Errorf("could not get rollup batches. Cause: %s", err)
 	}

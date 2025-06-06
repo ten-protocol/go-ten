@@ -150,6 +150,7 @@ func NewPosEth2Network(binDir string, isDocker bool, gethNetworkPort, beaconP2PP
 func (n *PosImpl) Start() error {
 	startTime := time.Now()
 	var eg errgroup.Group
+
 	if err := n.checkExistingNetworks(); err != nil {
 		return err
 	}
