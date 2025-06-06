@@ -151,11 +151,6 @@ func (n *PosImpl) Start() error {
 	startTime := time.Now()
 	var eg errgroup.Group
 
-	// kill any lingering eth2 processes before starting
-	cmd := exec.Command("pkill", "-9", "-f", "eth2")
-	_ = cmd.Run()
-	time.Sleep(time.Second)
-
 	if err := n.checkExistingNetworks(); err != nil {
 		return err
 	}

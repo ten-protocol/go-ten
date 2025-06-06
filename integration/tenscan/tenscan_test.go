@@ -77,8 +77,17 @@ func TestTenscan(t *testing.T) {
 		t,
 		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
 		wallet.NewInMemoryWalletFromConfig(testcommon.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
-		5,
+		50,
 	)
+
+	//Timer for running local tests
+	countdownDuration := 2 * time.Hour
+	tickDuration := 30 * time.Second
+
+	for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
+		fmt.Printf("Shutting down in %s...\n", remaining)
+		time.Sleep(tickDuration)
+	}
 
 	err = waitForFirstRollup(serverAddress)
 	require.NoError(t, err)
@@ -231,13 +240,6 @@ func TestTenscan(t *testing.T) {
 	firstPageTxObj := batchTxListing{}
 	err = json.Unmarshal(body, &firstPageTxObj)
 	assert.NoError(t, err)
-	for i, tx := range firstPageTxObj.Result.TransactionsData {
-		println(fmt.Sprintf("Transaction %d:", i))
-		println("  Hash:", tx.TransactionHash.Hex())
-		println("  Batch Height:", tx.BatchHeight.Uint64())
-		println("  Batch Timestamp:", tx.BatchTimestamp)
-		println("  Finality:", tx.Finality)
-	}
 	firstPageTxs := firstPageTxObj.Result.TransactionsData
 
 	// second page of transactions
@@ -248,16 +250,6 @@ func TestTenscan(t *testing.T) {
 	secondPageTxObj := batchTxListing{}
 	err = json.Unmarshal(body, &secondPageTxObj)
 	assert.NoError(t, err)
-	println("\n=== SECOND PAGE TRANSACTIONS ===")
-	println("Total transactions:", secondPageTxObj.Result.Total)
-	println("Number of transactions in response:", len(secondPageTxObj.Result.TransactionsData))
-	for i, tx := range secondPageTxObj.Result.TransactionsData {
-		println(fmt.Sprintf("Transaction %d:", i))
-		println("  Hash:", tx.TransactionHash.Hex())
-		println("  Batch Height:", tx.BatchHeight.Uint64())
-		println("  Batch Timestamp:", tx.BatchTimestamp)
-		println("  Finality:", tx.Finality)
-	}
 	secondPageTxs := secondPageTxObj.Result.TransactionsData
 
 	// verify different pages have different transactions

@@ -192,7 +192,7 @@ func (oc *ObsClient) GetPublicTxListing(pagination *common.QueryPagination) (*co
 // GetBatchesListing returns a list of batches
 func (oc *ObsClient) GetBatchesListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	var result common.BatchListingResponse
-	err := oc.rpcClient.Call(&result, rpc.GetBatchListingNew, pagination)
+	err := oc.rpcClient.Call(&result, rpc.GetBatchListing, pagination)
 	if err != nil {
 		return nil, err
 	}

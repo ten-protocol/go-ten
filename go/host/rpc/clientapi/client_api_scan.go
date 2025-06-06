@@ -43,7 +43,7 @@ func (s *ScanAPI) GetTotalTransactionsQuery() (*big.Int, error) {
 	return s.host.Storage().FetchTotalTxsQuery()
 }
 
-// GetBatchListingNew returns a paginated list of batches
+// GetBatchListing returns a paginated list of batches
 func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	return s.host.Storage().FetchBatchListing(pagination)
 }
