@@ -327,7 +327,7 @@ func TestTenscan(t *testing.T) {
 	}
 	assert.True(t, foundExpectedSequence, "Expected to find batch with sequence %s", batchSequence)
 
-	// non-existant hash should return nothing
+	// non-existent hash should return nothing
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/search/?query=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
