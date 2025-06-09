@@ -308,7 +308,6 @@ func TestTenscan(t *testing.T) {
 	assert.Equal(t, strings.TrimPrefix(txHash.Hex(), "0x"), searchObj.Result.ResultsData[0].Hash)
 
 	// search by sequence number
-	batchSequence = batchlistingObj.Result.BatchesData[0].SequencerOrderNo.String()
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/search/?query=%s", serverAddress, batchSequence))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
