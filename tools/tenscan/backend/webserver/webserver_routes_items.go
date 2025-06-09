@@ -35,6 +35,9 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/transaction/:hash", server.getTransaction)
 	r.GET("/items/transactions/count", server.getTotalTxCount)
 	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
+
+	// search
+	r.Get("/items/search/", server.search)
 }
 
 func (w *WebServer) getHealthStatus(c *gin.Context) {
@@ -311,4 +314,16 @@ func (w *WebServer) getConfig(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"item": config})
+}
+
+func (w *WebServer) search(c *gin.Context) {
+	query := c.Query("query")
+
+	publicTxs, err := w.backend.GetPublicTransactions(offset, size)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute getPublicTransactions request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": publicTxs})
 }

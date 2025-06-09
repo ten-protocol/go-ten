@@ -20,6 +20,11 @@ type TransactionListingResponse struct {
 	Total            uint64
 }
 
+type SearchResponse struct {
+	TransactionsData []SearchResult
+	Total            uint64
+}
+
 type BatchListingResponse struct {
 	BatchesData []PublicBatch
 	Total       uint64
@@ -54,6 +59,15 @@ type PublicBatch struct {
 	TxCount          *big.Int              `json:"txCount"`
 	Header           *BatchHeader          `json:"header"`
 	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
+}
+
+type SearchResult struct {
+	Type      string                 `json:"type"`      // "rollup", "batch", "transaction"
+	Hash      string                 `json:"hash"`      // For rollups, batches, transactions
+	Height    *big.Int               `json:"height"`    // For batches
+	Sequence  *big.Int               `json:"sequence"`  // For batches
+	Timestamp uint64                 `json:"timestamp"` // Common field
+	ExtraData map[string]interface{} `json:"extraData"` // Type-specific data
 }
 
 // TODO (@will) remove when tenscan UI has been updated

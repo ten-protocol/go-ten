@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	selectBatch         = "SELECT sequence, hash, height, ext_batch FROM batch_host"
+	selectBatch         = "SELECT sequence, hash, height, ext_batch FROM batch_host b"
 	selectExtBatch      = "SELECT ext_batch FROM batch_host"
 	selectLatestBatch   = "SELECT sequence, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
 	selectTxsAndBatch   = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.hash = "

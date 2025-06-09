@@ -161,3 +161,6 @@ func (b *Backend) GetBatchTransactions(hash gethcommon.Hash) (*common.Transactio
 func (b *Backend) GetConfig() (*common.TenNetworkInfo, error) {
 	return b.obsClient.GetConfig()
 }
+func (b *Backend) Search(query string, pagination *common.QueryPagination) (*common.SearchResponse, error) {
+	return b.obsClient.Search(query, pagination)
+}
