@@ -438,65 +438,6 @@ func extractCustomQueryAddress(params any) (*gethcommon.Address, error) {
 	return &address, nil
 }
 
-// extractAuthParams extracts signature, token and chainId from the params JSON string
-func extractAuthParams(params any) (string, string, string, error) {
-	paramsStr, ok := params.(string)
-	if !ok {
-		return "", "", "", fmt.Errorf("params must be a json string")
-	}
-
-	var paramsJSON map[string]json.RawMessage
-	err := json.Unmarshal([]byte(paramsStr), &paramsJSON)
-	if err != nil {
-		// try to base64 decode the params string and then unmarshal before giving up
-		bytesStr, err64 := base64.StdEncoding.DecodeString(paramsStr)
-		if err64 != nil {
-			// was not base64 encoded, give up
-			return "", "", "", fmt.Errorf("unable to unmarshal params string: %w", err)
-		}
-		// was base64 encoded, try to unmarshal
-		err = json.Unmarshal(bytesStr, &paramsJSON)
-		if err != nil {
-			return "", "", "", fmt.Errorf("unable to unmarshal params string: %w", err)
-		}
-	}
-
-	// Extract signature
-	signatureRaw, ok := paramsJSON["signature"]
-	if !ok {
-		return "", "", "", fmt.Errorf("params must contain a 'signature' field")
-	}
-	var signatureStr string
-	err = json.Unmarshal(signatureRaw, &signatureStr)
-	if err != nil {
-		return "", "", "", fmt.Errorf("unable to unmarshal signature field to string: %w", err)
-	}
-
-	// Extract token
-	tokenRaw, ok := paramsJSON["token"]
-	if !ok {
-		return "", "", "", fmt.Errorf("params must contain a 'token' field")
-	}
-	var tokenStr string
-	err = json.Unmarshal(tokenRaw, &tokenStr)
-	if err != nil {
-		return "", "", "", fmt.Errorf("unable to unmarshal token field to string: %w", err)
-	}
-
-	// Extract chainId
-	chainIdRaw, ok := paramsJSON["chainId"]
-	if !ok {
-		return "", "", "", fmt.Errorf("params must contain a 'chainId' field")
-	}
-	var chainIdStr string
-	err = json.Unmarshal(chainIdRaw, &chainIdStr)
-	if err != nil {
-		return "", "", "", fmt.Errorf("unable to unmarshal chainId field to string: %w", err)
-	}
-
-	return signatureStr, tokenStr, chainIdStr, nil
-}
-
 // RPCMarshalHeader converts the given header to the RPC output .
 // duplicated from go-ethereum
 func RPCMarshalHeader(head *types.Header) map[string]interface{} {
