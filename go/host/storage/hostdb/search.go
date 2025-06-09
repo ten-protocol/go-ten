@@ -36,8 +36,8 @@ func Search(db HostDB, query string) (*common.SearchResponse, error) {
 	}
 
 	return &common.SearchResponse{
-		TransactionsData: searchResults,
-		Total:            uint64(len(results)),
+		ResultsData: searchResults,
+		Total:       uint64(len(results)),
 	}, nil
 }
 
@@ -61,7 +61,7 @@ func identifyInputType(query string) string {
 
 func searchByHash(db HostDB, hash string) []*common.SearchResult {
 	var results []*common.SearchResult
-	
+
 	// Trim 0x prefix for consistency
 	trimmedHash := strings.TrimPrefix(hash, "0x")
 

@@ -73,11 +73,11 @@ func TestSearchByRollupAndBatchHash(t *testing.T) {
 		t.Errorf("expected 1 result, got %d", searchResponse.Total)
 	}
 
-	if len(searchResponse.TransactionsData) != 1 {
-		t.Errorf("expected 1 result in TransactionsData, got %d", len(searchResponse.TransactionsData))
+	if len(searchResponse.ResultsData) != 1 {
+		t.Errorf("expected 1 result in ResultsData, got %d", len(searchResponse.ResultsData))
 	}
 
-	result := searchResponse.TransactionsData[0]
+	result := searchResponse.ResultsData[0]
 	if result.Type != "rollup" {
 		t.Errorf("expected type 'rollup', got '%s'", result.Type)
 	}
@@ -98,7 +98,7 @@ func TestSearchByRollupAndBatchHash(t *testing.T) {
 		t.Errorf("expected 1 result, got %d", searchResponse.Total)
 	}
 
-	result = searchResponse.TransactionsData[0]
+	result = searchResponse.ResultsData[0]
 	if result.Type != "batch" {
 		t.Errorf("expected type 'batch', got '%s'", result.Type)
 	}
@@ -137,11 +137,11 @@ func TestSearchByTransactionHash(t *testing.T) {
 		t.Errorf("expected 1 result, got %d", searchResponse.Total)
 	}
 
-	if len(searchResponse.TransactionsData) != 1 {
-		t.Errorf("expected 1 result in TransactionsData, got %d", len(searchResponse.TransactionsData))
+	if len(searchResponse.ResultsData) != 1 {
+		t.Errorf("expected 1 result in ResultsData, got %d", len(searchResponse.ResultsData))
 	}
 
-	result := searchResponse.TransactionsData[0]
+	result := searchResponse.ResultsData[0]
 	if result.Type != "transaction" {
 		t.Errorf("expected type 'transaction', got '%s'", result.Type)
 	}
@@ -185,7 +185,7 @@ func TestSearchByNumber(t *testing.T) {
 		t.Errorf("expected 2 result, got %d", searchResponse.Total)
 	}
 
-	result := searchResponse.TransactionsData[0]
+	result := searchResponse.ResultsData[0]
 	if result.Type != "batch" {
 		t.Errorf("expected type 'batch', got '%s'", result.Type)
 	}
@@ -205,7 +205,7 @@ func TestSearchByNumber(t *testing.T) {
 		t.Errorf("expected 1 result, got %d", searchResponse.Total)
 	}
 
-	result = searchResponse.TransactionsData[0]
+	result = searchResponse.ResultsData[0]
 	if result.Type != "batch" {
 		t.Errorf("expected type 'batch', got '%s'", result.Type)
 	}
@@ -245,7 +245,7 @@ func TestAmbiguousSearch(t *testing.T) {
 
 	// Verify we have a batch result
 	hasBatch := false
-	for _, result := range searchResponse.TransactionsData {
+	for _, result := range searchResponse.ResultsData {
 		if result.Type == "batch" {
 			hasBatch = true
 			break
@@ -273,8 +273,8 @@ func TestSearchEmptyResults(t *testing.T) {
 		t.Errorf("expected 0 results, got %d", searchResponse.Total)
 	}
 
-	if len(searchResponse.TransactionsData) != 0 {
-		t.Errorf("expected 0 results in TransactionsData, got %d", len(searchResponse.TransactionsData))
+	if len(searchResponse.ResultsData) != 0 {
+		t.Errorf("expected 0 results in ResultsData, got %d", len(searchResponse.ResultsData))
 	}
 
 	// Test search with non-existent number

@@ -270,9 +270,9 @@ func (oc *ObsClient) GetConfig() (*common.TenNetworkInfo, error) {
 }
 
 // Search TODO
-func (oc *ObsClient) Search(query string, pagination *common.QueryPagination) (*common.SearchResponse, error) {
+func (oc *ObsClient) Search(query string) (*common.SearchResponse, error) {
 	var result common.SearchResponse
-	err := oc.rpcClient.Call(&result, rpc.Search, query, pagination)
+	err := oc.rpcClient.Call(&result, rpc.Search, query)
 	if err != nil {
 		return nil, err
 	}

@@ -21,8 +21,8 @@ type TransactionListingResponse struct {
 }
 
 type SearchResponse struct {
-	TransactionsData []SearchResult
-	Total            uint64
+	ResultsData []SearchResult
+	Total       uint64
 }
 
 type BatchListingResponse struct {

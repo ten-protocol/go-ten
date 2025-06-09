@@ -81,5 +81,5 @@ type BlockResolver interface {
 
 // SearchResolver interface
 type SearchResolver interface {
-	Search(query string, pagination *common.QueryPagination) (*common.SearchResponse, error)
+	Search(query string) (*common.SearchResponse, error)
 }

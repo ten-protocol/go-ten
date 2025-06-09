@@ -118,6 +118,6 @@ func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash) (*common.Trans
 	return s.host.Storage().FetchBatchTransactions(batchHash)
 }
 
-func (s *ScanAPI) Search(query string, pagination *common.QueryPagination) (*common.SearchResponse, error) {
-	return s.host.Storage().Search(query, pagination)
+func (s *ScanAPI) Search(query string) (*common.SearchResponse, error) {
+	return s.host.Storage().Search(query)
 }
