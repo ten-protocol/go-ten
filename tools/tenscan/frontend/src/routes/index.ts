@@ -31,6 +31,8 @@ export const apiRoutes = {
   getRollupByHash: "/items/rollup/:hash",
   getRollupByBatchSequence: "/items/rollup/batch/:seq",
 
+  search: "/items/search/",
+
   // **** INFO ****
   getHealthStatus: "/info/health/",
 };

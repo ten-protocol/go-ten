@@ -309,7 +309,7 @@ func (w *WebServer) getBatchTransactions(c *gin.Context) {
 func (w *WebServer) getConfig(c *gin.Context) {
 	config, err := w.backend.GetConfig()
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getConfig request %w", err), w.logger)
 		return
 	}
 
@@ -319,11 +319,11 @@ func (w *WebServer) getConfig(c *gin.Context) {
 func (w *WebServer) search(c *gin.Context) {
 	query := c.Query("query")
 
-	publicTxs, err := w.backend.Search(query)
+	results, err := w.backend.Search(query)
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute getPublicTransactions request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute search request %w", err), w.logger)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"result": publicTxs})
+	c.JSON(http.StatusOK, gin.H{"result": results})
 }
