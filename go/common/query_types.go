@@ -62,12 +62,12 @@ type PublicBatch struct {
 }
 
 type SearchResult struct {
-	Type      string                 `json:"type"`      // "rollup", "batch", "transaction"
-	Hash      string                 `json:"hash"`      // For rollups, batches, transactions
-	Height    *big.Int               `json:"height"`    // For batches
-	Sequence  *big.Int               `json:"sequence"`  // For batches
-	Timestamp uint64                 `json:"timestamp"` // Common field
-	ExtraData map[string]interface{} `json:"extraData"` // Type-specific data
+	Type      string                 `json:"type"` // "rollup", "batch", "transaction"
+	Hash      string                 `json:"hash"`
+	Height    *big.Int               `json:"height"`    // batches only
+	Sequence  *big.Int               `json:"sequence"`  // batches only
+	Timestamp uint64                 `json:"timestamp"` // rollup and batches
+	ExtraData map[string]interface{} `json:"extraData"` // contains all the batch/ rollup data if found
 }
 
 // TODO (@will) remove when tenscan UI has been updated

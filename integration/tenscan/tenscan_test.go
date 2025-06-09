@@ -260,7 +260,7 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, txObj.Item.Finality == common.BatchFinal)
 
-	// Search API tests
+	// search API tests
 	rollupHash := rollupListingObj.Result.RollupsData[0].Header.Hash()
 	batchHash := batchlistingObj.Result.BatchesData[0].FullHash
 	txHash := txListingObj.Result.TransactionsData[0].TransactionHash
@@ -327,7 +327,7 @@ func TestTenscan(t *testing.T) {
 	}
 	assert.True(t, foundExpectedSequence, "Expected to find batch with sequence %s", batchSequence)
 
-	// Test search with non-existent hash (should return empty results)
+	// non-existant hash should return nothing
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/search/?query=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
