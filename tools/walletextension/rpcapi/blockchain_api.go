@@ -1,6 +1,7 @@
 package rpcapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -244,6 +245,27 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return hash.Bytes(), nil
 		}
 		return gethcommon.Hash{}.Bytes(), fmt.Errorf("please create a session key before sending unsigned transactions")
+
+	case common.CheckIfUserIsAuthenticatedCQMethod:
+		// return true if user exists
+		// error is thrown if user does not exist in extractUserForRequest and we don't get here
+		return []byte{boolToByte(true)}, nil
+
+	case common.CheckIfAccountIsAuthenticatedWithCurrentUser:
+		userAddr, err := extractCustomQueryAddress(params)
+		if err != nil {
+			return nil, fmt.Errorf("unable to extract address from custom query params: %w", err)
+		}
+		// Check if the provided user address matches any of the user's registered accounts
+		isAuthenticated := false
+		for _, account := range user.AllAccounts() {
+			if bytes.Equal(account.Address.Bytes(), userAddr.Bytes()) {
+				isAuthenticated = true
+				break
+			}
+		}
+		return []byte{boolToByte(isAuthenticated)}, nil
+
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
 		if err != nil {
@@ -414,6 +436,65 @@ func extractCustomQueryAddress(params any) (*gethcommon.Address, error) {
 	}
 	address := gethcommon.HexToAddress(addressStr)
 	return &address, nil
+}
+
+// extractAuthParams extracts signature, token and chainId from the params JSON string
+func extractAuthParams(params any) (string, string, string, error) {
+	paramsStr, ok := params.(string)
+	if !ok {
+		return "", "", "", fmt.Errorf("params must be a json string")
+	}
+
+	var paramsJSON map[string]json.RawMessage
+	err := json.Unmarshal([]byte(paramsStr), &paramsJSON)
+	if err != nil {
+		// try to base64 decode the params string and then unmarshal before giving up
+		bytesStr, err64 := base64.StdEncoding.DecodeString(paramsStr)
+		if err64 != nil {
+			// was not base64 encoded, give up
+			return "", "", "", fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
+		// was base64 encoded, try to unmarshal
+		err = json.Unmarshal(bytesStr, &paramsJSON)
+		if err != nil {
+			return "", "", "", fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
+	}
+
+	// Extract signature
+	signatureRaw, ok := paramsJSON["signature"]
+	if !ok {
+		return "", "", "", fmt.Errorf("params must contain a 'signature' field")
+	}
+	var signatureStr string
+	err = json.Unmarshal(signatureRaw, &signatureStr)
+	if err != nil {
+		return "", "", "", fmt.Errorf("unable to unmarshal signature field to string: %w", err)
+	}
+
+	// Extract token
+	tokenRaw, ok := paramsJSON["token"]
+	if !ok {
+		return "", "", "", fmt.Errorf("params must contain a 'token' field")
+	}
+	var tokenStr string
+	err = json.Unmarshal(tokenRaw, &tokenStr)
+	if err != nil {
+		return "", "", "", fmt.Errorf("unable to unmarshal token field to string: %w", err)
+	}
+
+	// Extract chainId
+	chainIdRaw, ok := paramsJSON["chainId"]
+	if !ok {
+		return "", "", "", fmt.Errorf("params must contain a 'chainId' field")
+	}
+	var chainIdStr string
+	err = json.Unmarshal(chainIdRaw, &chainIdStr)
+	if err != nil {
+		return "", "", "", fmt.Errorf("unable to unmarshal chainId field to string: %w", err)
+	}
+
+	return signatureStr, tokenStr, chainIdStr, nil
 }
 
 // RPCMarshalHeader converts the given header to the RPC output .
