@@ -233,7 +233,7 @@ jobs:
          run: |
            if [[ ${{ matrix.host_id }} -eq 0 ]]; then
              echo "VM_SIZE=Standard_DC8s_v3" >> $GITHUB_ENV
-             echo "NUM_ENCLAVES=2" >> $GITHUB_ENV 
+             echo "NUM_ENCLAVES=1" >> $GITHUB_ENV 
            else
              echo "VM_SIZE=Standard_DC8_v2" >> $GITHUB_ENV
              echo "NUM_ENCLAVES=1" >> $GITHUB_ENV
@@ -250,6 +250,15 @@ jobs:
             --vnet-name ${{ github.event.inputs.testnet_type }}-virtual-network --subnet ${{ github.event.inputs.testnet_type }}-sub-network \
             --size ${{ env.VM_SIZE }} --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
             --public-ip-sku Standard --authentication-type password
+            
+            # Create and attach premium data disk for EDB
+            az vm disk attach \
+            --vm-name "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            --resource-group Testnet \
+            --disk "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}-edb-disk" \
+            --new \
+            --size-gb 500 \
+            --sku Premium_LRS
 
       - name: 'Open Obscuro node-${{ matrix.host_id }} ports on Azure'
         uses: azure/CLI@v1
@@ -261,6 +270,43 @@ jobs:
       - name: 'Allow time for VM initialization'
         shell: bash
         run: sleep 60
+
+      - name: 'Format and mount EDB disk on VM-${{ matrix.host_id }}'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az vm run-command invoke -g Testnet -n "${{ vars.AZURE_RESOURCE_PREFIX }}-${{ matrix.host_id }}-${{ GITHUB.RUN_NUMBER }}" \
+            --command-id RunShellScript \
+            --scripts '#!/bin/bash
+            # Wait for disk to be available
+            sleep 10
+            
+            # Find the new disk (usually /dev/sdc on Azure VMs)
+            NEW_DISK=$(lsblk -dpno NAME,SIZE | grep "500G\|512G" | head -1 | cut -d" " -f1)
+            if [ -z "$NEW_DISK" ]; then
+              NEW_DISK="/dev/sdc"
+            fi
+            
+            # Create partition and format disk
+            echo "Creating partition on $NEW_DISK"
+            parted $NEW_DISK --script mklabel gpt
+            parted $NEW_DISK --script mkpart primary ext4 0% 100%
+            
+            # Format the partition
+            PARTITION="${NEW_DISK}1"
+            mkfs.ext4 $PARTITION
+            
+            # Create mount point and mount
+            mkdir -p /data
+            echo "$PARTITION /data ext4 defaults,nofail 0 2" >> /etc/fstab
+            mount -a
+            
+            # Set permissions
+            chown -R obscurouser:obscurouser /data
+            chmod 755 /data
+            
+            echo "EDB disk setup complete. Mounted at /data"
+            df -h /data'
 
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
@@ -592,5 +638,3 @@ jobs:
 
       - name: 'Send a repository dispatch to obscuro-test on deployment of testnet'
         if: ${{ (github.event.inputs.testnet_type == 'uat-testnet') }}
-        run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "uat_testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'
