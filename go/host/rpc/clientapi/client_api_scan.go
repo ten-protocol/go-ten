@@ -118,6 +118,7 @@ func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash) (*common.Trans
 	return s.host.Storage().FetchBatchTransactions(batchHash)
 }
 
+// Search queries the host DB using the query string provided
 func (s *ScanAPI) Search(query string) (*common.SearchResponse, error) {
 	return s.host.Storage().Search(query)
 }
