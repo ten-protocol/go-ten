@@ -638,3 +638,5 @@ jobs:
 
       - name: 'Send a repository dispatch to obscuro-test on deployment of testnet'
         if: ${{ (github.event.inputs.testnet_type == 'uat-testnet') }}
+        run: |
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "uat_testnet_deployed", "client_payload": { "ref": "${{ github.ref_name }}" }'
