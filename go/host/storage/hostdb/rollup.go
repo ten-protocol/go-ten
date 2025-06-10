@@ -206,11 +206,9 @@ func GetCrossChainMessagesTree(db HostDB, messageHash gethcommon.Hash) ([][]inte
 
 func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	whereQuery := " WHERE r.hash=" + db.GetSQLStatement().Placeholder
-	orderQuery := " ORDER BY b.sequence DESC"
-	limitQuery := fmt.Sprintf(" LIMIT %d OFFSET %d", pagination.Size, pagination.Offset)
-	query := selectRollupBatches + whereQuery + orderQuery + limitQuery
+	orderQuery := " ORDER BY b.sequence DESC "
+	query := selectRollupBatches + whereQuery + orderQuery + db.GetSQLStatement().Pagination
 
-	// First get total count
 	countQuery := "SELECT COUNT(*) FROM rollup_host r JOIN batch_host b ON b.sequence BETWEEN r.start_seq AND r.end_seq" + whereQuery
 	var total uint64
 	err := db.GetSQLDB().QueryRow(countQuery, rollupHash.Bytes()).Scan(&total)
@@ -218,7 +216,7 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.
 		return nil, fmt.Errorf("failed to get total count: %w", err)
 	}
 
-	rows, err := db.GetSQLDB().Query(query, rollupHash.Bytes())
+	rows, err := db.GetSQLDB().Query(query, rollupHash.Bytes(), pagination.Size, pagination.Offset)
 	if err != nil {
 		return nil, fmt.Errorf("query execution for select rollup batches failed: %w", err)
 	}

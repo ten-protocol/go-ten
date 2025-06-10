@@ -229,9 +229,8 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 // GetBatchTransactions returns the TransactionListingResponse for a given batch hash
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	whereQuery := " WHERE b.hash=" + db.GetSQLStatement().Placeholder
-	orderQuery := " ORDER BY t.id DESC"
-	limitQuery := fmt.Sprintf(" LIMIT %d OFFSET %d", pagination.Size, pagination.Offset)
-	query := selectBatchTxs + whereQuery + orderQuery + limitQuery
+	orderQuery := " ORDER BY t.id DESC "
+	query := selectBatchTxs + whereQuery + orderQuery + db.GetSQLStatement().Pagination
 
 	countQuery := "SELECT COUNT(*) FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence" + whereQuery
 	var total uint64
@@ -240,7 +239,7 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 		return nil, fmt.Errorf("failed to get total count: %w", err)
 	}
 
-	rows, err := db.GetSQLDB().Query(query, batchHash.Bytes())
+	rows, err := db.GetSQLDB().Query(query, batchHash.Bytes(), pagination.Size, pagination.Offset)
 	if err != nil {
 		return nil, fmt.Errorf("query execution for select batch transactions failed: %w", err)
 	}

@@ -40,7 +40,7 @@ network:
 node:
   nodeType: sequencer # sequencer or validator
   id: 0x0 # unique identifier for this node (currently based on its wallet eth address)
-  hostAddress: 0x0 # address of the node's p2p server
+  hostAddress: 0x0 # address of the node's p2p serverba
   privateKey: 0x0 # private key for this node's eth account
   isGenesis: true # true only for the first sequencer on a fresh chain
 
