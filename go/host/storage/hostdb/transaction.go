@@ -1,7 +1,10 @@
 package hostdb
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -69,7 +72,11 @@ func GetTransaction(db HostDB, hash gethcommon.Hash) (*common.PublicTransaction,
 	var fullHash []byte
 	var seq int
 	err := db.GetSQLDB().QueryRow(query, hash.Bytes()).Scan(&fullHash, &seq)
+
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to retrieve transaction sequence number: %w", err)
 	}
 
