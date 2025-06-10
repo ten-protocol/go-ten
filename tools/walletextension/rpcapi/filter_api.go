@@ -236,7 +236,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 					var result []*types.Log
 
 					// wrap the context with a timeout to prevent long executions
-					timeoutContext, cancelCtx := context.WithTimeout(ctx, maximumRPCCallDuration)
+					timeoutContext, cancelCtx := context.WithTimeout(ctx, api.we.Config.MaximumRPCCallDuration)
 					defer cancelCtx()
 
 					err := rpcClient.CallContext(timeoutContext, &result, method, common.SerializableFilterCriteria(crit))

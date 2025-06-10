@@ -38,7 +38,6 @@ const (
 
 	// hardcoding the maximum time for an RPC request
 	// this value will be propagated to the node and enclave and all the operations
-	maximumRPCCallDuration  = 5 * time.Second
 	sendTransactionDuration = 20 * time.Second
 )
 
@@ -79,7 +78,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 			var err error
 
 			// wrap the context with a timeout to prevent long executions
-			timeoutContext, cancelCtx := context.WithTimeout(ctx, maximumRPCCallDuration)
+			timeoutContext, cancelCtx := context.WithTimeout(ctx, w.Config.MaximumRPCCallDuration)
 			defer cancelCtx()
 
 			err = client.CallContext(timeoutContext, &resp, method, args...)
@@ -137,9 +136,9 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 
 				// wrap the context with a timeout to prevent long executions
 				deadline := cfg.timeout
-				// if not set, use default
+				// if not set, use default from config
 				if deadline == 0 {
-					deadline = maximumRPCCallDuration
+					deadline = w.Config.MaximumRPCCallDuration
 				}
 				timeoutContext, cancelCtx := context.WithTimeout(ctx, deadline)
 				defer cancelCtx()
