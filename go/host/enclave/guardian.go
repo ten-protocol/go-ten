@@ -652,7 +652,7 @@ func (g *Guardian) streamEnclaveData() {
 					g.logger.Crit("failed to add batch to L2 repo", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
 				}
 
-				if g.hostData.IsSequencer { // if we are the sequencer we need to broadcast this new batch to the network
+				if g.state.IsEnclaveActiveSequencer() { // active sequencer enclave should broadcast the batch to peers
 					g.logger.Info("Batch produced. Sending to peers..", log.BatchHeightKey, resp.Batch.Header.Number, log.BatchHashKey, resp.Batch.Hash())
 
 					err = g.sl.P2P().BroadcastBatches([]*common.ExtBatch{resp.Batch})
