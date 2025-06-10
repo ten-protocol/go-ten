@@ -281,6 +281,9 @@ jobs:
             # Wait for disk to be available
             sleep 10
             
+            # This is the folder used by edb
+            MOUNT_POINT="/var/lib/docker/volumes/obscuronode-db-volume-0/_data"
+
             # Find the new disk (usually /dev/sdc on Azure VMs)
             NEW_DISK=$(lsblk -dpno NAME,SIZE | grep "500G\|512G" | head -1 | cut -d" " -f1)
             if [ -z "$NEW_DISK" ]; then
@@ -297,16 +300,16 @@ jobs:
             mkfs.ext4 $PARTITION
             
             # Create mount point and mount
-            mkdir -p /data
-            echo "$PARTITION /data ext4 defaults,nofail 0 2" >> /etc/fstab
+            mkdir -p "$MOUNT_POINT"
+            echo "$PARTITION $MOUNT_POINT ext4 defaults,nofail 0 2" >> /etc/fstab
             mount -a
             
             # Set permissions
-            chown -R obscurouser:obscurouser /data
-            chmod 755 /data
+            chown -R obscurouser:obscurouser "$MOUNT_POINT"
+            chmod 755 "$MOUNT_POINT"
             
-            echo "EDB disk setup complete. Mounted at /data"
-            df -h /data'
+            echo "EDB disk setup complete. Mounted at $MOUNT_POINT"
+            df -h "$MOUNT_POINT"'
 
       - name: 'Start Obscuro node-${{ matrix.host_id }} on Azure'
         uses: azure/CLI@v1
