@@ -59,7 +59,7 @@ export function AppSidebar() {
         },
         {
             title: 'Blog',
-            url: 'https://blog.ten.xyz',
+            url: 'https://blogs.ten.xyz',
             icon: CgWebsite,
         },
     ];

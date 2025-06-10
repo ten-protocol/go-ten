@@ -14,7 +14,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useAccount, useDisconnect, useSwitchChain, useBalance } from 'wagmi';
 import { Address, formatEther } from 'viem';
 import { Skeleton } from '@/components/ui/skeleton';
-import ZenToken from '@/components/ConnectWallet/ZenToken';
 import numeral from 'numeral';
 import { tenChainIDDecimal } from '@/lib/constants';
 import Image from 'next/image';
@@ -143,18 +142,19 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
                                     <Skeleton className="w-24 h-5" />
                                 ) : (
                                     <span className="font-medium">
-                                        {zenBalance &&
-                                            numeral(
-                                                parseFloat(formatEther(zenBalance.value) ?? 0)
-                                            ).format('0.[00]')}{' '}
+                                        {zenBalance
+                                            ? numeral(
+                                                  parseFloat(formatEther(zenBalance.value) ?? 0)
+                                              ).format('0.[00]')
+                                            : 0}{' '}
                                         ZEN
                                     </span>
                                 )}
                             </div>
 
-                            {zenBalance && parseFloat(formatEther(zenBalance.value)) === 0 && (
-                                <ZenToken insufficientBalance={true} />
-                            )}
+                            {/*{zenBalance && parseFloat(formatEther(zenBalance.value)) === 0 && (*/}
+                            {/*    <ZenToken insufficientBalance={true} />*/}
+                            {/*)}*/}
                         </div>
                     </div>
 

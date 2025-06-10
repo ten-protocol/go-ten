@@ -8,7 +8,7 @@ export default function PromoApps() {
                 Discover exciting decentralized apps built on TEN. Ready for you to dive in and
                 explore!
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-3 space-4 space-y-6 mt-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 space-4 space-y-6 mt-8">
                 <PromoAppCard
                     title="Battleships"
                     description="Sink ships, win ZEN! Play a new vartiation of Battleships."

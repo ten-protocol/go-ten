@@ -43,7 +43,8 @@ export default function ConnectWalletButton({ className }: Props) {
                             className="bg-primary hover:bg-primary/90"
                         >
                             <TbPrompt className="text-2xl size-" />
-                            Connect to {tenNetworkName}
+                            <span className="hidden md:block">Connect to {tenNetworkName}</span>
+                            <span className="md:hidden">Connect</span>
                         </Button>
                     </>
                 ) : (
