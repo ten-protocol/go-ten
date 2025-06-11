@@ -47,7 +47,7 @@ export function AppSidebar() {
         },
         {
             title: 'TenScan',
-            url: 'https://scan.ten.xyz',
+            url: 'https://tenscan.io',
             icon: LuTextSearch,
         },
     ];
