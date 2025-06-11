@@ -77,6 +77,17 @@ func (oc *ObsClient) GetBatchByHeight(height *big.Int) (*common.PublicBatch, err
 	return batch, err
 }
 
+// GetBatchBySeq returns the batch with the given sequence number.
+func (oc *ObsClient) GetBatchBySeq(seq *big.Int) (*common.PublicBatch, error) {
+	var batch *common.PublicBatch
+
+	err := oc.rpcClient.Call(&batch, rpc.GetBatchBySeqNo, seq)
+	if err == nil && batch == nil {
+		err = ethereum.NotFound
+	}
+	return batch, err
+}
+
 // GetRollupBySeqNo returns the batch with the given height.
 func (oc *ObsClient) GetRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error) {
 	var rollup *common.PublicRollup

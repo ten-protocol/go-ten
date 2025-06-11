@@ -60,6 +60,10 @@ func (b *Backend) GetBatchByHeight(height *big.Int) (*common.PublicBatch, error)
 	return b.obsClient.GetBatchByHeight(height)
 }
 
+func (b *Backend) GetBatchBySeq(seq *big.Int) (*common.PublicBatch, error) {
+	return b.obsClient.GetBatchBySeq(seq)
+}
+
 func (b *Backend) GetRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error) {
 	return b.obsClient.GetRollupBySeqNo(seqNo)
 }

@@ -177,8 +177,12 @@ func (s *storageImpl) FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHe
 	return hostdb.GetBatchHeaderByHeight(s.db, height)
 }
 
-func (s *storageImpl) FetchBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
+func (s *storageImpl) FetchPublicBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
 	return hostdb.GetBatchByHeight(s.db, height)
+}
+
+func (s *storageImpl) FetchPublicBatchBySeqNo(seqNum *big.Int) (*common.PublicBatch, error) {
+	return hostdb.GetPublicBatchBySequenceNumber(s.db, seqNum.Uint64())
 }
 
 func (s *storageImpl) FetchBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
