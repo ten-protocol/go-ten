@@ -30,11 +30,6 @@ type BatchListingResponse struct {
 	Total       uint64
 }
 
-type BatchListingResponseDeprecated struct {
-	BatchesData []PublicBatchDeprecated
-	Total       uint64
-}
-
 type BlockListingResponse struct {
 	BlocksData []PublicBlock
 	Total      uint64
@@ -68,12 +63,6 @@ type SearchResult struct {
 	Sequence  *big.Int               `json:"sequence"`  // batches only
 	Timestamp uint64                 `json:"timestamp"` // rollup and batches
 	ExtraData map[string]interface{} `json:"extraData"` // contains all the batch/ rollup data if found
-}
-
-// TODO (@will) remove when tenscan UI has been updated
-type PublicBatchDeprecated struct {
-	BatchHeader
-	TxHashes []TxHash `json:"txHashes"`
 }
 
 type PublicRollup struct {

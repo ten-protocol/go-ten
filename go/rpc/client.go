@@ -36,10 +36,10 @@ const (
 	GetBatch                 = "scan_getBatch"
 	GetLatestBatch           = "scan_getLatestBatch"
 	GetBatchByHeight         = "scan_getBatchByHeight"
+	GetBatchBySeqNo          = "scan_getBatchBySeq"
 	GetTransaction           = "scan_getTransaction"
 
 	GetRollupListing        = "scan_getRollupListing"
-	GetBatchListingNew      = "scan_getBatchListingNew"
 	GetRollupByHash         = "scan_getRollupByHash"
 	GetRollupBatches        = "scan_getRollupBatches"
 	GetRollupBySeqNo        = "scan_getRollupBySeqNo"

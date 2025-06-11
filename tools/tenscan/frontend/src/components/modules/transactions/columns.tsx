@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -11,6 +12,7 @@ import { formatTimeAgo } from "@repo/ui/lib/utils";
 import Link from "next/link";
 import { pathToUrl } from "@/src/routes/router";
 import { pageLinks } from "@/src/routes";
+import ClickableLink from "@repo/ui/components/common/clickable-link";
 
 export const columns: ColumnDef<Transaction>[] = [
   {
@@ -20,11 +22,12 @@ export const columns: ColumnDef<Transaction>[] = [
     ),
     cell: ({ row }) => {
       return (
-        <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate">
-            #{row.getValue("BatchHeight")}
-          </span>
-        </div>
+          <ClickableLink
+              label={row.getValue("BatchHeight")}
+              link={pathToUrl(pageLinks.batchByHeight, {
+                  hash: row.original.TransactionHash,
+              })}
+          />
       );
     },
     filterFn: (row, id, value) => {

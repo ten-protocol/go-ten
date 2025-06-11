@@ -327,88 +327,6 @@ func TestGetBatchListing(t *testing.T) {
 	}
 }
 
-func TestGetBatchListingDeprecated(t *testing.T) {
-	db, _ := CreateSQLiteDB(t)
-	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
-	batchOne := CreateBatch(batchNumber, txHashesOne)
-	dbtx, _ := db.NewDBTransaction()
-	err := AddBatch(dbtx, db.GetSQLStatement(), &batchOne)
-	if err != nil {
-		t.Errorf("could not store batch. Cause: %s", err)
-	}
-
-	txHashesTwo := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour"))}
-	batchTwo := CreateBatch(batchNumber+1, txHashesTwo)
-
-	err = AddBatch(dbtx, db.GetSQLStatement(), &batchTwo)
-	if err != nil {
-		t.Errorf("could not store batch. Cause: %s", err)
-	}
-
-	txHashesThree := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringFive")), gethcommon.BytesToHash([]byte("magicStringSix"))}
-	batchThree := CreateBatch(batchNumber+2, txHashesThree)
-
-	err = AddBatch(dbtx, db.GetSQLStatement(), &batchThree)
-	if err != nil {
-		t.Errorf("could not store batch. Cause: %s", err)
-	}
-	dbtx.Write()
-
-	// page 1, size 2
-	batchListing, err := GetBatchListingDeprecated(db, &common.QueryPagination{Offset: 1, Size: 2})
-	if err != nil {
-		t.Errorf("could not get batch listing. Cause: %s", err)
-	}
-
-	// should be two elements
-	if big.NewInt(int64(batchListing.Total)).Cmp(big.NewInt(2)) != 0 {
-		t.Errorf("batch listing was not paginated correctly")
-	}
-
-	// first element should be the second batch
-	if batchListing.BatchesData[0].BatchHeader.SequencerOrderNo.Cmp(batchTwo.SeqNo()) != 0 {
-		t.Errorf("batch listing was not paginated correctly")
-	}
-
-	// page 0, size 3
-	batchListing1, err := GetBatchListingDeprecated(db, &common.QueryPagination{Offset: 0, Size: 3})
-	if err != nil {
-		t.Errorf("could not get batch listing. Cause: %s", err)
-	}
-
-	// first element should be the most recent batch since they're in descending order
-	if batchListing1.BatchesData[0].BatchHeader.SequencerOrderNo.Cmp(batchThree.SeqNo()) != 0 {
-		t.Errorf("batch listing was not paginated correctly")
-	}
-
-	// should be 3 elements
-	if big.NewInt(int64(batchListing1.Total)).Cmp(big.NewInt(3)) != 0 {
-		t.Errorf("batch listing was not paginated correctly")
-	}
-
-	// page 0, size 4
-	batchListing2, err := GetBatchListingDeprecated(db, &common.QueryPagination{Offset: 0, Size: 4})
-	if err != nil {
-		t.Errorf("could not get batch listing. Cause: %s", err)
-	}
-
-	// should be 3 elements
-	if big.NewInt(int64(batchListing2.Total)).Cmp(big.NewInt(3)) != 0 {
-		t.Errorf("batch listing was not paginated correctly")
-	}
-
-	// page 5, size 1
-	batchListing3, err := GetBatchListingDeprecated(db, &common.QueryPagination{Offset: 5, Size: 1})
-	if err != nil {
-		t.Errorf("could not get batch listing. Cause: %s", err)
-	}
-
-	// should be 0 elements
-	if big.NewInt(int64(batchListing3.Total)).Cmp(big.NewInt(0)) != 0 {
-		t.Errorf("batch listing was not paginated correctly")
-	}
-}
-
 func TestGetBatchTransactions(t *testing.T) {
 	db, _ := CreateSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
@@ -429,7 +347,7 @@ func TestGetBatchTransactions(t *testing.T) {
 
 	dbtx.Write()
 
-	txListing1, err := GetBatchTransactions(db, batchOne.Header.Hash())
+	txListing1, err := GetBatchTransactions(db, batchOne.Header.Hash(), &common.QueryPagination{Offset: 0, Size: 2})
 	if err != nil {
 		t.Errorf("stored batch but could not retrieve transactions. Cause: %s", err)
 	}
@@ -437,7 +355,7 @@ func TestGetBatchTransactions(t *testing.T) {
 	if txListing1.Total != uint64(len(txHashesOne)) {
 		t.Errorf("batch transactions were not retrieved correctly")
 	}
-	txListing2, err := GetBatchTransactions(db, batchTwo.Header.Hash())
+	txListing2, err := GetBatchTransactions(db, batchTwo.Header.Hash(), &common.QueryPagination{Offset: 0, Size: 2})
 	if err != nil {
 		t.Errorf("stored batch but could not retrieve transactions. Cause: %s", err)
 	}

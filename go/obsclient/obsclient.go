@@ -77,6 +77,17 @@ func (oc *ObsClient) GetBatchByHeight(height *big.Int) (*common.PublicBatch, err
 	return batch, err
 }
 
+// GetBatchBySeq returns the batch with the given sequence number.
+func (oc *ObsClient) GetBatchBySeq(seq *big.Int) (*common.PublicBatch, error) {
+	var batch *common.PublicBatch
+
+	err := oc.rpcClient.Call(&batch, rpc.GetBatchBySeqNo, seq)
+	if err == nil && batch == nil {
+		err = ethereum.NotFound
+	}
+	return batch, err
+}
+
 // GetRollupBySeqNo returns the batch with the given height.
 func (oc *ObsClient) GetRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error) {
 	var rollup *common.PublicRollup
@@ -192,16 +203,6 @@ func (oc *ObsClient) GetPublicTxListing(pagination *common.QueryPagination) (*co
 // GetBatchesListing returns a list of batches
 func (oc *ObsClient) GetBatchesListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	var result common.BatchListingResponse
-	err := oc.rpcClient.Call(&result, rpc.GetBatchListingNew, pagination)
-	if err != nil {
-		return nil, err
-	}
-	return &result, nil
-}
-
-// GetBatchesListingDeprecated returns a list of batches
-func (oc *ObsClient) GetBatchesListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	var result common.BatchListingResponseDeprecated
 	err := oc.rpcClient.Call(&result, rpc.GetBatchListing, pagination)
 	if err != nil {
 		return nil, err
@@ -240,19 +241,19 @@ func (oc *ObsClient) GetRollupByHash(hash gethcommon.Hash) (*common.PublicRollup
 }
 
 // GetRollupBatches returns a list of public batch data within a given rollup hash
-func (oc *ObsClient) GetRollupBatches(hash gethcommon.Hash) (*common.BatchListingResponse, error) {
+func (oc *ObsClient) GetRollupBatches(hash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	var batchListing *common.BatchListingResponse
-	err := oc.rpcClient.Call(&batchListing, rpc.GetRollupBatches, hash)
+	err := oc.rpcClient.Call(&batchListing, rpc.GetRollupBatches, hash, pagination)
 	if err == nil && batchListing == nil {
 		err = ethereum.NotFound
 	}
 	return batchListing, err
 }
 
-// GetBatchTransactions returns a list of public transaction data within a given batch has
-func (oc *ObsClient) GetBatchTransactions(hash gethcommon.Hash) (*common.TransactionListingResponse, error) {
+// GetBatchTransactions returns a list of public transaction data within a given batch hash
+func (oc *ObsClient) GetBatchTransactions(hash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	var txListing *common.TransactionListingResponse
-	err := oc.rpcClient.Call(&txListing, rpc.GetBatchTransactions, hash)
+	err := oc.rpcClient.Call(&txListing, rpc.GetBatchTransactions, hash, pagination)
 	if err == nil && txListing == nil {
 		err = ethereum.NotFound
 	}

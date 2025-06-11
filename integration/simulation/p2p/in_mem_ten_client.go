@@ -89,7 +89,7 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 		return c.getBatch(result, args)
 
 	case rpc.GetBatchListing:
-		return c.getBatchListingDeprecated(result, args)
+		return c.getBatchListing(result, args)
 
 	case rpc.GetRollupListing:
 		return c.getRollupListing(result, args)
@@ -327,7 +327,7 @@ func (c *inMemTenClient) getBatch(result interface{}, args []interface{}) error 
 	return nil
 }
 
-func (c *inMemTenClient) getBatchListingDeprecated(result interface{}, args []interface{}) error {
+func (c *inMemTenClient) getBatchListing(result interface{}, args []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.GetBatchListing, len(args))
 	}
@@ -341,7 +341,7 @@ func (c *inMemTenClient) getBatchListingDeprecated(result interface{}, args []in
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchListing, err)
 	}
 
-	res, ok := result.(*common.BatchListingResponseDeprecated)
+	res, ok := result.(*common.BatchListingResponse)
 	if !ok {
 		return fmt.Errorf("result is of type %T, expected *common.BatchListingResponseDeprecated", result)
 	}

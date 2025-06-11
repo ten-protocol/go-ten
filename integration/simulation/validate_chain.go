@@ -836,7 +836,7 @@ func checkTotalTransactions(t *testing.T, client rpc.Client, nodeIdx int) {
 
 // Checks that we can retrieve the latest batches
 func checkForLatestBatches(t *testing.T, client rpc.Client, nodeIdx int) {
-	var latestBatches common.BatchListingResponseDeprecated
+	var latestBatches common.BatchListingResponse
 	pagination := common.QueryPagination{Offset: uint64(0), Size: uint(20)}
 	err := client.Call(&latestBatches, rpc.GetBatchListing, &pagination)
 	if err != nil {

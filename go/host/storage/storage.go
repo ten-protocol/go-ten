@@ -177,16 +177,16 @@ func (s *storageImpl) FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHe
 	return hostdb.GetBatchHeaderByHeight(s.db, height)
 }
 
-func (s *storageImpl) FetchBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
+func (s *storageImpl) FetchPublicBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
 	return hostdb.GetBatchByHeight(s.db, height)
+}
+
+func (s *storageImpl) FetchPublicBatchBySeqNo(seqNum *big.Int) (*common.PublicBatch, error) {
+	return hostdb.GetPublicBatchBySequenceNumber(s.db, seqNum.Uint64())
 }
 
 func (s *storageImpl) FetchBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	return hostdb.GetBatchListing(s.db, pagination)
-}
-
-func (s *storageImpl) FetchBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	return hostdb.GetBatchListingDeprecated(s.db, pagination)
 }
 
 func (s *storageImpl) FetchLatestRollupHeader() (*common.RollupHeader, error) {
@@ -221,12 +221,12 @@ func (s *storageImpl) FetchRollupBySeqNo(seqNo uint64) (*common.PublicRollup, er
 	return hostdb.GetRollupBySeqNo(s.db, seqNo)
 }
 
-func (s *storageImpl) FetchRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
-	return hostdb.GetRollupBatches(s.db, rollupHash)
+func (s *storageImpl) FetchRollupBatches(rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	return hostdb.GetRollupBatches(s.db, rollupHash, pagination)
 }
 
-func (s *storageImpl) FetchBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
-	return hostdb.GetBatchTransactions(s.db, batchHash)
+func (s *storageImpl) FetchBatchTransactions(batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	return hostdb.GetBatchTransactions(s.db, batchHash, pagination)
 }
 
 func (s *storageImpl) FetchTransactionListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {

@@ -64,10 +64,9 @@ type batchExecutor struct {
 	systemContracts        system.SystemContractCallbacks
 	entropyService         *crypto.EvmEntropyService
 	mempool                *TxPool
-	// stateDBMutex - used to protect calls to stateDB.Commit as it is not safe for async access.
-	stateDBMutex sync.Mutex
-
-	batchGasLimit uint64 // max execution gas allowed in a batch
+	execMutex              *sync.Mutex
+	lastExecutedBatch      uint64
+	batchGasLimit          uint64 // max execution gas allowed in a batch
 }
 
 func NewBatchExecutor(
@@ -97,18 +96,30 @@ func NewBatchExecutor(
 		chainConfig:            chainConfig,
 		logger:                 logger,
 		gasOracle:              gasOracle,
-		stateDBMutex:           sync.Mutex{},
 		batchGasLimit:          config.GasBatchExecutionLimit,
 		systemContracts:        systemContracts,
 		entropyService:         entropyService,
 		mempool:                mempool,
 		dataCompressionService: dataCompressionService,
+		execMutex:              &sync.Mutex{},
+		lastExecutedBatch:      0,
 	}
 }
 
 // ComputeBatch where the batch execution conventions are
 func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecutionContext, failForEmptyBatch bool) (*ComputedBatch, error) {
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
+
+	// only compute one batch at a time
+	executor.execMutex.Lock()
+	defer executor.execMutex.Unlock()
+
+	// Executing a batch twice is catastrophic as it corrupts the state database.
+	// We already rely on the database to prevent it, but there could be some races in extreme conditions.
+	// To be absolutely sure, we implement a second mechanism.
+	if executor.lastExecutedBatch >= ec.SequencerNo.Uint64() {
+		return nil, fmt.Errorf("batch %d already executed. should not happen.", ec.SequencerNo.Uint64())
+	}
 
 	ec.ctx = ctx
 	if err := executor.verifyContext(ec); err != nil {
@@ -177,7 +188,12 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		return nil, fmt.Errorf("failed to post process state. Cause: %w", err)
 	}
 
-	return executor.execResult(ec)
+	res, err := executor.execResult(ec)
+	if err != nil {
+		executor.lastExecutedBatch = ec.SequencerNo.Uint64()
+	}
+
+	return res, err
 }
 
 func (executor *batchExecutor) verifyContext(ec *BatchExecutionContext) error {
@@ -532,9 +548,6 @@ func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error
 }
 
 func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedBatch, error) {
-	executor.stateDBMutex.Lock()
-	defer executor.stateDBMutex.Unlock()
-
 	batch, allResults, err := executor.createBatch(ec)
 	if err != nil {
 		return nil, fmt.Errorf("failed creating batch. Cause: %w", err)
