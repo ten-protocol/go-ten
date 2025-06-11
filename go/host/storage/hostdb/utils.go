@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
 )
@@ -20,7 +21,10 @@ func CreateSQLiteDB(t *testing.T) (HostDB, error) {
 	if err != nil {
 		t.Fatalf("unable to create temp sql db: %s", err)
 	}
-	return NewHostDB(hostDB, SQLiteSQLStatements())
+	
+	// Create a test logger for the database
+	testLogger := log.New(log.HostCmp, 1, log.SysOut)
+	return NewHostDB(hostDB, SQLiteSQLStatements(), testLogger)
 }
 
 func CreateBatch(batchNum int64, txHashes []common.L2BatchHash) common.ExtBatch {

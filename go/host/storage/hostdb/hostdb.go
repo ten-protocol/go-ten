@@ -3,32 +3,41 @@ package hostdb
 import (
 	"database/sql"
 	"fmt"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 type HostDB interface {
 	GetSQLDB() *sql.DB
 	NewDBTransaction() (*dbTransaction, error)
 	GetSQLStatement() *SQLStatements
+	Logger() gethlog.Logger
 }
 
 type hostDB struct {
 	sqldb      *sql.DB
 	statements *SQLStatements
+	logger     gethlog.Logger
 }
 
 func (db *hostDB) GetSQLStatement() *SQLStatements {
 	return db.statements
 }
 
-func NewHostDB(db *sql.DB, statements *SQLStatements) (HostDB, error) {
+func NewHostDB(db *sql.DB, statements *SQLStatements, logger gethlog.Logger) (HostDB, error) {
 	return &hostDB{
 		sqldb:      db,
 		statements: statements,
+		logger:     logger,
 	}, nil
 }
 
 func (db *hostDB) GetSQLDB() *sql.DB {
 	return db.sqldb
+}
+
+func (db *hostDB) Logger() gethlog.Logger {
+	return db.logger
 }
 
 func (db *hostDB) NewDBTransaction() (*dbTransaction, error) {

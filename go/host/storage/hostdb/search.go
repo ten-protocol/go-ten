@@ -1,6 +1,8 @@
 package hostdb
 
 import (
+	"database/sql"
+	"errors"
 	"math/big"
 	"strconv"
 	"strings"
@@ -59,6 +61,7 @@ func identifyInputType(query string) string {
 
 func searchByHash(db HostDB, hash string) []*common.SearchResult {
 	var results []*common.SearchResult
+	logger := db.Logger()
 
 	trimmedHash := strings.TrimPrefix(hash, "0x")
 
@@ -72,6 +75,8 @@ func searchByHash(db HostDB, hash string) []*common.SearchResult {
 				"rollup": rollup,
 			},
 		})
+	} else if errors.Is(err, sql.ErrNoRows) {
+		logger.Error("No rollup found for hash during search", "hash", hash, "error", err)
 	}
 
 	batch, err := GetPublicBatch(db, gethcommon.HexToHash(hash))
@@ -86,6 +91,8 @@ func searchByHash(db HostDB, hash string) []*common.SearchResult {
 				"batch": batch,
 			},
 		})
+	} else if errors.Is(err, sql.ErrNoRows) {
+		logger.Error("No rollup found for hash during search", "hash", hash, "error", err)
 	}
 
 	tx, err := GetTransaction(db, gethcommon.HexToHash(hash))
@@ -98,6 +105,8 @@ func searchByHash(db HostDB, hash string) []*common.SearchResult {
 				"transaction": tx,
 			},
 		})
+	} else if errors.Is(err, sql.ErrNoRows) {
+		logger.Error("No tx found for hash during search", "hash", hash, "error", err)
 	}
 
 	return results
@@ -105,7 +114,13 @@ func searchByHash(db HostDB, hash string) []*common.SearchResult {
 
 func searchByNumber(db HostDB, number string) []*common.SearchResult {
 	var results []*common.SearchResult
-	num, _ := strconv.ParseInt(number, 10, 64)
+	logger := db.Logger()
+
+	num, err := strconv.ParseInt(number, 10, 64)
+	if err != nil {
+		logger.Error("Failed to parse number for search", "number", number, "error", err)
+		return results
+	}
 
 	batch, err := GetBatchByHeight(db, big.NewInt(num))
 	if err == nil {
@@ -119,6 +134,8 @@ func searchByNumber(db HostDB, number string) []*common.SearchResult {
 				"batch": batch,
 			},
 		})
+	} else if errors.Is(err, sql.ErrNoRows) {
+		logger.Error("No batch found for height during search", "height", num, "error", err)
 	}
 
 	batch, err = GetPublicBatchBySequenceNumber(db, uint64(num))
@@ -133,6 +150,8 @@ func searchByNumber(db HostDB, number string) []*common.SearchResult {
 				"batch": batch,
 			},
 		})
+	} else if errors.Is(err, sql.ErrNoRows) {
+		logger.Error("No batch found for sequence number during search", "seq", num, "error", err)
 	}
 
 	return results
