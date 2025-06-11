@@ -6,6 +6,7 @@ export const apiRoutes = {
   getBatches: "/items/batches/",
   getBatchByHash: "/items/batch/:hash",
   getBatchByHeight: "/items/batch/height/:height",
+  getBatchBySequence: "/items/batch/seq/:seq",
   getBatchTransactions: "/items/batch/:fullHash/transactions",
   getBatchesInRollup: "/items/rollup/:hash/batches",
 
@@ -66,6 +67,7 @@ export const pageLinks = {
   batchByHash: "/batch/:hash",
   batchByHeight: "/batch/height/:height",
   batchTransactions: "/batch/txs/:hash",
+  batchBySequence: "/batch/sequence/:sequence",
 
   // **** ROLLUPS ****
   rollups: "/rollups",
@@ -83,7 +85,7 @@ export const pageLinks = {
   // **** INFO ****
   privacyPolicy: "/docs/privacy-policy",
   termsOfService: "/docs/terms",
-};
+}
 
 export const NavLinks: NavLink[] = [
   {

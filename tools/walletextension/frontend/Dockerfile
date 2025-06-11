@@ -21,7 +21,7 @@ WORKDIR /usr/src/app
 COPY tools/walletextension/frontend/ .
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install
 
 # Build the Next.js app
 RUN pnpm run build
@@ -42,7 +42,7 @@ COPY --from=base /usr/src/app/package*.json ./
 COPY --from=base /usr/src/app/pnpm-lock.yaml ./
 
 # Install production dependencies
-RUN pnpm install --prod --frozen-lockfile
+RUN pnpm install --prod
 
 # Set the environment variables
 ENV PORT=80

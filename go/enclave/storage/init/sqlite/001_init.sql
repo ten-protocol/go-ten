@@ -18,7 +18,7 @@ values ('CURRENT_SEQ', -1);
 create table if not exists attestation
 (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    enclave_id binary(20),
+    enclave_id binary(20) UNIQUE NOT NULL,
     pub_key    binary(33) NOT NULL,
     node_type  smallint   NOT NULL
 );
@@ -83,7 +83,8 @@ create table if not exists tx
     sender_address int        NOT NULL REFERENCES externally_owned_account,
     idx            int        NOT NULL,
     batch_height   int        NOT NULL,
-    is_synthetic   boolean    NOT NULL
+    is_synthetic   boolean    NOT NULL,
+    time           int
 );
 create index IDX_TX_HASH on tx (hash);
 create index IDX_TX_SENDER_ADDRESS on tx (sender_address);

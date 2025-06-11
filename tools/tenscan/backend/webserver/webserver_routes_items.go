@@ -21,6 +21,7 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/batch/:hash", server.getBatch)
 	r.GET("/items/batch/:hash/transactions", server.getBatchTransactions)
 	r.GET("/items/batch/height/:height", server.getBatchByHeight)
+	r.GET("/items/batch/seq/:seq", server.getBatchBySeq)
 
 	// rollups
 	r.GET("/items/rollups/", server.getRollupListing) // New
@@ -81,6 +82,20 @@ func (w *WebServer) getBatchByHeight(c *gin.Context) {
 	heightBigInt := new(big.Int)
 	heightBigInt.SetString(heightStr, 10)
 	batch, err := w.backend.GetBatchByHeight(heightBigInt)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute getBatchByHeight request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": batch})
+}
+
+func (w *WebServer) getBatchBySeq(c *gin.Context) {
+	seqStr := c.Param("seq")
+
+	seqBigInt := new(big.Int)
+	seqBigInt.SetString(seqStr, 10)
+	batch, err := w.backend.GetBatchBySeq(seqBigInt)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute getBatchByHeight request %w", err), w.logger)
 		return

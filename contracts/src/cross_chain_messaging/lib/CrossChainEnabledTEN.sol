@@ -17,13 +17,14 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 abstract contract CrossChainEnabledTEN is Initializable {
     ICrossChainMessenger messenger;
     IMessageBus messageBus;
-    uint32 nonce = 0;
+    uint32 nonce;
 
     // The messenger contract passed will be the authority that we trust to tell us
     // who has sent the cross chain message and that the message is indeed cross chain.
     function configure(address messengerAddress) public onlyInitializing {
         messenger = ICrossChainMessenger(messengerAddress);
         messageBus = IMessageBus(messenger.messageBus());
+        nonce = 0;
     }
 
     // Returns if the message is considered to be a cross chain one.

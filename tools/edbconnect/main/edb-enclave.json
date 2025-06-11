@@ -1,7 +1,7 @@
 {
   "exe": "main",
   "key": "testnet.pem",
-  "debug": true,
+  "debug": false,
   "heapSize": 1024,
   "executableHeap": true,
   "productID": 1,

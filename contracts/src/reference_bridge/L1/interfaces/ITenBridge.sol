@@ -19,6 +19,6 @@ interface ITenBridge {
 
     function setRemoteBridge(address bridge) external;
 
-    // This will retrieve all funds from the bridge. Testnet only.
-    function retrieveAllFunds() external;
+    // This will retrieve all funds from the bridge and send to receiver address. Testnet only.
+    function retrieveAllFunds(address receiver) external;
 }

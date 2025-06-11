@@ -68,9 +68,14 @@ func (s *ScanAPI) GetLatestBatch() (*common.BatchHeader, error) {
 	return s.host.Storage().FetchLatestBatch()
 }
 
-// GetBatchByHeight returns the `BatchHeader` with the given height
+// GetBatchByHeight returns the `PublicBatch` with the given height
 func (s *ScanAPI) GetBatchByHeight(height *big.Int) (*common.PublicBatch, error) {
-	return s.host.Storage().FetchBatchByHeight(height)
+	return s.host.Storage().FetchPublicBatchByHeight(height)
+}
+
+// GetBatchBySeq returns the `PublicBatch` with the given sequence number
+func (s *ScanAPI) GetBatchBySeq(seq *big.Int) (*common.PublicBatch, error) {
+	return s.host.Storage().FetchPublicBatchBySeqNo(seq)
 }
 
 // GetRollupBySeqNo returns the `PublicRollup` that contains the batch with the given sequence number

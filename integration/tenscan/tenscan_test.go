@@ -173,6 +173,21 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Header.Hash(), batchObj.Item.Header.Hash())
 
+	// fetch batch by sequence num
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/seq/%s", serverAddress, batchlistingObj.Result.BatchesData[0].SequencerOrderNo))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type pubBatchFetch struct {
+		Item *common.PublicBatch `json:"item"`
+	}
+
+	pubBatchObj := pubBatchFetch{}
+	err = json.Unmarshal(body, &pubBatchObj)
+	assert.NoError(t, err)
+
+	assert.Equal(t, batchlistingObj.Result.BatchesData[0].Header.SequencerOrderNo, pubBatchObj.Item.SequencerOrderNo)
+
 	// fetch rollup listing
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollups/?offset=0&size=10", serverAddress))
 	assert.NoError(t, err)

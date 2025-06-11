@@ -38,8 +38,10 @@ type BatchResolver interface {
 	FetchBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error)
 	// FetchBatchHeaderByHeight returns the `BatchHeader` with the given height
 	FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error)
-	// FetchBatchByHeight returns the `PublicBatch` with the given height
-	FetchBatchByHeight(height *big.Int) (*common.PublicBatch, error)
+	// FetchPublicBatchByHeight returns the `PublicBatch` with the given height
+	FetchPublicBatchByHeight(height *big.Int) (*common.PublicBatch, error)
+	// FetchPublicBatchBySeqNo returns the `PublicBatch` with the given seq number
+	FetchPublicBatchBySeqNo(seqNum *big.Int) (*common.PublicBatch, error)
 	// FetchTotalTxCount returns the value of the transactions_count table. Fast but inaccurate for Tenscan
 	FetchTotalTxCount() (*big.Int, error)
 	// FetchTotalTxsQuery returns the number of transactions in the DB. Required for e2e tests

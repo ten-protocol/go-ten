@@ -47,9 +47,6 @@ interface IMessageBus {
     // It should be access controlled and called according to the consistencyLevel and Obscuro platform rules.
     function storeCrossChainMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) external;
 
-    // This is a testnet function which allows the bridge owner to retrieve all funds from the message bus.
-    function retrieveAllFunds(address receiver) external;
-
     // the fee needed to be paid in msg.value to publish the value transfer
     function getPublishFee() external view returns (uint256);
 }
