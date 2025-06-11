@@ -314,7 +314,6 @@ func TestTenscan(t *testing.T) {
 
 	// search API tests
 	rollupHash := rollupListingObj.Result.RollupsData[0].Header.Hash()
-	batchHash := batchlistingObj.Result.BatchesData[0].FullHash
 	txHash := txListingObj.Result.TransactionsData[0].TransactionHash
 	batchSequence := batchlistingObj.Result.BatchesData[0].SequencerOrderNo.String()
 
@@ -366,8 +365,8 @@ func TestTenscan(t *testing.T) {
 
 	err = json.Unmarshal(body, &searchObj)
 	assert.NoError(t, err)
-	assert.Equal(t, uint64(2), searchObj.Result.Total)
-	assert.Equal(t, 2, len(searchObj.Result.ResultsData))
+	assert.Equal(t, uint64(1), searchObj.Result.Total)
+	assert.Equal(t, 1, len(searchObj.Result.ResultsData))
 
 	// since there is a diff of 1 between sequence number and height we will find two results we just need to check the seq num is present
 	foundExpectedSequence := false

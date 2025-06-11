@@ -21,7 +21,7 @@ func CreateSQLiteDB(t *testing.T) (HostDB, error) {
 	if err != nil {
 		t.Fatalf("unable to create temp sql db: %s", err)
 	}
-	
+
 	// Create a test logger for the database
 	testLogger := log.New(log.HostCmp, 1, log.SysOut)
 	return NewHostDB(hostDB, SQLiteSQLStatements(), testLogger)
