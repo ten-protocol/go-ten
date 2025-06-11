@@ -189,10 +189,6 @@ func (s *storageImpl) FetchBatchListing(pagination *common.QueryPagination) (*co
 	return hostdb.GetBatchListing(s.db, pagination)
 }
 
-func (s *storageImpl) FetchBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	return hostdb.GetBatchListingDeprecated(s.db, pagination)
-}
-
 func (s *storageImpl) FetchLatestRollupHeader() (*common.RollupHeader, error) {
 	return hostdb.GetLatestRollup(s.db)
 }
@@ -225,12 +221,12 @@ func (s *storageImpl) FetchRollupBySeqNo(seqNo uint64) (*common.PublicRollup, er
 	return hostdb.GetRollupBySeqNo(s.db, seqNo)
 }
 
-func (s *storageImpl) FetchRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
-	return hostdb.GetRollupBatches(s.db, rollupHash)
+func (s *storageImpl) FetchRollupBatches(rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	return hostdb.GetRollupBatches(s.db, rollupHash, pagination)
 }
 
-func (s *storageImpl) FetchBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
-	return hostdb.GetBatchTransactions(s.db, batchHash)
+func (s *storageImpl) FetchBatchTransactions(batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	return hostdb.GetBatchTransactions(s.db, batchHash, pagination)
 }
 
 func (s *storageImpl) FetchTransactionListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {

@@ -3,7 +3,7 @@ import { NavLink } from "../types/interfaces";
 export const apiRoutes = {
   // **** BATCHES ****
   getLatestBatch: "/items/batch/latest/",
-  getBatches: "/items/v2/batches/",
+  getBatches: "/items/batches/",
   getBatchByHash: "/items/batch/:hash",
   getBatchByHeight: "/items/batch/height/:height",
   getBatchBySequence: "/items/batch/seq/:seq",

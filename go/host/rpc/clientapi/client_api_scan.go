@@ -43,14 +43,9 @@ func (s *ScanAPI) GetTotalTransactionsQuery() (*big.Int, error) {
 	return s.host.Storage().FetchTotalTxsQuery()
 }
 
-// GetBatchListingNew returns a paginated list of batches
-func (s *ScanAPI) GetBatchListingNew(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+// GetBatchListing returns a paginated list of batches
+func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	return s.host.Storage().FetchBatchListing(pagination)
-}
-
-// GetBatchListing returns the deprecated version of batch listing
-func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error) {
-	return s.host.Storage().FetchBatchListingDeprecated(pagination)
 }
 
 // GetPublicBatchByHash returns the public batch
@@ -114,11 +109,11 @@ func (s *ScanAPI) GetRollupByHash(rollupHash gethcommon.Hash) (*common.PublicRol
 }
 
 // GetRollupBatches returns the list of batches included in a rollup given its hash
-func (s *ScanAPI) GetRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error) {
-	return s.host.Storage().FetchRollupBatches(rollupHash)
+func (s *ScanAPI) GetRollupBatches(rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
+	return s.host.Storage().FetchRollupBatches(rollupHash, pagination)
 }
 
 // GetBatchTransactions returns the public tx data of all txs present in a rollup given its hash
-func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error) {
-	return s.host.Storage().FetchBatchTransactions(batchHash)
+func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	return s.host.Storage().FetchBatchTransactions(batchHash, pagination)
 }

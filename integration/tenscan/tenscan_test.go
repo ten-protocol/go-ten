@@ -132,24 +132,6 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	type batchlistingDeprecated struct {
-		Result common.BatchListingResponseDeprecated `json:"result"`
-	}
-
-	batchlistingObjDeprecated := batchlistingDeprecated{}
-	err = json.Unmarshal(body, &batchlistingObjDeprecated)
-	assert.NoError(t, err)
-	assert.LessOrEqual(t, 9, len(batchlistingObjDeprecated.Result.BatchesData))
-	assert.LessOrEqual(t, uint64(9), batchlistingObjDeprecated.Result.Total)
-	// check results are descending order (latest first)
-	assert.LessOrEqual(t, batchlistingObjDeprecated.Result.BatchesData[1].Number.Cmp(batchlistingObjDeprecated.Result.BatchesData[0].Number), 0)
-	// check "hash" field is included in json response
-	assert.Contains(t, string(body), "\"hash\"")
-
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/v2/batches/?offset=0&size=10", serverAddress))
-	assert.NoError(t, err)
-	assert.Equal(t, 200, statusCode)
-
 	type batchlisting struct {
 		Result common.BatchListingResponse `json:"result"`
 	}
@@ -222,14 +204,69 @@ func TestTenscan(t *testing.T) {
 	assert.LessOrEqual(t, uint64(1), rollupListingObj.Result.Total)
 	assert.Contains(t, string(body), "\"hash\"")
 
-	// fetch batches in rollup
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
+	// test pagination for rollup batches
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches?offset=0&size=1", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	err = json.Unmarshal(body, &batchlistingObj)
+	type batchListing struct {
+		Result common.BatchListingResponse `json:"result"`
+	}
+
+	firstPageObj := batchListing{}
+	err = json.Unmarshal(body, &firstPageObj)
 	assert.NoError(t, err)
-	assert.True(t, batchlistingObj.Result.Total > 0)
+	firstPageBatches := firstPageObj.Result.BatchesData
+
+	// second page
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/rollup/%s/batches?offset=1&size=2", serverAddress, rollupListingObj.Result.RollupsData[0].Header.Hash()))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	secondPageObj := batchListing{}
+	err = json.Unmarshal(body, &secondPageObj)
+	assert.NoError(t, err)
+	secondPageBatches := secondPageObj.Result.BatchesData
+
+	// verify different pages have different batches
+	assert.NotEqual(t, firstPageBatches[0].SequencerOrderNo, secondPageBatches[0].SequencerOrderNo)
+
+	// test pagination for batch transactions
+	batchHash := firstPageBatches[0].Header.Hash()
+
+	// first page of transactions
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s/transactions?offset=0&size=2", serverAddress, batchHash))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type batchTxListing struct {
+		Result common.TransactionListingResponse `json:"result"`
+	}
+
+	firstPageTxObj := batchTxListing{}
+	err = json.Unmarshal(body, &firstPageTxObj)
+	assert.NoError(t, err)
+	firstPageTxs := firstPageTxObj.Result.TransactionsData
+
+	// second page of transactions
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s/transactions?offset=2&size=2", serverAddress, batchHash))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	secondPageTxObj := batchTxListing{}
+	err = json.Unmarshal(body, &secondPageTxObj)
+	assert.NoError(t, err)
+	secondPageTxs := secondPageTxObj.Result.TransactionsData
+
+	// verify different pages have different transactions
+	if len(firstPageTxs) > 0 && len(secondPageTxs) > 0 {
+		assert.NotEqual(t, firstPageTxs[0].TransactionHash, secondPageTxs[0].TransactionHash)
+	}
+
+	// verify transactions are ordered by timestamp descending
+	if len(firstPageTxs) > 1 {
+		assert.GreaterOrEqual(t, firstPageTxs[0].BatchTimestamp, firstPageTxs[1].BatchTimestamp)
+	}
 
 	// fetch transaction listing
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/transactions/?offset=0&size=10", serverAddress))

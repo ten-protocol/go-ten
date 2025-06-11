@@ -36,8 +36,6 @@ type BatchResolver interface {
 	FetchLatestBatch() (*common.BatchHeader, error)
 	// FetchBatchListing returns a paginated list of the public batch data
 	FetchBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error)
-	// FetchBatchListingDeprecated backwards compatible API to return batch data
-	FetchBatchListingDeprecated(pagination *common.QueryPagination) (*common.BatchListingResponseDeprecated, error)
 	// FetchBatchHeaderByHeight returns the `BatchHeader` with the given height
 	FetchBatchHeaderByHeight(height *big.Int) (*common.BatchHeader, error)
 	// FetchPublicBatchByHeight returns the `PublicBatch` with the given height
@@ -51,7 +49,7 @@ type BatchResolver interface {
 	// FetchTransaction returns the transaction given its hash
 	FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error)
 	// FetchBatchTransactions returns a list of public transaction data within a given batch hash
-	FetchBatchTransactions(batchHash gethcommon.Hash) (*common.TransactionListingResponse, error)
+	FetchBatchTransactions(batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error)
 	// FetchTransactionListing returns a paginated list of public transaction data
 	FetchTransactionListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error)
 	// FetchCrossChainProof returns the proof for a cross chain message
@@ -77,5 +75,5 @@ type BlockResolver interface {
 	// FetchRollupBySeqNo returns the public rollup given a seq number
 	FetchRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error)
 	// FetchRollupBatches returns a list of public batch data within a given rollup hash
-	FetchRollupBatches(rollupHash gethcommon.Hash) (*common.BatchListingResponse, error)
+	FetchRollupBatches(rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error)
 }
