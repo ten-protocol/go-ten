@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import getProgressPathAnimation from '@/lib/getProgressPathAnimation';
 
 type Props = {
@@ -12,7 +12,7 @@ export default function ConnectWalletProgressAnimation({ progress = 0, error = t
     const progressLength = (progress / 100) * circleCircumference;
     const complete = progress >= 100;
 
-    const mainCircleVariants = {
+    const mainCircleVariants: Variants = {
         initial: {
             rotate: 0,
             strokeDasharray: `0 ${circleCircumference}`,
@@ -26,11 +26,11 @@ export default function ConnectWalletProgressAnimation({ progress = 0, error = t
                 rotate: {
                     duration: 3,
                     repeat: Infinity,
-                    ease: 'linear',
+                    ease: [0.4, 0, 0.2, 1],
                 },
                 strokeDasharray: {
                     duration: 0.5,
-                    ease: 'easeOut',
+                    ease: [0.4, 0, 0.2, 1],
                 },
             },
         },
@@ -40,7 +40,7 @@ export default function ConnectWalletProgressAnimation({ progress = 0, error = t
             stroke: '#00c951',
             transition: {
                 duration: 1,
-                ease: 'easeInOut',
+                ease: [0.4, 0, 0.2, 1],
             },
         },
         error: {
@@ -48,12 +48,12 @@ export default function ConnectWalletProgressAnimation({ progress = 0, error = t
             opacity: 0,
             transition: {
                 duration: 0.5,
-                ease: 'easeInOut',
+                ease: [0.4, 0, 0.2, 1],
             },
         },
     };
 
-    const backgroundCircleVariants1 = {
+    const backgroundCircleVariants1: Variants = {
         initial: {
             stroke: 'rgba(255,255,255,0.3)',
         },
@@ -67,7 +67,7 @@ export default function ConnectWalletProgressAnimation({ progress = 0, error = t
             stroke: 'rgba(76,175,80,0.3)',
             transition: {
                 duration: 1,
-                ease: 'easeInOut',
+                ease: [0.4, 0, 0.2, 1],
             },
         },
         error: {
@@ -77,7 +77,7 @@ export default function ConnectWalletProgressAnimation({ progress = 0, error = t
             stroke: 'rgba(255,103,103,0.8)',
             transition: {
                 duration: 1,
-                ease: 'easeInOut',
+                ease: [0.4, 0, 0.2, 1],
             },
         },
     };
@@ -199,7 +199,7 @@ export default function ConnectWalletProgressAnimation({ progress = 0, error = t
                         strokeWidth: '2px',
                         fill: '#e3e3e3',
                     }}
-                    filter={complete ? 'url(#glow-complete)' : ''}
+                    filter={progress === 100 ? 'url(#glow-complete)' : ''}
                 />
                 <motion.path
                     d="M134.728,137.642l-21.04,21.154l-0,42.215l8.52,8.43l-0,-47.242l24.491,-24.557l-11.971,-0Z"

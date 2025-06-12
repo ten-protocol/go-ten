@@ -1,4 +1,6 @@
-export default function getProgressPathAnimation(pathLength: number, progress: number) {
+import { Variants } from 'framer-motion';
+
+export default function getProgressPathAnimation(pathLength: number, progress: number): Variants {
     const visibleDashLength = pathLength * (progress / 100);
     const gapLength = pathLength - visibleDashLength;
     const pathAnimationDuration = pathLength / 20;
@@ -16,8 +18,8 @@ export default function getProgressPathAnimation(pathLength: number, progress: n
                 strokeDashoffset: {
                     duration: pathAnimationDuration,
                     repeat: Infinity,
-                    ease: 'linear',
-                    repeatType: 'loop',
+                    ease: [0.4, 0, 0.2, 1],
+                    repeatType: "loop" as const,
                 },
             },
         },
@@ -28,16 +30,16 @@ export default function getProgressPathAnimation(pathLength: number, progress: n
             transition: {
                 strokeDasharray: {
                     duration: 1,
-                    ease: 'easeInOut',
+                    ease: [0.4, 0, 0.2, 1],
                 },
                 strokeDashoffset: {
                     duration: 1,
-                    ease: 'easeInOut',
+                    ease: [0.4, 0, 0.2, 1],
                 },
                 fillOpacity: {
                     delay: 1.5,
                     duration: 1,
-                    ease: 'easeInOut',
+                    ease: [0.4, 0, 0.2, 1],
                 },
             },
         },
@@ -47,7 +49,7 @@ export default function getProgressPathAnimation(pathLength: number, progress: n
             opacity: 0,
             transition: {
                 duration: 1,
-                ease: 'easeInOut',
+                ease: [0.4, 0, 0.2, 1],
             },
         },
     };
