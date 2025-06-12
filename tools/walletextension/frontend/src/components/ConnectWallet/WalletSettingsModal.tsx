@@ -15,8 +15,15 @@ import { useAccount, useDisconnect, useSwitchChain, useBalance } from 'wagmi';
 import { Address, formatEther } from 'viem';
 import { Skeleton } from '@/components/ui/skeleton';
 import numeral from 'numeral';
-import { tenChainIDDecimal } from '@/lib/constants';
+import {
+    nativeCurrency,
+    tenChainIDDecimal,
+    tenGatewayAddress,
+    tenNetworkName,
+} from '@/lib/constants';
 import Image from 'next/image';
+import { useLocalStorage } from 'usehooks-ts';
+import { useState } from 'react';
 
 type Props = {
     isOpen: boolean;
@@ -26,7 +33,14 @@ type Props = {
 export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
     const { address, chain, connector } = useAccount();
     const { disconnect } = useDisconnect();
-    const { switchChain, isPending: isSwitchingChain, error: switchChainError } = useSwitchChain();
+    const {
+        switchChain,
+        isPending: isSwitchingChain,
+        error: switchChainError,
+        reset: switchChainReset,
+    } = useSwitchChain();
+    const [missingKeyError, setMissingKeyError] = useState(false);
+    const [tenToken] = useLocalStorage('ten_token', '');
 
     const { data: ethBalance, isLoading: isLoadingEthBalance } = useBalance({
         address,
@@ -43,7 +57,18 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
 
     const handleSwitchChain = async () => {
         try {
-            switchChain({ chainId: tenChainIDDecimal });
+            if (tenToken === '') {
+                setMissingKeyError(true);
+            } else {
+                switchChain({
+                    chainId: tenChainIDDecimal,
+                    addEthereumChainParameter: {
+                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${tenToken}`],
+                        chainName: tenNetworkName,
+                        nativeCurrency: nativeCurrency,
+                    },
+                });
+            }
         } catch (error) {
             console.error(
                 'Failed to switch to TEN Protocol. Please make sure you have added TEN Protocol to your wallet.',
@@ -55,8 +80,14 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
         }
     };
 
+    const handleOpenChange = () => {
+        setMissingKeyError(false);
+        switchChainReset();
+        onOpenChange(!isOpen);
+    };
+
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+        <Dialog open={isOpen} onOpenChange={handleOpenChange}>
             <DialogContent>
                 <DialogHeader>
                     <DialogTitle>Wallet Settings</DialogTitle>
@@ -76,6 +107,15 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
                                 <p className="text-sm text-destructive">
                                     You are on the wrong network. Please switch to TEN Protocol.
                                 </p>
+                                {missingKeyError && (
+                                    <Alert variant="destructive" className="mt-2">
+                                        <AlertCircle className="h-4 w-4" />
+                                        <AlertTitle>Failed to switch network.</AlertTitle>
+                                        <AlertDescription>
+                                            TEN token not found. Close modal and try again.
+                                        </AlertDescription>
+                                    </Alert>
+                                )}
                                 {switchChainError && (
                                     <Alert variant="destructive" className="mt-2">
                                         <AlertCircle className="h-4 w-4" />

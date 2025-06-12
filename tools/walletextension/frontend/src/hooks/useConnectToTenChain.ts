@@ -63,7 +63,7 @@ export default function useConnectToTenChain() {
                 }
             }
 
-            const newTenToken =
+            let newTenToken =
                 tenToken === ''
                     ? await joinTestnet().catch((error) => {
                           setError({
@@ -82,7 +82,8 @@ export default function useConnectToTenChain() {
             setStep(2);
 
             if (tenToken === '') {
-                setTenToken(`0x${newTenToken}`);
+                newTenToken = `0x${newTenToken}`;
+                setTenToken(newTenToken);
                 setStoreTenToken(`0x${newTenToken}`);
             }
 
