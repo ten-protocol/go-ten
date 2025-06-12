@@ -298,7 +298,7 @@ func (executor *batchExecutor) toPricedTx(ec *BatchExecutionContext, tx *common.
 	}
 	accBalance := ec.stateDB.GetBalance(*sender)
 
-	cost, err := executor.gasOracle.EstimateL1StorageGasCost(tx, block, ec.currentBatch.Header)
+	cost, err := executor.gasOracle.EstimateL1StorageGasCost(ec.ctx, tx, block, ec.currentBatch.Header)
 	if err != nil {
 		executor.logger.Error("Unable to get gas cost for tx. Should not happen at this point.", log.TxKey, tx.Hash(), log.ErrKey, err)
 		return nil, fmt.Errorf("unable to get gas cost for tx. Cause: %w", err)
