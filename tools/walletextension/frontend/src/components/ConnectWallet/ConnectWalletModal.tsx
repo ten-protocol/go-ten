@@ -33,6 +33,7 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
     const { connectors, connectToTen, step, reset, error } = useConnectToTenChain();
     const [tenToken] = useLocalStorage<string>('ten_token', '');
     const [isCopied, setIsCopied] = useState(false);
+    const rpcUrl = `${process.env.NEXT_PUBLIC_GATEWAY_URL}/v1/?token=${tenToken}`;
 
     const handleChange = () => {
         reset();
@@ -122,7 +123,7 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
     };
 
     const copyToClipboard = () => {
-        navigator.clipboard.writeText(tenToken);
+        navigator.clipboard.writeText(rpcUrl);
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
     };
@@ -164,12 +165,12 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
                         transition={{ duration: 0.6, delay: 1, ease: 'easeOut' }}
                         className="w-full mb-2"
                     >
-                        <div className="bg-white/5 rounded p-1 mb-4">
-                            <p className="text-center text-sm text-red-300">
+                        <div className="">
+                            <p className="text-center text-sm text-red-300 mb-2">
                                 Keep this token safe and private - do not share it with anyone
                             </p>
-                            <div className="flex items-center justify-center gap-2">
-                                <code className="text-xs">{tenToken}</code>
+                            <div className="flex items-center justify-center gap-2 bg-white/5 rounded p-1 mb-4">
+                                <code className="text-xs">{rpcUrl}</code>
                                 <Button variant="ghost" size="icon" onClick={copyToClipboard}>
                                     {isCopied ? (
                                         <Check className="h-4 w-4" />
