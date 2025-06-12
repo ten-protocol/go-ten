@@ -237,6 +237,10 @@ func (s *storageImpl) EstimateRollupSize(fromSeqNo *big.Int) (uint64, error) {
 	return hostdb.EstimateRollupSize(s.db, fromSeqNo)
 }
 
+func (s *storageImpl) Search(query string) (*common.SearchResponse, error) {
+	return hostdb.Search(s.db, query)
+}
+
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }

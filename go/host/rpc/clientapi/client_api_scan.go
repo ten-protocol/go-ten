@@ -117,3 +117,8 @@ func (s *ScanAPI) GetRollupBatches(rollupHash gethcommon.Hash, pagination *commo
 func (s *ScanAPI) GetBatchTransactions(batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	return s.host.Storage().FetchBatchTransactions(batchHash, pagination)
 }
+
+// Search queries the host DB using the query string provided
+func (s *ScanAPI) Search(query string) (*common.SearchResponse, error) {
+	return s.host.Storage().Search(query)
+}

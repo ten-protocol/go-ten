@@ -20,6 +20,11 @@ type TransactionListingResponse struct {
 	Total            uint64
 }
 
+type SearchResponse struct {
+	ResultsData []SearchResult
+	Total       uint64
+}
+
 type BatchListingResponse struct {
 	BatchesData []PublicBatch
 	Total       uint64
@@ -49,6 +54,15 @@ type PublicBatch struct {
 	TxCount          *big.Int              `json:"txCount"`
 	Header           *BatchHeader          `json:"header"`
 	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
+}
+
+type SearchResult struct {
+	Type      string                 `json:"type"` // "rollup", "batch", "transaction"
+	Hash      string                 `json:"hash"`
+	Height    *big.Int               `json:"height"`    // batches only
+	Sequence  *big.Int               `json:"sequence"`  // batches only
+	Timestamp uint64                 `json:"timestamp"` // rollup and batches
+	ExtraData map[string]interface{} `json:"extraData"` // contains all the batch/ rollup data if found
 }
 
 type PublicRollup struct {

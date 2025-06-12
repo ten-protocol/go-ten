@@ -32,6 +32,9 @@ export const apiRoutes = {
   getRollupByHash: "/items/rollup/:hash",
   getRollupByBatchSequence: "/items/rollup/batch/:seq",
 
+  // search by batch/ rollup/ tx hash, batch height or number
+  search: "/items/search/",
+
   // **** INFO ****
   getHealthStatus: "/info/health/",
 };
