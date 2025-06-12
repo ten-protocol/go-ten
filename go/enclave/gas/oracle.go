@@ -167,7 +167,7 @@ func (o *oracle) calculateL1Cost(ctx context.Context, block *types.Header, l2Bat
 	// 1. Calculate the cost of including the tx in a blob
 	// price in Wei for a single unit of blob
 	if isNonZero(blobFee) {
-		shareOfBlobCost = big.NewInt(0).Mul(txL1Size, o.blobFeeMA[block.Number.Uint64()])
+		shareOfBlobCost = big.NewInt(0).Mul(txL1Size, blobFee)
 	}
 
 	// 2. Estimate how much this tx should absorb from the L1 tx cost that submits the rollup
