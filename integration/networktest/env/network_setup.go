@@ -35,10 +35,10 @@ func UATTestnet(opts ...TestnetEnvOption) networktest.Environment {
 	connector := newTestnetConnector(
 		"http://uat-sequencer.ten.xyz:80",
 		[]string{"http://uat-validator-01.ten.xyz:80"},
-		"http://uat-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
+		"https://uat-faucet.tenscan.io/fund/eth",
 		"wss://ethereum-sepolia-rpc.publicnode.com",
-		"https://rpc.uat-testnet.ten.xyz",
-		"wss://rpc.uat-testnet.ten.xyz:81",
+		"https://rpc.uat-gw-testnet.ten.xyz",
+		"wss://rpc.uat-gw-testnet.ten.xyz:81",
 	)
 	return newTestnetEnv(connector, opts...)
 }
