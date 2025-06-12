@@ -94,13 +94,13 @@ func (o *oracle) SubmitL1Block(ctx context.Context, headBlock *types.Header) err
 	}
 
 	o.baseFeeMA[blockNum] = baseFeeMA
+	o.blobFeeMA[blockNum] = blobFeeMA
+
 	if blockNum > MaxHistoricMA {
 		// cleanup entries older than MaxHistoricMA
 		delete(o.baseFeeMA, blockNum-MaxHistoricMA)
 		delete(o.blobFeeMA, blockNum-MaxHistoricMA)
 	}
-	o.blobFeeMA[headBlock.Number.Uint64()] = blobFeeMA
-
 	return nil
 }
 
