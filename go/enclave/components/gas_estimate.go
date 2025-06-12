@@ -44,7 +44,7 @@ func NewGasEstimator(storage storage.Storage, chain TENChain, gasOracle gas.Orac
 func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber, batch *common.BatchHeader, globalGasCap uint64) (uint64, uint64, error, common.SystemError) {
 	// The message is run through the l1 publishing cost estimation for the current
 	// known head BlockHeader.
-	l1Cost, err := ge.gasOracle.EstimateL1CostForMsg(args, batch)
+	l1Cost, err := ge.gasOracle.EstimateL1CostForMsg(ctx, args, batch)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to estimate L1 cost: %w", err)
 	}
