@@ -111,7 +111,7 @@ export function RollupDetailsComponent({
         <KeyValueItem
           label="Cross Chain Messages"
           value={
-            rollupDetails?.Header?.crossChainMessages.length > 0
+            rollupDetails?.Header?.crossChainMessages?.length > 0
               ? rollupDetails?.Header?.crossChainMessages?.map((msg, index) => (
                   <div key={index} className="space-y-4">
                     <KeyValueList>
