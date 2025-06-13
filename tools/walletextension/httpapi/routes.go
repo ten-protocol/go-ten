@@ -43,10 +43,6 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 			Func: httpHandler(walletExt, authenticateRequestHandler),
 		},
 		{
-			Name: common.APIVersion1 + common.PathQuery,
-			Func: httpHandler(walletExt, queryRequestHandler),
-		},
-		{
 			Name: common.APIVersion1 + common.PathRevoke,
 			Func: httpHandler(walletExt, revokeRequestHandler),
 		},
@@ -200,60 +196,6 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 		return
 	}
 	err = conn.WriteResponse([]byte(common.SuccessMsg))
-	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
-	}
-}
-
-// todo - is this needed?
-// This function handles request to /query endpoint.
-// In the query parameters address and userID are required. We check if provided address is registered for given userID
-// and return true/false in json response
-func queryRequestHandler(walletExt *services.Services, conn UserConn) {
-	// read the request
-	_, err := conn.ReadRequest()
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
-		return
-	}
-
-	userID, err := getUserID(conn)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
-		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
-		return
-	}
-	address, err := getQueryParameter(conn.ReadRequestParams(), common.AddressQueryParameter)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("address ('a') not found in query parameters"))
-		walletExt.Logger().Error("address ('a') not found in query parameters", log.ErrKey, err)
-		return
-	}
-	// check if address length is correct
-	if len(address) != common.EthereumAddressLen {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("provided address length is %d, expected: %d", len(address), common.EthereumAddressLen))
-		return
-	}
-
-	// check if this account is registered with given user
-	found, err := walletExt.UserHasAccount(userID, address)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-		walletExt.Logger().Error("error during checking if account exists for user", "userID", userID, log.ErrKey, err)
-	}
-
-	// create and write the response
-	res := struct {
-		Status bool `json:"status"`
-	}{Status: found}
-
-	msg, err := json.Marshal(res)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), err)
-		return
-	}
-
-	err = conn.WriteResponse(msg)
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}

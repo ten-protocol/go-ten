@@ -19,7 +19,6 @@ const (
 	PathJoin                      = "/join/"
 	PathGetMessage                = "/getmessage/"
 	PathAuthenticate              = "/authenticate/"
-	PathQuery                     = "/query/"
 	PathRevoke                    = "/revoke/"
 	PathHealth                    = "/health/"
 	PathSessionKeys               = "/session-key/"
