@@ -438,7 +438,6 @@ func main() {
 	command := os.Args[1]
 
 	switch command {
-
 	case "extract_hash":
 		if len(os.Args) != 4 {
 			fmt.Printf("Usage: %s extract_hash <enclave_binary> <public_key_file>\n", filepath.Base(os.Args[0]))
