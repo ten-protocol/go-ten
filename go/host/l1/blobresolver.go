@@ -138,7 +138,6 @@ func classifyError(err error) RetryStrategy {
 	return RetryStrategyStandard
 }
 
-// getRetryStrategy creates an appropriate retry strategy based on the error type
 func (r *beaconBlobResolver) getRetryStrategy(err error) retry.Strategy {
 	retryStrategy := classifyError(err)
 
