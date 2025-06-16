@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Chakra_Petch, Geist, Geist_Mono } from 'next/font/google';
+import { GoogleTagManager } from '@next/third-parties/google';
 import './globals.scss';
 import { Providers } from '@/providers';
 import { siteMetadata } from '@/lib/siteMetadata';
@@ -30,6 +31,7 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" className="dark" style={{ colorScheme: 'dark' }}>
+            <GoogleTagManager gtmId="GTM-NPLPFHKJ" />
             <body
                 className={`${geistSans.variable} ${geistMono.variable} ${chakra.variable} antialiased`}
             >
