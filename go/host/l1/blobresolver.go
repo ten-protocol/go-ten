@@ -55,10 +55,6 @@ func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, ha
 	var lastErr error
 
 	err := retry.DoWithCount(func(retryNum int) error {
-		if retryNum > 0 {
-			r.logger.Info("Retrying fetch blobs", "retryNum", retryNum, "blockHash", b.Hash().Hex())
-		}
-
 		var fetchErr error
 		blobs, fetchErr = r.beaconClient.FetchBlobs(ctx, b, hashes)
 		lastErr = fetchErr
@@ -155,7 +151,7 @@ func (r *beaconBlobResolver) getRetryStrategy(err error) retry.Strategy {
 		return retry.NewTimeoutStrategy(_maxWaitForBlobs, 10*time.Second)
 	default:
 		// standard timeout strategy with fixed intervals
-		return retry.NewTimeoutStrategy(_maxWaitForBlobs, time.Second)
+		return retry.NewTimeoutStrategy(_maxWaitForBlobs, 2*time.Second)
 	}
 }
 
