@@ -3,6 +3,7 @@ package rpcapi
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -266,6 +267,35 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return []byte{boolToByte(isAuthenticated)}, nil
 
+	case common.ReturnHashedTokenToTheUserCQMethod:
+		hashedToken := doubleHash(user.ID)
+		return hashedToken, nil
+
+	case common.ReturnTokenToTheUserCQMethod:
+		secret, err := extractCustomQuerySecret(params)
+		if err != nil {
+			return nil, fmt.Errorf("unable to extract secret from custom query params: %w", err)
+		}
+
+		// re-create the secret and if it matches, return the token
+		sharedSecret := []byte("text")
+		fmt.Println("sharedSecret", sharedSecret)
+
+		hashedUserID := doubleHash(user.ID)
+		fmt.Println("hashedUserID", hashedUserID)
+
+		// Convert bytes to hex string
+
+		combined := append(sharedSecret, hashedUserID...)
+		finalHash := sha256.Sum256(combined)
+
+		if bytes.Equal(finalHash[:], secret) {
+			return user.ID, nil
+		}
+
+		//return []byte{boolToByte(false)}, nil
+		return user.ID, nil
+
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
 		if err != nil {
@@ -436,6 +466,56 @@ func extractCustomQueryAddress(params any) (*gethcommon.Address, error) {
 	}
 	address := gethcommon.HexToAddress(addressStr)
 	return &address, nil
+}
+
+// extractCustomQuerySecret extracts a hash from the params JSON
+func extractCustomQuerySecret(params any) ([]byte, error) {
+	paramsStr, ok := params.(string)
+	if !ok {
+		return nil, fmt.Errorf("params must be a json string")
+	}
+	var paramsJSON map[string]json.RawMessage
+	err := json.Unmarshal([]byte(paramsStr), &paramsJSON)
+	if err != nil {
+		// try to base64 decode the params string and then unmarshal before giving up
+		bytesStr, err64 := base64.StdEncoding.DecodeString(paramsStr)
+		if err64 != nil {
+			// was not base64 encoded, give up
+			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
+		// was base64 encoded, try to unmarshal
+		err = json.Unmarshal(bytesStr, &paramsJSON)
+		if err != nil {
+			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
+	}
+	// Extract the RawMessage for the key "secret"
+	secretRaw, ok := paramsJSON["secret"]
+	if !ok {
+		return nil, fmt.Errorf("params must contain a 'secret' field")
+	}
+
+	// Unmarshal the RawMessage to a string
+	var secretStr string
+	err = json.Unmarshal(secretRaw, &secretStr)
+	if err != nil {
+		return nil, fmt.Errorf("unable to unmarshal secret field to string: %w", err)
+	}
+
+	// Convert hex string to bytes
+	secretBytes, err := hexutil.Decode(secretStr)
+	if err != nil {
+		return nil, fmt.Errorf("unable to decode secret hex string: %w", err)
+	}
+
+	return secretBytes, nil
+}
+
+// doubleHash performs SHA-256 hashing twice on the input bytes
+func doubleHash(input []byte) []byte {
+	firstHash := sha256.Sum256(input)
+	secondHash := sha256.Sum256(firstHash[:])
+	return secondHash[:]
 }
 
 // RPCMarshalHeader converts the given header to the RPC output .

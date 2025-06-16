@@ -28,6 +28,8 @@ const (
 	SendUnsignedTxCQMethod                       = "0x0000000000000000000000000000000000000008"
 	CheckIfUserIsAuthenticatedCQMethod           = "0x0000000000000000000000000000000000000009"
 	CheckIfAccountIsAuthenticatedWithCurrentUser = "0x0000000000000000000000000000000000000010"
+	ReturnHashedTokenToTheUserCQMethod           = "0x0000000000000000000000000000000000000011"
+	ReturnTokenToTheUserCQMethod                 = "0x0000000000000000000000000000000000000012"
 )
 
 type ListPrivateTransactionsQueryParams struct {
