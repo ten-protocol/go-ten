@@ -11,20 +11,26 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const (
 	// SGX SIGSTRUCT format constants
 	SigStructSize    = 1808 // Size of SIGSTRUCT in bytes
-	RSASignatureSize = 384  // RSA-3072 signature size
+	RSASignatureSize = 384
 )
 
 // SGX SIGSTRUCT magic bytes
-var SigStructMagic = []byte{0x06, 0x00, 0x00, 0x00, 0xE1, 0x00, 0x00, 0x00}
+var (
+	Header  = common.Hex2Bytes("06000000E10000000000010000000000")
+	Header2 = common.Hex2Bytes("01010000600000006000000001000000")
+	Vendor  = common.Hex2Bytes("00008086")
+)
 
 // SIGSTRUCT field offsets (based on Intel SGX Programming Reference)
 type SigStructOffsets struct {
-	Magic         int // 8 bytes
+	Magic         int // 16 bytes
 	Vendor        int // 4 bytes
 	Date          int // 4 bytes
 	Header        int // 16 bytes
@@ -49,11 +55,11 @@ type SigStructOffsets struct {
 
 var offsets = SigStructOffsets{
 	Magic:         0,
-	Vendor:        8,
-	Date:          12,
-	Header:        16,
-	SwDefined:     32,
-	Reserved1:     36,
+	Vendor:        16,
+	Date:          20,
+	Header:        24,
+	SwDefined:     40,
+	Reserved1:     44,
 	Modulus:       128,
 	Exponent:      512,
 	Signature:     516,
@@ -81,16 +87,40 @@ func NewSGXSignatureReplacer() *SGXSignatureReplacer {
 
 // findSigStruct locates the SIGSTRUCT in binary data
 func (r *SGXSignatureReplacer) findSigStruct(data []byte) (int, error) {
-	// Look for the SGX SIGSTRUCT magic bytes
-	for i := 0; i <= len(data)-len(SigStructMagic); i++ {
-		if bytesEqual(data[i:i+len(SigStructMagic)], SigStructMagic) {
-			// Verify we have enough data for a complete SIGSTRUCT
-			if len(data) < i+SigStructSize {
-				return -1, fmt.Errorf("incomplete SIGSTRUCT found at offset %d", i)
+	// Search in chunks to avoid memory issues with large binaries
+	chunkSize := 1024 * 1024 // 1MB chunks
+	magicLen := len(Header)
+
+	for i := 0; i < len(data); i += chunkSize {
+		end := i + chunkSize + magicLen // Overlap to avoid missing magic at chunk boundary
+		if end > len(data) {
+			end = len(data)
+		}
+
+		chunk := data[i:end]
+		for j := 0; j <= len(chunk)-magicLen; j++ {
+			if bytesEqual(chunk[j:j+magicLen], Header) {
+				absoluteOffset := i + j
+				// Check HEADER field (offset 0, 16 bytes)
+				if !bytesEqual(chunk[j:j+magicLen], Header) {
+					continue
+				}
+
+				// Check HEADER2 field (offset 24, 16 bytes)
+				if !bytesEqual(chunk[j+24:j+24+magicLen], Header2) {
+					continue
+				}
+
+				// All validation passed - verify we have enough data for complete SIGSTRUCT
+				if len(data) < absoluteOffset+SigStructSize {
+					return -1, fmt.Errorf("incomplete SIGSTRUCT found at offset %d", absoluteOffset)
+				}
+
+				return absoluteOffset, nil
 			}
-			return i, nil
 		}
 	}
+
 	return -1, fmt.Errorf("SIGSTRUCT not found in binary")
 }
 
@@ -123,22 +153,38 @@ func (r *SGXSignatureReplacer) ExtractOriginalHash(binaryPath, keyPath string) (
 
 	sigStruct := data[sigStructOffset : sigStructOffset+SigStructSize]
 
+	vendor := sigStruct[offsets.Vendor:offsets.Date]
+	fmt.Fprintf(os.Stderr, "Vendor: %x\n", vendor)
+
+	date := sigStruct[offsets.Date:offsets.Header]
+	fmt.Fprintf(os.Stderr, "Date: %x\n", date)
+
+	header2 := sigStruct[offsets.Header:offsets.SwDefined]
+	if !bytes.Equal(header2, Header2) {
+		return "", fmt.Errorf("invalid header 2")
+	}
+
 	// Extract signature
-	signature := sigStruct[offsets.Signature : offsets.Signature+RSASignatureSize]
+	// signature := sigStruct[offsets.Signature:offsets.MiscSelect]
 
 	// Read and parse the public key
-	publicKey, err := r.loadPublicKey(keyPath)
-	if err != nil {
-		return "", fmt.Errorf("failed to load public key: %w", err)
-	}
+	//publicKey, err := r.loadPublicKey(keyPath)
+	//if err != nil {
+	//	return "", fmt.Errorf("failed to load public key: %w", err)
+	//}
 
 	// Verify signature and extract hash
-	hash, err := r.verifyAndExtractHash(signature, publicKey)
-	if err != nil {
-		return "", fmt.Errorf("failed to extract hash: %w", err)
-	}
+	//hash, err := r.verifyAndExtractHash(signature, publicKey)
+	//if err != nil {
+	//	return "", fmt.Errorf("failed to extract hash: %w", err)
+	//}
 
-	return base64.StdEncoding.EncodeToString(hash), nil
+	hashExtr := sigStruct[offsets.EnclaveHash:offsets.Reserved3]
+	//if !bytes.Equal(hashExtr, hash) {
+	//	return "", fmt.Errorf("hash mismatch")
+	//}
+
+	return base64.StdEncoding.EncodeToString(hashExtr), nil
 }
 
 // loadPublicKey loads an RSA public key from a PEM file
@@ -333,13 +379,8 @@ func (r *SGXSignatureReplacer) ReplaceSignature(binaryPath, signatureB64, output
 	}
 
 	// Ensure signature is the right size (pad or truncate if necessary)
-	if len(signatureBytes) > RSASignatureSize {
-		signatureBytes = signatureBytes[:RSASignatureSize]
-	} else if len(signatureBytes) < RSASignatureSize {
-		// Pad with zeros
-		padded := make([]byte, RSASignatureSize)
-		copy(padded, signatureBytes)
-		signatureBytes = padded
+	if len(signatureBytes) != RSASignatureSize {
+		return fmt.Errorf("invalid signature size %s: %d", signatureB64, len(signatureBytes))
 	}
 
 	// Read the original binary
@@ -384,8 +425,8 @@ func (r *SGXSignatureReplacer) VerifyStructure(binaryPath string) error {
 	sigStruct := data[sigStructOffset : sigStructOffset+SigStructSize]
 
 	// Basic structure verification
-	magic := sigStruct[offsets.Magic : offsets.Magic+8]
-	if !bytesEqual(magic, SigStructMagic) {
+	magic := sigStruct[offsets.Magic:offsets.Vendor]
+	if !bytesEqual(magic, Header) {
 		return fmt.Errorf("invalid SIGSTRUCT magic")
 	}
 
@@ -452,6 +493,8 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+
+		fmt.Fprintf(os.Stderr, "Hash: %s\n", hash)
 
 		fmt.Println(hash)
 
