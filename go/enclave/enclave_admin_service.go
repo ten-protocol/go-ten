@@ -296,7 +296,7 @@ func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty 
 
 func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64) (*common.CreateRollupResult, common.SystemError) {
 	if e.getNodeType(ctx) != common.Sequencer {
-		e.logger.Crit("Only a permissioned sequencer can create rollups")
+		return nil, responses.ToInternalError(fmt.Errorf("only a permissioned sequencer can create rollups"))
 	}
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateRollup call ended", &core.RelaxedThresholds)
 
