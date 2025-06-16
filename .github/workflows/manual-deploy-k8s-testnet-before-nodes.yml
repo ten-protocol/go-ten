@@ -146,3 +146,11 @@ jobs:
         run: |
           sleep 60
           docker logs `docker ps -aqf "name=hh-l1-deployer"` > deploy-l1-contracts.out 2>&1
+          
+      - name: 'Upload L1 deployer container logs'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-l1-artifacts
+          path: |
+            deploy-l1-contracts.out
+          retention-days: 7
