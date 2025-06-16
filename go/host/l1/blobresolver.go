@@ -51,13 +51,14 @@ func NewBlobResolver(beaconClient *ethadapter.L1BeaconClient, logger gethlog.Log
 }
 
 func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
-	var blobs []*kzg4844.Blob
-	var lastErr error
-
+	// try fetching once to get the initial error and set appropriate retry strategy
+	blobs, initialErr := r.beaconClient.FetchBlobs(ctx, b, hashes)
+	if initialErr == nil {
+		return blobs, nil
+	}
 	err := retry.DoWithCount(func(retryNum int) error {
 		var fetchErr error
 		blobs, fetchErr = r.beaconClient.FetchBlobs(ctx, b, hashes)
-		lastErr = fetchErr
 
 		if fetchErr == nil {
 			return nil
@@ -78,7 +79,8 @@ func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, ha
 		}
 
 		return fetchErr
-	}, r.getRetryStrategy(lastErr))
+	}, r.getRetryStrategy(initialErr))
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch blobs after retries: %w", err)
 	}
