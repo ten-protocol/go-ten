@@ -153,6 +153,7 @@ create table if not exists tendb.event_type
     INDEX USING HASH (contract, event_sig),
     INDEX (config_public),
     INDEX (auto_visibility),
+    INDEX (auto_visibility, auto_public),
     INDEX (auto_visibility, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view)
 );
 
