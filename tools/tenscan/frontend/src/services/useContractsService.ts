@@ -69,7 +69,7 @@ export const useContractsService = () => {
       confirmed: true,
     },
     {
-      name: "Public Callbacks",
+      name: "Ten Callbacks",
       address: contracts?.item?.PublicSystemContracts.PublicCallbacks,
       confirmed: true,
     },
