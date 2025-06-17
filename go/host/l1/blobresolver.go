@@ -53,36 +53,20 @@ func NewBlobResolver(beaconClient *ethadapter.L1BeaconClient, logger gethlog.Log
 func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
 	// try fetching once to get the initial error and set appropriate retry strategy
 	blobs, initialErr := r.beaconClient.FetchBlobs(ctx, b, hashes)
-	if initialErr == nil {
-		return blobs, nil
-	}
-	err := retry.DoWithCount(func(retryNum int) error {
-		var fetchErr error
-		blobs, fetchErr = r.beaconClient.FetchBlobs(ctx, b, hashes)
+	if initialErr != nil {
+		err := retry.DoWithCount(func(retryNum int) error {
+			var fetchErr error
+			blobs, fetchErr = r.beaconClient.FetchBlobs(ctx, b, hashes)
+			if fetchErr != nil {
+				r.logger.Warn("Error while fetching blobs, will retry",
+					"error", fetchErr, "retryNum", retryNum, "blockHash", b.Hash().Hex())
+			}
+			return fetchErr
+		}, r.getRetryStrategy(initialErr))
 
-		if fetchErr == nil {
-			return nil
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch blobs after retry strategy failed. Cause: %w", err)
 		}
-
-		retryStrategy := classifyError(fetchErr)
-
-		switch retryStrategy {
-		case RetryStrategyTransient:
-			r.logger.Warn("Transient error while fetching blobs, will retry with backoff",
-				"error", fetchErr, "retryNum", retryNum, "blockHash", b.Hash().Hex())
-		case RetryStrategyRateLimit:
-			r.logger.Warn("Rate limit or method unavailable error, will retry with longer intervals",
-				"error", fetchErr, "retryNum", retryNum, "blockHash", b.Hash().Hex())
-		default:
-			r.logger.Warn("Error while fetching blobs, will retry",
-				"error", fetchErr, "retryNum", retryNum, "blockHash", b.Hash().Hex())
-		}
-
-		return fetchErr
-	}, r.getRetryStrategy(initialErr))
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch blobs after retries: %w", err)
 	}
 
 	return blobs, nil
@@ -145,12 +129,18 @@ func (r *beaconBlobResolver) getRetryStrategy(err error) retry.Strategy {
 
 	switch retryStrategy {
 	case RetryStrategyTransient:
+		r.logger.Warn("Transient error while fetching blobs, will retry with backoff",
+			"error", err)
 		// exponential back off for transient errors
 		return retry.NewDoublingBackoffStrategy(2*time.Second, uint64(_maxRetries))
 	case RetryStrategyRateLimit:
+		r.logger.Warn("Rate limit or method unavailable error while fetching blobs, will retry with longer intervals",
+			"error", err)
 		// longer intervals for rate limits and method unavailable errors
 		return retry.NewTimeoutStrategy(_maxWaitForBlobs, 10*time.Second)
 	default:
+		r.logger.Warn("Error while fetching blobs, will retry with standard intervals",
+			"error", err)
 		// standard timeout strategy with fixed intervals
 		return retry.NewTimeoutStrategy(_maxWaitForBlobs, 2*time.Second)
 	}
