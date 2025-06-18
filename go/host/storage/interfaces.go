@@ -12,6 +12,7 @@ import (
 type Storage interface {
 	BatchResolver
 	BlockResolver
+	SearchResolver
 	io.Closer
 }
 
@@ -76,4 +77,9 @@ type BlockResolver interface {
 	FetchRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error)
 	// FetchRollupBatches returns a list of public batch data within a given rollup hash
 	FetchRollupBatches(rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error)
+}
+
+// SearchResolver interface
+type SearchResolver interface {
+	Search(query string) (*common.SearchResponse, error)
 }

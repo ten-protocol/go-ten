@@ -114,6 +114,9 @@ func (c *inMemTenClient) Call(result interface{}, method string, args ...interfa
 	case rpc.GetCrossChainProof:
 		return c.getCrossChainProof(result, args)
 
+	case rpc.Search:
+		return c.search(result, args)
+
 	default:
 		return fmt.Errorf("RPC method %s is unknown", method)
 	}
@@ -397,5 +400,27 @@ func (c *inMemTenClient) getPublicTransactionData(result interface{}, args []int
 		return fmt.Errorf("result is of type %T, expected *common.BatchListingResponseDeprecated", result)
 	}
 	*res = *txs
+	return nil
+}
+
+func (c *inMemTenClient) search(result interface{}, args []interface{}) error {
+	if len(args) != 1 {
+		return fmt.Errorf("expected 1 arg to %s, got %d", rpc.Search, len(args))
+	}
+	query, ok := args[0].(string)
+	if !ok {
+		return fmt.Errorf("first arg to %s is of type %T, expected string", rpc.Search, args[0])
+	}
+
+	searchResponse, err := c.tenScanAPI.Search(query)
+	if err != nil {
+		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.Search, err)
+	}
+
+	res, ok := result.(*common.SearchResponse)
+	if !ok {
+		return fmt.Errorf("result is of type %T, expected *common.SearchResponse", result)
+	}
+	*res = *searchResponse
 	return nil
 }

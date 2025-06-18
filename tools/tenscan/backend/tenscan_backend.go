@@ -164,3 +164,7 @@ func (b *Backend) GetBatchTransactions(hash gethcommon.Hash, offset uint64, size
 func (b *Backend) GetConfig() (*common.TenNetworkInfo, error) {
 	return b.obsClient.GetConfig()
 }
+
+func (b *Backend) Search(query string) (*common.SearchResponse, error) {
+	return b.obsClient.Search(query)
+}
