@@ -12,7 +12,8 @@ import (
 )
 
 // Search queries the host DB using the provided string. The input type is determined by length and will attempt to query
-// by hash, sequence number or height.
+// by hash, sequence number or height. Note: this query will return empty results and only log errors rather than returning
+// the DB errors.
 func Search(db HostDB, query string) (*common.SearchResponse, error) {
 	inputType := identifyInputType(query)
 
@@ -137,7 +138,7 @@ func searchByNumber(db HostDB, number string) []*common.SearchResult {
 				"batch": batch,
 			},
 		})
-	} else if errors.Is(err, sql.ErrNoRows) {
+	} else if !errors.Is(err, sql.ErrNoRows) {
 		logger.Error("No batch found for height during search", "height", num, "error", err)
 	}
 
@@ -153,7 +154,7 @@ func searchByNumber(db HostDB, number string) []*common.SearchResult {
 				"batch": batch,
 			},
 		})
-	} else if errors.Is(err, sql.ErrNoRows) {
+	} else if !errors.Is(err, sql.ErrNoRows) {
 		logger.Error("No batch found for sequence number during search", "seq", num, "error", err)
 	}
 
