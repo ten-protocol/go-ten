@@ -2,6 +2,7 @@
 
 # Azure Key Vault Signature Script
 # This script connects to Azure and makes a signature request to Azure Key Vault
+# Returns signature and modulus in base64 format for SGX enclave signing
 
 set -e  # Exit on any error
 
@@ -44,7 +45,6 @@ print_debug() {
 check_azure_cli() {
     if ! command -v az &> /dev/null; then
         print_error "Azure CLI is not installed. Please install it first."
-        print_status "Install instructions: https://docs.microsoft.com/en-us/cli/azure/install-azure-cli"
         exit 1
     fi
     print_status "Azure CLI is installed"
@@ -54,16 +54,28 @@ check_azure_cli() {
 check_jq() {
     if ! command -v jq &> /dev/null; then
         print_error "jq is not installed. Please install it first."
-        print_status "Install with: brew install jq (macOS) or apt-get install jq (Ubuntu)"
         exit 1
     fi
     print_status "jq is installed"
 }
 
+# Function to base64url decode (Azure Key Vault format) and convert to regular base64
+base64url_to_base64() {
+    local input="$1"
+    # Replace URL-safe characters first
+    input=$(echo "$input" | tr '_-' '/+')
+    # Add padding if needed
+    local mod=$((${#input} % 4))
+    if [ $mod -ne 0 ]; then
+        input="${input}$(printf '%*s' $((4 - mod)) '' | tr ' ' '=')"
+    fi
+    echo "$input"
+}
+
 # Function to authenticate with Azure
 authenticate_azure() {
     print_status "Authenticating with Azure..."
-    
+
     if [ -n "$CLIENT_ID" ] && [ -n "$CLIENT_SECRET" ] && [ -n "$TENANT_ID" ]; then
         print_status "Using service principal authentication..."
         az login --service-principal \
@@ -74,7 +86,7 @@ authenticate_azure() {
         print_status "Using interactive authentication..."
         az login > /dev/null
     fi
-    
+
     # Set the subscription
     az account set --subscription "$SUBSCRIPTION_ID"
     print_status "Set subscription to: $SUBSCRIPTION_ID"
@@ -83,211 +95,168 @@ authenticate_azure() {
 # Function to verify Key Vault access
 verify_key_vault_access() {
     print_status "Verifying Key Vault access..."
-    
-    # Check if Key Vault exists and is accessible
+
     if ! az keyvault show --name "$KEY_VAULT_NAME" --resource-group "$RESOURCE_GROUP" > /dev/null 2>&1; then
         print_error "Cannot access Key Vault '$KEY_VAULT_NAME' in resource group '$RESOURCE_GROUP'"
-        print_warning "Please check:"
-        print_warning "1. Key Vault name and resource group are correct"
-        print_warning "2. You have appropriate permissions"
-        print_warning "3. Key Vault exists"
         exit 1
     fi
-    
+
     print_status "Key Vault '$KEY_VAULT_NAME' is accessible"
 }
 
-# Function to verify key exists
-verify_key_exists() {
-    print_status "Verifying key exists..."
-    
-    if ! az keyvault key show --vault-name "$KEY_VAULT_NAME" --name "$KEY_NAME" > /dev/null 2>&1; then
+# Function to get modulus from public key
+get_modulus_base64() {
+    print_status "Retrieving RSA modulus..."
+
+    local temp_key_output="/tmp/azure_key_info.json"
+
+    if ! az keyvault key show --vault-name "$KEY_VAULT_NAME" --name "$KEY_NAME" --output json > "$temp_key_output" 2>/dev/null; then
         print_error "Key '$KEY_NAME' not found in Key Vault '$KEY_VAULT_NAME'"
-        print_warning "Available keys:"
-        az keyvault key list --vault-name "$KEY_VAULT_NAME" --query "[].name" -o table
         exit 1
     fi
-    
-    print_status "Key '$KEY_NAME' exists in Key Vault"
-}
 
-# Function to create sample data to sign
+    # Extract modulus from public key
+    local modulus_b64url=$(jq -r '.key.n' "$temp_key_output" 2>/dev/null)
+
+    if [ -z "$modulus_b64url" ] || [ "$modulus_b64url" = "null" ]; then
+        print_error "Failed to extract RSA modulus from public key"
+        exit 1
+    fi
+
+    # Convert base64url to standard base64
+    local modulus_b64=$(base64url_to_base64 "$modulus_b64url")
+
+    # Save modulus
+    echo "$modulus_b64" > /tmp/modulus.b64
+    print_status "Modulus (base64) saved to: /tmp/modulus.b64"
+    print_debug "Modulus: $modulus_b64"
+
+    rm -f "$temp_key_output"
+}
+# Function to check input
 check_input() {
-    # If DIGEST_HEX is provided as a parameter, use it
     if [ -n "$1" ]; then
-        DIGEST_HEX="$1"
-        print_status "Using provided digest: $DIGEST_HEX"
+        DIGEST_B64="$1"
+        print_status "Using provided digest (base64): $DIGEST_B64"
+
+        # Validate base64 format
+        if ! echo "$DIGEST_B64" | base64 -d > /dev/null 2>&1; then
+            print_error "Invalid base64 digest format"
+            exit 1
+        fi
+
+        # Convert to hex for debugging
+        local digest_hex=$(echo "$DIGEST_B64" | base64 -d | xxd -p -c 32)
+        print_debug "Digest in hex: $digest_hex"
     else
         print_error "Please provide a digest to sign"
         exit 1
     fi
-
-    print_status "SHA-256 hash (base64): $DIGEST_HEX"
 }
 
-# Function to perform signature operation with detailed debugging
+# Function to perform signature operation
 perform_signature() {
     print_status "Performing signature operation..."
 
-    # Create temporary files for debugging
     local temp_output="/tmp/az_sign_output.json"
     local temp_error="/tmp/az_sign_error.log"
 
-    print_debug "Signing digest: $DIGEST_HEX"
-    print_debug "Using algorithm: RS256"
+    print_debug "Signing digest: $DIGEST_B64"
 
-    # Execute the command with full output capture
-    print_status "Executing Azure CLI sign command..."
-
-    # First, let's try the command and capture all output
+    # Execute Azure CLI sign command with base64 digest
+    print_debug "Executing Azure CLI sign command..."
     local exit_code=0
     az keyvault key sign \
         --vault-name "$KEY_VAULT_NAME" \
         --name "$KEY_NAME" \
         --algorithm "RS256" \
-        --digest "$DIGEST_HEX" \
+        --digest "$DIGEST_B64" \
         --output json > "$temp_output" 2> "$temp_error" || exit_code=$?
 
-    print_debug "Command exit code: $exit_code"
+    print_debug "Azure CLI exit code: $exit_code"
 
-    # Check if there were any errors
+    # Check if we have any output
     if [ -s "$temp_error" ]; then
-        print_warning "Command stderr output:"
+        print_error "Azure CLI error output:"
         cat "$temp_error"
     fi
 
-    # Check if output file exists and has content
     if [ ! -s "$temp_output" ]; then
         print_error "No output received from Azure CLI command"
-        print_error "This could indicate:"
-        print_error "1. Permission denied for sign operation"
-        print_error "2. Key Vault access policy issues"
-        print_error "3. Network connectivity problems"
-        print_error "4. Azure CLI authentication issues"
-
-        # Try to get more information
-        print_status "Checking current Azure context..."
-        az account show --query "{name:name, id:id, tenantId:tenantId}" -o table 2>/dev/null || print_warning "Could not get account info"
-
-        # Check Key Vault permissions
-        print_status "Checking Key Vault access policies..."
-        local policies=$(az keyvault show --name "$KEY_VAULT_NAME" --resource-group "$RESOURCE_GROUP" --query "properties.accessPolicies" -o json 2>/dev/null || echo "[]")
-        if [ "$policies" != "[]" ]; then
-            echo "$policies" | jq -r '.[] | "Object ID: \(.objectId), Permissions: \(.permissions.keys // []), \(.permissions.secrets // []), \(.permissions.certificates // [])"' 2>/dev/null || print_warning "Could not parse access policies"
-        else
-            print_warning "No access policies found or unable to retrieve them"
-        fi
-
         return 1
     fi
 
-    print_debug "Raw Azure CLI output:"
+    print_debug "Raw Azure response:"
     cat "$temp_output"
 
-    # Parse the output
-    local signature_result=""
-
-    # Try different ways to extract the signature
+    # Extract signature - Azure returns it in the 'signature' field
+    local signature_b64url=""
     if command -v jq &> /dev/null; then
-        signature_result=$(jq -r '.result // empty' "$temp_output" 2>/dev/null)
-
-        if [ -z "$signature_result" ]; then
-            # Try alternative field names
-            signature_result=$(jq -r '.signature // .value // empty' "$temp_output" 2>/dev/null)
-        fi
+        signature_b64url=$(jq -r '.signature' "$temp_output" 2>/dev/null)
     fi
 
-    # If jq failed or signature is still empty, try alternative parsing
-    if [ -z "$signature_result" ]; then
-        print_warning "jq parsing failed, trying alternative methods..."
-
-        # Try grep-based extraction
-        signature_result=$(grep -o '"result"[[:space:]]*:[[:space:]]*"[^"]*"' "$temp_output" 2>/dev/null | cut -d'"' -f4)
-
-        if [ -z "$signature_result" ]; then
-            signature_result=$(grep -o '"signature"[[:space:]]*:[[:space:]]*"[^"]*"' "$temp_output" 2>/dev/null | cut -d'"' -f4)
-        fi
-    fi
-
-    # Check if we got a signature
-    if [ -n "$signature_result" ] && [ "$signature_result" != "null" ]; then
-        print_status "Signature operation completed successfully!"
-        print_status "Signature (base64): $signature_result"
-
-        # Validate signature format (should be base64)
-        if echo "$signature_result" | base64 -d >/dev/null 2>&1; then
-            print_status "Signature format validation: PASSED"
-
-            # Get signature length
-            local sig_length=$(echo -n "$signature_result" | wc -c)
-            print_debug "Signature length: $sig_length characters"
-
-        else
-            print_warning "Signature format validation: FAILED (not valid base64)"
-        fi
-
-        # Save signature to file
-        echo "$signature_result" > /tmp/signature.txt
-        print_status "Signature saved to: /tmp/signature.txt"
-
-        # Save all operation data for reference
-        cat > /tmp/signature_info.json << EOF
-{
-    "originalMessage": "$SAMPLE_MESSAGE",
-    "digestHex": "$DIGEST_HEX",
-    "hashBase64": "$HASH_BASE64",
-    "signature": "$signature_result",
-    "algorithm": "RS256",
-    "keyVault": "$KEY_VAULT_NAME",
-    "keyName": "$KEY_NAME",
-    "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-}
-EOF
-        print_status "Operation details saved to: /tmp/signature_info.json"
-
-        # Cleanup temp files
-        rm -f "$temp_output" "$temp_error"
-        return 0
-    else
-        print_error "Signature operation failed - empty or null result"
-        print_error "Raw output content:"
-        cat "$temp_output" 2>/dev/null || print_error "No output file"
-
-        print_warning "Possible causes:"
-        print_warning "1. Insufficient Key Vault permissions for 'sign' operation"
-        print_warning "2. Key type incompatible with RS256 algorithm"
-        print_warning "3. Azure Key Vault access policy restrictions"
-        print_warning "4. Network or authentication issues"
-
-        # Keep temp files for debugging
-        print_status "Debug files preserved:"
-        print_status "- Output: $temp_output"
-        print_status "- Errors: $temp_error"
-
+    if [ -z "$signature_b64url" ] || [ "$signature_b64url" = "null" ]; then
+        print_error "Failed to extract signature from Azure response"
+        print_debug "Available fields in response:"
+        jq 'keys[]' "$temp_output" 2>/dev/null || echo "No valid JSON found"
         return 1
     fi
+
+    print_debug "Raw signature from Azure (base64url): $signature_b64url"
+
+    # Validate we can decode it (just for verification)
+    local test_signature_b64=$(base64url_to_base64 "$signature_b64url")
+    local signature_bytes=""
+    if signature_bytes=$(echo "$test_signature_b64" | base64 -d 2>/dev/null); then
+        local sig_length=${#signature_bytes}
+        print_debug "Signature length: $sig_length bytes (will be padded to 384 by Go if needed)"
+
+        # Remove the length check - let Go handle padding
+        if [ $sig_length -lt 380 ] || [ $sig_length -gt 384 ]; then
+            print_error "Signature length seems invalid: got $sig_length bytes"
+            return 1
+        fi
+    else
+        print_error "Invalid signature format"
+        return 1
+    fi
+
+    print_status "✓ Signature operation completed successfully!"
+
+    # Save signature in base64url format (as received from Azure)
+    echo "$signature_b64url" > /tmp/signature.b64
+    print_status "Signature (base64url) saved to: /tmp/signature.b64"
+
+    rm -f "$temp_output" "$temp_error"
+    return 0
 }
 
+# Function to get modulus from public key
+get_modulus_base64() {
+    print_status "Retrieving RSA modulus..."
 
-# Function to verify signature (optional)
-verify_signature() {
-    print_status "Verifying signature..."
-    
-    # Get the public key for verification
-    PUBLIC_KEY=$(az keyvault key show \
-        --vault-name "$KEY_VAULT_NAME" \
-        --name "$KEY_NAME" \
-        --query "key" \
-        --output json)
-    
-    print_status "Retrieved public key for verification"
-    print_status "Note: Full signature verification requires additional processing of the public key"
-}
+    local temp_key_output="/tmp/azure_key_info.json"
 
-# Function to cleanup temporary files
-cleanup() {
-    print_status "Cleaning up temporary files..."
-    rm -f /tmp/sample_data.txt /tmp/signature.txt
+    if ! az keyvault key show --vault-name "$KEY_VAULT_NAME" --name "$KEY_NAME" --output json > "$temp_key_output" 2>/dev/null; then
+        print_error "Key '$KEY_NAME' not found in Key Vault '$KEY_VAULT_NAME'"
+        exit 1
+    fi
+
+    # Extract modulus from public key (in base64url format)
+    local modulus_b64url=$(jq -r '.key.n' "$temp_key_output" 2>/dev/null)
+
+    if [ -z "$modulus_b64url" ] || [ "$modulus_b64url" = "null" ]; then
+        print_error "Failed to extract RSA modulus from public key"
+        exit 1
+    fi
+
+    # No conversion needed - pass base64url directly to Go
+    # Save modulus in base64url format (as received from Azure)
+    echo "$modulus_b64url" > /tmp/modulus.b64
+    print_status "Modulus (base64url) saved to: /tmp/modulus.b64"
+    print_debug "Modulus: $modulus_b64url"
+
+    rm -f "$temp_key_output"
 }
 
 # Function to display summary
@@ -295,10 +264,9 @@ display_summary() {
     print_status "=== Operation Summary ==="
     print_status "Key Vault: $KEY_VAULT_NAME"
     print_status "Key Name: $KEY_NAME"
-    print_status "Resource Group: $RESOURCE_GROUP"
-    print_status "Subscription: $SUBSCRIPTION_ID"
-    print_status "Operation: Digital Signature"
-    print_status "Algorithm: RS256"
+    print_status "Files Created:"
+    print_status "  - Signature: /tmp/signature.b64 (base64)"
+    print_status "  - Modulus: /tmp/modulus.b64 (base64)"
     print_status "Status: SUCCESS"
 }
 
@@ -314,58 +282,39 @@ main() {
     # Authenticate with Azure
     authenticate_azure
 
-    # Verify access and resources
+    # Verify access and get modulus
     verify_key_vault_access
-    verify_key_exists
+    get_modulus_base64
 
     # Perform signature operation
     check_input "$digest_param"
     if perform_signature; then
-        verify_signature
         display_summary
+        print_status "Script completed successfully!"
+        return 0
     else
         print_error "Script execution failed"
-        exit 1
+        return 1
     fi
-
-    print_status "Script completed successfully!"
 }
-
-# Error handling
-trap 'print_error "Script interrupted"; cleanup; exit 1' INT TERM
 
 # Help function
 show_help() {
     echo "Azure Key Vault Signature Script"
     echo ""
-    echo "Usage: $0 [OPTIONS] [DIGEST_HEX]"
+    echo "Usage: $0 [DIGEST_HEX]"
     echo ""
-    echo "Environment Variables:"
-    echo "  AZURE_SUBSCRIPTION_ID    - Azure subscription ID"
-    echo "  AZURE_RESOURCE_GROUP     - Resource group name"
-    echo "  AZURE_KEY_VAULT_NAME     - Key Vault name"
-    echo "  AZURE_KEY_NAME           - Key name for signing"
-    echo "  AZURE_TENANT_ID          - Tenant ID (for service principal auth)"
-    echo "  AZURE_CLIENT_ID          - Client ID (for service principal auth)"
-    echo "  AZURE_CLIENT_SECRET      - Client secret (for service principal auth)"
+    echo "This script connects to Azure Key Vault to:"
+    echo "1. Retrieve the RSA modulus in base64 format"
+    echo "2. Sign the provided digest"
+    echo "3. Output signature in base64 format"
+    echo ""
+    echo "Output Files:"
+    echo "  /tmp/signature.b64  - Signature in base64"
+    echo "  /tmp/modulus.b64    - RSA modulus in base64"
     echo ""
     echo "Arguments:"
-    echo "  DIGEST_HEX               - Optional: Base64-encoded digest to sign"
-    echo "                             If not provided, a sample message will be created"
-    echo ""
-    echo "Options:"
-    echo "  -h, --help               Show this help message"
-    echo ""
-    echo "Examples:"
-    echo "  # Using default sample message:"
-    echo "  export AZURE_SUBSCRIPTION_ID='your-subscription-id'"
-    echo "  export AZURE_KEY_VAULT_NAME='your-key-vault'"
-    echo "  export AZURE_KEY_NAME='your-key-name'"
-    echo "  export AZURE_RESOURCE_GROUP='your-resource-group'"
-    echo "  $0"
-    echo ""
-    echo "  # Providing a specific digest to sign:"
-    echo "  $0 'base64-encoded-digest-here'"
+    echo "  DIGEST_HEX         - Base64-encoded SHA-256 digest to sign"
 }
 
 # Parse command line arguments
@@ -375,11 +324,11 @@ case "$1" in
         exit 0
         ;;
     "")
-        # No arguments, run with default sample data
-        main
+        print_error "Digest parameter is required"
+        show_help
+        exit 1
         ;;
     *)
-        # First argument is the digest
         main "$1"
         ;;
 esac
