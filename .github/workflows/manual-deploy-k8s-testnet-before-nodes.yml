@@ -31,7 +31,7 @@ on:
       skip_build_and_push: # New input for skipping the build and push step
         description: 'Skip building and pushing Docker images'
         required: false
-        default: true # Changed default to true
+        default: false 
         type: boolean
 
 jobs:
