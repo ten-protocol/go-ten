@@ -53,7 +53,7 @@ Create a `.env.local` file in the root directory of the project and add the foll
 
 ## Usage
 
-- Connect to Ten Testnet using the button in the top right corner of the application or on the homepage
+- Connect to TEN Testnet using the button in the top right corner of the application or on the homepage
 - You can request tokens from the Discord bot by typing `!faucet <your address>` in the #faucet channel
 - You can also revoke accounts by clicking the "Revoke Accounts" button on the homepage
 

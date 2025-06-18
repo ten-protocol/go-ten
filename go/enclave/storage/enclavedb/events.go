@@ -26,6 +26,14 @@ const (
 		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
 		"   left join contract tx_contr on curr_tx.to_address=tx_contr.id "
 
+	// duplicating temporarily for easy comparison
+	baseReceiptJoinWithReceivingAddress = " from receipt rec " +
+		"join batch b on rec.batch=b.sequence " +
+		"join tx curr_tx on rec.tx=curr_tx.id " +
+		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
+		"   left join externally_owned_account tx_recipient ON curr_tx.to_address = tx_recipient.id " +
+		"   left join contract tx_contr on curr_tx.to_address=tx_contr.id "
+
 	baseEventJoin = " left join event_log e on e.receipt=rec.id " +
 		"left join event_type et on e.event_type=et.id " +
 		"	left join contract c on et.contract=c.id " +
@@ -241,12 +249,12 @@ func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccount *gethco
 	var queryParams []any
 
 	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
-	query += baseReceiptJoin
+	query += baseReceiptJoinWithReceivingAddress
 	query += " WHERE 1=1 "
 
 	// visibility
-	query += " AND tx_sender.address = ? "
-	queryParams = append(queryParams, requestingAccount.Bytes())
+	query += " AND (tx_sender.address = ? OR tx_recipient.address = ?) "
+	queryParams = append(queryParams, requestingAccount.Bytes(), requestingAccount.Bytes())
 
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
