@@ -259,21 +259,12 @@ jobs:
                  deploy-l2-contracts.out
               retention-days: 7
 
-   deploy-faucet:
-      name: 'Trigger Faucet deployment for dev- / testnet on a new deployment'
-      uses: ./.github/workflows/manual-deploy-testnet-faucet.yml
-      with:
-         testnet_type: ${{ github.event.inputs.testnet_type }}
-      secrets: inherit
-      needs:
-         - grant-sequencer-enclaves
-
    obscuro-test-repository-dispatch:
       runs-on: ubuntu-latest
       environment:
          name: ${{ github.event.inputs.testnet_type }}
       needs:
-         - deploy-faucet
+         - grant-sequencer-enclaves
       steps:
          - name: 'Send a repository dispatch to obscuro-test on deployment of dev-testnet'
            if: ${{ (github.event.inputs.testnet_type == 'dev-testnet') }}
