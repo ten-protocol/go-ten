@@ -63,7 +63,6 @@ func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, ha
 			}
 			return fetchErr
 		}, r.getRetryStrategy(initialErr))
-
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch blobs after retry strategy failed. Cause: %w", err)
 		}
