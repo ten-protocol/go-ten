@@ -34,8 +34,8 @@ ARG AZURE_SUBSCRIPTION_ID
 COPY . .
 
 # Copy the Azure signing script
-COPY dockerfiles/AzureKeyVaultSignatureScript.sh /tmp/
-RUN chmod +x /tmp/AzureKeyVaultSignatureScript.sh
+COPY dockerfiles/AzureHSMSignatureScript.sh /tmp/
+RUN chmod +x /tmp/AzureHSMSignatureScript.sh
 
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 
@@ -54,14 +54,9 @@ WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 # Sign the enclave executable
 RUN ego sign enclave.json
 
-RUN if [ -n "$AZURE_TENANT_ID" ]; then \
-       apt-get update && apt-get install -y jq; \
-    else \
-        echo "Skipping Azure setup"; \
-    fi
-
 # Install Azure CLI
 RUN if [ -n "$AZURE_TENANT_ID" ]; then \
+        apt-get update && apt-get install -y jq; \
         echo "====== INSTALLING AZURE CLI ======" && \
         apt-get update && \
         apt-get install -y \
@@ -100,7 +95,7 @@ RUN if [ -n "$AZURE_TENANT_ID" ]; then \
         echo "====== STEP 2: AZURE KEY VAULT SIGNING ======" && \
         export AZURE_TENANT_ID="$AZURE_TENANT_ID" && \
         export AZURE_SUBSCRIPTION_ID="$AZURE_SUBSCRIPTION_ID" && \
-        /tmp/AzureKeyVaultSignatureScript.sh "$hash_to_sign" && \
+        /tmp/AzureHSMSignatureScript.sh "$hash_to_sign" && \
         if [ ! -f /tmp/signature.b64 ] || [ ! -s /tmp/signature.b64 ]; then \
             echo "ERROR: Azure Key Vault signing failed - no signature file generated" && \
             exit 1; \
@@ -114,9 +109,9 @@ RUN if [ -n "$AZURE_TENANT_ID" ]; then \
         echo "Using signature: $(echo "$signature_b64" | head -c 50)..." && \
         echo "Using modulus: $(echo "$modulus_b64" | head -c 50)..." && \
         echo "====== STEP 3: REPLACE SIGNATURE IN ENCLAVE BINARY ======" && \
-        /tmp/enclavesigner replace main "$signature_b64" "$modulus_b64" main.azure_signed && \
+        /tmp/enclavesigner replace main "$signature_b64" "$modulus_b64" main.azure_signed  2>&1 && \
         echo "====== VERIFYING AZURE-SIGNED ENCLAVE ======" && \
-        /tmp/enclavesigner verify main.azure_signed || { \
+        /tmp/enclavesigner verify main.azure_signed  2>&1 || { \
             echo "ERROR: Azure-signed enclave verification FAILED!" && \
             exit 1; \
         } && \
@@ -124,7 +119,7 @@ RUN if [ -n "$AZURE_TENANT_ID" ]; then \
         echo "Enclave signature successfully replaced with Azure Key Vault signature" && \
         echo "====== SIGNATURE REPLACEMENT COMPLETED ======" && \
         echo "====== FINAL VERIFICATION ======" && \
-        /tmp/enclavesigner verify main || { \
+        /tmp/enclavesigner verify main 2>&1 || { \
             echo "ERROR: Final enclave verification FAILED!" && \
             exit 1; \
         } && \

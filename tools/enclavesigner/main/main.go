@@ -1,8 +1,6 @@
 package main
 
 import (
-	"crypto"
-	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
@@ -99,16 +97,16 @@ func (r *SGXSignatureReplacer) ReplaceSignature(sigStruct []byte, signatureB64, 
 		return fmt.Errorf("failed to decode modulus: %w", err)
 	}
 
-	fmt.Printf("Debug: Decoded signature length: %d bytes\n", len(signatureBytesBE))
-	fmt.Printf("Debug: Decoded modulus length: %d bytes\n", len(modulusbytesBE))
-	fmt.Printf("Debug: Expected RSA key size: %d bytes\n", RSAKeySize)
+	fmt.Fprintf(os.Stderr, "Debug: Decoded signature length: %d bytes\n", len(signatureBytesBE))
+	fmt.Fprintf(os.Stderr, "Debug: Decoded modulus length: %d bytes\n", len(modulusbytesBE))
+	fmt.Fprintf(os.Stderr, "Debug: Expected RSA key size: %d bytes\n", RSAKeySize)
 
 	// Pad signature to full RSA key size if needed (Azure may strip leading zeros)
 	if len(signatureBytesBE) < RSAKeySize {
 		paddedSig := make([]byte, RSAKeySize)
 		copy(paddedSig[RSAKeySize-len(signatureBytesBE):], signatureBytesBE)
 		signatureBytesBE = paddedSig
-		fmt.Printf("Debug: Padded signature from %d to %d bytes\n", len(signatureBytesBE), RSAKeySize)
+		fmt.Fprintf(os.Stderr, "Debug: Padded signature from %d to %d bytes\n", len(signatureBytesBE), RSAKeySize)
 	}
 
 	// Pad modulus to full RSA key size if needed
@@ -116,7 +114,7 @@ func (r *SGXSignatureReplacer) ReplaceSignature(sigStruct []byte, signatureB64, 
 		paddedMod := make([]byte, RSAKeySize)
 		copy(paddedMod[RSAKeySize-len(modulusbytesBE):], modulusbytesBE)
 		modulusbytesBE = paddedMod
-		fmt.Printf("Debug: Padded modulus from %d to %d bytes\n", len(modulusbytesBE), RSAKeySize)
+		fmt.Fprintf(os.Stderr, "Debug: Padded modulus from %d to %d bytes\n", len(modulusbytesBE), RSAKeySize)
 	}
 
 	// Validate sizes after padding
@@ -148,7 +146,7 @@ func (r *SGXSignatureReplacer) ReplaceSignature(sigStruct []byte, signatureB64, 
 	copy(sigStruct[offsets.Q1:offsets.Q1+RSAKeySize], q1Bytes)
 	copy(sigStruct[offsets.Q2:offsets.Q2+RSAKeySize], q2Bytes)
 
-	fmt.Printf("Debug: Successfully replaced signature and computed Q1/Q2\n")
+	fmt.Fprintf(os.Stderr, "Debug: Successfully replaced signature and computed Q1/Q2\n")
 	return nil
 }
 
@@ -172,56 +170,37 @@ func (r *SGXSignatureReplacer) VerifySignature(sigStruct []byte) error {
 		return fmt.Errorf("failed to extract expected hash: %w", err)
 	}
 
-	fmt.Printf("Debug: Expected hash: %x\n", expectedHash)
-	fmt.Printf("Debug: Modulus size: %d bits\n", modulus.BitLen())
-	fmt.Printf("Debug: Signature size: %d bits\n", signature.BitLen())
-
-	// Try different verification approaches
-	fmt.Printf("Debug: Attempting PKCS1v15 verification...\n")
-	pubKey := &rsa.PublicKey{N: modulus, E: 3}
-	signatureBytes := signature.Bytes()
-
-	// Pad signature to RSA key size if needed
-	if len(signatureBytes) < RSAKeySize {
-		paddedSig := make([]byte, RSAKeySize)
-		copy(paddedSig[RSAKeySize-len(signatureBytes):], signatureBytes)
-		signatureBytes = paddedSig
-	}
-
-	err = rsa.VerifyPKCS1v15(pubKey, crypto.SHA256, expectedHash[:], signatureBytes)
-	if err == nil {
-		fmt.Printf("✓ PKCS1v15 verification successful!\n")
-		return nil
-	}
-	fmt.Printf("Debug: PKCS1v15 failed: %v\n", err)
+	fmt.Fprintf(os.Stderr, "Debug: Expected hash: %x\n", expectedHash)
+	fmt.Fprintf(os.Stderr, "Debug: Modulus size: %d bits\n", modulus.BitLen())
+	fmt.Fprintf(os.Stderr, "Debug: Signature size: %d bits\n", signature.BitLen())
 
 	// Try raw RSA verification
-	fmt.Printf("Debug: Attempting raw RSA verification...\n")
+	fmt.Fprintf(os.Stderr, "Debug: Attempting raw RSA verification...\n")
 	e := big.NewInt(3)
 	decrypted := new(big.Int).Exp(signature, e, modulus)
 	decryptedBytes := decrypted.Bytes()
 
-	fmt.Printf("Debug: Raw RSA result: %d bytes\n", len(decryptedBytes))
+	fmt.Fprintf(os.Stderr, "Debug: Raw RSA result: %d bytes\n", len(decryptedBytes))
 	if len(decryptedBytes) >= 64 {
-		fmt.Printf("Debug: Raw RSA (first 32 bytes): %x\n", decryptedBytes[:32])
-		fmt.Printf("Debug: Raw RSA (last 32 bytes): %x\n", decryptedBytes[len(decryptedBytes)-32:])
+		fmt.Fprintf(os.Stderr, "Debug: Raw RSA (first 32 bytes): %x\n", decryptedBytes[:32])
+		fmt.Fprintf(os.Stderr, "Debug: Raw RSA (last 32 bytes): %x\n", decryptedBytes[len(decryptedBytes)-32:])
 	}
 
 	// Check if our hash appears anywhere in the decrypted result
 	hashBytes := expectedHash[:]
 	for i := 0; i <= len(decryptedBytes)-len(hashBytes); i++ {
 		if bytesEqual(decryptedBytes[i:i+len(hashBytes)], hashBytes) {
-			fmt.Printf("✓ Found matching hash at offset %d in decrypted signature!\n", i)
+			fmt.Fprintf(os.Stderr, "✓ Found matching hash at offset %d in decrypted signature!\n", i)
 			return nil
 		}
 	}
 
 	// Try with different padding schemes
-	fmt.Printf("Debug: Checking for standard RSA padding patterns...\n")
+	fmt.Fprintf(os.Stderr, "Debug: Checking for standard RSA padding patterns...\n")
 
 	// Look for PKCS#1 v1.5 padding pattern: 00 01 FF...FF 00 <hash>
 	if len(decryptedBytes) >= 2 && decryptedBytes[0] == 0x00 && decryptedBytes[1] == 0x01 {
-		fmt.Printf("Debug: Found PKCS#1 v1.5 padding pattern\n")
+		fmt.Fprintf(os.Stderr, "Debug: Found PKCS#1 v1.5 padding pattern\n")
 		// Find the 0x00 separator after the FF padding
 		for i := 2; i < len(decryptedBytes)-len(hashBytes); i++ {
 			if decryptedBytes[i] == 0x00 {
@@ -229,7 +208,7 @@ func (r *SGXSignatureReplacer) VerifySignature(sigStruct []byte) error {
 				if hashStart+len(hashBytes) <= len(decryptedBytes) {
 					actualHash := decryptedBytes[hashStart : hashStart+len(hashBytes)]
 					if bytesEqual(actualHash, hashBytes) {
-						fmt.Printf("✓ PKCS#1 v1.5 hash verification successful!\n")
+						fmt.Fprintf(os.Stderr, "✓ PKCS#1 v1.5 hash verification successful!\n")
 						return nil
 					}
 				}
@@ -250,7 +229,7 @@ func (r *SGXSignatureReplacer) computeQ1Q2(sigStruct []byte) (*big.Int, *big.Int
 	signature := littleEndianToBigInt(signatureLE)
 	modulus := littleEndianToBigInt(modulusLE)
 
-	fmt.Printf("Debug: Computing Q1/Q2 with signature bits: %d, modulus bits: %d\n",
+	fmt.Fprintf(os.Stderr, "Debug: Computing Q1/Q2 with signature bits: %d, modulus bits: %d\n",
 		signature.BitLen(), modulus.BitLen())
 
 	// Gramine's exact computation:
@@ -265,15 +244,15 @@ func (r *SGXSignatureReplacer) computeQ1Q2(sigStruct []byte) (*big.Int, *big.Int
 	tmp3 := new(big.Int).Mul(tmp2, signature)
 	q2 := new(big.Int).Div(tmp3, modulus)
 
-	fmt.Printf("Debug: Q1 bits: %d, Q2 bits: %d\n", q1.BitLen(), q2.BitLen())
+	fmt.Fprintf(os.Stderr, "Debug: Q1 bits: %d, Q2 bits: %d\n", q1.BitLen(), q2.BitLen())
 
 	// Validate that Q1 and Q2 are within expected ranges
 	// They should be smaller than the modulus
 	if q1.Cmp(modulus) >= 0 {
-		fmt.Printf("Warning: Q1 >= modulus (Q1 bits: %d, modulus bits: %d)\n", q1.BitLen(), modulus.BitLen())
+		fmt.Fprintf(os.Stderr, "Warning: Q1 >= modulus (Q1 bits: %d, modulus bits: %d)\n", q1.BitLen(), modulus.BitLen())
 	}
 	if q2.Cmp(modulus) >= 0 {
-		fmt.Printf("Warning: Q2 >= modulus (Q2 bits: %d, modulus bits: %d)\n", q2.BitLen(), modulus.BitLen())
+		fmt.Fprintf(os.Stderr, "Warning: Q2 >= modulus (Q2 bits: %d, modulus bits: %d)\n", q2.BitLen(), modulus.BitLen())
 	}
 
 	return q1, q2
@@ -281,7 +260,7 @@ func (r *SGXSignatureReplacer) computeQ1Q2(sigStruct []byte) (*big.Int, *big.Int
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Printf("Usage: %s <command> [args...]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s <command> [args...]\n", os.Args[0])
 		fmt.Println("Commands:")
 		fmt.Println("  extract_hash <enclave_file>")
 		fmt.Println("  replace <enclave_file> <signature_b64> <modulus_b64> <output_file>")
@@ -301,30 +280,30 @@ func main() {
 
 		data, err := os.ReadFile(os.Args[2])
 		if err != nil {
-			fmt.Printf("Error reading file: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
 			os.Exit(1)
 		}
 
 		sigStruct, err := extractSigStruct(data)
 		if err != nil {
-			fmt.Printf("Error finding SIGSTRUCT: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error finding SIGSTRUCT: %v\n", err)
 			os.Exit(1)
 		}
 
 		//err = replacer.VerifySignature(sigStruct)
 		//if err != nil {
-		//	fmt.Printf("Error verifying original sig: %v\n", err)
+		//	fmt.Fprintf(os.Stderr, "Error verifying original sig: %v\n", err)
 		//	os.Exit(1)
 		//}
 
 		hash, err := replacer.ExtractHash(sigStruct)
 		if err != nil {
-			fmt.Printf("Error extracting hash: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error extracting hash: %v\n", err)
 			os.Exit(1)
 		}
 
 		hashB64 := base64.StdEncoding.EncodeToString(hash[:])
-		fmt.Printf("%s", hashB64) // Print without newline for script compatibility
+		fmt.Fprintf(os.Stdout, "%s", hashB64) // Print without newline for script compatibility
 
 	case "replace":
 		if len(os.Args) != 6 {
@@ -334,30 +313,30 @@ func main() {
 
 		data, err := os.ReadFile(os.Args[2])
 		if err != nil {
-			fmt.Printf("Error reading file: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
 			os.Exit(1)
 		}
 
 		offset, err := findSigStructOffset(data)
 		if err != nil {
-			fmt.Printf("Error finding SIGSTRUCT: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error finding SIGSTRUCT: %v\n", err)
 			os.Exit(1)
 		}
 
 		sigStruct := data[offset : offset+SigStructSize]
 		err = replacer.ReplaceSignature(sigStruct, os.Args[3], os.Args[4])
 		if err != nil {
-			fmt.Printf("Error replacing signature: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error replacing signature: %v\n", err)
 			os.Exit(1)
 		}
 
 		err = os.WriteFile(os.Args[5], data, 0644)
 		if err != nil {
-			fmt.Printf("Error writing file: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
 			os.Exit(1)
 		}
 
-		fmt.Printf("Signature replaced successfully (SIGSTRUCT found at offset %d)\n", offset)
+		fmt.Fprintf(os.Stderr, "Signature replaced successfully (SIGSTRUCT found at offset %d)\n", offset)
 
 	case "verify":
 		if len(os.Args) != 3 {
@@ -367,24 +346,24 @@ func main() {
 
 		data, err := os.ReadFile(os.Args[2])
 		if err != nil {
-			fmt.Printf("Error reading file: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
 			os.Exit(1)
 		}
 
 		sigStruct, err := extractSigStruct(data)
 		if err != nil {
-			fmt.Printf("Error finding SIGSTRUCT: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Error finding SIGSTRUCT: %v\n", err)
 			os.Exit(1)
 		}
 
 		err = replacer.VerifySignature(sigStruct)
 		if err != nil {
-			fmt.Printf("Verification failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Verification failed: %v\n", err)
 			os.Exit(1)
 		}
 
 	default:
-		fmt.Printf("Unknown command: %s\n", command)
+		fmt.Fprintf(os.Stderr, "Unknown command: %s\n", command)
 		os.Exit(1)
 	}
 }
