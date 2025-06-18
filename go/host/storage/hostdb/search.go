@@ -11,7 +11,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
-// todo (@will) add pagination if results are large
+// Search queries the host DB using the provided string. The input type is determined by length and will attempt to query
+// by hash, sequence number or height.
 func Search(db HostDB, query string) (*common.SearchResponse, error) {
 	inputType := identifyInputType(query)
 
@@ -75,7 +76,8 @@ func searchByHash(db HostDB, hash string) []*common.SearchResult {
 				"rollup": rollup,
 			},
 		})
-	} else if errors.Is(err, sql.ErrNoRows) {
+		return results // early return if rollup found due to uniqueness of hash lookup
+	} else if !errors.Is(err, sql.ErrNoRows) {
 		logger.Error("No rollup found for hash during search", "hash", hash, "error", err)
 	}
 
@@ -91,8 +93,9 @@ func searchByHash(db HostDB, hash string) []*common.SearchResult {
 				"batch": batch,
 			},
 		})
-	} else if errors.Is(err, sql.ErrNoRows) {
-		logger.Error("No rollup found for hash during search", "hash", hash, "error", err)
+		return results // early return if rollup found due to uniqueness of hash lookup
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		logger.Error("No batch found for hash during search", "hash", hash, "error", err)
 	}
 
 	tx, err := GetTransaction(db, gethcommon.HexToHash(hash))
@@ -105,7 +108,7 @@ func searchByHash(db HostDB, hash string) []*common.SearchResult {
 				"transaction": tx,
 			},
 		})
-	} else if errors.Is(err, sql.ErrNoRows) {
+	} else if !errors.Is(err, sql.ErrNoRows) {
 		logger.Error("No tx found for hash during search", "hash", hash, "error", err)
 	}
 
