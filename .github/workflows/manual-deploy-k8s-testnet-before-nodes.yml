@@ -28,6 +28,11 @@ on:
           description: 'Type "confirm" if deploying sepolia'
           required: false
           type: string
+      skip_build_and_push: # New input for skipping the build and push step
+        description: 'Skip building and pushing Docker images'
+        required: false
+        default: true # Changed default to true
+        type: boolean
 
 jobs:
   build:
@@ -90,6 +95,7 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: 'Build and push obscuro node images'
+        if: ${{ !github.event.inputs.skip_build_and_push }} # Conditional execution
         run: |
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} -f dockerfiles/enclave.Dockerfile  .
           docker push ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}
