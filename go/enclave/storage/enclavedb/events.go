@@ -26,7 +26,7 @@ const (
 		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
 		"   left join contract tx_contr on curr_tx.to_address=tx_contr.id "
 
-	// duplicating temporarily for easy comparison
+	// ordering of the joins matters so we can't just append the base receipts query
 	baseReceiptJoinWithReceivingAddress = " from receipt rec " +
 		"join batch b on rec.batch=b.sequence " +
 		"join tx curr_tx on rec.tx=curr_tx.id " +
