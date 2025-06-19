@@ -330,7 +330,16 @@ func (es *eventsStorage) readEventTypeForContract(ctx context.Context, dbTX *sql
 func (es *eventsStorage) readContract(ctx context.Context, dbTX *sqlx.Tx, addr gethcommon.Address) (*enclavedb.Contract, error) {
 	defer es.logDuration("readContract", measure.NewStopwatch())
 	return es.cachingService.ReadContractAddr(ctx, addr, func() (*enclavedb.Contract, error) {
-		return enclavedb.ReadContractByAddress(ctx, dbTX, addr)
+		c, err := enclavedb.ReadContractByAddress(ctx, dbTX, addr)
+		if err != nil {
+			return nil, err
+		}
+		ets, err := enclavedb.ReadEventTypesForContract(ctx, dbTX, c.Id)
+		if err != nil {
+			return nil, err
+		}
+		c.EventTypes = ets
+		return c, nil
 	})
 }
 

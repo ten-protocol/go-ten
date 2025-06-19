@@ -28,6 +28,16 @@ type Contract struct {
 	Creator        gethcommon.Address
 	AutoVisibility bool
 	Transparent    *bool
+	EventTypes     []*EventType
+}
+
+func (contract Contract) EventType(eventSignature gethcommon.Hash) *EventType {
+	for _, et := range contract.EventTypes {
+		if et.EventSignature == eventSignature {
+			return et
+		}
+	}
+	return nil
 }
 
 func (contract Contract) IsTransparent() bool {
