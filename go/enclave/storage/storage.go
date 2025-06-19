@@ -962,7 +962,7 @@ func (s *storageImpl) FilterLogs(
 		// if topics[0] were empty add all event Types found in the loaded contracts
 		for _, contract := range contracts {
 			if len(contract.EventTypes) > 0 {
-				eventTypes = append(eventTypes, contract.EventTypes...)
+				eventTypes = append(eventTypes, contract.EventTypeList()...)
 			}
 		}
 
@@ -1060,15 +1060,6 @@ func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sqlx.Tx, addr ge
 
 func (s *storageImpl) ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error) {
 	return s.eventsStorage.ReadContract(ctx, address)
-}
-
-func (s *storageImpl) ReadEventTypeForContract(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
-	dbTx, err := s.db.NewDBTransaction(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not create DB transaction - %w", err)
-	}
-	defer dbTx.Rollback()
-	return s.eventsStorage.readEventTypeForContract(ctx, dbTx, contractAddress, eventSignature)
 }
 
 func (s *storageImpl) readEventTypes(ctx context.Context, eventSignature gethcommon.Hash) ([]*enclavedb.EventType, error) {

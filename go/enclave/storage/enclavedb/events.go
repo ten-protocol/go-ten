@@ -24,19 +24,6 @@ func WriteEventType(ctx context.Context, dbTX *sqlx.Tx, et *EventType) (uint64, 
 	return uint64(id), nil
 }
 
-func ReadEventTypeForContract(ctx context.Context, dbTX *sqlx.Tx, contract *Contract, eventSignature gethcommon.Hash) (*EventType, error) {
-	et := EventType{Contract: contract}
-	err := dbTX.QueryRowContext(ctx,
-		"select id, event_sig, auto_visibility, auto_public, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
-		contract.Id, eventSignature.Bytes(),
-	).Scan(&et.Id, &et.EventSignature, &et.AutoVisibility, &et.AutoPublic, &et.ConfigPublic, &et.Topic1CanView, &et.Topic2CanView, &et.Topic3CanView, &et.SenderCanView)
-	if errors.Is(err, sql.ErrNoRows) {
-		// make sure the error is converted to obscuro-wide not found error
-		return nil, errutil.ErrNotFound
-	}
-	return &et, err
-}
-
 func ReadEventTypesForContract(ctx context.Context, dbTX *sqlx.Tx, contractId uint64) ([]*EventType, error) {
 	rows, err := dbTX.QueryContext(ctx,
 		"select id, event_sig, auto_visibility, auto_public, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view "+

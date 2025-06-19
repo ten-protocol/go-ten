@@ -110,7 +110,7 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 		}
 		// only filter when the transaction calls a contract. Value transfers emit no events.
 		if ctr != nil {
-			logs, err = filterLogs(ctx, storage, rec.Receipt.Logs, ctr, requester)
+			logs, err = filterLogs(rec.Receipt.Logs, ctr, requester)
 			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 				return nil, fmt.Errorf("could not filter cached logs in eth_getTransactionReceipt request. Cause: %w", err)
 			}
@@ -130,10 +130,10 @@ func fetchFromCache(ctx context.Context, storage storage.Storage, cacheService *
 	return r, nil
 }
 
-func filterLogs(ctx context.Context, storage storage.Storage, logs []*types.Log, ctr *enclavedb.Contract, requester *gethcommon.Address) ([]*types.Log, error) {
+func filterLogs(logs []*types.Log, ctr *enclavedb.Contract, requester *gethcommon.Address) ([]*types.Log, error) {
 	filtered := make([]*types.Log, 0)
 	for _, l := range logs {
-		canView, err := senderCanViewLog(ctx, storage, ctr, l, requester)
+		canView, err := senderCanViewLog(ctr, l, requester)
 		if err != nil {
 			return nil, err
 		}
@@ -144,14 +144,11 @@ func filterLogs(ctx context.Context, storage storage.Storage, logs []*types.Log,
 	return filtered, nil
 }
 
-func senderCanViewLog(ctx context.Context, storage storage.Storage, ctr *enclavedb.Contract, l *types.Log, sender *gethcommon.Address) (bool, error) {
+func senderCanViewLog(ctr *enclavedb.Contract, l *types.Log, sender *gethcommon.Address) (bool, error) {
 	eventSig := l.Topics[0]
-	eventType, err := storage.ReadEventTypeForContract(ctx, ctr.Address, eventSig)
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		return false, fmt.Errorf("could not read event type in eth_getTransactionReceipt request. Cause: %w", err)
-	}
-	if errors.Is(err, errutil.ErrNotFound) {
-		return false, err
+	eventType := ctr.EventType(eventSig)
+	if eventType == nil {
+		return false, errutil.ErrNotFound
 	}
 	// event visibility logic
 	canView := eventType.IsPublic() ||

@@ -28,20 +28,36 @@ type Contract struct {
 	Creator        gethcommon.Address
 	AutoVisibility bool
 	Transparent    *bool
-	EventTypes     []*EventType
+	EventTypes     map[gethcommon.Hash]*EventType
 }
 
-func (contract Contract) EventType(eventSignature gethcommon.Hash) *EventType {
-	for _, et := range contract.EventTypes {
-		if et.EventSignature == eventSignature {
-			return et
-		}
+func (contract *Contract) EventType(eventSignature gethcommon.Hash) *EventType {
+	if contract.EventTypes == nil {
+		return nil
 	}
-	return nil
+	return contract.EventTypes[eventSignature]
 }
 
-func (contract Contract) IsTransparent() bool {
+func (contract *Contract) EventTypeList() []*EventType {
+	if contract.EventTypes == nil {
+		return nil
+	}
+	result := make([]*EventType, 0)
+	for _, eventType := range contract.EventTypes {
+		result = append(result, eventType)
+	}
+	return result
+}
+
+func (contract *Contract) IsTransparent() bool {
 	return contract.Transparent != nil && *contract.Transparent
+}
+
+func (contract *Contract) SetEventTypes(ets []*EventType) {
+	contract.EventTypes = make(map[gethcommon.Hash]*EventType)
+	for _, et := range ets {
+		contract.EventTypes[et.EventSignature] = et
+	}
 }
 
 // EventType - maps to the “event_type“ table

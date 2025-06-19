@@ -49,9 +49,6 @@ type CacheService struct {
 	contractAddressCache *gocache.Cache
 	eventTopicCache      *gocache.Cache
 
-	// from contract_address||event_sig to the event_type object
-	eventTypeCache *gocache.Cache
-
 	// store the last few batches together with the content
 	lastBatchesCache *gocache.Cache
 
@@ -100,7 +97,6 @@ func NewCacheService(logger gethlog.Logger, testMode bool) *CacheService {
 
 		eoaCache:             newFifoCache(logger, nrEOA, gocache.NoExpiration),
 		contractAddressCache: newFifoCache(logger, nrContractAddresses, gocache.NoExpiration),
-		eventTypeCache:       newFifoCache(logger, nrEventTypes, gocache.NoExpiration),
 		eventTopicCache:      newFifoCache(logger, nrEventTypes, gocache.NoExpiration),
 
 		receiptCache:          newFifoCache(logger, nrReceipts, receiptsTimeout),
@@ -127,7 +123,6 @@ func (cs *CacheService) Stop() {
 	cs.eoaCache.StopJanitor()
 	cs.contractAddressCache.StopJanitor()
 	cs.eventTopicCache.StopJanitor()
-	cs.eventTypeCache.StopJanitor()
 	cs.attestedEnclavesCache.StopJanitor()
 }
 
@@ -204,6 +199,10 @@ func (cs *CacheService) ReadContractAddr(ctx context.Context, addr gethcommon.Ad
 	return getCachedValue(ctx, cs.contractAddressCache, cs.logger, addr.Bytes(), onCacheMiss, true)
 }
 
+func (cs *CacheService) InvalidateContract(addr gethcommon.Address) {
+	cs.contractAddressCache.Delete(toString(addr.Bytes()))
+}
+
 func (cs *CacheService) ReadEventTopic(ctx context.Context, topic []byte, eventTypeId uint64, onCacheMiss func() (*enclavedb.EventTopic, error)) (*enclavedb.EventTopic, error) {
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, eventTypeId)
@@ -257,13 +256,6 @@ func (cs *CacheService) ReadReceipt(_ context.Context, txHash gethcommon.Hash) (
 func (cs *CacheService) DelReceipt(_ context.Context, txHash gethcommon.Hash) error {
 	cs.receiptCache.Delete(txHash.String())
 	return nil
-}
-
-func (cs *CacheService) ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash, onCacheMiss func() (*enclavedb.EventType, error)) (*enclavedb.EventType, error) {
-	key := make([]byte, 0)
-	key = append(key, contractAddress.Bytes()...)
-	key = append(key, eventSignature.Bytes()...)
-	return getCachedValue(ctx, cs.eventTypeCache, cs.logger, key, onCacheMiss, true)
 }
 
 func (cs *CacheService) ReadConvertedHeader(ctx context.Context, batchHash common.L2BatchHash, onCacheMiss func() (*types.Header, error)) (*types.Header, error) {
