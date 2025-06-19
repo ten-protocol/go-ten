@@ -890,6 +890,11 @@ func (s *storageImpl) DebugGetLogs(ctx context.Context, from *big.Int, to *big.I
 	return enclavedb.DebugGetLogs(ctx, s.db.GetSQLDB(), from, to, address, eventSig)
 }
 
+const (
+	MaxContractsPerFilter  = 5
+	MaxEventTypesPerFilter = 15
+)
+
 func (s *storageImpl) FilterLogs(
 	ctx context.Context,
 	requestingAccount *gethcommon.Address,
@@ -913,6 +918,14 @@ func (s *storageImpl) FilterLogs(
 
 	if len(topics) > 4 {
 		return nil, fmt.Errorf("invalid filter. Too many topics")
+	}
+
+	if len(contractAddresses) > MaxContractsPerFilter {
+		return nil, fmt.Errorf("invalid filter. Too many contract addresses. Max allowed: %d", MaxContractsPerFilter)
+	}
+
+	if len(topics) > 0 && len(topics[0]) > MaxEventTypesPerFilter {
+		return nil, fmt.Errorf("invalid filter. Too many event types. Max allowed: %d", MaxEventTypesPerFilter)
 	}
 
 	// load the contracts from cache
