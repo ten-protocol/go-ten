@@ -6,13 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"strconv"
 
 	"github.com/jmoiron/sqlx"
-
-	"github.com/ten-protocol/go-ten/go/enclave/core"
-
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -20,6 +17,7 @@ import (
 )
 
 const (
+	NR_TOPICS       = 3
 	baseReceiptJoin = " from receipt rec " +
 		"join batch b on rec.batch=b.sequence " +
 		"join tx curr_tx on rec.tx=curr_tx.id " +
@@ -52,7 +50,7 @@ func WriteEventType(ctx context.Context, dbTX *sqlx.Tx, et *EventType) (uint64, 
 	return uint64(id), nil
 }
 
-func ReadEventType(ctx context.Context, dbTX *sqlx.Tx, contract *Contract, eventSignature gethcommon.Hash) (*EventType, error) {
+func ReadEventTypeForContract(ctx context.Context, dbTX *sqlx.Tx, contract *Contract, eventSignature gethcommon.Hash) (*EventType, error) {
 	et := EventType{Contract: contract}
 	err := dbTX.QueryRowContext(ctx,
 		"select id, event_sig, auto_visibility, auto_public, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view from event_type where contract=? and event_sig=?",
@@ -63,6 +61,34 @@ func ReadEventType(ctx context.Context, dbTX *sqlx.Tx, contract *Contract, event
 		return nil, errutil.ErrNotFound
 	}
 	return &et, err
+}
+
+func ReadEventTypesForContract(ctx context.Context, sqldb *sqlx.DB, contractId uint64) ([]*EventType, error) {
+	rows, err := sqldb.QueryContext(ctx,
+		"select id, event_sig, auto_visibility, auto_public, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view "+
+			"from event_type where contract=?", contractId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var eventTypes []*EventType
+	for rows.Next() {
+		et := EventType{
+			Contract: &Contract{Id: contractId},
+		}
+		err := rows.Scan(&et.Id, &et.EventSignature, &et.AutoVisibility, &et.AutoPublic, &et.ConfigPublic, &et.Topic1CanView, &et.Topic2CanView, &et.Topic3CanView, &et.SenderCanView)
+		if err != nil {
+			return nil, err
+		}
+		eventTypes = append(eventTypes, &et)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return eventTypes, nil
 }
 
 func WriteEventTopic(ctx context.Context, dbTX *sqlx.Tx, topic *gethcommon.Hash, addressId *uint64, eventTypeId uint64) (uint64, error) {
@@ -111,10 +137,41 @@ func WriteEventLog(ctx context.Context, dbTX *sqlx.Tx, eventTypeId uint64, userT
 	return err
 }
 
-func FilterLogs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccount *gethcommon.Address, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, addresses []gethcommon.Address, topics [][]gethcommon.Hash) ([]*types.Log, error) {
-	queryParams := []any{}
-	query := ""
+// FilterLogs - the event types will contain all contracts
+func FilterLogs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccountId *uint64, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, eventTypes []*EventType, topics [][]gethcommon.Hash) ([]*types.Log, error) {
+	allLogs := make([]*types.Log, 0)
+	for _, eventType := range eventTypes {
+		// todo union
+		_, logs, err := loadEventLogs(ctx, stmtCache, requestingAccountId, fromBlock, toBlock, batchHash, eventType, topics)
+		if err != nil {
+			return nil, err
+		}
+		allLogs = append(allLogs, logs...)
+	}
+	return allLogs, nil
+}
 
+func loadEventLogs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccountId *uint64, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, eventType *EventType, topics [][]gethcommon.Hash) ([]*core.InternalReceipt, []*types.Log, error) {
+	query := "select et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address " +
+		"from batch b " +
+		"join receipt rec on rec.batch=b.sequence " +
+		"	join tx curr_tx on rec.tx=curr_tx.id " +
+		"   	join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
+		" 	join event_log e on e.receipt=rec.id " +
+		" 		join event_type et on e.event_type=et.id " +
+		"	 		join contract c on et.contract=c.id "
+
+	for i := 1; i <= NR_TOPICS; i++ {
+		query += fmt.Sprintf(" left join event_topic t%d on e.topic%d=t%d.id ", i, i, i)
+		if eventType.IsTopicRelevant(i) || eventType.AutoVisibility {
+			// we join with `externally_owned_account` only if we need to filter visibility on this topic
+			query += fmt.Sprintf("   left join externally_owned_account eoa%d on t%d.rel_address=eoa%d.id ", i, i, i)
+		}
+	}
+
+	query += " WHERE b.is_canonical=true "
+
+	var queryParams []any
 	if batchHash != nil {
 		query += " AND b.hash = ? "
 		queryParams = append(queryParams, batchHash.Bytes())
@@ -130,32 +187,69 @@ func FilterLogs(ctx context.Context, stmtCache *PreparedStatementCache, requesti
 		queryParams = append(queryParams, toBlock.Int64())
 	}
 
-	if len(addresses) > 0 {
-		query += " AND c.address in (" + repeat("?", ",", len(addresses)) + ")"
-		for _, address := range addresses {
-			queryParams = append(queryParams, address.Bytes())
-		}
-	}
-	if len(topics) > 4 {
-		return nil, fmt.Errorf("invalid filter. Too many topics")
-	}
-
-	for i := 0; i < len(topics); i++ {
+	for i := 1; i < len(topics); i++ {
 		if len(topics[i]) > 0 {
 			valuesIn := "IN (" + repeat("?", ",", len(topics[i])) + ")"
-			if i == 0 {
-				query += " AND et.event_sig " + valuesIn
-			} else {
-				query += " AND t" + strconv.Itoa(i) + ".topic " + valuesIn
-			}
-			for _, hash := range topics[i] {
-				queryParams = append(queryParams, hash.Bytes())
+			query += fmt.Sprintf(" AND t%d.topic %s", i, valuesIn)
+			for _, topicHash := range topics[i] {
+				queryParams = append(queryParams, topicHash.Bytes())
 			}
 		}
 	}
 
-	_, logs, err := loadReceiptsAndEventLogs(ctx, stmtCache, requestingAccount, query, queryParams, false)
-	return logs, err
+	query += " AND et.id = ? "
+	queryParams = append(queryParams, eventType.Id)
+
+	// for non-public events add visibility rules
+	if !eventType.IsPublic() {
+		query += " AND ( (1=0) "
+
+		if eventType.AutoVisibility {
+			query += " OR eoa1.id=? OR eoa2.id=? OR eoa3.id=? "
+			queryParams = append(queryParams, requestingAccountId)
+			queryParams = append(queryParams, requestingAccountId)
+			queryParams = append(queryParams, requestingAccountId)
+		}
+
+		if eventType.SenderCanView != nil && *eventType.SenderCanView {
+			query += " OR tx_sender.id=? "
+			queryParams = append(queryParams, requestingAccountId)
+		}
+
+		for i := 1; i <= NR_TOPICS; i++ {
+			if eventType.IsTopicRelevant(i) {
+				query += fmt.Sprintf(" OR eoa%d.id=? ", i)
+				queryParams = append(queryParams, requestingAccountId)
+			}
+		}
+		query += ") "
+	}
+
+	stmt, err := stmtCache.GetOrPrepare(query)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not prepare query: %w", err)
+	}
+
+	rows, err := stmt.QueryContext(ctx, queryParams...)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not execute query: %w", err)
+	}
+	defer rows.Close()
+
+	logList := make([]*types.Log, 0)
+
+	for rows.Next() {
+		_, l, err := onRowWithEventLogAndReceipt(rows, false)
+		if err != nil {
+			return nil, nil, err
+		}
+		logList = append(logList, l)
+	}
+	if rows.Err() != nil {
+		return nil, nil, rows.Err()
+	}
+
+	return nil, logList, nil
 }
 
 func DebugGetLogs(ctx context.Context, db *sqlx.DB, fromBlock *big.Int, toBlock *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error) {
@@ -234,8 +328,8 @@ func DebugGetLogs(ctx context.Context, db *sqlx.DB, fromBlock *big.Int, toBlock 
 	return result, nil
 }
 
-func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any) ([]*core.InternalReceipt, error) {
-	if requestingAccount == nil {
+func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccountId *uint64, whereCondition string, whereParams []any, orderBy string, orderByParams []any) ([]*core.InternalReceipt, error) {
+	if requestingAccountId == nil {
 		return nil, fmt.Errorf("you have to specify requestingAccount")
 	}
 	var queryParams []any
@@ -245,8 +339,8 @@ func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccount *gethco
 	query += " WHERE 1=1 "
 
 	// visibility
-	query += " AND tx_sender.address = ? "
-	queryParams = append(queryParams, requestingAccount.Bytes())
+	query += " AND tx_sender.id = ? "
+	queryParams = append(queryParams, *requestingAccountId)
 
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
@@ -307,7 +401,7 @@ func onRowWithReceipt(rows *sql.Rows) (*core.InternalReceipt, error) {
 // returns either receipts with logs, or only logs
 // this complexity is necessary to avoid executing multiple queries.
 // todo always pass in the actual batch hashes because of reorgs, or make sure to clean up log entries from discarded batches
-func loadReceiptsAndEventLogs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccount *gethcommon.Address, whereCondition string, whereParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
+func loadReceiptsAndEventLogs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccountId *uint64, whereCondition string, whereParams []any, withReceipts bool) ([]*core.InternalReceipt, []*types.Log, error) {
 	logsQuery := " et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address "
 	receiptQuery := " rec.post_state, rec.status, rec.gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
 
@@ -320,15 +414,15 @@ func loadReceiptsAndEventLogs(ctx context.Context, stmtCache *PreparedStatementC
 
 	var queryParams []any
 
-	if requestingAccount != nil {
+	if requestingAccountId != nil {
 		// Add log visibility rules
-		logsVisibQuery, logsVisibParams := logsVisibilityQuery(requestingAccount, withReceipts)
+		logsVisibQuery, logsVisibParams := logsVisibilityQuery(*requestingAccountId, withReceipts)
 		query += logsVisibQuery
 		queryParams = append(queryParams, logsVisibParams...)
 
 		// add receipt visibility rules
 		if withReceipts {
-			receiptsVisibQuery, receiptsVisibParams := receiptsVisibilityQuery(requestingAccount)
+			receiptsVisibQuery, receiptsVisibParams := receiptsVisibilityQuery(*requestingAccountId)
 			query += receiptsVisibQuery
 			queryParams = append(queryParams, receiptsVisibParams...)
 		}
@@ -337,14 +431,14 @@ func loadReceiptsAndEventLogs(ctx context.Context, stmtCache *PreparedStatementC
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
 
-	if withReceipts && requestingAccount != nil {
+	if withReceipts && requestingAccountId != nil {
 		// there is a corner case when a receipt has logs, but none are visible to the requester
 		query += " UNION ALL "
 		query += " select null, null, null, null, null, null, b.hash, b.height, curr_tx.hash, curr_tx.idx, null, " + receiptQuery
 		query += baseReceiptJoin
 		query += " where b.is_canonical=true "
-		query += " AND tx_sender.address = ? "
-		queryParams = append(queryParams, requestingAccount.Bytes())
+		query += " AND tx_sender.id = ? "
+		queryParams = append(queryParams, requestingAccountId)
 		query += whereCondition
 		queryParams = append(queryParams, whereParams...)
 	}
@@ -458,20 +552,18 @@ func onRowWithEventLogAndReceipt(rows *sql.Rows, withReceipts bool) (*core.Inter
 	return nil, &l, nil
 }
 
-func receiptsVisibilityQuery(requestingAccount *gethcommon.Address) (string, []any) {
+func receiptsVisibilityQuery(requestingAccountId uint64) (string, []any) {
 	// the visibility rules for the receipt:
 	// - the sender can query
 	// - anyone can query if the contract is transparent
 	// - anyone who can view an event log should also be able to view the receipt
-	query := " AND ( (e.id IS NOT NULL) OR (tx_sender.address = ?) OR (tx_contr.transparent=true) )"
-	queryParams := []any{requestingAccount.Bytes()}
+	query := " AND ( (e.id IS NOT NULL) OR (tx_sender.id = ?) OR (tx_contr.transparent=true) )"
+	queryParams := []any{requestingAccountId}
 	return query, queryParams
 }
 
 // this function encodes the event log visibility rules
-func logsVisibilityQuery(requestingAccount *gethcommon.Address, withReceipts bool) (string, []any) {
-	acc := requestingAccount.Bytes()
-
+func logsVisibilityQuery(requestingAccountId uint64, withReceipts bool) (string, []any) {
 	visibParams := make([]any, 0)
 
 	visibQuery := "AND ("
@@ -487,25 +579,25 @@ func logsVisibilityQuery(requestingAccount *gethcommon.Address, withReceipts boo
 	visibQuery += " OR (et.config_public=true) "
 
 	// For event logs that have no explicit configuration, an event is visible by all account owners whose addresses are used in any topic
-	visibQuery += " OR (et.auto_visibility=true AND (et.auto_public=true OR eoa1.address=? OR eoa2.address=? OR eoa3.address=?)) "
-	visibParams = append(visibParams, acc)
-	visibParams = append(visibParams, acc)
-	visibParams = append(visibParams, acc)
+	visibQuery += " OR (et.auto_visibility=true AND (et.auto_public=true OR eoa1.id=? OR eoa2.id=? OR eoa3.id=?)) "
+	visibParams = append(visibParams, requestingAccountId)
+	visibParams = append(visibParams, requestingAccountId)
+	visibParams = append(visibParams, requestingAccountId)
 
 	// Configured events that are not public specify explicitly which event topics are addresses empowered to view that event
 	visibQuery += " OR (" +
 		"et.auto_visibility=false AND et.config_public=false AND " +
 		"  (" +
-		"       (et.topic1_can_view AND eoa1.address=?) " +
-		"    OR (et.topic2_can_view AND eoa2.address=?) " +
-		"    OR (et.topic3_can_view AND eoa3.address=?)" +
-		"    OR (et.sender_can_view AND tx_sender.address=?)" +
+		"       (et.topic1_can_view AND eoa1.id=?) " +
+		"    OR (et.topic2_can_view AND eoa2.id=?) " +
+		"    OR (et.topic3_can_view AND eoa3.id=?)" +
+		"    OR (et.sender_can_view AND tx_sender.id=?)" +
 		"  )" +
 		")"
-	visibParams = append(visibParams, acc)
-	visibParams = append(visibParams, acc)
-	visibParams = append(visibParams, acc)
-	visibParams = append(visibParams, acc)
+	visibParams = append(visibParams, requestingAccountId)
+	visibParams = append(visibParams, requestingAccountId)
+	visibParams = append(visibParams, requestingAccountId)
+	visibParams = append(visibParams, requestingAccountId)
 
 	visibQuery += ") "
 	return visibQuery, visibParams
@@ -574,4 +666,33 @@ func byteArrayToHash(b []byte) gethcommon.Hash {
 	result := gethcommon.Hash{}
 	result.SetBytes(b)
 	return result
+}
+
+func ReadEventTypes(ctx context.Context, dbTX *sqlx.Tx, eventSignature gethcommon.Hash) ([]*EventType, error) {
+	rows, err := dbTX.QueryContext(ctx,
+		"select c.id, c.address, c.auto_visibility, c.transparent, eoa.address, et.id, et.event_sig, et.auto_visibility, et.auto_public, et.config_public, et.topic1_can_view, et.topic2_can_view, et.topic3_can_view, et.sender_can_view "+
+			"from event_type et join contract c on et.contract=c.id join externally_owned_account eoa on c.creator=eoa.id "+
+			"where et.event_sig=?",
+		eventSignature.Bytes(),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ets []*EventType
+	for rows.Next() {
+		var c Contract
+		et := EventType{Contract: &c}
+		err := rows.Scan(&c.Id, &c.Address, &c.AutoVisibility, &c.Transparent, &c.Creator, &et.Id, &et.EventSignature, &et.AutoVisibility, &et.AutoPublic, &et.ConfigPublic, &et.Topic1CanView, &et.Topic2CanView, &et.Topic3CanView, &et.SenderCanView)
+		if err != nil {
+			return nil, err
+		}
+		ets = append(ets, &et)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return ets, nil
 }

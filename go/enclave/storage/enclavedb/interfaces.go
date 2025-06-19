@@ -46,8 +46,27 @@ type EventType struct {
 	SenderCanView                               *bool
 }
 
-func (et EventType) IsPublic() bool {
+func (et EventType) Validate() error {
+	if !et.IsPublic() && !et.AutoVisibility {
+		noneRelevant := true
+		for i := 1; i <= 3; i++ {
+			if et.IsTopicRelevant(i) {
+				noneRelevant = false
+			}
+		}
+		if noneRelevant {
+			return fmt.Errorf("event type %s is not public and has no relevant topics", et.EventSignature.Hex())
+		}
+	}
+	return nil
+}
+
+func (et EventType) IsPublicConfig() bool {
 	return (et.Contract.Transparent != nil && *et.Contract.Transparent) || et.ConfigPublic
+}
+
+func (et EventType) IsPublic() bool {
+	return et.IsPublicConfig() || (et.AutoPublic != nil && *et.AutoPublic)
 }
 
 func (et EventType) IsTopicRelevant(topicNo int) bool {

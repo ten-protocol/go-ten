@@ -146,7 +146,7 @@ func filterLogs(ctx context.Context, storage storage.Storage, logs []*types.Log,
 
 func senderCanViewLog(ctx context.Context, storage storage.Storage, ctr *enclavedb.Contract, l *types.Log, sender *gethcommon.Address) (bool, error) {
 	eventSig := l.Topics[0]
-	eventType, err := storage.ReadEventType(ctx, ctr.Address, eventSig)
+	eventType, err := storage.ReadEventTypeForContract(ctx, ctr.Address, eventSig)
 	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 		return false, fmt.Errorf("could not read event type in eth_getTransactionReceipt request. Cause: %w", err)
 	}
@@ -155,7 +155,6 @@ func senderCanViewLog(ctx context.Context, storage storage.Storage, ctr *enclave
 	}
 	// event visibility logic
 	canView := eventType.IsPublic() ||
-		(eventType.AutoPublic != nil && *eventType.AutoPublic) ||
 		(eventType.SenderCanView != nil && *eventType.SenderCanView) ||
 		(eventType.Topic1CanView != nil && *eventType.Topic1CanView && isAddress(l.Topics, 1, sender)) ||
 		(eventType.Topic2CanView != nil && *eventType.Topic2CanView && isAddress(l.Topics, 2, sender)) ||

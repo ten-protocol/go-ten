@@ -501,7 +501,11 @@ func (s *storageImpl) GetFilteredInternalReceipt(ctx context.Context, txHash com
 	if !syntheticTx && requester == nil {
 		return nil, errors.New("requester address is required for non-synthetic transactions")
 	}
-	return enclavedb.ReadReceipt(ctx, s.preparedStatementCache, txHash, requester)
+	requesterId, err := s.readEOA(ctx, *requester)
+	if err != nil {
+		return nil, fmt.Errorf("could not read EOA for requester address %s. Cause: %w", requester.Hex(), err)
+	}
+	return enclavedb.ReadReceipt(ctx, s.preparedStatementCache, txHash, requesterId)
 }
 
 func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash common.L2TxHash) (bool, error) {
@@ -888,11 +892,91 @@ func (s *storageImpl) FilterLogs(
 	requestingAccount *gethcommon.Address,
 	fromBlock, toBlock *big.Int,
 	blockHash *common.L2BatchHash,
-	addresses []gethcommon.Address,
+	contractAddresses []gethcommon.Address,
 	topics [][]gethcommon.Hash,
 ) ([]*types.Log, error) {
 	defer s.logDuration("FilterLogs", measure.NewStopwatch())
-	logs, err := enclavedb.FilterLogs(ctx, s.preparedStatementCache, requestingAccount, fromBlock, toBlock, blockHash, addresses, topics)
+
+	// load the requester from cache
+	requestingId, err := s.readEOA(ctx, *requestingAccount)
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		return nil, err
+	}
+
+	if requestingId == nil {
+		return nil, nil
+		// return nil, fmt.Errorf("invalid filter. Requester not found")
+	}
+
+	noContracts := len(contractAddresses) == 0
+	noEventTypes := len(topics) == 0 || len(topics[0]) == 0
+	if noContracts && noEventTypes {
+		return nil, fmt.Errorf("invalid filter. The filter must have at least one contract address or one event type")
+	}
+
+	if len(topics) > 4 {
+		return nil, fmt.Errorf("invalid filter. Too many topics")
+	}
+
+	// load the contracts from cache
+	contracts := make([]*enclavedb.Contract, 0)
+	for _, contractAddress := range contractAddresses {
+		c, err := s.ReadContract(ctx, contractAddress)
+		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+			return nil, err
+		}
+		if c != nil {
+			contracts = append(contracts, c)
+		}
+	}
+
+	// there are no contracts for the requested addresses, so we can return early
+	if !noContracts && len(contracts) == 0 {
+		return nil, nil
+	}
+
+	eventTypes := make([]*enclavedb.EventType, 0)
+
+	// if topics[0] were empty add all event Types found in those contracts
+	if noEventTypes {
+		for _, contract := range contracts {
+			et, err := s.readEventTypesForContract(ctx, contract)
+			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+				return nil, err
+			}
+			if len(et) > 0 {
+				eventTypes = append(eventTypes, et...)
+			}
+		}
+	} else {
+		for _, eventTypeHash := range topics[0] {
+			if len(contractAddresses) == 0 {
+				// load all event types, and populate the contracts
+				allEventTypes, err := s.readEventTypes(ctx, eventTypeHash)
+				if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+					return nil, err
+				}
+				for _, eventType := range allEventTypes {
+					eventTypes = append(eventTypes, eventType)
+					contracts = append(contracts, eventType.Contract)
+				}
+			} else {
+				// load the event types for the specified contracts
+				for _, contract := range contracts {
+					et, err := s.ReadEventTypeForContract(ctx, contract.Address, eventTypeHash)
+					if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+						return nil, err
+					}
+					if et != nil {
+						eventTypes = append(eventTypes, et)
+					}
+				}
+			}
+		}
+	}
+
+	// todo - check there is at least an eventType filter
+	logs, err := enclavedb.FilterLogs(ctx, s.preparedStatementCache, requestingId, fromBlock, toBlock, blockHash, eventTypes, topics)
 	if err != nil {
 		return nil, err
 	}
@@ -905,6 +989,11 @@ func (s *storageImpl) FilterLogs(
 		return logs[i].BlockNumber < logs[j].BlockNumber
 	})
 	return logs, nil
+}
+
+func (s *storageImpl) readEventTypesForContract(ctx context.Context, contract *enclavedb.Contract) ([]*enclavedb.EventType, error) {
+	defer s.logDuration("readEventTypesForContract", measure.NewStopwatch())
+	return enclavedb.ReadEventTypesForContract(ctx, s.db.GetSQLDB(), contract.Id)
 }
 
 func (s *storageImpl) GetContractCount(ctx context.Context) (*big.Int, error) {
@@ -939,7 +1028,11 @@ func (s *storageImpl) MarkBatchAsUnexecuted(ctx context.Context, seqNo *big.Int)
 
 func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
 	defer s.logDuration("GetTransactionsPerAddress", measure.NewStopwatch())
-	return enclavedb.GetTransactionsPerAddress(ctx, s.db.GetSQLDB(), requester, pagination)
+	requesterId, err := s.readEOA(ctx, *requester)
+	if err != nil {
+		return nil, err
+	}
+	return enclavedb.GetTransactionsPerAddress(ctx, s.db.GetSQLDB(), requesterId, pagination)
 }
 
 func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *gethcommon.Address) (uint64, error) {
@@ -965,17 +1058,44 @@ func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sqlx.Tx, addr ge
 	})
 }
 
+func (s *storageImpl) readEOA(ctx context.Context, addr gethcommon.Address) (*uint64, error) {
+	defer s.logDuration("readEOA", measure.NewStopwatch())
+	return s.cachingService.ReadEOA(ctx, addr, func() (*uint64, error) {
+		dbTX, err := s.db.NewDBTransaction(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("could not create DB transaction - %w", err)
+		}
+		defer dbTX.Rollback()
+		id, err := enclavedb.ReadEoa(ctx, dbTX, addr)
+		if err != nil {
+			return nil, err
+		}
+		return &id, nil
+	})
+}
+
 func (s *storageImpl) ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error) {
 	return s.eventsStorage.ReadContract(ctx, address)
 }
 
-func (s *storageImpl) ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
+func (s *storageImpl) ReadEventTypeForContract(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	return s.eventsStorage.readEventType(ctx, dbTx, contractAddress, eventSignature)
+	return s.eventsStorage.readEventTypeForContract(ctx, dbTx, contractAddress, eventSignature)
+}
+
+func (s *storageImpl) readEventTypes(ctx context.Context, eventSignature gethcommon.Hash) ([]*enclavedb.EventType, error) {
+	defer s.logDuration("readEventTypes", measure.NewStopwatch())
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+	// todo - to use caching we have to update the cache when new types are added
+	return enclavedb.ReadEventTypes(ctx, dbTx, eventSignature)
 }
 
 func (s *storageImpl) logDuration(method string, stopWatch *measure.Stopwatch) {

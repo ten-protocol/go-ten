@@ -70,7 +70,7 @@ func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Contex
 
 	// create the event types for the events that were configured
 	for eventSig, eventCfg := range cfg.EventConfigs {
-		_, err = enclavedb.WriteEventType(ctx, dbTX, &enclavedb.EventType{
+		et := enclavedb.EventType{
 			Contract:       c,
 			EventSignature: eventSig,
 			AutoVisibility: eventCfg.AutoConfig,
@@ -79,7 +79,15 @@ func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Contex
 			Topic2CanView:  eventCfg.Topic2CanView,
 			Topic3CanView:  eventCfg.Topic3CanView,
 			SenderCanView:  eventCfg.SenderCanView,
-		})
+		}
+
+		// sanity check
+		//err = et.Validate()
+		//if err != nil {
+		//	return err
+		//}
+
+		_, err = enclavedb.WriteEventType(ctx, dbTX, &et)
 		if err != nil {
 			return fmt.Errorf("could not write event type. cause %w", err)
 		}
@@ -103,7 +111,7 @@ func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *sqlx.Tx, recei
 	}
 
 	eventSig := l.Topics[0]
-	eventType, err := es.readEventType(ctx, dbTX, l.Address, eventSig)
+	eventType, err := es.readEventTypeForContract(ctx, dbTX, l.Address, eventSig)
 	if errors.Is(err, errutil.ErrNotFound) {
 		// this is the first type an event of this type is emitted, so we must store it
 		eventType, err = es.storeAutoConfigEventType(ctx, dbTX, contract, l)
@@ -178,6 +186,12 @@ func (es *eventsStorage) storeAutoConfigEventType(ctx context.Context, dbTX *sql
 	if !eventType.ConfigPublic {
 		eventType.AutoVisibility = true
 	}
+
+	// sanity check
+	//err := eventType.Validate()
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	id, err := enclavedb.WriteEventType(ctx, dbTX, &eventType)
 	if err != nil {
@@ -277,7 +291,7 @@ func (es *eventsStorage) determineRelevantAddressForTopic(ctx context.Context, d
 			return nil, err
 		}
 
-	case eventType.IsPublic():
+	case eventType.IsPublicConfig():
 		// for public events, there is no relevant address
 		relevantAddress = nil
 
@@ -301,15 +315,15 @@ func (es *eventsStorage) determineRelevantAddressForTopic(ctx context.Context, d
 	return relevantAddress, nil
 }
 
-func (es *eventsStorage) readEventType(ctx context.Context, dbTX *sqlx.Tx, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
-	defer es.logDuration("ReadEventType", measure.NewStopwatch())
+func (es *eventsStorage) readEventTypeForContract(ctx context.Context, dbTX *sqlx.Tx, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error) {
+	defer es.logDuration("ReadEventTypeForContract", measure.NewStopwatch())
 
 	return es.cachingService.ReadEventType(ctx, contractAddress, eventSignature, func() (*enclavedb.EventType, error) {
 		contract, err := es.readContract(ctx, dbTX, contractAddress)
 		if err != nil {
 			return nil, err
 		}
-		return enclavedb.ReadEventType(ctx, dbTX, contract, eventSignature)
+		return enclavedb.ReadEventTypeForContract(ctx, dbTX, contract, eventSignature)
 	})
 }
 
