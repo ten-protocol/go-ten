@@ -504,7 +504,7 @@ func (s *storageImpl) GetFilteredInternalReceipt(ctx context.Context, txHash com
 	if err != nil {
 		return nil, fmt.Errorf("could not create DB transaction - %w", err)
 	}
-	defer dbTX.Rollback()
+	defer dbTX.Commit()
 	requesterId, err := s.readOrWriteEOA(ctx, dbTX, *requester)
 	if err != nil {
 		return nil, fmt.Errorf("could not read EOA for requester address %s. Cause: %w", requester.Hex(), err)
@@ -906,7 +906,7 @@ func (s *storageImpl) FilterLogs(
 	if err != nil {
 		return nil, fmt.Errorf("could not create DB transaction - %w", err)
 	}
-	defer dbTX.Rollback()
+	defer dbTX.Commit()
 
 	requestingId, err := s.readOrWriteEOA(ctx, dbTX, *requestingAccount)
 	if err != nil {
@@ -952,10 +952,7 @@ func (s *storageImpl) FilterLogs(
 			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 				return nil, err
 			}
-			for _, eventType := range allEventTypes {
-				eventTypes = append(eventTypes, eventType)
-				contracts = append(contracts, eventType.Contract)
-			}
+			eventTypes = append(eventTypes, allEventTypes...)
 		}
 
 	case noEventTypes:
@@ -1030,7 +1027,7 @@ func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *
 	if err != nil {
 		return nil, fmt.Errorf("could not create DB transaction - %w", err)
 	}
-	defer dbTX.Rollback()
+	defer dbTX.Commit()
 	requesterId, err := s.readOrWriteEOA(ctx, dbTX, *requester)
 	if err != nil {
 		return nil, err
@@ -1056,22 +1053,6 @@ func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sqlx.Tx, addr ge
 				return &wid, nil
 			}
 			return nil, fmt.Errorf("count not read eoa. cause: %w", err)
-		}
-		return &id, nil
-	})
-}
-
-func (s *storageImpl) readEOA(ctx context.Context, addr gethcommon.Address) (*uint64, error) {
-	defer s.logDuration("readEOA", measure.NewStopwatch())
-	return s.cachingService.ReadEOA(ctx, addr, func() (*uint64, error) {
-		dbTX, err := s.db.NewDBTransaction(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("could not create DB transaction - %w", err)
-		}
-		defer dbTX.Rollback()
-		id, err := enclavedb.ReadEoa(ctx, dbTX, addr)
-		if err != nil {
-			return nil, err
 		}
 		return &id, nil
 	})
