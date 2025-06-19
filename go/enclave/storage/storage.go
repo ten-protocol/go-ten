@@ -500,14 +500,13 @@ func (s *storageImpl) GetFilteredInternalReceipt(ctx context.Context, txHash com
 	if !syntheticTx && requester == nil {
 		return nil, errors.New("requester address is required for non-synthetic transactions")
 	}
-	dbTX, err := s.db.NewDBTransaction(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not create DB transaction - %w", err)
-	}
-	defer dbTX.Commit()
-	requesterId, err := s.readOrWriteEOA(ctx, dbTX, *requester)
-	if err != nil {
-		return nil, fmt.Errorf("could not read EOA for requester address %s. Cause: %w", requester.Hex(), err)
+	var requesterId *uint64
+	var err error
+	if requester != nil {
+		requesterId, err = s.readOrWriteEOAWithTx(ctx, *requester)
+		if err != nil {
+			return nil, fmt.Errorf("could not read EOA for requester address %s. Cause: %w", requester.Hex(), err)
+		}
 	}
 	return enclavedb.ReadReceipt(ctx, s.preparedStatementCache, txHash, requesterId)
 }
@@ -901,14 +900,7 @@ func (s *storageImpl) FilterLogs(
 ) ([]*types.Log, error) {
 	defer s.logDuration("FilterLogs", measure.NewStopwatch())
 
-	// load the requester from db/cache
-	dbTX, err := s.db.NewDBTransaction(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not create DB transaction - %w", err)
-	}
-	defer dbTX.Commit()
-
-	requestingId, err := s.readOrWriteEOA(ctx, dbTX, *requestingAccount)
+	requestingId, err := s.readOrWriteEOAWithTx(ctx, *requestingAccount)
 	if err != nil {
 		return nil, err
 	}
@@ -1023,12 +1015,7 @@ func (s *storageImpl) MarkBatchAsUnexecuted(ctx context.Context, seqNo *big.Int)
 
 func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
 	defer s.logDuration("GetTransactionsPerAddress", measure.NewStopwatch())
-	dbTX, err := s.db.NewDBTransaction(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("could not create DB transaction - %w", err)
-	}
-	defer dbTX.Commit()
-	requesterId, err := s.readOrWriteEOA(ctx, dbTX, *requester)
+	requesterId, err := s.readOrWriteEOAWithTx(ctx, *requester)
 	if err != nil {
 		return nil, err
 	}
@@ -1038,6 +1025,16 @@ func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *
 func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *gethcommon.Address) (uint64, error) {
 	defer s.logDuration("CountTransactionsPerAddress", measure.NewStopwatch())
 	return enclavedb.CountTransactionsPerAddress(ctx, s.db.GetSQLDB(), address)
+}
+
+func (s *storageImpl) readOrWriteEOAWithTx(ctx context.Context, addr gethcommon.Address) (*uint64, error) {
+	dbTX, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTX.Commit()
+
+	return s.readOrWriteEOA(ctx, dbTX, addr)
 }
 
 func (s *storageImpl) readOrWriteEOA(ctx context.Context, dbTX *sqlx.Tx, addr gethcommon.Address) (*uint64, error) {
