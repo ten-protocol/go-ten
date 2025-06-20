@@ -40,7 +40,7 @@ const (
 )
 
 // FilterLogs - the event types will contain all contracts
-func FilterLogs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccountId *uint64, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, eventTypes []*EventType, topics [][]gethcommon.Hash) ([]*types.Log, error) {
+func FilterLogs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccountId *uint64, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, eventTypes []*EventType, topics FilterTopics) ([]*types.Log, error) {
 	if len(eventTypes) == 0 {
 		return nil, fmt.Errorf("should not happen. At least one event type must be specified")
 	}
@@ -73,7 +73,7 @@ func FilterLogs(ctx context.Context, stmtCache *PreparedStatementCache, requesti
 	return logs, nil
 }
 
-func loadEventLogsQuery(requestingAccountId *uint64, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, eventType *EventType, topics [][]gethcommon.Hash) (string, []any) {
+func loadEventLogsQuery(requestingAccountId *uint64, fromBlock, toBlock *big.Int, batchHash *common.L2BatchHash, eventType *EventType, topics FilterTopics) (string, []any) {
 	query := "select et.event_sig, t1.topic, t2.topic, t3.topic, datablob, log_idx, b.hash, b.height, curr_tx.hash, curr_tx.idx, c.address " +
 		"from batch b " +
 		"join receipt rec on rec.batch=b.sequence " +
@@ -84,10 +84,16 @@ func loadEventLogsQuery(requestingAccountId *uint64, fromBlock, toBlock *big.Int
 		"	 		join contract c on et.contract=c.id "
 
 	for i := 1; i <= NR_TOPICS; i++ {
-		query += fmt.Sprintf(" left join event_topic t%d on e.topic%d=t%d.id ", i, i, i)
+		joinType := ""
+		// When we know we have to search for topics on a position, we can use a straight join.
+		// If there is nothing to join to, the query will end early, which is correct.
+		if !topics.HasTopicsOnPos(i) {
+			joinType = "left"
+		}
+		query += fmt.Sprintf(" %s join event_topic t%d on e.topic%d=t%d.id ", joinType, i, i, i)
 		if eventType.IsTopicRelevant(i) || eventType.AutoVisibility {
 			// we join with `externally_owned_account` only if we need to filter visibility on this topic
-			query += fmt.Sprintf("   left join externally_owned_account eoa%d on t%d.rel_address=eoa%d.id ", i, i, i)
+			query += fmt.Sprintf("   %s join externally_owned_account eoa%d on t%d.rel_address=eoa%d.id ", joinType, i, i, i)
 		}
 	}
 
@@ -109,11 +115,12 @@ func loadEventLogsQuery(requestingAccountId *uint64, fromBlock, toBlock *big.Int
 		queryParams = append(queryParams, toBlock.Int64())
 	}
 
-	for i := 1; i < len(topics); i++ {
-		if len(topics[i]) > 0 {
-			valuesIn := "IN (" + repeat("?", ",", len(topics[i])) + ")"
+	for i := 1; i <= NR_TOPICS; i++ {
+		if topics.HasTopicsOnPos(i) {
+			topicsRow := topics.TopicsOnPos(i)
+			valuesIn := "IN (" + repeat("?", ",", len(topicsRow)) + ")"
 			query += fmt.Sprintf(" AND t%d.topic %s", i, valuesIn)
-			for _, topicHash := range topics[i] {
+			for _, topicHash := range topicsRow {
 				queryParams = append(queryParams, topicHash.Bytes())
 			}
 		}

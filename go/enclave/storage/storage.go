@@ -895,6 +895,8 @@ const (
 	MaxEventTypesPerFilter = 15
 )
 
+var ErrInvalidFilter = errors.New("invalid filter")
+
 func (s *storageImpl) FilterLogs(
 	ctx context.Context,
 	requestingAccount *gethcommon.Address,
@@ -905,27 +907,28 @@ func (s *storageImpl) FilterLogs(
 ) ([]*types.Log, error) {
 	defer s.logDuration("FilterLogs", measure.NewStopwatch())
 
+	var filterTopics enclavedb.FilterTopics = topics
 	requestingId, err := s.readOrWriteEOAWithTx(ctx, *requestingAccount)
 	if err != nil {
 		return nil, err
 	}
 
 	noContracts := len(contractAddresses) == 0
-	noEventTypes := len(topics) == 0 || len(topics[0]) == 0
+	noEventTypes := !filterTopics.HasEventTypes()
 	if noContracts && noEventTypes {
-		return nil, fmt.Errorf("invalid filter. The filter must have at least one contract address or one event type")
+		return nil, fmt.Errorf("%w. The filter must have at least one contract address or one event type", ErrInvalidFilter)
 	}
 
 	if len(topics) > 4 {
-		return nil, fmt.Errorf("invalid filter. Too many topics")
+		return nil, fmt.Errorf("%w. Too many topics", ErrInvalidFilter)
 	}
 
 	if len(contractAddresses) > MaxContractsPerFilter {
-		return nil, fmt.Errorf("invalid filter. Too many contract addresses. Max allowed: %d", MaxContractsPerFilter)
+		return nil, fmt.Errorf("%w. Too many contract addresses. Max allowed: %d", ErrInvalidFilter, MaxContractsPerFilter)
 	}
 
-	if len(topics) > 0 && len(topics[0]) > MaxEventTypesPerFilter {
-		return nil, fmt.Errorf("invalid filter. Too many event types. Max allowed: %d", MaxEventTypesPerFilter)
+	if len(filterTopics.EventTypes()) > MaxEventTypesPerFilter {
+		return nil, fmt.Errorf("%w. Too many event types. Max allowed: %d", ErrInvalidFilter, MaxEventTypesPerFilter)
 	}
 
 	// load the contracts from cache
@@ -951,7 +954,7 @@ func (s *storageImpl) FilterLogs(
 	case noContracts:
 		// we load all contracts for which an event with the specified signature exists
 		// we know there is at least one eventTypeHash from a previous check
-		for _, eventTypeHash := range topics[0] {
+		for _, eventTypeHash := range filterTopics.EventTypes() {
 			// load all event types, and populate the contracts
 			allEventTypes, err := s.readEventTypes(ctx, eventTypeHash)
 			if err != nil && !errors.Is(err, errutil.ErrNotFound) {
@@ -973,7 +976,7 @@ func (s *storageImpl) FilterLogs(
 
 	default:
 		for _, contract := range contracts {
-			for _, eventTypeHash := range topics[0] {
+			for _, eventTypeHash := range filterTopics.EventTypes() {
 				// load the event types for the specified contracts
 				et := contract.EventType(eventTypeHash)
 				if et != nil {
@@ -988,7 +991,7 @@ func (s *storageImpl) FilterLogs(
 		return nil, nil
 	}
 
-	logs, err := enclavedb.FilterLogs(ctx, s.preparedStatementCache, requestingId, fromBlock, toBlock, blockHash, eventTypes, topics)
+	logs, err := enclavedb.FilterLogs(ctx, s.preparedStatementCache, requestingId, fromBlock, toBlock, blockHash, eventTypes, filterTopics)
 	if err != nil {
 		return nil, err
 	}
