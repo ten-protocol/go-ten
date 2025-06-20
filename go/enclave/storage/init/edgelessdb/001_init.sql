@@ -25,8 +25,8 @@ create table if not exists tendb.attestation
 (
     id         INTEGER AUTO_INCREMENT,
     enclave_id binary(20) UNIQUE NOT NULL,
-    pub_key    binary(33) NOT NULL,
-    node_type  smallint   NOT NULL,
+    pub_key    binary(33)        NOT NULL,
+    node_type  smallint          NOT NULL,
     primary key (id)
 );
 

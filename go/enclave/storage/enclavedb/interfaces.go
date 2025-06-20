@@ -28,10 +28,36 @@ type Contract struct {
 	Creator        gethcommon.Address
 	AutoVisibility bool
 	Transparent    *bool
+	EventTypes     map[gethcommon.Hash]*EventType
 }
 
-func (contract Contract) IsTransparent() bool {
+func (contract *Contract) EventType(eventSignature gethcommon.Hash) *EventType {
+	if contract.EventTypes == nil {
+		return nil
+	}
+	return contract.EventTypes[eventSignature]
+}
+
+func (contract *Contract) EventTypeList() []*EventType {
+	if contract.EventTypes == nil {
+		return nil
+	}
+	result := make([]*EventType, 0)
+	for _, eventType := range contract.EventTypes {
+		result = append(result, eventType)
+	}
+	return result
+}
+
+func (contract *Contract) IsTransparent() bool {
 	return contract.Transparent != nil && *contract.Transparent
+}
+
+func (contract *Contract) SetEventTypes(ets []*EventType) {
+	contract.EventTypes = make(map[gethcommon.Hash]*EventType)
+	for _, et := range ets {
+		contract.EventTypes[et.EventSignature] = et
+	}
 }
 
 // EventType - maps to the “event_type“ table
@@ -46,8 +72,27 @@ type EventType struct {
 	SenderCanView                               *bool
 }
 
-func (et EventType) IsPublic() bool {
+func (et EventType) Validate() error {
+	if !et.IsPublic() && !et.AutoVisibility {
+		noneRelevant := true
+		for i := 1; i <= 3; i++ {
+			if et.IsTopicRelevant(i) {
+				noneRelevant = false
+			}
+		}
+		if noneRelevant {
+			return fmt.Errorf("event type %s is not public and has no relevant topics", et.EventSignature.Hex())
+		}
+	}
+	return nil
+}
+
+func (et EventType) IsPublicConfig() bool {
 	return (et.Contract.Transparent != nil && *et.Contract.Transparent) || et.ConfigPublic
+}
+
+func (et EventType) IsPublic() bool {
+	return et.IsPublicConfig() || (et.AutoPublic != nil && *et.AutoPublic)
 }
 
 func (et EventType) IsTopicRelevant(topicNo int) bool {

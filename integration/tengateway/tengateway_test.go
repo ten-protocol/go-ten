@@ -874,7 +874,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, _ int, httpURL, wsURL st
 func testDifferentMessagesOnRegister(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	testlog.Logger().Info("Created user with encryption token: %s\n", user.tgClient.UserID())
+	testlog.Logger().Info("Created user with encryption token", "t", user.tgClient.UserID())
 
 	// register all the accounts for the user with EIP-712 message format
 	err = user.RegisterAccounts()
