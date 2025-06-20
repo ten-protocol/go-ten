@@ -251,7 +251,7 @@ func (e *gethRPCClient) Alive() bool {
 	defer cancel()
 	_, err := e.client.BlockNumber(ctx)
 	if err != nil {
-		e.logger.Error("Unable to fetch BlockNumber rpc endpoint - client connection is in error state")
+		e.logger.Error("Unable to fetch BlockNumber rpc endpoint - client connection is in error state. Cause: %w", err)
 		return false
 	}
 	return true

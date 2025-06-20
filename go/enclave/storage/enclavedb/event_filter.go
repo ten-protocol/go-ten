@@ -84,12 +84,15 @@ func loadEventLogsQuery(requestingAccountId *uint64, fromBlock, toBlock *big.Int
 		"	 		join contract c on et.contract=c.id "
 
 	for i := 1; i <= NR_TOPICS; i++ {
-		joinType := ""
-		// When we know we have to search for topics on a position, we can use a straight join.
-		// If there is nothing to join to, the query will end early, which is correct.
-		if !topics.HasTopicsOnPos(i) {
-			joinType = "left"
-		}
+		joinType := "left"
+		/*
+			// todo - consider this more carefully
+			// When we know we have to search for topics on a position, we can use a straight join.
+			// If there is nothing to join to, the query will end early, which is correct.
+			if !topics.HasTopicsOnPos(i) {
+				joinType = "left"
+			}
+		*/
 		query += fmt.Sprintf(" %s join event_topic t%d on e.topic%d=t%d.id ", joinType, i, i, i)
 		if eventType.IsTopicRelevant(i) || eventType.AutoVisibility {
 			// we join with `externally_owned_account` only if we need to filter visibility on this topic
