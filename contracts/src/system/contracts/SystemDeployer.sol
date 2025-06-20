@@ -42,7 +42,7 @@ contract SystemDeployer {
 
     function deployMessageBus(address eoaAdmin, address feesAddress) internal returns (address) {
         MessageBus messageBus = new MessageBus();
-        bytes memory callData = abi.encodeWithSelector(messageBus.initialize.selector, eoaAdmin, feesAddress);
+        bytes memory callData = abi.encodeWithSelector(messageBus.initialize.selector, eoaAdmin, eoaAdmin, feesAddress);
         address messageBusProxy = deployProxy(address(messageBus), eoaAdmin, callData);
 
         emit SystemContractDeployed("MessageBus", messageBusProxy);

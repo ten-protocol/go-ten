@@ -67,9 +67,9 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
      * @param _r The rollup to append
      */
     function AppendRollup(MetaRollup calldata _r) internal {
-        rollups.byHash[_r.Hash] = _r;
+        rollups.byHash[blobhash(0)] = _r;
 
-        if (_r.LastSequenceNumber > lastBatchSeqNo) {
+        if (_r.FirstSequenceNumber == lastBatchSeqNo + 1) {
             lastBatchSeqNo = _r.LastSequenceNumber;
         }
     }
@@ -91,6 +91,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
         require(blobhash(0) != bytes32(0), "Blob hash is not set");
 
         bytes32 compositeHash = keccak256(abi.encodePacked(
+            r.FirstSequenceNumber,
             r.LastSequenceNumber,
             r.LastBatchHash,
             r.BlockBindingHash,

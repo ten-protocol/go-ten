@@ -272,7 +272,7 @@ message BlockSubmissionErrorMsg {
 message CrossChainMsg {
   bytes Sender = 1;
   uint64 Sequence = 2;
-  uint32 Nonce = 3;
+  uint64 Nonce = 3;
   uint32 Topic = 4;
   bytes Payload = 5;
 }

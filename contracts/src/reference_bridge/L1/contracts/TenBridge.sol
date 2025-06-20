@@ -47,6 +47,7 @@ contract TenBridge is
         string calldata name,
         string calldata symbol
     ) external onlyRole(ADMIN_ROLE) {
+        require(!hasRole(ERC20_TOKEN_ROLE, asset), "Token already whitelisted");
         _grantRole(ERC20_TOKEN_ROLE, asset);
 
         bytes memory data = abi.encodeWithSelector(
@@ -70,6 +71,9 @@ contract TenBridge is
     }
 
     function setRemoteBridge(address bridge) external onlyRole(ADMIN_ROLE) {
+        if (remoteBridgeAddress != address(0)) {
+            revert("Remote bridge address already set.");
+        }
         remoteBridgeAddress = bridge;
     }
 

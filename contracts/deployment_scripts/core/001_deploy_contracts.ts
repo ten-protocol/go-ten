@@ -12,6 +12,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     } = hre;
     const {deployer} = await getNamedAccounts();
 
+    const feesDeployment = await deployments.deploy('Fees', {
+        from: deployer,
+        log: true,
+        proxy: {
+            proxyContract: "OpenZeppelinTransparentProxy",
+            execute: {
+                init: {
+                    methodName: "initialize",
+                    args: [0, deployer]
+                }
+            }
+        },
+    });
+
     // Deploy MerkleTreeMessageBus first
     const merkleMessageBusDeployment = await deployments.deploy('MerkleTreeMessageBus', {
         from: deployer,

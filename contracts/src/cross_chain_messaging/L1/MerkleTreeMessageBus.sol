@@ -40,16 +40,17 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @dev Initializes the contract with provided owner
      * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
      */
-    function initialize(address initialOwner, address withdrawalManager) public override(IMerkleTreeMessageBus, MessageBus) initializer {
+    function initialize(address initialOwner, address withdrawalManager, address _fees) public override(IMerkleTreeMessageBus, MessageBus) initializer {
         // Initialize parent contracts
         //super.initialize(initialOwner, address(0));
-        __Ownable_init(initialOwner);
+        __UnrenouncableOwnable2Step_init(initialOwner);
         __AccessControl_init();
         
         // Set up roles
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
         _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
+        fees = IFees(_fees);
     }
 
     /**
@@ -91,6 +92,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      */
     function addStateRoot(bytes32 stateRoot, uint256 activationTime) external onlyRole(STATE_ROOT_MANAGER_ROLE) {
         require(rootValidAfter[stateRoot] == 0, "Root already added to the message bus");
+        require(activationTime >= block.timestamp, "Activation time must be in the future");
         rootValidAfter[stateRoot] = activationTime;
     }
 
