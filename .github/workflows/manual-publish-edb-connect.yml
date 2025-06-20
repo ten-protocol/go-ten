@@ -5,6 +5,17 @@ name: "[M] Publish EDB Connect"
 run-name: "[M] Publish EDB Connect"
 on:
   workflow_dispatch:
+    inputs:
+      azure_tenant_id:
+        description: 'Azure Tenant ID (leave empty to use the local testing key)'
+        required: false
+        type: string
+        default: ''
+      azure_subscription_id:
+        description: 'Azure Subscription ID (leave empty to use the local testing key)'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   build-and-deploy:
@@ -28,6 +39,12 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Build and Push Docker EDB Connect Image
+        env:
+          AZURE_TENANT_ID: ${{ github.event.inputs.azure_tenant_id }}
+          AZURE_SUBSCRIPTION_ID: ${{ github.event.inputs.azure_subscription_id }}
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_EDB_CONNECT }} -f ./tools/edbconnect/Dockerfile . 
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_EDB_CONNECT }} \
+            --build-arg AZURE_TENANT_ID=${AZURE_TENANT_ID} \
+            --build-arg AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID} \
+            -f ./tools/edbconnect/Dockerfile . 
           docker push ${{ vars.DOCKER_BUILD_TAG_EDB_CONNECT }}

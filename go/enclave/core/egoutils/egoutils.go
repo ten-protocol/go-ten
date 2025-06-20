@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/edgelesssys/ego/enclave"
+
 	"github.com/edgelesssys/ego/ecrypto"
 )
 
@@ -49,4 +51,21 @@ func ReadAndUnseal(filepath string) ([]byte, error) {
 		return nil, err
 	}
 	return data, nil
+}
+
+func GetEnclaveSignerPublicKey() ([]byte, error) {
+	// Get a local report with empty report data
+	report, err := enclave.GetLocalReport(nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get local report: %w", err)
+	}
+
+	// Verify the local report to get the attestation report with parsed claims
+	attestationReport, err := enclave.VerifyLocalReport(report)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify local report: %w", err)
+	}
+
+	// The SignerID field contains the public key hash of the enclave signer
+	return attestationReport.SignerID, nil
 }
