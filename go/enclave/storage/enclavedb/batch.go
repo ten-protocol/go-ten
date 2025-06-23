@@ -265,8 +265,8 @@ func fetchBatches(ctx context.Context, db *sqlx.DB, whereQuery string, args ...a
 	return result, nil
 }
 
-func ReadReceipt(ctx context.Context, stmtCache *PreparedStatementCache, txHash common.L2TxHash, requester *gethcommon.Address) (*core.InternalReceipt, error) {
-	rec, _, err := loadReceiptsAndEventLogs(ctx, stmtCache, requester, " AND curr_tx.hash=?", []any{txHash.Bytes()}, true)
+func ReadReceipt(ctx context.Context, stmtCache *PreparedStatementCache, txHash common.L2TxHash, requesterId *uint64) (*core.InternalReceipt, error) {
+	rec, _, err := loadReceiptsAndEventLogs(ctx, stmtCache, requesterId, " AND curr_tx.hash=?", []any{txHash.Bytes()}, true)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +390,7 @@ func MarkBatchAsUnexecuted(ctx context.Context, dbTx *sqlx.Tx, seqNo *big.Int) e
 	return err
 }
 
-func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
+func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
 	return loadReceiptList(ctx, db, address, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
 }
 

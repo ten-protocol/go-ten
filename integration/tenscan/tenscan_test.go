@@ -312,6 +312,82 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, txObj.Item.Finality == common.BatchFinal)
 
+	// search API tests
+	rollupHash := rollupListingObj.Result.RollupsData[0].Header.Hash()
+	txHash := txListingObj.Result.TransactionsData[0].TransactionHash
+	batchSequence := batchlistingObj.Result.BatchesData[0].SequencerOrderNo.String()
+
+	// search by rollup hash
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/search/?query=%s", serverAddress, rollupHash.Hex()))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type searchResponse struct {
+		Result common.SearchResponse `json:"result"`
+	}
+
+	searchObj := searchResponse{}
+	err = json.Unmarshal(body, &searchObj)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(1), searchObj.Result.Total)
+	assert.Equal(t, 1, len(searchObj.Result.ResultsData))
+	assert.Equal(t, "rollup", searchObj.Result.ResultsData[0].Type)
+	assert.Equal(t, strings.TrimPrefix(rollupHash.Hex(), "0x"), searchObj.Result.ResultsData[0].Hash)
+
+	// search by batch hash
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/search/?query=%s", serverAddress, batchHash.Hex()))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	err = json.Unmarshal(body, &searchObj)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(1), searchObj.Result.Total)
+	assert.Equal(t, 1, len(searchObj.Result.ResultsData))
+	assert.Equal(t, "batch", searchObj.Result.ResultsData[0].Type)
+	assert.Equal(t, strings.TrimPrefix(batchHash.Hex(), "0x"), searchObj.Result.ResultsData[0].Hash)
+
+	// search by tx hash
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/search/?query=%s", serverAddress, txHash.Hex()))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	err = json.Unmarshal(body, &searchObj)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(1), searchObj.Result.Total)
+	assert.Equal(t, 1, len(searchObj.Result.ResultsData))
+	assert.Equal(t, "transaction", searchObj.Result.ResultsData[0].Type)
+	assert.Equal(t, strings.TrimPrefix(txHash.Hex(), "0x"), searchObj.Result.ResultsData[0].Hash)
+
+	// search by sequence number
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/search/?query=%s", serverAddress, batchSequence))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	err = json.Unmarshal(body, &searchObj)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(1), searchObj.Result.Total)
+	assert.Equal(t, 1, len(searchObj.Result.ResultsData))
+
+	// since there is a diff of 1 between sequence number and height we will find two results we just need to check the seq num is present
+	foundExpectedSequence := false
+	for _, result := range searchObj.Result.ResultsData {
+		if result.Type == "batch" && result.Sequence.String() == batchSequence {
+			foundExpectedSequence = true
+			break
+		}
+	}
+	assert.True(t, foundExpectedSequence, "Expected to find batch with sequence %s", batchSequence)
+
+	// non-existent hash should return nothing
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/search/?query=0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	err = json.Unmarshal(body, &searchObj)
+	assert.NoError(t, err)
+	assert.Equal(t, uint64(0), searchObj.Result.Total)
+	assert.Equal(t, 0, len(searchObj.Result.ResultsData))
+
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/obscuro/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)

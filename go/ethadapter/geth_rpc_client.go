@@ -39,7 +39,7 @@ type gethRPCClient struct {
 
 // NewEthClientFromURL instantiates a new ethadapter.EthClient that connects to an ethereum node
 func NewEthClientFromURL(rpcURL string, timeout time.Duration, logger gethlog.Logger) (EthClient, error) {
-	client, err := connect(rpcURL, timeout)
+	client, err := connect(rpcURL, timeout, logger)
 	if err != nil {
 		return nil, fmt.Errorf("unable to connect to the eth node (%s) - %w", rpcURL, err)
 	}
@@ -237,7 +237,7 @@ func (e *gethRPCClient) ReconnectIfClosed() error {
 	}
 	e.client.Close()
 
-	client, err := connect(e.rpcURL, e.timeout)
+	client, err := connect(e.rpcURL, e.timeout, e.logger)
 	if err != nil {
 		return fmt.Errorf("unable to connect to the eth node (%s) - %w", e.rpcURL, err)
 	}
@@ -251,20 +251,22 @@ func (e *gethRPCClient) Alive() bool {
 	defer cancel()
 	_, err := e.client.BlockNumber(ctx)
 	if err != nil {
-		e.logger.Error("Unable to fetch BlockNumber rpc endpoint - client connection is in error state")
+		e.logger.Error("Unable to fetch BlockNumber rpc endpoint - client connection is in error state. Cause: %w", err)
 		return false
 	}
 	return true
 }
 
-func connect(rpcURL string, connectionTimeout time.Duration) (*ethclient.Client, error) {
+func connect(rpcURL string, connectionTimeout time.Duration, logger gethlog.Logger) (*ethclient.Client, error) {
 	var err error
 	var c *ethclient.Client
-	for start := time.Now(); time.Since(start) < connectionTimeout; time.Sleep(time.Second) {
+	retryInterval := 1 * time.Second
+	for start := time.Now(); time.Since(start) < connectionTimeout; time.Sleep(retryInterval) {
 		c, err = ethclient.Dial(rpcURL)
 		if err == nil {
 			break
 		}
+		logger.Warn("Unable to connect to ethereum node", "ethNodeURL", rpcURL, "err", err, "retryAfter", retryInterval)
 	}
 
 	return c, err

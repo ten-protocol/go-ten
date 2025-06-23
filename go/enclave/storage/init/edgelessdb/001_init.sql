@@ -25,8 +25,8 @@ create table if not exists tendb.attestation
 (
     id         INTEGER AUTO_INCREMENT,
     enclave_id binary(20) UNIQUE NOT NULL,
-    pub_key    binary(33) NOT NULL,
-    node_type  smallint   NOT NULL,
+    pub_key    binary(33)        NOT NULL,
+    node_type  smallint          NOT NULL,
     primary key (id)
 );
 
@@ -153,6 +153,7 @@ create table if not exists tendb.event_type
     INDEX USING HASH (contract, event_sig),
     INDEX (config_public),
     INDEX (auto_visibility),
+    INDEX (auto_visibility, auto_public),
     INDEX (auto_visibility, config_public, topic1_can_view, topic2_can_view, topic3_can_view, sender_can_view)
 );
 

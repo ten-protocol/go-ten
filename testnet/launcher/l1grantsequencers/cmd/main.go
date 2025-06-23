@@ -14,6 +14,8 @@ func main() {
 		fmt.Println("Error loading ten config:", err)
 		os.Exit(1)
 	}
+	fmt.Println("Starting L1 grant sequencer with the following TenConfig:")
+	tenCfg.PrettyPrint() // dump config to stdout
 
 	grantSeqCfg := l1gs.NewGrantSequencerConfig(tenCfg)
 	l1grantsequencers, err := l1gs.NewGrantSequencers(grantSeqCfg)

@@ -45,6 +45,7 @@ const (
 	GetRollupBySeqNo        = "scan_getRollupBySeqNo"
 	GetBatchTransactions    = "scan_getBatchTransactions"
 	GetPersonalTransactions = "scan_getPersonalTransactions"
+	Search                  = "scan_search"
 )
 
 // Client is used by client applications to interact with the TEN node

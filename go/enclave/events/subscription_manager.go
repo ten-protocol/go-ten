@@ -3,6 +3,7 @@ package events
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -107,8 +108,12 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(ctx context.Context, bat
 
 	for id, sub := range subs {
 		relevantLogsForSub, err := s.storage.FilterLogs(ctx, sub.ViewingKeyEncryptor.AccountAddress, nil, nil, &h, sub.Subscription.Filter.Addresses, sub.Subscription.Filter.Topics)
-		if err != nil {
+		if err != nil && !errors.Is(err, storage.ErrInvalidFilter) {
 			return nil, err
+		}
+		if errors.Is(err, storage.ErrInvalidFilter) {
+			// todo - consider deleting the subscription
+			continue
 		}
 		if len(relevantLogsForSub) > 0 {
 			relevantLogsPerSubscription[id] = relevantLogsForSub

@@ -14,6 +14,8 @@ func main() {
 		fmt.Println("Error loading ten config:", err)
 		os.Exit(1)
 	}
+	fmt.Println("Starting L1 challenge period with the following TenConfig:")
+	tenCfg.PrettyPrint() // dump config to stdout
 
 	challengePeriodCfg := l1cp.NewChallengePeriodConfig(tenCfg)
 	l1challengeperiod, err := l1cp.NewSetChallengePeriod(challengePeriodCfg)

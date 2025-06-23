@@ -17,6 +17,8 @@ func main() {
 		fmt.Println("Error loading ten config:", err)
 		os.Exit(1)
 	}
+	fmt.Println("Starting enclave with the following TenConfig:")
+	tenCfg.PrettyPrint() // dump config to stdout
 
 	enclaveConfig := enclaveconfig.EnclaveConfigFromTenConfig(tenCfg)
 

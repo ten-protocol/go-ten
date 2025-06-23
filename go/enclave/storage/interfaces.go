@@ -160,7 +160,6 @@ type Storage interface {
 	StateDB() state.Database
 
 	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
-	ReadEventType(ctx context.Context, contractAddress gethcommon.Address, eventSignature gethcommon.Hash) (*enclavedb.EventType, error)
 }
 
 type ScanStorage interface {

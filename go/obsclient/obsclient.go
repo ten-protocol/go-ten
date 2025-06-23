@@ -269,3 +269,13 @@ func (oc *ObsClient) GetConfig() (*common.TenNetworkInfo, error) {
 	}
 	return &result, nil
 }
+
+// Search queries the host DB with the provided query string
+func (oc *ObsClient) Search(query string) (*common.SearchResponse, error) {
+	var result common.SearchResponse
+	err := oc.rpcClient.Call(&result, rpc.Search, query)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}

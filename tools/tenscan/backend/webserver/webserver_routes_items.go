@@ -35,6 +35,9 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/transaction/:hash", server.getTransaction)
 	r.GET("/items/transactions/count", server.getTotalTxCount)
 	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
+
+	// search
+	r.GET("/items/search/", server.search)
 }
 
 func (w *WebServer) getHealthStatus(c *gin.Context) {
@@ -327,9 +330,21 @@ func (w *WebServer) getBatchTransactions(c *gin.Context) {
 func (w *WebServer) getConfig(c *gin.Context) {
 	config, err := w.backend.GetConfig()
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getConfig request %w", err), w.logger)
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"item": config})
+}
+
+func (w *WebServer) search(c *gin.Context) {
+	query := c.Query("query")
+
+	results, err := w.backend.Search(query)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute search request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": results})
 }
