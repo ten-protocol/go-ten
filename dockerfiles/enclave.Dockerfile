@@ -54,7 +54,6 @@ WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 # Sign the enclave executable
 RUN ego sign enclave.json
 
-# Install Azure CLI
 RUN if [ -n "$AZURE_TENANT_ID" ]; then \
         apt-get update && apt-get install -y jq; \
         echo "====== INSTALLING AZURE CLI ======" && \
@@ -79,12 +78,6 @@ RUN if [ -n "$AZURE_TENANT_ID" ]; then \
         echo "Azure CLI installation completed successfully" && \
         apt-get clean && \
         rm -rf /var/lib/apt/lists/*; \
-    else \
-        echo "Skipping Azure setup"; \
-    fi
-
-# Azure Key Vault signature replacement
-RUN if [ -n "$AZURE_TENANT_ID" ]; then \
         set -x && \
         echo "====== STARTING AZURE KEY VAULT SIGNATURE REPLACEMENT ======" && \
         echo "====== STEP 1: EXTRACT HASH FROM EGO-SIGNED ENCLAVE ======" && \
