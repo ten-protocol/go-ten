@@ -69,7 +69,7 @@ func NewEnclaveContainerWithLogger(config *enclaveconfig.EnclaveConfig, logger g
 		logger.Crit("unable to get enclave signer public key", log.ErrKey, err)
 	}
 
-	logger.Info("Starting enclave signed by", "singer", gethcommon.Bytes2Hex(signer))
+	logger.Info("Starting enclave signed by", "signer", gethcommon.Bytes2Hex(signer))
 
 	return &EnclaveContainer{
 		Enclave:   encl,
