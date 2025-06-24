@@ -110,11 +110,21 @@ create table if not exists tendb.receipt
     gas_used                 BIGINT  not null,
     effective_gas_price      BIGINT,
     created_contract_address binary(20),
+    public                   bool    not null,
     tx                       int     NOT NULL,
     batch                    int     NOT NULL,
     INDEX (batch),
     INDEX (tx, batch),
     primary key (id)
+);
+
+create table if not exists tendb.receipt_viewer
+(
+    id      INTEGER AUTO_INCREMENT,
+    receipt INTEGER NOT NULL,
+    eoa     INTEGER NOT NULL,
+    primary key (id),
+    INDEX (receipt, eoa)
 );
 
 create table if not exists tendb.contract

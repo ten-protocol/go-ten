@@ -1040,7 +1040,11 @@ func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *
 
 func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *gethcommon.Address) (uint64, error) {
 	defer s.logDuration("CountTransactionsPerAddress", measure.NewStopwatch())
-	return enclavedb.CountTransactionsPerAddress(ctx, s.db.GetSQLDB(), address)
+	requesterId, err := s.readOrWriteEOAWithTx(ctx, *address)
+	if err != nil {
+		return 0, err
+	}
+	return enclavedb.CountTransactionsPerAddress(ctx, s.db.GetSQLDB(), requesterId)
 }
 
 func (s *storageImpl) readOrWriteEOAWithTx(ctx context.Context, addr gethcommon.Address) (*uint64, error) {

@@ -130,7 +130,7 @@ func MarkBatchExecuted(ctx context.Context, dbtx *sqlx.Tx, seqNo *big.Int) error
 }
 
 func WriteReceipt(ctx context.Context, dbtx *sqlx.Tx, batchSeqNo uint64, txId *uint64, receipt *types.Receipt) (uint64, error) {
-	insert := "insert into receipt (post_state, status, gas_used, effective_gas_price, created_contract_address, tx, batch) values " + "(?,?,?,?,?,?,?)"
+	insert := "insert into receipt (post_state, status, gas_used, effective_gas_price, created_contract_address, public, tx, batch) values " + "(?,?,?,?,?,?,?,?)"
 	addr := &receipt.ContractAddress
 	if *addr == (gethcommon.Address{}) {
 		addr = nil
@@ -139,7 +139,16 @@ func WriteReceipt(ctx context.Context, dbtx *sqlx.Tx, batchSeqNo uint64, txId *u
 	if receipt.EffectiveGasPrice != nil {
 		effPrice = receipt.EffectiveGasPrice.Uint64()
 	}
-	res, err := dbtx.ExecContext(ctx, insert, receipt.PostState, receipt.Status, receipt.GasUsed, effPrice, addr, txId, batchSeqNo)
+	res, err := dbtx.ExecContext(ctx, insert,
+		receipt.PostState,
+		receipt.Status,
+		receipt.GasUsed,
+		effPrice,
+		addr,
+		false, // isPublic - default false
+		txId,
+		batchSeqNo,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -148,6 +157,26 @@ func WriteReceipt(ctx context.Context, dbtx *sqlx.Tx, batchSeqNo uint64, txId *u
 		return 0, err
 	}
 	return uint64(id), nil
+}
+
+func WriteReceiptViewers(ctx context.Context, dbtx *sqlx.Tx, receiptId uint64, isPublic bool, eoas []uint64) error {
+	_, err := dbtx.ExecContext(ctx, "update receipt set public=? where id=?", isPublic, receiptId)
+	if err != nil {
+		return err
+	}
+
+	if len(eoas) == 0 {
+		return nil
+	}
+
+	// Insert viewer records
+	args := make([]any, 0)
+	for _, eoa := range eoas {
+		args = append(args, receiptId, eoa)
+	}
+	insert := "insert into receipt_viewer (receipt, eoa) values " + repeat("(?,?)", ",", len(eoas))
+	_, err = dbtx.ExecContext(ctx, insert, args...)
+	return err
 }
 
 func ReadTransactionIdAndSender(ctx context.Context, dbtx *sqlx.Tx, txHash gethcommon.Hash) (*uint64, *uint64, error) {
@@ -394,11 +423,14 @@ func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64
 	return loadReceiptList(ctx, db, address, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
 }
 
-func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *gethcommon.Address) (uint64, error) {
-	row := db.QueryRowContext(ctx, "select count(1) from receipt "+
-		"join tx on tx.id=receipt.tx "+
-		"join externally_owned_account eoa on eoa.id = tx.sender_address "+
-		"where eoa.address = ?", address.Bytes())
+func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64) (uint64, error) {
+	query := "select count(1) "
+	query += baseReceiptJoinWithViewer
+	query += " WHERE 1=1 "
+	query += " AND tx_sender.id = ? "
+	query += " AND rv.eoa = ? "
+
+	row := db.QueryRowContext(ctx, query, *address, *address)
 
 	var count uint64
 	err := row.Scan(&count)

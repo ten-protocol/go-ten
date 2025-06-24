@@ -19,8 +19,8 @@ create table if not exists attestation
 (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     enclave_id binary(20) UNIQUE NOT NULL,
-    pub_key    binary(33) NOT NULL,
-    node_type  smallint   NOT NULL
+    pub_key    binary(33)        NOT NULL,
+    node_type  smallint          NOT NULL
 );
 
 create table if not exists block
@@ -98,11 +98,20 @@ create table if not exists receipt
     gas_used                 int     not null,
     effective_gas_price      int,
     created_contract_address binary(20),
+    public                   bool    not null,
     tx                       INTEGER NOT NULL REFERENCES tx,
     batch                    INTEGER NOT NULL REFERENCES batch
 );
 create index IDX_EX_TX_BATCH on receipt (batch);
 create index IDX_EX_TX_CCA on receipt (tx);
+
+create table if not exists receipt_viewer
+(
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    receipt INTEGER NOT NULL,
+    eoa     INTEGER NOT NULL
+);
+create index IDX_REC_VIEW on receipt_viewer (receipt, eoa);
 
 create table if not exists contract
 (
