@@ -18,7 +18,6 @@ import (
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethmetrics "github.com/ethereum/go-ethereum/metrics"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/host"
@@ -102,7 +101,6 @@ type Service struct {
 	p2pTimeout       time.Duration
 
 	peerTracker           *peerTracker
-	metricsRegistry       gethmetrics.Registry
 	logger                gethlog.Logger
 	peerAddressesMutex    sync.RWMutex
 	isIncomingP2PDisabled bool
