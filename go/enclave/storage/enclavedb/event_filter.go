@@ -282,10 +282,8 @@ func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccountId *uint
 	query += " WHERE 1=1 "
 
 	// visibility
-	query += " AND tx_sender.id = ? "
+	query += " AND (tx_sender.id = ? OR rv.eoa = ?)"
 	queryParams = append(queryParams, *requestingAccountId)
-
-	query += " AND rv.eoa = ? "
 	queryParams = append(queryParams, *requestingAccountId)
 
 	query += whereCondition

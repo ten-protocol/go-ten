@@ -427,8 +427,7 @@ func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint
 	query := "select count(1) "
 	query += baseReceiptJoinWithViewer
 	query += " WHERE 1=1 "
-	query += " AND tx_sender.id = ? "
-	query += " AND rv.eoa = ? "
+	query += " AND (tx_sender.id = ? OR rv.eoa = ?)"
 
 	row := db.QueryRowContext(ctx, query, *address, *address)
 
