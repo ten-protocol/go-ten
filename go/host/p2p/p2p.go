@@ -59,7 +59,7 @@ type p2pServiceLocator interface {
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
-func NewSocketP2PLayer(config *hostconfig.HostConfig, serviceLocator p2pServiceLocator, logger gethlog.Logger, metricReg gethmetrics.Registry) *Service {
+func NewSocketP2PLayer(config *hostconfig.HostConfig, serviceLocator p2pServiceLocator, logger gethlog.Logger) *Service {
 	return &Service{
 		batchSubscribers: subscription.NewManager[host.P2PBatchHandler](),
 		txSubscribers:    subscription.NewManager[host.P2PTxHandler](),
@@ -78,9 +78,8 @@ func NewSocketP2PLayer(config *hostconfig.HostConfig, serviceLocator p2pServiceL
 		peerAddressesMutex: sync.RWMutex{},
 
 		// monitoring
-		peerTracker:     newPeerTracker(),
-		metricsRegistry: metricReg,
-		logger:          logger,
+		peerTracker: newPeerTracker(),
+		logger:      logger,
 
 		isIncomingP2PDisabled: config.IsInboundP2PDisabled,
 	}

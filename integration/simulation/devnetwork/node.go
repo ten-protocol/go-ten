@@ -161,7 +161,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 	// create a socket P2P layer
 	p2pLogger := hostLogger.New(log.CmpKey, log.P2PCmp)
 	svcLocator := host.NewServicesRegistry(n.logger)
-	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, svcLocator, p2pLogger, nil)
+	nodeP2p := p2p.NewSocketP2PLayer(hostConfig, svcLocator, p2pLogger)
 
 	var enclaveClients []common.Enclave
 	for i, enclaveAddr := range hostConfig.EnclaveRPCAddresses {

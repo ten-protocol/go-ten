@@ -73,8 +73,9 @@ type Guardian struct {
 	l1StartHash        gethcommon.Hash
 	maxRollupSize      uint64
 
-	hostInterrupter *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
-	running         atomic.Bool
+	hostInterrupter   *stopcontrol.StopControl // host hostInterrupter so we can stop quickly
+	running           atomic.Bool
+	lastBatchReceived time.Time
 
 	logger    gethlog.Logger
 	enclaveID *common.EnclaveID
