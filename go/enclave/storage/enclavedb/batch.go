@@ -424,15 +424,14 @@ func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64
 }
 
 func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64) (uint64, error) {
+	var count uint64
+
 	query := "select count(1) "
 	query += baseReceiptJoinWithViewer
 	query += " WHERE 1=1 "
 	query += " AND (tx_sender.id = ? OR rv.eoa = ?)"
 
-	row := db.QueryRowContext(ctx, query, *address, *address)
-
-	var count uint64
-	err := row.Scan(&count)
+	err := db.QueryRowContext(ctx, query, *address, *address).Scan(&count)
 	if err != nil {
 		return 0, err
 	}

@@ -54,17 +54,20 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql
 		if err != nil {
 			return fmt.Errorf("could not store log entry %v. Cause: %w", l, err)
 		}
-		for _, et := range ets {
-			if et != nil && et.RelevantAddressId != nil {
-				eoaMap[*et.RelevantAddressId] = true
-			}
-		}
 		contract, err := es.readContract(ctx, dbTX, l.Address)
 		if err != nil {
 			return fmt.Errorf("could not read contract address. %s. Cause: %w", l.Address, err)
 		}
-		if contract.IsTransparent() {
+		eventType := contract.EventType(l.Topics[0])
+		if eventType.IsPublic() {
 			isReceiptPublic = true
+		}
+		if !isReceiptPublic {
+			for _, et := range ets {
+				if et != nil && et.RelevantAddressId != nil {
+					eoaMap[*et.RelevantAddressId] = true
+				}
+			}
 		}
 	}
 

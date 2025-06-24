@@ -27,7 +27,7 @@ const (
 		"   left join contract tx_contr on curr_tx.to_address=tx_contr.id "
 
 	baseReceiptJoinWithViewer = " from receipt rec " +
-		"join receipt_viewer rv on rec.id=rv.receipt " +
+		"left join receipt_viewer rv on rec.id=rv.receipt " +
 		"join batch b on rec.batch=b.sequence " +
 		"join tx curr_tx on rec.tx=curr_tx.id " +
 		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
@@ -338,6 +338,8 @@ func onRowWithReceipt(rows *sql.Rows) (*core.InternalReceipt, error) {
 	r.BlockNumber = big.NewInt(int64(*blockNumber))
 	r.TxHash = *transactionHash
 	r.TransactionIndex = *txIndex
+
+	r.Logs = make([]*types.Log, 0)
 	return &r, nil
 }
 
