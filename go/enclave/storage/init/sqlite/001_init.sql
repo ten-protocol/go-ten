@@ -78,8 +78,8 @@ create table if not exists tx
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
-    contract       int,
-    to_address     binary(20),
+    contract       int REFERENCES contract,
+    to_eoa         int REFERENCES externally_owned_account,
     type           int8       NOT NULL,
     sender_address int        NOT NULL REFERENCES externally_owned_account,
     idx            int        NOT NULL,
@@ -109,8 +109,8 @@ create index IDX_EX_TX_CCA on receipt (tx);
 create table if not exists receipt_viewer
 (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    receipt INTEGER NOT NULL,
-    eoa     INTEGER NOT NULL
+    receipt INTEGER NOT NULL REFERENCES receipt,
+    eoa     INTEGER NOT NULL REFERENCES externally_owned_account
 );
 create index IDX_REC_VIEW on receipt_viewer (receipt, eoa);
 

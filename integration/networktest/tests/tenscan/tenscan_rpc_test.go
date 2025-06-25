@@ -43,8 +43,8 @@ func TestPersonalTransactions(t *testing.T) {
 		actions.Series(
 			// create 3 users
 			&actions.CreateTestUser{UserID: 0, UseGateway: true}, // <-- this user makes the PersonalTransactions request, choose gateway or not here
-			&actions.CreateTestUser{UserID: 1},
-			&actions.CreateTestUser{UserID: 2},
+			&actions.CreateTestUser{UserID: 1, UseGateway: true},
+			&actions.CreateTestUser{UserID: 2, UseGateway: true},
 			actions.SetContextValue(actions.KeyNumberOfTestUsers, 3),
 
 			&actions.AllocateFaucetFunds{UserID: 0},
@@ -60,7 +60,15 @@ func TestPersonalTransactions(t *testing.T) {
 
 			// verify the personal transactions endpoint returns the two txs
 			actions.VerifyOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) error {
-				user, err := actions.FetchTestUser(ctx, 0)
+				user0, err := actions.FetchTestUser(ctx, 0)
+				if err != nil {
+					return err
+				}
+				user1, err := actions.FetchTestUser(ctx, 1)
+				if err != nil {
+					return err
+				}
+				user2, err := actions.FetchTestUser(ctx, 2)
 				if err != nil {
 					return err
 				}
@@ -69,20 +77,43 @@ func TestPersonalTransactions(t *testing.T) {
 					Offset: 0,
 					Size:   20,
 				}
-				personalTxs, total, err := user.GetPersonalTransactions(ctx, pagination)
+
+				personalTxs0, total0, err := user0.GetPersonalTransactions(ctx, pagination)
 				if err != nil {
 					return fmt.Errorf("unable to get personal transactions - %w", err)
 				}
 
 				// verify the transactions
-				if len(personalTxs) != 2 {
-					return fmt.Errorf("expected 2 transactions, got %d", len(personalTxs))
+				// 1 faucet allocation and 2 transfers
+				if len(personalTxs0) != 3 {
+					return fmt.Errorf("expected 3 transactions, got %d", len(personalTxs0))
 				}
 
-				// verify total set
-				if total != 2 {
-					return fmt.Errorf("expected total receipts to be at least 2, got %d", total)
+				// verify total0 set
+				if total0 != 3 {
+					return fmt.Errorf("expected total0 receipts to be at least 2, got %d", total0)
 				}
+
+				personalTxs1, _, err := user1.GetPersonalTransactions(ctx, pagination)
+				if err != nil {
+					return fmt.Errorf("unable to get personal transactions - %w", err)
+				}
+
+				// verify the transactions
+				if len(personalTxs1) != 1 {
+					return fmt.Errorf("expected 1 transactions for user 1, got %d", len(personalTxs1))
+				}
+
+				personalTxs2, _, err := user2.GetPersonalTransactions(ctx, pagination)
+				if err != nil {
+					return fmt.Errorf("unable to get personal transactions - %w", err)
+				}
+
+				// verify the transactions
+				if len(personalTxs2) != 1 {
+					return fmt.Errorf("expected 1 transactions for user 2, got %d", len(personalTxs2))
+				}
+
 				return nil
 			}),
 		),

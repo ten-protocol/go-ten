@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -63,12 +64,12 @@ func ExistsBatchAtHeight(ctx context.Context, dbTx *sqlx.Tx, height *big.Int) (b
 }
 
 // WriteTransactions - persists the batch and the transactions
-func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.TxWithSender, height uint64, isSynthetic bool, senderIds []uint64, toContractIds []*uint64, fromIdx int) error {
+func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.TxWithSender, height uint64, isSynthetic bool, senderIds []uint64, toContractIds []*uint64, toEoas []*uint64, fromIdx int) error {
 	if len(transactions) == 0 {
 		return nil
 	}
 	// creates a batch insert statement for all entries
-	insert := "insert into tx (hash, content, contract, to_address, type, sender_address, idx, batch_height, is_synthetic, time) values " + repeat("(?,?,?,?,?,?,?,?,?,?)", ",", len(transactions))
+	insert := "insert into tx (hash, content, contract, to_eoa, type, sender_address, idx, batch_height, is_synthetic, time) values " + repeat("(?,?,?,?,?,?,?,?,?,?)", ",", len(transactions))
 
 	args := make([]any, 0)
 	for i, transaction := range transactions {
@@ -82,15 +83,10 @@ func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.
 			txTime = 0 // synthetic transactions do not have a timestamp
 		}
 
-		var toAddrBytes []byte
-		if transaction.Tx.To() != nil {
-			toAddrBytes = transaction.Tx.To().Bytes()
-		}
-
 		args = append(args, transaction.Tx.Hash().Bytes()) // tx_hash
 		args = append(args, txBytes)                       // content
 		args = append(args, toContractIds[i])              // To contract id
-		args = append(args, toAddrBytes)                   // to address
+		args = append(args, toEoas[i])                     // To EOA - for native transfers
 		args = append(args, transaction.Tx.Type())         // Type
 		args = append(args, senderIds[i])                  // sender_address
 		args = append(args, fromIdx+i)                     // idx
@@ -425,22 +421,34 @@ func MarkBatchAsUnexecuted(ctx context.Context, dbTx *sqlx.Tx, seqNo *big.Int) e
 	return err
 }
 
-func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, rawAddress *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
-	return loadReceiptList(ctx, db, address, rawAddress, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
+func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
+	receipts, err := loadReceiptList(ctx, db, address, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
+	if err != nil {
+		return nil, err
+	}
+
+	// remove duplicates
+	slices.SortFunc(receipts, func(a, b *core.InternalReceipt) int {
+		if a.BlockNumber.Uint64() != b.BlockNumber.Uint64() {
+			return int(a.BlockNumber.Uint64() - b.BlockNumber.Uint64())
+		}
+		if a.TransactionIndex != b.TransactionIndex {
+			return int(a.TransactionIndex - b.TransactionIndex)
+		}
+		return 0
+	})
+
+	receipts = slices.CompactFunc(receipts, func(a, b *core.InternalReceipt) bool {
+		return a.BlockNumber.Uint64() == b.BlockNumber.Uint64() && a.TransactionIndex == b.TransactionIndex
+	})
+
+	return receipts, nil
 }
 
-func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, rawAddress *gethcommon.Address) (uint64, error) {
+func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64) (uint64, error) {
 	var count uint64
-
-	query := "select count(1) "
-	query += baseReceiptJoinWithViewer
-	query += " WHERE " + personalTxCondition
-
-	var addrBytes []byte
-	if rawAddress != nil {
-		addrBytes = rawAddress.Bytes()
-	}
-	err := db.QueryRowContext(ctx, query, *address, *address, addrBytes).Scan(&count)
+	query := "select count(1) " + baseReceiptJoinWithViewer + " WHERE " + personalTxCondition
+	err := db.QueryRowContext(ctx, query, *address, *address, *address).Scan(&count)
 	if err != nil {
 		return 0, err
 	}

@@ -90,7 +90,7 @@ create table if not exists tendb.tx
     hash           binary(32) NOT NULL,
     content        mediumblob NOT NULL,
     contract       int,
-    to_address     binary(20),
+    to_eoa         int,
     type           SMALLINT   NOT NULL,
     sender_address int        NOT NULL,
     idx            int        NOT NULL,
@@ -98,6 +98,9 @@ create table if not exists tendb.tx
     is_synthetic   boolean    NOT NULL,
     time           bigint,
     INDEX USING HASH (hash),
+    INDEX (sender_address),
+    INDEX (to_eoa),
+    INDEX (contract),
     INDEX (sender_address),
     INDEX (batch_height, idx),
     primary key (id)
