@@ -68,7 +68,7 @@ func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.
 		return nil
 	}
 	// creates a batch insert statement for all entries
-	insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height, is_synthetic, time) values " + repeat("(?,?,?,?,?,?,?,?,?)", ",", len(transactions))
+	insert := "insert into tx (hash, content, contract, to_address, type, sender_address, idx, batch_height, is_synthetic, time) values " + repeat("(?,?,?,?,?,?,?,?,?,?)", ",", len(transactions))
 
 	args := make([]any, 0)
 	for i, transaction := range transactions {
@@ -82,9 +82,15 @@ func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.
 			txTime = 0 // synthetic transactions do not have a timestamp
 		}
 
+		var toAddrBytes []byte
+		if transaction.Tx.To() != nil {
+			toAddrBytes = transaction.Tx.To().Bytes()
+		}
+
 		args = append(args, transaction.Tx.Hash().Bytes()) // tx_hash
 		args = append(args, txBytes)                       // content
-		args = append(args, toContractIds[i])              // To
+		args = append(args, toContractIds[i])              // To contract id
+		args = append(args, toAddrBytes)                   // to address
 		args = append(args, transaction.Tx.Type())         // Type
 		args = append(args, senderIds[i])                  // sender_address
 		args = append(args, fromIdx+i)                     // idx
@@ -419,19 +425,22 @@ func MarkBatchAsUnexecuted(ctx context.Context, dbTx *sqlx.Tx, seqNo *big.Int) e
 	return err
 }
 
-func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
-	return loadReceiptList(ctx, db, address, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
+func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, rawAddress *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
+	return loadReceiptList(ctx, db, address, rawAddress, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
 }
 
-func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64) (uint64, error) {
+func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, rawAddress *gethcommon.Address) (uint64, error) {
 	var count uint64
 
 	query := "select count(1) "
 	query += baseReceiptJoinWithViewer
-	query += " WHERE 1=1 "
-	query += " AND (tx_sender.id = ? OR rv.eoa = ?)"
+	query += " WHERE " + personalTxCondition
 
-	err := db.QueryRowContext(ctx, query, *address, *address).Scan(&count)
+	var addrBytes []byte
+	if rawAddress != nil {
+		addrBytes = rawAddress.Bytes()
+	}
+	err := db.QueryRowContext(ctx, query, *address, *address, addrBytes).Scan(&count)
 	if err != nil {
 		return 0, err
 	}

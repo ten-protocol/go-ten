@@ -24,14 +24,16 @@ const (
 		"join batch b on rec.batch=b.sequence " +
 		"join tx curr_tx on rec.tx=curr_tx.id " +
 		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
-		"   left join contract tx_contr on curr_tx.to_address=tx_contr.id "
+		"   left join contract tx_contr on curr_tx.contract=tx_contr.id "
 
 	baseReceiptJoinWithViewer = " from receipt rec " +
 		"left join receipt_viewer rv on rec.id=rv.receipt " +
 		"join batch b on rec.batch=b.sequence " +
 		"join tx curr_tx on rec.tx=curr_tx.id " +
 		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
-		"   left join contract tx_contr on curr_tx.to_address=tx_contr.id "
+		"   left join contract tx_contr on curr_tx.contract=tx_contr.id "
+
+	personalTxCondition = "(tx_sender.id = ? OR rv.eoa = ? OR tx.to_address = ?)"
 
 	baseEventJoin = " left join event_log e on e.receipt=rec.id " +
 		"left join event_type et on e.event_type=et.id " +
@@ -271,7 +273,7 @@ func DebugGetLogs(ctx context.Context, db *sqlx.DB, fromBlock *big.Int, toBlock 
 	return result, nil
 }
 
-func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccountId *uint64, whereCondition string, whereParams []any, orderBy string, orderByParams []any) ([]*core.InternalReceipt, error) {
+func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccountId *uint64, rawAddress *gethcommon.Address, whereCondition string, whereParams []any, orderBy string, orderByParams []any) ([]*core.InternalReceipt, error) {
 	if requestingAccountId == nil {
 		return nil, fmt.Errorf("you have to specify requestingAccount")
 	}
@@ -279,12 +281,17 @@ func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccountId *uint
 
 	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
 	query += baseReceiptJoinWithViewer
-	query += " WHERE 1=1 "
 
 	// visibility
-	query += " AND (tx_sender.id = ? OR rv.eoa = ?)"
+	query += " WHERE " + personalTxCondition
 	queryParams = append(queryParams, *requestingAccountId)
 	queryParams = append(queryParams, *requestingAccountId)
+
+	var addrBytes []byte
+	if rawAddress != nil {
+		addrBytes = rawAddress.Bytes()
+	}
+	queryParams = append(queryParams, addrBytes)
 
 	query += whereCondition
 	queryParams = append(queryParams, whereParams...)
