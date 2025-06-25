@@ -62,21 +62,16 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql
 		if eventType.IsPublic() {
 			isReceiptPublic = true
 		}
-		if !isReceiptPublic {
-			for _, et := range ets {
-				if et != nil && et.RelevantAddressId != nil {
-					eoaMap[*et.RelevantAddressId] = true
-				}
+		for _, et := range ets {
+			if et != nil && et.RelevantAddressId != nil {
+				eoaMap[*et.RelevantAddressId] = true
 			}
 		}
 	}
 
 	eoas := make([]uint64, 0)
-	if !isReceiptPublic {
-		// only populate the eoas if the receipt is not public
-		for k := range eoaMap {
-			eoas = append(eoas, k)
-		}
+	for k := range eoaMap {
+		eoas = append(eoas, k)
 	}
 
 	err = enclavedb.WriteReceiptViewers(ctx, dbTX, receiptId, isReceiptPublic, eoas)
