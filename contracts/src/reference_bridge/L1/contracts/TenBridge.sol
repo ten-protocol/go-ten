@@ -25,6 +25,7 @@ contract TenBridge is
     // This is the role that is given to addresses which are ERC20 contract.
     // If we have assigned a role to a contract it is considered whitelisted.
     bytes32 public constant ERC20_TOKEN_ROLE = keccak256("ERC20_TOKEN");
+    bytes32 public constant SUSPENDED_ERC20_ROLE = keccak256("SUSPENDED_ERC20_TOKEN");
 
     // This is the role of the address that can perform administrative changes
     // like adding or removing tokens.
@@ -66,8 +67,12 @@ contract TenBridge is
         );
     }
 
-    function removeToken(address asset) external onlyRole(ADMIN_ROLE) {
-        _revokeRole(ERC20_TOKEN_ROLE, asset);
+    function pauseToken(address asset) external onlyRole(ADMIN_ROLE) {
+        _grantRole(SUSPENDED_ERC20_ROLE, asset);
+    }
+
+    function unpauseToken(address asset) external onlyRole(ADMIN_ROLE) {
+        _revokeRole(SUSPENDED_ERC20_ROLE, asset);
     }
 
     function setRemoteBridge(address bridge) external onlyRole(ADMIN_ROLE) {
@@ -90,6 +95,7 @@ contract TenBridge is
         uint256 amount,
         address receiver
     ) external payable override {
+        require(!hasRole(SUSPENDED_ERC20_ROLE, asset), "Token is paused.");
         require(amount > 0, "Attempting empty transfer.");
         require(
             hasRole(ERC20_TOKEN_ROLE, asset),

@@ -13,9 +13,11 @@ interface ITenBridge {
         string calldata symbol
     ) external;
 
-    // This will delist the token and queue a message for it to be delisted on L2. Notice that the token itself
-    // can still be transferred between users, just not across chains.
-    function removeToken(address asset) external;
+    // This will pause deposits for this token on the L1 bridge. Withdrawals are still fine.
+    function pauseToken(address asset) external;
+
+    // This will unpause deposits for this token on the L1 bridge.
+    function unpauseToken(address asset) external;
 
     function setRemoteBridge(address bridge) external;
 

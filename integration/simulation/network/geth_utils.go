@@ -99,7 +99,7 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 }
 
 func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1TenData, error) {
-	_, enclaveRegistryReceipt, err := deployEnclaveRegistryContract(client, wallets.ContractOwnerWallet)
+	_, enclaveRegistryReceipt, err := deployEnclaveRegistryContract(client, wallets.ContractOwnerWallet, wallets.NodeWallets[0].Address())
 	if err != nil {
 		return nil, err
 	}
@@ -382,7 +382,7 @@ func NewContract[T any](address common.Address, client *ethclient.Client) (*T, e
 	}
 }
 
-func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
+func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wallet.Wallet, sequencerHost common.Address) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
 	bytecode, err := constants.EnclaveRegistryBytecode()
 	if err != nil {
 		return nil, nil, err
@@ -393,6 +393,7 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wa
 		bytecode,
 		NetworkEnclaveRegistry.NetworkEnclaveRegistryMetaData,
 		contractOwner.Address(),
+		sequencerHost,
 	)
 }
 

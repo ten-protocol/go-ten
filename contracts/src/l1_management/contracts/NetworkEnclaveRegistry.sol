@@ -35,12 +35,18 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
     mapping(address sequencerID => bool isSequencer) private sequencerEnclave;
 
     /**
+     * @dev The enclaveID of the sequencer host
+     */
+    address private sequencerHost;
+
+    /**
      * @dev Initializes the contract with the owner
      * @param _owner Address of the contract owner
      */
-    function initialize(address _owner) public initializer {
+    function initialize(address _owner, address _sequencerHost) public initializer {
         __UnrenouncableOwnable2Step_init(_owner);
         networkSecretInitialized = false;
+        sequencerHost = _sequencerHost;
     }
 
     /**
@@ -51,6 +57,7 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
      */
     // solc-ignore-next-line unused-param
     function initializeNetworkSecret(address enclaveID, bytes calldata _initSecret, string calldata _genesisAttestation) external {
+        require(msg.sender == sequencerHost, "not authorized");
         require(!networkSecretInitialized, "network secret already initialized");
         require(enclaveID != address(0), "invalid enclave address");
 

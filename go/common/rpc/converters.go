@@ -6,7 +6,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
-	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/rpc/generated"
 
@@ -88,22 +87,6 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
 		RollupMetadata:          rollupMetadata,
 	}, nil
-}
-
-func FromCrossChainMsgs(messages []*generated.CrossChainMsg) []MessageBus.StructsCrossChainMessage {
-	outMessages := make([]MessageBus.StructsCrossChainMessage, 0)
-
-	for _, message := range messages {
-		outMessages = append(outMessages, MessageBus.StructsCrossChainMessage{
-			Sender:   gethcommon.BytesToAddress(message.Sender),
-			Sequence: message.Sequence,
-			Nonce:    message.Nonce,
-			Topic:    message.Topic,
-			Payload:  message.Payload,
-		})
-	}
-
-	return outMessages
 }
 
 func ToExtBatchMsg(batch *common.ExtBatch) generated.ExtBatchMsg {
