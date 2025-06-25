@@ -33,7 +33,7 @@ const (
 		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
 		"   left join contract tx_contr on curr_tx.contract=tx_contr.id "
 
-	personalTxCondition = "(tx_sender.id = ? OR rv.eoa = ? OR tx.to_address = ?)"
+	personalTxCondition = "(tx_sender.id = ? OR rv.eoa = ? OR curr_tx.to_address = ?)"
 
 	baseEventJoin = " left join event_log e on e.receipt=rec.id " +
 		"left join event_type et on e.event_type=et.id " +
