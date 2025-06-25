@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -63,12 +64,12 @@ func ExistsBatchAtHeight(ctx context.Context, dbTx *sqlx.Tx, height *big.Int) (b
 }
 
 // WriteTransactions - persists the batch and the transactions
-func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.TxWithSender, height uint64, isSynthetic bool, senderIds []uint64, toContractIds []*uint64, fromIdx int) error {
+func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.TxWithSender, height uint64, isSynthetic bool, senderIds []uint64, toContractIds []*uint64, toEoas []*uint64, fromIdx int) error {
 	if len(transactions) == 0 {
 		return nil
 	}
 	// creates a batch insert statement for all entries
-	insert := "insert into tx (hash, content, to_address, type, sender_address, idx, batch_height, is_synthetic, time) values " + repeat("(?,?,?,?,?,?,?,?,?)", ",", len(transactions))
+	insert := "insert into tx (hash, content, contract, to_eoa, type, sender_address, idx, batch_height, is_synthetic, time) values " + repeat("(?,?,?,?,?,?,?,?,?,?)", ",", len(transactions))
 
 	args := make([]any, 0)
 	for i, transaction := range transactions {
@@ -84,7 +85,8 @@ func WriteTransactions(ctx context.Context, dbtx *sqlx.Tx, transactions []*core.
 
 		args = append(args, transaction.Tx.Hash().Bytes()) // tx_hash
 		args = append(args, txBytes)                       // content
-		args = append(args, toContractIds[i])              // To
+		args = append(args, toContractIds[i])              // To contract id
+		args = append(args, toEoas[i])                     // To EOA - for native transfers
 		args = append(args, transaction.Tx.Type())         // Type
 		args = append(args, senderIds[i])                  // sender_address
 		args = append(args, fromIdx+i)                     // idx
@@ -130,7 +132,7 @@ func MarkBatchExecuted(ctx context.Context, dbtx *sqlx.Tx, seqNo *big.Int) error
 }
 
 func WriteReceipt(ctx context.Context, dbtx *sqlx.Tx, batchSeqNo uint64, txId *uint64, receipt *types.Receipt) (uint64, error) {
-	insert := "insert into receipt (post_state, status, gas_used, effective_gas_price, created_contract_address, tx, batch) values " + "(?,?,?,?,?,?,?)"
+	insert := "insert into receipt (post_state, status, gas_used, effective_gas_price, created_contract_address, public, tx, batch) values " + "(?,?,?,?,?,?,?,?)"
 	addr := &receipt.ContractAddress
 	if *addr == (gethcommon.Address{}) {
 		addr = nil
@@ -139,7 +141,16 @@ func WriteReceipt(ctx context.Context, dbtx *sqlx.Tx, batchSeqNo uint64, txId *u
 	if receipt.EffectiveGasPrice != nil {
 		effPrice = receipt.EffectiveGasPrice.Uint64()
 	}
-	res, err := dbtx.ExecContext(ctx, insert, receipt.PostState, receipt.Status, receipt.GasUsed, effPrice, addr, txId, batchSeqNo)
+	res, err := dbtx.ExecContext(ctx, insert,
+		receipt.PostState,
+		receipt.Status,
+		receipt.GasUsed,
+		effPrice,
+		addr,
+		false, // isPublic - default false
+		txId,
+		batchSeqNo,
+	)
 	if err != nil {
 		return 0, err
 	}
@@ -148,6 +159,26 @@ func WriteReceipt(ctx context.Context, dbtx *sqlx.Tx, batchSeqNo uint64, txId *u
 		return 0, err
 	}
 	return uint64(id), nil
+}
+
+func WriteReceiptViewers(ctx context.Context, dbtx *sqlx.Tx, receiptId uint64, isPublic bool, eoas []uint64) error {
+	_, err := dbtx.ExecContext(ctx, "update receipt set public=? where id=?", isPublic, receiptId)
+	if err != nil {
+		return err
+	}
+
+	if len(eoas) == 0 {
+		return nil
+	}
+
+	// Insert viewer records
+	args := make([]any, 0)
+	for _, eoa := range eoas {
+		args = append(args, receiptId, eoa)
+	}
+	insert := "insert into receipt_viewer (receipt, eoa) values " + repeat("(?,?)", ",", len(eoas))
+	_, err = dbtx.ExecContext(ctx, insert, args...)
+	return err
 }
 
 func ReadTransactionIdAndSender(ctx context.Context, dbtx *sqlx.Tx, txHash gethcommon.Hash) (*uint64, *uint64, error) {
@@ -391,17 +422,33 @@ func MarkBatchAsUnexecuted(ctx context.Context, dbTx *sqlx.Tx, seqNo *big.Int) e
 }
 
 func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
-	return loadReceiptList(ctx, db, address, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
+	receipts, err := loadReceiptList(ctx, db, address, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
+	if err != nil {
+		return nil, err
+	}
+
+	// remove duplicates
+	slices.SortFunc(receipts, func(a, b *core.InternalReceipt) int {
+		if a.BlockNumber.Uint64() != b.BlockNumber.Uint64() {
+			return int(a.BlockNumber.Uint64() - b.BlockNumber.Uint64())
+		}
+		if a.TransactionIndex != b.TransactionIndex {
+			return int(a.TransactionIndex - b.TransactionIndex)
+		}
+		return 0
+	})
+
+	receipts = slices.CompactFunc(receipts, func(a, b *core.InternalReceipt) bool {
+		return a.BlockNumber.Uint64() == b.BlockNumber.Uint64() && a.TransactionIndex == b.TransactionIndex
+	})
+
+	return receipts, nil
 }
 
-func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *gethcommon.Address) (uint64, error) {
-	row := db.QueryRowContext(ctx, "select count(1) from receipt "+
-		"join tx on tx.id=receipt.tx "+
-		"join externally_owned_account eoa on eoa.id = tx.sender_address "+
-		"where eoa.address = ?", address.Bytes())
-
+func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64) (uint64, error) {
 	var count uint64
-	err := row.Scan(&count)
+	query := "select count(1) " + baseReceiptJoinWithViewer + " WHERE " + personalTxCondition
+	err := db.QueryRowContext(ctx, query, *address, *address, *address).Scan(&count)
 	if err != nil {
 		return 0, err
 	}

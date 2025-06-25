@@ -81,20 +81,19 @@ func ReadEventTopic(ctx context.Context, dbTX *sqlx.Tx, topic []byte, eventTypeI
 	return &EventTopic{Id: id, RelevantAddressId: address}, err
 }
 
-func ReadRelevantAddressFromEventTopic(ctx context.Context, dbTX *sqlx.Tx, id uint64) (*uint64, error) {
-	var address *uint64
-	err := dbTX.QueryRowContext(ctx,
-		"select rel_address from event_topic where id=?", id).Scan(&address)
-	if errors.Is(err, sql.ErrNoRows) {
-		// make sure the error is converted to obscuro-wide not found error
-		return nil, errutil.ErrNotFound
+func WriteEventLog(ctx context.Context, dbTX *sqlx.Tx, eventTypeId uint64, userTopics []*EventTopic, data []byte, logIdx uint, execTx uint64) error {
+	var t1, t2, t3 *uint64
+	if len(userTopics) > 0 && userTopics[0] != nil {
+		t1 = &(userTopics[0].Id)
 	}
-	return address, err
-}
-
-func WriteEventLog(ctx context.Context, dbTX *sqlx.Tx, eventTypeId uint64, userTopics []*uint64, data []byte, logIdx uint, execTx uint64) error {
+	if len(userTopics) > 1 && userTopics[1] != nil {
+		t2 = &(userTopics[1].Id)
+	}
+	if len(userTopics) > 2 && userTopics[2] != nil {
+		t3 = &(userTopics[2].Id)
+	}
 	_, err := dbTX.ExecContext(ctx, "insert into event_log (event_type, topic1, topic2, topic3, datablob, log_idx, receipt) values (?,?,?,?,?,?,?)",
-		eventTypeId, userTopics[0], userTopics[1], userTopics[2], data, logIdx, execTx)
+		eventTypeId, t1, t2, t3, data, logIdx, execTx)
 	return err
 }
 

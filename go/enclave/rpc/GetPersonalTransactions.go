@@ -41,6 +41,20 @@ func GetPersonalTransactionsExecute(builder *CallBuilder[common.ListPrivateTrans
 		return nil
 	}
 	addr := builder.Param.Address
+
+	receiptsCount, err := rpc.storage.CountTransactionsPerAddress(builder.ctx, &addr)
+	if err != nil {
+		return fmt.Errorf("CountTransactionsPerAddress - %w", err)
+	}
+
+	if receiptsCount == 0 {
+		builder.ReturnValue = &common.PrivateTransactionsQueryResponse{
+			Receipts: types.Receipts{},
+			Total:    0,
+		}
+		return nil
+	}
+
 	internalReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &addr, &builder.Param.Pagination)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
@@ -56,11 +70,6 @@ func GetPersonalTransactionsExecute(builder *CallBuilder[common.ListPrivateTrans
 	var receipts types.Receipts
 	for _, receipt := range internalReceipts {
 		receipts = append(receipts, receipt.ToReceipt())
-	}
-
-	receiptsCount, err := rpc.storage.CountTransactionsPerAddress(builder.ctx, &addr)
-	if err != nil {
-		return fmt.Errorf("CountTransactionsPerAddress - %w", err)
 	}
 
 	builder.ReturnValue = &common.PrivateTransactionsQueryResponse{

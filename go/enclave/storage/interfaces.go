@@ -164,7 +164,6 @@ type Storage interface {
 
 type ScanStorage interface {
 	GetContractCount(ctx context.Context) (*big.Int, error)
-	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error)
-
 	CountTransactionsPerAddress(ctx context.Context, addr *gethcommon.Address) (uint64, error)
+	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination) ([]*core.InternalReceipt, error)
 }
