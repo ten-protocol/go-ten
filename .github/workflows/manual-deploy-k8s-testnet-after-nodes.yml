@@ -248,10 +248,12 @@ jobs:
               go run ./testnet/launcher/l2contractdeployer/cmd \
 
          - name: 'Save L2 deployer container logs'
+           if: ${{ always() }} # Always run this step to ensure logs are captured even if previous steps fail
            run: |
               docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
 
          - name: 'Upload L2 deployer container logs'
+           if: ${{ always() }} # Always run this step to ensure logs are uploaded even if previous steps fail
            uses: actions/upload-artifact@v4
            with:
               name: deploy-l2-artifacts

@@ -33,7 +33,7 @@ func main() {
 	networkConfig, err := l1ContractDeployer.RetrieveL1ContractAddresses()
 	if err != nil {
 		fmt.Printf("unable to fetch l1 contract addresses - %s", err)
-		os.Exit(0)
+		os.Exit(1)
 	}
 	fmt.Println("L1 Contracts were successfully deployed...")
 
