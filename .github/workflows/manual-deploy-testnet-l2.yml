@@ -133,6 +133,7 @@ jobs:
           echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
 
       - name: 'Save L1 deployer container logs'
+        if: ${{ always() }} # Always run this step to ensure logs are uploaded even if previous steps fail
         # Wait to make sure the logs are available in the container
         run: |
           sleep 60
@@ -164,6 +165,7 @@ jobs:
             done
 
       - name: 'Upload L1 deployer container logs'
+        if: ${{ always() }} # Always run this step to ensure logs are uploaded even if previous steps fail
         uses: actions/upload-artifact@v4
         with:
           name: deploy-l1-artifacts
