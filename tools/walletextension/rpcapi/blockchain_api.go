@@ -3,8 +3,10 @@ package rpcapi
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 
@@ -269,6 +271,9 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 
 	case common.ReturnHashedTokenToTheUserCQMethod:
 		hashedToken := doubleHash(user.ID)
+		fmt.Printf("user.ID (hex): %x\n", user.ID)
+		fmt.Println("hashedToken", hashedToken)
+		fmt.Printf("hashedToken (hex): %x\n", hashedToken)
 		return hashedToken, nil
 
 	case common.ReturnTokenToTheUserCQMethod:
@@ -277,24 +282,31 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return nil, fmt.Errorf("unable to extract secret from custom query params: %w", err)
 		}
 
-		// re-create the secret and if it matches, return the token
-		sharedSecret := []byte("text")
+		// TODO: use a shared secret from the parameter that is passed in to the gw configuration
+		sharedSecretHex := "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+		sharedSecret, err := hex.DecodeString(sharedSecretHex)
+		if err != nil {
+			panic("Invalid hex string")
+		}
 		fmt.Println("sharedSecret", sharedSecret)
 
 		hashedUserID := doubleHash(user.ID)
+		fmt.Println("user.ID", user.ID)
+		fmt.Printf("user.ID (hex): %x\n", user.ID)
 		fmt.Println("hashedUserID", hashedUserID)
+		fmt.Printf("hashedUserID (hex): %x\n", hashedUserID)
 
 		// Convert bytes to hex string
 
-		combined := append(sharedSecret, hashedUserID...)
-		finalHash := sha256.Sum256(combined)
-
-		if bytes.Equal(finalHash[:], secret) {
+		mac := hmac.New(sha256.New, sharedSecret)
+		mac.Write(hashedUserID)
+		expectedHash := mac.Sum(nil)
+		if hmac.Equal(expectedHash, secret) {
 			return user.ID, nil
 		}
 
-		//return []byte{boolToByte(false)}, nil
-		return user.ID, nil
+		fmt.Println("user.ID - but we should not return this user:", user.ID)
+		return nil, fmt.Errorf("invalid secret")
 
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
