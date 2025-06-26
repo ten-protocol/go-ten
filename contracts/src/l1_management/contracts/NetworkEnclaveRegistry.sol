@@ -97,7 +97,7 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
         bytes memory responseSecret,
         bool verifyAttester
     ) external {
-        require(attested[attesterID], "responding attester is not attested");
+        require(sequencerEnclave[attesterID], "responding attester is not a sequencer");
         require(!attested[requesterID], "requester already attested");
         require(requesterID != address(0), "invalid requester address");
         require(responseSecret.length == 145, "invalid secret response lenght");

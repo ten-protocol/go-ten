@@ -3,7 +3,6 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "../../cross_chain_messaging/common/ICrossChainMessenger.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 
 /**
@@ -14,14 +13,14 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
  * 
  * TODO: We need to upgrade the open zeppelin version to the 4.x that adds cross chain enabled
  */
-abstract contract CrossChainEnabledTEN is Initializable {
-    ICrossChainMessenger messenger;
-    IMessageBus messageBus;
-    uint32 nonce;
+abstract contract CrossChainEnabledTEN  {
+    ICrossChainMessenger public messenger;
+    IMessageBus public messageBus;
+    uint32 public nonce;
 
     // The messenger contract passed will be the authority that we trust to tell us
     // who has sent the cross chain message and that the message is indeed cross chain.
-    function configure(address messengerAddress) public onlyInitializing {
+    function configure(address messengerAddress) internal {
         messenger = ICrossChainMessenger(messengerAddress);
         messageBus = IMessageBus(messenger.messageBus());
         nonce = 0;
@@ -42,6 +41,11 @@ abstract contract CrossChainEnabledTEN is Initializable {
         return messenger.crossChainSender();
     }
 
+    // Returns the address of the target of the current cross chain message.
+    function _crossChainTarget() internal view returns (address) {
+        return messenger.crossChainTarget();
+    }
+
     // Ensures that the message is coming from another chain and for this contract.
     // Combined usage of _isCrossChain and _crossChainSender prevents attacks where
     // a message is relayed from the correct sender to a different contract that
@@ -54,6 +58,10 @@ abstract contract CrossChainEnabledTEN is Initializable {
         require(
             _crossChainSender() == sender,
             "Cross chain message coming from incorrect sender!"
+        );
+        require(
+            _crossChainTarget() == address(this),
+            "Cross chain message coming from incorrect target!"
         );
         _;
     }
@@ -74,6 +82,7 @@ abstract contract CrossChainEnabledTEN is Initializable {
         uint8 consistencyLevel, 
         uint256 value
     ) internal {
+        require(target != address(0), "Target cannot be 0x0");
         bytes memory payload = abi.encode(
             ICrossChainMessenger.CrossChainCall(target, message, gas)
         );

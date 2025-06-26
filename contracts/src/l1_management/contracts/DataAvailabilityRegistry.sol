@@ -19,7 +19,6 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
     // RollupStorage: A storage structure to manage and organize MetaRollup instances in a mapping by their hash.
     struct RollupStorage {
         mapping(bytes32 rollupHash => MetaRollup rollup) byHash;
-        uint256 nextFreeSequenceNumber;
     }
 
     /**

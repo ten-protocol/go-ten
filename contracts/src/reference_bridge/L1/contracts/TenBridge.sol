@@ -2,13 +2,13 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../../../cross_chain_messaging/lib/CrossChainEnabledTEN.sol";
+import {CrossChainEnabledTEN} from "../../../cross_chain_messaging/lib/CrossChainEnabledTEN.sol";
 import "../../L2/interfaces/ITokenFactory.sol";
 import "../../common/IBridge.sol";
 import "../interfaces/ITenBridge.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 // This is the Ethereum side of the Obscuro Bridge.
 // End-users can interact with it to transfer ERC20 tokens and native eth to the Layer 2 Obscuro.
@@ -16,7 +16,8 @@ contract TenBridge is
     CrossChainEnabledTEN,
     IBridge,
     ITenBridge,
-    AccessControl
+    AccessControlUpgradeable,
+    ReentrancyGuardTransient
 {
     event Withdrawal(address indexed receiver, address indexed asset, uint256 amount);
     // This is the role that is given to the address that represents a native currency
@@ -31,16 +32,20 @@ contract TenBridge is
     // like adding or removing tokens.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    address remoteBridgeAddress;
+    address public remoteBridgeAddress;
 
     function initialize(address messenger, address owner) public initializer {
         CrossChainEnabledTEN.configure(messenger);
+        __AccessControl_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, address(this));
+        _setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
         _grantRole(ADMIN_ROLE, owner);
         _grantRole(NATIVE_TOKEN_ROLE, address(0x0));
     }
 
-    function promoteToAdmin(address newAdmin) external onlyRole(ADMIN_ROLE) {
-        _grantRole(ADMIN_ROLE, newAdmin);
+    function promoteToAdmin(address newAdmin) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        grantRole(ADMIN_ROLE, newAdmin);
     }
 
     function whitelistToken(
@@ -123,7 +128,7 @@ contract TenBridge is
         address asset,
         uint256 amount,
         address receiver
-    ) external override onlyCrossChainSender(remoteBridgeAddress) {
+    ) external override onlyCrossChainSender(remoteBridgeAddress) nonReentrant {
         if (hasRole(ERC20_TOKEN_ROLE, asset)) {
             _receiveTokens(asset, amount, receiver);
         } else if (hasRole(NATIVE_TOKEN_ROLE, asset)) {

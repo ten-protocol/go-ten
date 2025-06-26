@@ -95,6 +95,12 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
     event AdditionalContractAddressAdded(string name, address addr);
 
     /**
+     * @dev Event emitted when an additional contract address is removed
+     * @param name The name of the contract
+     */
+    event AdditionalContractAddressRemoved(string name);
+
+    /**
      * @dev Event emitted when a hardfork upgrade occurs
      * @param forkName The name of the hardfork
      */
@@ -218,11 +224,18 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
      */
     function addAdditionalAddress(string calldata name, address addr) external onlyOwner {
         require(addr != address(0), "Invalid address");
+        require(additionalAddresses[name] == address(0), "Address already exists");
         if (additionalAddresses[name] == address(0)) {
             addressNames.push(name);
         }
         additionalAddresses[name] = addr;
         emit AdditionalContractAddressAdded(name, addr);
+    }
+
+    function removeAdditionalAddress(string calldata name) external onlyOwner {
+        require(additionalAddresses[name] != address(0), "Address does not exist");
+        delete additionalAddresses[name];
+        emit AdditionalContractAddressRemoved(name);
     }
 
     
