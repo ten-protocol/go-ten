@@ -132,7 +132,7 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 	p2pLogger := logger.New(log.CmpKey, log.P2PCmp)
 	metricsService := metrics.New(cfg.MetricsEnabled, cfg.MetricsHTTPPort, logger)
 
-	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger, metricsService.Registry())
+	aggP2P := p2p.NewSocketP2PLayer(cfg, services, p2pLogger)
 	rpcServer := node.NewServer(&node.RPCConfig{
 		EnableHTTP: cfg.HasClientRPCHTTP,
 		HTTPPort:   int(cfg.ClientRPCPortHTTP),
