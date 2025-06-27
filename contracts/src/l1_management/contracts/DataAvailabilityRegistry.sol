@@ -8,13 +8,15 @@ import "../interfaces/INetworkEnclaveRegistry.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../../common/UnrenouncableOwnable2Step.sol";
+import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+
 /**
  * @title DataAvailabilityRegistry
  * @dev Contract for managing data availability and rollup validation
  * Implements a challenge period for state root disputes
  * Uses MerkleTreeMessageBus for message verification and value transfers
  */
-contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, UnrenouncableOwnable2Step {
+contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, UnrenouncableOwnable2Step, EIP712Upgradeable {
 
     // RollupStorage: A storage structure to manage and organize MetaRollup instances in a mapping by their hash.
     struct RollupStorage {
@@ -39,6 +41,8 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
     IMerkleTreeMessageBus public merkleMessageBus;
     INetworkEnclaveRegistry public enclaveRegistry;
 
+    bytes32 private constant ROLLUP_TYPEHASH = keccak256("Rollup(uint256 firstSequenceNumber,uint256 lastSequenceNumber,bytes32 lastBatchHash,bytes32 blockBindingHash,uint256 blockBindingNumber,bytes32 crossChainRoot,bytes32 blobHash)");
+
     constructor() {
         _disableInitializers();
     }
@@ -54,7 +58,12 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
         address _enclaveRegistry,
         address _owner
     ) public initializer {
+        require(_merkleMessageBus != address(0), "Merkle message bus cannot be 0x0");
+        require(_enclaveRegistry != address(0), "Enclave registry cannot be 0x0");
+        require(_owner != address(0), "Owner cannot be 0x0");
+
         __UnrenouncableOwnable2Step_init(_owner);
+        __EIP712_init("DataAvailabilityRegistry", "1");
         merkleMessageBus = IMerkleTreeMessageBus(_merkleMessageBus);
         enclaveRegistry = INetworkEnclaveRegistry(_enclaveRegistry);
         lastBatchSeqNo = 0;
@@ -89,19 +98,21 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
         require(knownBlockHash == r.BlockBindingHash, "Block binding mismatch");
         require(blobhash(0) != bytes32(0), "Blob hash is not set");
 
-        bytes32 compositeHash = keccak256(abi.encodePacked(
-            r.FirstSequenceNumber,
-            r.LastSequenceNumber,
-            r.LastBatchHash,
-            r.BlockBindingHash,
-            r.BlockBindingNumber,
-            r.crossChainRoot,
-            blobhash(0)
-        ));
+        bytes32 compositeHash = _hashTypedDataV4(
+            keccak256(abi.encode(
+                ROLLUP_TYPEHASH,
+                r.FirstSequenceNumber,
+                r.LastSequenceNumber,
+                r.LastBatchHash,
+                r.BlockBindingHash,
+                r.BlockBindingNumber,
+                r.crossChainRoot,
+                blobhash(0)
+            ))
+        );
 
         // Verify the enclave signature using the registry
         address enclaveID = ECDSA.recover(compositeHash, r.Signature);
-        require(enclaveRegistry.isAttested(enclaveID), "enclaveID not attested");
         require(enclaveRegistry.isSequencer(enclaveID), "enclaveID not a sequencer");
         _;
     }

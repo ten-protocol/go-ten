@@ -35,6 +35,9 @@ contract TenBridge is
     address public remoteBridgeAddress;
 
     function initialize(address messenger, address owner) public initializer {
+        require(messenger != address(0), "Messenger cannot be 0x0");
+        require(owner != address(0), "Owner cannot be 0x0");
+
         CrossChainEnabledTEN.configure(messenger);
         __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, owner);
@@ -45,6 +48,7 @@ contract TenBridge is
     }
 
     function promoteToAdmin(address newAdmin) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newAdmin != address(0), "New admin cannot be 0x0");
         grantRole(ADMIN_ROLE, newAdmin);
     }
 
@@ -53,6 +57,7 @@ contract TenBridge is
         string calldata name,
         string calldata symbol
     ) external onlyRole(ADMIN_ROLE) {
+        require(asset != address(0), "Asset cannot be 0x0");
         require(!hasRole(ERC20_TOKEN_ROLE, asset), "Token already whitelisted");
         _grantRole(ERC20_TOKEN_ROLE, asset);
 
@@ -73,6 +78,7 @@ contract TenBridge is
     }
 
     function pauseToken(address asset) external onlyRole(ADMIN_ROLE) {
+        require(hasRole(ERC20_TOKEN_ROLE, asset), "Token is not whitelisted");
         _grantRole(SUSPENDED_ERC20_ROLE, asset);
     }
 
@@ -81,6 +87,7 @@ contract TenBridge is
     }
 
     function setRemoteBridge(address bridge) external onlyRole(ADMIN_ROLE) {
+        require(bridge != address(0), "Bridge cannot be 0x0");
         if (remoteBridgeAddress != address(0)) {
             revert("Remote bridge address already set.");
         }
@@ -151,14 +158,5 @@ contract TenBridge is
         (bool sent, ) = receiver.call{value: amount}("");
         require(sent, "Failed to send Ether");
         emit Withdrawal(receiver, address(0), amount);
-    }
-
-    /**
-    * @dev Retrieves all funds from the contract (Testnet only - to be removed before mainnet deployment)
-    * @param receiver The address to receive the funds
-     */
-    function retrieveAllFunds(address receiver) external onlyRole(ADMIN_ROLE) {
-        (bool ok, ) = receiver.call{value: address(this).balance}("");
-        require(ok, "failed sending value");
     }
 }

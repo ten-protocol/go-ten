@@ -3,6 +3,8 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "../../cross_chain_messaging/common/ICrossChainMessenger.sol";
+import "@openzeppelin/contracts/utils/SlotDerivation.sol";
+import "@openzeppelin/contracts/utils/StorageSlot.sol";
 
 
 /**
@@ -14,36 +16,52 @@ import "../../cross_chain_messaging/common/ICrossChainMessenger.sol";
  * TODO: We need to upgrade the open zeppelin version to the 4.x that adds cross chain enabled
  */
 abstract contract CrossChainEnabledTEN  {
-    ICrossChainMessenger public messenger;
-    IMessageBus public messageBus;
-    uint32 public nonce;
+    using SlotDerivation for string; // for slot derivation
+    using StorageSlot for bytes32;
+
+    string private constant MESSENGER_SLOT = "CrossChainEnabledTEN.messenger";
+    string private constant MESSAGE_BUS_SLOT = "CrossChainEnabledTEN.messageBus";
+    string private constant NONCE_SLOT = "CrossChainEnabledTEN.nonce";
+
+    function messenger() public view returns (ICrossChainMessenger) {
+        return ICrossChainMessenger(MESSENGER_SLOT.erc7201Slot().getAddressSlot().value);
+    }
+
+    function messageBus() public view returns (IMessageBus) {
+        return IMessageBus(MESSAGE_BUS_SLOT.erc7201Slot().getAddressSlot().value);
+    }
+
+    // Open zeppelin library does not support uint64 thus we must oversize.
+    function nonce() public view returns (uint256) {
+        return NONCE_SLOT.erc7201Slot().getUint256Slot().value;
+    }
 
     // The messenger contract passed will be the authority that we trust to tell us
     // who has sent the cross chain message and that the message is indeed cross chain.
     function configure(address messengerAddress) internal {
-        messenger = ICrossChainMessenger(messengerAddress);
-        messageBus = IMessageBus(messenger.messageBus());
-        nonce = 0;
+        MESSENGER_SLOT.erc7201Slot().getAddressSlot().value = messengerAddress;
+        MESSAGE_BUS_SLOT.erc7201Slot().getAddressSlot().value = messenger().messageBus();
+        NONCE_SLOT.erc7201Slot().getUint256Slot().value = 0;
     }
 
     // Returns if the message is considered to be a cross chain one.
     function _isCrossChain() internal view returns (bool) {
-        return msg.sender == address(messenger);
+        return msg.sender == address(messenger());
     }
 
     function _messageBus() internal view returns (IMessageBus) {
-        return messageBus;
+        return messageBus();
     }
 
     // Returns the address of the sender of the current cross chain message.
     // address 0x0 is considered null/no sender.
     function _crossChainSender() internal view returns (address) {
-        return messenger.crossChainSender();
+        return messenger().crossChainSender();
     }
 
     // Returns the address of the target of the current cross chain message.
     function _crossChainTarget() internal view returns (address) {
-        return messenger.crossChainTarget();
+        return messenger().crossChainTarget();
     }
 
     // Ensures that the message is coming from another chain and for this contract.
@@ -86,7 +104,7 @@ abstract contract CrossChainEnabledTEN  {
         bytes memory payload = abi.encode(
             ICrossChainMessenger.CrossChainCall(target, message, gas)
         );
-        messageBus.publishMessage{value: value}(nonce++, topic, payload, consistencyLevel);
+        messageBus().publishMessage{value: value}(uint64(NONCE_SLOT.erc7201Slot().getUint256Slot().value++), topic, payload, consistencyLevel);
     }
 
     // This function is used to publish a raw message instead of a function call to be relayed.
@@ -97,6 +115,6 @@ abstract contract CrossChainEnabledTEN  {
         uint256 fee,
         uint8 consistencyLevel
     ) internal {
-        messageBus.publishMessage{value: fee}(nonce++, topic, message, consistencyLevel);
+        messageBus().publishMessage{value: fee}(uint64(NONCE_SLOT.erc7201Slot().getUint256Slot().value++), topic, message, consistencyLevel);
     }
 }

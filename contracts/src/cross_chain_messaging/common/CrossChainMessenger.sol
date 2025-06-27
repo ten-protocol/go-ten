@@ -35,7 +35,6 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
      */
     function initialize(address messageBusAddr) external initializer {
         messageBusContract = IMerkleTreeMessageBus(messageBusAddr);
-        crossChainSender =  address(0x0);
     }
 
     /**

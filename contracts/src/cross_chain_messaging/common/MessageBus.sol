@@ -27,6 +27,8 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
      * @param feesAddress The address of the fees contract
      */
     function initialize(address caller, address withdrawal, address feesAddress) public virtual initializer {
+        require(feesAddress != address(0), "Fees address cannot be 0x0");
+        require(caller != address(0), "Caller cannot be 0x0");
         __UnrenouncableOwnable2Step_init(caller);  // Initialize UnrenouncableOwnable2Step
         fees = IFees(feesAddress);
     }

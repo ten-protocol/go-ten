@@ -6,6 +6,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "../interfaces/INetworkEnclaveRegistry.sol";
 import "../../common/UnrenouncableOwnable2Step.sol";
+import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+
 /**
  * @title NetworkEnclaveRegistry
  * @dev Contract for managing network enclave registry
@@ -13,7 +15,7 @@ import "../../common/UnrenouncableOwnable2Step.sol";
  * Allows enclaves to request and respond to the network secret
  * Provides sequencer enclave status management
 */
-contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, UnrenouncableOwnable2Step {
+contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, UnrenouncableOwnable2Step, EIP712Upgradeable {
     
     using MessageHashUtils for bytes32;
 
@@ -39,12 +41,22 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
      */
     address private sequencerHost;
 
+    struct NetworkSecretResponse {
+        address requesterID;
+        bytes responseSecret;
+    }
+    bytes32 private constant NETWORK_SECRET_RESPONSE_TYPEHASH = keccak256("NetworkSecretResponse(address requesterID,bytes responseSecret)");
+
     /**
      * @dev Initializes the contract with the owner
      * @param _owner Address of the contract owner
      */
     function initialize(address _owner, address _sequencerHost) public initializer {
+        require(_owner != address(0), "Owner cannot be 0x0");
+        require(_sequencerHost != address(0), "Sequencer host cannot be 0x0");
+
         __UnrenouncableOwnable2Step_init(_owner);
+        __EIP712_init("NetworkEnclaveRegistry", "1");
         networkSecretInitialized = false;
         sequencerHost = _sequencerHost;
     }
@@ -88,35 +100,33 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
      * @param requesterID The enclaveID of the enclave that is requesting the network secret
      * @param attesterSig The signature of the attester
      * @param responseSecret The response secret
-     * @param verifyAttester Whether to ask the attester to complete a challenge (signing a hash) to prove their identity.
      */
     function respondNetworkSecret(
         address attesterID,
         address requesterID,
         bytes memory attesterSig,
-        bytes memory responseSecret,
-        bool verifyAttester
+        bytes memory responseSecret
     ) external {
         require(sequencerEnclave[attesterID], "responding attester is not a sequencer");
         require(!attested[requesterID], "requester already attested");
         require(requesterID != address(0), "invalid requester address");
         require(responseSecret.length == 145, "invalid secret response lenght");
 
-        if (verifyAttester) {
-            // the data must be signed with by the correct private key
-            // signature = f(PubKey, PrivateKey, message)
-            // address = f(signature, message)
-            // valid if attesterID = address
-            bytes32 messageHash = keccak256(
-                abi.encodePacked(
-                    requesterID,
-                    responseSecret
-                )
-            ).toEthSignedMessageHash();
+        // the data must be signed with by the correct private key
+        // signature = f(PubKey, PrivateKey, message)
+        // address = f(signature, message)
+        // valid if attesterID = address
+        bytes32 messageHash = _hashTypedDataV4(
+            keccak256(abi.encode(
+                NETWORK_SECRET_RESPONSE_TYPEHASH,
+                requesterID,
+                responseSecret
+            ))
+        );
 
-            address recoveredAddr = ECDSA.recover(messageHash, attesterSig);
-            require(recoveredAddr == attesterID, "invalid signature");
-        }
+        address recoveredAddr = ECDSA.recover(messageHash, attesterSig);
+        require(recoveredAddr == attesterID, "invalid signature");
+    
 
         // mark the requesterID enclave as an attested enclave and store its host address
         attested[requesterID] = true;

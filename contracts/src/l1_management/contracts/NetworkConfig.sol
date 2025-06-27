@@ -2,7 +2,6 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "../../lib/Storage.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../../common/UnrenouncableOwnable2Step.sol";
 /**
  * @title NetworkConfig
@@ -71,11 +70,6 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
     mapping(string contractName => address contractAddress) public additionalAddresses;
 
     /**
-     * @dev Mapping of contract names to their versions
-     */
-    mapping(string contractName => ContractVersion contractVersion) private contractVersions;
-
-    /**
      * @dev Storage slot for the fork manager
      */
     bytes32 public constant FORK_MANAGER_SLOT = bytes32(uint256(keccak256("networkconfig.forkManager")) - 1);
@@ -114,6 +108,12 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
      * @param _owner Address of the contract owner
      */
     function initialize(NetworkConfig.FixedAddresses memory _addresses, address _owner) public initializer {
+        require(_owner != address(0), "Owner cannot be 0x0");   
+        require(_addresses.crossChain != address(0), "Cross chain cannot be 0x0");
+        require(_addresses.messageBus != address(0), "Message bus cannot be 0x0");
+        require(_addresses.networkEnclaveRegistry != address(0), "Network enclave registry cannot be 0x0");
+        require(_addresses.dataAvailabilityRegistry != address(0), "Data availability registry cannot be 0x0");
+
         __UnrenouncableOwnable2Step_init(_owner);
         Storage.setAddress(CROSS_CHAIN_SLOT, _addresses.crossChain);
         Storage.setAddress(MESSAGE_BUS_SLOT, _addresses.messageBus);
@@ -225,6 +225,7 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
     function addAdditionalAddress(string calldata name, address addr) external onlyOwner {
         require(addr != address(0), "Invalid address");
         require(additionalAddresses[name] == address(0), "Address already exists");
+        require(bytes(name).length > 0, "Name cannot be empty");
         if (additionalAddresses[name] == address(0)) {
             addressNames.push(name);
         }
@@ -243,7 +244,7 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
      * @dev Gets the additional contract names
      * @return string[] The names of the additional contracts
      */
-    function getAdditionaContractNames() public view returns (string[] memory) {
+    function getAdditionalContractNames() public view returns (string[] memory) {
         return addressNames;
     }
 
@@ -271,15 +272,6 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
             l2CrossChainMessenger: l2CrossChainMessengerAddress(),
             additionalContracts: additional
         });
-    }
-
-    /**
-     * @dev Gets the version information for a contract
-     * @param name The name of the contract
-     * @return ContractVersion The version information
-     */
-    function getContractVersion(string calldata name) external view returns (ContractVersion memory) {
-        return contractVersions[name];
     }
 
     /**

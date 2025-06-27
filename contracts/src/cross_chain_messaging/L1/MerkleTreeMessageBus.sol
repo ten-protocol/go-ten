@@ -41,8 +41,11 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
      */
     function initialize(address initialOwner, address withdrawalManager, address _fees) public override(IMerkleTreeMessageBus, MessageBus) initializer {
+        require(initialOwner != address(0), "Initial owner cannot be 0x0");
+        require(withdrawalManager != address(0), "Withdrawal manager cannot be 0x0");
+        require(_fees != address(0), "Fees address cannot be 0x0");
+
         // Initialize parent contracts
-        //super.initialize(initialOwner, address(0));
         __UnrenouncableOwnable2Step_init(initialOwner);
         __AccessControl_init();
         
@@ -58,6 +61,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @param manager Address to be granted the role
      */
     function addStateRootManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(manager != address(0), "Manager cannot be 0x0");
         grantRole(STATE_ROOT_MANAGER_ROLE, manager);
     }
 
@@ -66,6 +70,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @param manager Address to have the role revoked
      */
     function removeStateRootManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(manager != address(0), "Manager cannot be 0x0");
         revokeRole(STATE_ROOT_MANAGER_ROLE, manager);
     }
 

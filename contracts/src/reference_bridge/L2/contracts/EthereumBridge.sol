@@ -34,6 +34,9 @@ contract EthereumBridge is
         address messenger,
         address remoteBridge
     ) public initializer {
+        require(messenger != address(0), "Messenger cannot be 0x0");
+        require(remoteBridge != address(0), "Remote bridge cannot be 0x0");
+
         CrossChainEnabledTEN.configure(messenger);
         remoteBridgeAddress = remoteBridge;
     }

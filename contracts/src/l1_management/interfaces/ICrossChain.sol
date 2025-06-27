@@ -9,18 +9,6 @@ import "../../common/Structs.sol";
  */
 interface ICrossChain {
     /**
-     * @dev Emitted when withdrawals are paused or resumed
-     * @param paused True if withdrawals are paused, false if they are resumed
-     */
-    event WithdrawalsPaused(bool paused);
-
-    /**
-     * @dev Enables or disables the withdrawal functionality
-     * @param pause True to pause withdrawals, false to enable
-     */
-    function pauseWithdrawals(bool pause) external;
-
-    /**
      * @dev Checks if a withdrawal has already been processed to prevent double-spending
      * @param messageHash Hash of the withdrawal message
      * @return bool True if withdrawal was already processed
