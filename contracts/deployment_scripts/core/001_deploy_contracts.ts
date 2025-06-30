@@ -6,6 +6,12 @@ import {ethers} from "hardhat";
     This deployment script instantiates the network contracts and stores them in the deployed NetworkConfig contract.
 */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+    const sequencerHostAddress = process.env.SEQUENCER_HOST_ADDRESS;
+    if (!sequencerHostAddress) {
+        console.error("SEQUENCER_HOST_ADDRESS environment variable is not set.");
+        process.exit(1);
+    }
+
     const {
         deployments,
         getNamedAccounts
@@ -63,7 +69,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             execute: {
                 init: {
                     methodName: "initialize",
-                    args: [deployer]
+                    args: [deployer, sequencerHostAddress]
                 }
             }
         },
