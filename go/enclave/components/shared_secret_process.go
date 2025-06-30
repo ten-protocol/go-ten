@@ -23,9 +23,10 @@ type SharedSecretProcessor struct {
 	storage             storage.Storage
 	logger              gethlog.Logger
 	enclaveKeyService   *crypto.EnclaveAttestedKeyService
+	L1ChainID           int64
 }
 
-func NewSharedSecretProcessor(enclaveRegistryLib contractlib.EnclaveRegistryLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger, enclaveKeyService *crypto.EnclaveAttestedKeyService) *SharedSecretProcessor {
+func NewSharedSecretProcessor(enclaveRegistryLib contractlib.EnclaveRegistryLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger, enclaveKeyService *crypto.EnclaveAttestedKeyService, L1ChainID int64) *SharedSecretProcessor {
 	return &SharedSecretProcessor{
 		enclaveRegistryLib:  enclaveRegistryLib,
 		attestationProvider: attestationProvider,
@@ -34,6 +35,7 @@ func NewSharedSecretProcessor(enclaveRegistryLib contractlib.EnclaveRegistryLib,
 		sharedSecretService: sharedSecretService,
 		logger:              logger,
 		enclaveKeyService:   enclaveKeyService,
+		L1ChainID:           L1ChainID,
 	}
 }
 

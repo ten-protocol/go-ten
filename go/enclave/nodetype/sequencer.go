@@ -57,6 +57,7 @@ type sequencer struct {
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
 	daRegistryLib          contractlib.DataAvailabilityRegistryLib
+	L1ChainID              int64
 }
 
 func NewSequencer(
@@ -74,6 +75,7 @@ func NewSequencer(
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
 	daRegistryLib contractlib.DataAvailabilityRegistryLib,
+	L1ChainID int64,
 ) ActiveSequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
@@ -90,6 +92,7 @@ func NewSequencer(
 		dataCompressionService: dataCompressionService,
 		settings:               settings,
 		daRegistryLib:          daRegistryLib,
+		L1ChainID:              L1ChainID,
 	}
 }
 
@@ -340,7 +343,7 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	// Create the hash that needs to be signed using EIP-712 typed data
 	// We need to get the contract address and chain ID for the typed data
 	// For now, using hardcoded values - these should come from configuration
-	chainID := int64(1337) // Ten network chain ID
+	chainID := s.L1ChainID
 	contractAddress := s.daRegistryLib.GetContractAddr()
 
 	hash, err := crypto.CreateRollupHash(
