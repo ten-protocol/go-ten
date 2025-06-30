@@ -33,7 +33,8 @@ const (
 		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
 		"   left join contract tx_contr on curr_tx.contract=tx_contr.id "
 
-	personalTxCondition = "(tx_sender.id = ? OR rv.eoa = ? OR curr_tx.to_eoa = ?)"
+	personalTxCondition       = "(tx_sender.id = ? OR rv.eoa = ? OR curr_tx.to_eoa = ?)"
+	personalTxConditionPublic = "(tx_sender.id = ? OR rv.eoa = ? OR curr_tx.to_eoa = ? OR rec.public)"
 
 	baseEventJoin = " left join event_log e on e.receipt=rec.id " +
 		"left join event_type et on e.event_type=et.id " +
@@ -273,7 +274,7 @@ func DebugGetLogs(ctx context.Context, db *sqlx.DB, fromBlock *big.Int, toBlock 
 	return result, nil
 }
 
-func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccountId *uint64, whereCondition string, whereParams []any, orderBy string, orderByParams []any) ([]*core.InternalReceipt, error) {
+func loadPersonalTxs(ctx context.Context, db *sqlx.DB, requestingAccountId *uint64, showPublic bool, whereCondition string, whereParams []any, orderBy string, orderByParams []any) ([]*core.InternalReceipt, error) {
 	if requestingAccountId == nil {
 		return nil, fmt.Errorf("you have to specify requestingAccount")
 	}
@@ -283,7 +284,14 @@ func loadReceiptList(ctx context.Context, db *sqlx.DB, requestingAccountId *uint
 	query += baseReceiptJoinWithViewer
 
 	// visibility
-	query += " WHERE " + personalTxCondition
+	query += " WHERE "
+
+	if showPublic {
+		query += personalTxConditionPublic
+	} else {
+		query += personalTxCondition
+	}
+
 	queryParams = append(queryParams, *requestingAccountId)
 	queryParams = append(queryParams, *requestingAccountId)
 	queryParams = append(queryParams, *requestingAccountId)
