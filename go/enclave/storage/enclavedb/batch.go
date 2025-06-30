@@ -425,8 +425,10 @@ func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64
 	params := []any{}
 	where := " "
 
-	where += " AND curr_tx.is_synthetic=? "
-	params = append(params, showSynthetic)
+	if !showSynthetic {
+		where += " AND curr_tx.is_synthetic=? "
+		params = append(params, showSynthetic)
+	}
 
 	receipts, err := loadPersonalTxs(ctx, db, address, showPublic, where, params, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
 	if err != nil {
@@ -464,8 +466,10 @@ func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint
 	var params []any
 	params = append(params, *address, *address, *address)
 
-	query += " AND curr_tx.is_synthetic=? "
-	params = append(params, showSynthetic)
+	if !showSynthetic {
+		query += " AND curr_tx.is_synthetic=? "
+		params = append(params, showSynthetic)
+	}
 
 	err := db.QueryRowContext(ctx, query, params...).Scan(&count)
 	if err != nil {
