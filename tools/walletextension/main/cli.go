@@ -96,6 +96,10 @@ const (
 	disableCachingFlagName    = "disableCaching"
 	disableCachingFlagDefault = false
 	disableCachingFlagUsage   = "Flag to disable response caching in the gateway. Default: false"
+
+	hmacSecretFlagName    = "hmacSecret"
+	hmacSecretFlagDefault = ""
+	hmacSecretFlagUsage   = "32-byte hex-encoded secret for HMAC verification. Required for GetUserID functionality."
 )
 
 // getLogLevelInt converts string log level to integer value
@@ -141,6 +145,7 @@ func parseCLIArgs() wecommon.Config {
 	tlsDomainFlag := flag.String(tlsDomainFlagName, tlsDomainFlagDefault, tlsDomainFlagUsage)
 	encryptingCertificateEnabled := flag.Bool(encryptingCertificateEnabledFlagName, encryptingCertificateEnabledFlagDefault, encryptingCertificateEnabledFlagUsage)
 	disableCaching := flag.Bool(disableCachingFlagName, disableCachingFlagDefault, disableCachingFlagUsage)
+	hmacSecret := flag.String(hmacSecretFlagName, hmacSecretFlagDefault, hmacSecretFlagUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -165,5 +170,6 @@ func parseCLIArgs() wecommon.Config {
 		TLSDomain:                      *tlsDomainFlag,
 		EncryptingCertificateEnabled:   *encryptingCertificateEnabled,
 		DisableCaching:                 *disableCaching,
+		HMACSecret:                     *hmacSecret,
 	}
 }

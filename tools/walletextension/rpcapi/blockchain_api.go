@@ -34,6 +34,7 @@ import (
 type BlockChainAPI struct {
 	we               *services.Services
 	storageWhitelist *privacy.Whitelist
+	config           *wecommon.Config
 }
 
 func NewBlockChainAPI(we *services.Services) *BlockChainAPI {
@@ -41,6 +42,7 @@ func NewBlockChainAPI(we *services.Services) *BlockChainAPI {
 	return &BlockChainAPI{
 		we:               we,
 		storageWhitelist: whitelist,
+		config:           we.Config,
 	}
 }
 
@@ -269,9 +271,13 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return nil, fmt.Errorf("timestamp too old")
 		}
 
-		// TODO: Replace secret with a real secret!
+		// Check if HMAC secret is configured
+		if api.config.HMACSecret == "" {
+			return nil, fmt.Errorf("HMAC secret not configured - use --hmacSecret flag")
+		}
+
 		// Verify HMAC signature
-		if !verifyHMAC(authData.Timestamp, authData.Signature, "secret") {
+		if !verifyHMAC(authData.Timestamp, authData.Signature, api.config.HMACSecret) {
 			return nil, fmt.Errorf("invalid signature")
 		}
 		return []byte(user.ID), nil
@@ -304,9 +310,15 @@ func boolToByte(res bool) byte {
 }
 
 // verifyHMAC verifies an HMAC-SHA256 signature using constant-time comparison
-func verifyHMAC(message, signature, secret string) bool {
+func verifyHMAC(message, signature, secretHex string) bool {
+	// Decode the hex-encoded secret
+	secret, err := hex.DecodeString(secretHex)
+	if err != nil {
+		return false
+	}
+
 	// Create HMAC-SHA256 of the message with the secret
-	h := hmac.New(sha256.New, []byte(secret))
+	h := hmac.New(sha256.New, secret)
 	h.Write([]byte(message))
 	expectedSignature := hex.EncodeToString(h.Sum(nil))
 
