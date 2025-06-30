@@ -40,7 +40,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
             execute: {
                 init: {
                     methodName: "initialize",
-                    args: [deployer, deployer] // initialOwner and withdrawalManager
+                    args: [deployer, deployer, feesDeployment.address] // initialOwner and withdrawalManager
                 }
             }
         },
