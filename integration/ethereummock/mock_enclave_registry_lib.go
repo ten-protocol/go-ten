@@ -47,6 +47,6 @@ func (m *MockEnclaveRegistryLib) CreateRequestSecret(tx *common.L1RequestSecretT
 	return EncodeTx(tx, RequestSecretTxAddr), nil
 }
 
-func (m *MockEnclaveRegistryLib) CreateRespondSecret(tx *common.L1RespondSecretTx, _ bool) (types.TxData, error) {
+func (m *MockEnclaveRegistryLib) CreateRespondSecret(tx *common.L1RespondSecretTx) (types.TxData, error) {
 	return EncodeTx(tx, RespondSecretTxAddr), nil
 }

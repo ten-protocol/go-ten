@@ -155,6 +155,7 @@ type ProducedSecretResponse struct {
 	RequesterID gethcommon.Address // enclaveID of the enclave that requested the secret
 	AttesterID  gethcommon.Address // enclaveID of the enclave that produced the secret
 	HostAddress string
+	Signature   []byte
 }
 
 type EnclavePublicConfig struct {

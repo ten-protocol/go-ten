@@ -37,6 +37,7 @@ func ToSecretRespMsg(responses []*common.ProducedSecretResponse) []*generated.Se
 			RequesterID: resp.RequesterID.Bytes(),
 			AttesterID:  resp.AttesterID.Bytes(),
 			HostAddress: resp.HostAddress,
+			Signature:   resp.Signature,
 		}
 		respMsgs[i] = &msg
 	}
@@ -53,6 +54,7 @@ func FromSecretRespMsg(secretResponses []*generated.SecretResponseMsg) []*common
 			RequesterID: gethcommon.BytesToAddress(msgResp.RequesterID),
 			AttesterID:  gethcommon.BytesToAddress(msgResp.AttesterID),
 			HostAddress: msgResp.HostAddress,
+			Signature:   msgResp.Signature,
 		}
 		respList[i] = &r
 	}

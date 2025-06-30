@@ -27,6 +27,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/crypto"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 )
 
 const RollupDelay = 2 // number of L1 blocks to exclude when creating a rollup. This will minimize compression reorg issues.
@@ -55,6 +56,7 @@ type sequencer struct {
 	storage                storage.Storage
 	dataCompressionService compression.DataCompressionService
 	settings               SequencerSettings
+	daRegistryLib          contractlib.DataAvailabilityRegistryLib
 }
 
 func NewSequencer(
@@ -71,6 +73,7 @@ func NewSequencer(
 	storage storage.Storage,
 	dataCompressionService compression.DataCompressionService,
 	settings SequencerSettings,
+	daRegistryLib contractlib.DataAvailabilityRegistryLib,
 ) ActiveSequencer {
 	return &sequencer{
 		blockProcessor:         blockProcessor,
@@ -86,6 +89,7 @@ func NewSequencer(
 		storage:                storage,
 		dataCompressionService: dataCompressionService,
 		settings:               settings,
+		daRegistryLib:          daRegistryLib,
 	}
 }
 
@@ -333,11 +337,29 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 
 	blobHash := ethadapter.KZGToVersionedHash(commitment)
 
-	// Create composite hash matching the contract's expectations
-	compositeHash := common.ComputeCompositeHash(extRollup.Header, blobHash)
+	// Create the hash that needs to be signed using EIP-712 typed data
+	// We need to get the contract address and chain ID for the typed data
+	// For now, using hardcoded values - these should come from configuration
+	chainID := int64(443) // Ten network chain ID
+	contractAddress := s.daRegistryLib.GetContractAddr()
 
-	// Sign the composite hash
-	signature, err := s.enclaveKeyService.Sign(compositeHash)
+	hash, err := crypto.CreateRollupHash(
+		big.NewInt(int64(extRollup.Header.FirstBatchSeqNo)),
+		big.NewInt(int64(extRollup.Header.LastBatchSeqNo)),
+		extRollup.Header.LastBatchHash,
+		extRollup.Header.CompressionL1Head,
+		extRollup.Header.CompressionL1Number,
+		extRollup.Header.CrossChainRoot,
+		blobHash,
+		chainID,
+		*contractAddress,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create rollup hash: %w", err)
+	}
+
+	// Sign the hash
+	signature, err := s.enclaveKeyService.Sign(hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to sign rollup: %w", err)
 	}
