@@ -19,10 +19,12 @@ func CreateNetworkSecretResponseTypedMessage(
 	chainID int64,
 	contractAddress common.Address,
 ) (apitypes.TypedData, error) {
+	// Validate secret length
 	if len(responseSecret) != 145 {
 		return apitypes.TypedData{}, fmt.Errorf("invalid secret response length: expected 145, got %d", len(responseSecret))
 	}
 
+	// EIP-712 domain definition must match Solidity
 	domain := apitypes.TypedDataDomain{
 		Name:              "NetworkEnclaveRegistry",
 		Version:           "1",
@@ -30,12 +32,13 @@ func CreateNetworkSecretResponseTypedMessage(
 		VerifyingContract: contractAddress.Hex(),
 	}
 
-	// Hex-encode bytes for EIP-712 dynamic bytes type
+	// Message fields: dynamic bytes must be hex-encoded
 	message := map[string]interface{}{
 		"requesterID":    requesterID.Hex(),
-		"responseSecret": hexutil.Encode(responseSecret),
+		"responseSecret": hexutil.Encode(crypto.Keccak256(responseSecret)),
 	}
 
+	// Types definition aligning with Solidity struct
 	types := apitypes.Types{
 		"EIP712Domain": {
 			{Name: "name", Type: "string"},
@@ -45,36 +48,37 @@ func CreateNetworkSecretResponseTypedMessage(
 		},
 		"NetworkSecretResponse": {
 			{Name: "requesterID", Type: "address"},
-			{Name: "responseSecret", Type: "bytes"},
+			{Name: "responseSecret", Type: "bytes32"},
 		},
 	}
 
-	return apitypes.TypedData{
+	typedData := apitypes.TypedData{
 		Types:       types,
 		PrimaryType: "NetworkSecretResponse",
 		Domain:      domain,
 		Message:     message,
-	}, nil
+	}
+	return typedData, nil
 }
 
-// CreateNetworkSecretResponseHash computes the EIP-712 hash for NetworkSecretResponse
+// CreateNetworkSecretResponseHash computes the EIP-712 digest for NetworkSecretResponse
 func CreateNetworkSecretResponseHash(
 	requesterID common.Address,
 	responseSecret []byte,
 	chainID int64,
 	contractAddress common.Address,
 ) (common.Hash, error) {
-	// Reuse typed data
+	// Build typed data
 	typedData, err := CreateNetworkSecretResponseTypedMessage(requesterID, responseSecret, chainID, contractAddress)
 	if err != nil {
 		return common.Hash{}, err
 	}
-	// Compute the domain separator and struct hash, then final EIP-712 hash
-	h, err := HashTypedData(typedData)
+	// Compute full EIP-712 hash: \x19\x01 || domainSeparator || structHash
+	hash, err := HashTypedData(typedData)
 	if err != nil {
 		return common.Hash{}, fmt.Errorf("failed to hash typed data: %w", err)
 	}
-	return h, nil
+	return hash, nil
 }
 
 // CreateRollupTypedMessage builds the EIP-712 typed data for Rollup
@@ -132,6 +136,53 @@ func CreateRollupTypedMessage(
 	}
 }
 
+// HashTypedData computes the EIP-712 final digest (\x19\x01 || domainSep || structHash)
+func HashTypedData(typedData apitypes.TypedData) (common.Hash, error) {
+	// Domain separator
+	domainSep, err := typedData.HashStruct("EIP712Domain", typedData.Domain.Map())
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to hash domain separator: %w", err)
+	}
+	// Struct hash
+	structHash, err := typedData.HashStruct(typedData.PrimaryType, typedData.Message)
+	if err != nil {
+		return common.Hash{}, fmt.Errorf("failed to hash typed data struct: %w", err)
+	}
+	// EIP-191 prefix and final keccak
+	raw := append([]byte("\x19\x01"), append(domainSep, structHash...)...)
+	return crypto.Keccak256Hash(raw), nil
+}
+
+// SignTypedData signs the EIP-712 typed data and returns a [R||S||V] signature
+func SignTypedData(typedData apitypes.TypedData, privateKey *ecdsa.PrivateKey) ([]byte, error) {
+	hash, err := HashTypedData(typedData)
+	if err != nil {
+		return nil, err
+	}
+	sig, err := crypto.Sign(hash.Bytes(), privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign typed data: %w", err)
+	}
+	return sig, nil
+}
+
+// VerifyTypedDataSignature recovers the address that signed the typed data
+func VerifyTypedDataSignature(typedData apitypes.TypedData, signature []byte) (common.Address, error) {
+	hash, err := HashTypedData(typedData)
+	if err != nil {
+		return common.Address{}, err
+	}
+	pubKeyBytes, err := crypto.Ecrecover(hash.Bytes(), signature)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to recover public key: %w", err)
+	}
+	pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to unmarshal public key: %w", err)
+	}
+	return crypto.PubkeyToAddress(*pubKey), nil
+}
+
 // CreateRollupHash computes the EIP-712 hash for Rollup
 func CreateRollupHash(
 	firstSequenceNumber *big.Int,
@@ -163,51 +214,4 @@ func CreateRollupHash(
 		return common.Hash{}, fmt.Errorf("failed to hash typed data: %w", err)
 	}
 	return h, nil
-}
-
-// HashTypedData computes EIP-712 hash: \x19\x01 || domainSeparator || structHash
-func HashTypedData(typedData apitypes.TypedData) (common.Hash, error) {
-	// Hash domain separator
-	domainSep, err := typedData.HashStruct("EIP712Domain", typedData.Domain.Map())
-	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to hash domain separator: %w", err)
-	}
-	// Hash primary struct
-	structHash, err := typedData.HashStruct(typedData.PrimaryType, typedData.Message)
-	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to hash typed data struct: %w", err)
-	}
-	// EIP-191 header
-	raw := append([]byte("\x19\x01"), append(domainSep, structHash...)...)
-	return crypto.Keccak256Hash(raw), nil
-}
-
-// SignTypedData signs the EIP-712 typed data
-func SignTypedData(typedData apitypes.TypedData, privateKey *ecdsa.PrivateKey) ([]byte, error) {
-	hash, err := HashTypedData(typedData)
-	if err != nil {
-		return nil, err
-	}
-	sig, err := crypto.Sign(hash.Bytes(), privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign typed data: %w", err)
-	}
-	return sig, nil
-}
-
-// VerifyTypedDataSignature recovers the signer address from the typed data signature
-func VerifyTypedDataSignature(typedData apitypes.TypedData, signature []byte) (common.Address, error) {
-	hash, err := HashTypedData(typedData)
-	if err != nil {
-		return common.Address{}, err
-	}
-	pubKeyBytes, err := crypto.Ecrecover(hash.Bytes(), signature)
-	if err != nil {
-		return common.Address{}, fmt.Errorf("failed to recover public key: %w", err)
-	}
-	pubKey, err := crypto.UnmarshalPubkey(pubKeyBytes)
-	if err != nil {
-		return common.Address{}, fmt.Errorf("failed to unmarshal public key: %w", err)
-	}
-	return crypto.PubkeyToAddress(*pubKey), nil
 }

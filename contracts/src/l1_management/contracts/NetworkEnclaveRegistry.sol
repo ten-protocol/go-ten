@@ -45,7 +45,7 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
         address requesterID;
         bytes responseSecret;
     }
-    bytes32 private constant NETWORK_SECRET_RESPONSE_TYPEHASH = keccak256("NetworkSecretResponse(address requesterID,bytes responseSecret)");
+    bytes32 private constant NETWORK_SECRET_RESPONSE_TYPEHASH = keccak256("NetworkSecretResponse(address requesterID,bytes32 responseSecret)");
 
     /**
      * @dev Initializes the contract with the owner
@@ -120,7 +120,7 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
             keccak256(abi.encode(
                 NETWORK_SECRET_RESPONSE_TYPEHASH,
                 requesterID,
-                responseSecret
+                keccak256(responseSecret)
             ))
         );
 

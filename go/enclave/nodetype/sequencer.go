@@ -340,7 +340,7 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 	// Create the hash that needs to be signed using EIP-712 typed data
 	// We need to get the contract address and chain ID for the typed data
 	// For now, using hardcoded values - these should come from configuration
-	chainID := int64(443) // Ten network chain ID
+	chainID := int64(1337) // Ten network chain ID
 	contractAddress := s.daRegistryLib.GetContractAddr()
 
 	hash, err := crypto.CreateRollupHash(
