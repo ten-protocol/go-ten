@@ -29,6 +29,8 @@ const (
 )
 
 type ListPrivateTransactionsQueryParams struct {
-	Address    common.Address  `json:"address"`
-	Pagination QueryPagination `json:"pagination"`
+	Address          common.Address  `json:"address"`
+	Pagination       QueryPagination `json:"pagination"`
+	ShowAllPublicTxs bool            `json:"showAllPublicTxs"`
+	ShowSyntheticTxs bool            `json:"showSyntheticTxs"`
 }

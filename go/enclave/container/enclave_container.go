@@ -4,9 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/go/enclave/core/egoutils"
-
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -64,12 +61,13 @@ func NewEnclaveContainerWithLogger(config *enclaveconfig.EnclaveConfig, logger g
 	encl := enclave.NewEnclave(config, genesis, contractRegistryLib, logger)
 	rpcServer := enclave.NewEnclaveRPCServer(config.RPCAddress, encl, logger)
 
-	signer, err := egoutils.GetEnclaveSignerPublicKey()
-	if err != nil {
-		logger.Info("unable to get enclave signer public key", log.ErrKey, err)
-	} else {
-		logger.Info("Starting enclave signed by", "signer", gethcommon.Bytes2Hex(signer))
-	}
+	// todo - uncomment after figuring out why it sigfaults
+	//signer, err := egoutils.GetEnclaveSignerPublicKey()
+	//if err != nil {
+	//	logger.Info("unable to get enclave signer public key", log.ErrKey, err)
+	//} else {
+	//	logger.Info("Starting enclave signed by", "signer", gethcommon.Bytes2Hex(signer))
+	//}
 
 	return &EnclaveContainer{
 		Enclave:   encl,

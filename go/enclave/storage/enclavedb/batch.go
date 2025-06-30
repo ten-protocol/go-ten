@@ -421,8 +421,16 @@ func MarkBatchAsUnexecuted(ctx context.Context, dbTx *sqlx.Tx, seqNo *big.Int) e
 	return err
 }
 
-func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
-	receipts, err := loadReceiptList(ctx, db, address, " ", []any{}, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
+func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]*core.InternalReceipt, error) {
+	params := []any{}
+	where := " "
+
+	if !showSynthetic {
+		where += " AND curr_tx.is_synthetic=? "
+		params = append(params, showSynthetic)
+	}
+
+	receipts, err := loadPersonalTxs(ctx, db, address, showPublic, where, params, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
 	if err != nil {
 		return nil, err
 	}
@@ -445,10 +453,25 @@ func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64
 	return receipts, nil
 }
 
-func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64) (uint64, error) {
+func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, showPublic bool, showSynthetic bool) (uint64, error) {
 	var count uint64
-	query := "select count(1) " + baseReceiptJoinWithViewer + " WHERE " + personalTxCondition
-	err := db.QueryRowContext(ctx, query, *address, *address, *address).Scan(&count)
+
+	cond := personalTxCondition
+	if showPublic {
+		cond = personalTxConditionPublic
+	}
+
+	query := "select count(1) " + baseReceiptJoinWithViewer + " WHERE " + cond
+
+	var params []any
+	params = append(params, *address, *address, *address)
+
+	if !showSynthetic {
+		query += " AND curr_tx.is_synthetic=? "
+		params = append(params, showSynthetic)
+	}
+
+	err := db.QueryRowContext(ctx, query, params...).Scan(&count)
 	if err != nil {
 		return 0, err
 	}
