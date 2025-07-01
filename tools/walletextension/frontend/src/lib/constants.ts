@@ -28,6 +28,12 @@ export const METAMASK_CONNECTION_TIMEOUT = 3000;
 
 export const userStorageAddress = '0x0000000000000000000000000000000000000001';
 
+// Server-side only - this will NOT be exposed to the client
+export const HMAC_SECRET = process.env.HMAC_SECRET;
+
+// GetUserID custom query method address
+export const getUserIDMethodAddress = '0x0000000000000000000000000000000000000009';
+
 export const nativeCurrency = {
     name: 'Sepolia Ether',
     symbol: 'ETH',
