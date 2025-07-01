@@ -149,6 +149,8 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
             message.payload,
             (CrossChainCall)
         );
+        crossChainTarget = callData.target;
+
         (bool success, bytes memory returnData) = callData.target.call{gas: gasleft()}(
             callData.data
         );
@@ -157,5 +159,6 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
         }
 
         crossChainSender = address(0x0);
+        crossChainTarget = address(0x0);
     }
 }
