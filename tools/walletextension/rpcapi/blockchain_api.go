@@ -280,7 +280,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		if !verifyHMAC(authData.Timestamp, authData.Signature, api.config.HMACSecret) {
 			return nil, fmt.Errorf("invalid signature")
 		}
-		return []byte(user.ID), nil
+		return user.ID, nil
 
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
