@@ -2,7 +2,21 @@
 ---
 # Ten Testnet Change Log
 
-# June 2025-06-18 (v1.3.0)
+# July 2025-07-02 (v1.4.0)
+* This is an L2 deployment release meaning state will be lost in order to upgrade the network.
+* A full list of the PRs merged in this release is as below;
+    * `d6838dc8` Hacken audit (#2548)
+    * `1590f319` Add new flags to the personal txs call (#2549)
+    * `bab28f91` Always upload log artifacts even on failure (#2547)
+    * `4e196c5e` Tidy up p2p service (#2546)
+    * `95d35880` Personal transactions return both txs that were sent by the user, and relevant to them (#2545)
+    * `6241af81` Enclave azure hsm signing and wire it for the edb tool (#2535)
+    * `05da0d32` Optimise event log query (#2544)
+    * `8bed43f0` Remove azure faucet deployment for k8s (#2541)
+    * `077f7a94` Tenscan search api (#2510)
+    * `0befed34` Set blob fetch retry strategy based on error message (#2534)
+
+# June 2025-06-18 (v1.3.0, unreleased)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
     * `416c1a95` Add auto_public index (#2539)
