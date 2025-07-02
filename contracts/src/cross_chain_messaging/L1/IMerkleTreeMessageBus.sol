@@ -47,5 +47,5 @@ interface IMerkleTreeMessageBus {
      * @param initialOwner Address of the initial owner of the contract
      * @param withdrawalManager Address of the withdrawal manager contract
      */
-    function initialize(address initialOwner, address withdrawalManager) external;
+    function initialize(address initialOwner, address withdrawalManager, address fees) external;
 }

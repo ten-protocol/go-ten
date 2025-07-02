@@ -236,10 +236,11 @@ func startEth2Network() error {
 func (t *Testnet) deployL1Contracts() (*node.NetworkConfig, error) {
 	l1ContractDeployer, err := l1cd.NewDockerContractDeployer(
 		&l1cd.Config{
-			L1HTTPURL:    "http://eth2network:8025",
-			PrivateKey:   "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
-			DockerImage:  t.cfg.contractDeployerDockerImage,
-			DebugEnabled: t.cfg.contractDeployerDebug,
+			L1HTTPURL:            "http://eth2network:8025",
+			PrivateKey:           "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb",
+			DockerImage:          t.cfg.contractDeployerDockerImage,
+			SequencerHostAddress: "0x0654D8B60033144D567f25bF41baC1FB0D60F23B",
+			DebugEnabled:         t.cfg.contractDeployerDebug,
 		},
 	)
 	if err != nil {

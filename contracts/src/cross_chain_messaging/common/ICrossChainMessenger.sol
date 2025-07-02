@@ -38,6 +38,12 @@ interface ICrossChainMessenger {
     function crossChainSender() external view returns (address);
 
     /**
+     * @dev Returns the target address of the current cross-chain message being relayed
+     * @return address The address of the target contract
+     */
+    function crossChainTarget() external view returns (address);
+
+    /**
      * @dev Relays a verified cross-chain message to its target contract
      * Only processes messages that exist in the message bus and haven't been consumed
      * @param message The cross-chain message containing target and execution details

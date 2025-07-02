@@ -183,6 +183,7 @@ func ComputeCompositeHash(
 	blobHash common.Hash,
 ) common.Hash {
 	return crypto.Keccak256Hash(
+		common.LeftPadBytes(new(big.Int).SetUint64(header.FirstBatchSeqNo).Bytes(), 32),
 		common.LeftPadBytes(new(big.Int).SetUint64(header.LastBatchSeqNo).Bytes(), 32),
 		header.LastBatchHash.Bytes(),
 		header.CompressionL1Head.Bytes(),

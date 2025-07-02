@@ -15,7 +15,7 @@ type EnclaveRegistryLib interface {
 	ContractLib
 	CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error)
 	CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error)
-	CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) (types.TxData, error)
+	CreateRespondSecret(tx *common.L1RespondSecretTx) (types.TxData, error)
 }
 
 type enclaveRegistryLibImpl struct {
@@ -68,14 +68,13 @@ func (n *enclaveRegistryLibImpl) CreateRequestSecret(tx *common.L1RequestSecretT
 	}, nil
 }
 
-func (n *enclaveRegistryLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx, verifyAttester bool) (types.TxData, error) {
+func (n *enclaveRegistryLibImpl) CreateRespondSecret(tx *common.L1RespondSecretTx) (types.TxData, error) {
 	data, err := n.contractABI.Pack(
 		ethadapter.RespondSecretMethod,
 		tx.AttesterID,
 		tx.RequesterID,
 		tx.AttesterSig,
 		tx.Secret,
-		verifyAttester,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("could not pack the call data. Cause: %w", err)

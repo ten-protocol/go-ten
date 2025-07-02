@@ -181,9 +181,10 @@ func (p *Publisher) PublishSecretResponse(secretResponse *common.ProducedSecretR
 		Secret:      secretResponse.Secret,
 		RequesterID: secretResponse.RequesterID,
 		AttesterID:  secretResponse.AttesterID,
+		AttesterSig: secretResponse.Signature,
 	}
 	// todo (#1624) - l1tx.Sign(a.attestationPubKey) doesn't matter as the waitSecret will process a tx that was reverted
-	respondSecretTx, err := p.contractRegistry.EnclaveRegistryLib().CreateRespondSecret(l1tx, false)
+	respondSecretTx, err := p.contractRegistry.EnclaveRegistryLib().CreateRespondSecret(l1tx)
 	if err != nil {
 		return err
 	}

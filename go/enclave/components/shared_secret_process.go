@@ -22,9 +22,11 @@ type SharedSecretProcessor struct {
 	enclaveID           gethcommon.Address
 	storage             storage.Storage
 	logger              gethlog.Logger
+	enclaveKeyService   *crypto.EnclaveAttestedKeyService
+	L1ChainID           int64
 }
 
-func NewSharedSecretProcessor(enclaveRegistryLib contractlib.EnclaveRegistryLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger) *SharedSecretProcessor {
+func NewSharedSecretProcessor(enclaveRegistryLib contractlib.EnclaveRegistryLib, attestationProvider AttestationProvider, enclaveID gethcommon.Address, storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger, enclaveKeyService *crypto.EnclaveAttestedKeyService, L1ChainID int64) *SharedSecretProcessor {
 	return &SharedSecretProcessor{
 		enclaveRegistryLib:  enclaveRegistryLib,
 		attestationProvider: attestationProvider,
@@ -32,6 +34,8 @@ func NewSharedSecretProcessor(enclaveRegistryLib contractlib.EnclaveRegistryLib,
 		storage:             storage,
 		sharedSecretService: sharedSecretService,
 		logger:              logger,
+		enclaveKeyService:   enclaveKeyService,
+		L1ChainID:           L1ChainID,
 	}
 }
 
@@ -112,6 +116,24 @@ func (ssp *SharedSecretProcessor) processSecretRequest(ctx context.Context, req 
 		return nil, fmt.Errorf("could not store attestation, no response will be published. Cause: %w", err)
 	}
 
+	// Create the hash that needs to be signed for the network secret response
+	enclaveRegistryAddress := ssp.enclaveRegistryLib.GetContractAddr()
+	hash, err := crypto.CreateNetworkSecretResponseHash(
+		att.EnclaveID,
+		secret,
+		1337, // L1 network chain ID
+		*enclaveRegistryAddress,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create network secret response hash: %w", err)
+	}
+
+	// Sign the hash
+	signature, err := ssp.enclaveKeyService.Sign(hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign network secret response: %w", err)
+	}
+
 	ssp.logger.Trace("Processed secret request.", "owner", att.EnclaveID)
 	// todo (@matt) - we need to make sure that the attestation report is signed by the enclave's private key
 	return &common.ProducedSecretResponse{
@@ -119,6 +141,7 @@ func (ssp *SharedSecretProcessor) processSecretRequest(ctx context.Context, req 
 		RequesterID: att.EnclaveID,
 		AttesterID:  ssp.enclaveID,
 		HostAddress: att.HostAddress,
+		Signature:   signature,
 	}, nil
 }
 

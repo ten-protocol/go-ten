@@ -2,13 +2,13 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-import "../../../cross_chain_messaging/lib/CrossChainEnabledTEN.sol";
+import {CrossChainEnabledTEN} from "../../../cross_chain_messaging/lib/CrossChainEnabledTEN.sol";
 import "../../L2/interfaces/ITokenFactory.sol";
 import "../../common/IBridge.sol";
 import "../interfaces/ITenBridge.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
 // This is the Ethereum side of the Obscuro Bridge.
 // End-users can interact with it to transfer ERC20 tokens and native eth to the Layer 2 Obscuro.
@@ -16,7 +16,8 @@ contract TenBridge is
     CrossChainEnabledTEN,
     IBridge,
     ITenBridge,
-    AccessControl
+    AccessControlUpgradeable,
+    ReentrancyGuardTransient
 {
     event Withdrawal(address indexed receiver, address indexed asset, uint256 amount);
     // This is the role that is given to the address that represents a native currency
@@ -25,21 +26,30 @@ contract TenBridge is
     // This is the role that is given to addresses which are ERC20 contract.
     // If we have assigned a role to a contract it is considered whitelisted.
     bytes32 public constant ERC20_TOKEN_ROLE = keccak256("ERC20_TOKEN");
+    bytes32 public constant SUSPENDED_ERC20_ROLE = keccak256("SUSPENDED_ERC20_TOKEN");
 
     // This is the role of the address that can perform administrative changes
     // like adding or removing tokens.
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    address remoteBridgeAddress;
+    address public remoteBridgeAddress;
 
     function initialize(address messenger, address owner) public initializer {
+        require(messenger != address(0), "Messenger cannot be 0x0");
+        require(owner != address(0), "Owner cannot be 0x0");
+
         CrossChainEnabledTEN.configure(messenger);
+        __AccessControl_init();
+        _grantRole(DEFAULT_ADMIN_ROLE, owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, address(this));
+        _setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
         _grantRole(ADMIN_ROLE, owner);
         _grantRole(NATIVE_TOKEN_ROLE, address(0x0));
     }
 
-    function promoteToAdmin(address newAdmin) external onlyRole(ADMIN_ROLE) {
-        _grantRole(ADMIN_ROLE, newAdmin);
+    function promoteToAdmin(address newAdmin) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newAdmin != address(0), "New admin cannot be 0x0");
+        grantRole(ADMIN_ROLE, newAdmin);
     }
 
     function whitelistToken(
@@ -47,6 +57,8 @@ contract TenBridge is
         string calldata name,
         string calldata symbol
     ) external onlyRole(ADMIN_ROLE) {
+        require(asset != address(0), "Asset cannot be 0x0");
+        require(!hasRole(ERC20_TOKEN_ROLE, asset), "Token already whitelisted");
         _grantRole(ERC20_TOKEN_ROLE, asset);
 
         bytes memory data = abi.encodeWithSelector(
@@ -65,11 +77,20 @@ contract TenBridge is
         );
     }
 
-    function removeToken(address asset) external onlyRole(ADMIN_ROLE) {
-        _revokeRole(ERC20_TOKEN_ROLE, asset);
+    function pauseToken(address asset) external onlyRole(ADMIN_ROLE) {
+        require(hasRole(ERC20_TOKEN_ROLE, asset), "Token is not whitelisted");
+        _grantRole(SUSPENDED_ERC20_ROLE, asset);
+    }
+
+    function unpauseToken(address asset) external onlyRole(ADMIN_ROLE) {
+        _revokeRole(SUSPENDED_ERC20_ROLE, asset);
     }
 
     function setRemoteBridge(address bridge) external onlyRole(ADMIN_ROLE) {
+        require(bridge != address(0), "Bridge cannot be 0x0");
+        if (remoteBridgeAddress != address(0)) {
+            revert("Remote bridge address already set.");
+        }
         remoteBridgeAddress = bridge;
     }
 
@@ -86,6 +107,7 @@ contract TenBridge is
         uint256 amount,
         address receiver
     ) external payable override {
+        require(!hasRole(SUSPENDED_ERC20_ROLE, asset), "Token is paused.");
         require(amount > 0, "Attempting empty transfer.");
         require(
             hasRole(ERC20_TOKEN_ROLE, asset),
@@ -113,7 +135,7 @@ contract TenBridge is
         address asset,
         uint256 amount,
         address receiver
-    ) external override onlyCrossChainSender(remoteBridgeAddress) {
+    ) external override onlyCrossChainSender(remoteBridgeAddress) nonReentrant {
         if (hasRole(ERC20_TOKEN_ROLE, asset)) {
             _receiveTokens(asset, amount, receiver);
         } else if (hasRole(NATIVE_TOKEN_ROLE, asset)) {
@@ -136,14 +158,5 @@ contract TenBridge is
         (bool sent, ) = receiver.call{value: amount}("");
         require(sent, "Failed to send Ether");
         emit Withdrawal(receiver, address(0), amount);
-    }
-
-    /**
-    * @dev Retrieves all funds from the contract (Testnet only - to be removed before mainnet deployment)
-    * @param receiver The address to receive the funds
-     */
-    function retrieveAllFunds(address receiver) external onlyRole(ADMIN_ROLE) {
-        (bool ok, ) = receiver.call{value: address(this).balance}("");
-        require(ok, "failed sending value");
     }
 }

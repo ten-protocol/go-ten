@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
+	"math/big"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
@@ -19,6 +20,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	tencrypto "github.com/ten-protocol/go-ten/go/enclave/crypto"
 )
 
 type rollupConsumerImpl struct {
@@ -191,7 +193,20 @@ func (rc *rollupConsumerImpl) extractRollupData(rollupTx *common.L1TxData) (*com
 	}
 
 	// TODO would there ever be more than one blob hash and signature?
-	compositeHash := common.ComputeCompositeHash(rollup.Header, blobHashes[0])
+	compositeHash, err := tencrypto.CreateRollupHash(
+		big.NewInt(int64(rollup.Header.FirstBatchSeqNo)),
+		big.NewInt(int64(rollup.Header.LastBatchSeqNo)),
+		rollup.Header.LastBatchHash,
+		rollup.Header.CompressionL1Head,
+		rollup.Header.CompressionL1Number,
+		rollup.Header.CrossChainRoot,
+		blobHashes[0],
+		rc.rollupCompression.config.L1ChainID, // TODO: dont use it from the rollup compression, its tacky
+		*rc.dataAvailabilityRegistryLib.GetContractAddr(),
+	)
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf("could not create rollup hash. Cause: %w", err)
+	}
 	return rollup, &compositeHash, blobHashes, signatures, nil
 }
 
