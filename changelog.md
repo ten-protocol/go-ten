@@ -5,6 +5,7 @@
 # July 2025-07-02 (v1.4.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
+    * `d6838dc8` Hacken audit (#2548)
     * `1590f319` Add new flags to the personal txs call (#2549)
     * `bab28f91` Always upload log artifacts even on failure (#2547)
     * `4e196c5e` Tidy up p2p service (#2546)
