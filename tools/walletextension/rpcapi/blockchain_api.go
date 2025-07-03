@@ -1,6 +1,7 @@
 package rpcapi
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -244,6 +245,27 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return hash.Bytes(), nil
 		}
 		return gethcommon.Hash{}.Bytes(), fmt.Errorf("please create a session key before sending unsigned transactions")
+
+	case common.CheckIfUserIsAuthenticatedCQMethod:
+		// return true if user exists
+		// error is thrown if user does not exist in extractUserForRequest and we don't get here
+		return []byte{boolToByte(true)}, nil
+
+	case common.CheckIfAccountIsAuthenticatedWithCurrentUser:
+		userAddr, err := extractCustomQueryAddress(params)
+		if err != nil {
+			return nil, fmt.Errorf("unable to extract address from custom query params: %w", err)
+		}
+		// Check if the provided user address matches any of the user's registered accounts
+		isAuthenticated := false
+		for _, account := range user.AllAccounts() {
+			if bytes.Equal(account.Address.Bytes(), userAddr.Bytes()) {
+				isAuthenticated = true
+				break
+			}
+		}
+		return []byte{boolToByte(isAuthenticated)}, nil
+
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
 		if err != nil {
