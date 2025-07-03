@@ -121,7 +121,7 @@ func (ssp *SharedSecretProcessor) processSecretRequest(ctx context.Context, req 
 	hash, err := crypto.CreateNetworkSecretResponseHash(
 		att.EnclaveID,
 		secret,
-		1337, // L1 network chain ID
+		ssp.L1ChainID, // L1 network chain ID
 		*enclaveRegistryAddress,
 	)
 	if err != nil {
