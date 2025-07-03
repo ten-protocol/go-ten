@@ -316,11 +316,19 @@ func (g *Guardian) mainLoop() {
 		// or after the monitoring interval if we are healthy)
 		g.checkEnclaveStatus()
 		g.logger.Trace("mainLoop - enclave status", "status", g.state.GetStatus())
-		switch g.state.GetStatus() {
+		status := g.state.GetStatus()
+		if status != Disconnected && status != Unavailable {
+			// if we are not disconnected or unavailable, we reset the counter
+			unavailableCounter = 0
+		}
+		switch status {
 		case Disconnected, Unavailable:
 			// nothing to do, we are waiting for the enclave to be available
 			time.Sleep(_retryInterval)
 			unavailableCounter++
+			if unavailableCounter%50 == 0 { // log every 5 seconds on 100ms retry interval
+				g.logger.Error("Enclave is unavailable, retrying connection continuously.")
+			}
 		case AwaitingSecret:
 			err := g.provideSecret()
 			if err != nil {
@@ -342,7 +350,6 @@ func (g *Guardian) mainLoop() {
 				time.Sleep(_retryInterval)
 			}
 		case Live:
-			unavailableCounter = 0
 			// we're healthy: loop back to enclave status again after long monitoring interval
 			select {
 			case <-time.After(_monitoringInterval):
@@ -358,7 +365,7 @@ func (g *Guardian) mainLoop() {
 func (g *Guardian) checkEnclaveStatus() {
 	s, err := g.enclaveClient.Status(context.Background())
 	if err != nil {
-		g.logger.Error("Could not get enclave status", log.ErrKey, err)
+		g.logger.Trace("Could not get enclave status", log.ErrKey, err)
 		// we record this as a disconnection, we can't get any more info from the enclave about status currently
 		g.state.OnDisconnected()
 		return
