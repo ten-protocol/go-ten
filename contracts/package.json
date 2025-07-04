@@ -33,6 +33,6 @@
   },
   "peerDependencies": {
     "@nomicfoundation/hardhat-ethers": "3.0.5",
-    "@nomicfoundation/hardhat-verify": "2.0.8"
+    "@nomicfoundation/hardhat-verify": "^2.0.14"
   }
 }
