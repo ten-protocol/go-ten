@@ -29,7 +29,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @dev Mapping of state roots to their activation timestamps
      * A value of 0 indicates either the root doesn't exist or has been disabled
      */
-    mapping(bytes32 stateRoot => uint256 activationTime) rootValidAfter;
+    mapping(bytes32 stateRoot => uint256 activationTime) public rootValidAfter;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() MessageBus() {
@@ -40,16 +40,20 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @dev Initializes the contract with provided owner
      * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
      */
-    function initialize(address initialOwner, address withdrawalManager) public override(IMerkleTreeMessageBus, MessageBus) initializer {
+    function initialize(address initialOwner, address withdrawalManager, address _fees) public override(IMerkleTreeMessageBus, MessageBus) initializer {
+        require(initialOwner != address(0), "Initial owner cannot be 0x0");
+        require(withdrawalManager != address(0), "Withdrawal manager cannot be 0x0");
+        require(_fees != address(0), "Fees address cannot be 0x0");
+
         // Initialize parent contracts
-        //super.initialize(initialOwner, address(0));
-        __Ownable_init(initialOwner);
+        __UnrenouncableOwnable2Step_init(initialOwner);
         __AccessControl_init();
         
         // Set up roles
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
         _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
+        fees = IFees(_fees);
     }
 
     /**
@@ -57,6 +61,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @param manager Address to be granted the role
      */
     function addStateRootManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(manager != address(0), "Manager cannot be 0x0");
         grantRole(STATE_ROOT_MANAGER_ROLE, manager);
     }
 
@@ -65,6 +70,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @param manager Address to have the role revoked
      */
     function removeStateRootManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(manager != address(0), "Manager cannot be 0x0");
         revokeRole(STATE_ROOT_MANAGER_ROLE, manager);
     }
 
@@ -91,6 +97,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      */
     function addStateRoot(bytes32 stateRoot, uint256 activationTime) external onlyRole(STATE_ROOT_MANAGER_ROLE) {
         require(rootValidAfter[stateRoot] == 0, "Root already added to the message bus");
+        require(activationTime >= block.timestamp, "Activation time must be in the future");
         rootValidAfter[stateRoot] = activationTime;
     }
 

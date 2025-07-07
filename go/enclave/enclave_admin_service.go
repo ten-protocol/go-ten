@@ -74,7 +74,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 			logger.Crit("unable to start the profiler", log.ErrKey, err)
 		}
 	}
-	sharedSecretProcessor := components.NewSharedSecretProcessor(contractRegistry.EnclaveRegistryLib(), attestationProvider, enclaveKeyService.EnclaveID(), storage, sharedSecretService, logger)
+	sharedSecretProcessor := components.NewSharedSecretProcessor(contractRegistry.EnclaveRegistryLib(), attestationProvider, enclaveKeyService.EnclaveID(), storage, sharedSecretService, logger, enclaveKeyService, config.L1ChainID)
 	sigVerifier, err := getSignatureValidator(config.UseInMemoryDB, storage, logger)
 	if err != nil {
 		logger.Crit("Could not initialise the signature validator", log.ErrKey, err)
@@ -93,7 +93,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 		BaseFee:           config.BaseFee,
 	}
 
-	sequencerService := nodetype.NewSequencer(blockProcessor, batchExecutor, registry, rollupProducer, rollupCompression, gethEncodingService, logger, chainConfig, enclaveKeyService, mempool, storage, dataCompressionService, seqSettings)
+	sequencerService := nodetype.NewSequencer(blockProcessor, batchExecutor, registry, rollupProducer, rollupCompression, gethEncodingService, logger, chainConfig, enclaveKeyService, mempool, storage, dataCompressionService, seqSettings, contractRegistry.DARegistryLib(), config.L1ChainID)
 	validatorService := nodetype.NewValidator(blockProcessor, batchExecutor, registry, chainConfig, storage, sigVerifier, mempool, logger)
 
 	eas := &enclaveAdminService{

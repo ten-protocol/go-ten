@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/CrossChainMessenger"
+	"github.com/ten-protocol/go-ten/contracts/generated/Fees"
 	"github.com/ten-protocol/go-ten/contracts/generated/MerkleTreeMessageBus"
 	"github.com/ten-protocol/go-ten/contracts/generated/TenBridge"
 	"github.com/ten-protocol/go-ten/contracts/generated/TransparentUpgradeableProxy"
@@ -98,7 +99,7 @@ func StartGethNetwork(wallets *params.SimWallets, startPort int) (eth2network.Po
 }
 
 func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimWallets, deployERC20s bool) (*params.L1TenData, error) {
-	_, enclaveRegistryReceipt, err := deployEnclaveRegistryContract(client, wallets.ContractOwnerWallet)
+	_, enclaveRegistryReceipt, err := deployEnclaveRegistryContract(client, wallets.ContractOwnerWallet, wallets.NodeWallets[0].Address())
 	if err != nil {
 		return nil, err
 	}
@@ -373,12 +374,15 @@ func NewContract[T any](address common.Address, client *ethclient.Client) (*T, e
 	case *NetworkConfig.NetworkConfig:
 		contract, err := NetworkConfig.NewNetworkConfig(address, client)
 		return any(contract).(*T), err
+	case *Fees.Fees:
+		contract, err := Fees.NewFees(address, client)
+		return any(contract).(*T), err
 	default:
 		return nil, fmt.Errorf("unsupported contract type")
 	}
 }
 
-func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
+func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wallet.Wallet, sequencerHost common.Address) (*NetworkEnclaveRegistry.NetworkEnclaveRegistry, *types.Receipt, error) {
 	bytecode, err := constants.EnclaveRegistryBytecode()
 	if err != nil {
 		return nil, nil, err
@@ -389,6 +393,7 @@ func deployEnclaveRegistryContract(client ethadapter.EthClient, contractOwner wa
 		bytecode,
 		NetworkEnclaveRegistry.NetworkEnclaveRegistryMetaData,
 		contractOwner.Address(),
+		sequencerHost,
 	)
 }
 
@@ -424,6 +429,17 @@ func deployDataAvailabilityRegistry(client ethadapter.EthClient, contractOwner w
 }
 
 func deploMerkleMessageBusContract(client ethadapter.EthClient, contractOwner wallet.Wallet) (*MerkleTreeMessageBus.MerkleTreeMessageBus, *types.Receipt, error) {
+	feesBytecode, err := constants.FeesBytecode()
+	if err != nil {
+		return nil, nil, err
+	}
+	_, feesReceipt, err := deployProxyContract[Fees.Fees](
+		client, contractOwner, feesBytecode, Fees.FeesMetaData, big.NewInt(0), contractOwner.Address(),
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
 	bytecode, err := constants.MerkleTreeMessageBusBytecode()
 	if err != nil {
 		return nil, nil, err
@@ -432,9 +448,10 @@ func deploMerkleMessageBusContract(client ethadapter.EthClient, contractOwner wa
 		client,
 		contractOwner,
 		bytecode,
-		CrossChain.CrossChainMetaData,
+		MerkleTreeMessageBus.MerkleTreeMessageBusMetaData,
 		contractOwner.Address(),
 		contractOwner.Address(),
+		feesReceipt.ContractAddress,
 	)
 }
 

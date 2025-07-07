@@ -23,9 +23,10 @@ import "../L1/IMerkleTreeMessageBus.sol";
 contract CrossChainMessenger is ICrossChainMessenger, Initializable {
     error CallFailed(bytes error);
 
-    IMerkleTreeMessageBus messageBusContract;
+    IMerkleTreeMessageBus public messageBusContract;
     address public crossChainSender;
-    mapping(bytes32 messageHash => bool messageConsumed) messageConsumed;
+    address public crossChainTarget;
+    mapping(bytes32 messageHash => bool messageConsumed) public messageConsumed;
 
     /**
      * @dev Initializes the contract with a message bus address
@@ -34,7 +35,6 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
      */
     function initialize(address messageBusAddr) external initializer {
         messageBusContract = IMerkleTreeMessageBus(messageBusAddr);
-        crossChainSender =  address(0x0);
     }
 
     /**
@@ -57,7 +57,7 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
             "Message not found or finalized."
         );
         bytes32 msgHash = keccak256(abi.encode(message));
-        require(messageConsumed[msgHash] == false, "Message already consumed.");
+        require(!messageConsumed[msgHash], "Message already consumed.");
 
         messageConsumed[msgHash] = true;
     }
@@ -109,7 +109,6 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
         consumeMessage(message);
 
         crossChainSender = message.sender;
-
         //TODO: Do not relay to self. Do not relay to known contracts. Consider what else not to talk to.
         //Add reentracy guards and paranoid security checks as messenger contracts will have above average rights
         //when communicating with other contracts.
@@ -118,6 +117,8 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
             message.payload,
             (CrossChainCall)
         );
+        crossChainTarget = callData.target;
+
         (bool success, bytes memory returnData) = callData.target.call{gas: gasleft()}(
             callData.data
         );
@@ -126,6 +127,7 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
         }
 
         crossChainSender = address(0x0);
+        crossChainTarget = address(0x0);
     }
 
     /**
@@ -147,6 +149,8 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
             message.payload,
             (CrossChainCall)
         );
+        crossChainTarget = callData.target;
+
         (bool success, bytes memory returnData) = callData.target.call{gas: gasleft()}(
             callData.data
         );
@@ -155,5 +159,6 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
         }
 
         crossChainSender = address(0x0);
+        crossChainTarget = address(0x0);
     }
 }

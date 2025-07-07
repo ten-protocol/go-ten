@@ -43,6 +43,7 @@ func (n *ContractDeployer) Start() error {
 	cmds = append(cmds, "hardhat", "deploy", "--network", "layer1")
 
 	envs := map[string]string{
+		"SEQUENCER_HOST_ADDRESS": n.cfg.SequencerHostAddress,
 		"NETWORK_JSON": fmt.Sprintf(`
 { 
         "layer1" : {

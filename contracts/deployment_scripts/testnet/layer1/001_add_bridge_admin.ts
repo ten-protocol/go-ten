@@ -22,6 +22,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await deployments.execute('TenBridge', {
         from: deployer
     }, 'promoteToAdmin', '0xeC3f9B38a3B30AdC9fB3dF3a0D8f50127E6c2C8f');
+
+    await deployments.execute('TenBridge', {
+        from: deployer
+    }, 'promoteToAdmin', '0x7e6866FCA4A210913b668b46d0E618e437F5734b');
 };
 
 export default func;

@@ -14,7 +14,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 contract EthereumBridge is
     IBridge,
     ITokenFactory,
-    CrossChainEnabledTEN
+    CrossChainEnabledTEN,
+    Initializable
 {
     event CreatedWrappedToken(
         address remoteAddress,
@@ -27,12 +28,15 @@ contract EthereumBridge is
     mapping(address localToken => address remoteToken) public localToRemoteToken;
     mapping(address remoteToken => address localToken) public remoteToLocalToken;
 
-    address remoteBridgeAddress;
+    address public remoteBridgeAddress;
 
     function initialize(
         address messenger,
         address remoteBridge
     ) public initializer {
+        require(messenger != address(0), "Messenger cannot be 0x0");
+        require(remoteBridge != address(0), "Remote bridge cannot be 0x0");
+
         CrossChainEnabledTEN.configure(messenger);
         remoteBridgeAddress = remoteBridge;
     }
@@ -84,6 +88,7 @@ contract EthereumBridge is
         address receiver
     ) external payable {
         require(hasTokenMapping(asset), "No mapping for token.");
+        require(amount > 0, "Amount must be greater than 0.");
 
         WrappedERC20 token = wrappedTokens[asset];
         token.burnFor(msg.sender, amount);

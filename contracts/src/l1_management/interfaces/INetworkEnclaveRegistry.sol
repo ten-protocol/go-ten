@@ -61,7 +61,6 @@ interface INetworkEnclaveRegistry {
      * @param requesterID Address of the enclave that requested the secret
      * @param attesterSig Signature from the attesting enclave (if verification required)
      * @param responseSecret Encrypted network secret (must be 145 bytes)
-     * @param verifyAttester If true, validates attester's signature of requesterID + responseSecret
      * @notice Attester must be already attested
      * @notice Requester must not be already attested
      */
@@ -69,8 +68,7 @@ interface INetworkEnclaveRegistry {
         address attesterID,
         address requesterID,
         bytes memory attesterSig,
-        bytes memory responseSecret,
-        bool verifyAttester
+        bytes memory responseSecret
     ) external;
 
     /**

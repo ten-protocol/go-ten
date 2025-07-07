@@ -272,7 +272,7 @@ message BlockSubmissionErrorMsg {
 message CrossChainMsg {
   bytes Sender = 1;
   uint64 Sequence = 2;
-  uint32 Nonce = 3;
+  uint64 Nonce = 3;
   uint32 Topic = 4;
   bytes Payload = 5;
 }
@@ -328,7 +328,8 @@ message SecretResponseMsg {
   bytes RequesterID = 2;
   bytes AttesterID = 3;
   string HostAddress = 4;
-  SystemError systemError = 5;
+  bytes Signature = 5;
+  SystemError systemError = 6;
 }
 
 message WithdrawalMsg {

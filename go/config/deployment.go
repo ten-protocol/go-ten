@@ -18,9 +18,10 @@ type DeploymentConfig struct {
 //
 //	yaml: `deploy.l1`
 type L1DeployConfig struct {
-	RPCAddress      string `mapstructure:"rpcAddress"`      // an RPC address for the L1 network
-	DeployerPK      string `mapstructure:"deployerPK"`      // the private key of the L1 deployer account
-	ChallengePeriod int    `mapstructure:"challengePeriod"` // the rollup challenge period in seconds
+	RPCAddress        string `mapstructure:"rpcAddress"`        // an RPC address for the L1 network
+	DeployerPK        string `mapstructure:"deployerPK"`        // the private key of the L1 deployer account
+	InitialSeqAddress string `mapstructure:"initialSeqAddress"` // the initial sequencer EOA to expect for network initialization
+	ChallengePeriod   int    `mapstructure:"challengePeriod"`   // the rollup challenge period in seconds
 }
 
 // L2DeployConfig contains the configuration for the deployment of the L2 contracts

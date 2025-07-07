@@ -194,7 +194,7 @@ func (ms MessageStructs) HashPacked(index int) (gethcommon.Hash, error) {
 			Type: uint64Type,
 		},
 		{
-			Type: uint32Type,
+			Type: uint64Type,
 		},
 		{
 			Type: uint32Type,

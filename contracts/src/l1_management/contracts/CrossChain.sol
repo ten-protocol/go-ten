@@ -16,12 +16,6 @@ import "../../common/UnrenouncableOwnable2Step.sol";
  * Uses MerkleTreeMessageBus for message verification and value transfers
  */
 contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, ReentrancyGuardUpgradeable {
-
-    /**
-     * @dev Flag to control withdrawal functionality
-     */
-    bool private paused;
-
      /**
      * @dev Mapping to track spent withdrawals and prevent double-spending
      */
@@ -47,20 +41,11 @@ contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, Re
      */
     function initialize(address owner, address _messageBus) public initializer {
         require(_messageBus != address(0), "Invalid message bus address");
+        require(owner != address(0), "Owner cannot be 0x0");
         __UnrenouncableOwnable2Step_init(owner);  // This will initialize OwnableUpgradeable and Ownable2StepUpgradeable
         __ReentrancyGuard_init();
         merkleMessageBus = MerkleTreeMessageBus.IMerkleTreeMessageBus(_messageBus);
         messageBus = MessageBus.IMessageBus(_messageBus);
-        paused = false; // Default to withdrawals enabled
-    }
-
-    /**
-     * @dev Pauses or resumes withdrawals
-     * @param _pause True to pause withdrawals, false to resume
-     */
-    function pauseWithdrawals(bool _pause) external onlyOwner {
-        paused = _pause;
-        emit WithdrawalsPaused(_pause);
     }
 
     /**

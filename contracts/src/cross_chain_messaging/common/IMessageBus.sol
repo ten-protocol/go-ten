@@ -14,7 +14,7 @@ interface IMessageBus {
     (
         address sender, 
         uint64 sequence, 
-        uint32 nonce, 
+        uint64 nonce, 
         uint32 topic, 
         bytes payload, 
         uint8 consistencyLevel
@@ -29,7 +29,7 @@ interface IMessageBus {
     // returns sequence - this is the unique id of the published message for the address calling the function. It can be used
     // to determine the order of incoming messages on the other side and if something is missing.
     function publishMessage(
-        uint32 nonce,
+        uint64 nonce,
         uint32 topic,
         bytes calldata payload, 
         uint8 consistencyLevel

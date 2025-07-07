@@ -26,7 +26,9 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
      * @param caller The address to set as the owner
      * @param feesAddress The address of the fees contract
      */
-    function initialize(address caller, address feesAddress) public virtual initializer {
+    function initialize(address caller, address withdrawal, address feesAddress) public virtual initializer {
+        require(feesAddress != address(0), "Fees address cannot be 0x0");
+        require(caller != address(0), "Caller cannot be 0x0");
         __UnrenouncableOwnable2Step_init(caller);  // Initialize UnrenouncableOwnable2Step
         fees = IFees(feesAddress);
     }
@@ -84,7 +86,7 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
      * @return sequence Unique ID of the published message for the calling address
      */
     function publishMessage(
-        uint32 nonce,
+        uint64 nonce,
         uint32 topic,
         bytes calldata payload,
         uint8 consistencyLevel
