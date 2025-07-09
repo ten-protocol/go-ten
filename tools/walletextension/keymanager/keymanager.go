@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 
 	"github.com/edgelesssys/ego/enclave"
@@ -56,13 +57,13 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	// If no encryptionKeySource is provided, attempt to unseal an existing encryption key and fail if no key is found
 	// (in this case operator needs to provide a source for the encryption key or decide to generate a new one)
 	if config.EncryptionKeySource == "" {
-		logger.Info("no key exchange url set, try to unseal existing encryption key")
+		logger.Info("no key exchange url set, try to unseal existing encryption key", "file_path", encryptionKeyFile, "inside_enclave", config.InsideEnclave)
 		encryptionKey, found, err := tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
 		if !found {
-			logger.Crit("no sealed encryption key found", log.ErrKey, err)
-			return nil, fmt.Errorf("no sealed encryption key found: %w", err)
+			logger.Crit("no sealed encryption key found", log.ErrKey, err, "file_path", encryptionKeyFile)
+			return nil, fmt.Errorf("no sealed encryption key found at %s: %w", encryptionKeyFile, err)
 		}
-		logger.Info("unsealed existing encryption key")
+		logger.Info("unsealed existing encryption key", "file_path", encryptionKeyFile, "key_length", len(encryptionKey))
 		return encryptionKey, nil
 	}
 
@@ -74,27 +75,30 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	// This ensures that we do not overwrite an existing key unless necessary, and a new key is only generated when
 	// there is no existing key available.
 	if config.EncryptionKeySource == "new" {
-		logger.Info("encryptionKeySource set to 'new' -> checking if there is an existing encryption key that we can use")
+		logger.Info("encryptionKeySource set to 'new' -> checking if there is an existing encryption key that we can use", "file_path", encryptionKeyFile, "inside_enclave", config.InsideEnclave)
 		var found bool
-		encryptionKey, found, _ = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
-		logger.Info("Encryption key status", "found", found, "error", err)
+		encryptionKey, found, err = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
+		logger.Info("Encryption key status", "found", found, "error", err, "file_path", encryptionKeyFile)
 		if !found {
-			logger.Info("No existing encryption key found, generating new random encryption key")
+			logger.Info("No existing encryption key found, generating new random encryption key", "file_path", encryptionKeyFile)
 			encryptionKey, err = common.GenerateRandomKey()
 			if err != nil {
 				logger.Crit("unable to generate random encryption key", log.ErrKey, err)
 				return nil, err
 			}
+		} else {
+			logger.Info("Found existing encryption key, using it", "file_path", encryptionKeyFile, "key_length", len(encryptionKey))
 		}
 	} else {
 		// Attempt to perform key exchange with the specified key provider.
 		// This step is crucial, and the process should fail if the key exchange is not successful.
-		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
+		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource), "key_provider_url", config.EncryptionKeySource, "inside_enclave", config.InsideEnclave)
 		encryptionKey, err = HandleKeyExchange(config, logger)
 		if err != nil {
-			logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
+			logger.Crit("unable to get encryption key from key provider", log.ErrKey, err, "key_provider_url", config.EncryptionKeySource)
 			return nil, err
 		}
+		logger.Info("successfully obtained encryption key from key provider", "key_provider_url", config.EncryptionKeySource, "key_length", len(encryptionKey))
 	}
 
 	// Seal the key that we generated / got from the key exchange from another enclave
@@ -116,10 +120,17 @@ func tryUnsealKey(keyPath string, isEnclave bool) ([]byte, bool, error) {
 		return nil, false, nil
 	}
 
-	// Read the key and unseal if possible
+	// Check if file exists first
+	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+		return nil, false, nil
+	} else if err != nil {
+		return nil, false, fmt.Errorf("failed to check if file exists: %w", err)
+	}
+
+	// File exists, try to read and unseal
 	data, err := egoutils.ReadAndUnseal(keyPath)
 	if err != nil {
-		return nil, false, err
+		return nil, false, fmt.Errorf("failed to unseal key from %s: %w", keyPath, err)
 	}
 
 	return data, true, nil
@@ -142,7 +153,10 @@ func trySealKey(key []byte, keyPath string, isEnclave bool) error {
 
 // HandleKeyExchange handles the key exchange process from KeyRequester side.
 func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, error) {
+	logger.Info("KeyRequester: Starting key exchange process", "key_provider_url", config.EncryptionKeySource)
+
 	// Step 1: Generate RSA key pair
+	logger.Info("KeyRequester: Generating RSA key pair", "key_size", RSAKeySize)
 	privkey, err := GenerateKeyPair(RSAKeySize)
 	if err != nil {
 		logger.Error("KeyRequester: Unable to generate RSA key pair", "error", err)
@@ -152,26 +166,32 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	logger.Info("KeyRequester: Generated RSA key pair for key exchange")
 
 	// Step 2: Serialize and encode the public key (needed for sending it over the network)
+	logger.Info("KeyRequester: Serializing public key")
 	serializedPubKey, err := SerializePublicKey(pubkey)
 	if err != nil {
 		logger.Error("KeyRequester: Failed to serialize public key", "error", err)
 		return nil, fmt.Errorf("failed to serialize public key: %w", err)
 	}
+	logger.Info("KeyRequester: Public key serialized", "pubkey_size", len(serializedPubKey))
 
 	// Step 4: Get the attestation report
 	// Hash the serialized public key
+	logger.Info("KeyRequester: Hashing public key for attestation")
 	pubKeyHash := sha256.Sum256(serializedPubKey)
+	logger.Info("KeyRequester: Getting attestation report", "pubkey_hash_hex", fmt.Sprintf("%x", pubKeyHash[:]))
 	attestationReport, err := GetReport(pubKeyHash[:])
 	if err != nil {
-		logger.Error("KeyRequester: Failed to get attestation report", "error", err)
+		logger.Error("KeyRequester: Failed to get attestation report", "error", err, "pubkey_hash_hex", fmt.Sprintf("%x", pubKeyHash[:]))
 		return nil, fmt.Errorf("failed to get attestation report: %w", err)
 	}
+	logger.Info("KeyRequester: Successfully obtained attestation report", "report_size", len(attestationReport.Report))
 
 	marshalledAttestation, err := json.Marshal(attestationReport)
 	if err != nil {
 		logger.Crit("unable to marshal attestation report", log.ErrKey, err)
 		return nil, err
 	}
+	logger.Info("KeyRequester: Marshalled attestation report", "marshalled_size", len(marshalledAttestation))
 
 	// Step 6: Create the message to send (PublicKey and Attestation)
 	messageRequester := KeyExchangeRequest{
@@ -180,54 +200,67 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 7: Serialize the message to JSON for transmission
+	logger.Info("KeyRequester: Serializing key exchange request")
 	messageBytesRequester, err := json.Marshal(messageRequester)
 	if err != nil {
 		logger.Error("KeyRequester: Failed to serialize message", "error", err)
 		return nil, fmt.Errorf("failed to serialize message: %w", err)
 	}
+	logger.Info("KeyRequester: Serialized key exchange request", "request_size", len(messageBytesRequester))
 
 	// Step 8: Send the message to KeyProvider via HTTP POST
-	resp, err := http.Post(config.EncryptionKeySource+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
+	keyExchangeURL := config.EncryptionKeySource + "/v1" + common.PathKeyExchange
+	logger.Info("KeyRequester: Sending key exchange request", "url", keyExchangeURL, "request_size", len(messageBytesRequester))
+	resp, err := http.Post(keyExchangeURL, "application/json", bytes.NewBuffer(messageBytesRequester))
 	if err != nil {
-		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err)
+		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err, "url", keyExchangeURL)
 		return nil, fmt.Errorf("failed to send message to KeyProvider: %w", err)
 	}
 	defer resp.Body.Close()
+	logger.Info("KeyRequester: Received response from KeyProvider", "status_code", resp.StatusCode, "status", resp.Status)
 
 	// Step 9: Read the response body
+	logger.Info("KeyRequester: Reading response body")
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		logger.Error("KeyRequester: Failed to read response body from KeyProvider", "error", err)
+		logger.Error("KeyRequester: Failed to read response body from KeyProvider", "error", err, "status_code", resp.StatusCode)
 		return nil, fmt.Errorf("failed to read response body from KeyProvider: %w", err)
 	}
+	logger.Info("KeyRequester: Read response body", "body_size", len(bodyBytes))
 
 	// Check the HTTP response status
 	if resp.StatusCode != http.StatusOK {
-		logger.Error("KeyRequester: Received non-OK response from KeyProvider", "status", resp.Status, "body", string(bodyBytes))
+		logger.Error("KeyRequester: Received non-OK response from KeyProvider", "status", resp.Status, "status_code", resp.StatusCode, "body", string(bodyBytes))
 		return nil, fmt.Errorf("received non-OK response from KeyProvider: %s", resp.Status)
 	}
 
 	// Step 10: Deserialize the received message
+	logger.Info("KeyRequester: Deserializing key exchange response")
 	var receivedMessageRequester KeyExchangeResponse
 	err = json.Unmarshal(bodyBytes, &receivedMessageRequester)
 	if err != nil {
-		logger.Error("KeyRequester: Failed to deserialize received message", "error", err)
+		logger.Error("KeyRequester: Failed to deserialize received message", "error", err, "body_size", len(bodyBytes))
 		return nil, fmt.Errorf("failed to deserialize received message: %w", err)
 	}
+	logger.Info("KeyRequester: Deserialized key exchange response", "encrypted_key_size", len(receivedMessageRequester.EncryptedKey))
 
 	// Step 11: Extract and decode the encrypted encryption key from Base64
+	logger.Info("KeyRequester: Decoding encrypted key from Base64")
 	encryptedKeyBytesRequester, err := DecodeBase64(receivedMessageRequester.EncryptedKey)
 	if err != nil {
-		logger.Error("KeyRequester: Failed to decode encrypted encryption key", "error", err)
+		logger.Error("KeyRequester: Failed to decode encrypted encryption key", "error", err, "base64_length", len(receivedMessageRequester.EncryptedKey))
 		return nil, fmt.Errorf("failed to decode encrypted encryption key: %w", err)
 	}
+	logger.Info("KeyRequester: Decoded encrypted key", "encrypted_key_bytes_size", len(encryptedKeyBytesRequester))
 
 	// Step 12: Decrypt the encryption key using KeyRequester's private key
+	logger.Info("KeyRequester: Decrypting encryption key with private key")
 	decryptedKeyRequester, err := DecryptWithPrivateKey(encryptedKeyBytesRequester, privkey)
 	if err != nil {
-		logger.Error("KeyRequester: Decryption failed", "error", err)
+		logger.Error("KeyRequester: Decryption failed", "error", err, "encrypted_key_size", len(encryptedKeyBytesRequester))
 		return nil, fmt.Errorf("decryption failed: %w", err)
 	}
+	logger.Info("KeyRequester: Successfully decrypted encryption key", "decrypted_key_size", len(decryptedKeyRequester))
 
 	return decryptedKeyRequester, nil
 }
@@ -236,7 +269,7 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 func GetReport(pubKey []byte) (*tencommon.AttestationReport, error) {
 	report, err := enclave.GetRemoteReport(pubKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("enclave.GetRemoteReport failed: %w", err)
 	}
 	return &tencommon.AttestationReport{
 		Report:      report,
