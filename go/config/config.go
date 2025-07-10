@@ -48,10 +48,9 @@ type TenConfig struct {
 	Deployment *DeploymentConfig `mapstructure:"deploy"`
 }
 
-//
 // Note: Just TenConfig utility functions below here.
 // All the top-level nested config structs are defined in their own files.
-//
+const _redactedString = "****"
 
 func (t *TenConfig) PrettyPrint() {
 	configCopy := *t
@@ -59,7 +58,13 @@ func (t *TenConfig) PrettyPrint() {
 	if t.Node != nil {
 		*configCopy.Node = *t.Node // deep copy all fields
 		if configCopy.Node.PrivateKeyString != "" {
-			configCopy.Node.PrivateKeyString = "****"
+			configCopy.Node.PrivateKeyString = _redactedString
+		}
+		if configCopy.Deployment.L1Deploy.DeployerPK != "" {
+			configCopy.Deployment.L1Deploy.DeployerPK = _redactedString
+		}
+		if configCopy.Deployment.L2Deploy.DeployerPK != "" {
+			configCopy.Deployment.L2Deploy.DeployerPK = _redactedString
 		}
 	}
 
