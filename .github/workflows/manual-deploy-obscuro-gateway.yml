@@ -539,41 +539,42 @@ jobs:
             else
               echo "$DEPLOYMENT_OUTPUT"
             fi
-            
+
             # Check if deployment was successful
             if echo "$DEPLOYMENT_OUTPUT" | grep -q '"error"' || echo "$DEPLOYMENT_OUTPUT" | grep -q '"code": "ProvisioningState/failed"'; then
               echo "ERROR: Deployment failed"
               echo "$DEPLOYMENT_OUTPUT"
               exit 1
             fi
-            
-            echo "=== Deployment script completed successfully ==="
 
-            - name: "Verify deployment"
+            echo "=== Deployment script completed successfully ==="
+            '
+
+      - name: "Verify deployment"
         uses: azure/CLI@v1
         with:
           inlineScript: |
             echo "=== Final deployment verification ==="
-            
+
             # Run verification and capture output
             VERIFICATION_OUTPUT=$(az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
             --command-id RunShellScript \
             --scripts '
             echo "=== Container status ==="
             docker ps -a
-            
+
             echo "=== Container logs ==="
             docker logs "${{ env.VM_NAME }}" --tail 20 || echo "No logs available"
-            
+
             echo "=== System resources ==="
             df -h
             free -h
-            
+
             echo "=== Network connectivity ==="
             netstat -tlnp | grep :443 || echo "No process listening on 443"
             netstat -tlnp | grep :80 || echo "No process listening on 80"
             ')
-            
+
             # Display verification output in GitHub Actions logs
             echo "=== VERIFICATION OUTPUT ==="
             if command -v jq >/dev/null 2>&1; then
