@@ -488,7 +488,13 @@ jobs:
             fi
 
             echo "=== Starting TEN Gateway Container ==="
-            docker run -d --restart=unless-stopped -p 80:80 -p 81:443 -p 443:443 --name "${{ env.VM_NAME }}" \
+            echo "Container name: ${{ env.VM_NAME }}"
+            echo "Image: ${{ env.DOCKER_BUILD_TAG_GATEWAY }}"
+            echo "SGX devices:"
+            ls -la /dev/sgx* || echo "No SGX devices found"
+
+            # Try to start the container and capture any errors
+            if docker run -d --restart=unless-stopped -p 80:80 -p 81:443 -p 443:443 --name "${{ env.VM_NAME }}" \
             --device /dev/sgx_enclave --device /dev/sgx_provision \
             -v "TENGateway-${{ github.event.inputs.testnet_type }}-data:/data" \
             -e OBSCURO_GATEWAY_VERSION="${{ github.run_number }}-${{ github.sha }}" \
@@ -505,7 +511,16 @@ jobs:
             -enableTLS=true \
             -tlsDomain="${{ env.GATEWAY_TLS_DOMAIN }}" \
             -encryptingCertificateEnabled="${{ env.GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED }}" \
-            -disableCaching="${{ env.GATEWAY_DISABLE_CACHING }}"
+            -disableCaching="${{ env.GATEWAY_DISABLE_CACHING }}"; then
+              echo "Container started successfully"
+            else
+              echo "ERROR: Failed to start container"
+              echo "Container logs (if any):"
+              docker logs "${{ env.VM_NAME }}" --tail 20 || echo "No logs available"
+              echo "Container inspect:"
+              docker inspect "${{ env.VM_NAME }}" || echo "Container not found"
+              exit 1
+            fi
 
             echo "=== Deployment verification ==="
             echo "Checking running containers:"
@@ -515,18 +530,7 @@ jobs:
             docker logs "${{ env.VM_NAME }}" --tail 50 || echo "No logs available yet"
 
             echo "Checking volume mount:"
-            docker exec "${{ env.VM_NAME }}" sh -c "
-                echo \"Checking volume mount...\";
-                df -h | grep /data;
-                echo \"Directory listing:\";
-                ls -la /data;
-                echo \"Current working directory:\";
-                pwd;
-                echo \"Directory permissions:\";
-                ls -la /;
-                echo \"Process status:\";
-                ps aux;
-            " || echo "Container not ready yet for exec"
+            docker exec "${{ env.VM_NAME }}" sh -c "echo 'Checking volume mount...'; df -h | grep /data; echo 'Directory listing:'; ls -la /data; echo 'Current working directory:'; pwd; echo 'Directory permissions:'; ls -la /; echo 'Process status:'; ps aux;" || echo "Container not ready yet for exec"
 
             echo "=== Deployment completed ==="
             echo "All containers should now be running. Check with: docker ps"
