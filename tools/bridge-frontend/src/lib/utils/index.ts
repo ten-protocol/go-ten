@@ -73,7 +73,7 @@ export const formatNumber = (number: string | number) => {
 export const getItem = <T>(
   arr: T[],
   key: string,
-  position: ItemPosition = ItemPosition.FIRST
+  position: ItemPosition = ItemPosition.FIRST,
 ) => {
   if (!arr || !arr.length) {
     return null;

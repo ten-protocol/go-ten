@@ -163,16 +163,18 @@ export interface IToken {
 }
 
 export interface INetworkConfig {
-  ManagementContractAddress: string;
+  CrossChain: string;
+  DataAvailabilityRegistry: string;
+  EnclaveRegistry: string;
+  L1Bridge: string;
+  L1CrossChainMessenger: string;
+  L1MessageBus: string;
   L1StartHash: string;
-  MessageBusAddress: string;
-  L2MessageBusAddress: string;
-  ImportantContracts: {
-    L1Bridge: string;
-    L1CrossChainMessenger: string;
-    L2Bridge: string;
-    L2CrossChainMessenger: string;
-  };
+  L2Bridge: string;
+  L2CrossChainMessenger: string;
+  L2MessageBus: string;
+  NetworkConfig: string;
+  SystemContractsUpgrader: string;
 }
 
 export interface IContractState {
@@ -237,7 +239,7 @@ export type StoreSet = (
     | IWalletState
     | Partial<IWalletState>
     | ((state: IWalletState) => IWalletState | Partial<IWalletState>),
-  replace?: boolean | undefined
+  replace?: boolean | undefined,
 ) => void;
 
 export type StoreGet = () => IWalletState;
