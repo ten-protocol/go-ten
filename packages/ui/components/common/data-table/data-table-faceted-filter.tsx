@@ -1,5 +1,5 @@
 import * as React from "react";
-import { CheckIcon } from "../../shared/react-icons";
+import { CheckIcon, PlusCircledIcon } from "../../shared/react-icons";
 import { Column } from "@tanstack/react-table";
 
 import { cn } from "../../../lib/utils";
@@ -39,7 +39,7 @@ export function DataTableFacetedFilter<TData, TValue>({
     <Popover>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="h-8 border-dashed">
-          {/* <PlusCircledIcon className="mr-2 h-4 w-4" /> */}
+          <PlusCircledIcon className="mr-2 h-4 w-4" />
           {title}
           {selectedValues?.size > 0 && (
             <>
