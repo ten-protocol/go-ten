@@ -243,7 +243,10 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}"  \
+            echo "=== Starting deployment to VM: ${{ env.VM_NAME }} ==="
+
+            # Run the deployment script and capture output
+            DEPLOYMENT_OUTPUT=$(az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
             --command-id RunShellScript \
             --scripts '
             set -e
@@ -527,27 +530,54 @@ jobs:
 
             echo "=== Deployment completed ==="
             echo "All containers should now be running. Check with: docker ps"
-            '
+            ')
 
-      - name: "Verify deployment"
+                        # Extract and display the output in GitHub Actions logs
+            echo "=== DEPLOYMENT OUTPUT ==="
+            if command -v jq >/dev/null 2>&1; then
+              echo "$DEPLOYMENT_OUTPUT" | jq -r '.value[0].message' || echo "$DEPLOYMENT_OUTPUT"
+            else
+              echo "$DEPLOYMENT_OUTPUT"
+            fi
+            
+            # Check if deployment was successful
+            if echo "$DEPLOYMENT_OUTPUT" | grep -q '"error"' || echo "$DEPLOYMENT_OUTPUT" | grep -q '"code": "ProvisioningState/failed"'; then
+              echo "ERROR: Deployment failed"
+              echo "$DEPLOYMENT_OUTPUT"
+              exit 1
+            fi
+            
+            echo "=== Deployment script completed successfully ==="
+
+            - name: "Verify deployment"
         uses: azure/CLI@v1
         with:
           inlineScript: |
             echo "=== Final deployment verification ==="
-            az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
+            
+            # Run verification and capture output
+            VERIFICATION_OUTPUT=$(az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
             --command-id RunShellScript \
             --scripts '
             echo "=== Container status ==="
             docker ps -a
-
+            
             echo "=== Container logs ==="
             docker logs "${{ env.VM_NAME }}" --tail 20 || echo "No logs available"
-
+            
             echo "=== System resources ==="
             df -h
             free -h
-
+            
             echo "=== Network connectivity ==="
             netstat -tlnp | grep :443 || echo "No process listening on 443"
             netstat -tlnp | grep :80 || echo "No process listening on 80"
-            '
+            ')
+            
+            # Display verification output in GitHub Actions logs
+            echo "=== VERIFICATION OUTPUT ==="
+            if command -v jq >/dev/null 2>&1; then
+              echo "$VERIFICATION_OUTPUT" | jq -r '.value[0].message' || echo "$VERIFICATION_OUTPUT"
+            else
+              echo "$VERIFICATION_OUTPUT"
+            fi
