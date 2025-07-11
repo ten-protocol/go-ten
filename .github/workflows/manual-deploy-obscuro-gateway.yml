@@ -248,38 +248,90 @@ jobs:
             --scripts '
             set -e
 
+            echo "=== Starting deployment script ==="
+            echo "VM Name: ${{ env.VM_NAME }}"
+            echo "Testnet Type: ${{ github.event.inputs.testnet_type }}"
+            echo "Branch: ${{ env.BRANCH_NAME }}"
+
             mkdir -p /home/obscuro
 
             # Wait for dpkg lock to be released
+            echo "=== Waiting for dpkg lock to be released ==="
             while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
               echo "Waiting for dpkg lock to be released..."
               sleep 1
             done
 
             # Proceed with package installations
+            echo "=== Installing system packages ==="
             sudo apt-get update
             sudo apt-get install -y gcc
             sudo snap refresh && sudo snap install --channel=1.18 go --classic
 
             # Wait again before running get-docker.sh
+            echo "=== Waiting for dpkg lock before Docker installation ==="
             while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
               echo "Waiting for dpkg lock to be released before installing Docker..."
               sleep 1
             done
 
-            curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh
+            echo "=== Installing Docker ==="
+            # Check if Docker is already installed and working
+            if command -v docker &> /dev/null && docker --version &> /dev/null; then
+              echo "Docker is already installed and working"
+              docker --version
+            else
+              echo "Installing Docker..."
+              # Use a more robust Docker installation method
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              # Modify the script to skip problematic packages
+              sed -i "s/docker-ce-rootless-extras docker-buildx-plugin docker-model-plugin/docker-ce-rootless-extras docker-buildx-plugin/g" get-docker.sh
+              
+              # Install Docker with error handling
+              if sh ./get-docker.sh; then
+                echo "Docker installation successful"
+              else
+                echo "Docker installation failed, trying alternative method..."
+                # Try installing from Ubuntu repositories
+                sudo apt-get update
+                sudo apt-get install -y docker.io docker-compose
+                sudo systemctl start docker
+                sudo systemctl enable docker
+              fi
+              
+              rm get-docker.sh
+              
+              # Start and enable Docker service
+              sudo systemctl start docker
+              sudo systemctl enable docker
+              sudo usermod -aG docker $USER
+              
+              # Verify Docker is working
+              if ! docker --version &> /dev/null; then
+                echo "ERROR: Docker installation failed"
+                exit 1
+              fi
+            fi
+
+            echo "=== Verifying Docker installation ==="
+            docker --version
+            docker info
+
+            echo "=== Setting up project directory ==="
             rm -rf /home/obscuro/go-obscuro
             git clone --depth 1 -b "${{ env.BRANCH_NAME }}" https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro
+
+            echo "=== Creating Docker network ==="
             if ! docker network inspect node_network >/dev/null 2>&1; then
               docker network create --driver bridge node_network
             fi
             cd /home/obscuro/go-obscuro/
 
+            echo "=== Setting up monitoring infrastructure ==="
             # Promtail Integration Start
             mkdir -p /home/obscuro/metrics
 
             cat <<EOF > /home/obscuro/metrics/promtail-config.yaml
-
             server:
               http_listen_port: 9080
               grpc_listen_port: 0
@@ -314,6 +366,7 @@ jobs:
                   target_label: "node_name"
             EOF
 
+            echo "=== Starting Promtail ==="
             docker stop promtail || true
             docker rm promtail || true
 
@@ -327,6 +380,7 @@ jobs:
             grafana/promtail:latest \
             -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true
 
+            echo "=== Setting up Prometheus configuration ==="
             cat <<EOF > /home/obscuro/metrics/prometheus.yaml
             global:
               scrape_interval: 15s
@@ -362,7 +416,7 @@ jobs:
                     replacement: container-${{ env.VM_NAME }}
             EOF
 
-
+            echo "=== Starting Prometheus ==="
             docker stop prometheus || true
             docker rm prometheus || true
 
@@ -375,7 +429,7 @@ jobs:
             prom/prometheus:latest \
             --config.file=/etc/prometheus/prometheus.yml
 
-
+            echo "=== Starting Node Exporter ==="
             docker stop node_exporter || true
             docker rm node_exporter || true
 
@@ -387,7 +441,7 @@ jobs:
             quay.io/prometheus/node-exporter:latest \
             --path.rootfs=/host
 
-
+            echo "=== Starting cAdvisor ==="
             docker stop cadvisor || true
             docker rm cadvisor || true
 
@@ -403,15 +457,34 @@ jobs:
             gcr.io/cadvisor/cadvisor:latest
             # Promtail Integration End
 
+            echo "=== Setting up TEN Gateway ==="
             docker volume create "TENGateway-${{ github.event.inputs.testnet_type }}-data" || true
 
             # Stop and remove existing container if it exists
+            echo "=== Stopping existing TEN Gateway container ==="
             docker stop "${{ env.VM_NAME }}" || true
             docker rm "${{ env.VM_NAME }}" || true
 
-            docker pull ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
+            echo "=== Pulling TEN Gateway image ==="
+            if docker pull ${{ env.DOCKER_BUILD_TAG_GATEWAY }}; then
+              echo "Docker image pulled successfully"
+              docker images | grep ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
+            else
+              echo "ERROR: Failed to pull Docker image ${{ env.DOCKER_BUILD_TAG_GATEWAY }}"
+              exit 1
+            fi
 
-            # Start Ten Gateway Container
+            echo "=== Checking SGX devices ==="
+            if [ ! -e /dev/sgx_enclave ] || [ ! -e /dev/sgx_provision ]; then
+              echo "WARNING: SGX devices not found. This may cause issues with the TEN Gateway."
+              echo "Available devices in /dev:"
+              ls -la /dev/sgx* || echo "No SGX devices found"
+            else
+              echo "SGX devices found:"
+              ls -la /dev/sgx*
+            fi
+
+            echo "=== Starting TEN Gateway Container ==="
             docker run -d --restart=unless-stopped -p 80:80 -p 81:443 -p 443:443 --name "${{ env.VM_NAME }}" \
             --device /dev/sgx_enclave --device /dev/sgx_provision \
             -v "TENGateway-${{ github.event.inputs.testnet_type }}-data:/data" \
@@ -431,6 +504,14 @@ jobs:
             -encryptingCertificateEnabled="${{ env.GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED }}" \
             -disableCaching="${{ env.GATEWAY_DISABLE_CACHING }}"
 
+            echo "=== Deployment verification ==="
+            echo "Checking running containers:"
+            docker ps -a
+
+            echo "Checking container logs for ${{ env.VM_NAME }}:"
+            docker logs "${{ env.VM_NAME }}" --tail 50 || echo "No logs available yet"
+
+            echo "Checking volume mount:"
             docker exec "${{ env.VM_NAME }}" sh -c "
                 echo \"Checking volume mount...\";
                 df -h | grep /data;
@@ -442,5 +523,31 @@ jobs:
                 ls -la /;
                 echo \"Process status:\";
                 ps aux;
-            "
+            " || echo "Container not ready yet for exec"
+
+            echo "=== Deployment completed ==="
+            echo "All containers should now be running. Check with: docker ps"
+            '
+
+      - name: "Verify deployment"
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "=== Final deployment verification ==="
+            az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
+            --command-id RunShellScript \
+            --scripts '
+            echo "=== Container status ==="
+            docker ps -a
+
+            echo "=== Container logs ==="
+            docker logs "${{ env.VM_NAME }}" --tail 20 || echo "No logs available"
+
+            echo "=== System resources ==="
+            df -h
+            free -h
+
+            echo "=== Network connectivity ==="
+            netstat -tlnp | grep :443 || echo "No process listening on 443"
+            netstat -tlnp | grep :80 || echo "No process listening on 80"
             '
