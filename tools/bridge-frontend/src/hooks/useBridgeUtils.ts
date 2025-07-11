@@ -18,7 +18,7 @@ export const useBridgeUtils = () => {
     address: string,
     fromChain: string,
     walletConnected: boolean,
-    loading: boolean
+    loading: boolean,
   ) => {
     const fetchTokenBalance = async (token: string, address: string) => {
       if (!token || !address) return null;
@@ -60,7 +60,7 @@ export const useBridgeUtils = () => {
     tokens: IToken[],
     receiver: string,
     tokenBalance: number,
-    setError: (name: string, error: { type: string; message: string }) => void
+    setError: (name: string, error: { type: string; message: string }) => void,
   ) => {
     const initiateBridgeTransaction = React.useCallback(
       async (data: any) => {
@@ -110,7 +110,7 @@ export const useBridgeUtils = () => {
             res = await sendERC20(
               transactionData.receiver,
               amount,
-              selectedToken.address
+              selectedToken.address,
             );
           }
 
@@ -131,7 +131,7 @@ export const useBridgeUtils = () => {
           });
         }
       },
-      [address, token, tokens, receiver, tokenBalance]
+      [address, token, tokens, receiver, tokenBalance],
     );
 
     return { initiateBridgeTransaction };

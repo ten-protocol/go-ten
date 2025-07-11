@@ -43,7 +43,7 @@ export const useContractsService = () => {
     messageBusContract,
   } = useContractStore();
   const [finalisingTxHashes, setFinalisingTxHashes] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   const memoizedConfig = useMemo(() => {
@@ -57,33 +57,27 @@ export const useContractsService = () => {
   const initializeContracts = async () => {
     if (!memoizedConfig || !provider) return;
 
-    const {
-      ImportantContracts: { L1Bridge, L2Bridge },
-      MessageBusAddress,
-      L2MessageBusAddress,
-      ManagementContractAddress,
-    } = memoizedConfig;
+    const { L1Bridge, L2Bridge, L1MessageBus, L2MessageBus } = memoizedConfig;
 
     const signer = provider.getSigner();
     const bridgeAddress = isL1ToL2 ? L1Bridge : L2Bridge;
-    const messageBusAddress = isL1ToL2
-      ? MessageBusAddress
-      : L2MessageBusAddress;
+    const messageBusAddress = isL1ToL2 ? L1MessageBus : L2MessageBus;
 
     const bridgeContract = new ethers.Contract(
       bridgeAddress,
       Bridge.abi,
-      signer
+      signer,
     );
     const messageBusContract = new ethers.Contract(
       messageBusAddress,
       IMessageBusAbi,
-      signer
+      signer,
     );
     const managementContract = new ethers.Contract(
-      ManagementContractAddress,
+      //   TODO: ....
+      "ManagementContractAddress",
       ManagementContractAbi,
-      l1Provider.getSigner()
+      l1Provider.getSigner(),
     );
 
     setContractState({
@@ -158,7 +152,7 @@ export const useContractsService = () => {
                 bridgeContract,
                 signer,
                 receiver,
-                value
+                value,
               );
 
               if (!txResponse) {
@@ -172,7 +166,7 @@ export const useContractsService = () => {
               if (!txResponse) {
                 return handleError(
                   null,
-                  "Transaction not found on the network"
+                  "Transaction not found on the network",
                 );
               }
             }
@@ -180,7 +174,7 @@ export const useContractsService = () => {
             currentStep = TransactionStep.TransactionConfirmation;
             showToast(
               ToastType.INFO,
-              "Transaction submitted; awaiting confirmation..."
+              "Transaction submitted; awaiting confirmation...",
             );
             updateBridgePendingTransactions();
             break;
@@ -199,7 +193,7 @@ export const useContractsService = () => {
                   // if the receipt is still not confirmed, we can retry later or throw an error
                   return handleError(
                     null,
-                    "Transaction is not yet confirmed. Please retry later."
+                    "Transaction is not yet confirmed. Please retry later.",
                   );
                 }
               }
@@ -233,7 +227,7 @@ export const useContractsService = () => {
             const result = await extractEventDataStep(
               messageBusContract,
               provider,
-              txReceipt!
+              txReceipt!,
             );
             valueTransferEventData = result.valueTransferEventData;
             block = result.block;
@@ -250,7 +244,7 @@ export const useContractsService = () => {
             ({ tree, proof } = await constructMerkleTreeStep(
               txHash!,
               valueTransferEventData!,
-              block
+              block,
             ));
 
             if (!tree || !proof) {
@@ -268,7 +262,7 @@ export const useContractsService = () => {
               txHash!,
               valueTransferEventData!,
               proof,
-              root || tree!.root
+              root || tree!.root,
             );
 
             if (!gasLimit) {
@@ -289,7 +283,7 @@ export const useContractsService = () => {
               valueTransferEventData,
               root || tree!.root,
               proof,
-              gasLimit!
+              gasLimit!,
             )) as ethers.providers.TransactionReceipt;
 
             return txReceipt;
@@ -306,7 +300,7 @@ export const useContractsService = () => {
   const sendERC20 = async (
     receiver: string,
     amount: number,
-    tokenContractAddress: string
+    tokenContractAddress: string,
   ) => {
     const { bridgeContract } = useContractStore.getState();
 
@@ -335,7 +329,7 @@ export const useContractsService = () => {
 
   const getTokenBalance = async (
     tokenAddress: string,
-    walletAddress: string
+    walletAddress: string,
   ) => {
     if (!provider || !walletAddress) {
       return handleError(null, "Provider or wallet address not found");
@@ -348,7 +342,7 @@ export const useContractsService = () => {
           "function balanceOf(address owner) view returns (uint256)",
           "function decimals() view returns (uint8)",
         ],
-        provider
+        provider,
       );
 
       const balance = await tokenContract.balanceOf(walletAddress);
@@ -379,7 +373,7 @@ export const useContractsService = () => {
       const transactions = await Promise.all(
         logs.map(async (log: ethers.providers.Log) => {
           const receipt = await provider.getTransactionReceipt(
-            log.transactionHash
+            log.transactionHash,
           );
           return {
             ...log,
@@ -389,7 +383,7 @@ export const useContractsService = () => {
                 : TransactionStatus.Failure
               : TransactionStatus.Pending,
           };
-        })
+        }),
       );
       return transactions;
     } catch (error) {
@@ -412,7 +406,7 @@ export const useContractsService = () => {
   const finaliseTransaction = async (tx: IPendingTx) => {
     try {
       setFinalisingTxHashes((prevSet) =>
-        new Set(prevSet).add(tx?.txHash || "")
+        new Set(prevSet).add(tx?.txHash || ""),
       );
       showToast(ToastType.INFO, "Resuming transaction...");
       await sendNative({ ...tx });
