@@ -1,5 +1,11 @@
 export const environment =
-  process.env.NEXT_PUBLIC_API_HOST_ENVIRONMENT || "uat-testnet";
+  process.env.NEXT_PUBLIC_API_HOST_ENVIRONMENT || "sepolia-testnet";
+
+console.log(
+  "bridge API host environment",
+  process.env.NEXT_PUBLIC_API_HOST_ENVIRONMENT,
+);
+console.log("bridge API host", process.env.NEXT_PUBLIC_BRIDGE_API_HOST);
 
 export const apiHost = process.env.NEXT_PUBLIC_BRIDGE_API_HOST;
 
