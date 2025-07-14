@@ -334,8 +334,6 @@ jobs:
             if ! az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}"  \
             --command-id RunShellScript \
             --scripts '
-            set -e
-
             echo "🏠 Creating directory structure..."
             mkdir -p /home/obscuro
 
@@ -382,10 +380,16 @@ jobs:
               exit 1
             fi
             
-            if ! sh ./get-docker.sh; then
-              echo "❌ Failed to install Docker"
+            echo "📦 Running Docker installation script (may show deprecation warnings)..."
+            sh ./get-docker.sh || echo "Docker installation completed with warnings"
+            
+            echo "🔍 Checking if Docker is installed..."
+            if ! command -v docker &> /dev/null; then
+              echo "❌ Docker command not found after installation"
               exit 1
             fi
+            
+            echo "✅ Docker installation verified"
             
             echo "📂 Preparing source code..."
             rm -rf /home/obscuro/go-obscuro
@@ -395,6 +399,8 @@ jobs:
               echo "❌ Failed to clone repository"
               exit 1
             fi
+            
+            echo "✅ Repository cloned successfully"
             
             echo "🌐 Setting up Docker network..."
             if ! docker network inspect node_network >/dev/null 2>&1; then
