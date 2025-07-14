@@ -108,10 +108,14 @@ jobs:
             VAR_VALUE=$(jq -r --arg key "$FULL_VAR_NAME" '.[$key] // empty' <<< '${{ toJson(vars) }}')
             if [[ -n "$VAR_VALUE" ]]; then
               echo "${VAR_NAME}=${VAR_VALUE}" >> $GITHUB_ENV
+              echo "✓ Set ${VAR_NAME} from ${FULL_VAR_NAME}"
             else
-              echo "Warning: ${FULL_VAR_NAME} not found in vars" >&2
+              echo "❌ Warning: ${FULL_VAR_NAME} not found in vars" >&2
+              echo "Available vars: $(jq -r 'keys[]' <<< '${{ toJson(vars) }}' | grep -E "^(${INSTANCE_PREFIX})?${VAR_NAME}$" || echo 'none matching')"
             fi
           done
+          
+          echo "✅ Environment variable setup completed"
 
       - name: "Print environment variables"
         run: |
@@ -162,8 +166,24 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          DOCKER_BUILDKIT=1 docker build --build-arg TESTNET_TYPE=${{ github.event.inputs.testnet_type }} -t ${{ env.DOCKER_BUILD_TAG_GATEWAY }} -f ./tools/walletextension/enclave.Dockerfile .
-          docker push ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
+          echo "🐳 Building Docker image..."
+          echo "Image tag: ${{ env.DOCKER_BUILD_TAG_GATEWAY }}"
+          echo "Testnet type: ${{ github.event.inputs.testnet_type }}"
+          
+          if ! DOCKER_BUILDKIT=1 docker build --build-arg TESTNET_TYPE=${{ github.event.inputs.testnet_type }} -t ${{ env.DOCKER_BUILD_TAG_GATEWAY }} -f ./tools/walletextension/enclave.Dockerfile .; then
+            echo "❌ Docker build failed"
+            exit 1
+          fi
+          
+          echo "✅ Docker image built successfully"
+          echo "🚀 Pushing Docker image..."
+          
+          if ! docker push ${{ env.DOCKER_BUILD_TAG_GATEWAY }}; then
+            echo "❌ Docker push failed"
+            exit 1
+          fi
+          
+          echo "✅ Docker image pushed successfully"
 
       # If recreate_vm = true, delete VMs and their dependencies
       - name: "Delete deployed VMs"
@@ -171,14 +191,30 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            echo "🗑️  Deleting VMs with tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true"
+            RESOURCES=$(az resource list --tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true --query '[]."id"' -o tsv)
+            if [[ -n "$RESOURCES" ]]; then
+              echo "Found resources to delete:"
+              echo "$RESOURCES"
+              echo "$RESOURCES" | xargs -n1 az resource delete --verbose -g Testnet --ids || true
+            else
+              echo "No resources found with tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true"
+            fi
 
       - name: "Delete VMs dependencies"
         if: ${{ github.event.inputs.recreate_vm == 'true' }}
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            $(az resource list --tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true --query '[]."id"' -o tsv | xargs -n1 az resource delete --verbose -g Testnet --ids) || true
+            echo "🗑️  Deleting VM dependencies with tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true"
+            RESOURCES=$(az resource list --tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true --query '[]."id"' -o tsv)
+            if [[ -n "$RESOURCES" ]]; then
+              echo "Found dependencies to delete:"
+              echo "$RESOURCES"
+              echo "$RESOURCES" | xargs -n1 az resource delete --verbose -g Testnet --ids || true
+            else
+              echo "No dependencies found with tag ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true"
+            fi
 
       # If recreate_vm = false, check if VM exists
       - name: "Check if VM exists"
@@ -186,9 +222,12 @@ jobs:
         id: check_vm
         shell: bash
         run: |
+          echo "🔍 Checking if VM '${{ env.VM_NAME }}' exists..."
           if ! az vm show -g Testnet -n "${{ env.VM_NAME }}" &> /dev/null; then
+            echo "❌ VM '${{ env.VM_NAME }}' does not exist"
             echo "vm_exists=false" >> $GITHUB_ENV
           else
+            echo "✅ VM '${{ env.VM_NAME }}' exists"
             echo "vm_exists=true" >> $GITHUB_ENV
           fi
 
@@ -197,10 +236,22 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az network public-ip show -g Testnet -n "${{ env.PUBLIC_IP }}" || az network public-ip create -g Testnet -n "${{ env.PUBLIC_IP }}" --allocation-method Static --sku Standard
+            echo "🌐 Ensuring static public IP '${{ env.PUBLIC_IP }}' exists..."
+            if ! az network public-ip show -g Testnet -n "${{ env.PUBLIC_IP }}" &> /dev/null; then
+              echo "Creating static public IP '${{ env.PUBLIC_IP }}'..."
+              az network public-ip create -g Testnet -n "${{ env.PUBLIC_IP }}" --allocation-method Static --sku Standard
+              echo "✅ Static public IP created"
+            else
+              echo "✅ Static public IP already exists"
+            fi
+            
             existing_dns_name=$(az network public-ip show -g Testnet -n "${{ env.PUBLIC_IP }}" --query dnsSettings.domainNameLabel -o tsv)
             if [ -z "$existing_dns_name" ]; then
+              echo "🏷️  Setting DNS name to '${{ env.DNS_NAME }}'..."
               az network public-ip update -g Testnet -n "${{ env.PUBLIC_IP }}" --dns-name "${{ env.DNS_NAME }}"
+              echo "✅ DNS name set"
+            else
+              echo "✅ DNS name already set to: $existing_dns_name"
             fi
 
       - name: "Create VM if it doesn't exist (recreate_vm=false)"
@@ -208,17 +259,33 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "${{ env.VM_NAME }}" \
+            echo "🚀 Creating VM '${{ env.VM_NAME }}'..."
+            echo "Public IP: ${{ env.PUBLIC_IP }}"
+            echo "VNet: ${{ env.VNET_NAME }}"
+            echo "Subnet: ${{ env.SUBNET_NAME }}"
+            echo "Deploy group: ${{ env.DEPLOY_GROUP }}"
+            
+            if ! az vm create -g Testnet -n "${{ env.VM_NAME }}" \
               --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
               --public-ip-address "${{ env.PUBLIC_IP }}" \
               --tags deploygroup="${{ env.DEPLOY_GROUP }}"  ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true \
               --vnet-name "${{ env.VNET_NAME }}" --subnet "${{ env.SUBNET_NAME }}" \
               --size Standard_DC2s_v3 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
-              --authentication-type password --security-type Standard 
-              
-            az vm open-port -g Testnet -n "${{ env.VM_NAME }}" --port 80,81,443
-
-            # Allow time for VM initialization
+              --authentication-type password --security-type Standard; then
+              echo "❌ VM creation failed"
+              exit 1
+            fi
+            
+            echo "✅ VM created successfully"
+            echo "🔓 Opening ports 80, 81, 443..."
+            
+            if ! az vm open-port -g Testnet -n "${{ env.VM_NAME }}" --port 80,81,443; then
+              echo "❌ Failed to open ports"
+              exit 1
+            fi
+            
+            echo "✅ Ports opened successfully"
+            echo "⏳ Waiting 30 seconds for VM initialization..."
             sleep 30
 
       - name: "Create VM if recreate_vm = true"
@@ -226,56 +293,101 @@ jobs:
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm create -g Testnet -n "${{ env.VM_NAME }}" \
+            echo "🚀 Creating VM '${{ env.VM_NAME }}' (recreate mode)..."
+            echo "Public IP: ${{ env.PUBLIC_IP }}"
+            echo "VNet: ${{ env.VNET_NAME }}"
+            echo "Subnet: ${{ env.SUBNET_NAME }}"
+            echo "Deploy group: ${{ env.DEPLOY_GROUP }}"
+            
+            if ! az vm create -g Testnet -n "${{ env.VM_NAME }}" \
               --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
               --public-ip-address "${{ env.PUBLIC_IP }}" \
               --tags deploygroup="${{ env.DEPLOY_GROUP }}"  ${{ env.AZURE_DEPLOY_GROUP_GATEWAY }}=true \
               --vnet-name "${{ env.VNET_NAME }}" --subnet "${{ env.SUBNET_NAME }}" \
               --size Standard_DC2s_v3 --storage-sku StandardSSD_LRS --image ObscuroConfUbuntu \
-              --authentication-type password --security-type Standard 
-              
-            az vm open-port -g Testnet -n "${{ env.VM_NAME }}" --port 80,81,443
-
-            # Allow time for VM initialization
+              --authentication-type password --security-type Standard; then
+              echo "❌ VM creation failed"
+              exit 1
+            fi
+            
+            echo "✅ VM created successfully"
+            echo "🔓 Opening ports 80, 81, 443..."
+            
+            if ! az vm open-port -g Testnet -n "${{ env.VM_NAME }}" --port 80,81,443; then
+              echo "❌ Failed to open ports"
+              exit 1
+            fi
+            
+            echo "✅ Ports opened successfully"
+            echo "⏳ Waiting 30 seconds for VM initialization..."
             sleep 30
 
-      - name: "Start TEN Gateway on Azure"
+      - name: "Install system dependencies on VM"
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}"  \
+            echo "🚀 Installing system dependencies on VM '${{ env.VM_NAME }}'..."
+            
+            az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
             --command-id RunShellScript \
             --scripts '
-            set -e
-
+            echo "🏠 Creating directory structure..."
             mkdir -p /home/obscuro
 
             # Wait for dpkg lock to be released
+            echo "⏳ Waiting for dpkg lock to be released..."
             while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
               echo "Waiting for dpkg lock to be released..."
               sleep 1
             done
 
             # Proceed with package installations
+            echo "📦 Installing system packages..."
             sudo apt-get update
             sudo apt-get install -y gcc
-            sudo snap refresh && sudo snap install --channel=1.18 go --classic
+            
+            echo "🐹 Installing Go..."
+            sudo snap refresh
+            sudo snap install --channel=1.18 go --classic
 
             # Wait again before running get-docker.sh
+            echo "⏳ Waiting for dpkg lock before Docker installation..."
             while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
               echo "Waiting for dpkg lock to be released before installing Docker..."
               sleep 1
             done
 
-            curl -fsSL https://get.docker.com -o get-docker.sh && sh ./get-docker.sh
+            echo "🐳 Installing Docker..."
+            curl -fsSL https://get.docker.com -o get-docker.sh
+            sh ./get-docker.sh
+            
+            echo "📂 Preparing source code..."
             rm -rf /home/obscuro/go-obscuro
+            
+            echo "🔄 Cloning repository (branch: ${{ env.BRANCH_NAME }})..."
             git clone --depth 1 -b "${{ env.BRANCH_NAME }}" https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro
+            
+            echo "🌐 Setting up Docker network..."
             if ! docker network inspect node_network >/dev/null 2>&1; then
               docker network create --driver bridge node_network
             fi
-            cd /home/obscuro/go-obscuro/
+            
+            echo "✅ System dependencies installed successfully"
+            '
 
+      - name: "Setup monitoring on VM"
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "📊 Setting up monitoring on VM '${{ env.VM_NAME }}'..."
+            
+            az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
+            --command-id RunShellScript \
+            --scripts '
+            cd /home/obscuro/go-obscuro/
+            
             # Promtail Integration Start
+            echo "📊 Setting up monitoring metrics..."
             mkdir -p /home/obscuro/metrics
 
             cat <<EOF > /home/obscuro/metrics/promtail-config.yaml
@@ -314,10 +426,11 @@ jobs:
                   target_label: "node_name"
             EOF
 
+            echo "🏃 Starting Promtail container..."
             docker stop promtail || true
             docker rm promtail || true
 
-            docker run -d --name promtail \
+            if ! docker run -d --name promtail \
             --network node_network \
             -e HOSTNAME="${{ env.VM_NAME }}" \
             -v /var/log:/var/log \
@@ -325,7 +438,10 @@ jobs:
             -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
             -v /var/run/docker.sock:/var/run/docker.sock \
             grafana/promtail:latest \
-            -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true
+            -config.file=/etc/promtail/promtail-config.yaml -config.expand-env=true; then
+              echo "❌ Failed to start Promtail container"
+              exit 1
+            fi
 
             cat <<EOF > /home/obscuro/metrics/prometheus.yaml
             global:
@@ -363,35 +479,42 @@ jobs:
             EOF
 
 
+            echo "🏃 Starting Prometheus container..."
             docker stop prometheus || true
             docker rm prometheus || true
 
             docker volume create prometheus-data || true
-            docker run -d --name prometheus \
+            if ! docker run -d --name prometheus \
             --network node_network \
             -p 9090:9090 \
             -v /home/obscuro/metrics/prometheus.yaml:/etc/prometheus/prometheus.yml \
             -v prometheus-data:/prometheus \
             prom/prometheus:latest \
-            --config.file=/etc/prometheus/prometheus.yml
+            --config.file=/etc/prometheus/prometheus.yml; then
+              echo "❌ Failed to start Prometheus container"
+              exit 1
+            fi
 
-
+            echo "🏃 Starting Node Exporter container..."
             docker stop node_exporter || true
             docker rm node_exporter || true
 
-            docker run -d --name node_exporter \
+            if ! docker run -d --name node_exporter \
             --network node_network \
             -p 9100:9100 \
             --pid="host" \
             -v /:/host:ro \
             quay.io/prometheus/node-exporter:latest \
-            --path.rootfs=/host
+            --path.rootfs=/host; then
+              echo "❌ Failed to start Node Exporter container"
+              exit 1
+            fi
 
-
+            echo "🏃 Starting cAdvisor container..."
             docker stop cadvisor || true
             docker rm cadvisor || true
 
-            docker run -d --name cadvisor \
+            if ! docker run -d --name cadvisor \
             --network node_network \
             -p 8080:8080 \
             --privileged \
@@ -400,17 +523,41 @@ jobs:
             -v /sys:/sys:ro \
             -v /var/lib/docker/:/var/lib/docker:ro \
             -v /dev/disk/:/dev/disk:ro \
-            gcr.io/cadvisor/cadvisor:latest
+            gcr.io/cadvisor/cadvisor:latest; then
+              echo "❌ Failed to start cAdvisor container"
+              exit 1
+            fi
             # Promtail Integration End
+            
+            echo "✅ Monitoring setup completed successfully"
+            '
 
+      - name: "Deploy TEN Gateway container"
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "🚀 Deploying TEN Gateway container on VM '${{ env.VM_NAME }}'..."
+            
+            az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
+            --command-id RunShellScript \
+            --scripts '
+            echo "💾 Creating TEN Gateway data volume..."
             docker volume create "TENGateway-${{ github.event.inputs.testnet_type }}-data" || true
 
             # Stop and remove existing container if it exists
+            echo "🛑 Stopping existing TEN Gateway container..."
             docker stop "${{ env.VM_NAME }}" || true
             docker rm "${{ env.VM_NAME }}" || true
 
+            echo "⬇️  Pulling TEN Gateway image: ${{ env.DOCKER_BUILD_TAG_GATEWAY }}"
             docker pull ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
 
+            echo "🚀 Starting TEN Gateway container..."
+            echo "Container name: ${{ env.VM_NAME }}"
+            echo "Node host: ${{ env.L2_RPC_URL_VALIDATOR }}"
+            echo "TLS domain: ${{ env.GATEWAY_TLS_DOMAIN }}"
+            echo "Log level: ${{ env.GATEWAY_LOG_LEVEL }}"
+            
             # Start Ten Gateway Container
             docker run -d --restart=unless-stopped -p 80:80 -p 81:443 -p 443:443 --name "${{ env.VM_NAME }}" \
             --device /dev/sgx_enclave --device /dev/sgx_provision \
@@ -430,7 +577,18 @@ jobs:
             -tlsDomain="${{ env.GATEWAY_TLS_DOMAIN }}" \
             -encryptingCertificateEnabled="${{ env.GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED }}" \
             -disableCaching="${{ env.GATEWAY_DISABLE_CACHING }}"
+            
+            echo "✅ TEN Gateway container started successfully"
+            echo "⏳ Waiting 10 seconds for container to initialize..."
+            sleep 10
+            
+            echo "📊 Checking container status..."
+            docker ps | grep "${{ env.VM_NAME }}" || echo "Container not found in docker ps"
+            
+            echo "📋 Checking container logs..."
+            docker logs "${{ env.VM_NAME }}" --tail 50 || echo "Failed to get container logs"
 
+            echo "🔍 Running final health checks..."
             docker exec "${{ env.VM_NAME }}" sh -c "
                 echo \"Checking volume mount...\";
                 df -h | grep /data;
@@ -443,4 +601,7 @@ jobs:
                 echo \"Process status:\";
                 ps aux;
             "
+            
+            echo "✅ TEN Gateway deployment completed successfully!"
+            echo "📍 Gateway should be accessible at: https://${{ env.DNS_NAME }}.westeurope.cloudapp.azure.com"
             '
