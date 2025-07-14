@@ -299,14 +299,6 @@ func testPCCSConnectivity() error {
 	
 	gethlog.Info("PCCS Connectivity Test: Successfully connected to PCCS service", "statusCode", resp.StatusCode)
 	
-	// Read response body for additional debugging
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		gethlog.Warn("PCCS Connectivity Test: Failed to read response body", "error", err)
-	} else {
-		gethlog.Info("PCCS Connectivity Test: Response received", "bodySize", len(body))
-	}
-	
 	return nil
 }
 
@@ -445,53 +437,37 @@ func DeserializeAttestationReport(data []byte) (*tencommon.AttestationReport, er
 func logSGXEnvironment() {
 	gethlog.Info("SGX Environment Check: Starting detailed environment analysis")
 	
-	// Log environment variables
-	envVars := []string{
-		"OE_SIMULATION", "AESM_PATH", "PCCS_URL", "SGX_AESM_ADDR", 
-		"SGX_SPID", "SGX_LINKABLE", "SGX_DEBUG", "SGX_MODE",
+	// Log key environment variables (always show, whether set or not)
+	envVars := map[string]string{
+		"OE_SIMULATION": "SGX simulation mode",
+		"PCCS_URL":      "PCCS service URL", 
+		"AESM_PATH":     "AESM socket path",
+		"SGX_MODE":      "SGX operation mode",
 	}
 	
-	for _, envVar := range envVars {
+	for envVar, description := range envVars {
 		value := os.Getenv(envVar)
 		if value != "" {
-			gethlog.Info(fmt.Sprintf("SGX Environment: %s=%s", envVar, value))
+			gethlog.Info(fmt.Sprintf("SGX Environment: %s=%s (%s)", envVar, value, description))
 		} else {
-			gethlog.Info(fmt.Sprintf("SGX Environment: %s is not set", envVar))
+			gethlog.Info(fmt.Sprintf("SGX Environment: %s is not set (%s)", envVar, description))
 		}
 	}
 	
-	// Check SGX device files
-	sgxDevices := []string{"/dev/sgx_enclave", "/dev/sgx_provision", "/dev/sgx/enclave", "/dev/sgx/provision"}
-	for _, device := range sgxDevices {
-		if _, err := os.Stat(device); err == nil {
-			gethlog.Info(fmt.Sprintf("SGX Device: %s exists", device))
-		} else {
-			gethlog.Info(fmt.Sprintf("SGX Device: %s does not exist or is not accessible: %v", device, err))
+	// Also log all environment variables that start with SGX_ or OE_
+	gethlog.Info("SGX Environment: Checking all SGX/OE environment variables")
+	for _, env := range os.Environ() {
+		if strings.HasPrefix(env, "SGX_") || strings.HasPrefix(env, "OE_") {
+			gethlog.Info(fmt.Sprintf("SGX Environment: Found %s", env))
 		}
-	}
-	
-	// Check AESM socket
-	aesmSocket := os.Getenv("AESM_PATH")
-	if aesmSocket == "" {
-		aesmSocket = "/var/run/aesmd/aesm.socket"
-	}
-	if _, err := os.Stat(aesmSocket); err == nil {
-		gethlog.Info(fmt.Sprintf("AESM Socket: %s exists", aesmSocket))
-	} else {
-		gethlog.Info(fmt.Sprintf("AESM Socket: %s does not exist or is not accessible: %v", aesmSocket, err))
 	}
 	
 	// Check data directory permissions
 	if stat, err := os.Stat(dataDir); err == nil {
 		gethlog.Info(fmt.Sprintf("Data Directory: %s exists, mode: %v", dataDir, stat.Mode()))
-	} else {
-		gethlog.Info(fmt.Sprintf("Data Directory: %s does not exist or is not accessible: %v", dataDir, err))
 	}
 	
 	// Log container environment indicators
-	if _, err := os.Stat("/.dockerenv"); err == nil {
-		gethlog.Info("Container Environment: Running inside Docker")
-	}
 	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
 		gethlog.Info("Container Environment: Running inside Kubernetes")
 	}

@@ -11,8 +11,21 @@ if [ ! -L /dev/sgx/enclave ]; then
 	ln -s /dev/sgx_enclave /dev/sgx/enclave
 fi
 
-PCCS_URL=https://global.acccache.azure.net/sgx/certification/v4/
+# Set and export PCCS_URL environment variable
+export PCCS_URL=https://global.acccache.azure.net/sgx/certification/v4/
 echo "PCCS_URL: ${PCCS_URL}"
+
+# Export other important SGX environment variables if they're not already set
+if [ -z "$AESM_PATH" ]; then
+    export AESM_PATH=/var/run/aesmd/aesm.socket
+fi
+
+# Debug: Show key environment variables
+echo "Environment variables:"
+echo "OE_SIMULATION: ${OE_SIMULATION:-not set}"
+echo "PCCS_URL: ${PCCS_URL:-not set}"
+echo "AESM_PATH: ${AESM_PATH:-not set}"
+echo "SGX_MODE: ${SGX_MODE:-not set}"
 
 apt-get install -qq libsgx-dcap-default-qpl
 
