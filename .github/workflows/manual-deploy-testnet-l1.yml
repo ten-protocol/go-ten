@@ -47,7 +47,7 @@ jobs:
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS_NEW_SUB }}
 
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
