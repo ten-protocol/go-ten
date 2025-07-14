@@ -83,7 +83,7 @@ func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.Ro
 	orderQuery := " ORDER BY rh.id DESC "
 	query := selectRollups + orderQuery + db.GetSQLStatement().Pagination
 
-	rows, err := db.GetSQLDB().Query(query, pagination.Size, pagination.Offset)
+	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
 	}
@@ -216,7 +216,7 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.
 		return nil, fmt.Errorf("failed to get total count: %w", err)
 	}
 
-	rows, err := db.GetSQLDB().Query(query, rollupHash.Bytes(), pagination.Size, pagination.Offset)
+	rows, err := db.GetSQLDB().Query(query, rollupHash.Bytes(), int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("query execution for select rollup batches failed: %w", err)
 	}

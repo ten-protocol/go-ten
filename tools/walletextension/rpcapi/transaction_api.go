@@ -114,6 +114,7 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.Trans
 		return common.Hash{}, fmt.Errorf("please activate session key")
 	}
 
+	// todo - check whether the from is the sk
 	// when there is an active Session Key, sign all incoming transactions with that SK
 	signedTx, err := s.we.SKManager.SignTx(ctx, user, args.ToTransaction())
 	if err != nil {
