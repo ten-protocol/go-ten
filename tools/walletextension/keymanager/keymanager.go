@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/edgelesssys/ego/enclave"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -265,10 +266,64 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	return decryptedKeyRequester, nil
 }
 
+// testPCCSConnectivity tests connectivity to the PCCS service
+func testPCCSConnectivity() error {
+	pccsURL := os.Getenv("PCCS_URL")
+	if pccsURL == "" {
+		pccsURL = "https://global.acccache.azure.net/sgx/certification/v4/"
+	}
+	
+	gethlog.Info("PCCS Connectivity Test: Testing connection to PCCS service", "url", pccsURL)
+	
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+	
+	// Try to connect to PCCS service
+	req, err := http.NewRequest("GET", pccsURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create PCCS request: %w", err)
+	}
+	
+	resp, err := client.Do(req)
+	if err != nil {
+		gethlog.Error("PCCS Connectivity Test: Failed to connect to PCCS service", "error", err)
+		gethlog.Error("PCCS Connectivity Test: This indicates network connectivity issues")
+		gethlog.Error("PCCS Connectivity Test: Check if the container has outbound internet access")
+		gethlog.Error("PCCS Connectivity Test: Verify DNS resolution and firewall rules")
+		gethlog.Error("PCCS Connectivity Test: For Kubernetes, check network policies and egress rules")
+		return fmt.Errorf("PCCS connectivity test failed: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	gethlog.Info("PCCS Connectivity Test: Successfully connected to PCCS service", "statusCode", resp.StatusCode)
+	
+	// Read response body for additional debugging
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		gethlog.Warn("PCCS Connectivity Test: Failed to read response body", "error", err)
+	} else {
+		gethlog.Info("PCCS Connectivity Test: Response received", "bodySize", len(body))
+	}
+	
+	return nil
+}
+
 // GetReport returns the attestation report for the given public key
 func GetReport(pubKey []byte) (*tencommon.AttestationReport, error) {
 	// Log SGX environment status before attempting attestation
 	logSGXEnvironment()
+	
+	// Test PCCS connectivity before attempting SGX attestation
+	gethlog.Info("GetReport: Testing PCCS connectivity before SGX attestation")
+	if err := testPCCSConnectivity(); err != nil {
+		gethlog.Error("GetReport: PCCS connectivity test failed - this will likely cause SGX attestation to fail")
+		gethlog.Error("GetReport: Consider fixing network connectivity before proceeding")
+		// Continue with attestation attempt to provide full error context
+	} else {
+		gethlog.Info("GetReport: PCCS connectivity test passed - proceeding with SGX attestation")
+	}
 	
 	// Log the public key hash for debugging
 	gethlog.Info("GetReport: Starting attestation report generation", "pubKeyHash", fmt.Sprintf("%x", pubKey))
