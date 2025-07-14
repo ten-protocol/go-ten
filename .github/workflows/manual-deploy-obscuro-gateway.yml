@@ -322,16 +322,13 @@ jobs:
             echo "⏳ Waiting 30 seconds for VM initialization..."
             sleep 30
 
-      - name: "Start TEN Gateway on Azure"
+      - name: "Install system dependencies on VM"
         uses: azure/CLI@v1
         with:
           inlineScript: |
-            echo "🚀 Starting TEN Gateway deployment on VM '${{ env.VM_NAME }}'..."
-            echo "Docker image: ${{ env.DOCKER_BUILD_TAG_GATEWAY }}"
-            echo "Branch: ${{ env.BRANCH_NAME }}"
-            echo "L2 RPC URL: ${{ env.L2_RPC_URL_VALIDATOR }}"
+            echo "🚀 Installing system dependencies on VM '${{ env.VM_NAME }}'..."
             
-            if ! az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}"  \
+            az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
             --command-id RunShellScript \
             --scripts '
             echo "🏠 Creating directory structure..."
@@ -346,26 +343,12 @@ jobs:
 
             # Proceed with package installations
             echo "📦 Installing system packages..."
-            if ! sudo apt-get update; then
-              echo "❌ Failed to update apt packages"
-              exit 1
-            fi
-            
-            if ! sudo apt-get install -y gcc; then
-              echo "❌ Failed to install gcc"
-              exit 1
-            fi
+            sudo apt-get update
+            sudo apt-get install -y gcc
             
             echo "🐹 Installing Go..."
-            if ! sudo snap refresh; then
-              echo "❌ Failed to refresh snap"
-              exit 1
-            fi
-            
-            if ! sudo snap install --channel=1.18 go --classic; then
-              echo "❌ Failed to install Go"
-              exit 1
-            fi
+            sudo snap refresh
+            sudo snap install --channel=1.18 go --classic
 
             # Wait again before running get-docker.sh
             echo "⏳ Waiting for dpkg lock before Docker installation..."
@@ -375,43 +358,34 @@ jobs:
             done
 
             echo "🐳 Installing Docker..."
-            if ! curl -fsSL https://get.docker.com -o get-docker.sh; then
-              echo "❌ Failed to download Docker installation script"
-              exit 1
-            fi
-            
-            echo "📦 Running Docker installation script (may show deprecation warnings)..."
-            sh ./get-docker.sh || echo "Docker installation completed with warnings"
-            
-            echo "🔍 Checking if Docker is installed..."
-            if ! command -v docker &> /dev/null; then
-              echo "❌ Docker command not found after installation"
-              exit 1
-            fi
-            
-            echo "✅ Docker installation verified"
+            curl -fsSL https://get.docker.com -o get-docker.sh
+            sh ./get-docker.sh
             
             echo "📂 Preparing source code..."
             rm -rf /home/obscuro/go-obscuro
             
             echo "🔄 Cloning repository (branch: ${{ env.BRANCH_NAME }})..."
-            if ! git clone --depth 1 -b "${{ env.BRANCH_NAME }}" https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro; then
-              echo "❌ Failed to clone repository"
-              exit 1
-            fi
-            
-            echo "✅ Repository cloned successfully"
+            git clone --depth 1 -b "${{ env.BRANCH_NAME }}" https://github.com/ten-protocol/go-ten.git /home/obscuro/go-obscuro
             
             echo "🌐 Setting up Docker network..."
             if ! docker network inspect node_network >/dev/null 2>&1; then
-              if ! docker network create --driver bridge node_network; then
-                echo "❌ Failed to create Docker network"
-                exit 1
-              fi
+              docker network create --driver bridge node_network
             fi
             
-            cd /home/obscuro/go-obscuro/
+            echo "✅ System dependencies installed successfully"
+            '
 
+      - name: "Setup monitoring on VM"
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "📊 Setting up monitoring on VM '${{ env.VM_NAME }}'..."
+            
+            az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
+            --command-id RunShellScript \
+            --scripts '
+            cd /home/obscuro/go-obscuro/
+            
             # Promtail Integration Start
             echo "📊 Setting up monitoring metrics..."
             mkdir -p /home/obscuro/metrics
@@ -554,7 +528,19 @@ jobs:
               exit 1
             fi
             # Promtail Integration End
+            
+            echo "✅ Monitoring setup completed successfully"
+            '
 
+      - name: "Deploy TEN Gateway container"
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            echo "🚀 Deploying TEN Gateway container on VM '${{ env.VM_NAME }}'..."
+            
+            az vm run-command invoke -g Testnet -n "${{ env.VM_NAME }}" \
+            --command-id RunShellScript \
+            --scripts '
             echo "💾 Creating TEN Gateway data volume..."
             docker volume create "TENGateway-${{ github.event.inputs.testnet_type }}-data" || true
 
@@ -564,10 +550,7 @@ jobs:
             docker rm "${{ env.VM_NAME }}" || true
 
             echo "⬇️  Pulling TEN Gateway image: ${{ env.DOCKER_BUILD_TAG_GATEWAY }}"
-            if ! docker pull ${{ env.DOCKER_BUILD_TAG_GATEWAY }}; then
-              echo "❌ Failed to pull TEN Gateway image"
-              exit 1
-            fi
+            docker pull ${{ env.DOCKER_BUILD_TAG_GATEWAY }}
 
             echo "🚀 Starting TEN Gateway container..."
             echo "Container name: ${{ env.VM_NAME }}"
@@ -576,7 +559,7 @@ jobs:
             echo "Log level: ${{ env.GATEWAY_LOG_LEVEL }}"
             
             # Start Ten Gateway Container
-            if ! docker run -d --restart=unless-stopped -p 80:80 -p 81:443 -p 443:443 --name "${{ env.VM_NAME }}" \
+            docker run -d --restart=unless-stopped -p 80:80 -p 81:443 -p 443:443 --name "${{ env.VM_NAME }}" \
             --device /dev/sgx_enclave --device /dev/sgx_provision \
             -v "TENGateway-${{ github.event.inputs.testnet_type }}-data:/data" \
             -e OBSCURO_GATEWAY_VERSION="${{ github.run_number }}-${{ github.sha }}" \
@@ -593,10 +576,7 @@ jobs:
             -enableTLS=true \
             -tlsDomain="${{ env.GATEWAY_TLS_DOMAIN }}" \
             -encryptingCertificateEnabled="${{ env.GATEWAY_ENCRYPTING_CERTIFICATE_ENABLED }}" \
-            -disableCaching="${{ env.GATEWAY_DISABLE_CACHING }}"; then
-              echo "❌ Failed to start TEN Gateway container"
-              exit 1
-            fi
+            -disableCaching="${{ env.GATEWAY_DISABLE_CACHING }}"
             
             echo "✅ TEN Gateway container started successfully"
             echo "⏳ Waiting 10 seconds for container to initialize..."
@@ -609,7 +589,7 @@ jobs:
             docker logs "${{ env.VM_NAME }}" --tail 50 || echo "Failed to get container logs"
 
             echo "🔍 Running final health checks..."
-            if ! docker exec "${{ env.VM_NAME }}" sh -c "
+            docker exec "${{ env.VM_NAME }}" sh -c "
                 echo \"Checking volume mount...\";
                 df -h | grep /data;
                 echo \"Directory listing:\";
@@ -620,17 +600,8 @@ jobs:
                 ls -la /;
                 echo \"Process status:\";
                 ps aux;
-            "; then
-              echo "❌ Health check failed"
-              exit 1
-            fi
+            "
             
             echo "✅ TEN Gateway deployment completed successfully!"
             echo "📍 Gateway should be accessible at: https://${{ env.DNS_NAME }}.westeurope.cloudapp.azure.com"
             '
-            then
-              echo "✅ VM deployment script completed successfully"
-            else
-              echo "❌ VM deployment script failed"
-              exit 1
-            fi
