@@ -2,6 +2,7 @@ package walletextension
 
 import (
 	"crypto/tls"
+	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -36,16 +37,26 @@ type Container struct {
 }
 
 func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Container {
+	logger.Info("NewContainerFromConfig: Starting wallet extension container initialization")
+	logger.Info("NewContainerFromConfig: Configuration", "dbType", config.DBType, "insideEnclave", config.InsideEnclave, "encryptionKeySource", config.EncryptionKeySource)
+	
+	// Log SGX environment details at startup
+	logSGXStartupEnvironment(logger)
+	
 	// create the account manager with a single unauthenticated connection
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
+	logger.Info("NewContainerFromConfig: Node RPC addresses", "websocket", hostRPCBindAddrWS, "http", hostRPCBindAddrHTTP)
 
 	// get the encryption key (method is determined by the config)
+	logger.Info("NewContainerFromConfig: Attempting to get encryption key")
 	encryptionKey, err := keymanager.GetEncryptionKey(config, logger)
 	if err != nil {
 		logger.Crit("unable to get encryption key", log.ErrKey, err)
+		logger.Error("NewContainerFromConfig: Encryption key acquisition failed - this will prevent container startup")
 		os.Exit(1)
 	}
+	logger.Info("NewContainerFromConfig: Successfully obtained encryption key")
 
 	// Create metrics tracker
 	var metricsTracker metrics.Metrics
@@ -61,11 +72,14 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	// start the database with the encryption key
+	logger.Info("NewContainerFromConfig: Initializing database storage", "dbType", config.DBType, "connectionURL", config.DBConnectionURL, "pathOverride", config.DBPathOverride)
 	userStorage, err := storage.New(config.DBType, config.DBConnectionURL, config.DBPathOverride, encryptionKey, logger)
 	if err != nil {
 		logger.Crit("unable to create database to store viewing keys ", log.ErrKey, err)
+		logger.Error("NewContainerFromConfig: Database initialization failed")
 		os.Exit(1)
 	}
+	logger.Info("NewContainerFromConfig: Database storage initialized successfully")
 
 	// captures version in the env vars
 	version := os.Getenv("OBSCURO_GATEWAY_VERSION")
@@ -74,7 +88,9 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	stopControl := stopcontrol.New()
+	logger.Info("NewContainerFromConfig: Creating wallet extension services", "version", version)
 	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, stopControl, version, logger, metricsTracker, &config)
+	logger.Info("NewContainerFromConfig: Wallet extension services created successfully")
 	cfg := &node.RPCConfig{
 		EnableHTTP: true,
 		HTTPPort:   config.WalletExtensionPortHTTP,
@@ -205,4 +221,72 @@ func (w *Container) Stop() error {
 
 	w.services.Stop()
 	return nil
+}
+
+// logSGXStartupEnvironment logs SGX environment information at container startup
+func logSGXStartupEnvironment(logger gethlog.Logger) {
+	logger.Info("SGX Startup Environment Check: Beginning comprehensive environment analysis")
+	
+	// Log critical environment variables
+	envVars := []string{
+		"OE_SIMULATION", "AESM_PATH", "PCCS_URL", "SGX_AESM_ADDR", 
+		"SGX_SPID", "SGX_LINKABLE", "SGX_DEBUG", "SGX_MODE",
+		"KUBERNETES_SERVICE_HOST", "KUBERNETES_SERVICE_PORT",
+	}
+	
+	for _, envVar := range envVars {
+		value := os.Getenv(envVar)
+		if value != "" {
+			logger.Info(fmt.Sprintf("SGX Startup Environment: %s=%s", envVar, value))
+		} else {
+			logger.Info(fmt.Sprintf("SGX Startup Environment: %s is not set", envVar))
+		}
+	}
+	
+	// Check container environment
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		logger.Info("SGX Startup Environment: Running inside Docker container")
+	}
+	
+	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		logger.Info("SGX Startup Environment: Running inside Kubernetes cluster")
+		logger.Info("SGX Startup Environment: K8s namespace", "namespace", os.Getenv("KUBERNETES_NAMESPACE"))
+		logger.Info("SGX Startup Environment: K8s pod name", "podName", os.Getenv("HOSTNAME"))
+	}
+	
+	// Check SGX device availability
+	sgxDevices := []string{"/dev/sgx_enclave", "/dev/sgx_provision", "/dev/sgx/enclave", "/dev/sgx/provision"}
+	for _, device := range sgxDevices {
+		if stat, err := os.Stat(device); err == nil {
+			logger.Info(fmt.Sprintf("SGX Startup Environment: Device %s exists, mode: %v", device, stat.Mode()))
+		} else {
+			logger.Info(fmt.Sprintf("SGX Startup Environment: Device %s not accessible: %v", device, err))
+		}
+	}
+	
+	// Check AESM socket
+	aesmSocket := os.Getenv("AESM_PATH")
+	if aesmSocket == "" {
+		aesmSocket = "/var/run/aesmd/aesm.socket"
+	}
+	if stat, err := os.Stat(aesmSocket); err == nil {
+		logger.Info(fmt.Sprintf("SGX Startup Environment: AESM socket %s exists, mode: %v", aesmSocket, stat.Mode()))
+	} else {
+		logger.Info(fmt.Sprintf("SGX Startup Environment: AESM socket %s not accessible: %v", aesmSocket, err))
+	}
+	
+	// Check data directory
+	dataDir := "/data"
+	if stat, err := os.Stat(dataDir); err == nil {
+		logger.Info(fmt.Sprintf("SGX Startup Environment: Data directory %s exists, mode: %v", dataDir, stat.Mode()))
+	} else {
+		logger.Info(fmt.Sprintf("SGX Startup Environment: Data directory %s not accessible: %v", dataDir, err))
+	}
+	
+	// Check memory limits (important for SGX)
+	if memLimit, exists := os.LookupEnv("MEM_LIMIT"); exists {
+		logger.Info(fmt.Sprintf("SGX Startup Environment: Memory limit set to %s", memLimit))
+	}
+	
+	logger.Info("SGX Startup Environment Check: Environment analysis completed")
 }

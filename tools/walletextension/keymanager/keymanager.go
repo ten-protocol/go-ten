@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/edgelesssys/ego/enclave"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -47,6 +49,9 @@ type KeyExchangeResponse struct {
 // - If no encryptionKeySource is provided, attempt to unseal an existing encryption key.
 // - If a new key is generated or obtained, seal it for future use.
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
+	logger.Info("GetEncryptionKey: Starting encryption key acquisition process")
+	logger.Info("GetEncryptionKey: Configuration", "dbType", config.DBType, "encryptionKeySource", config.EncryptionKeySource, "insideEnclave", config.InsideEnclave)
+	
 	// check if we are using sqlite database and no encryption key needed
 	if config.DBType == "sqlite" {
 		logger.Info("using sqlite database, no encryption key needed - exiting key exchange process")
@@ -56,13 +61,14 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	// If no encryptionKeySource is provided, attempt to unseal an existing encryption key and fail if no key is found
 	// (in this case operator needs to provide a source for the encryption key or decide to generate a new one)
 	if config.EncryptionKeySource == "" {
-		logger.Info("no key exchange url set, try to unseal existing encryption key")
+		logger.Info("no key exchange url set, try to unseal existing encryption key", "keyFile", encryptionKeyFile)
 		encryptionKey, found, err := tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
 		if !found {
 			logger.Crit("no sealed encryption key found", log.ErrKey, err)
+			logger.Error("GetEncryptionKey: No existing key found - operator must provide encryptionKeySource or use 'new' to generate")
 			return nil, fmt.Errorf("no sealed encryption key found: %w", err)
 		}
-		logger.Info("unsealed existing encryption key")
+		logger.Info("unsealed existing encryption key", "keySize", len(encryptionKey))
 		return encryptionKey, nil
 	}
 
@@ -74,7 +80,7 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	// This ensures that we do not overwrite an existing key unless necessary, and a new key is only generated when
 	// there is no existing key available.
 	if config.EncryptionKeySource == "new" {
-		logger.Info("encryptionKeySource set to 'new' -> checking if there is an existing encryption key that we can use")
+		logger.Info("encryptionKeySource set to 'new' -> checking if there is an existing encryption key that we can use", "keyFile", encryptionKeyFile)
 		var found bool
 		encryptionKey, found, _ = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
 		logger.Info("Encryption key status", "found", found, "error", err)
@@ -85,25 +91,34 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 				logger.Crit("unable to generate random encryption key", log.ErrKey, err)
 				return nil, err
 			}
+			logger.Info("Generated new random encryption key", "keySize", len(encryptionKey))
+		} else {
+			logger.Info("Using existing encryption key", "keySize", len(encryptionKey))
 		}
 	} else {
 		// Attempt to perform key exchange with the specified key provider.
 		// This step is crucial, and the process should fail if the key exchange is not successful.
 		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
+		logger.Info("GetEncryptionKey: Initiating key exchange with remote provider")
 		encryptionKey, err = HandleKeyExchange(config, logger)
 		if err != nil {
 			logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
+			logger.Error("GetEncryptionKey: Key exchange failed - this is typically due to SGX attestation issues")
 			return nil, err
 		}
+		logger.Info("Successfully obtained encryption key from key provider", "keySize", len(encryptionKey))
 	}
 
 	// Seal the key that we generated / got from the key exchange from another enclave
+	logger.Info("GetEncryptionKey: Sealing encryption key for future use", "keyFile", encryptionKeyFile, "insideEnclave", config.InsideEnclave)
 	err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave)
 	if err != nil {
 		logger.Crit("unable to seal encryption key", log.ErrKey, err)
+		logger.Error("GetEncryptionKey: Key sealing failed - future startups may require key re-acquisition")
 		return nil, err
 	}
-	logger.Info("sealed new encryption key")
+	logger.Info("sealed new encryption key", "keySize", len(encryptionKey))
+	logger.Info("GetEncryptionKey: Encryption key acquisition completed successfully")
 
 	return encryptionKey, nil
 }
@@ -142,7 +157,10 @@ func trySealKey(key []byte, keyPath string, isEnclave bool) error {
 
 // HandleKeyExchange handles the key exchange process from KeyRequester side.
 func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, error) {
+	logger.Info("KeyRequester: Starting key exchange process", "keySource", config.EncryptionKeySource)
+	
 	// Step 1: Generate RSA key pair
+	logger.Info("KeyRequester: Generating RSA key pair", "keySize", RSAKeySize)
 	privkey, err := GenerateKeyPair(RSAKeySize)
 	if err != nil {
 		logger.Error("KeyRequester: Unable to generate RSA key pair", "error", err)
@@ -161,11 +179,16 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	// Step 4: Get the attestation report
 	// Hash the serialized public key
 	pubKeyHash := sha256.Sum256(serializedPubKey)
+	logger.Info("KeyRequester: Hashed public key for attestation", "hashLength", len(pubKeyHash), "hash", fmt.Sprintf("%x", pubKeyHash[:8]))
+	
+	logger.Info("KeyRequester: Attempting to get attestation report from SGX enclave")
 	attestationReport, err := GetReport(pubKeyHash[:])
 	if err != nil {
 		logger.Error("KeyRequester: Failed to get attestation report", "error", err)
+		logger.Error("KeyRequester: Attestation failure indicates SGX issues - check SGX setup, PCCS connectivity, and device availability")
 		return nil, fmt.Errorf("failed to get attestation report: %w", err)
 	}
+	logger.Info("KeyRequester: Successfully obtained attestation report", "reportSize", len(attestationReport.Report))
 
 	marshalledAttestation, err := json.Marshal(attestationReport)
 	if err != nil {
@@ -187,12 +210,18 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 8: Send the message to KeyProvider via HTTP POST
-	resp, err := http.Post(config.EncryptionKeySource+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
+	keyProviderURL := config.EncryptionKeySource + "/v1" + common.PathKeyExchange
+	logger.Info("KeyRequester: Sending key exchange request to KeyProvider", "url", keyProviderURL, "messageSize", len(messageBytesRequester))
+	
+	resp, err := http.Post(keyProviderURL, "application/json", bytes.NewBuffer(messageBytesRequester))
 	if err != nil {
-		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err)
+		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err, "url", keyProviderURL)
+		logger.Error("KeyRequester: Network error - check KeyProvider availability and network connectivity")
 		return nil, fmt.Errorf("failed to send message to KeyProvider: %w", err)
 	}
 	defer resp.Body.Close()
+	
+	logger.Info("KeyRequester: Received response from KeyProvider", "statusCode", resp.StatusCode, "status", resp.Status)
 
 	// Step 9: Read the response body
 	bodyBytes, err := io.ReadAll(resp.Body)
@@ -223,21 +252,41 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 12: Decrypt the encryption key using KeyRequester's private key
+	logger.Info("KeyRequester: Decrypting encryption key with private key", "encryptedKeySize", len(encryptedKeyBytesRequester))
 	decryptedKeyRequester, err := DecryptWithPrivateKey(encryptedKeyBytesRequester, privkey)
 	if err != nil {
 		logger.Error("KeyRequester: Decryption failed", "error", err)
+		logger.Error("KeyRequester: Decryption failure indicates key mismatch or corrupted data")
 		return nil, fmt.Errorf("decryption failed: %w", err)
 	}
-
+	
+	logger.Info("KeyRequester: Successfully decrypted encryption key", "keySize", len(decryptedKeyRequester))
+	logger.Info("KeyRequester: Key exchange process completed successfully")
 	return decryptedKeyRequester, nil
 }
 
 // GetReport returns the attestation report for the given public key
 func GetReport(pubKey []byte) (*tencommon.AttestationReport, error) {
+	// Log SGX environment status before attempting attestation
+	logSGXEnvironment()
+	
+	// Log the public key hash for debugging
+	gethlog.Info("GetReport: Starting attestation report generation", "pubKeyHash", fmt.Sprintf("%x", pubKey))
+	
+	// Attempt to get the remote report from SGX enclave
+	gethlog.Info("GetReport: Calling enclave.GetRemoteReport()")
 	report, err := enclave.GetRemoteReport(pubKey)
 	if err != nil {
+		gethlog.Error("GetReport: Failed to get remote report from SGX enclave", "error", err)
+		gethlog.Error("GetReport: This typically indicates SGX hardware/driver issues, PCCS connectivity problems, or missing SGX services")
+		
+		// Log additional SGX-specific error context
+		logSGXErrorContext(err)
 		return nil, err
 	}
+	
+	gethlog.Info("GetReport: Successfully obtained remote report from SGX enclave", "reportSize", len(report))
+	
 	return &tencommon.AttestationReport{
 		Report:      report,
 		PubKey:      pubKey,
@@ -335,4 +384,102 @@ func DeserializeAttestationReport(data []byte) (*tencommon.AttestationReport, er
 		return nil, err
 	}
 	return &report, nil
+}
+
+// logSGXEnvironment logs detailed information about the SGX environment
+func logSGXEnvironment() {
+	gethlog.Info("SGX Environment Check: Starting detailed environment analysis")
+	
+	// Log environment variables
+	envVars := []string{
+		"OE_SIMULATION", "AESM_PATH", "PCCS_URL", "SGX_AESM_ADDR", 
+		"SGX_SPID", "SGX_LINKABLE", "SGX_DEBUG", "SGX_MODE",
+	}
+	
+	for _, envVar := range envVars {
+		value := os.Getenv(envVar)
+		if value != "" {
+			gethlog.Info(fmt.Sprintf("SGX Environment: %s=%s", envVar, value))
+		} else {
+			gethlog.Info(fmt.Sprintf("SGX Environment: %s is not set", envVar))
+		}
+	}
+	
+	// Check SGX device files
+	sgxDevices := []string{"/dev/sgx_enclave", "/dev/sgx_provision", "/dev/sgx/enclave", "/dev/sgx/provision"}
+	for _, device := range sgxDevices {
+		if _, err := os.Stat(device); err == nil {
+			gethlog.Info(fmt.Sprintf("SGX Device: %s exists", device))
+		} else {
+			gethlog.Info(fmt.Sprintf("SGX Device: %s does not exist or is not accessible: %v", device, err))
+		}
+	}
+	
+	// Check AESM socket
+	aesmSocket := os.Getenv("AESM_PATH")
+	if aesmSocket == "" {
+		aesmSocket = "/var/run/aesmd/aesm.socket"
+	}
+	if _, err := os.Stat(aesmSocket); err == nil {
+		gethlog.Info(fmt.Sprintf("AESM Socket: %s exists", aesmSocket))
+	} else {
+		gethlog.Info(fmt.Sprintf("AESM Socket: %s does not exist or is not accessible: %v", aesmSocket, err))
+	}
+	
+	// Check data directory permissions
+	if stat, err := os.Stat(dataDir); err == nil {
+		gethlog.Info(fmt.Sprintf("Data Directory: %s exists, mode: %v", dataDir, stat.Mode()))
+	} else {
+		gethlog.Info(fmt.Sprintf("Data Directory: %s does not exist or is not accessible: %v", dataDir, err))
+	}
+	
+	// Log container environment indicators
+	if _, err := os.Stat("/.dockerenv"); err == nil {
+		gethlog.Info("Container Environment: Running inside Docker")
+	}
+	if os.Getenv("KUBERNETES_SERVICE_HOST") != "" {
+		gethlog.Info("Container Environment: Running inside Kubernetes")
+	}
+}
+
+// logSGXErrorContext provides additional context for SGX-related errors
+func logSGXErrorContext(err error) {
+	errStr := err.Error()
+	gethlog.Error("SGX Error Analysis: Detailed error context", "error", errStr)
+	
+	// Common SGX error patterns and their meanings
+	errorPatterns := map[string]string{
+		"OE_UNEXPECTED": "Unexpected error - usually indicates SGX hardware/driver issues or PCCS connectivity problems",
+		"SGX_QL_NETWORK_ERROR": "Network error during quote generation - PCCS service unreachable",
+		"Couldn't connect to server": "PCCS server connectivity issue - check network and PCCS_URL",
+		"SGX_ERROR_DEVICE_BUSY": "SGX device is busy or in use by another process",
+		"SGX_ERROR_OUT_OF_MEMORY": "Insufficient memory for SGX operations",
+		"SGX_ERROR_INVALID_PARAMETER": "Invalid parameters passed to SGX functions",
+		"SGX_ERROR_ENCLAVE_LOST": "Enclave has been destroyed or is not accessible",
+		"0xe019": "Platform quote certificate data retrieval failed",
+		"0xb006": "Quote provider library failed to get quote config",
+	}
+	
+	for pattern, description := range errorPatterns {
+		if strings.Contains(errStr, pattern) {
+			gethlog.Error(fmt.Sprintf("SGX Error Pattern Detected: %s - %s", pattern, description))
+		}
+	}
+	
+	// Log troubleshooting suggestions
+	if strings.Contains(errStr, "network") || strings.Contains(errStr, "connect") {
+		gethlog.Info("SGX Troubleshooting: Network-related error detected")
+		gethlog.Info("SGX Troubleshooting: 1. Check PCCS_URL environment variable")
+		gethlog.Info("SGX Troubleshooting: 2. Verify network connectivity to PCCS service")
+		gethlog.Info("SGX Troubleshooting: 3. Check firewall rules and DNS resolution")
+		gethlog.Info("SGX Troubleshooting: 4. Verify Kubernetes network policies allow PCCS access")
+	}
+	
+	if strings.Contains(errStr, "device") || strings.Contains(errStr, "/dev/sgx") {
+		gethlog.Info("SGX Troubleshooting: Device-related error detected")
+		gethlog.Info("SGX Troubleshooting: 1. Check if SGX devices are properly mounted in container")
+		gethlog.Info("SGX Troubleshooting: 2. Verify SGX driver is loaded on host")
+		gethlog.Info("SGX Troubleshooting: 3. Check container security context and privileged mode")
+		gethlog.Info("SGX Troubleshooting: 4. Verify SGX hardware is enabled and available")
+	}
 }

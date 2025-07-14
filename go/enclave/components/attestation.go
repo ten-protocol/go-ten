@@ -44,29 +44,48 @@ type EgoAttestationProvider struct {
 }
 
 func (e *EgoAttestationProvider) CreateAttestationReport(ctx context.Context, hostAddress string) (*common.AttestationReport, error) {
+	e.logger.Info("CreateAttestationReport: Starting attestation report creation", "hostAddress", hostAddress)
+	e.logger.Info("CreateAttestationReport: Enclave info", "enclaveID", e.enclaveKeyService.EnclaveID(), "pubKeySize", len(e.enclaveKeyService.PublicKeyBytes()))
+	
 	idHash, err := getIDHash(e.enclaveKeyService.EnclaveID(), e.enclaveKeyService.PublicKeyBytes(), hostAddress)
 	if err != nil {
+		e.logger.Error("CreateAttestationReport: Failed to create ID hash", "error", err)
 		return nil, err
 	}
+	e.logger.Info("CreateAttestationReport: Generated ID hash", "hashSize", len(idHash), "hash", fmt.Sprintf("%x", idHash[:8]))
+	
+	e.logger.Info("CreateAttestationReport: Calling enclave.GetRemoteReport()")
 	report, err := enclave.GetRemoteReport(idHash)
 	if err != nil {
+		e.logger.Error("CreateAttestationReport: Failed to get remote report from SGX enclave", "error", err)
+		e.logger.Error("CreateAttestationReport: SGX remote report failure indicates hardware/driver issues, PCCS problems, or missing SGX services")
 		return nil, err
 	}
+	e.logger.Info("CreateAttestationReport: Successfully obtained remote report", "reportSize", len(report))
 
-	return &common.AttestationReport{
+	attestationReport := &common.AttestationReport{
 		Report:      report,
 		PubKey:      e.enclaveKeyService.PublicKeyBytes(),
 		EnclaveID:   e.enclaveKeyService.EnclaveID(),
 		HostAddress: hostAddress,
-	}, nil
+	}
+	e.logger.Info("CreateAttestationReport: Attestation report created successfully")
+	return attestationReport, nil
 }
 
 // todo (#1059) - we need to verify the hash is a recognized enclave - figure out how we solve for upgradability
 func (e *EgoAttestationProvider) VerifyReport(att *common.AttestationReport) ([]byte, error) {
+	e.logger.Info("VerifyReport: Starting attestation report verification", "reportSize", len(att.Report))
+	e.logger.Info("VerifyReport: Report details", "enclaveID", att.EnclaveID, "hostAddress", att.HostAddress, "pubKeySize", len(att.PubKey))
+	
+	e.logger.Info("VerifyReport: Calling enclave.VerifyRemoteReport()")
 	remoteReport, err := enclave.VerifyRemoteReport(att.Report)
 	if err != nil {
+		e.logger.Error("VerifyReport: Failed to verify remote report", "error", err)
+		e.logger.Error("VerifyReport: Verification failure indicates invalid report, SGX issues, or PCCS problems")
 		return []byte{}, err
 	}
+	e.logger.Info("VerifyReport: Successfully verified remote report", "dataSize", len(remoteReport.Data))
 	return remoteReport.Data, nil
 }
 
