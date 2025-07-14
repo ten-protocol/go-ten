@@ -330,7 +330,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		err = os.WriteFile(os.Args[5], data, 0644)
+		err = os.WriteFile(os.Args[5], data, 0o644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing file: %v\n", err)
 			os.Exit(1)

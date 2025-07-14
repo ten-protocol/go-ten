@@ -239,7 +239,7 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 		return nil, fmt.Errorf("failed to get total count: %w", err)
 	}
 
-	rows, err := db.GetSQLDB().Query(query, batchHash.Bytes(), pagination.Size, pagination.Offset)
+	rows, err := db.GetSQLDB().Query(query, batchHash.Bytes(), int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("query execution for select batch transactions failed: %w", err)
 	}
