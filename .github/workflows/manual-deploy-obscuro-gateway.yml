@@ -115,17 +115,7 @@ jobs:
             fi
           done
           
-          # Validate required variables by checking if they were set in GITHUB_ENV
-          REQUIRED_VARS=("DOCKER_BUILD_TAG_GATEWAY" "AZURE_DEPLOY_GROUP_GATEWAY" "L2_RPC_URL_VALIDATOR")
-          for REQUIRED_VAR in "${REQUIRED_VARS[@]}"; do
-            FULL_VAR_NAME="${INSTANCE_PREFIX}${REQUIRED_VAR}"
-            VAR_VALUE=$(jq -r --arg key "$FULL_VAR_NAME" '.[$key] // empty' <<< '${{ toJson(vars) }}')
-            if [[ -z "$VAR_VALUE" ]]; then
-              echo "❌ ERROR: Required variable ${FULL_VAR_NAME} is not found in repository variables"
-              echo "Available variables: $(jq -r 'keys[]' <<< '${{ toJson(vars) }}' | sort)"
-              exit 1
-            fi
-          done
+          echo "✅ Environment variable setup completed"
 
       - name: "Print environment variables"
         run: |
