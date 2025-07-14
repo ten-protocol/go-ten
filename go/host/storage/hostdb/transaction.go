@@ -23,7 +23,7 @@ const (
 // GetTransactionListing returns a paginated list of transactions in descending order
 func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	query := selectTxs + db.GetSQLStatement().Pagination
-	rows, err := db.GetSQLDB().Query(query, pagination.Size, pagination.Offset)
+	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
 	}

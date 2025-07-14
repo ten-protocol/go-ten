@@ -65,7 +65,7 @@ func GetBlock(db HostDB, statements *SQLStatements, hash *gethcommon.Hash) (*typ
 // GetBlockListing returns a paginated list of blocks in descending order against the order they were added
 func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
 	query := selectBlocks + db.GetSQLStatement().Pagination
-	rows, err := db.GetSQLDB().Query(query, pagination.Size, pagination.Offset)
+	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, err
 	}
