@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	tencommon "github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
 
@@ -299,8 +300,22 @@ func healthRequestHandler(walletExt *services.Services, conn UserConn) {
 		return
 	}
 
-	// TODO: connect to database and check if it is healthy
-	err = conn.WriteResponse([]byte(common.SuccessMsg))
+	// Use cache for health check response
+	cacheKey := []byte("health_check")
+	cacheCfg := &cache.Cfg{Type: cache.LatestBatch} // Short-living cache
+
+	result, err := cache.WithCache(walletExt.RPCResponsesCache, cacheCfg, cacheKey, func() (*[]byte, error) {
+		// TODO: connect to database and check if it is healthy
+		response := []byte(common.SuccessMsg)
+		return &response, nil
+	})
+
+	if err != nil {
+		walletExt.Logger().Error("error getting health status", log.ErrKey, err)
+		return
+	}
+
+	err = conn.WriteResponse(*result)
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
@@ -315,35 +330,47 @@ func networkHealthRequestHandler(walletExt *services.Services, userConn UserConn
 		return
 	}
 
-	// call `obscuro-health` rpc method to get the health status of the node
-	healthStatus, err := walletExt.GetTenNodeHealthStatus()
+	// Use cache for network health check response
+	cacheKey := []byte("network_health_check")
+	cacheCfg := &cache.Cfg{Type: cache.LatestBatch} // Short-living cache
 
-	// create the response in the required format
-	type HealthStatus struct {
-		Errors        []string `json:"Errors"`
-		OverallHealth bool     `json:"OverallHealth"`
-	}
+	result, err := cache.WithCache(walletExt.RPCResponsesCache, cacheCfg, cacheKey, func() (*[]byte, error) {
+		// call `obscuro-health` rpc method to get the health status of the node
+		healthStatus, err := walletExt.GetTenNodeHealthStatus()
 
-	errorStrings := make([]string, 0)
-	if err != nil {
-		errorStrings = append(errorStrings, err.Error())
-	}
-	healthStatusResponse := HealthStatus{
-		Errors:        errorStrings,
-		OverallHealth: healthStatus,
-	}
+		// create the response in the required format
+		type HealthStatus struct {
+			Errors        []string `json:"Errors"`
+			OverallHealth bool     `json:"OverallHealth"`
+		}
 
-	data, err := json.Marshal(map[string]interface{}{
-		"id":      "1",
-		"jsonrpc": "2.0",
-		"result":  healthStatusResponse,
+		errorStrings := make([]string, 0)
+		if err != nil {
+			errorStrings = append(errorStrings, err.Error())
+		}
+		healthStatusResponse := HealthStatus{
+			Errors:        errorStrings,
+			OverallHealth: healthStatus,
+		}
+
+		data, err := json.Marshal(map[string]interface{}{
+			"id":      "1",
+			"jsonrpc": "2.0",
+			"result":  healthStatusResponse,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling response: %w", err)
+		}
+
+		return &data, nil
 	})
+
 	if err != nil {
-		walletExt.Logger().Error("error marshaling response", log.ErrKey, err)
+		walletExt.Logger().Error("error getting network health status", log.ErrKey, err)
 		return
 	}
 
-	err = userConn.WriteResponse(data)
+	err = userConn.WriteResponse(*result)
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
@@ -357,62 +384,74 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 		return
 	}
 
-	// Call the RPC method to get the network configuration
-	networkConfig, err := walletExt.GetTenNetworkConfig()
-	if err != nil {
-		walletExt.Logger().Error("error fetching network config", log.ErrKey, err)
-	}
+	// Use cache for network config response
+	cacheKey := []byte("network_config")
+	cacheCfg := &cache.Cfg{Type: cache.LongLiving} // Long-living cache
 
-	// Define a struct to represent the response
-	type NetworkConfigResponse struct {
-		NetworkConfigAddress            string            `json:"NetworkConfig"`
-		EnclaveRegistryAddress          string            `json:"EnclaveRegistry"`
-		DataAvailabilityRegistryAddress string            `json:"DataAvailabilityRegistry"`
-		CrossChainAddress               string            `json:"CrossChain"`
-		L1MessageBusAddress             string            `json:"L1MessageBus"`
-		L2MessageBusAddress             string            `json:"L2MessageBus"`
-		L1BridgeAddress                 string            `json:"L1Bridge"`
-		L2BridgeAddress                 string            `json:"L2Bridge"`
-		L1CrossChainMessengerAddress    string            `json:"L1CrossChainMessenger"`
-		L2CrossChainMessengerAddress    string            `json:"L2CrossChainMessenger"`
-		SystemContractsUpgrader         string            `json:"SystemContractsUpgrader"`
-		L1StartHash                     string            `json:"L1StartHash"`
-		AdditionalContracts             map[string]string `json:"AdditionalContracts"`
-	}
-
-	// Convert the TenNetworkInfo fields to strings
-	additionalContracts := make(map[string]string)
-	if len(networkConfig.AdditionalContracts) > 0 {
-		for _, contract := range networkConfig.AdditionalContracts {
-			additionalContracts[contract.Name] = contract.Addr.Hex()
+	result, err := cache.WithCache(walletExt.RPCResponsesCache, cacheCfg, cacheKey, func() (*[]byte, error) {
+		// Call the RPC method to get the network configuration
+		networkConfig, err := walletExt.GetTenNetworkConfig()
+		if err != nil {
+			return nil, fmt.Errorf("error fetching network config: %w", err)
 		}
-	}
 
-	networkConfigResponse := NetworkConfigResponse{
-		NetworkConfigAddress:            networkConfig.NetworkConfig.Hex(),
-		EnclaveRegistryAddress:          networkConfig.EnclaveRegistry.Hex(),
-		DataAvailabilityRegistryAddress: networkConfig.DataAvailabilityRegistry.Hex(),
-		CrossChainAddress:               networkConfig.CrossChain.Hex(),
-		L1MessageBusAddress:             networkConfig.L1MessageBus.Hex(),
-		L2MessageBusAddress:             networkConfig.L2MessageBus.Hex(),
-		L1BridgeAddress:                 networkConfig.L1Bridge.Hex(),
-		L2BridgeAddress:                 networkConfig.L2Bridge.Hex(),
-		L1CrossChainMessengerAddress:    networkConfig.L1CrossChainMessenger.Hex(),
-		L2CrossChainMessengerAddress:    networkConfig.L2CrossChainMessenger.Hex(),
-		SystemContractsUpgrader:         networkConfig.SystemContractsUpgrader.Hex(),
-		L1StartHash:                     networkConfig.L1StartHash.Hex(),
-		AdditionalContracts:             additionalContracts,
-	}
+		// Define a struct to represent the response
+		type NetworkConfigResponse struct {
+			NetworkConfigAddress            string            `json:"NetworkConfig"`
+			EnclaveRegistryAddress          string            `json:"EnclaveRegistry"`
+			DataAvailabilityRegistryAddress string            `json:"DataAvailabilityRegistry"`
+			CrossChainAddress               string            `json:"CrossChain"`
+			L1MessageBusAddress             string            `json:"L1MessageBus"`
+			L2MessageBusAddress             string            `json:"L2MessageBus"`
+			L1BridgeAddress                 string            `json:"L1Bridge"`
+			L2BridgeAddress                 string            `json:"L2Bridge"`
+			L1CrossChainMessengerAddress    string            `json:"L1CrossChainMessenger"`
+			L2CrossChainMessengerAddress    string            `json:"L2CrossChainMessenger"`
+			SystemContractsUpgrader         string            `json:"SystemContractsUpgrader"`
+			L1StartHash                     string            `json:"L1StartHash"`
+			AdditionalContracts             map[string]string `json:"AdditionalContracts"`
+		}
 
-	// Marshal the response into JSON format
-	data, err := json.Marshal(networkConfigResponse)
+		// Convert the TenNetworkInfo fields to strings
+		additionalContracts := make(map[string]string)
+		if len(networkConfig.AdditionalContracts) > 0 {
+			for _, contract := range networkConfig.AdditionalContracts {
+				additionalContracts[contract.Name] = contract.Addr.Hex()
+			}
+		}
+
+		networkConfigResponse := NetworkConfigResponse{
+			NetworkConfigAddress:            networkConfig.NetworkConfig.Hex(),
+			EnclaveRegistryAddress:          networkConfig.EnclaveRegistry.Hex(),
+			DataAvailabilityRegistryAddress: networkConfig.DataAvailabilityRegistry.Hex(),
+			CrossChainAddress:               networkConfig.CrossChain.Hex(),
+			L1MessageBusAddress:             networkConfig.L1MessageBus.Hex(),
+			L2MessageBusAddress:             networkConfig.L2MessageBus.Hex(),
+			L1BridgeAddress:                 networkConfig.L1Bridge.Hex(),
+			L2BridgeAddress:                 networkConfig.L2Bridge.Hex(),
+			L1CrossChainMessengerAddress:    networkConfig.L1CrossChainMessenger.Hex(),
+			L2CrossChainMessengerAddress:    networkConfig.L2CrossChainMessenger.Hex(),
+			SystemContractsUpgrader:         networkConfig.SystemContractsUpgrader.Hex(),
+			L1StartHash:                     networkConfig.L1StartHash.Hex(),
+			AdditionalContracts:             additionalContracts,
+		}
+
+		// Marshal the response into JSON format
+		data, err := json.Marshal(networkConfigResponse)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling response: %w", err)
+		}
+
+		return &data, nil
+	})
+
 	if err != nil {
-		walletExt.Logger().Error("error marshaling response", log.ErrKey, err)
+		walletExt.Logger().Error("error getting network config", log.ErrKey, err)
 		return
 	}
 
 	// Write the response back to the user
-	err = userConn.WriteResponse(data)
+	err = userConn.WriteResponse(*result)
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
