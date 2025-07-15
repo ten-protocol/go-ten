@@ -2,9 +2,14 @@ package rpcapi
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
 	rpc2 "github.com/ten-protocol/go-ten/go/rpc"
 
@@ -29,6 +34,7 @@ import (
 type BlockChainAPI struct {
 	we               *services.Services
 	storageWhitelist *privacy.Whitelist
+	config           *wecommon.Config
 }
 
 func NewBlockChainAPI(we *services.Services) *BlockChainAPI {
@@ -36,6 +42,7 @@ func NewBlockChainAPI(we *services.Services) *BlockChainAPI {
 	return &BlockChainAPI{
 		we:               we,
 		storageWhitelist: whitelist,
+		config:           we.Config,
 	}
 }
 
@@ -243,7 +250,38 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			}
 			return hash.Bytes(), nil
 		}
-		return gethcommon.Hash{}.Bytes(), fmt.Errorf("please create a session key before sending unsigned transactions")
+	case common.GetUserIDCQMethod:
+		// Decode the hex storageKey to get authentication data
+		storageKeyBytes, err := hexutil.Decode(params)
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode storage key: %w", err)
+		}
+
+		// Parse the JSON authentication data
+		var authData struct {
+			Timestamp string `json:"timestamp"`
+			Signature string `json:"signature"`
+		}
+		if err := json.Unmarshal(storageKeyBytes, &authData); err != nil {
+			return nil, fmt.Errorf("unable to unmarshal auth data: %w", err)
+		}
+
+		// Verify timestamp is within 5-minute tolerance
+		if !isRecentTimestamp(authData.Timestamp) {
+			return nil, fmt.Errorf("timestamp too old")
+		}
+
+		// Check if HMAC secret is configured
+		if api.config.HMACSecret == "" {
+			return nil, fmt.Errorf("HMAC secret not configured - use --hmacSecret flag")
+		}
+
+		// Verify HMAC signature
+		if !verifyHMAC(authData.Timestamp, authData.Signature, api.config.HMACSecret) {
+			return nil, fmt.Errorf("invalid signature")
+		}
+		return user.ID, nil
+
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
 		if err != nil {
@@ -260,6 +298,8 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		// turn resp object into hexutil.Bytes
 		return hexutil.MustDecode(respHex), nil
 	}
+
+	return nil, fmt.Errorf("unhandled custom query method")
 }
 
 func boolToByte(res bool) byte {
@@ -267,6 +307,39 @@ func boolToByte(res bool) byte {
 		return 1
 	}
 	return 0
+}
+
+// verifyHMAC verifies an HMAC-SHA256 signature using constant-time comparison
+func verifyHMAC(message, signature, secretHex string) bool {
+	// Decode the hex-encoded secret
+	secret, err := hex.DecodeString(secretHex)
+	if err != nil {
+		return false
+	}
+
+	// Create HMAC-SHA256 of the message with the secret
+	h := hmac.New(sha256.New, secret)
+	h.Write([]byte(message))
+	expectedSignature := hex.EncodeToString(h.Sum(nil))
+
+	// Use constant-time comparison to prevent timing attacks
+	return hmac.Equal([]byte(signature), []byte(expectedSignature))
+}
+
+// isRecentTimestamp checks if the timestamp is within 5-minute tolerance
+func isRecentTimestamp(timestampStr string) bool {
+	timestamp, err := strconv.ParseInt(timestampStr, 10, 64)
+	if err != nil {
+		return false
+	}
+
+	// Convert to time.Time (assuming milliseconds)
+	timestampTime := time.Unix(timestamp/1000, (timestamp%1000)*1000000)
+	currentTime := time.Now()
+
+	// Check if timestamp is within 5 minutes (300 seconds)
+	diff := currentTime.Sub(timestampTime)
+	return diff >= -5*time.Minute && diff <= 5*time.Minute
 }
 
 func (api *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
