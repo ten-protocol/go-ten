@@ -2,7 +2,6 @@
 ---
 # Ten Testnet Change Log
 
-
 # July 2025-07-02 (v1.4.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
