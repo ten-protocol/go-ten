@@ -28,6 +28,12 @@ func GetPersonalTransactionsValidate(reqParams []any, builder *CallBuilder[commo
 		builder.Err = fmt.Errorf("unable to extract query - %w", err)
 		return nil
 	}
+
+	if builder.Param.ShowAllPublicTxs || builder.Param.ShowSyntheticTxs {
+		builder.Err = errors.New("public or synthetic transactions not supported yet")
+		return nil
+	}
+
 	addr := privateCustomQuery.Address
 	builder.From = &addr
 	builder.Param = privateCustomQuery
