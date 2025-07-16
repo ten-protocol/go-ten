@@ -84,7 +84,7 @@ jobs:
           inlineScript: |
             az vm create -g Testnet -n "${{ github.event.inputs.testnet_type }}-eth2network-${{ GITHUB.RUN_NUMBER }}" \
             --admin-username obscurouser --admin-password "${{ secrets.OBSCURO_NODE_VM_PWD }}" \
-            --public-ip-address-dns-name "${{ github.event.inputs.testnet_type }}-eth2network" \
+            --public-ip-address-dns-name "${{ github.event.inputs.testnet_type }}-eth2network-${{ GITHUB.RUN_NUMBER }}" \
             --tags ${{ vars.AZURE_DEPLOY_GROUP_L1 }}=true \
             --vnet-name ${{ github.event.inputs.testnet_type }}-eth2network-01VNET --subnet ${{ github.event.inputs.testnet_type }}-eth2network-01Subnet \
             --size Standard_D2_v4 --image Canonical:0001-com-ubuntu-server-jammy:22_04-lts:latest \
