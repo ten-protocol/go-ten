@@ -140,9 +140,7 @@ jobs:
            shell: bash
            run: |
               ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-sequencer.ten.xyz
-              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-validator-01.ten.xyz
-              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-validator-02.ten.xyz
-   
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=erpc-${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-dev-testnet.ten.xyz   
 
    grant-sequencer-enclaves:
       needs:
