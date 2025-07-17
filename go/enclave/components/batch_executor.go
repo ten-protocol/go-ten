@@ -60,6 +60,7 @@ type batchExecutor struct {
 	genesis                *genesis.Genesis
 	logger                 gethlog.Logger
 	gasOracle              gas.Oracle
+	gasPricer              *GasPricer
 	chainConfig            *params.ChainConfig
 	systemContracts        system.SystemContractCallbacks
 	entropyService         *crypto.EvmEntropyService
@@ -85,6 +86,8 @@ func NewBatchExecutor(
 	dataCompressionService compression.DataCompressionService,
 	logger gethlog.Logger,
 ) BatchExecutor {
+
+	gasPricer := NewGasPricer(logger, config)
 	return &batchExecutor{
 		storage:                storage,
 		batchRegistry:          batchRegistry,
@@ -96,6 +99,7 @@ func NewBatchExecutor(
 		chainConfig:            chainConfig,
 		logger:                 logger,
 		gasOracle:              gasOracle,
+		gasPricer:              gasPricer,
 		batchGasLimit:          config.GasBatchExecutionLimit,
 		systemContracts:        systemContracts,
 		entropyService:         entropyService,
@@ -234,6 +238,8 @@ func (executor *batchExecutor) verifyContext(ec *BatchExecutionContext) error {
 
 func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 	var err error
+	// todo - this should return either from settings or calculate, based on having upgraded to eip1559 support.
+	ec.BaseFee = executor.gasPricer.CalculateBlockBaseFee(executor.chainConfig, ec.parentL1Block)
 	// Create a new batch based on the provided context
 	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator, ec.BatchGasLimit)
 	ec.stateDB, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})

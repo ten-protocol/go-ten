@@ -302,8 +302,13 @@ func (s *Simulation) deployPublicCallbacksTest() {
 		panic(fmt.Errorf("public callbacks address is not set"))
 	}
 
+	gasPrice, err := rpcClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
 	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, s.Params.Wallets.L2FaucetWallet))
-	auth.GasPrice = big.NewInt(0).SetUint64(gethparams.InitialBaseFee)
+	auth.GasPrice = gasPrice
 	auth.Context = s.ctx
 	auth.Value = big.NewInt(0).Mul(big.NewInt(1), big.NewInt(gethparams.Ether))
 
@@ -360,9 +365,14 @@ func (s *Simulation) deployTenZen() {
 		panic(fmt.Errorf("failed to get positive balance after timeout: %w", err))
 	}
 
+	gasPrice, err := rpcClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
 	owner := s.Params.Wallets.L2FaucetWallet
 	ownerRpc := s.RPCHandles.TenWalletClient(owner.Address(), 1)
-	auth.GasPrice = big.NewInt(0).SetUint64(gethparams.InitialBaseFee)
+	auth.GasPrice = gasPrice
 	auth.Context = context.Background()
 	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
 
