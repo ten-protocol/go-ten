@@ -1048,7 +1048,7 @@ func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *
 	if err != nil {
 		return nil, err
 	}
-	return enclavedb.GetTransactionsPerAddress(ctx, s.db.GetSQLDB(), requesterId, pagination, showPublic, showSynthetic)
+	return enclavedb.GetTransactionsPerAddress(ctx, s.preparedStatementCache, requesterId, pagination, showPublic, showSynthetic)
 }
 
 func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, showPublic bool, showSynthetic bool) (uint64, error) {
@@ -1057,7 +1057,7 @@ func (s *storageImpl) CountTransactionsPerAddress(ctx context.Context, address *
 	if err != nil {
 		return 0, err
 	}
-	return enclavedb.CountTransactionsPerAddress(ctx, s.db.GetSQLDB(), requesterId, showPublic, showSynthetic)
+	return enclavedb.CountTransactionsPerAddress(ctx, s.preparedStatementCache, requesterId, showPublic, showSynthetic)
 }
 
 func (s *storageImpl) readOrWriteEOAWithTx(ctx context.Context, addr gethcommon.Address) (*uint64, error) {

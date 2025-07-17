@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"slices"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -419,64 +418,6 @@ func BatchWasExecuted(ctx context.Context, db *sqlx.DB, hash common.L2BatchHash)
 func MarkBatchAsUnexecuted(ctx context.Context, dbTx *sqlx.Tx, seqNo *big.Int) error {
 	_, err := dbTx.ExecContext(ctx, "update batch set is_executed=false where sequence=?", seqNo.Uint64())
 	return err
-}
-
-func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]*core.InternalReceipt, error) {
-	params := []any{}
-	where := " "
-
-	if !showSynthetic {
-		where += " AND curr_tx.is_synthetic=? "
-		params = append(params, showSynthetic)
-	}
-
-	receipts, err := loadPersonalTxs(ctx, db, address, showPublic, where, params, " ORDER BY b.sequence DESC LIMIT ? OFFSET ?", []any{pagination.Size, pagination.Offset})
-	if err != nil {
-		return nil, err
-	}
-
-	// remove duplicates
-	slices.SortFunc(receipts, func(a, b *core.InternalReceipt) int {
-		if a.BlockNumber.Uint64() != b.BlockNumber.Uint64() {
-			return int(a.BlockNumber.Uint64() - b.BlockNumber.Uint64())
-		}
-		if a.TransactionIndex != b.TransactionIndex {
-			return int(a.TransactionIndex - b.TransactionIndex)
-		}
-		return 0
-	})
-
-	receipts = slices.CompactFunc(receipts, func(a, b *core.InternalReceipt) bool {
-		return a.BlockNumber.Uint64() == b.BlockNumber.Uint64() && a.TransactionIndex == b.TransactionIndex
-	})
-
-	return receipts, nil
-}
-
-func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, showPublic bool, showSynthetic bool) (uint64, error) {
-	var count uint64
-
-	cond := personalTxCondition
-	if showPublic {
-		cond = personalTxConditionPublic
-	}
-
-	query := "select count(1) " + baseReceiptJoinWithViewer + " WHERE " + cond
-
-	var params []any
-	params = append(params, *address, *address, *address)
-
-	if !showSynthetic {
-		query += " AND curr_tx.is_synthetic=? "
-		params = append(params, showSynthetic)
-	}
-
-	err := db.QueryRowContext(ctx, query, params...).Scan(&count)
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
 }
 
 func FetchConvertedBatchHash(ctx context.Context, db *sqlx.DB, seqNo uint64) (gethcommon.Hash, error) {

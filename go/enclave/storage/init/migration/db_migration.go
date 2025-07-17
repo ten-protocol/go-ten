@@ -64,9 +64,20 @@ func executeMigration(db *sqlx.DB, content string, migrationOrder int64) error {
 		return err
 	}
 	defer tx.Rollback()
-	_, err = tx.Exec(content)
-	if err != nil {
-		return err
+
+	// Split statements by semicolon and execute each one
+	statements := strings.Split(content, ";")
+
+	for _, stmt := range statements {
+		stmt = strings.TrimSpace(stmt)
+		if stmt == "" {
+			continue // Skip empty statements
+		}
+
+		_, err = tx.Exec(stmt)
+		if err != nil {
+			return fmt.Errorf("failed to execute statement: %s - %w", stmt, err)
+		}
 	}
 
 	_, err = enclavedb.WriteConfigToTx(context.Background(), tx, currentMigrationVersionKey, big.NewInt(migrationOrder).Bytes())
