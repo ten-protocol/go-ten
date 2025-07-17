@@ -114,7 +114,6 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.Trans
 		return common.Hash{}, fmt.Errorf("please activate session key")
 	}
 
-	// todo - check whether the from is the sk
 	// when there is an active Session Key, sign all incoming transactions with that SK
 	signedTx, err := s.we.SKManager.SignTx(ctx, user, args.ToTransaction())
 	if err != nil {
@@ -139,29 +138,7 @@ func (s *TransactionAPI) FillTransaction(ctx context.Context, args gethapi.Trans
 }
 
 func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
-	user, err := extractUserForRequest(ctx, s.we)
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	signedTxBlob := input
-	// when there is an active Session Key, sign all incoming transactions with that SK
-	if user.ActiveSK && user.SessionKey != nil {
-		tx := new(types.Transaction)
-		if err = tx.UnmarshalBinary(input); err != nil {
-			return common.Hash{}, err
-		}
-		signedTx, err := s.we.SKManager.SignTx(ctx, user, tx)
-		if err != nil {
-			return common.Hash{}, err
-		}
-		signedTxBlob, err = signedTx.MarshalBinary()
-		if err != nil {
-			return common.Hash{}, err
-		}
-	}
-
-	return SendRawTx(ctx, s.we, signedTxBlob)
+	return SendRawTx(ctx, s.we, input)
 }
 
 func (s *TransactionAPI) PendingTransactions() ([]*rpc.RpcTransaction, error) {

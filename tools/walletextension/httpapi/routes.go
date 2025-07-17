@@ -309,7 +309,6 @@ func healthRequestHandler(walletExt *services.Services, conn UserConn) {
 		response := []byte(common.SuccessMsg)
 		return &response, nil
 	})
-
 	if err != nil {
 		walletExt.Logger().Error("error getting health status", log.ErrKey, err)
 		return
@@ -364,7 +363,6 @@ func networkHealthRequestHandler(walletExt *services.Services, userConn UserConn
 
 		return &data, nil
 	})
-
 	if err != nil {
 		walletExt.Logger().Error("error getting network health status", log.ErrKey, err)
 		return
@@ -444,7 +442,6 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 
 		return &data, nil
 	})
-
 	if err != nil {
 		walletExt.Logger().Error("error getting network config", log.ErrKey, err)
 		return
