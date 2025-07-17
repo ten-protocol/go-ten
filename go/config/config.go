@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"reflect"
@@ -53,13 +54,25 @@ type TenConfig struct {
 const _redactedString = "****"
 
 func (t *TenConfig) PrettyPrint() {
-	configCopy := *t
-	configCopy.Node = &NodeConfig{}
-	if t.Node != nil {
-		*configCopy.Node = *t.Node // deep copy all fields
+	// first, we deep-copy the entire config (via json marshal+unmarshal) to avoid modifying the original config
+	var configCopy TenConfig
+
+	b, err := json.Marshal(t)
+	if err != nil {
+		fmt.Printf("Error serializing config: %v\n", err)
+		return
+	}
+	if err := json.Unmarshal(b, &configCopy); err != nil {
+		fmt.Printf("Error deserializing config: %v\n", err)
+		return
+	}
+
+	if configCopy.Node != nil {
 		if configCopy.Node.PrivateKeyString != "" {
 			configCopy.Node.PrivateKeyString = _redactedString
 		}
+	}
+	if configCopy.Deployment != nil {
 		if configCopy.Deployment.L1Deploy.DeployerPK != "" {
 			configCopy.Deployment.L1Deploy.DeployerPK = _redactedString
 		}
