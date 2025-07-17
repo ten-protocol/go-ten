@@ -15,7 +15,7 @@
     "@openzeppelin/hardhat-upgrades": "^3.9.0",
     "@solidstate/hardhat-bytecode-exporter": "^1.1.1",
     "ethers": "^6.6.0",
-    "hardhat": "~2.24.1",
+    "hardhat": "^2.26.0",
     "hardhat-abi-exporter": "^2.10.1",
     "hardhat-deploy": "0.11.45",
     "node-docker-api": "^1.1.22",
