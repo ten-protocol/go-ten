@@ -74,7 +74,6 @@ func loadPersonalTxs(ctx context.Context, stmtCache *PreparedStatementCache, req
 	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
 	query += " from receipt rec " +
 		"join (" + innerQuery + ") as inner_query on inner_query.id=rec.id " +
-		"left join receipt_viewer rv on rec.id=rv.receipt " +
 		"join batch b on rec.batch=b.sequence " +
 		"join tx curr_tx on rec.tx=curr_tx.id " +
 		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
