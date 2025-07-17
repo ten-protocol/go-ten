@@ -462,7 +462,7 @@ func loadPersonalTxs(ctx context.Context, db *sqlx.DB, requestingAccountId *uint
 		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
 		"   left join contract tx_contr on curr_tx.contract=tx_contr.id "
 
-	query += " WHERE rec.id IN (" + innerQuery + ") "
+	query += " join (" + innerQuery + ") as inner_query on inner_query.id=rec.id "
 
 	queryParams = append(queryParams, unionParams...)
 	queryParams = append(queryParams, pagination.Size, pagination.Offset)
