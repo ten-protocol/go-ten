@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"slices"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -419,128 +418,6 @@ func BatchWasExecuted(ctx context.Context, db *sqlx.DB, hash common.L2BatchHash)
 func MarkBatchAsUnexecuted(ctx context.Context, dbTx *sqlx.Tx, seqNo *big.Int) error {
 	_, err := dbTx.ExecContext(ctx, "update batch set is_executed=false where sequence=?", seqNo.Uint64())
 	return err
-}
-
-func GetTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, pagination *common.QueryPagination, _ bool, _ bool) ([]*core.InternalReceipt, error) {
-	receipts, err := loadPersonalTxs(ctx, db, address, pagination)
-	if err != nil {
-		return nil, err
-	}
-
-	// remove duplicates
-	slices.SortFunc(receipts, func(a, b *core.InternalReceipt) int {
-		if a.BlockNumber.Uint64() != b.BlockNumber.Uint64() {
-			return int(a.BlockNumber.Uint64() - b.BlockNumber.Uint64())
-		}
-		if a.TransactionIndex != b.TransactionIndex {
-			return int(a.TransactionIndex - b.TransactionIndex)
-		}
-		return 0
-	})
-
-	receipts = slices.CompactFunc(receipts, func(a, b *core.InternalReceipt) bool {
-		return a.BlockNumber.Uint64() == b.BlockNumber.Uint64() && a.TransactionIndex == b.TransactionIndex
-	})
-
-	return receipts, nil
-}
-
-func loadPersonalTxs(ctx context.Context, db *sqlx.DB, requestingAccountId *uint64, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
-	if requestingAccountId == nil {
-		return nil, fmt.Errorf("you have to specify requestingAccount")
-	}
-	var queryParams []any
-	unionQuery, unionParams := createReceiptIdQuery(*requestingAccountId)
-
-	innerQuery := "SELECT u.id  FROM (" + unionQuery + ") AS u ORDER BY u.id DESC LIMIT ? OFFSET ?"
-
-	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
-	query += " from receipt rec " +
-		"left join receipt_viewer rv on rec.id=rv.receipt " +
-		"join batch b on rec.batch=b.sequence " +
-		"join tx curr_tx on rec.tx=curr_tx.id " +
-		"   join externally_owned_account tx_sender on curr_tx.sender_address=tx_sender.id " +
-		"   left join contract tx_contr on curr_tx.contract=tx_contr.id "
-
-	query += " join (" + innerQuery + ") as inner_query on inner_query.id=rec.id "
-
-	queryParams = append(queryParams, unionParams...)
-	queryParams = append(queryParams, pagination.Size, pagination.Offset)
-
-	rows, err := db.QueryContext(ctx, query, queryParams...)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	receipts := make([]*core.InternalReceipt, 0)
-
-	empty := true
-	for rows.Next() {
-		empty = false
-		r, err := onRowWithReceipt(rows)
-		if err != nil {
-			return nil, err
-		}
-		receipts = append(receipts, r)
-	}
-	if rows.Err() != nil {
-		return nil, rows.Err()
-	}
-
-	if empty {
-		return nil, errutil.ErrNotFound
-	}
-	return receipts, nil
-}
-
-func onRowWithReceipt(rows *sql.Rows) (*core.InternalReceipt, error) {
-	r := core.InternalReceipt{}
-
-	var txIndex *uint
-	var blockHash, transactionHash *gethcommon.Hash
-	var blockNumber *uint64
-	res := []any{&blockHash, &blockNumber, &transactionHash, &txIndex, &r.PostState, &r.Status, &r.GasUsed, &r.EffectiveGasPrice, &r.CreatedContract, &r.From, &r.To, &r.TxType}
-
-	err := rows.Scan(res...)
-	if err != nil {
-		return nil, fmt.Errorf("could not load receipt from db: %w", err)
-	}
-
-	r.BlockHash = *blockHash
-	r.BlockNumber = big.NewInt(int64(*blockNumber))
-	r.TxHash = *transactionHash
-	r.TransactionIndex = *txIndex
-
-	r.Logs = make([]*types.Log, 0)
-	return &r, nil
-}
-
-func CountTransactionsPerAddress(ctx context.Context, db *sqlx.DB, address *uint64, _ bool, _ bool) (uint64, error) {
-	var count uint64
-
-	unionQuery, params := createReceiptIdQuery(*address)
-
-	query := "SELECT count(DISTINCT u.id)  FROM (" + unionQuery + ") AS u "
-
-	err := db.QueryRowContext(ctx, query, params...).Scan(&count)
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}
-
-func createReceiptIdQuery(address uint64) (string, []any) {
-	senderQuery := "select rec.id from tx curr_tx join receipt rec on rec.tx=curr_tx.id WHERE curr_tx.sender_address=? AND curr_tx.is_synthetic=?"
-	receiverQuery := "select rec.id from tx curr_tx join receipt rec on rec.tx=curr_tx.id WHERE curr_tx.to_eoa=? AND curr_tx.is_synthetic=?"
-	eventsQuery := "select rec.id from tx curr_tx join receipt rec on rec.tx=curr_tx.id join receipt_viewer rv on rec.id=rv.receipt WHERE rv.eoa=? AND curr_tx.is_synthetic=?"
-
-	unionQuery := senderQuery + " UNION " + receiverQuery + " UNION " + eventsQuery
-
-	var params []any
-	params = append(params, address, false, address, false, address, false)
-	return unionQuery, params
 }
 
 func FetchConvertedBatchHash(ctx context.Context, db *sqlx.DB, seqNo uint64) (gethcommon.Hash, error) {
