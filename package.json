@@ -23,6 +23,7 @@
     "turbo": "^1.13.3"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-verify": "^2.0.14"
+    "hardhat": "^2.26.0",
+    "@nomicfoundation/hardhat-verify": "^2.1.0"
   }
 }
