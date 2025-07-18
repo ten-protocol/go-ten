@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -771,10 +772,8 @@ func assertRelevantLogsOnly(t *testing.T, owner string, receivedLog types.Log) {
 		return
 	}
 
-	for _, addr := range userAddrs {
-		if addr == owner {
-			return
-		}
+	if slices.Contains(userAddrs, owner) {
+		return
 	}
 
 	// If we've fallen through to here, it means the log was not relevant.
