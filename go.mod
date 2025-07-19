@@ -14,7 +14,7 @@ require (
 	github.com/dgraph-io/ristretto/v2 v2.2.0
 	github.com/docker/docker v28.1.1+incompatible
 	github.com/docker/go-connections v0.5.0
-	github.com/edgelesssys/ego v1.7.0
+	github.com/edgelesssys/ego v1.7.2
 	github.com/ethereum/go-ethereum v1.15.11
 	github.com/gin-contrib/cors v1.7.5
 	github.com/gin-gonic/gin v1.10.1
