@@ -9,7 +9,7 @@
 #   /data                                          persistent volume mount point
 
 # Trigger new build stage for compiling the enclave
-FROM ghcr.io/edgelesssys/ego-dev:v1.7.0 AS build-base
+FROM ghcr.io/edgelesssys/ego-dev:v1.7.2 AS build-base
 
 # Install ca-certificates package and update it
 RUN apt-get update && apt-get install -y \
@@ -39,7 +39,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Sign the enclave executable
 RUN ego sign enclave.json
 
-FROM ghcr.io/edgelesssys/ego-deploy:v1.7.0
+FROM ghcr.io/edgelesssys/ego-deploy:v1.7.2
 
 # Create data directory that will be used for persistence
 RUN mkdir -p /data && chmod 777 /data
