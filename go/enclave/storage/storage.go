@@ -585,7 +585,7 @@ func (s *storageImpl) StoreNewEnclave(ctx context.Context, enclaveId common.Encl
 	compressedKey := gethcrypto.CompressPubkey(key)
 	if alreadyExists {
 		// this should be unusual, log it for visibility
-		s.logger.Warn("Updating existing attestation key", "enclaveId")
+		s.logger.Warn("Updating existing attestation key", "enclaveId", enclaveId)
 		_, err = enclavedb.UpdateAttestationKey(ctx, dbTx, enclaveId, compressedKey)
 	} else {
 		_, err = enclavedb.WriteAttestation(ctx, dbTx, enclaveId, compressedKey, common.Validator)
