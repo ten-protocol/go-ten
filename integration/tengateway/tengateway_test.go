@@ -602,14 +602,18 @@ func testErrorHandling(t *testing.T, startPort int, httpURL, wsURL string, w wal
 	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
 	require.NoError(t, err)
 
-	privateTxs, _ := json.Marshal(common.ListPrivateTransactionsQueryParams{
-		Address:    gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
-		Pagination: common.QueryPagination{Size: 10},
+	privateTxsBytes, _ := json.Marshal(common.ListPrivateTransactionsQueryParams{
+		Address:          gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
+		Pagination:       common.QueryPagination{Size: 10},
+		ShowSyntheticTxs: false,
+		ShowAllPublicTxs: false,
 	})
+
+	privateTxs := strings.ReplaceAll(string(privateTxsBytes), `"`, `\"`)
 
 	// make requests to geth for comparison
 	for _, req := range []string{
-		`{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["` + common.ListPrivateTransactionsCQMethod + `", "` + string(privateTxs) + `","latest"],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["` + common.ListPrivateTransactionsCQMethod + `", "` + privateTxs + `","latest"],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
@@ -634,7 +638,7 @@ func testErrorHandling(t *testing.T, startPort int, httpURL, wsURL string, w wal
 		// ensure the gateway request is issued correctly (should return 200 ok with jsonRPCError)
 		_, response, err := httputil.PostDataJSON(ogClient.HTTP(), []byte(req))
 		require.NoError(t, err)
-		fmt.Printf("Resp: %s", response)
+		fmt.Printf("Resp: %s\n", response)
 
 		// unmarshall the response to JSONRPCMessage
 		jsonRPCError := JSONRPCMessage{}
