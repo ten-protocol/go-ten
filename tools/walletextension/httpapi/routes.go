@@ -299,21 +299,8 @@ func healthRequestHandler(walletExt *services.Services, conn UserConn) {
 		return
 	}
 
-	// Use cache for health check response
-	cacheKey := []byte("health_check")
-	cacheCfg := &cache.Cfg{Type: cache.LatestBatch} // Short-living cache
-
-	result, err := cache.WithCache(walletExt.RPCResponsesCache, cacheCfg, cacheKey, func() (*[]byte, error) {
-		// TODO: connect to database and check if it is healthy
-		response := []byte(common.SuccessMsg)
-		return &response, nil
-	})
-	if err != nil {
-		walletExt.Logger().Error("error getting health status", log.ErrKey, err)
-		return
-	}
-
-	err = conn.WriteResponse(*result)
+	// TODO: connect to database and check if it is healthy
+	err = conn.WriteResponse([]byte(common.SuccessMsg))
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
@@ -346,16 +333,10 @@ func networkHealthRequestHandler(walletExt *services.Services, userConn UserConn
 		OverallHealth: healthStatus,
 	}
 
-		data, err := json.Marshal(map[string]interface{}{
-			"id":      "1",
-			"jsonrpc": "2.0",
-			"result":  healthStatusResponse,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("error marshaling response: %w", err)
-		}
-
-		return &data, nil
+	data, err := json.Marshal(map[string]interface{}{
+		"id":      "1",
+		"jsonrpc": "2.0",
+		"result":  healthStatusResponse,
 	})
 	if err != nil {
 		walletExt.Logger().Error("error marshaling response", log.ErrKey, err)
@@ -423,14 +404,8 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 		AdditionalContracts:             additionalContracts,
 	}
 
-		// Marshal the response into JSON format
-		data, err := json.Marshal(networkConfigResponse)
-		if err != nil {
-			return nil, fmt.Errorf("error marshaling response: %w", err)
-		}
-
-		return &data, nil
-	})
+	// Marshal the response into JSON format
+	data, err := json.Marshal(networkConfigResponse)
 	if err != nil {
 		walletExt.Logger().Error("error marshaling response", log.ErrKey, err)
 		return
