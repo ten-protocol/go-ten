@@ -22,7 +22,6 @@ func main() {
 		fmt.Println("Error writing data to file:", err)
 		return
 	}
-
 }
 
 func writeDataToFile(filename string, data []byte) error {
