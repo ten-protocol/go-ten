@@ -63,7 +63,9 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 			return nil, fmt.Errorf("no sealed encryption key found: %w", err)
 		}
 		logger.Info("unsealed existing encryption key")
+
 		fmt.Printf("Unsealed Encryption Key: %x\n", encryptionKey)
+		logger.Info(fmt.Sprintf("Unsealed Encryption Key: %x", encryptionKey))
 		return encryptionKey, nil
 	}
 
