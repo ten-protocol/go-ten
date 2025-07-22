@@ -105,6 +105,8 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	}
 	logger.Info("sealed new encryption key")
 
+	fmt.Printf("Encryption Key: %x\n", encryptionKey)
+
 	return encryptionKey, nil
 }
 
