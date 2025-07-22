@@ -25,6 +25,11 @@ type dbTxBatch struct {
 	size    int
 }
 
+func (b *dbTxBatch) DeleteRange(start, end []byte) error {
+	// TODO implement me
+	panic("implement me")
+}
+
 // put inserts the given value into the batch for later committing.
 func (b *dbTxBatch) Put(key, value []byte) error {
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), common.CopyBytes(value), false})
