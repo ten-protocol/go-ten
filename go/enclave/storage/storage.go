@@ -53,6 +53,7 @@ type AttestedEnclave struct {
 // todo - this file needs splitting up based on concerns
 type storageImpl struct {
 	db                     enclavedb.EnclaveDB
+	trieDB                 *triedb.Database
 	preparedStatementCache *enclavedb.PreparedStatementCache
 	cachingService         *CacheService
 	eventsStorage          *eventsStorage
@@ -73,14 +74,15 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	// Open trie database with provided config
-	triedb := triedb.NewDatabase(backingDB, triedb.HashDefaults)
+	trieDB := triedb.NewDatabase(backingDB, triedb.HashDefaults)
 
 	// todo - figure out the snapshot tree
-	stateDB := state.NewDatabase(triedb, nil)
+	stateDB := state.NewDatabase(trieDB, nil)
 
 	prepStatementCache := enclavedb.NewStatementCache(backingDB.GetSQLDB(), logger)
 	return &storageImpl{
 		db:                     backingDB,
+		trieDB:                 trieDB,
 		stateCache:             stateDB,
 		chainConfig:            chainConfig,
 		config:                 config,
@@ -102,6 +104,7 @@ func (s *storageImpl) StateDB() state.Database {
 func (s *storageImpl) Close() error {
 	s.cachingService.Stop()
 	s.preparedStatementCache.Clear()
+	s.trieDB.Close()
 	return s.db.GetSQLDB().Close()
 }
 
