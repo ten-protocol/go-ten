@@ -29,5 +29,5 @@ jobs:
       - name: Build and Push Docker GW unseal Image
         run: |
           DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/gwunseal:latest\
-            -f ./tools/edbconnect/Dockerfile . 
+            -f ./tools/gateway-unsealing-enc-key/Dockerfile . 
           docker push testnetobscuronet.azurecr.io/obscuronet/gwunseal:latest
