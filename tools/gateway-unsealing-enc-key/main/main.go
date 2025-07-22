@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/ten-protocol/go-ten/go/enclave/core/egoutils"
 )
@@ -38,14 +37,6 @@ func main() {
 	if err != nil {
 		fmt.Printf("Error unsealing key: %v\n", err)
 		fmt.Printf("Error type: %T\n", err)
-
-		// Additional SGX-specific error info
-		if strings.Contains(err.Error(), "OE_INVALID_PARAMETER") {
-			fmt.Printf("SGX unsealing failed - possible causes:\n")
-			fmt.Printf("  - Data was sealed by different enclave\n")
-			fmt.Printf("  - Corrupted sealed data\n")
-			fmt.Printf("  - Wrong enclave context\n")
-		}
 		return
 	}
 
