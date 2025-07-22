@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -90,12 +91,11 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 			}
 		}
 	} else {
-		// Attempt to perform key exchange with the specified key provider.
-		// This step is crucial, and the process should fail if the key exchange is not successful.
-		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
-		encryptionKey, err = HandleKeyExchange(config, logger)
+		// Set the encryption key directly from the provided source
+		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', setting encryption key directly", config.EncryptionKeySource))
+		encryptionKey, err = hex.DecodeString(config.EncryptionKeySource)
 		if err != nil {
-			logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
+			logger.Crit("unable to set encryption key directly from source", log.ErrKey, err)
 			return nil, err
 		}
 	}
