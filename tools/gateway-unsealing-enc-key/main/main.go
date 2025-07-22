@@ -23,9 +23,6 @@ func main() {
 		fmt.Printf("File exists - Size: %d bytes, ModTime: %v\n", fileInfo.Size(), fileInfo.ModTime())
 	}
 
-	// Check if we're in an enclave
-	fmt.Printf("Running in SGX enclave: %v\n", enclave.InEnclave())
-
 	// Read raw file content for debugging
 	rawData, err := os.ReadFile(keyPath)
 	if err != nil {
