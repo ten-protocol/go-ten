@@ -287,10 +287,9 @@ func (e *Service) tryPromoteNewSequencer() {
 	e.activeSequencerID.Store(_noActiveSequencer)
 }
 
-// getFailoverCandidates returns a list of guardians that are not the active sequencer that seem healthy
-// it is used to check if failing over to a new active sequencer is possible
-
-const batchCompressionFactor = 0.85
+// This compression factor is based on data we've seen in production where the rollups is typically
+// 10-15% the size of the raw batch txs. This still allows some buffer so the rollup should rarely be completely full
+const batchCompressionFactor = 0.25
 
 // managePeriodicRollups is a background goroutine that periodically produces a rollup
 // where possible it will prefer to use a non-active sequencer enclave to avoid disrupting the production of batches
