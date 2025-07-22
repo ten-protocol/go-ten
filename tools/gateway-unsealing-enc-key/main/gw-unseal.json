@@ -19,5 +19,11 @@
       "name": "TESTMODE",
       "value": "false"
     }
+  ],
+  "files": [
+    {
+      "source": "/etc/ssl/certs/ca-certificates.crt",
+      "target": "/etc/ssl/certs/ca-certificates.crt"
+    }
   ]
 }
