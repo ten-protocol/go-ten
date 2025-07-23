@@ -13,6 +13,7 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/edgelesssys/ego/enclave"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -89,6 +90,15 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 				logger.Crit("unable to generate random encryption key", log.ErrKey, err)
 				return nil, err
 			}
+		}
+	} else if strings.HasPrefix(config.EncryptionKeySource, "https") {
+		// Attempt to perform key exchange with the specified key provider.
+		// This step is crucial, and the process should fail if the key exchange is not successful.
+		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
+		encryptionKey, err = HandleKeyExchange(config, logger)
+		if err != nil {
+			logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
+			return nil, err
 		}
 	} else {
 		// Set the encryption key directly from the provided source
@@ -214,16 +224,16 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 
 	// Step 10: Deserialize the received message
 	// Log detailed information about the response for debugging
-	logger.Info("KeyRequester: Response details", 
-		"status_code", resp.StatusCode, 
+	logger.Info("KeyRequester: Response details",
+		"status_code", resp.StatusCode,
 		"content_length", len(bodyBytes),
 		"content_type", resp.Header.Get("Content-Type"),
 		"raw_body", string(bodyBytes))
-	
+
 	var receivedMessageRequester KeyExchangeResponse
 	err = json.Unmarshal(bodyBytes, &receivedMessageRequester)
 	if err != nil {
-		logger.Error("KeyRequester: Failed to deserialize received message", 
+		logger.Error("KeyRequester: Failed to deserialize received message",
 			"error", err,
 			"raw_body", string(bodyBytes),
 			"body_length", len(bodyBytes),
