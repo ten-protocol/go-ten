@@ -213,10 +213,21 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 10: Deserialize the received message
+	// Log detailed information about the response for debugging
+	logger.Info("KeyRequester: Response details", 
+		"status_code", resp.StatusCode, 
+		"content_length", len(bodyBytes),
+		"content_type", resp.Header.Get("Content-Type"),
+		"raw_body", string(bodyBytes))
+	
 	var receivedMessageRequester KeyExchangeResponse
 	err = json.Unmarshal(bodyBytes, &receivedMessageRequester)
 	if err != nil {
-		logger.Error("KeyRequester: Failed to deserialize received message", "error", err)
+		logger.Error("KeyRequester: Failed to deserialize received message", 
+			"error", err,
+			"raw_body", string(bodyBytes),
+			"body_length", len(bodyBytes),
+			"response_headers", resp.Header)
 		return nil, fmt.Errorf("failed to deserialize received message: %w", err)
 	}
 
