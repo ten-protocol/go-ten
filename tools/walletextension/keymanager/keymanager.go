@@ -179,19 +179,37 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	// Step 4: Get the attestation report
 	// Hash the serialized public key
 	pubKeyHash := sha256.Sum256(serializedPubKey)
+	fmt.Printf("KeyExchange: Getting attestation report with pubkey hash: %x\n", pubKeyHash)
+	logger.Info(fmt.Sprintf("KeyExchange: Getting attestation report with pubkey hash: %x", pubKeyHash))
+	
 	attestationReport, err := GetReport(pubKeyHash[:])
 	if err != nil {
+		fmt.Printf("KeyExchange: Failed to get attestation report: %v\n", err)
 		logger.Error("KeyRequester: Failed to get attestation report", "error", err)
 		return nil, fmt.Errorf("failed to get attestation report: %w", err)
 	}
+	
+	fmt.Printf("KeyExchange: Successfully generated attestation report - Report size: %d bytes, PubKey size: %d bytes\n", 
+		len(attestationReport.Report), len(attestationReport.PubKey))
+	logger.Info("KeyExchange: Successfully generated attestation report", 
+		"report_size", len(attestationReport.Report), "pubkey_size", len(attestationReport.PubKey))
 
 	marshalledAttestation, err := json.Marshal(attestationReport)
 	if err != nil {
+		fmt.Printf("KeyExchange: Failed to marshal attestation report: %v\n", err)
 		logger.Crit("unable to marshal attestation report", log.ErrKey, err)
 		return nil, err
 	}
+	
+	fmt.Printf("KeyExchange: Successfully marshalled attestation report - JSON size: %d bytes\n", len(marshalledAttestation))
+	logger.Info("KeyExchange: Successfully marshalled attestation report", "json_size", len(marshalledAttestation))
 
 	// Step 6: Create the message to send (PublicKey and Attestation)
+	fmt.Printf("KeyExchange: Creating key exchange request - PublicKey size: %d bytes, Attestation size: %d bytes\n", 
+		len(serializedPubKey), len(marshalledAttestation))
+	logger.Info("KeyExchange: Creating key exchange request", 
+		"pubkey_size", len(serializedPubKey), "attestation_size", len(marshalledAttestation))
+	
 	messageRequester := KeyExchangeRequest{
 		PublicKey:   serializedPubKey,
 		Attestation: marshalledAttestation,
@@ -205,8 +223,15 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 8: Send the message to KeyProvider via HTTP POST
-	resp, err := http.Post(config.EncryptionKeySource+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
+	requestURL := config.EncryptionKeySource + "/v1" + common.PathKeyExchange
+	fmt.Printf("KeyExchange: Sending HTTP POST request to %s - Payload size: %d bytes\n", 
+		requestURL, len(messageBytesRequester))
+	logger.Info("KeyExchange: Sending HTTP POST request", 
+		"url", requestURL, "payload_size", len(messageBytesRequester))
+	
+	resp, err := http.Post(requestURL, "application/json", bytes.NewBuffer(messageBytesRequester))
 	if err != nil {
+		fmt.Printf("KeyExchange: Failed to send HTTP POST request: %v\n", err)
 		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err)
 		return nil, fmt.Errorf("failed to send message to KeyProvider: %w", err)
 	}
