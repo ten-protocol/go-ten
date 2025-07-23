@@ -100,6 +100,9 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 			logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
 			return nil, err
 		}
+		
+		fmt.Printf("Received Encryption Key from HTTPS: %x\n", encryptionKey)
+		logger.Info(fmt.Sprintf("Received Encryption Key from HTTPS: %x", encryptionKey))
 	} else {
 		// Set the encryption key directly from the provided source
 		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', setting encryption key directly", config.EncryptionKeySource))
