@@ -80,7 +80,7 @@ func executeMigration(db *sqlx.DB, content string, migrationOrder int64) error {
 		}
 	}
 
-	_, err = enclavedb.WriteConfigToTx(context.Background(), tx, currentMigrationVersionKey, big.NewInt(migrationOrder).Bytes())
+	err = enclavedb.WriteConfigToTx(context.Background(), tx, currentMigrationVersionKey, big.NewInt(migrationOrder).Bytes())
 	if err != nil {
 		return err
 	}
