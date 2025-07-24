@@ -29,7 +29,7 @@ const (
 	attSelectSequencers = "select enclave_id from attestation where node_type = ?"
 )
 
-func WriteConfigToTx(ctx context.Context, dbtx *sqlx.Tx, key string, value any) error {
+func InsertOrUpdateConfig(ctx context.Context, dbtx *sqlx.Tx, key string, value any) error {
 	var exists bool
 	// check if it exists then insert or update - this keeps it agnostic to the type of sql database
 	err := dbtx.GetContext(ctx, &exists, cfgExists, key)
