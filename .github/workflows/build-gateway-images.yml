@@ -1,10 +1,10 @@
 # Builds and publishes TEN Gateway Backend and Frontend Docker images
 # This action requires the following environment variables to be set:
-#  - K8S_DOCKER_BUILD_TAG_GATEWAY
-#  - K8S_DOCKER_BUILD_TAG_GATEWAY_FE
-#  - NETWORK_NAME
-#  - TENSCAN_URL
-#  - GATEWAY_URL
+#  - K8S_DOCKER_BUILD_TAG_GATEWAY (used for base image path)
+#  - K8S_DOCKER_BUILD_TAG_GATEWAY_FE (used for base image path)
+# Build arguments are provided via workflow inputs:
+#  - image_tag (defaults to "latest")
+#  - network_name, tenscan_url, gateway_url (for frontend build)
 
 name: "[M] Build and Publish Ten Gateway Images"
 run-name: "[M] Build and Publish Ten Gateway Images ( ${{ github.event.inputs.testnet_type }} )"
@@ -21,6 +21,23 @@ on:
           - "uat-testnet"
           - "sepolia-testnet"
           - "mainnet"
+      image_tag:
+        description: "Docker image tag"
+        required: true
+        default: "latest"
+        type: string
+      network_name:
+        description: "Network name for frontend build"
+        required: true
+        type: string
+      tenscan_url:
+        description: "Tenscan URL for frontend build"
+        required: true
+        type: string
+      gateway_url:
+        description: "Gateway URL for frontend build"
+        required: true
+        type: string
 
 jobs:
   build-and-publish:
@@ -31,19 +48,18 @@ jobs:
       - name: "Set up environment variables"
         id: setup_env
         run: |
-          # Set required variables from GitHub vars
+          # Set docker tag variables from GitHub vars (still needed for registry paths)
           declare -a VAR_NAMES=(
             "K8S_DOCKER_BUILD_TAG_GATEWAY"
             "K8S_DOCKER_BUILD_TAG_GATEWAY_FE"
-            "NETWORK_NAME"
-            "TENSCAN_URL"
-            "GATEWAY_URL"
           )
 
           for VAR_NAME in "${VAR_NAMES[@]}"; do
             VAR_VALUE=$(jq -r --arg key "$VAR_NAME" '.[$key] // empty' <<< '${{ toJson(vars) }}')
             if [[ -n "$VAR_VALUE" ]]; then
-              echo "${VAR_NAME}=${VAR_VALUE}" >> $GITHUB_ENV
+              # Replace the tag part with the custom tag
+              BASE_IMAGE=$(echo "$VAR_VALUE" | sed 's/:[^:]*$//')
+              echo "${VAR_NAME}=${BASE_IMAGE}:${{ github.event.inputs.image_tag }}" >> $GITHUB_ENV
             else
               echo "Error: ${VAR_NAME} not found in vars" >&2
               exit 1
@@ -53,11 +69,12 @@ jobs:
       - name: "Print environment variables"
         run: |
           echo "Selected Testnet Type: ${{ github.event.inputs.testnet_type }}"
+          echo "Image Tag: ${{ github.event.inputs.image_tag }}"
           echo "K8S_DOCKER_BUILD_TAG_GATEWAY: $K8S_DOCKER_BUILD_TAG_GATEWAY"
           echo "K8S_DOCKER_BUILD_TAG_GATEWAY_FE: $K8S_DOCKER_BUILD_TAG_GATEWAY_FE"
-          echo "NETWORK_NAME: $NETWORK_NAME"
-          echo "TENSCAN_URL: $TENSCAN_URL"
-          echo "GATEWAY_URL: $GATEWAY_URL"
+          echo "NETWORK_NAME: ${{ github.event.inputs.network_name }}"
+          echo "TENSCAN_URL: ${{ github.event.inputs.tenscan_url }}"
+          echo "GATEWAY_URL: ${{ github.event.inputs.gateway_url }}"
 
       - uses: actions/checkout@v4
 
@@ -94,9 +111,9 @@ jobs:
         run: |
           echo "Building TEN Gateway Frontend Docker image..."
           DOCKER_BUILDKIT=1 docker build \
-            --build-arg NEXT_PUBLIC_NETWORK_NAME="${{ env.NETWORK_NAME }}" \
-            --build-arg NEXT_PUBLIC_TENSCAN_URL="${{ env.TENSCAN_URL }}" \
-            --build-arg NEXT_PUBLIC_GATEWAY_URL="${{ env.GATEWAY_URL }}" \
+            --build-arg NEXT_PUBLIC_NETWORK_NAME="${{ github.event.inputs.network_name }}" \
+            --build-arg NEXT_PUBLIC_TENSCAN_URL="${{ github.event.inputs.tenscan_url }}" \
+            --build-arg NEXT_PUBLIC_GATEWAY_URL="${{ github.event.inputs.gateway_url }}" \
             -t ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY_FE }} \
             -f ./tools/walletextension/frontend/Dockerfile .
 
