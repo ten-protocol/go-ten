@@ -12,6 +12,10 @@ on:
           - 'dev-testnet'
           - 'uat-testnet'
           - 'sepolia-testnet'
+      upgrade_script:
+        description: 'Type the name of the script file to run (e.g. "all_contracts_upgrade.ts")'
+        required: true
+        type: string
       confirmation:
         description: 'Type "confirm" if upgrading sepolia'
         required: false
@@ -64,6 +68,7 @@ jobs:
   
           # Run upgrade script
           go run ./testnet/launcher/l1upgrade/cmd \
+          -upgrade_script="${{ github.event.inputs.upgrade_script }}" \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
