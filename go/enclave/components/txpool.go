@@ -233,6 +233,9 @@ func (t *TxPool) PendingTransactions(batchTime uint64) map[gethcommon.Address][]
 		OnlyPlainTxs: true,
 	})
 
+	allTxs := t.pool.Pending(gethtxpool.PendingFilter{})
+	t.logger.Info(fmt.Sprintf("[TXPOOL] Picked %d txs out of %d", len(txs), len(allTxs)))
+
 	// Filter out transactions that have "Time" greater than batchTime + MaxNegativeTxTimeDeltaMs
 	// this is required for serialising the transactiong together with their timestamp delta (which can't be negative).
 	maxDeltaSec := (common.MaxNegativeTxTimeDeltaMs / 1000) - 1
@@ -280,6 +283,7 @@ func (t *TxPool) add(transaction *common.L2Tx) error {
 	}
 
 	if len(strErrors) > 0 {
+		t.logger.Error("Failed to add transaction to pool", log.ErrKey, fmt.Errorf(strings.Join(strErrors, "; ")))
 		return fmt.Errorf(strings.Join(strErrors, "; ")) // nolint
 	}
 	return nil

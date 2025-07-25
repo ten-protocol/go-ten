@@ -176,7 +176,7 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		txData := &types.LegacyTx{
 			Nonce:    fromWallet.GetNonceAndIncrement(),
 			Value:    big.NewInt(int64(testcommon.RndBtw(1, 100))),
-			Gas:      uint64(50_000),
+			Gas:      uint64(10_000_000),
 			GasPrice: price,
 			To:       &toWalletAddr,
 		}
@@ -460,7 +460,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			continue
 		}
 		opts.Value = big.NewInt(100) // Send 1 wei
-		opts.GasLimit = uint64(1_000_000)
+		opts.GasLimit = uint64(10_000_000)
 		opts.GasPrice = price
 		opts.Nonce = big.NewInt(int64(fromWallet.GetNonceAndIncrement()))
 
@@ -546,7 +546,7 @@ func (ti *TransactionInjector) newTx(data []byte, nonce uint64, ercType testcomm
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,
-		Gas:      uint64(1_000_000),
+		Gas:      uint64(10_000_000),
 		GasPrice: price,
 		Data:     data,
 		To:       ti.wallets.Tokens[ercType].L2ContractAddress,
