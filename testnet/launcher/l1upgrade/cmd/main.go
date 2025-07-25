@@ -12,6 +12,7 @@ func main() {
 
 	l1Upgrade, err := l1upgrade.NewUpgradeContracts(
 		l1upgrade.NewUpgradeContractsConfig(
+			l1upgrade.WithUpgradeScript(cliConfig.upgradeScript),
 			l1upgrade.WithL1HTTPURL(cliConfig.l1HTTPURL),
 			l1upgrade.WithPrivateKey(cliConfig.privateKey),
 			l1upgrade.WithDockerImage(cliConfig.dockerImage),

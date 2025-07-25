@@ -5,6 +5,7 @@ type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
+	upgradeScript        string // the filename of the upgrade script to run
 	l1HTTPURL            string
 	privateKey           string
 	networkConfigAddress string
@@ -21,6 +22,12 @@ func NewUpgradeContractsConfig(opts ...Option) *Config {
 	}
 
 	return defaultConfig
+}
+
+func WithUpgradeScript(s string) Option {
+	return func(c *Config) {
+		c.upgradeScript = s
+	}
 }
 
 func WithL1HTTPURL(s string) Option {
