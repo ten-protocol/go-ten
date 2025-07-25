@@ -27,20 +27,35 @@ on:
         default: "latest"
         type: string
       network_name:
-        description: "Network name for frontend build"
-        required: true
+        description: |
+          Network name for frontend build
+          Examples by environment:
+          • Dev: TEN Dev Testnet
+          • UAT: TEN UAT Testnet
+          • Sepolia: TEN Sepolia Testnet
+        required: false
         type: string
-        default: ${{ github.event.inputs.testnet_type == 'dev-testnet' && 'TEN Dev Testnet' || (github.event.inputs.testnet_type == 'uat-testnet' && 'TEN UAT Testnet' || 'TEN Sepolia Testnet') }}
+        default: ""
       tenscan_url:
-        description: "Tenscan URL for frontend build"
-        required: true
+        description: |
+          Tenscan URL for frontend build
+          Examples by environment:
+          • Dev: https://dev-testnet-tenscan.io
+          • UAT: https://uat-testnet-tenscan.io
+          • Sepolia: https://tenscan.io
+        required: false
         type: string
-        default: ${{ github.event.inputs.testnet_type == 'dev-testnet' && 'https://dev-testnet-tenscan.io' || (github.event.inputs.testnet_type == 'uat-testnet' && 'https://uat-testnet-tenscan.io' || 'https://tenscan.io') }}
+        default: ""
       gateway_url:
-        description: "Gateway URL for frontend build"
-        required: true
+        description: |
+          Gateway URL for frontend build
+          Examples by environment:
+          • Dev: https://dev-gw-testnet.ten.xyz/v1/
+          • UAT: https://uat-gw-testnet.ten.xyz
+          • Sepolia: https://testnet.ten.xyz
+        required: false
         type: string
-        default: ${{ github.event.inputs.testnet_type == 'dev-testnet' && 'https://dev-gw-testnet.ten.xyz/v1/' || (github.event.inputs.testnet_type == 'uat-testnet' && 'https://uat-gw-testnet.ten.xyz' || 'https://testnet.ten.xyz') }}
+        default: ""
 
 jobs:
   build-and-publish:
@@ -69,15 +84,51 @@ jobs:
             fi
           done
 
+          # Set environment-specific defaults when fields are empty
+          TESTNET_TYPE="${{ github.event.inputs.testnet_type }}"
+          NETWORK_NAME="${{ github.event.inputs.network_name }}"
+          TENSCAN_URL="${{ github.event.inputs.tenscan_url }}"
+          GATEWAY_URL="${{ github.event.inputs.gateway_url }}"
+
+          # Use environment-specific defaults if fields are empty
+          if [[ -z "$NETWORK_NAME" ]]; then
+            case "$TESTNET_TYPE" in
+              "dev-testnet") NETWORK_NAME="TEN Dev Testnet" ;;
+              "uat-testnet") NETWORK_NAME="TEN UAT Testnet" ;;
+              "sepolia-testnet") NETWORK_NAME="TEN Sepolia Testnet" ;;
+            esac
+          fi
+
+          if [[ -z "$TENSCAN_URL" ]]; then
+            case "$TESTNET_TYPE" in
+              "dev-testnet") TENSCAN_URL="https://dev-testnet-tenscan.io" ;;
+              "uat-testnet") TENSCAN_URL="https://uat-testnet-tenscan.io" ;;
+              "sepolia-testnet") TENSCAN_URL="https://tenscan.io" ;;
+            esac
+          fi
+
+          if [[ -z "$GATEWAY_URL" ]]; then
+            case "$TESTNET_TYPE" in
+              "dev-testnet") GATEWAY_URL="https://dev-gw-testnet.ten.xyz/v1/" ;;
+              "uat-testnet") GATEWAY_URL="https://uat-gw-testnet.ten.xyz" ;;
+              "sepolia-testnet") GATEWAY_URL="https://testnet.ten.xyz" ;;
+            esac
+          fi
+
+          # Export final values
+          echo "FINAL_NETWORK_NAME=$NETWORK_NAME" >> $GITHUB_ENV
+          echo "FINAL_TENSCAN_URL=$TENSCAN_URL" >> $GITHUB_ENV
+          echo "FINAL_GATEWAY_URL=$GATEWAY_URL" >> $GITHUB_ENV
+
       - name: "Print environment variables"
         run: |
           echo "Selected Testnet Type: ${{ github.event.inputs.testnet_type }}"
           echo "Image Tag: ${{ github.event.inputs.image_tag }}"
           echo "K8S_DOCKER_BUILD_TAG_GATEWAY: $K8S_DOCKER_BUILD_TAG_GATEWAY"
           echo "K8S_DOCKER_BUILD_TAG_GATEWAY_FE: $K8S_DOCKER_BUILD_TAG_GATEWAY_FE"
-          echo "NETWORK_NAME: ${{ github.event.inputs.network_name }}"
-          echo "TENSCAN_URL: ${{ github.event.inputs.tenscan_url }}"
-          echo "GATEWAY_URL: ${{ github.event.inputs.gateway_url }}"
+          echo "Network Name: $FINAL_NETWORK_NAME"
+          echo "Tenscan URL: $FINAL_TENSCAN_URL"
+          echo "Gateway URL: $FINAL_GATEWAY_URL"
 
       - uses: actions/checkout@v4
 
@@ -114,9 +165,9 @@ jobs:
         run: |
           echo "Building TEN Gateway Frontend Docker image..."
           DOCKER_BUILDKIT=1 docker build \
-            --build-arg NEXT_PUBLIC_NETWORK_NAME="${{ github.event.inputs.network_name }}" \
-            --build-arg NEXT_PUBLIC_TENSCAN_URL="${{ github.event.inputs.tenscan_url }}" \
-            --build-arg NEXT_PUBLIC_GATEWAY_URL="${{ github.event.inputs.gateway_url }}" \
+            --build-arg NEXT_PUBLIC_NETWORK_NAME="${{ env.FINAL_NETWORK_NAME }}" \
+            --build-arg NEXT_PUBLIC_TENSCAN_URL="${{ env.FINAL_TENSCAN_URL }}" \
+            --build-arg NEXT_PUBLIC_GATEWAY_URL="${{ env.FINAL_GATEWAY_URL }}" \
             -t ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY_FE }} \
             -f ./tools/walletextension/frontend/Dockerfile .
 
