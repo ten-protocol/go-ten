@@ -30,14 +30,17 @@ on:
         description: "Network name for frontend build"
         required: true
         type: string
+        default: ${{ github.event.inputs.testnet_type == 'dev-testnet' && 'TEN Dev Testnet' || (github.event.inputs.testnet_type == 'uat-testnet' && 'TEN UAT Testnet' || 'TEN Sepolia Testnet') }}
       tenscan_url:
         description: "Tenscan URL for frontend build"
         required: true
         type: string
+        default: ${{ github.event.inputs.testnet_type == 'dev-testnet' && 'https://dev-testnet-tenscan.io' || (github.event.inputs.testnet_type == 'uat-testnet' && 'https://uat-testnet-tenscan.io' || 'https://tenscan.io') }}
       gateway_url:
         description: "Gateway URL for frontend build"
         required: true
         type: string
+        default: ${{ github.event.inputs.testnet_type == 'dev-testnet' && 'https://dev-gw-testnet.ten.xyz/v1/' || (github.event.inputs.testnet_type == 'uat-testnet' && 'https://uat-gw-testnet.ten.xyz' || 'https://testnet.ten.xyz') }}
 
 jobs:
   build-and-publish:
