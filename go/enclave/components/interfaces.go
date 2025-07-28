@@ -45,18 +45,44 @@ type L1BlockProcessor interface {
 	HealthCheck() (bool, error)
 }
 
-// UpgradeManager handles network upgrade events and notifies registered handlers
+// UpgradeManager manages network upgrade events and dispatches them to registered handlers
+// when they reach L1 finality
 type UpgradeManager interface {
-	// ProcessNetworkUpgrades processes network upgrade events from L1 blocks
-	ProcessNetworkUpgrades(ctx context.Context, processed *common.ProcessedL1Data) error
+	// OnL1Block processes a new L1 block and checks for finalized upgrade events
+	OnL1Block(ctx context.Context, blockHeader *types.Header, processed *common.ProcessedL1Data) error
 	// RegisterUpgradeHandler registers a handler for a specific feature name
 	RegisterUpgradeHandler(featureName string, handler UpgradeHandler)
+	// ReplayFinalizedUpgrades replays all finalized upgrades to registered handlers (used on startup)
+	ReplayFinalizedUpgrades(ctx context.Context) error
 }
 
-// UpgradeHandler processes specific network upgrade events
+// UpgradeHandler defines how a service should handle upgrade events
 type UpgradeHandler interface {
-	// HandleUpgrade processes the upgrade data for a specific feature
+	// CanUpgrade checks if this handler can process the given upgrade
+	// Returns false for unsupported upgrades, which will cause the node to error out
+	CanUpgrade(ctx context.Context, featureName string, featureData []byte) bool
+	// HandleUpgrade processes a network upgrade event for a specific feature
 	HandleUpgrade(ctx context.Context, featureName string, featureData []byte) error
+}
+
+// PendingNetworkUpgrade represents a network upgrade event that hasn't reached finality yet
+type PendingNetworkUpgrade struct {
+	FeatureName   string
+	FeatureData   []byte
+	L1BlockHeight uint64
+	L1BlockHash   common.L1BlockHash
+	TxHash        gethcommon.Hash
+}
+
+// FinalizedNetworkUpgrade represents a network upgrade event that has reached finality
+type FinalizedNetworkUpgrade struct {
+	FeatureName       string
+	FeatureData       []byte
+	L1BlockHeight     uint64
+	L1BlockHash       common.L1BlockHash
+	TxHash            gethcommon.Hash
+	FinalizedAtHeight uint64
+	FinalizedAtHash   common.L1BlockHash
 }
 
 // BatchExecutionContext - Contains all data that each batch depends on

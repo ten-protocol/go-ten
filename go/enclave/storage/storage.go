@@ -1159,3 +1159,57 @@ func (s *storageImpl) GetSequencerEnclaveIDs(ctx context.Context) ([]common.Encl
 	}
 	return ids, nil
 }
+
+// NetworkUpgradeStorage implementation
+
+func (s *storageImpl) StorePendingNetworkUpgrade(ctx context.Context, featureName string, featureData []byte, l1Height uint64, l1Hash gethcommon.Hash, txHash gethcommon.Hash) error {
+	defer s.logDuration("StorePendingNetworkUpgrade", measure.NewStopwatch())
+
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+
+	err = enclavedb.WriteNetworkUpgrade(ctx, dbTx, featureName, featureData, l1Height, l1Hash, txHash)
+	if err != nil {
+		return fmt.Errorf("could not store pending network upgrade - %w", err)
+	}
+
+	if err := dbTx.Commit(); err != nil {
+		return fmt.Errorf("could not commit pending network upgrade - %w", err)
+	}
+
+	return nil
+}
+
+func (s *storageImpl) FinalizeNetworkUpgrade(ctx context.Context, txHash gethcommon.Hash, finalizedAtHeight uint64, finalizedAtHash gethcommon.Hash) error {
+	defer s.logDuration("FinalizeNetworkUpgrade", measure.NewStopwatch())
+
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+
+	err = enclavedb.FinalizeNetworkUpgrade(ctx, dbTx, txHash, finalizedAtHeight, finalizedAtHash)
+	if err != nil {
+		return fmt.Errorf("could not finalize network upgrade - %w", err)
+	}
+
+	if err := dbTx.Commit(); err != nil {
+		return fmt.Errorf("could not commit finalized network upgrade - %w", err)
+	}
+
+	return nil
+}
+
+func (s *storageImpl) GetPendingNetworkUpgrades(ctx context.Context) ([]enclavedb.NetworkUpgrade, error) {
+	defer s.logDuration("GetPendingNetworkUpgrades", measure.NewStopwatch())
+	return enclavedb.ReadPendingNetworkUpgrades(ctx, s.db.GetSQLDB())
+}
+
+func (s *storageImpl) GetFinalizedNetworkUpgrades(ctx context.Context) ([]enclavedb.NetworkUpgrade, error) {
+	defer s.logDuration("GetFinalizedNetworkUpgrades", measure.NewStopwatch())
+	return enclavedb.ReadFinalizedNetworkUpgrades(ctx, s.db.GetSQLDB())
+}

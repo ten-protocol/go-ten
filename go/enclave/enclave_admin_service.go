@@ -97,7 +97,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 	sequencerService := nodetype.NewSequencer(blockProcessor, batchExecutor, registry, rollupProducer, rollupCompression, gethEncodingService, logger, chainConfig, enclaveKeyService, mempool, storage, dataCompressionService, seqSettings, contractRegistry.DARegistryLib(), config.L1ChainID)
 	validatorService := nodetype.NewValidator(blockProcessor, batchExecutor, registry, chainConfig, storage, sigVerifier, mempool, logger)
 
-	upgradeManager := components.NewUpgradeManager(logger)
+	upgradeManager := components.NewUpgradeManager(storage, logger)
 	upgradeManager.RegisterUpgradeHandler("gas_pricing", gasPricer)
 
 	eas := &enclaveAdminService{
@@ -124,6 +124,14 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 		sharedSecretService:    sharedSecretService,
 		gasOracle:              gasOracle,
 		upgradeManager:         upgradeManager,
+	}
+
+	// Replay any finalized upgrades from previous sessions to registered handlers
+	err = upgradeManager.ReplayFinalizedUpgrades(context.Background())
+	if err != nil {
+		logger.Error("Failed to replay finalized upgrades on startup", log.ErrKey, err)
+		// Note: We don't return error here as the enclave should still start
+		// even if replay fails - this is a non-critical operation on startup
 	}
 
 	// if the current enclave was already marked as an active/backup sequencer, it needs to set the right mempool mode
@@ -215,8 +223,8 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 	// doing this after the network secret msgs to make sure we have stored the attestation before promotion.
 	e.processSequencerPromotions(blockData)
 
-	// Process network upgrade events
-	err = e.upgradeManager.ProcessNetworkUpgrades(ctx, blockData)
+	// Process network upgrade events when they reach finality
+	err = e.upgradeManager.OnL1Block(ctx, blockHeader, blockData)
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not process network upgrades. Cause: %w", err))
 	}

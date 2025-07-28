@@ -29,6 +29,23 @@ func NewGasPricer(logger gethlog.Logger, config *config.EnclaveConfig) *GasPrice
 	}
 }
 
+// CanUpgrade implements the UpgradeHandler interface for gas pricing upgrades
+func (gp *GasPricer) CanUpgrade(ctx context.Context, featureName string, featureData []byte) bool {
+	// Gas pricer only handles gas_pricing feature upgrades
+	if featureName != "gas_pricing" {
+		return false
+	}
+
+	// Check if we support the specific upgrade data
+	switch string(featureData) {
+	case "dynamic-pricing":
+		return true
+	default:
+		gp.logger.Warn("Unsupported gas pricing upgrade data", "featureData", string(featureData))
+		return false
+	}
+}
+
 // HandleUpgrade implements the UpgradeHandler interface for gas pricing upgrades
 func (gp *GasPricer) HandleUpgrade(ctx context.Context, featureName string, featureData []byte) error {
 	gp.logger.Info("Processing gas pricing upgrade",
