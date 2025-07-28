@@ -36,7 +36,7 @@ const (
 	LongLiving  Strategy = iota
 
 	longCacheTTL  = 5 * time.Hour
-	shortCacheTTL = 1 * time.Minute
+	shortCacheTTL = 1 * time.Second
 )
 
 type Cfg struct {
