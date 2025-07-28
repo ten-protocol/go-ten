@@ -84,10 +84,10 @@ func NewBatchExecutor(
 	entropyService *crypto.EvmEntropyService,
 	mempool *TxPool,
 	dataCompressionService compression.DataCompressionService,
+	gasPricer *GasPricer,
 	logger gethlog.Logger,
 ) BatchExecutor {
 
-	gasPricer := NewGasPricer(logger, config)
 	return &batchExecutor{
 		storage:                storage,
 		batchRegistry:          batchRegistry,
@@ -108,6 +108,11 @@ func NewBatchExecutor(
 		execMutex:              &sync.Mutex{},
 		lastExecutedBatch:      0,
 	}
+}
+
+// GetGasPricer returns the gas pricer for external access
+func (executor *batchExecutor) GetGasPricer() *GasPricer {
+	return executor.gasPricer
 }
 
 // ComputeBatch where the batch execution conventions are

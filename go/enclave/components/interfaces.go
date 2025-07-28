@@ -45,6 +45,20 @@ type L1BlockProcessor interface {
 	HealthCheck() (bool, error)
 }
 
+// UpgradeManager handles network upgrade events and notifies registered handlers
+type UpgradeManager interface {
+	// ProcessNetworkUpgrades processes network upgrade events from L1 blocks
+	ProcessNetworkUpgrades(ctx context.Context, processed *common.ProcessedL1Data) error
+	// RegisterUpgradeHandler registers a handler for a specific feature name
+	RegisterUpgradeHandler(featureName string, handler UpgradeHandler)
+}
+
+// UpgradeHandler processes specific network upgrade events
+type UpgradeHandler interface {
+	// HandleUpgrade processes the upgrade data for a specific feature
+	HandleUpgrade(ctx context.Context, featureName string, featureData []byte) error
+}
+
 // BatchExecutionContext - Contains all data that each batch depends on
 type BatchExecutionContext struct {
 	BlockPtr  common.L1BlockHash // BlockHeader is needed for the cross chain messages

@@ -61,10 +61,11 @@ type enclaveAdminService struct {
 	mempool                *components.TxPool
 	sharedSecretService    *crypto.SharedSecretService
 	gasOracle              gas.Oracle
+	upgradeManager         components.UpgradeManager
 	activeSequencer        bool
 }
 
-func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *components.TxPool, chainConfig *params.ChainConfig, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService, contractRegistry contractlib.ContractRegistryLib, gasOracle gas.Oracle) common.EnclaveAdmin {
+func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *components.TxPool, chainConfig *params.ChainConfig, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService, contractRegistry contractlib.ContractRegistryLib, gasOracle gas.Oracle, gasPricer *components.GasPricer) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -96,6 +97,9 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 	sequencerService := nodetype.NewSequencer(blockProcessor, batchExecutor, registry, rollupProducer, rollupCompression, gethEncodingService, logger, chainConfig, enclaveKeyService, mempool, storage, dataCompressionService, seqSettings, contractRegistry.DARegistryLib(), config.L1ChainID)
 	validatorService := nodetype.NewValidator(blockProcessor, batchExecutor, registry, chainConfig, storage, sigVerifier, mempool, logger)
 
+	upgradeManager := components.NewUpgradeManager(logger)
+	upgradeManager.RegisterUpgradeHandler("gas_pricing", gasPricer)
+
 	eas := &enclaveAdminService{
 		config:                 config,
 		mainMutex:              sync.Mutex{},
@@ -119,6 +123,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 		mempool:                mempool,
 		sharedSecretService:    sharedSecretService,
 		gasOracle:              gasOracle,
+		upgradeManager:         upgradeManager,
 	}
 
 	// if the current enclave was already marked as an active/backup sequencer, it needs to set the right mempool mode
@@ -210,6 +215,12 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 	// doing this after the network secret msgs to make sure we have stored the attestation before promotion.
 	e.processSequencerPromotions(blockData)
 
+	// Process network upgrade events
+	err = e.upgradeManager.ProcessNetworkUpgrades(ctx, blockData)
+	if err != nil {
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not process network upgrades. Cause: %w", err))
+	}
+
 	return bsr, nil
 }
 
@@ -224,6 +235,11 @@ func (e *enclaveAdminService) processSequencerPromotions(blockData *common.Proce
 			}
 		}
 	}
+}
+
+// RegisterUpgradeHandler allows services to register for specific network upgrade events
+func (e *enclaveAdminService) RegisterUpgradeHandler(featureName string, handler components.UpgradeHandler) {
+	e.upgradeManager.RegisterUpgradeHandler(featureName, handler)
 }
 
 func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {

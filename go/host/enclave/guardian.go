@@ -114,10 +114,16 @@ func (g *Guardian) Start() error {
 
 	// Identify the enclave before starting (the enclave generates its ID immediately at startup)
 	// (retry until we get the enclave ID or the host is stopping)
+	enclaveConnectRetries := 0
 	for g.enclaveID == nil && g.running.Load() {
 		enclID, err := g.enclaveClient.EnclaveID(context.Background())
 		if err != nil {
-			g.logger.Warn("could not get enclave ID", log.ErrKey, err)
+			if enclaveConnectRetries%10 == 0 { // avoid spamming the log while waiting for the enclave to start
+				g.logger.Warn("could not get enclave ID, retrying", log.ErrKey, err, "retries", enclaveConnectRetries)
+			} else {
+				g.logger.Trace("could not get enclave ID, retrying", log.ErrKey, err, "retries", enclaveConnectRetries)
+			}
+			enclaveConnectRetries++
 			time.Sleep(_retryInterval)
 			continue
 		}

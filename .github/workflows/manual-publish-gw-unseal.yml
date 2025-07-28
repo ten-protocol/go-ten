@@ -1,0 +1,33 @@
+# Publishes the latest version of edb-connect to the Azure Container Registry
+# Users will then have access to this latest version when they run the edb-connect.sh script on the node VMs.
+
+name: "[M] Publish GW unseal"
+run-name: "[M] Publish GW unseal"
+on:
+  workflow_dispatch:
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: "Set up Docker"
+        uses: docker/setup-buildx-action@v1
+
+      - name: "Login to Azure docker registry"
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: "Login via Azure CLI"
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and Push Docker GW unseal Image
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t testnetobscuronet.azurecr.io/obscuronet/gwunseal:latest\
+            -f ./tools/edbconnect/Dockerfile . 
+          docker push testnetobscuronet.azurecr.io/obscuronet/gwunseal:latest

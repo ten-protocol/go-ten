@@ -1,6 +1,7 @@
 package components
 
 import (
+	"context"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
@@ -15,18 +16,44 @@ const (
 )
 
 type GasPricer struct {
-	logger gethlog.Logger
-	config *config.EnclaveConfig
+	logger                gethlog.Logger
+	config                *config.EnclaveConfig
+	dynamicPricingEnabled bool // tracks whether dynamic pricing upgrade has been applied
 }
 
 func NewGasPricer(logger gethlog.Logger, config *config.EnclaveConfig) *GasPricer {
 	return &GasPricer{
-		logger: logger,
-		config: config,
+		logger:                logger,
+		config:                config,
+		dynamicPricingEnabled: false, // start with static pricing (minGasPrice)
 	}
 }
 
+// HandleUpgrade implements the UpgradeHandler interface for gas pricing upgrades
+func (gp *GasPricer) HandleUpgrade(ctx context.Context, featureName string, featureData []byte) error {
+	gp.logger.Info("Processing gas pricing upgrade",
+		"featureName", featureName,
+		"featureData", string(featureData))
+
+	// Check if this is the dynamic pricing upgrade
+	if string(featureData) == "dynamic-pricing" {
+		gp.dynamicPricingEnabled = true
+		gp.logger.Info("Dynamic gas pricing enabled")
+	} else {
+		gp.logger.Warn("Unknown gas pricing upgrade data", "featureData", string(featureData))
+	}
+
+	return nil
+}
+
 func (gp *GasPricer) CalculateBlockBaseFee(cfg *params.ChainConfig, parent *types.Header) *big.Int {
+	// If dynamic pricing is not enabled, return the configured minimum gas price
+	if !gp.dynamicPricingEnabled {
+		gp.logger.Trace("Using static gas pricing", "minGasPrice", gp.config.MinGasPrice)
+		return new(big.Int).Set(gp.config.MinGasPrice)
+	}
+
+	// Dynamic pricing is enabled - use the EIP-1559 calculation
 	if parent == nil {
 		return big.NewInt(InitialBaseFee)
 	}
