@@ -347,7 +347,9 @@ func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 		t.logger.Crit("invalid mempool. should not happen")
 	}
 
-	if err := gethtxpool.ValidateTransaction(tx, ch.Load(), sig, opts); err != nil {
+	header := ch.Load()
+	header.GasLimit = ^uint64(0) // set to max uint64
+	if err := gethtxpool.ValidateTransaction(tx, header, sig, opts); err != nil {
 		return err
 	}
 	return nil
@@ -400,9 +402,18 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 		return fmt.Errorf("insufficient gas. Want at least: %d have: %d", leastGas, tx.Gas()), nil
 	}
 
+	requiredGas := leastGas + params.TxGas
+
 	// make sure the tx has enough gas to cover the publishing cost even if by some chance the 20% deducted was too much
-	if tx.Gas() < publishingGas+params.TxGas {
-		return fmt.Errorf("insufficient gas to publish the transaction to the DA. Want at least: %d have: %d", publishingGas, tx.Gas()), nil
+	if tx.Gas() < requiredGas {
+		return fmt.Errorf("insufficient gas to publish the transaction to the DA. Want at least: %d have: %d", requiredGas, tx.Gas()), nil
+	}
+
+	// The check in the geth txpool is disabled by setting to max uint64 and thus we must verify here.
+	// We only compare leftover gas with the head batch gas limit as those represent execution gas.
+	leftOverGas := tx.Gas() - requiredGas
+	if leftOverGas > headBatch.GasLimit {
+		return gethtxpool.ErrGasLimit, nil
 	}
 
 	return nil, nil
