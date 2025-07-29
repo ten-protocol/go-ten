@@ -16,6 +16,9 @@ type Cache interface {
 	// DisableShortLiving disables the caching of short-living elements.
 	DisableShortLiving()
 
+	// IsShortLivingEnabled returns whether short-living elements are currently being cached.
+	IsShortLivingEnabled() bool
+
 	// IsEvicted - based on the eviction event and the time of caching, calculates whether the key was evicted
 	IsEvicted(key []byte, originalTTL time.Duration) bool
 
@@ -71,6 +74,10 @@ func WithCache[R any](cache Cache, cfg *Cfg, cacheKey []byte, onCacheMiss func()
 		isEvicted := false
 		ttl := longCacheTTL
 		if cacheType == LatestBatch {
+			// If short living is disabled, bypass cache entirely to prevent serving stale data
+			if !cache.IsShortLivingEnabled() {
+				return onCacheMiss()
+			}
 			ttl = shortCacheTTL
 			isEvicted = cache.IsEvicted(cacheKey, ttl)
 		}
@@ -118,6 +125,10 @@ func NewNoOpCache() Cache {
 func (c *noOpCache) EvictShortLiving() {}
 
 func (c *noOpCache) DisableShortLiving() {}
+
+func (c *noOpCache) IsShortLivingEnabled() bool {
+	return false
+}
 
 func (c *noOpCache) IsEvicted(key []byte, originalTTL time.Duration) bool {
 	return false
