@@ -9,7 +9,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
-	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 )
 
 // NetworkUpgradeConfirmationDepth is the number of L1 blocks required for finality
@@ -32,37 +31,6 @@ func NewUpgradeManager(storage storage.Storage, logger gethlog.Logger) UpgradeMa
 		storage:  storage,
 		logger:   logger,
 	}
-}
-
-// Convert enclavedb.NetworkUpgrade to PendingNetworkUpgrade
-func dbUpgradeToPending(dbUpgrade enclavedb.NetworkUpgrade) PendingNetworkUpgrade {
-	return PendingNetworkUpgrade{
-		FeatureName:   dbUpgrade.FeatureName,
-		FeatureData:   dbUpgrade.FeatureData,
-		L1BlockHeight: dbUpgrade.AppliedAtL1Height,
-		L1BlockHash:   dbUpgrade.AppliedAtL1Hash,
-		TxHash:        dbUpgrade.TxHash,
-	}
-}
-
-// Convert enclavedb.NetworkUpgrade to FinalizedNetworkUpgrade
-func dbUpgradeToFinalized(dbUpgrade enclavedb.NetworkUpgrade) FinalizedNetworkUpgrade {
-	finalized := FinalizedNetworkUpgrade{
-		FeatureName:   dbUpgrade.FeatureName,
-		FeatureData:   dbUpgrade.FeatureData,
-		L1BlockHeight: dbUpgrade.AppliedAtL1Height,
-		L1BlockHash:   dbUpgrade.AppliedAtL1Hash,
-		TxHash:        dbUpgrade.TxHash,
-	}
-
-	if dbUpgrade.FinalizedAtHeight != nil {
-		finalized.FinalizedAtHeight = *dbUpgrade.FinalizedAtHeight
-	}
-	if dbUpgrade.FinalizedAtHash != nil {
-		finalized.FinalizedAtHash = *dbUpgrade.FinalizedAtHash
-	}
-
-	return finalized
 }
 
 func (um *upgradeManager) RegisterUpgradeHandler(featureName string, handler UpgradeHandler) {

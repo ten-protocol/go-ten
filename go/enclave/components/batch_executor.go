@@ -87,7 +87,6 @@ func NewBatchExecutor(
 	gasPricer *GasPricer,
 	logger gethlog.Logger,
 ) BatchExecutor {
-
 	return &batchExecutor{
 		storage:                storage,
 		batchRegistry:          batchRegistry,

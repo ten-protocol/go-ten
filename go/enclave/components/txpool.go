@@ -283,7 +283,6 @@ func (t *TxPool) add(transaction *common.L2Tx) error {
 	}
 
 	if len(strErrors) > 0 {
-		t.logger.Error("Failed to add transaction to pool", log.ErrKey, fmt.Errorf(strings.Join(strErrors, "; ")))
 		return fmt.Errorf(strings.Join(strErrors, "; ")) // nolint
 	}
 	return nil
