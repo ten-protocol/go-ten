@@ -44,6 +44,8 @@ type DailyStats struct {
 	DailyActive   int    `json:"dailyActive"`   // Users active on this day
 	WeeklyActive  int    `json:"weeklyActive"`  // Users active in the past 7 days from this date
 	MonthlyActive int    `json:"monthlyActive"` // Users active in the past 30 days from this date
+	NewUsers      int    `json:"newUsers"`      // New users that joined on this day
+	TotalUsers    uint64 `json:"totalUsers"`    // Total users as of this date (for calculating new users)
 }
 
 // ActivityStatsDocument contains historical user activity statistics
@@ -329,10 +331,15 @@ func (m *MetricsStorageCosmosDB) UpdateDailyStats() error {
 	// Get current date in ISO format (YYYY-MM-DD)
 	today := time.Now().UTC().Format("2006-01-02")
 
-	// Load existing stats
+	// Load existing stats and global metrics
 	stats, err := m.LoadActivityStats()
 	if err != nil {
 		return err
+	}
+
+	globalMetrics, err := m.LoadGlobalMetrics()
+	if err != nil {
+		return fmt.Errorf("failed to load global metrics: %w", err)
 	}
 
 	// Calculate time thresholds
@@ -359,20 +366,64 @@ func (m *MetricsStorageCosmosDB) UpdateDailyStats() error {
 		return fmt.Errorf("failed to count monthly active users: %w", err)
 	}
 
+	// Calculate new users for today
+	currentTotalUsers := globalMetrics.TotalUsers
+	newUsersToday := 0
+
+	// Find the most recent entry before today to calculate new users
+	if len(stats.DailyStats) > 0 {
+		// Sort entries by date to find the most recent one before today
+		sortedStats := make([]DailyStats, len(stats.DailyStats))
+		copy(sortedStats, stats.DailyStats)
+		sort.Slice(sortedStats, func(i, j int) bool {
+			return sortedStats[i].Date > sortedStats[j].Date
+		})
+
+		// Find the most recent entry before today
+		var previousTotalUsers uint64 = 0
+		for _, stat := range sortedStats {
+			if stat.Date < today {
+				previousTotalUsers = stat.TotalUsers
+				break
+			}
+		}
+
+		// Calculate new users as the difference
+		if currentTotalUsers >= previousTotalUsers {
+			newUsersToday = int(currentTotalUsers - previousTotalUsers)
+		} else {
+			// This shouldn't happen unless there's a data inconsistency
+			newUsersToday = 0
+		}
+	} else {
+		// First day ever - all current users are "new" today
+		newUsersToday = int(currentTotalUsers)
+	}
+
 	// Create today's stats
 	todayStats := DailyStats{
 		Date:          today,
 		DailyActive:   dailyCount,
 		WeeklyActive:  weeklyCount,
 		MonthlyActive: monthlyCount,
+		NewUsers:      newUsersToday,
+		TotalUsers:    currentTotalUsers,
 	}
 
 	// Check if we already have an entry for today
 	found := false
 	for i, stat := range stats.DailyStats {
 		if stat.Date == today {
-			// Update existing entry
-			stats.DailyStats[i] = todayStats
+			// Update existing entry but preserve NewUsers if it was already calculated
+			if stat.NewUsers == 0 {
+				stats.DailyStats[i] = todayStats
+			} else {
+				// Preserve existing NewUsers count, update other fields
+				stats.DailyStats[i].DailyActive = dailyCount
+				stats.DailyStats[i].WeeklyActive = weeklyCount
+				stats.DailyStats[i].MonthlyActive = monthlyCount
+				stats.DailyStats[i].TotalUsers = currentTotalUsers
+			}
 			found = true
 			break
 		}
