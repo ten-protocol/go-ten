@@ -204,13 +204,13 @@ func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	// interact with the contract - unsigned tx calling "sendRawTransaction"
 	contractInteractionData, err := eventsContractABI.Pack("setMessage", "user0PrivateEvent")
 	require.NoError(t, err)
-	rec, err := interactWithSmartContractUnsigned(user0.HTTPClient, true, skNonce, contractAddr, contractInteractionData, nil)
+	rec, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil)
 	require.NoError(t, err)
 	require.Equal(t, uint64(0x1), rec.Status)
 
 	// move money back - unsigned tx calling "sendTransaction"
 	skNonce++
-	rec1, err := interactWithSmartContractUnsigned(user0.HTTPClient, false, skNonce, user0.Wallets[0].Address(), nil, big.NewInt(1_000))
+	rec1, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, user0.Wallets[0].Address(), nil, big.NewInt(1_000))
 	require.NoError(t, err)
 	require.Equal(t, uint64(0x1), rec1.Status)
 
@@ -220,7 +220,7 @@ func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 
 	// interact with the contract - unsigned - should fail
 	skNonce++
-	rec2, err := interactWithSmartContractUnsigned(user0.HTTPClient, false, skNonce, contractAddr, contractInteractionData, nil)
+	rec2, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil)
 	require.Error(t, err)
 	require.Nil(t, rec2)
 }
@@ -248,7 +248,7 @@ func deployContract(t *testing.T, w wallet.Wallet, user0 *GatewayUser) gethcommo
 	return contractReceipt.ContractAddress
 }
 
-func interactWithSmartContractUnsigned(client *ethclient.Client, sendRaw bool, nonce uint64, contractAddress gethcommon.Address, contractInteractionData []byte, value *big.Int) (*types.Receipt, error) {
+func interactWithSmartContractUnsigned(client *ethclient.Client, nonce uint64, contractAddress gethcommon.Address, contractInteractionData []byte, value *big.Int) (*types.Receipt, error) {
 	var result responses.GasPriceType
 	err := client.Client().CallContext(context.Background(), &result, "eth_gasPrice")
 	if err != nil {
@@ -257,40 +257,20 @@ func interactWithSmartContractUnsigned(client *ethclient.Client, sendRaw bool, n
 
 	var txHash gethcommon.Hash
 
-	if sendRaw {
-		interactionTx := types.LegacyTx{
-			Nonce:    nonce,
-			To:       &contractAddress,
-			Gas:      uint64(1_000_000),
-			GasPrice: result.ToInt(),
-			Data:     contractInteractionData,
-			Value:    value,
-		}
-		unSignedTx := types.NewTx(&interactionTx)
-		blob, err := unSignedTx.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		err = client.Client().CallContext(context.Background(), &txHash, "eth_sendRawTransaction", hexutil.Encode(blob))
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		n := hexutil.Uint64(nonce)
-		g := hexutil.Uint64(10_000_000)
-		d := hexutil.Bytes(contractInteractionData)
-		interactionTx := gethapi.TransactionArgs{
-			Nonce:    &n,
-			To:       &contractAddress,
-			Gas:      &g,
-			GasPrice: &result,
-			Data:     &d,
-			Value:    (*hexutil.Big)(value),
-		}
-		err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx)
-		if err != nil {
-			return nil, err
-		}
+	n := hexutil.Uint64(nonce)
+	g := hexutil.Uint64(10_000_000)
+	d := hexutil.Bytes(contractInteractionData)
+	interactionTx := gethapi.TransactionArgs{
+		Nonce:    &n,
+		To:       &contractAddress,
+		Gas:      &g,
+		GasPrice: &result,
+		Data:     &d,
+		Value:    (*hexutil.Big)(value),
+	}
+	err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx)
+	if err != nil {
+		return nil, err
 	}
 
 	txReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), client, txHash, 10*time.Second)
@@ -622,14 +602,18 @@ func testErrorHandling(t *testing.T, startPort int, httpURL, wsURL string, w wal
 	err = ogClient.RegisterAccount(w.PrivateKey(), w.Address())
 	require.NoError(t, err)
 
-	privateTxs, _ := json.Marshal(common.ListPrivateTransactionsQueryParams{
-		Address:    gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
-		Pagination: common.QueryPagination{Size: 10},
+	privateTxsBytes, _ := json.Marshal(common.ListPrivateTransactionsQueryParams{
+		Address:          gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
+		Pagination:       common.QueryPagination{Size: 10},
+		ShowSyntheticTxs: false,
+		ShowAllPublicTxs: false,
 	})
+
+	privateTxs := strings.ReplaceAll(string(privateTxsBytes), `"`, `\"`)
 
 	// make requests to geth for comparison
 	for _, req := range []string{
-		`{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["` + common.ListPrivateTransactionsCQMethod + `", "` + string(privateTxs) + `","latest"],"id":1}`,
+		`{"jsonrpc":"2.0","method":"eth_getStorageAt","params":["` + common.ListPrivateTransactionsCQMethod + `", "` + privateTxs + `","latest"],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[[]],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"topics":[]}],"id":1}`,
 		`{"jsonrpc":"2.0","method":"eth_getLogs","params":[{"fromBlock":"0x387","topics":["0xc6d8c0af6d21f291e7c359603aa97e0ed500f04db6e983b9fce75a91c6b8da6b"]}],"id":1}`,
@@ -654,7 +638,7 @@ func testErrorHandling(t *testing.T, startPort int, httpURL, wsURL string, w wal
 		// ensure the gateway request is issued correctly (should return 200 ok with jsonRPCError)
 		_, response, err := httputil.PostDataJSON(ogClient.HTTP(), []byte(req))
 		require.NoError(t, err)
-		fmt.Printf("Resp: %s", response)
+		fmt.Printf("Resp: %s\n", response)
 
 		// unmarshall the response to JSONRPCMessage
 		jsonRPCError := JSONRPCMessage{}
