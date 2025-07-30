@@ -100,15 +100,6 @@ func getActivityStatsDocumentIDForYear(year int) string {
 	return fmt.Sprintf("%s%d", ACTIVITY_STATS_DOC_ID_PREFIX, year)
 }
 
-// getYearFromDate extracts the year from an ISO date string (YYYY-MM-DD)
-func getYearFromDate(dateStr string) (int, error) {
-	date, err := time.Parse("2006-01-02", dateStr)
-	if err != nil {
-		return 0, err
-	}
-	return date.Year(), nil
-}
-
 // getShardDocumentID determines which shard a user belongs to
 func (m *MetricsStorageCosmosDB) getShardDocumentID(userID string) string {
 	// Use hash function to determine shard
@@ -306,7 +297,28 @@ func (m *MetricsStorageCosmosDB) CountActiveUsers(activeThreshold time.Time) (in
 
 // LoadActivityStats loads the activity statistics document for the current year
 func (m *MetricsStorageCosmosDB) LoadActivityStats() (*ActivityStatsDocument, error) {
-	return m.LoadActivityStatsByYear(time.Now().UTC().Year())
+	ctx := context.Background()
+	docID := getCurrentActivityStatsDocumentID()
+	partitionKey := azcosmos.NewPartitionKeyString(docID)
+
+	response, err := m.metricsContainer.ReadItem(ctx, partitionKey, docID, nil)
+	if err != nil {
+		if strings.Contains(err.Error(), "NotFound") {
+			// Initialize with empty stats if not found
+			return &ActivityStatsDocument{
+				ID:         docID,
+				DailyStats: []DailyStats{},
+			}, nil
+		}
+		return nil, err
+	}
+
+	var doc ActivityStatsDocument
+	if err := json.Unmarshal(response.Value, &doc); err != nil {
+		return nil, err
+	}
+
+	return &doc, nil
 }
 
 // LoadActivityStatsByYear loads the activity statistics document for a specific year
