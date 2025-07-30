@@ -13,11 +13,12 @@ import (
 )
 
 const (
-	METRICS_CONTAINER_NAME = "metrics"
-	METRICS_DOC_ID         = "global_metrics"
-	SHARD_PREFIX           = "user_shard_"
-	ACTIVITY_STATS_DOC_ID  = "activity_stats"
-	DEFAULT_SHARD_COUNT    = 50 // Number of shards to distribute users across
+	METRICS_CONTAINER_NAME       = "metrics"
+	METRICS_DOC_ID               = "global_metrics"
+	SHARD_PREFIX                 = "user_shard_"
+	ACTIVITY_STATS_DOC_ID        = "activity_stats"
+	ACTIVITY_STATS_DOC_ID_PREFIX = "activity_stats_"
+	DEFAULT_SHARD_COUNT          = 50 // Number of shards to distribute users across
 )
 
 // GlobalMetricsDocument contains global metrics without user activity data
@@ -50,10 +51,9 @@ type DailyStats struct {
 
 // ActivityStatsDocument contains historical user activity statistics
 type ActivityStatsDocument struct {
-	ID           string       `json:"id"`
-	LastUpdated  string       `json:"lastUpdated"`
-	DailyStats   []DailyStats `json:"dailyStats"`
-	DaysToRetain int          `json:"daysToRetain"` // How many days of history to keep
+	ID          string       `json:"id"`
+	LastUpdated string       `json:"lastUpdated"`
+	DailyStats  []DailyStats `json:"dailyStats"`
 }
 
 // MetricsStorageCosmosDB handles metrics persistence in CosmosDB
@@ -87,6 +87,26 @@ func NewMetricsStorage(connectionString string) (*MetricsStorageCosmosDB, error)
 		metricsContainer: metricsContainer,
 		shardCount:       DEFAULT_SHARD_COUNT,
 	}, nil
+}
+
+// getCurrentActivityStatsDocumentID returns the document ID for the current year's activity stats
+func getCurrentActivityStatsDocumentID() string {
+	currentYear := time.Now().UTC().Year()
+	return fmt.Sprintf("%s%d", ACTIVITY_STATS_DOC_ID_PREFIX, currentYear)
+}
+
+// getActivityStatsDocumentIDForYear returns the document ID for a specific year's activity stats
+func getActivityStatsDocumentIDForYear(year int) string {
+	return fmt.Sprintf("%s%d", ACTIVITY_STATS_DOC_ID_PREFIX, year)
+}
+
+// getYearFromDate extracts the year from an ISO date string (YYYY-MM-DD)
+func getYearFromDate(dateStr string) (int, error) {
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return 0, err
+	}
+	return date.Year(), nil
 }
 
 // getShardDocumentID determines which shard a user belongs to
@@ -284,19 +304,24 @@ func (m *MetricsStorageCosmosDB) CountActiveUsers(activeThreshold time.Time) (in
 	return count, nil
 }
 
-// LoadActivityStats loads the activity statistics document
+// LoadActivityStats loads the activity statistics document for the current year
 func (m *MetricsStorageCosmosDB) LoadActivityStats() (*ActivityStatsDocument, error) {
-	ctx := context.Background()
-	partitionKey := azcosmos.NewPartitionKeyString(ACTIVITY_STATS_DOC_ID)
+	return m.LoadActivityStatsByYear(time.Now().UTC().Year())
+}
 
-	response, err := m.metricsContainer.ReadItem(ctx, partitionKey, ACTIVITY_STATS_DOC_ID, nil)
+// LoadActivityStatsByYear loads the activity statistics document for a specific year
+func (m *MetricsStorageCosmosDB) LoadActivityStatsByYear(year int) (*ActivityStatsDocument, error) {
+	ctx := context.Background()
+	docID := getActivityStatsDocumentIDForYear(year)
+	partitionKey := azcosmos.NewPartitionKeyString(docID)
+
+	response, err := m.metricsContainer.ReadItem(ctx, partitionKey, docID, nil)
 	if err != nil {
 		if strings.Contains(err.Error(), "NotFound") {
 			// Initialize with empty stats if not found
 			return &ActivityStatsDocument{
-				ID:           ACTIVITY_STATS_DOC_ID,
-				DailyStats:   []DailyStats{},
-				DaysToRetain: 90, // Default to 90 days retention
+				ID:         docID,
+				DailyStats: []DailyStats{},
 			}, nil
 		}
 		return nil, err
@@ -313,7 +338,7 @@ func (m *MetricsStorageCosmosDB) LoadActivityStats() (*ActivityStatsDocument, er
 // SaveActivityStats saves the activity statistics document
 func (m *MetricsStorageCosmosDB) SaveActivityStats(stats *ActivityStatsDocument) error {
 	ctx := context.Background()
-	partitionKey := azcosmos.NewPartitionKeyString(ACTIVITY_STATS_DOC_ID)
+	partitionKey := azcosmos.NewPartitionKeyString(stats.ID)
 
 	stats.LastUpdated = time.Now().UTC().Format(time.RFC3339)
 
@@ -439,12 +464,7 @@ func (m *MetricsStorageCosmosDB) UpdateDailyStats() error {
 		return stats.DailyStats[i].Date > stats.DailyStats[j].Date
 	})
 
-	// Trim old entries if needed
-	if len(stats.DailyStats) > stats.DaysToRetain {
-		stats.DailyStats = stats.DailyStats[:stats.DaysToRetain]
-	}
-
-	// Save the updated stats
+	// Save the updated stats (no trimming - keep all data forever in yearly documents)
 	return m.SaveActivityStats(stats)
 }
 
@@ -532,6 +552,7 @@ type MetricsStorage interface {
 	CountActiveUsers(time.Time) (int, error)
 	ResizeShards(int) error
 	LoadActivityStats() (*ActivityStatsDocument, error)
+	LoadActivityStatsByYear(int) (*ActivityStatsDocument, error)
 	SaveActivityStats(*ActivityStatsDocument) error
 	UpdateDailyStats() error
 }
@@ -580,6 +601,10 @@ func (n *noOpMetricsStorage) ResizeShards(int) error {
 }
 
 func (n *noOpMetricsStorage) LoadActivityStats() (*ActivityStatsDocument, error) {
+	return &ActivityStatsDocument{DailyStats: []DailyStats{}}, nil
+}
+
+func (n *noOpMetricsStorage) LoadActivityStatsByYear(int) (*ActivityStatsDocument, error) {
 	return &ActivityStatsDocument{DailyStats: []DailyStats{}}, nil
 }
 
