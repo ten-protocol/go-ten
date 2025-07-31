@@ -20,7 +20,7 @@ const (
 	selectExtRollup         = "SELECT ext_rollup from rollup_host r join block_host b on r.compression_block=b.id "
 	selectLatestExtRollup   = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
 	selectLatestRollupCount = "SELECT id FROM rollup_host ORDER BY id DESC LIMIT 1"
-	selectRollupBatches     = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence"
+	selectRollupBatches     = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON b.sequence BETWEEN r.start_seq AND r.end_seq"
 	selectRollups           = "SELECT rh.id, rh.hash, rh.start_seq, rh.end_seq, rh.time_stamp, rh.ext_rollup, bh.hash FROM rollup_host rh join block_host bh on rh.compression_block=bh.id "
 )
 
