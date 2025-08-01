@@ -117,7 +117,7 @@ func (api *ChainAPI) FeeHistory(context.Context, string, rpc.BlockNumber, []floa
 	feeHist := &FeeHistoryResult{
 		OldestBlock:  (*hexutil.Big)(header.Number),
 		Reward:       [][]*hexutil.Big{},
-		BaseFee:      []*hexutil.Big{},
+		BaseFee:      []*hexutil.Big{(*hexutil.Big)(header.BaseFee)},
 		GasUsedRatio: []float64{},
 	}
 
