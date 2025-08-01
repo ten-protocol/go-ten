@@ -106,12 +106,12 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 
 	receipt, err := adjustPublishingCostGas(tx, msg, s, header, noBaseFee, func() (*types.Receipt, error) {
 		s.SetTxContext(tx.Tx.Hash(), tCount)
-		return gethcore.ApplyTransactionWithEVM(msg, gp, s, header.Number, header.Hash(), tx.Tx, usedGas, evmEnv)
+		return gethcore.ApplyTransactionWithEVM(msg, gp, s, header.Number, header.Hash(), header.Time, tx.Tx, usedGas, evmEnv)
 	})
 	if err != nil {
 		return nil, err
 	}
-	receipt.Logs = s.GetLogs(tx.Tx.Hash(), header.Number.Uint64(), header.Hash())
+	receipt.Logs = s.GetLogs(tx.Tx.Hash(), header.Number.Uint64(), header.Hash(), header.Time)
 
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
 	for _, contractAddress := range createdContracts {
