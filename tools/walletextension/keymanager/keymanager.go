@@ -7,11 +7,13 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"path/filepath"
+	"strings"
 
 	"github.com/edgelesssys/ego/enclave"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -63,6 +65,9 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 			return nil, fmt.Errorf("no sealed encryption key found: %w", err)
 		}
 		logger.Info("unsealed existing encryption key")
+
+		fmt.Printf("Unsealed Encryption Key: %x\n", encryptionKey)
+		logger.Info(fmt.Sprintf("Unsealed Encryption Key: %x", encryptionKey))
 		return encryptionKey, nil
 	}
 
@@ -86,13 +91,24 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 				return nil, err
 			}
 		}
-	} else {
+	} else if strings.HasPrefix(config.EncryptionKeySource, "https") {
 		// Attempt to perform key exchange with the specified key provider.
 		// This step is crucial, and the process should fail if the key exchange is not successful.
 		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
 		encryptionKey, err = HandleKeyExchange(config, logger)
 		if err != nil {
 			logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
+			return nil, err
+		}
+		
+		fmt.Printf("Received Encryption Key from HTTPS: %x\n", encryptionKey)
+		logger.Info(fmt.Sprintf("Received Encryption Key from HTTPS: %x", encryptionKey))
+	} else {
+		// Set the encryption key directly from the provided source
+		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', setting encryption key directly", config.EncryptionKeySource))
+		encryptionKey, err = hex.DecodeString(config.EncryptionKeySource)
+		if err != nil {
+			logger.Crit("unable to set encryption key directly from source", log.ErrKey, err)
 			return nil, err
 		}
 	}
@@ -104,6 +120,8 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return nil, err
 	}
 	logger.Info("sealed new encryption key")
+
+	fmt.Printf("Encryption Key: %x\n", encryptionKey)
 
 	return encryptionKey, nil
 }
@@ -161,19 +179,37 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	// Step 4: Get the attestation report
 	// Hash the serialized public key
 	pubKeyHash := sha256.Sum256(serializedPubKey)
+	fmt.Printf("KeyExchange: Getting attestation report with pubkey hash: %x\n", pubKeyHash)
+	logger.Info(fmt.Sprintf("KeyExchange: Getting attestation report with pubkey hash: %x", pubKeyHash))
+	
 	attestationReport, err := GetReport(pubKeyHash[:])
 	if err != nil {
+		fmt.Printf("KeyExchange: Failed to get attestation report: %v\n", err)
 		logger.Error("KeyRequester: Failed to get attestation report", "error", err)
 		return nil, fmt.Errorf("failed to get attestation report: %w", err)
 	}
+	
+	fmt.Printf("KeyExchange: Successfully generated attestation report - Report size: %d bytes, PubKey size: %d bytes\n", 
+		len(attestationReport.Report), len(attestationReport.PubKey))
+	logger.Info("KeyExchange: Successfully generated attestation report", 
+		"report_size", len(attestationReport.Report), "pubkey_size", len(attestationReport.PubKey))
 
 	marshalledAttestation, err := json.Marshal(attestationReport)
 	if err != nil {
+		fmt.Printf("KeyExchange: Failed to marshal attestation report: %v\n", err)
 		logger.Crit("unable to marshal attestation report", log.ErrKey, err)
 		return nil, err
 	}
+	
+	fmt.Printf("KeyExchange: Successfully marshalled attestation report - JSON size: %d bytes\n", len(marshalledAttestation))
+	logger.Info("KeyExchange: Successfully marshalled attestation report", "json_size", len(marshalledAttestation))
 
 	// Step 6: Create the message to send (PublicKey and Attestation)
+	fmt.Printf("KeyExchange: Creating key exchange request - PublicKey size: %d bytes, Attestation size: %d bytes\n", 
+		len(serializedPubKey), len(marshalledAttestation))
+	logger.Info("KeyExchange: Creating key exchange request", 
+		"pubkey_size", len(serializedPubKey), "attestation_size", len(marshalledAttestation))
+	
 	messageRequester := KeyExchangeRequest{
 		PublicKey:   serializedPubKey,
 		Attestation: marshalledAttestation,
@@ -187,8 +223,15 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 8: Send the message to KeyProvider via HTTP POST
-	resp, err := http.Post(config.EncryptionKeySource+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
+	requestURL := config.EncryptionKeySource + "/v1" + common.PathKeyExchange
+	fmt.Printf("KeyExchange: Sending HTTP POST request to %s - Payload size: %d bytes\n", 
+		requestURL, len(messageBytesRequester))
+	logger.Info("KeyExchange: Sending HTTP POST request", 
+		"url", requestURL, "payload_size", len(messageBytesRequester))
+	
+	resp, err := http.Post(requestURL, "application/json", bytes.NewBuffer(messageBytesRequester))
 	if err != nil {
+		fmt.Printf("KeyExchange: Failed to send HTTP POST request: %v\n", err)
 		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err)
 		return nil, fmt.Errorf("failed to send message to KeyProvider: %w", err)
 	}
@@ -208,10 +251,21 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 10: Deserialize the received message
+	// Log detailed information about the response for debugging
+	logger.Info("KeyRequester: Response details",
+		"status_code", resp.StatusCode,
+		"content_length", len(bodyBytes),
+		"content_type", resp.Header.Get("Content-Type"),
+		"raw_body", string(bodyBytes))
+
 	var receivedMessageRequester KeyExchangeResponse
 	err = json.Unmarshal(bodyBytes, &receivedMessageRequester)
 	if err != nil {
-		logger.Error("KeyRequester: Failed to deserialize received message", "error", err)
+		logger.Error("KeyRequester: Failed to deserialize received message",
+			"error", err,
+			"raw_body", string(bodyBytes),
+			"body_length", len(bodyBytes),
+			"response_headers", resp.Header)
 		return nil, fmt.Errorf("failed to deserialize received message: %w", err)
 	}
 
