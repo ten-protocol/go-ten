@@ -5,7 +5,6 @@ export type Batch = {
   hash: string;
   fullHash: string;
   height: number;
-  txCount: number;
   header: {
     hash: string;
     parentHash: string;
@@ -29,39 +28,7 @@ export type Batch = {
     crossChainTree: string;
   };
   encryptedTxBlob: string;
-};
-
-export type BatchDetails = {
-  Header: {
-    parentHash: string;
-    stateRoot: string;
-    transactionsRoot: string;
-    receiptsRoot: string;
-    number: number;
-    sequencerOrderNo: number;
-    gasLimit: number;
-    gasUsed: number;
-    timestamp: string;
-    extraData: string;
-    baseFee: number;
-    coinbase: string;
-    l1Proof: string;
-    R: number;
-    S: number;
-    crossChainMessages: any[];
-    inboundCrossChainHash: string;
-    inboundCrossChainHeight: number;
-    TransfersTree: string;
-    hash: string;
-    sha3Uncles: string;
-    miner: string;
-    logsBloom: string;
-    difficulty: string;
-    nonce: string;
-    baseFeePerGas: number;
-  };
-  TxHashes: string[];
-  EncryptedTxBlob: string;
+  txHashes: string[];
 };
 
 export interface LatestBatch {

@@ -247,9 +247,9 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.
 			SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
 			FullHash:         fullHash,
 			Height:           new(big.Int).SetInt64(int64(heightInt64)),
-			TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
 			Header:           b.Header,
 			EncryptedTxBlob:  b.EncryptedTxBlob,
+			TxHashes:         b.TxHashes,
 		}
 		batches = append(batches, batch)
 	}

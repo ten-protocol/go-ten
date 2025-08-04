@@ -57,8 +57,8 @@ func (oc *ObsClient) BatchNumber() (uint64, error) {
 }
 
 // GetBatchByHash returns the batch with the given hash.
-func (oc *ObsClient) GetBatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
-	var batch *common.ExtBatch
+func (oc *ObsClient) GetBatchByHash(hash gethcommon.Hash) (*common.PublicBatch, error) {
+	var batch *common.PublicBatch
 	err := oc.rpcClient.Call(&batch, rpc.GetBatch, hash)
 	if err == nil && batch == nil {
 		err = ethereum.NotFound
