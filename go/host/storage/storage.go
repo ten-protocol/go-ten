@@ -165,7 +165,7 @@ func (s *storageImpl) FetchBatch(batchHash gethcommon.Hash) (*common.ExtBatch, e
 	return hostdb.GetBatchByHash(s.db, batchHash)
 }
 
-func (s *storageImpl) FetchBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
+func (s *storageImpl) FetchBatchByTx(txHash gethcommon.Hash) (*common.PublicBatch, error) {
 	return hostdb.GetBatchByTx(s.db, txHash)
 }
 

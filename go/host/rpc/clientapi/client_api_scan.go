@@ -59,7 +59,7 @@ func (s *ScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) 
 }
 
 // GetBatchByTx returns the `ExtBatch` with the given tx hash
-func (s *ScanAPI) GetBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
+func (s *ScanAPI) GetBatchByTx(txHash gethcommon.Hash) (*common.PublicBatch, error) {
 	return s.host.Storage().FetchBatchByTx(txHash)
 }
 

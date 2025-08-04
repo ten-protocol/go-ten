@@ -195,7 +195,7 @@ func GetPublicBatch(db HostDB, hash common.L2BatchHash) (*common.PublicBatch, er
 }
 
 // GetBatchByTx returns the batch with the given hash.
-func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.ExtBatch, error) {
+func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.PublicBatch, error) {
 	var seqNo uint64
 	query := selectBatchSeqByTx + db.GetSQLStatement().Placeholder
 	err := db.GetSQLDB().QueryRow(query, txHash.Bytes()).Scan(&seqNo)
@@ -205,7 +205,11 @@ func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.ExtBatch, error) {
 		}
 		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
 	}
-	return GetBatchBySequenceNumber(db, seqNo)
+	extB, err := GetBatchBySequenceNumber(db, seqNo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch batch by sequence number - %w", err)
+	}
+	return toPublicBatch(extB), nil
 }
 
 // GetBatchByHash returns the batch with the given hash.
@@ -218,6 +222,17 @@ func GetBatchByHash(db HostDB, hash common.L2BatchHash) (*common.ExtBatch, error
 func GetBatchHeaderByHeight(db HostDB, height *big.Int) (*common.BatchHeader, error) {
 	whereQuery := " WHERE height=" + db.GetSQLStatement().Placeholder
 	return fetchBatchHeader(db.GetSQLDB(), whereQuery, height.Uint64())
+}
+
+func toPublicBatch(b *common.ExtBatch) *common.PublicBatch {
+	return &common.PublicBatch{
+		SequencerOrderNo: b.SeqNo(),
+		FullHash:         b.Hash(),
+		Height:           b.Header.Number,
+		TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
+		Header:           b.Header,
+		EncryptedTxBlob:  b.EncryptedTxBlob,
+	}
 }
 
 // GetBatchByHeight returns the batch header given the height

@@ -31,8 +31,8 @@ type BatchResolver interface {
 	FetchPublicBatchByHash(batchHash common.L2BatchHash) (*common.PublicBatch, error)
 	// FetchBatch returns the `ExtBatch` with the given hash
 	FetchBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error)
-	// FetchBatchByTx returns the `ExtBatch` with the given tx hash
-	FetchBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error)
+	// FetchBatchByTx returns the `PublicBatch` with the given tx hash
+	FetchBatchByTx(txHash gethcommon.Hash) (*common.PublicBatch, error)
 	// FetchLatestBatch returns the head `BatchHeader`
 	FetchLatestBatch() (*common.BatchHeader, error)
 	// FetchBatchListing returns a paginated list of the public batch data

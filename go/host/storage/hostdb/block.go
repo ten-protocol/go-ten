@@ -47,7 +47,7 @@ func GetBlockId(db *sql.Tx, statements *SQLStatements, hash gethcommon.Hash) (*i
 	return &blockId, nil
 }
 
-// GetBlock returns the block ID given the hash.
+// GetBlock returns the block header given the hash.
 func GetBlock(db HostDB, statements *SQLStatements, hash *gethcommon.Hash) (*types.Header, error) {
 	query := selectBlock + statements.Placeholder
 	var header []byte
