@@ -65,8 +65,8 @@ func TestAddBlockWithForeignKeyConstraint(t *testing.T) {
 	db, _ := CreateSQLiteDB(t)
 	dbtx, _ := db.NewDBTransaction()
 	statements := db.GetSQLStatement()
-	metadata := createRollupMetadata(batchNumber - 10)
-	rollup := createRollup(batchNumber)
+	metadata := createRollupMetadata()
+	rollup := createRollup(batchNumber-10, batchNumber)
 	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 
 	// add block
