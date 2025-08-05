@@ -1,8 +1,8 @@
 package hostdb
 
 import (
-	"database/sql"
 	"errors"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
 	"strings"
 	"testing"
@@ -25,7 +25,7 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 	dbtx, _ := db.NewDBTransaction()
 	statements := db.GetSQLStatement()
 	_, err := GetBlockId(dbtx.Tx, statements, randomHash)
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, errutil.ErrNotFound) {
 		t.Errorf("expected sql.ErrNoRows for non-existent block, got: %v", err)
 	}
 	dbtx.Rollback()

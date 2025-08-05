@@ -29,7 +29,6 @@ func AddBlock(dbtx *sql.Tx, statements *SQLStatements, b *types.Header) error {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
 
-	println("ADDBLOCK with number: ", b.Number.Int64())
 	_, err = dbtx.Exec(statements.InsertBlock,
 		b.Hash().Bytes(), // hash
 		header,           // l1 block header
