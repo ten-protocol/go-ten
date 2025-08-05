@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -100,7 +99,7 @@ func (s *storageImpl) AddBlock(b *types.Header) error {
 		// Block already exists
 		s.logger.Debug("Block already exists", "hash", b.Hash().Hex())
 		return nil
-	case !errors.Is(err, sql.ErrNoRows):
+	case !errors.Is(err, errutil.ErrNotFound):
 		return fmt.Errorf("error checking block existence: %w", err)
 	}
 
