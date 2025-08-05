@@ -102,20 +102,20 @@ func TestAddBlockWithForeignKeyConstraint(t *testing.T) {
 
 func createBlock(blockNum int64) types.Header {
 	return types.Header{
-		Number:     big.NewInt(blockNum),
-		Time:       uint64(time.Now().Unix()),
-		Difficulty: big.NewInt(1),
-		GasLimit:   1000000,
-		GasUsed:    0,
-		Coinbase:   gethcommon.Address{},
-		ParentHash: gethcommon.Hash{},
-		Root:       gethcommon.Hash{},
-		TxHash:     gethcommon.Hash{},
+		Number:      big.NewInt(blockNum),
+		Time:        uint64(time.Now().Unix()),
+		Difficulty:  big.NewInt(1),
+		GasLimit:    1000000,
+		GasUsed:     0,
+		Coinbase:    gethcommon.Address{},
+		ParentHash:  gethcommon.Hash{},
+		Root:        gethcommon.Hash{},
+		TxHash:      gethcommon.Hash{},
 		ReceiptHash: gethcommon.Hash{},
-		Bloom:      types.Bloom{},
-		MixDigest:  gethcommon.Hash{},
-		Nonce:      types.BlockNonce{},
-		BaseFee:    big.NewInt(0),
+		Bloom:       types.Bloom{},
+		MixDigest:   gethcommon.Hash{},
+		Nonce:       types.BlockNonce{},
+		BaseFee:     big.NewInt(0),
 	}
 }
 
