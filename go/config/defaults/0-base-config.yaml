@@ -93,6 +93,10 @@ enclave:
   rpc:
     bindAddress: "0.0.0.0:11000"
     timeout: 5s
+  attestation:
+    signerID: "86b724901b8789b315be6d32a219506d16c98a1cda0f0c08d745d13715a7808e" # expected ID of the TEN signer
+    edbSecurityVersion: 2 # default to original edgeless security version
+    edbProductID: 16 # default to the original product ID edgeless use for EDB
 deploy:
   debug: false # enable debug mode for deployer
   dockerImage: "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" # docker image for L1 contract deploys
