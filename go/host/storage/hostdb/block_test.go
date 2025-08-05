@@ -2,11 +2,12 @@ package hostdb
 
 import (
 	"errors"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
