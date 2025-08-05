@@ -51,14 +51,6 @@ type EdgelessAttestationConstraints struct {
 	Debug bool // while debugging this can be set to true to permit debug attestations to pass verification
 }
 
-// The values here were the latest values from: https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json
-// This should probably be configurable rather than relying on this hardcoded snapshot
-var defaultEDBConstraints = &EdgelessAttestationConstraints{
-	SecurityVersion: 2,
-	SignerID:        "67d7b00741440d29922a15a9ead427b6faf1d610238ae9826da345cea4fee0fe",
-	ProductID:       16,
-}
-
 // performEDBRemoteAttestation perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
 func performEDBRemoteAttestation(config *enclaveconfig.EnclaveConfig, edbHost string, logger gethlog.Logger) (string, error) {
 	logger.Info("Verifying attestation from edgeless DB...")
