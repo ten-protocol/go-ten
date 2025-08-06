@@ -21,6 +21,16 @@ type enclaveDB struct {
 	logger  gethlog.Logger
 }
 
+func (sqlDB *enclaveDB) SyncKeyValue() error {
+	// do nothing because we use db transactions
+	return nil
+}
+
+func (sqlDB *enclaveDB) SyncAncient() error {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (sqlDB *enclaveDB) DeleteRange(start, end []byte) error {
 	// TODO implement me
 	panic("implement me")
