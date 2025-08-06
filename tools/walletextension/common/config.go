@@ -31,4 +31,5 @@ type Config struct {
 	TLSDomain                    string
 	EncryptingCertificateEnabled bool
 	DisableCaching               bool
+	HMACSecret                   string
 }

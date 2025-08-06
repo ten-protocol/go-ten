@@ -26,6 +26,7 @@ const (
 	DeleteSessionKeyCQMethod        = "0x0000000000000000000000000000000000000006"
 	ListSessionKeyCQMethod          = "0x0000000000000000000000000000000000000007"
 	SendUnsignedTxCQMethod          = "0x0000000000000000000000000000000000000008"
+	GetUserIDCQMethod               = "0x0000000000000000000000000000000000000009"
 )
 
 type ListPrivateTransactionsQueryParams struct {
