@@ -171,7 +171,7 @@ func verifyID(expected string, actual []byte, name string) error {
 		return err
 	}
 	if !bytes.Equal(expectedBytes, actual) {
-		return errors.New("invalid " + name)
+		return fmt.Errorf("invalid %s: expected %s, got %x", name, expected, actual)
 	}
 	return nil
 }
