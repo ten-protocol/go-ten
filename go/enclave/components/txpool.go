@@ -401,16 +401,11 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 		return fmt.Errorf("insufficient gas. Want at least: %d have: %d", leastGas, tx.Gas()), nil
 	}
 
-	requiredGas := leastGas + params.TxGas
+	// The intrinsic gas (21 000) is already part of leastGas (coming from the gas
+	// estimator).  Do not add it again.  We now compare the supplied gas only
+	// against the discounted estimate.
 
-	// make sure the tx has enough gas to cover the publishing cost even if by some chance the 20% deducted was too much
-	if tx.Gas() < requiredGas {
-		return fmt.Errorf("insufficient gas to publish the transaction to the DA. Want at least: %d have: %d", requiredGas, tx.Gas()), nil
-	}
-
-	// The check in the geth txpool is disabled by setting to max uint64 and thus we must verify here.
-	// We only compare leftover gas with the head batch gas limit as those represent execution gas.
-	leftOverGas := tx.Gas() - requiredGas
+	leftOverGas := tx.Gas() - leastGas
 	if leftOverGas > headBatch.GasLimit {
 		return gethtxpool.ErrGasLimit, nil
 	}

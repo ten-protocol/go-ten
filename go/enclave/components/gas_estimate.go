@@ -18,6 +18,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
+	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -52,7 +53,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
 	// the expected cost into l2 gas based on current pricing.
 	// todo @siliev - add overhead when the base fee becomes dynamic.
-	publishingGas := big.NewInt(0).Div(l1Cost, batch.BaseFee)
+	publishingGas := big.NewInt(0).Div(l1Cost, evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING)
 
 	// Overestimate the publishing cost in case of spikes.
 	// given that we publish in a blob, the amount will be very low.
