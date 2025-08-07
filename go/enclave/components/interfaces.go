@@ -65,26 +65,6 @@ type UpgradeHandler interface {
 	HandleUpgrade(ctx context.Context, featureName string, featureData []byte) error
 }
 
-// PendingNetworkUpgrade represents a network upgrade event that hasn't reached finality yet
-type PendingNetworkUpgrade struct {
-	FeatureName   string
-	FeatureData   []byte
-	L1BlockHeight uint64
-	L1BlockHash   common.L1BlockHash
-	TxHash        gethcommon.Hash
-}
-
-// FinalizedNetworkUpgrade represents a network upgrade event that has reached finality
-type FinalizedNetworkUpgrade struct {
-	FeatureName       string
-	FeatureData       []byte
-	L1BlockHeight     uint64
-	L1BlockHash       common.L1BlockHash
-	TxHash            gethcommon.Hash
-	FinalizedAtHeight uint64
-	FinalizedAtHash   common.L1BlockHash
-}
-
 // BatchExecutionContext - Contains all data that each batch depends on
 type BatchExecutionContext struct {
 	BlockPtr  common.L1BlockHash // BlockHeader is needed for the cross chain messages
