@@ -98,7 +98,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 	validatorService := nodetype.NewValidator(blockProcessor, batchExecutor, registry, chainConfig, storage, sigVerifier, mempool, logger)
 
 	upgradeManager := components.NewUpgradeManager(storage, logger)
-	upgradeManager.RegisterUpgradeHandler("gas_pricing", gasPricer)
+	upgradeManager.RegisterUpgradeHandler(components.ComponentName, gasPricer)
 
 	eas := &enclaveAdminService{
 		config:                 config,
@@ -243,11 +243,6 @@ func (e *enclaveAdminService) processSequencerPromotions(blockData *common.Proce
 			}
 		}
 	}
-}
-
-// RegisterUpgradeHandler allows services to register for specific network upgrade events
-func (e *enclaveAdminService) RegisterUpgradeHandler(featureName string, handler components.UpgradeHandler) {
-	e.upgradeManager.RegisterUpgradeHandler(featureName, handler)
 }
 
 func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {

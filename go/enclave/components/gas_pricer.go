@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"math/big"
+	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -12,20 +13,23 @@ import (
 )
 
 const (
-	InitialBaseFee = params.InitialBaseFee // modify this to something sensible
+	InitialBaseFee        = params.InitialBaseFee / 10 // InitialBaseFee is ETH's base fee.
+	ComponentName         = "gas_pricing"
+	DynamicPricingTrigger = "gas_pricing"
+	StaticPricingTrigger  = "static_pricing"
 )
 
 type GasPricer struct {
 	logger                gethlog.Logger
 	config                *config.EnclaveConfig
-	dynamicPricingEnabled bool // tracks whether dynamic pricing upgrade has been applied
+	dynamicPricingEnabled atomic.Bool // tracks whether dynamic pricing upgrade has been applied
 }
 
 func NewGasPricer(logger gethlog.Logger, config *config.EnclaveConfig) *GasPricer {
 	return &GasPricer{
 		logger:                logger,
 		config:                config,
-		dynamicPricingEnabled: false, // start with static pricing (minGasPrice)
+		dynamicPricingEnabled: atomic.Bool{}, // start with static pricing (minGasPrice)
 	}
 }
 
@@ -53,9 +57,12 @@ func (gp *GasPricer) HandleUpgrade(ctx context.Context, featureName string, feat
 		"featureData", string(featureData))
 
 	// Check if this is the dynamic pricing upgrade
-	if string(featureData) == "dynamic-pricing" {
-		gp.dynamicPricingEnabled = true
+	if string(featureData) == DynamicPricingTrigger {
+		gp.dynamicPricingEnabled.Store(true)
 		gp.logger.Info("Dynamic gas pricing enabled")
+	} else if string(featureData) == StaticPricingTrigger {
+		gp.dynamicPricingEnabled.Store(false)
+		gp.logger.Info("Static gas pricing enabled")
 	} else {
 		gp.logger.Warn("Unknown gas pricing upgrade data", "featureData", string(featureData))
 	}
@@ -65,7 +72,7 @@ func (gp *GasPricer) HandleUpgrade(ctx context.Context, featureName string, feat
 
 func (gp *GasPricer) CalculateBlockBaseFee(cfg *params.ChainConfig, parent *types.Header) *big.Int {
 	// If dynamic pricing is not enabled, return the configured minimum gas price
-	if !gp.dynamicPricingEnabled {
+	if !gp.dynamicPricingEnabled.Load() {
 		gp.logger.Trace("Using static gas pricing", "minGasPrice", gp.config.MinGasPrice)
 		return new(big.Int).Set(gp.config.MinGasPrice)
 	}
