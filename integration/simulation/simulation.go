@@ -493,7 +493,9 @@ func (s *Simulation) prefundL1Accounts() {
 }
 
 func (s *Simulation) triggerGasPricingUpgrade() {
-	testlog.Logger().Info("Triggering dynamic gas pricing upgrade")
+	if s.Params.IsInMem {
+		return
+	}
 
 	// Use L1 client and wallet to call NetworkConfig contract on L1
 	l1Client := s.RPCHandles.RndEthClient()
