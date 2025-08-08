@@ -51,19 +51,15 @@ type EdgelessAttestationConstraints struct {
 	Debug bool // while debugging this can be set to true to permit debug attestations to pass verification
 }
 
-// The values here were the latest values from: https://github.com/edgelesssys/edgelessdb/releases/latest/download/edgelessdb-sgx.json
-// This should probably be configurable rather than relying on this hardcoded snapshot
-var defaultEDBConstraints = &EdgelessAttestationConstraints{
-	SecurityVersion: 2,
-	SignerID:        "67d7b00741440d29922a15a9ead427b6faf1d610238ae9826da345cea4fee0fe",
-	ProductID:       16,
-}
-
 // performEDBRemoteAttestation perform the SGX enclave attestation to verify edb running in a legit enclave and with expected edb version etc.
-func performEDBRemoteAttestation(config *enclaveconfig.EnclaveConfig, edbHost string, constraints *EdgelessAttestationConstraints, logger gethlog.Logger) (string, error) {
+func performEDBRemoteAttestation(config *enclaveconfig.EnclaveConfig, edbHost string, logger gethlog.Logger) (string, error) {
 	logger.Info("Verifying attestation from edgeless DB...")
 	edbHTTPAddr := fmt.Sprintf("%s:%s", edbHost, edbHTTPPort)
-	certs, tcbStatus, err := performRAAndFetchTLSCert(config, edbHTTPAddr, constraints)
+	certs, tcbStatus, err := performRAAndFetchTLSCert(config.WillAttest, edbHTTPAddr, &EdgelessAttestationConstraints{
+		SecurityVersion: config.AttestationEDBSecurityVersion,
+		SignerID:        config.AttestationSignerID,
+		ProductID:       config.AttestationEDBProductID,
+	})
 	if err != nil {
 		// todo (#1550) - should we check the error type with: err == attestation.ErrTCBLevelInvalid?
 		// for now it's maximum strictness (we can revisit this and permit some tcbStatuses if desired)
@@ -80,14 +76,14 @@ func performEDBRemoteAttestation(config *enclaveconfig.EnclaveConfig, edbHost st
 
 // performRAAndFetchTLSCert gets the TLS certificate from the Edgeless DB server in PEM format. It performs remote attestation
 // to verify the certificate. Attestation constraints must be provided to validate against.
-func performRAAndFetchTLSCert(enclaveConfig *enclaveconfig.EnclaveConfig, host string, constraints *EdgelessAttestationConstraints) ([]*pem.Block, tcbstatus.Status, error) {
+func performRAAndFetchTLSCert(willAttest bool, host string, constraints *EdgelessAttestationConstraints) ([]*pem.Block, tcbstatus.Status, error) {
 	// we don't need to verify the TLS because we will be verifying the attestation report and that can't be faked
 	cert, quote, err := httpGetCertQuote(&tls.Config{InsecureSkipVerify: true}, host, quoteEndpoint) //nolint:gosec
 	if err != nil {
 		return nil, tcbstatus.Unknown, err
 	}
 
-	if len(quote) == 0 && enclaveConfig.WillAttest {
+	if len(quote) == 0 && willAttest {
 		return nil, tcbstatus.Unknown, errors.New("no quote found, attestation failed")
 	}
 
@@ -106,7 +102,7 @@ func performRAAndFetchTLSCert(enclaveConfig *enclaveconfig.EnclaveConfig, host s
 		certs = append(certs, block)
 	}
 
-	if !enclaveConfig.WillAttest {
+	if !willAttest {
 		return certs, tcbstatus.Unknown, nil
 	}
 
@@ -175,7 +171,7 @@ func verifyID(expected string, actual []byte, name string) error {
 		return err
 	}
 	if !bytes.Equal(expectedBytes, actual) {
-		return errors.New("invalid " + name)
+		return fmt.Errorf("invalid %s: expected %s, got %x", name, expected, actual)
 	}
 	return nil
 }
