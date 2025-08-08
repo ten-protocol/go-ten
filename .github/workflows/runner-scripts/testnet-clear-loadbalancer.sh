@@ -14,8 +14,11 @@ elif [[ $1 == "dev-testnet" ]]; then
 elif [[ $1 == "sepolia-testnet" ]]; then
   lb=sepolia-testnet-loadbalancer
   pool=sepolia-testnet-backend-pool
+elif [[ $1 == "mainnet" ]]; then
+  lb=mainnet-loadbalancer
+  pool=mainnet-backend-pool
 else
-  echo "Invalid argument. Use 'uat-testnet', 'dev-testnet', or 'sepolia-testnet'"
+  echo "Invalid argument. Use 'uat-testnet', 'dev-testnet', 'sepolia-testnet', or 'mainnet'"
   exit 1
 fi
 

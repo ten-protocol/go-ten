@@ -22,6 +22,7 @@ on:
           - 'dev-testnet'
           - 'uat-testnet'
           - 'sepolia-testnet'
+          - 'mainnet'
 
   workflow_call:
     inputs:
