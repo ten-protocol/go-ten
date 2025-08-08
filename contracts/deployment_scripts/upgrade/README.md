@@ -464,6 +464,4 @@ npx hardhat console --network mainnet
 
 ## Documentation
 
-- `contracts/docs/ROLLBACK_PROCEDURES_COMPLETE.md` - Complete rollback procedures and emergency response documentation
-
-This gives you a **production-ready, secure upgrade system** that follows industry best practices! 
+- `contracts/scripts/rollback/README.md` - Complete rollback procedures and emergency response documentation
