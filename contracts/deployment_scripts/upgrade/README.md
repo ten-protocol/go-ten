@@ -2,13 +2,40 @@
 
 This document provides a step-by-step walkthrough of the complete multisig governance setup and upgrade process for Ten Protocol's L1 contracts.
 
-## Architecture
+## High Level Overview
 
+### Architecture
 ```
 Gnosis Safe (Multisig) → TimelockController → Proxy Admin → Implementation
 ```
 
-## Step-by-Step Process
+### High-Level Process
+1. **Create Gnosis Safe** - Set up 3-of-5 multisig wallet
+2. **Deploy TimelockController** - 24-hour delay governance contract
+3. **Transfer Proxy Admin** - Move admin ownership to timelock
+4. **Schedule Upgrades** - Deploy new implementation and schedule through timelock
+5. **Execute Upgrades** - After 24-hour delay, execute the upgrade
+
+### Key Commands
+```bash
+# 1. Deploy governance infrastructure
+export MULTISIG_ADDRESS="0x1234567890123456789012345678901234567890"
+npx hardhat run deployment_scripts/upgrade/001_deploy_timelock.ts --network mainnet
+
+# 2. Transfer proxy admin ownership
+export TIMELOCK_ADDRESS="0x9876543210987654321098765432109876543210"
+npx hardhat run deployment_scripts/upgrade/002_transfer_proxy_admin.ts --network mainnet
+
+# 3. Schedule upgrades
+npx hardhat run scripts/upgrade/001_upgrade_contracts.ts --network mainnet
+
+# 4. Execute upgrades (after 24 hours)
+# Use Gnosis Safe UI or re-run script with execution mode
+```
+
+---
+
+## Detailed Implementation
 
 ### Step 1: Create Gnosis Safe Multisig Wallet
 
@@ -19,7 +46,7 @@ Gnosis Safe (Multisig) → TimelockController → Proxy Admin → Implementation
    - Set threshold (e.g., 3-of-5)
    - Review and deploy
 
-3. **Save the Safe Address**
+2. **Save the Safe Address**
    ```bash
    # Example: 0x1234567890123456789012345678901234567890
    export MULTISIG_ADDRESS="0x1234567890123456789012345678901234567890"

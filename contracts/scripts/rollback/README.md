@@ -4,31 +4,9 @@
 
 This document provides comprehensive rollback procedures and emergency response protocols for the Ten Protocol's contract upgrade system. It addresses the critical scenario of malicious upgrades and provides step-by-step emergency procedures.
 
-## Critical Scenario: Malicious Upgrade That Could Drain Funds
+## How Major Protocols Handle Emergency Rollbacks
 
-### The Problem
-If a hacker gains access to the multisig and schedules a malicious upgrade that could drain funds, here's what happens and how to respond:
-
-### What Happens Currently (Without Enhanced Rollback)
-
-#### Timeline of a Malicious Upgrade:
-```
-T+0h:   Hacker gains multisig access → schedules malicious upgrade
-T+24h:  Malicious upgrade executes → funds can be drained
-T+24h+: System compromised → potential fund loss
-```
-
-#### Current Limitations:
-- No cancellation - Cannot stop upgrade once scheduled
-- 24-hour delay - Gives attacker time to prepare
-- No emergency pause - Contracts continue operating
-- No immediate rollback - Must wait for execution
-
-## Industry Research: How Major Protocols Handle Emergency Rollbacks
-
-### Research Findings
-
-After researching major DeFi protocols (Uniswap, Compound, Aave, MakerDAO, Curve), here's what we found:
+Unisqap, Compound, Aave, MakerDAO, and Curve all use the same approach.
 
 **Universal Pattern:**
 1. **Emergency Pause** - All protocols have immediate pause functionality
@@ -59,7 +37,63 @@ After researching major DeFi protocols (Uniswap, Compound, Aave, MakerDAO, Curve
 1. **Phase 1**: Emergency pause (immediate) - Stop malicious code
 2. **Phase 2**: Normal governance rollback (24-hour delay) - Restore security
 
-**This is exactly what Ten Protocol should implement.**
+## High Level Overview
+
+### The Problem
+If a hacker gains access to the multisig and schedules a malicious upgrade that could drain funds, here's what happens and how to respond:
+
+### Emergency Response Process
+1. **Detect Malicious Upgrade** - During 24-hour timelock delay
+2. **Emergency Pause** - Immediately pause all contracts (0-1 hour)
+3. **Investigate & Prepare** - Analyze threat and prepare rollback (1-24 hours)
+4. **Normal Rollback** - Execute rollback through timelock (24+ hours)
+5. **Verify & Resume** - Verify security and unpause contracts
+
+### Key Commands
+```bash
+# Emergency pause all contracts
+export NETWORK_CONFIG_ADDR="0x1111111111111111111111111111111111111111"
+export EMERGENCY_PAUSER_ADDRESS="0x1234567890123456789012345678901234567890"
+npx hardhat run scripts/emergency/001_emergency_pause.ts --network mainnet
+
+# Rollback to secure implementation (24-hour delay)
+export TIMELOCK_ADDRESS="0x9876543210987654321098765432109876543210"
+npx hardhat run scripts/upgrade/001_upgrade_contracts.ts --network mainnet
+
+# Unpause contracts after rollback
+export EMERGENCY_ACTION="unpause"
+npx hardhat run scripts/emergency/001_emergency_pause.ts --network mainnet
+```
+
+### Industry Standard Approach
+- **Emergency Pause** - Immediate response (industry standard)
+- **Normal Rollback** - 24-hour delay for security (industry standard)
+- **No Emergency Rollback** - Cannot bypass timelock (industry standard)
+- **Security Over Speed** - Prioritizes system integrity (industry standard)
+
+---
+
+## Detailed Implementation
+
+## Critical Scenario: Malicious Upgrade That Could Drain Funds
+
+### The Problem
+If a hacker gains access to the multisig and schedules a malicious upgrade that could drain funds, here's what happens and how to respond:
+
+### What Happens Currently (Without Enhanced Rollback)
+
+#### Timeline of a Malicious Upgrade:
+```
+T+0h:   Hacker gains multisig access → schedules malicious upgrade
+T+24h:  Malicious upgrade executes → funds can be drained
+T+24h+: System compromised → potential fund loss
+```
+
+#### Current Limitations:
+- No cancellation - Cannot stop upgrade once scheduled
+- 24-hour delay - Gives attacker time to prepare
+- No emergency pause - Contracts continue operating
+- No immediate rollback - Must wait for execution
 
 ## Emergency Response Procedures
 
@@ -116,7 +150,7 @@ npx hardhat run scripts/upgrade/001_upgrade_contracts.ts --network mainnet
 - Schedules rollback through timelock - Normal process
 - Waits for 24-hour delay - Security enforced
 - Executes rollback after delay - System restored
-- **SECURE:** Uses normal timelock process, no bypass possible
+- **Secure:** Uses normal timelock process, no bypass possible
 
 **Important:** Emergency rollback is **not possible** because the timelock enforces a minimum delay (24 hours) that cannot be bypassed. This is a **security feature**.
 
@@ -212,21 +246,6 @@ contract UpgradeableContract is Pausable, Initializable, AccessControlUpgradeabl
 ### 1. Add Emergency Pause to Existing Contracts
 
 ```solidity
-// Example: Adding emergency pause to CrossChain.sol
-// SPDX-License-Identifier: GPL-3.0
-pragma solidity ^0.8.28;
-
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-
-import "../interfaces/ICrossChain.sol";
-import * as MessageBus from "../../cross_chain_messaging/common/MessageBus.sol";
-import * as MerkleTreeMessageBus from "../../cross_chain_messaging/L1/MerkleTreeMessageBus.sol";
-import "../../common/UnrenouncableOwnable2Step.sol";
-
 contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, ReentrancyGuardUpgradeable, PausableUpgradeable, AccessControlUpgradeable {
     bytes32 public constant EMERGENCY_PAUSER_ROLE = keccak256("EMERGENCY_PAUSER_ROLE");
     
@@ -332,114 +351,3 @@ async function emergencyRollback() {
     }
 }
 ```
-
-## Emergency Response Plan
-
-### Immediate Response (0-1 hour)
-1. **Alert team** - Notify all stakeholders
-2. **Assess threat** - Determine risk level
-3. **Activate emergency procedures** - Follow emergency plan
-
-### Short-term Response (1-24 hours)
-1. **Pause contracts** - Stop malicious code execution
-2. **Investigate** - Analyze upgrade and potential damage
-3. **Prepare fix** - Develop secure rollback
-
-### Long-term Response (24+ hours)
-1. **Execute rollback** - Deploy secure implementation
-2. **Verify security** - Test thoroughly
-3. **Monitor** - Watch for any issues
-4. **Document** - Record lessons learned
-
-## Emergency Procedures Checklist
-
-### Pre-Emergency Preparation:
-- [ ] **Emergency contacts** - List of all team members
-- [ ] **Emergency procedures** - Clear response plan
-- [ ] **Emergency scripts** - Ready-to-run rollback scripts
-- [ ] **Emergency multisig** - Separate emergency multisig
-- [ ] **Emergency testing** - Regular emergency drills
-
-### During Emergency:
-- [ ] **Alert team** - Notify all stakeholders
-- [ ] **Assess threat** - Determine risk level
-- [ ] **Pause contracts** - Stop malicious code
-- [ ] **Investigate** - Analyze upgrade
-- [ ] **Prepare fix** - Develop rollback
-- [ ] **Execute rollback** - Deploy secure version
-- [ ] **Verify security** - Test thoroughly
-- [ ] **Monitor** - Watch for issues
-- [ ] **Document** - Record lessons learned
-
-### Post-Emergency:
-- [ ] **Review procedures** - Analyze response
-- [ ] **Update procedures** - Improve based on lessons
-- [ ] **Train team** - Ensure everyone understands
-- [ ] **Test procedures** - Regular emergency drills
-
-## Answer to Common Questions
-
-### What is the rollback procedure?
-
-**The rollback procedure consists of:**
-
-1. **Emergency Pause** - Immediately pause all contracts to stop malicious code
-2. **Investigation** - Analyze the malicious upgrade and potential damage
-3. **Secure Rollback** - Deploy clean implementation and rollback all contracts
-4. **Verification** - Verify rollback was successful
-5. **Unpause** - Resume normal operations
-
-### What happens if a hacker does an upgrade that allows them to drain funds?
-
-**If a malicious upgrade is scheduled:**
-
-1. **Detection** - Team detects malicious upgrade during 24-hour delay
-2. **Immediate Pause** - Pause all contracts to prevent fund drainage
-3. **Investigation** - Analyze malicious code and potential damage
-4. **Rollback** - Deploy secure implementation and rollback contracts
-5. **Recovery** - Verify security and resume operations
-
-**Key Protection:**
-- Emergency pause - Can stop malicious code immediately
-- No fund drainage - Contracts paused before execution
-- Immediate rollback - Can fix issues quickly
-- Security restored - System back to safe state
-
-## Critical Success Factors
-
-1. **Speed** - Must act quickly during 24-hour delay
-2. **Coordination** - Team must coordinate emergency response
-3. **Preparation** - Emergency procedures must be ready
-4. **Testing** - Regular emergency drills and testing
-5. **Documentation** - Clear procedures and contact lists
-
-## Security Considerations
-
-### Current State:
-- No emergency pause - Cannot stop malicious upgrades
-- No immediate rollback - Must wait for execution
-- Limited response options - Few emergency procedures
-
-### Recommended Enhancement:
-- Emergency pause - Can stop malicious code immediately
-- Immediate rollback - Can fix issues quickly
-- Clear procedures - Well-defined emergency response
-- Regular testing - Emergency drills and procedures
-
-## Conclusion
-
-This enhanced system provides **comprehensive emergency response** capabilities while maintaining the security benefits of the no-cancellation approach. The emergency pause and rollback procedures ensure that even in the worst-case scenario of a malicious upgrade, the system can be quickly secured and restored to a safe state.
-
-**Key Insights:**
-1. **Emergency pause** - Can stop malicious code immediately (industry standard)
-2. **Normal rollback** - 24-hour delay for security (industry standard)
-3. **No emergency rollback** - Cannot bypass timelock (industry standard)
-4. **Security over speed** - Prioritizes system integrity (industry standard)
-
-**Industry Alignment:**
-- **Follows major protocol patterns** - Uniswap, Compound, Aave, MakerDAO, Curve
-- **Security best practices** - No bypasses or shortcuts
-- **Community trust** - Transparent and auditable process
-- **Proven approach** - Tested by billions in TVL
-
-**Ten Protocol is now aligned with industry standards** and provides the same level of emergency response capabilities as major DeFi protocols. 
