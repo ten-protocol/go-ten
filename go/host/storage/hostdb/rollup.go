@@ -20,7 +20,7 @@ const (
 	selectExtRollup         = "SELECT ext_rollup from rollup_host r join block_host b on r.compression_block=b.id "
 	selectLatestExtRollup   = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
 	selectLatestRollupCount = "SELECT id FROM rollup_host ORDER BY id DESC LIMIT 1"
-	selectRollupBatches     = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence"
+	selectRollupBatches     = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON b.sequence >= r.start_seq AND b.sequence <= r.end_seq AND b.sequence IS NOT NULL"
 	selectRollups           = "SELECT rh.id, rh.hash, rh.start_seq, rh.end_seq, rh.time_stamp, rh.ext_rollup, bh.hash FROM rollup_host rh join block_host bh on rh.compression_block=bh.id "
 )
 
@@ -40,12 +40,12 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 	// Use QueryRow instead of Exec to retrieve the id directly.
 	var rollupId int64
 	err = dbtx.Tx.QueryRow(statements.InsertRollup,
-		rollup.Header.Hash().Bytes(),         // hash
-		metadata.FirstBatchSequence.Uint64(), // first batch sequence
-		rollup.Header.LastBatchSeqNo,         // last batch sequence
-		metadata.StartTime,                   // timestamp
-		extRollup,                            // rollup blob
-		blockId,                              // l1 block hash
+		rollup.Header.Hash().Bytes(),  // hash
+		rollup.Header.FirstBatchSeqNo, // first batch sequence
+		rollup.Header.LastBatchSeqNo,  // last batch sequence
+		metadata.StartTime,            // timestamp
+		extRollup,                     // rollup blob
+		blockId,                       // l1 block hash
 	).Scan(&rollupId)
 	if err != nil {
 		if IsRowExistsError(err) {
@@ -247,9 +247,9 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.
 			SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
 			FullHash:         fullHash,
 			Height:           new(big.Int).SetInt64(int64(heightInt64)),
-			TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
 			Header:           b.Header,
 			EncryptedTxBlob:  b.EncryptedTxBlob,
+			TxHashes:         b.TxHashes,
 		}
 		batches = append(batches, batch)
 	}

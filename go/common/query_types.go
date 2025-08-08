@@ -51,9 +51,9 @@ type PublicBatch struct {
 	SequencerOrderNo *big.Int              `json:"sequence"`
 	FullHash         common.Hash           `json:"fullHash"`
 	Height           *big.Int              `json:"height"`
-	TxCount          *big.Int              `json:"txCount"`
 	Header           *BatchHeader          `json:"header"`
 	EncryptedTxBlob  EncryptedTransactions `json:"encryptedTxBlob"`
+	TxHashes         []TxHash              `json:"txHashes"`
 }
 
 type SearchResult struct {

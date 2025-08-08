@@ -161,11 +161,11 @@ func (s *storageImpl) FetchPublicBatchByHash(batchHash common.L2BatchHash) (*com
 	return hostdb.GetPublicBatch(s.db, batchHash)
 }
 
-func (s *storageImpl) FetchBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
+func (s *storageImpl) FetchBatch(batchHash gethcommon.Hash) (*common.PublicBatch, error) {
 	return hostdb.GetBatchByHash(s.db, batchHash)
 }
 
-func (s *storageImpl) FetchBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
+func (s *storageImpl) FetchBatchByTx(txHash gethcommon.Hash) (*common.PublicBatch, error) {
 	return hostdb.GetBatchByTx(s.db, txHash)
 }
 
