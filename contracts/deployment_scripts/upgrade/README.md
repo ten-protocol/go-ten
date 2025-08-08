@@ -460,5 +460,10 @@ npx hardhat console --network mainnet
 - `deployment_scripts/upgrade/001_deploy_timelock.ts` - Deploy timelock script
 - `deployment_scripts/upgrade/002_transfer_proxy_admin.ts` - Transfer proxy admin ownership
 - `scripts/upgrade/001_upgrade_contracts.ts` - Upgrade workflow
+- `scripts/emergency/001_emergency_pause.ts` - Emergency pause all contracts
+
+## Documentation
+
+- `contracts/docs/ROLLBACK_PROCEDURES_COMPLETE.md` - Complete rollback procedures and emergency response documentation
 
 This gives you a **production-ready, secure upgrade system** that follows industry best practices! 

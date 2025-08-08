@@ -122,6 +122,20 @@ async function executeTimelockUpgrade(timelockAddress: string, upgradeTx: any) {
 }
 
 /**
+ * Generate execution commands for a scheduled upgrade
+ */
+function generateExecutionCommands(contractName: string, timelockAddress: string, upgradeTx: any) {
+    console.log(`\n=== Execution Commands for ${contractName} ===`);
+    console.log("# Execute upgrade after delay period");
+    console.log(`export TIMELOCK_ADDRESS="${timelockAddress}"`);
+    console.log(`export UPGRADE_TARGET="${upgradeTx.target}"`);
+    console.log(`export UPGRADE_CALLDATA="${upgradeTx.calldata}"`);
+    console.log(`export UPGRADE_VALUE="${upgradeTx.value}"`);
+    console.log(`npx hardhat run scripts/upgrade/001_upgrade_contracts.ts --network mainnet`);
+    console.log("================================================");
+}
+
+/**
  * Upgrade contract using multisig governance
  */
 async function upgradeContractWithMultisig(
@@ -254,6 +268,16 @@ const upgradeContractsWithMultisig = async function (): Promise<void> {
         }
     }
     
+    // Print cancellation commands
+    console.log('\n=== Cancellation Commands (if needed) ===');
+    for (let i = 0; i < upgradeResults.length; i++) {
+        const result = upgradeResults[i];
+        const config = upgradeConfigs[i];
+        if (config && result) {
+            generateExecutionCommands(config.contractName, governanceConfig.timelockAddress, result.upgradeTx);
+        }
+    }
+    
     console.log('\nAll upgrades scheduled successfully');
 }
 
@@ -279,7 +303,8 @@ export {
     scheduleTimelockUpgrade,
     executeTimelockUpgrade,
     prepareUpgradeTransaction,
-    executeScheduledUpgrades
+    executeScheduledUpgrades,
+    generateExecutionCommands
 };
 
 // Run the main function if this script is executed directly
