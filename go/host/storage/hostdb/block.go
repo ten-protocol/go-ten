@@ -3,7 +3,11 @@ package hostdb
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -12,9 +16,10 @@ import (
 )
 
 const (
-	selectBlocks  = "SELECT b.id, b.hash, b.header, r.hash FROM block_host b join rollup_host r on r.compression_block=b.id ORDER BY b.id DESC "
-	selectBlockId = "SELECT id FROM block_host WHERE hash = "
-	selectBlock   = "SELECT header FROM block_host WHERE hash = "
+	selectBlocks     = "SELECT b.id, b.hash, b.header, r.hash FROM block_host b LEFT JOIN rollup_host r on r.compression_block=b.id ORDER BY b.id DESC "
+	selectBlockId    = "SELECT id FROM block_host WHERE hash = "
+	selectBlock      = "SELECT header FROM block_host WHERE hash = "
+	selectBlockCount = "SELECT total FROM block_count WHERE id = 1"
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
@@ -32,6 +37,18 @@ func AddBlock(dbtx *sql.Tx, statements *SQLStatements, b *types.Header) error {
 		return fmt.Errorf("could not insert block. Cause: %w", err)
 	}
 
+	var currentTotal int
+	err = dbtx.QueryRow(selectBlockCount).Scan(&currentTotal)
+	if err != nil {
+		return fmt.Errorf("failed to query block count: %w", err)
+	}
+
+	newTotal := currentTotal + 1
+	_, err = dbtx.Exec(statements.UpdateBlockCount, newTotal)
+	if err != nil {
+		return fmt.Errorf("failed to update block count: %w", err)
+	}
+
 	return nil
 }
 
@@ -41,6 +58,9 @@ func GetBlockId(db *sql.Tx, statements *SQLStatements, hash gethcommon.Hash) (*i
 	var blockId int64
 	err := db.QueryRow(query, hash.Bytes()).Scan(&blockId)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
 		return nil, fmt.Errorf("query execution for select block failed: %w", err)
 	}
 
@@ -74,7 +94,8 @@ func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.Blo
 
 	for rows.Next() {
 		var id int
-		var hash, header, rollupHash []byte
+		var hash, header []byte
+		var rollupHash []byte
 
 		err = rows.Scan(&id, &hash, &header, &rollupHash)
 		if err != nil {
@@ -85,11 +106,18 @@ func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.Blo
 		if err := json.Unmarshal(header, blockHeader); err != nil {
 			return nil, fmt.Errorf("could not decode block header. Cause: %w", err)
 		}
-		r := new(common.L2RollupHash)
-		r.SetBytes(rollupHash)
+
+		var rollupHashValue common.L2RollupHash
+		if rollupHash != nil {
+			rollupHashValue.SetBytes(rollupHash)
+		} else {
+			// set to zero hash if no rollup associated
+			rollupHashValue = common.L2RollupHash{}
+		}
+
 		block := common.PublicBlock{
 			BlockHeader: *blockHeader,
-			RollupHash:  *r,
+			RollupHash:  rollupHashValue,
 		}
 		blocks = append(blocks, block)
 	}
@@ -97,8 +125,23 @@ func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.Blo
 		return nil, err
 	}
 
+	totalBlocks, err := GetTotalBlockCount(db)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch the block count. Cause: %w", err)
+	}
+
 	return &common.BlockListingResponse{
 		BlocksData: blocks,
-		Total:      uint64(len(blocks)),
+		Total:      totalBlocks.Uint64(),
 	}, nil
+}
+
+// GetTotalBlockCount returns value from the block count table
+func GetTotalBlockCount(db HostDB) (*big.Int, error) {
+	var totalCount int
+	err := db.GetSQLDB().QueryRow(selectBlockCount).Scan(&totalCount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve total block count: %w", err)
+	}
+	return big.NewInt(int64(totalCount)), nil
 }

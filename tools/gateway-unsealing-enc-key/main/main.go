@@ -25,5 +25,5 @@ func main() {
 }
 
 func writeDataToFile(filename string, data []byte) error {
-	return os.WriteFile(filename, data, 0644)
+	return os.WriteFile(filename, data, 0o644)
 }
