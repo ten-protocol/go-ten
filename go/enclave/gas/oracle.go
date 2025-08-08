@@ -9,6 +9,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
+	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -181,9 +182,9 @@ func (o *oracle) calculateL1Cost(ctx context.Context, block *types.Header, l2Bat
 	totalCost := big.NewInt(0).Add(shareOfBlobCost, shareOfL1TxCost)
 
 	// 4. round the shareOfBlobCost up to the nearest multiple of l2Batch.BaseFee
-	remainder := new(big.Int).Mod(totalCost, l2Batch.BaseFee)
+	remainder := new(big.Int).Mod(totalCost, evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING)
 	if remainder.Sign() > 0 {
-		totalCost = totalCost.Add(totalCost, new(big.Int).Sub(l2Batch.BaseFee, remainder))
+		totalCost = totalCost.Add(totalCost, new(big.Int).Sub(evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING, remainder))
 	}
 
 	return totalCost, nil

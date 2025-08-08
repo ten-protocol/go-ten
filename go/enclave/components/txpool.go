@@ -233,6 +233,9 @@ func (t *TxPool) PendingTransactions(batchTime uint64) map[gethcommon.Address][]
 		OnlyPlainTxs: true,
 	})
 
+	allTxs := t.pool.Pending(gethtxpool.PendingFilter{})
+	t.logger.Info(fmt.Sprintf("[TXPOOL] Picked %d txs out of %d", len(txs), len(allTxs)))
+
 	// Filter out transactions that have "Time" greater than batchTime + MaxNegativeTxTimeDeltaMs
 	// this is required for serialising the transactiong together with their timestamp delta (which can't be negative).
 	maxDeltaSec := (common.MaxNegativeTxTimeDeltaMs / 1000) - 1
@@ -343,7 +346,9 @@ func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 		t.logger.Crit("invalid mempool. should not happen")
 	}
 
-	if err := gethtxpool.ValidateTransaction(tx, ch.Load(), sig, opts); err != nil {
+	header := ch.Load()
+	header.GasLimit = ^uint64(0) // set to max uint64
+	if err := gethtxpool.ValidateTransaction(tx, header, sig, opts); err != nil {
 		return err
 	}
 	return nil
@@ -385,11 +390,9 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 	if userErr != nil && errors.Is(userErr, vm.ErrExecutionReverted) {
 		return nil, nil
 	}
-
 	if userErr != nil || sysErr != nil {
 		return userErr, sysErr
 	}
-
 	// make sure the tx has enough gas to cover the execution and the tx won't be rejected by the sequencer
 	leastGas = leastGas * 8 / 10 // reduce gas estimate by 20%
 	if tx.Gas() < leastGas {
