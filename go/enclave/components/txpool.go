@@ -384,30 +384,24 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 	txArgs.From = &from
 	ge := NewGasEstimator(t.storage, t.tenChain, t.gasOracle, t.logger)
 	latest := gethrpc.LatestBlockNumber
-	leastGas, _, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, &latest, headBatch, t.config.GasLocalExecutionCapFlag)
+	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, &latest, headBatch, t.config.GasLocalExecutionCapFlag)
 
 	// if the transaction reverts we let it through
 	if userErr != nil && errors.Is(userErr, vm.ErrExecutionReverted) {
 		return nil, nil
 	}
-
 	if userErr != nil || sysErr != nil {
 		return userErr, sysErr
 	}
-
 	// make sure the tx has enough gas to cover the execution and the tx won't be rejected by the sequencer
 	leastGas = leastGas * 8 / 10 // reduce gas estimate by 20%
 	if tx.Gas() < leastGas {
 		return fmt.Errorf("insufficient gas. Want at least: %d have: %d", leastGas, tx.Gas()), nil
 	}
 
-	// The intrinsic gas (21 000) is already part of leastGas (coming from the gas
-	// estimator).  Do not add it again.  We now compare the supplied gas only
-	// against the discounted estimate.
-
-	leftOverGas := tx.Gas() - leastGas
-	if leftOverGas > headBatch.GasLimit {
-		return gethtxpool.ErrGasLimit, nil
+	// make sure the tx has enough gas to cover the publishing cost even if by some chance the 20% deducted was too much
+	if tx.Gas() < publishingGas+params.TxGas {
+		return fmt.Errorf("insufficient gas to publish the transaction to the DA. Want at least: %d have: %d", publishingGas, tx.Gas()), nil
 	}
 
 	return nil, nil
