@@ -366,7 +366,7 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &searchObj)
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, searchObj.Result.Total, uint64(1))
-	assert.GreaterOrEqual(t, len(searchObj.Result.ResultsData), uint64(1))
+	assert.GreaterOrEqual(t, len(searchObj.Result.ResultsData), 1)
 
 	// since there is a diff of 1 between sequence number and height we will find two results we just need to check the seq num is present
 	foundExpectedSequence := false
