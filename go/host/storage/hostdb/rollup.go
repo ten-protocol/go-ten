@@ -207,7 +207,16 @@ func GetCrossChainMessagesTree(db HostDB, messageHash gethcommon.Hash) ([][]inte
 func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	whereQuery := " WHERE r.hash=" + db.GetSQLStatement().Placeholder
 	orderQuery := " ORDER BY b.sequence DESC "
-	query := selectRollupBatches + whereQuery + orderQuery + db.GetSQLStatement().Pagination
+
+	// TODO @will quick fix to unblock main
+	var paginationQuery string
+	if db.GetSQLStatement().Placeholder == "?" {
+		paginationQuery = " LIMIT ? OFFSET ?"
+	} else {
+		// PostgreSQL uses $1, $2, $3,
+		paginationQuery = " LIMIT $2 OFFSET $3"
+	}
+	query := selectRollupBatches + whereQuery + orderQuery + paginationQuery
 
 	countQuery := "SELECT COUNT(*) FROM rollup_host r JOIN batch_host b ON b.sequence BETWEEN r.start_seq AND r.end_seq" + whereQuery
 	var total uint64

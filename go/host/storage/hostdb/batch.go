@@ -234,7 +234,16 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	whereQuery := " WHERE b.hash=" + db.GetSQLStatement().Placeholder
 	orderQuery := " ORDER BY t.id DESC "
-	query := selectBatchTxs + whereQuery + orderQuery + db.GetSQLStatement().Pagination
+
+	// TODO @will quick fix to unblock main
+	var paginationQuery string
+	if db.GetSQLStatement().Placeholder == "?" {
+		paginationQuery = " LIMIT ? OFFSET ?"
+	} else {
+		// PostgreSQL uses $1, $2, $3,
+		paginationQuery = " LIMIT $2 OFFSET $3"
+	}
+	query := selectBatchTxs + whereQuery + orderQuery + paginationQuery
 
 	countQuery := "SELECT COUNT(*) FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence" + whereQuery
 	var total uint64
