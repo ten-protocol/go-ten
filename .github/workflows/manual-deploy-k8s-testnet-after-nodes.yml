@@ -69,7 +69,8 @@ jobs:
                 else
                   # strip the -testnet suffix from testnet environments
                   short_name=${TESTNET_TYPE%-testnet}
-                fi               echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_OUTPUT
+                fi
+                echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_OUTPUT
 
          # checkout *this* repo (so subsequent steps can still see it)
          -  uses: actions/checkout@v4
