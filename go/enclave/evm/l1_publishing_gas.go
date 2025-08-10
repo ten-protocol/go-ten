@@ -17,7 +17,7 @@ import (
 
 var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
 
-var FIXED_L2_GAS_COST_FOR_L1_PUBLISHING = big.NewInt(params.InitialBaseFee / 100)
+var FIXED_L2_GAS_COST_FOR_L1_PUBLISHING = big.NewInt(params.InitialBaseFee / 100000)
 
 const (
 	BalanceDecreaseL1Payment       tracing.BalanceChangeReason = 100
