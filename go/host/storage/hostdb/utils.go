@@ -3,10 +3,11 @@ package hostdb
 import (
 	"encoding/hex"
 	"fmt"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"testing"
 	"time"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"

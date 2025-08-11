@@ -3,12 +3,13 @@ package sqlite
 import (
 	"embed"
 	"fmt"
+	"os"
+	"path/filepath"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/jmoiron/sqlx"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/storage/migration"
-	"os"
-	"path/filepath"
 
 	"github.com/ten-protocol/go-ten/go/common"
 

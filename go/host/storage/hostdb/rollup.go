@@ -3,8 +3,9 @@ package hostdb
 import (
 	"database/sql"
 	"fmt"
-	"github.com/jmoiron/sqlx"
 	"math/big"
+
+	"github.com/jmoiron/sqlx"
 
 	"github.com/ethereum/go-ethereum/core/types"
 

@@ -16,7 +16,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common/storage/migration"
 	"math/big"
 	"net"
 	"net/http"
@@ -24,6 +23,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/common/storage/migration"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/ten-protocol/go-ten/go/common/storage"

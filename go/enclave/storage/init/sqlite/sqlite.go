@@ -3,9 +3,10 @@ package sqlite
 import (
 	"embed"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common/storage/migration"
 	"os"
 	"path/filepath"
+
+	"github.com/ten-protocol/go-ten/go/common/storage/migration"
 
 	"github.com/jmoiron/sqlx"
 
