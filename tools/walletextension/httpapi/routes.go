@@ -36,8 +36,12 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 			Func: httpHandler(walletExt, joinRequestHandler),
 		},
 		{
-			Name: common.APIVersion1 + common.PathToken,
-			Func: httpHandler(walletExt, tokenRequestHandler),
+			Name: common.APIVersion1 + common.PathGetToken,
+			Func: httpHandler(walletExt, getTokenRequestHandler),
+		},
+		{
+			Name: common.APIVersion1 + common.PathSetToken,
+			Func: httpHandler(walletExt, setTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetMessage,
@@ -161,8 +165,8 @@ func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 }
 
-// This function handles request to /token endpoint. It reads the session key from the cookie and returns it to the user.
-func tokenRequestHandler(walletExt *services.Services, conn UserConn) {
+// This function handles request to /get-token endpoint. It reads the session key from the cookie and returns it to the user.
+func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	// Get the HTTP request to access cookies
 	req := conn.GetHTTPRequest()
 	if req == nil {
@@ -198,6 +202,77 @@ func tokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	err = conn.WriteResponse([]byte(userID))
 	if err != nil {
 		walletExt.Logger().Error("error writing token response", log.ErrKey, err)
+	}
+}
+
+// This function handles request to /set-token endpoint. It receives a token in JSON format and sets it as a session cookie.
+func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
+	// Read the request body to get the token
+	requestBody, err := conn.ReadRequest()
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		return
+	}
+
+	// Parse the JSON request
+	type SetTokenRequest struct {
+		Token string `json:"token"`
+	}
+
+	var req SetTokenRequest
+	err = json.Unmarshal(requestBody, &req)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid JSON format: %w", err))
+		return
+	}
+
+	if req.Token == "" {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("token is required"))
+		return
+	}
+
+	// Validate the token format (should be hex)
+	userIDBytes := hexutils.HexToBytes(req.Token)
+	if len(userIDBytes) == 0 {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid token format"))
+		return
+	}
+
+	// Verify the user exists in the database
+	_, err = walletExt.Storage.GetUser(userIDBytes)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database"))
+		return
+	}
+
+	// Set the cookie with the provided token
+	cookie := &http.Cookie{
+		Name:     "gateway_token",
+		Value:    req.Token,
+		Path:     "/",
+		HttpOnly: true,                    // Prevents XSS
+		Secure:   true,                    // HTTPS only
+		SameSite: http.SameSiteStrictMode, // Prevents CSRF
+		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
+	}
+
+	err = conn.SetCookie(cookie)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error setting cookie: %w", err))
+		return
+	}
+
+	// Return success response
+	successResponse := map[string]string{"status": "success", "message": "Token cookie set successfully"}
+	responseBytes, err := json.Marshal(successResponse)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error marshaling response: %w", err))
+		return
+	}
+
+	err = conn.WriteResponse(responseBytes)
+	if err != nil {
+		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
