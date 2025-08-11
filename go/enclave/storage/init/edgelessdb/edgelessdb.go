@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common/storage/migration"
 	"math/big"
 	"net"
 	"net/http"
@@ -29,7 +30,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
-	"github.com/ten-protocol/go-ten/go/enclave/storage/init/migration"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
