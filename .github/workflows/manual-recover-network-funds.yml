@@ -14,6 +14,7 @@ on:
           - 'dev-testnet'
           - 'uat-testnet'
           - 'sepolia-testnet'
+          - 'mainnet'
 jobs:
   recover-network-funds:
     runs-on: ubuntu-latest

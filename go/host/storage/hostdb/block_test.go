@@ -1,12 +1,13 @@
 package hostdb
 
 import (
-	"database/sql"
 	"errors"
 	"math/big"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -25,7 +26,7 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 	dbtx, _ := db.NewDBTransaction()
 	statements := db.GetSQLStatement()
 	_, err := GetBlockId(dbtx.Tx, statements, randomHash)
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, errutil.ErrNotFound) {
 		t.Errorf("expected sql.ErrNoRows for non-existent block, got: %v", err)
 	}
 	dbtx.Rollback()
@@ -65,8 +66,8 @@ func TestAddBlockWithForeignKeyConstraint(t *testing.T) {
 	db, _ := CreateSQLiteDB(t)
 	dbtx, _ := db.NewDBTransaction()
 	statements := db.GetSQLStatement()
-	metadata := createRollupMetadata(batchNumber - 10)
-	rollup := createRollup(batchNumber)
+	metadata := createRollupMetadata()
+	rollup := createRollup(batchNumber-10, batchNumber)
 	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 
 	// add block
@@ -102,7 +103,91 @@ func TestAddBlockWithForeignKeyConstraint(t *testing.T) {
 
 func createBlock(blockNum int64) types.Header {
 	return types.Header{
-		Number: big.NewInt(blockNum),
-		Time:   uint64(time.Now().Unix()),
+		Number:      big.NewInt(blockNum),
+		Time:        uint64(time.Now().Unix()),
+		Difficulty:  big.NewInt(1),
+		GasLimit:    1000000,
+		GasUsed:     0,
+		Coinbase:    gethcommon.Address{},
+		ParentHash:  gethcommon.Hash{},
+		Root:        gethcommon.Hash{},
+		TxHash:      gethcommon.Hash{},
+		ReceiptHash: gethcommon.Hash{},
+		Bloom:       types.Bloom{},
+		MixDigest:   gethcommon.Hash{},
+		Nonce:       types.BlockNonce{},
+		BaseFee:     big.NewInt(0),
+	}
+}
+
+func TestBlockCountInListing(t *testing.T) {
+	db, _ := CreateSQLiteDB(t)
+	statements := db.GetSQLStatement()
+
+	numBlocks := 5
+	for i := 0; i < numBlocks; i++ {
+		block := createBlock(int64(i + 1))
+		dbtx, _ := db.NewDBTransaction()
+		err := AddBlock(dbtx.Tx, statements, &block)
+		if err != nil {
+			t.Errorf("could not store block %d: %s", i+1, err)
+		}
+		err = dbtx.Write()
+		if err != nil {
+			t.Errorf("could not commit block %d: %s", i+1, err)
+		}
+	}
+
+	// verify the total block count is 5
+	totalBlocks, err := GetTotalBlockCount(db)
+	if err != nil {
+		t.Errorf("could not get total block count: %s", err)
+	}
+	if totalBlocks.Int64() != int64(numBlocks) {
+		t.Errorf("expected total block count to be %d, got %d", numBlocks, totalBlocks.Int64())
+	}
+
+	pagination := &common.QueryPagination{
+		Offset: 0,
+		Size:   3,
+	}
+
+	blockListing, err := GetBlockListing(db, pagination)
+	if err != nil {
+		t.Errorf("could not get block listing: %s", err)
+	}
+
+	// verify that the total count is correct even when pagination limits the results
+	if blockListing.Total != uint64(numBlocks) {
+		t.Errorf("expected block listing total to be %d, got %d", numBlocks, blockListing.Total)
+	}
+
+	if len(blockListing.BlocksData) != 3 {
+		t.Errorf("expected 3 blocks in listing, got %d", len(blockListing.BlocksData))
+	}
+
+	pagination2 := &common.QueryPagination{
+		Offset: 2,
+		Size:   2,
+	}
+
+	blockListing2, err := GetBlockListing(db, pagination2)
+	if err != nil {
+		t.Errorf("could not get block listing with offset: %s", err)
+	}
+
+	if blockListing2.Total != uint64(numBlocks) {
+		t.Errorf("expected block listing total to be %d, got %d", numBlocks, blockListing2.Total)
+	}
+
+	if len(blockListing2.BlocksData) != 2 {
+		t.Errorf("expected 2 blocks in listing with offset, got %d", len(blockListing2.BlocksData))
+	}
+
+	// Verify that blocks without rollups have zero rollup hashes
+	for _, block := range blockListing.BlocksData {
+		if block.RollupHash != (common.L2RollupHash{}) {
+			t.Errorf("expected blocks without rollups to have zero rollup hash, got %v", block.RollupHash)
+		}
 	}
 }

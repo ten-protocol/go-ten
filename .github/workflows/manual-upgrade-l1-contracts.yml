@@ -12,12 +12,13 @@ on:
           - 'dev-testnet'
           - 'uat-testnet'
           - 'sepolia-testnet'
+          - 'mainnet'
       upgrade_script:
         description: 'Type the name of the script file to run (e.g. "all_contracts_upgrade.ts")'
         required: true
         type: string
       confirmation:
-        description: 'Type "confirm" if upgrading sepolia'
+        description: 'Type "confirm" if upgrading sepolia or mainnet'
         required: false
         type: string
 
@@ -30,8 +31,8 @@ jobs:
     steps:
       - name: 'Check confirmation'
         run: |
-          if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
-            echo "Confirmation field must say 'confirm' to upgrade sepolia to avoid accidental upgrades"
+          if [[ ("${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" || "${{ github.event.inputs.testnet_type }}" == "mainnet") && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+            echo "Confirmation field must say 'confirm' to upgrade sepolia or mainnet to avoid accidental upgrades"
             exit 1
           fi
 
@@ -96,9 +97,14 @@ jobs:
           AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
         run: |
-          # Strip the "-testnet" suffix from the input
+          # Extract the environment prefix from the input
           TESTNET_TYPE_RAW="${{ github.event.inputs.testnet_type }}"
-          TESTNET_TYPE=${TESTNET_TYPE_RAW%-testnet}
+          if [[ "$TESTNET_TYPE_RAW" == "mainnet" ]]; then
+            TESTNET_TYPE="mainnet"
+          else
+            # Strip the "-testnet" suffix from testnet environments
+            TESTNET_TYPE=${TESTNET_TYPE_RAW%-testnet}
+          fi
   
           # Run upgrade script
           go run ./testnet/launcher/l1upgrade/cmd \

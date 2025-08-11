@@ -11,10 +11,11 @@ type EnclaveConfig struct {
 	StoreExecutedTransactions bool   `mapstructure:"storeExecutedTransactions"`
 	DecompressionLimit        string `mapstructure:"decompressionLimit"`
 
-	DB    *EnclaveDB    `mapstructure:"db"`
-	Debug *EnclaveDebug `mapstructure:"debug"`
-	Log   *EnclaveLog   `mapstructure:"log"`
-	RPC   *EnclaveRPC   `mapstructure:"rpc"`
+	Attestation *AttestationConstraints `mapstructure:"attestation"`
+	DB          *EnclaveDB              `mapstructure:"db"`
+	Debug       *EnclaveDebug           `mapstructure:"debug"`
+	Log         *EnclaveLog             `mapstructure:"log"`
+	RPC         *EnclaveRPC             `mapstructure:"rpc"`
 }
 
 // EnclaveDB contains the configuration for the enclave database.
@@ -54,4 +55,13 @@ type EnclaveRPC struct {
 	// Timeout - calls that are longer than this will be cancelled, to prevent resource starvation
 	// (normally, the context is propagated from the host, but in some cases like the evm, we have to create a context)
 	Timeout time.Duration `mapstructure:"timeout"`
+}
+
+// AttestationConstraints contains the constraints to be verified for the enclave attestation.
+//
+//	yaml: `enclave.attestation`
+type AttestationConstraints struct {
+	SignerID           string `mapstructure:"signerID"`
+	EDBSecurityVersion uint   `mapstructure:"edbSecurityVersion"`
+	EDBProductID       uint16 `mapstructure:"edbProductID"`
 }

@@ -23,6 +23,7 @@ on:
           - "dev-testnet"
           - "uat-testnet"
           - "sepolia-testnet"
+          - "mainnet"
       instance_type:
         description: "Instance"
         required: true

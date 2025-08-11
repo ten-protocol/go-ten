@@ -45,6 +45,7 @@ func (n *NodeType) UnmarshalText(text []byte) error {
 func (n NodeType) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`"%s"`, n.String())), nil
 }
+
 func (n *NodeType) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {

@@ -61,6 +61,10 @@ func (c *ristrettoCache) DisableShortLiving() {
 	c.shortLivingEnabled.Store(false)
 }
 
+func (c *ristrettoCache) IsShortLivingEnabled() bool {
+	return c.shortLivingEnabled.Load()
+}
+
 func (c *ristrettoCache) IsEvicted(key []byte, originalTTL time.Duration) bool {
 	if !c.shortLivingEnabled.Load() {
 		return true
