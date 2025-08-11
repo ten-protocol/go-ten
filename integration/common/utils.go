@@ -156,6 +156,17 @@ func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, c
 		GasPrice: price,
 		Data:     contractInteractionData,
 	}
+
+	gas, err := client.EstimateGas(context.Background(), ethereum.CallMsg{
+		From: wallet.Address(),
+		To:   &contractAddress,
+		Data: contractInteractionData,
+	})
+	if err != nil {
+		return nil, err
+	}
+	interactionTx.Gas = gas
+
 	signedTx, err := wallet.SignTransaction(&interactionTx)
 	if err != nil {
 		return nil, err
