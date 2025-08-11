@@ -22,12 +22,12 @@ export const columns: ColumnDef<Transaction>[] = [
     ),
     cell: ({ row }) => {
       return (
-          <ClickableLink
-              label={row.getValue("BatchHeight")}
-              link={pathToUrl(pageLinks.batchByHeight, {
-                  hash: row.original.TransactionHash,
-              })}
-          />
+                  <ClickableLink
+            label={row.getValue("BatchHeight")}
+            link={pathToUrl(pageLinks.batchByHeight, {
+                height: row.getValue("BatchHeight"),
+            })}
+        />
       );
     },
     filterFn: (row, id, value) => {

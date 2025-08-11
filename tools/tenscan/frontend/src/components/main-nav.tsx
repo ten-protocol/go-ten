@@ -46,8 +46,13 @@ const NavItem = ({ navLink }: { navLink: NavLink }) => {
           <DropdownMenuGroup>
             {navLink.subNavLinks &&
               navLink.subNavLinks.map((subNavLink: NavLink) => (
-                <DropdownMenuItem key={subNavLink.label}>
-                  <NavItem navLink={subNavLink} />
+                <DropdownMenuItem key={subNavLink.label} asChild>
+                  <Link
+                    href={subNavLink.href || ""}
+                    className="text-sm font-medium transition-colors hover:text-primary w-full"
+                  >
+                    {subNavLink.label}
+                  </Link>
                 </DropdownMenuItem>
               ))}
           </DropdownMenuGroup>
