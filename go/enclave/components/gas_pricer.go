@@ -79,7 +79,7 @@ func (gp *GasPricer) CalculateBlockBaseFee(cfg *params.ChainConfig, parent *type
 
 	// Dynamic pricing is enabled - use the EIP-1559 calculation
 	if parent == nil {
-		return big.NewInt(InitialBaseFee)
+		return new(big.Int).SetUint64(InitialBaseFee)
 	}
 
 	// This uses the parent gas limit, divided by cfg.ElasticityMultiplier()
