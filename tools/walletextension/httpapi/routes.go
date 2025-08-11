@@ -188,11 +188,20 @@ func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 		return
 	}
 
-	// Convert hex string back to bytes for validation
-	userIDBytes := hexutils.HexToBytes(userID)
+	// Validate the token format (should be hex)
+	userIDBytes, err := hex.DecodeString(userID)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid token format: %w", err))
+		return
+	}
+
+	if len(userIDBytes) == 0 {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("token cannot be empty"))
+		return
+	}
 
 	// Verify the user exists in the database
-	_, err := walletExt.Storage.GetUser(userIDBytes)
+	_, err = walletExt.Storage.GetUser(userIDBytes)
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database"))
 		return
@@ -232,9 +241,14 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	// Validate the token format (should be hex)
-	userIDBytes := hexutils.HexToBytes(req.Token)
+	userIDBytes, err := hex.DecodeString(req.Token)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid token format: %w", err))
+		return
+	}
+
 	if len(userIDBytes) == 0 {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid token format"))
+		handleError(conn, walletExt.Logger(), fmt.Errorf("token cannot be empty"))
 		return
 	}
 
