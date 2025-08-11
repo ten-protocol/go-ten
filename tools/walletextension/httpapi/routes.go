@@ -36,6 +36,10 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 			Func: httpHandler(walletExt, joinRequestHandler),
 		},
 		{
+			Name: common.APIVersion1 + common.PathToken,
+			Func: httpHandler(walletExt, tokenRequestHandler),
+		},
+		{
 			Name: common.APIVersion1 + common.PathGetMessage,
 			Func: httpHandler(walletExt, getMessageRequestHandler),
 		},
@@ -154,6 +158,46 @@ func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 	err = conn.WriteResponse([]byte(hexutils.BytesToHex(userID)))
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+	}
+}
+
+// This function handles request to /token endpoint. It reads the session key from the cookie and returns it to the user.
+func tokenRequestHandler(walletExt *services.Services, conn UserConn) {
+	// Get the HTTP request to access cookies
+	req := conn.GetHTTPRequest()
+	if req == nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("could not access request"))
+		return
+	}
+
+	// Find the gateway_token cookie
+	var userID string
+	for _, cookie := range req.Cookies() {
+		if cookie.Name == "gateway_token" {
+			userID = cookie.Value
+			break
+		}
+	}
+
+	if userID == "" {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("gateway_token cookie not found"))
+		return
+	}
+
+	// Convert hex string back to bytes for validation
+	userIDBytes := hexutils.HexToBytes(userID)
+
+	// Verify the user exists in the database
+	_, err := walletExt.Storage.GetUser(userIDBytes)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database"))
+		return
+	}
+
+	// Return the userID from the cookie (same format as /join)
+	err = conn.WriteResponse([]byte(userID))
+	if err != nil {
+		walletExt.Logger().Error("error writing token response", log.ErrKey, err)
 	}
 }
 

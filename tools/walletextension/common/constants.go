@@ -17,6 +17,7 @@ const (
 const (
 	PathReady                     = "/ready/"
 	PathJoin                      = "/join/"
+	PathToken                     = "/token/"
 	PathGetMessage                = "/getmessage/"
 	PathAuthenticate              = "/authenticate/"
 	PathQuery                     = "/query/"
