@@ -55,20 +55,6 @@ func AttestationExists(ctx context.Context, db *sqlx.Tx, enclaveId common.Enclav
 	return exists, err
 }
 
-func readSingleRow(ctx context.Context, db *sqlx.DB, query string, v any) ([]byte, error) {
-	var res []byte
-
-	err := db.QueryRowContext(ctx, query, v).Scan(&res)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			// make sure the error is converted to obscuro-wide not found error
-			return nil, errutil.ErrNotFound
-		}
-		return nil, err
-	}
-	return res, nil
-}
-
 // FetchSequencerEnclaveIDs returns all enclave IDs that are registered as sequencers
 func FetchSequencerEnclaveIDs(ctx context.Context, db *sqlx.DB) ([]common.EnclaveID, error) {
 	rows, err := db.QueryContext(ctx, attSelectSequencers, common.Sequencer)
