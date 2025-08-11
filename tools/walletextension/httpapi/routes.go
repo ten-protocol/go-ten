@@ -134,6 +134,22 @@ func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 		walletExt.Logger().Error("error creating new user", log.ErrKey, err)
 	}
 
+	// set secure HTTP-only cookie with userID
+	cookie := &http.Cookie{
+		Name:     "gateway_token",
+		Value:    hexutils.BytesToHex(userID),
+		Path:     "/",
+		HttpOnly: true,                    // Prevents XSS
+		Secure:   true,                    // HTTPS only
+		SameSite: http.SameSiteStrictMode, // Prevents CSRF
+		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
+	}
+
+	err = conn.SetCookie(cookie)
+	if err != nil {
+		walletExt.Logger().Error("error setting cookie", log.ErrKey, err)
+	}
+
 	// write hex encoded userID in the response
 	err = conn.WriteResponse([]byte(hexutils.BytesToHex(userID)))
 	if err != nil {
