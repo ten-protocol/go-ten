@@ -152,7 +152,7 @@ func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, c
 	interactionTx := types.LegacyTx{
 		Nonce:    wallet.GetNonceAndIncrement(),
 		To:       &contractAddress,
-		Gas:      uint64(1_000_000),
+		Gas:      uint64(10_000_000),
 		GasPrice: price,
 		Data:     contractInteractionData,
 	}
