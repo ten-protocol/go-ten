@@ -305,7 +305,7 @@ func (c *inMemTenClient) getBatchByTx(result interface{}, args []interface{}) er
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchByTx, err)
 	}
 
-	*result.(**common.ExtBatch) = batch
+	*result.(**common.PublicBatch) = batch
 	return nil
 }
 
@@ -323,7 +323,7 @@ func (c *inMemTenClient) getBatch(result interface{}, args []interface{}) error 
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatch, err)
 	}
 
-	*result.(**common.ExtBatch) = batch
+	*result.(**common.PublicBatch) = batch
 	return nil
 }
 

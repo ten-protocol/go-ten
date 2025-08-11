@@ -53,13 +53,13 @@ func (s *ScanAPI) GetPublicBatchByHash(hash common.L2BatchHash) (*common.PublicB
 	return s.host.Storage().FetchPublicBatchByHash(hash)
 }
 
-// GetBatch returns the `ExtBatch` with the given hash
-func (s *ScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.ExtBatch, error) {
+// GetBatch returns the `PublicBatch` with the given hash
+func (s *ScanAPI) GetBatch(batchHash gethcommon.Hash) (*common.PublicBatch, error) {
 	return s.host.Storage().FetchBatch(batchHash)
 }
 
-// GetBatchByTx returns the `ExtBatch` with the given tx hash
-func (s *ScanAPI) GetBatchByTx(txHash gethcommon.Hash) (*common.ExtBatch, error) {
+// GetBatchByTx returns the `PublicBatch` with the given tx hash
+func (s *ScanAPI) GetBatchByTx(txHash gethcommon.Hash) (*common.PublicBatch, error) {
 	return s.host.Storage().FetchBatchByTx(txHash)
 }
 

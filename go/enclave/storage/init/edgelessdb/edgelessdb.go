@@ -232,7 +232,7 @@ func performHandshake(enclaveConfig *enclaveconfig.EnclaveConfig, edbCfg *Config
 	// The trust path is as follows:
 	// 1. The TEN Enclave performs RA on the database enclave, and the RA object contains a certificate which only the database enclave controls.
 	// 2. Connecting to the database via mutually authenticated TLS using the above certificate, will give the TEN enclave confidence that it is only giving data away to some code and hardware it trusts.
-	edbPEM, err := performEDBRemoteAttestation(enclaveConfig, edbCfg.Host, defaultEDBConstraints, logger)
+	edbPEM, err := performEDBRemoteAttestation(enclaveConfig, edbCfg.Host, logger)
 	if err != nil {
 		return nil, err
 	}

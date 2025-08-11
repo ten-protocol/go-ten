@@ -15,6 +15,7 @@ on:
           - 'dev-testnet'
           - 'uat-testnet'
           - 'sepolia-testnet'
+          - 'mainnet'
 
 jobs:
   build-and-deploy:

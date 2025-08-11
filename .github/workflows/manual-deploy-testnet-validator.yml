@@ -33,6 +33,7 @@ on:
           - "dev-testnet"
           - "uat-testnet"
           - "sepolia-testnet"
+          - "mainnet"
       log_level:
         description: "Log Level 1-Error 5-Trace"
         required: true

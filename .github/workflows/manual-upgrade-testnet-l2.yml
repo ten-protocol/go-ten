@@ -29,13 +29,14 @@ on:
           - 'dev-testnet'
           - 'uat-testnet'
           - 'sepolia-testnet'
+          - 'mainnet'
       log_level:
         description: 'Log Level 1-Error 5-Trace'
         required: true
         default: 3
         type: number
       confirmation:
-        description: 'Type "confirm" if upgrading sepolia'
+        description: 'Type "confirm" if upgrading sepolia or mainnet'
         required: false
         type: string
 
@@ -52,8 +53,8 @@ jobs:
       - name: 'Check confirmation'
         # if env is sepolia then confirmation field needs to say 'confirm'
         run: |
-          if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
-            echo "Confirmation field must say 'confirm' to upgrade sepolia to avoid accidental upgrades"
+          if [[ ("${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" || "${{ github.event.inputs.testnet_type }}" == "mainnet") && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+            echo "Confirmation field must say 'confirm' to upgrade sepolia or mainnet to avoid accidental upgrades"
             exit 1
           fi
 
