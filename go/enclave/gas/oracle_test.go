@@ -103,17 +103,6 @@ func buildChainWithBaseFees(fees []int64) (*types.Header, *mockBlockResolver) {
 	return parent, resolver
 }
 
-func averageInt64(values []int64) *big.Int {
-	if len(values) == 0 {
-		return big.NewInt(0)
-	}
-	sum := big.NewInt(0)
-	for _, v := range values {
-		sum.Add(sum, big.NewInt(v))
-	}
-	return sum.Div(sum, big.NewInt(int64(len(values))))
-}
-
 func roundUpToMultiple(n, multiple *big.Int) *big.Int {
 	if multiple.Sign() == 0 {
 		return new(big.Int).Set(n)
