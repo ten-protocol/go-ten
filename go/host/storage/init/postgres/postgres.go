@@ -72,7 +72,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 		return nil, err
 	}
 
-	// Apply any additional migrations
+	// apply any additional migrations
 	err = migration.ApplyMigrations(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
 	if err != nil {
 		return nil, err

@@ -27,7 +27,7 @@ func CreateSQLiteDB(t *testing.T) (HostDB, error) {
 
 	// Create a test logger for the database
 	testLogger := log.New(log.HostCmp, 1, log.SysOut)
-	return NewHostDB(hostDB, testLogger)
+	return NewHostDB(hostDB, SQLiteSQLStatements(), testLogger)
 }
 
 func CreateBatch(batchNum int64, txHashes []common.L2BatchHash) common.ExtBatch {
