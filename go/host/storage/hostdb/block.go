@@ -3,17 +3,16 @@ package hostdb
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/common/errutil"
-
-	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/jmoiron/sqlx"
+
 	"github.com/ten-protocol/go-ten/go/common"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -65,9 +64,6 @@ func GetBlockId(db *sql.Tx, dbConn *sqlx.DB, hash gethcommon.Hash) (*int64, erro
 	var blockId int64
 	err := db.QueryRow(reboundQuery, hash.Bytes()).Scan(&blockId)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("query execution for select block failed: %w", err)
 	}
 

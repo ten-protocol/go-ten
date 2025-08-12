@@ -1,7 +1,6 @@
 package hostdb
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"math/big"
@@ -9,10 +8,11 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
@@ -221,16 +221,10 @@ func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.PublicBatch, error
 	reboundQuery := db.GetSQLDB().Rebind(selectBatchSeqByTx)
 	err := db.GetSQLDB().QueryRow(reboundQuery, txHash.Bytes()).Scan(&seqNo)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("failed to execute query %s - %w", selectBatchSeqByTx, err)
 	}
 	extBatch, err := GetBatchBySequenceNumber(db, seqNo)
 	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			return nil, err
-		}
 		return nil, fmt.Errorf("failed to fetch ext batch - %w", err)
 	}
 	return toPublicBatch(extBatch), nil
@@ -297,9 +291,6 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 		)
 		err := rows.Scan(&txHash, &batchHeight, &batchTimestamp, &finality)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, errutil.ErrNotFound
-			}
 			return nil, fmt.Errorf("failed to fetch batch transactions: %w", err)
 		}
 
@@ -342,9 +333,6 @@ func fetchBatchHeader(db *sqlx.DB, whereQuery string, args ...any) (*common.Batc
 		err = db.QueryRow(query).Scan(&extBatch)
 	}
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("failed to scan with query %s - %w", query, err)
 	}
 	// Decode batch
@@ -366,9 +354,6 @@ func fetchBatchNumber(db HostDB, args ...any) (*big.Int, error) {
 		err = db.GetSQLDB().QueryRow(reboundQuery).Scan(&seqNo)
 	}
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("failed to scan with query %s - %w", selectBatchSeqByTx, err)
 	}
 	batch, err := GetPublicBatchBySequenceNumber(db, seqNo)
@@ -393,9 +378,6 @@ func fetchPublicBatch(db *sqlx.DB, whereQuery string, args ...any) (*common.Publ
 		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	}
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("failed to scan with query %s - %w", query, err)
 	}
 	var b common.ExtBatch
@@ -431,9 +413,6 @@ func fetchFullBatch(db *sqlx.DB, whereQuery string, args ...any) (*common.ExtBat
 		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	}
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("could not get ext batch. Cause: %w", err)
 	}
 	var b common.ExtBatch
@@ -453,9 +432,6 @@ func fetchHeadBatch(db *sqlx.DB) (*common.PublicBatch, error) {
 
 	err := db.QueryRow(selectLatestBatch).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("failed to fetch current head batch: %w", err)
 	}
 

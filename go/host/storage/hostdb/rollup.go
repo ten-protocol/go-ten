@@ -1,7 +1,6 @@
 package hostdb
 
 import (
-	"database/sql"
 	"fmt"
 	"math/big"
 
@@ -10,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/pkg/errors"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/merkle"
@@ -201,9 +199,6 @@ func GetCrossChainMessagesTree(db HostDB, messageHash gethcommon.Hash) ([][]inte
 	reboundMessageQuery := db.GetSQLDB().Rebind(selectRollupIdByMessage)
 	err := db.GetSQLDB().QueryRow(reboundMessageQuery, messageHash.Bytes()).Scan(&rollupID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("failed to fetch rollup ID for message: %w", err)
 	}
 
@@ -269,9 +264,6 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.
 		)
 		err := rows.Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return nil, errutil.ErrNotFound
-			}
 			return nil, fmt.Errorf("failed to fetch rollup batches: %w", err)
 		}
 		var b common.ExtBatch
@@ -319,9 +311,6 @@ func fetchExtRollup(db *sqlx.DB, whereQuery string, args ...any) (*common.ExtRol
 		err = db.QueryRow(query).Scan(&rollupBlob)
 	}
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("failed to fetch rollup by hash: %w", err)
 	}
 	var rollup common.ExtRollup
@@ -337,9 +326,6 @@ func fetchHeadRollup(db *sqlx.DB) (*common.ExtRollup, error) {
 	var extRollup []byte
 	err := db.QueryRow(selectLatestExtRollup).Scan(&extRollup)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("failed to fetch rollup by hash: %w", err)
 	}
 	var rollup common.ExtRollup
@@ -355,9 +341,6 @@ func fetchTotalRollups(db *sqlx.DB) (*big.Int, error) {
 	var total int
 	err := db.QueryRow(selectLatestRollupCount).Scan(&total)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return big.NewInt(0), errutil.ErrNotFound
-		}
 		return big.NewInt(0), fmt.Errorf("failed to fetch rollup latest rollup ID: %w", err)
 	}
 
@@ -381,9 +364,6 @@ func fetchPublicRollup(db *sqlx.DB, whereQuery string, args ...any) (*common.Pub
 		&compressionblock,
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
 		return nil, fmt.Errorf("failed to fetch rollup by hash: %w", err)
 	}
 	rollup.ID = big.NewInt(int64(id))
