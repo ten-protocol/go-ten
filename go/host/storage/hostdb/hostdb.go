@@ -12,25 +12,18 @@ import (
 type HostDB interface {
 	GetSQLDB() *sqlx.DB
 	NewDBTransaction() (*dbTransaction, error)
-	GetSQLStatement() *SQLStatements
 	Logger() gethlog.Logger
 }
 
 type hostDB struct {
-	sqldb      *sqlx.DB
-	statements *SQLStatements
-	logger     gethlog.Logger
+	sqldb  *sqlx.DB
+	logger gethlog.Logger
 }
 
-func (db *hostDB) GetSQLStatement() *SQLStatements {
-	return db.statements
-}
-
-func NewHostDB(db *sqlx.DB, statements *SQLStatements, logger gethlog.Logger) (HostDB, error) {
+func NewHostDB(db *sqlx.DB, logger gethlog.Logger) (HostDB, error) {
 	return &hostDB{
-		sqldb:      db,
-		statements: statements,
-		logger:     logger,
+		sqldb:  db,
+		logger: logger,
 	}, nil
 }
 

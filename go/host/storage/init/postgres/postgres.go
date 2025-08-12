@@ -66,14 +66,14 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 	db.SetConnMaxLifetime(30 * time.Minute)
 	db.SetConnMaxIdleTime(5 * time.Minute)
 
-	// Initialize the database with the initial SQL file
+	// initialise the database with the initial SQL file
 	err = migration.InitialiseDB(db, sqlFiles, initFile)
 	if err != nil {
 		return nil, err
 	}
 
 	// Apply any additional migrations
-	err = migration.DBMigration(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	err = migration.ApplyMigrations(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,8 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 
 // registerPanicOnConnectionRefusedDriver registers the custom driver
 func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
-	driverName := "pg-panic-on-unexpected-err"
+	// we need the actual driver name so sqlx can replace queries with the correct placeholder
+	driverName := "postgres"
 	sql.Register(driverName,
 		storage.NewPanicOnDBErrorDriver(
 			&pq.Driver{},

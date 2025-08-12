@@ -20,18 +20,23 @@ const (
 func InsertOrUpdateConfig(ctx context.Context, dbtx *sqlx.Tx, key string, value any) error {
 	var exists bool
 	// check if it exists then insert or update - this keeps it agnostic to the type of sql database
-	err := dbtx.GetContext(ctx, &exists, cfgExists, key)
+
+	// convert placeholders based on the database driver
+	reboundExists := dbtx.Rebind(cfgExists)
+	err := dbtx.GetContext(ctx, &exists, reboundExists, key)
 	if err != nil {
 		return fmt.Errorf("failed to check existence of config key %q: %w", key, err)
 	}
 
 	if exists {
-		_, err = dbtx.ExecContext(ctx, cfgUpdate, value, key)
+		reboundUpdate := dbtx.Rebind(cfgUpdate)
+		_, err = dbtx.ExecContext(ctx, reboundUpdate, value, key)
 		if err != nil {
 			return fmt.Errorf("failed to update config key %q: %w", key, err)
 		}
 	} else {
-		_, err = dbtx.ExecContext(ctx, cfgInsert, key, value)
+		reboundInsert := dbtx.Rebind(cfgInsert)
+		_, err = dbtx.ExecContext(ctx, reboundInsert, key, value)
 		if err != nil {
 			return fmt.Errorf("failed to insert config key %q: %w", key, err)
 		}
@@ -41,13 +46,15 @@ func InsertOrUpdateConfig(ctx context.Context, dbtx *sqlx.Tx, key string, value 
 }
 
 func WriteConfig(ctx context.Context, db *sqlx.Tx, key string, value []byte) (sql.Result, error) {
-	return db.ExecContext(ctx, cfgInsert, key, value)
+	reboundInsert := db.Rebind(cfgInsert)
+	return db.ExecContext(ctx, reboundInsert, key, value)
 }
 
 func FetchConfig(ctx context.Context, db *sqlx.DB, key string) ([]byte, error) {
 	var res []byte
 
-	err := db.QueryRowContext(ctx, cfgSelect, key).Scan(&res)
+	reboundQuery := db.Rebind(cfgSelect)
+	err := db.QueryRowContext(ctx, reboundQuery, key).Scan(&res)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error

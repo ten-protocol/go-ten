@@ -76,7 +76,7 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config *enclavecon
 		}
 	}
 
-	err = migration.DBMigration(rwdb, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	err = migration.ApplyMigrations(rwdb, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
 	if err != nil {
 		return nil, err
 	}

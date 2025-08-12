@@ -158,7 +158,7 @@ func Connector(edbCfg *Config, config *enclaveconfig.EnclaveConfig, logger gethl
 	}
 
 	// perform db migration
-	err = migration.DBMigration(sqlDB, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	err = migration.ApplyMigrations(sqlDB, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
 	if err != nil {
 		return nil, err
 	}

@@ -48,7 +48,7 @@ func CreateTemporarySQLiteHostDB(dbPath string, dbOptions string, logger gethlog
 		return nil, fmt.Errorf("couldn't initialise db - %w", err)
 	}
 
-	err = migration.DBMigration(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	err = migration.ApplyMigrations(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
 	if err != nil {
 		return nil, err
 	}

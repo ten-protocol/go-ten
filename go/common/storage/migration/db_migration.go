@@ -23,7 +23,7 @@ import (
 
 const currentMigrationVersionKey = "CURRENT_MIGRATION_VERSION"
 
-func DBMigration(db *sqlx.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
+func ApplyMigrations(db *sqlx.DB, sqlFiles embed.FS, logger gethlog.Logger) error {
 	migrationFiles, err := readMigrationFiles(sqlFiles)
 	if err != nil {
 		return err
