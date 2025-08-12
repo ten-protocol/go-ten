@@ -136,7 +136,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     // Trigger dynamic gas pricing upgrade via NetworkConfig using hardhat-deploy
-    await deployments.execute('NetworkConfig', { from: deployer, log: true }, 'upgradeFeature', 'gas_pricing', Buffer.from('dynamic-pricing', 'utf8').toString('hex'));
+    const receipt2 = await deployments.execute('NetworkConfig', { from: deployer, log: true }, 'upgradeFeature', 'gas_pricing', Buffer.from('dynamic-pricing', 'utf8').toString('hex'));
+    console.log(`Dynamic gas pricing upgrade receipt: ${receipt2}`);
+    if (receipt2.status !== 1) {
+        throw new Error('Failed to trigger dynamic gas pricing upgrade via NetworkConfig');
+    }
 };
 
 export default func;
