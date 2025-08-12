@@ -11,6 +11,8 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/storage"
+
 	"github.com/jmoiron/sqlx"
 
 	"github.com/ethereum/go-ethereum/core/rawdb"
@@ -409,7 +411,7 @@ func (s *storageImpl) StoreSecret(ctx context.Context, secret crypto.SharedEncla
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.WriteConfig(ctx, dbTx, masterSeedCfg, enc)
+	_, err = storage.WriteConfig(ctx, dbTx, masterSeedCfg, enc)
 	if err != nil {
 		return fmt.Errorf("could not shared secret in DB. Cause: %w", err)
 	}
@@ -422,7 +424,7 @@ func (s *storageImpl) FetchSecret(ctx context.Context) (*crypto.SharedEnclaveSec
 
 	var ss crypto.SharedEnclaveSecret
 
-	cfg, err := enclavedb.FetchConfig(ctx, s.db.GetSQLDB(), masterSeedCfg)
+	cfg, err := storage.FetchConfig(ctx, s.db.GetSQLDB(), masterSeedCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -852,7 +854,7 @@ func (s *storageImpl) StoreEnclaveKey(ctx context.Context, enclaveKey []byte) er
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
-	_, err = enclavedb.WriteConfig(ctx, dbTx, enclaveKeyCfg, enclaveKey)
+	_, err = storage.WriteConfig(ctx, dbTx, enclaveKeyCfg, enclaveKey)
 	if err != nil {
 		return err
 	}
@@ -861,7 +863,7 @@ func (s *storageImpl) StoreEnclaveKey(ctx context.Context, enclaveKey []byte) er
 
 func (s *storageImpl) GetEnclaveKey(ctx context.Context) ([]byte, error) {
 	defer s.logDuration("GetEnclaveKey", measure.NewStopwatch())
-	return enclavedb.FetchConfig(ctx, s.db.GetSQLDB(), enclaveKeyCfg)
+	return storage.FetchConfig(ctx, s.db.GetSQLDB(), enclaveKeyCfg)
 }
 
 func (s *storageImpl) StoreRollup(ctx context.Context, rollup *common.ExtRollup, internalHeader *common.CalldataRollupHeader) error {
@@ -1120,7 +1122,7 @@ func (s *storageImpl) StoreSystemContractAddresses(ctx context.Context, addresse
 	if err != nil {
 		return fmt.Errorf("could not marshal system contract addresses - %w", err)
 	}
-	_, err = enclavedb.WriteConfig(ctx, dbTx, systemContractAddressesCfg, addressesBytes)
+	_, err = storage.WriteConfig(ctx, dbTx, systemContractAddressesCfg, addressesBytes)
 	if err != nil {
 		return fmt.Errorf("could not write system contract addresses - %w", err)
 	}
@@ -1133,7 +1135,7 @@ func (s *storageImpl) StoreSystemContractAddresses(ctx context.Context, addresse
 
 func (s *storageImpl) GetSystemContractAddresses(ctx context.Context) (common.SystemContractAddresses, error) {
 	defer s.logDuration("GetSystemContractAddresses", measure.NewStopwatch())
-	addressesBytes, err := enclavedb.FetchConfig(ctx, s.db.GetSQLDB(), systemContractAddressesCfg)
+	addressesBytes, err := storage.FetchConfig(ctx, s.db.GetSQLDB(), systemContractAddressesCfg)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch system contract addresses - %w", err)
 	}

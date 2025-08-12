@@ -6,11 +6,12 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ten-protocol/go-ten/go/common/storage/migration"
+
 	"github.com/jmoiron/sqlx"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
-	"github.com/ten-protocol/go-ten/go/enclave/storage/init/migration"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
@@ -75,8 +76,7 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config *enclavecon
 		}
 	}
 
-	// perform db migration
-	err = migration.DBMigration(rwdb, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	err = migration.ApplyMigrations(rwdb, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
 	if err != nil {
 		return nil, err
 	}

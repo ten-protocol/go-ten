@@ -21,18 +21,18 @@ func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (host
 	}
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		sqliteDB, err := sqlite.CreateTemporarySQLiteHostDB(dbName, "mode=memory&cache=shared&_foreign_keys=on")
+		sqliteDB, err := sqlite.CreateTemporarySQLiteHostDB(dbName, "mode=memory&cache=shared&_foreign_keys=on", logger)
 		if err != nil {
 			return nil, fmt.Errorf("could not create in memory sqlite DB: %w", err)
 		}
-		return hostdb.NewHostDB(sqliteDB, hostdb.SQLiteSQLStatements(), logger)
+		return hostdb.NewHostDB(sqliteDB, logger)
 	}
 	logger.Info(fmt.Sprintf("Preparing Postgres DB connection to %s...", cfg.PostgresDBHost))
 	postgresDB, err := postgres.CreatePostgresDBConnection(cfg.PostgresDBHost, dbName, logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not create postresql connection: %w", err)
 	}
-	return hostdb.NewHostDB(postgresDB, hostdb.PostgresSQLStatements(), logger)
+	return hostdb.NewHostDB(postgresDB, logger)
 }
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation

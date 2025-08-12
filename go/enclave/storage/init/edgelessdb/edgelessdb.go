@@ -24,12 +24,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ten-protocol/go-ten/go/common/storage/migration"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
-	"github.com/ten-protocol/go-ten/go/enclave/storage/init/migration"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
@@ -157,7 +158,7 @@ func Connector(edbCfg *Config, config *enclaveconfig.EnclaveConfig, logger gethl
 	}
 
 	// perform db migration
-	err = migration.DBMigration(sqlDB, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	err = migration.ApplyMigrations(sqlDB, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
 	if err != nil {
 		return nil, err
 	}

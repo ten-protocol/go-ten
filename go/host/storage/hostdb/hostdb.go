@@ -4,35 +4,30 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/jmoiron/sqlx"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
 type HostDB interface {
-	GetSQLDB() *sql.DB
+	GetSQLDB() *sqlx.DB
 	NewDBTransaction() (*dbTransaction, error)
-	GetSQLStatement() *SQLStatements
 	Logger() gethlog.Logger
 }
 
 type hostDB struct {
-	sqldb      *sql.DB
-	statements *SQLStatements
-	logger     gethlog.Logger
+	sqldb  *sqlx.DB
+	logger gethlog.Logger
 }
 
-func (db *hostDB) GetSQLStatement() *SQLStatements {
-	return db.statements
-}
-
-func NewHostDB(db *sql.DB, statements *SQLStatements, logger gethlog.Logger) (HostDB, error) {
+func NewHostDB(db *sqlx.DB, logger gethlog.Logger) (HostDB, error) {
 	return &hostDB{
-		sqldb:      db,
-		statements: statements,
-		logger:     logger,
+		sqldb:  db,
+		logger: logger,
 	}, nil
 }
 
-func (db *hostDB) GetSQLDB() *sql.DB {
+func (db *hostDB) GetSQLDB() *sqlx.DB {
 	return db.sqldb
 }
 

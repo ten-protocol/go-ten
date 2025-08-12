@@ -1,11 +1,15 @@
 package sqlite
 
 import (
-	"database/sql"
 	"embed"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/jmoiron/sqlx"
+	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/storage/migration"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -22,7 +26,7 @@ var sqlFiles embed.FS
 
 // CreateTemporarySQLiteHostDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
-func CreateTemporarySQLiteHostDB(dbPath string, dbOptions string) (*sql.DB, error) {
+func CreateTemporarySQLiteHostDB(dbPath string, dbOptions string, logger gethlog.Logger) (*sqlx.DB, error) {
 	if dbPath == "" {
 		tempPath, err := CreateTempDBFile("host.db")
 		if err != nil {
@@ -31,7 +35,7 @@ func CreateTemporarySQLiteHostDB(dbPath string, dbOptions string) (*sql.DB, erro
 		dbPath = tempPath
 	}
 
-	db, err := sql.Open("sqlite3", fmt.Sprintf("file:%s?%s", dbPath, dbOptions))
+	db, err := sqlx.Open("sqlite3", fmt.Sprintf("file:%s?%s", dbPath, dbOptions))
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
@@ -43,10 +47,15 @@ func CreateTemporarySQLiteHostDB(dbPath string, dbOptions string) (*sql.DB, erro
 	if err != nil {
 		return nil, fmt.Errorf("couldn't initialise db - %w", err)
 	}
+
+	err = migration.ApplyMigrations(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	if err != nil {
+		return nil, err
+	}
 	return db, nil
 }
 
-func initialiseDB(db *sql.DB, initFile string) error {
+func initialiseDB(db *sqlx.DB, initFile string) error {
 	sqlInitFile, err := sqlFiles.ReadFile(initFile)
 	if err != nil {
 		return err
