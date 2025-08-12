@@ -1,6 +1,7 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {ethers} from "hardhat";
+import { hexlify, toUtf8Bytes } from 'ethers';
 
 /*
     This deployment script instantiates the network contracts and stores them in the deployed NetworkConfig contract.
@@ -136,7 +137,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     // Trigger dynamic gas pricing upgrade via NetworkConfig using hardhat-deploy
-    const receipt2 = await deployments.execute('NetworkConfig', { from: deployer, log: true }, 'upgradeFeature', 'gas_pricing', Buffer.from('dynamic-pricing', 'utf8').toString('hex'));
+    const featureData = hexlify(toUtf8Bytes('dynamic-pricing'));
+    const receipt2 = await deployments.execute('NetworkConfig', { from: deployer, log: true }, 'upgradeFeature', 'gas_pricing', featureData);
     console.log(`Dynamic gas pricing upgrade receipt: ${receipt2}`);
     if (receipt2.status !== 1) {
         throw new Error('Failed to trigger dynamic gas pricing upgrade via NetworkConfig');
