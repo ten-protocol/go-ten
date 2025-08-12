@@ -209,9 +209,6 @@ func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.PublicBatch, error
 	}
 	extBatch, err := GetBatchBySequenceNumber(db, seqNo)
 	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			return nil, err
-		}
 		return nil, fmt.Errorf("failed to fetch ext batch - %w", err)
 	}
 	return toPublicBatch(extBatch), nil
