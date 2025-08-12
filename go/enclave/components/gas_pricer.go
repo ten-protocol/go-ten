@@ -15,7 +15,7 @@ import (
 const (
 	InitialBaseFee        = params.InitialBaseFee / 10 // InitialBaseFee is ETH's base fee.
 	ComponentName         = "gas_pricing"
-	DynamicPricingTrigger = "gas_pricing"
+	DynamicPricingTrigger = "dynamic-pricing"
 	StaticPricingTrigger  = "static_pricing"
 )
 
@@ -36,13 +36,13 @@ func NewGasPricer(logger gethlog.Logger, config *config.EnclaveConfig) *GasPrice
 // CanUpgrade implements the UpgradeHandler interface for gas pricing upgrades
 func (gp *GasPricer) CanUpgrade(ctx context.Context, featureName string, featureData []byte) bool {
 	// Gas pricer only handles gas_pricing feature upgrades
-	if featureName != "gas_pricing" {
+	if featureName != ComponentName {
 		return false
 	}
 
 	// Check if we support the specific upgrade data
 	switch string(featureData) {
-	case "dynamic-pricing":
+	case DynamicPricingTrigger:
 		return true
 	default:
 		gp.logger.Warn("Unsupported gas pricing upgrade data", "featureData", string(featureData))

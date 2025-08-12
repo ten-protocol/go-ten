@@ -134,6 +134,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     if (receipt1!.status !== 1) {
         throw new Error('Failed to add CrossChain as withdrawalManager to MerkleMessageBus');
     }
+
+    // Trigger dynamic gas pricing upgrade via NetworkConfig using hardhat-deploy
+    await deployments.execute('NetworkConfig', { from: deployer, log: true }, 'upgradeFeature', 'gas_pricing', Buffer.from('dynamic-pricing', 'utf8'));
 };
 
 export default func;
