@@ -21,7 +21,7 @@ func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (host
 	}
 	if cfg.UseInMemoryDB {
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		sqliteDB, err := sqlite.CreateTemporarySQLiteHostDB(dbName, "mode=memory&cache=shared&_foreign_keys=on")
+		sqliteDB, err := sqlite.CreateTemporarySQLiteHostDB(dbName, "mode=memory&cache=shared&_foreign_keys=on", logger)
 		if err != nil {
 			return nil, fmt.Errorf("could not create in memory sqlite DB: %w", err)
 		}
