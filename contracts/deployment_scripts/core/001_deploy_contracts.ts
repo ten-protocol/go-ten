@@ -136,7 +136,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     }
 
     // Trigger dynamic gas pricing upgrade via NetworkConfig using hardhat-deploy
-    await deployments.execute('NetworkConfig', { from: deployer, log: true }, 'upgradeFeature', 'gas_pricing', Buffer.from('dynamic-pricing', 'utf8'));
+    await deployments.execute('NetworkConfig', { from: deployer, log: true }, 'upgradeFeature', 'gas_pricing', Buffer.from('dynamic-pricing', 'utf8').toString('hex'));
 };
 
 export default func;
