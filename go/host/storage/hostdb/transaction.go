@@ -10,19 +10,29 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/jmoiron/sqlx"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
 const (
 	selectTxCount = "SELECT total FROM transaction_count WHERE id = 1"
-	selectTx      = "SELECT hash, b_sequence FROM transaction_host WHERE hash = "
+	selectTx      = "SELECT hash, b_sequence FROM transaction_host WHERE hash = ?"
 	selectTxs     = "SELECT t.hash, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence ORDER BY b.height DESC "
 	countTxs      = "SELECT COUNT(b_sequence) AS row_count FROM transaction_host"
 )
 
 // GetTransactionListing returns a paginated list of transactions in descending order
 func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
-	query := selectTxs + db.GetSQLStatement().Pagination
+	// Handle pagination with Rebind
+	var paginationQuery string
+	driverName := db.GetSQLDB().DriverName()
+	if sqlx.BindType(driverName) == sqlx.QUESTION {
+		paginationQuery = " LIMIT ? OFFSET ?"
+	} else {
+		paginationQuery = " LIMIT $1 OFFSET $2"
+	}
+	
+	query := selectTxs + paginationQuery
 	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
@@ -68,11 +78,11 @@ func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*comm
 
 // GetTransaction returns a transaction given its hash
 func GetTransaction(db HostDB, hash gethcommon.Hash) (*common.PublicTransaction, error) {
-	query := selectTx + db.GetSQLStatement().Placeholder
+	reboundQuery := db.GetSQLDB().Rebind(selectTx)
 
 	var fullHash []byte
 	var seq int
-	err := db.GetSQLDB().QueryRow(query, hash.Bytes()).Scan(&fullHash, &seq)
+	err := db.GetSQLDB().QueryRow(reboundQuery, hash.Bytes()).Scan(&fullHash, &seq)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound

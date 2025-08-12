@@ -37,7 +37,7 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 	}
 	defer dbtx.Rollback()
 
-	if err := hostdb.AddBatch(dbtx, s.db.GetSQLStatement(), batch); err != nil {
+	if err := hostdb.AddBatch(dbtx, s.db, batch); err != nil {
 		if errors.Is(err, errutil.ErrAlreadyExists) {
 			return nil
 		}
@@ -66,7 +66,7 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, extMetadata *common.Ex
 	}
 	defer dbtx.Rollback()
 
-	if err := hostdb.AddRollup(dbtx, s.db.GetSQLStatement(), rollup, extMetadata, metadata, block); err != nil {
+	if err := hostdb.AddRollup(dbtx, s.db, rollup, extMetadata, metadata, block); err != nil {
 		if errors.Is(err, errutil.ErrAlreadyExists) {
 			return nil
 		}
@@ -83,7 +83,7 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, extMetadata *common.Ex
 }
 
 func (s *storageImpl) ReadBlock(blockHash *gethcommon.Hash) (*types.Header, error) {
-	return hostdb.GetBlock(s.db, s.db.GetSQLStatement(), blockHash)
+	return hostdb.GetBlock(s.db, blockHash)
 }
 
 func (s *storageImpl) AddBlock(b *types.Header) error {
@@ -93,7 +93,7 @@ func (s *storageImpl) AddBlock(b *types.Header) error {
 	}
 	defer dbtx.Rollback()
 
-	_, err = hostdb.GetBlockId(dbtx.Tx, s.db.GetSQLStatement(), b.Hash())
+	_, err = hostdb.GetBlockId(dbtx.Tx, s.db.GetSQLDB(), b.Hash())
 	switch {
 	case err == nil:
 		// Block already exists
@@ -103,7 +103,7 @@ func (s *storageImpl) AddBlock(b *types.Header) error {
 		return fmt.Errorf("error checking block existence: %w", err)
 	}
 
-	if err := hostdb.AddBlock(dbtx.Tx, s.db.GetSQLStatement(), b); err != nil {
+	if err := hostdb.AddBlock(dbtx.Tx, s.db.GetSQLDB(), b); err != nil {
 		if IsConstraintError(err) {
 			s.logger.Debug("Block already exists",
 				"hash", b.Hash().Hex(),
