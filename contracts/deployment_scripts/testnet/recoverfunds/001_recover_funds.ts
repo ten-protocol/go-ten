@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // recover funds from the new bridge contract
     const bridgeContractAddress = response.data.result.L1Bridge;
-    const bridgeContract = (await hre.ethers.getContractFactory('TenBridge')).attach(bridgeContractAddress) as TenBridgeTestnet;
+    const bridgeContract = (await hre.ethers.getContractFactory('TenBridgeTestnet')).attach(bridgeContractAddress) as TenBridgeTestnet;
     // recover all bridged funds to the gnosis safe
     const tx = await bridgeContract.recoverTestnetFunds("0xeA052c9635F1647A8a199c2315B9A66ce7d1e2a7");
 
