@@ -28,7 +28,7 @@ import {
 import { pageLinks } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
 
-export function BatchHeightDetailsComponent({
+export function BatchDetailsComponent({
   batchDetails,
 }: {
   batchDetails: Batch;
@@ -39,7 +39,7 @@ export function BatchHeightDetailsComponent({
     <div className="space-y-8">
       <KeyValueList>
         <KeyValueItem
-          label="Batch Height"
+          label="Height"
           value={"#" + Number(batchDetails?.height)}
         />
         <KeyValueItem
@@ -166,9 +166,9 @@ export function BatchHeightDetailsComponent({
         <KeyValueItem
           label="No. of Transactions"
           value={
-            batchDetails?.txHashes.length > 0 ? (
+            batchDetails?.txHashes && batchDetails.txHashes.length > 0 ? (
               <span>
-                {batchDetails?.txHashes.length}{" "}
+                {batchDetails.txHashes.length}{" "}
                 <Link
                   href={pathToUrl(pageLinks.batchTransactions, {
                     hash: batchDetails?.header?.hash,
@@ -179,7 +179,7 @@ export function BatchHeightDetailsComponent({
                 </Link>
               </span>
             ) : (
-              batchDetails?.txHashes.length || "-"
+              "0"
             )
           }
           isLastItem
