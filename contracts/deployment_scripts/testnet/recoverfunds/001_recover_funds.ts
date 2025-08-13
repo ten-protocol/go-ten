@@ -21,6 +21,26 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // recover funds from the new bridge contract
     const bridgeContractAddress = response.data.result.L1Bridge;
     const bridgeContract = (await hre.ethers.getContractFactory('TenBridgeTestnet')).attach(bridgeContractAddress) as TenBridgeTestnet;
+
+    // Add debugging before the transaction
+    console.log("Deployer address:", deployer);
+    console.log("Bridge contract address:", bridgeContractAddress);
+
+    // Check if deployer exists
+    if (!deployer) {
+        console.log("ERROR: No deployer account found");
+        return;
+    }
+
+    // Check if deployer has ADMIN_ROLE
+    const ADMIN_ROLE = await bridgeContract.ADMIN_ROLE();
+    const hasAdminRole = await bridgeContract.hasRole(ADMIN_ROLE, deployer);
+    console.log("Deployer has ADMIN_ROLE:", hasAdminRole);
+
+    if (!hasAdminRole) {
+        console.log("ERROR: Deployer does not have ADMIN_ROLE on the bridge contract");
+        return;
+    }
     // recover all bridged funds to the gnosis safe
     const tx = await bridgeContract.recoverTestnetFunds("0xeA052c9635F1647A8a199c2315B9A66ce7d1e2a7");
 
