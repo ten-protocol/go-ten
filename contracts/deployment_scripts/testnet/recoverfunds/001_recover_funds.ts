@@ -42,7 +42,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         return;
     }
     // recover all bridged funds to the gnosis safe
-    const tx = await bridgeContract.recoverTestnetFunds("0xeA052c9635F1647A8a199c2315B9A66ce7d1e2a7");
+    const tx = await bridgeContract.recoverTestnetFunds("0x9f7b0CDB121Af3923A98771c326b1aAC03A0D717");
 
     const receipt = await tx.wait();
     if (receipt && receipt.status === 1) {
