@@ -25,7 +25,13 @@ export function useTenChainAuth(walletAddress?: Address) {
         refetch: beAuthCheckRefetch,
     } = useQuery({
         queryKey: [`beAuthCheck`, address, signature, authEvents],
-        queryFn: () => accountIsAuthenticated(tenToken ?? '', address ?? ''),
+        queryFn: () => {
+            console.log('🔍 beAuthCheck: About to call accountIsAuthenticated');
+            console.log('📝 beAuthCheck: tenToken =', tenToken);
+            console.log('📝 beAuthCheck: address =', address);
+            console.log('🔍 beAuthCheck: Calling accountIsAuthenticated...');
+            return accountIsAuthenticated(tenToken ?? '', address ?? '');
+        },
         enabled: !!address && !isTokenLoading && !!tenToken,
     });
 
@@ -94,8 +100,17 @@ export function useTenChainAuth(walletAddress?: Address) {
         await revokeAccountsApi(tenToken);
     };
 
+    const isAuthenticated = !!beAuthCheck?.status;
+    
+    console.log('📊 useTenChainAuth: Authentication state summary:');
+    console.log('   beAuthCheck =', beAuthCheck);
+    console.log('   beAuthCheck?.status =', beAuthCheck?.status);
+    console.log('   isAuthenticated =', isAuthenticated);
+    console.log('   isLoading =', isLoading);
+    console.log('   beAuthCheckError =', beAuthCheckError);
+    
     return {
-        isAuthenticated: !!beAuthCheck?.status,
+        isAuthenticated,
         isAuthenticatedLoading: isLoading,
         authenticateAccount,
         revokeAccount,

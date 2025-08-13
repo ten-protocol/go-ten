@@ -12,17 +12,39 @@ export async function fetchVersion(): Promise<string> {
 }
 
 export async function accountIsAuthenticated(
-    token: string,
+    _token: string, // Not used - we get token from cookie instead
     account: string
 ): Promise<AuthenticationResponse> {
-    return await httpRequest<AuthenticationResponse>({
-        method: 'get',
-        url: tenGatewayAddress + pathToUrl(apiRoutes.queryAccountToken),
-        searchParams: {
-            token,
-            a: account,
-        },
-    });
+    console.log('🔍 accountIsAuthenticated: Starting cookie-based authentication check');
+    console.log('📝 accountIsAuthenticated: account =', account);
+    
+    try {
+        // First, get the token from the cookie via /get-token endpoint
+        console.log('🍪 accountIsAuthenticated: Getting token from cookie...');
+        const tokenFromCookie = await getTokenFromCookie();
+        console.log('🍪 accountIsAuthenticated: Token from cookie =', tokenFromCookie);
+        
+        // Then use that token to query authentication status
+        console.log('🔍 accountIsAuthenticated: Calling /query with token from cookie');
+        console.log('📍 accountIsAuthenticated: URL =', tenGatewayAddress + pathToUrl(apiRoutes.queryAccountToken));
+        
+        const result = await httpRequest<AuthenticationResponse>({
+            method: 'get',
+            url: tenGatewayAddress + pathToUrl(apiRoutes.queryAccountToken),
+            searchParams: {
+                token: tokenFromCookie, // Use token from cookie
+                a: account,
+            },
+        });
+        
+        console.log('✅ accountIsAuthenticated: Success! Response =', result);
+        console.log('📊 accountIsAuthenticated: Status =', result?.status);
+        
+        return result;
+    } catch (error) {
+        console.error('❌ accountIsAuthenticated: Error occurred:', error);
+        throw error;
+    }
 }
 
 export const authenticateUser = async (

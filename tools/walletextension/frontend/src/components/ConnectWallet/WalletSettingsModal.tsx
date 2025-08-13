@@ -41,7 +41,7 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
         reset: switchChainReset,
     } = useSwitchChain();
     const [missingKeyError, setMissingKeyError] = useState(false);
-    const [tenToken, setTenTokenToCookie] = useTokenFromCookie();
+    const [tenToken, setTenTokenToCookie, , refreshToken] = useTokenFromCookie();
 
     const { data: ethBalance, isLoading: isLoadingEthBalance } = useBalance({
         address,
@@ -77,6 +77,11 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
             console.log('🍪 handleSwitchChain: Storing fresh token in cookie...');
             await setTenTokenToCookie(freshToken);
             console.log('🍪 handleSwitchChain: Fresh token stored successfully');
+            
+            // Refresh the token display for any components showing the token
+            console.log('🔄 handleSwitchChain: Refreshing token display...');
+            await refreshToken();
+            console.log('🔄 handleSwitchChain: Token display refreshed');
             
             const rpcUrl = `${tenGatewayAddress}/v1/?token=${freshToken}`;
             console.log('🌐 handleSwitchChain: About to switch chain with fresh RPC URL =', rpcUrl);

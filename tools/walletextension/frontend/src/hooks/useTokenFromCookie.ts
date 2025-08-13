@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getTokenFromCookie, setTokenToCookie } from '../api/gateway';
 
-export function useTokenFromCookie(): [string, (token: string) => Promise<void>, boolean] {
+export function useTokenFromCookie(): [string, (token: string) => Promise<void>, boolean, () => Promise<void>] {
     const [token, setToken] = useState<string>('');
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -32,9 +32,13 @@ export function useTokenFromCookie(): [string, (token: string) => Promise<void>,
         }
     }, []);
 
+    const refreshToken = useCallback(async () => {
+        await fetchToken();
+    }, [fetchToken]);
+
     useEffect(() => {
         fetchToken();
     }, [fetchToken]);
 
-    return [token, updateToken, isLoading];
+    return [token, updateToken, isLoading, refreshToken];
 }
