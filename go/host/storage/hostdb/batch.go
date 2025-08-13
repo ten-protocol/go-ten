@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -195,7 +197,7 @@ func GetPublicBatch(db HostDB, hash common.L2BatchHash) (*common.PublicBatch, er
 }
 
 // GetBatchByTx returns the batch with the given hash.
-func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.ExtBatch, error) {
+func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.PublicBatch, error) {
 	var seqNo uint64
 	query := selectBatchSeqByTx + db.GetSQLStatement().Placeholder
 	err := db.GetSQLDB().QueryRow(query, txHash.Bytes()).Scan(&seqNo)
@@ -205,13 +207,17 @@ func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.ExtBatch, error) {
 		}
 		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
 	}
-	return GetBatchBySequenceNumber(db, seqNo)
+	extBatch, err := GetBatchBySequenceNumber(db, seqNo)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch ext batch - %w", err)
+	}
+	return toPublicBatch(extBatch), nil
 }
 
 // GetBatchByHash returns the batch with the given hash.
-func GetBatchByHash(db HostDB, hash common.L2BatchHash) (*common.ExtBatch, error) {
+func GetBatchByHash(db HostDB, hash common.L2BatchHash) (*common.PublicBatch, error) {
 	whereQuery := " WHERE hash=" + db.GetSQLStatement().Placeholder
-	return fetchFullBatch(db.GetSQLDB(), whereQuery, hash.Bytes())
+	return fetchPublicBatch(db.GetSQLDB(), whereQuery, hash.Bytes())
 }
 
 // GetBatchHeaderByHeight returns the batch header given the height
@@ -230,7 +236,16 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
 	whereQuery := " WHERE b.hash=" + db.GetSQLStatement().Placeholder
 	orderQuery := " ORDER BY t.id DESC "
-	query := selectBatchTxs + whereQuery + orderQuery + db.GetSQLStatement().Pagination
+
+	// TODO @will quick fix to unblock main
+	var paginationQuery string
+	if db.GetSQLStatement().Placeholder == "?" {
+		paginationQuery = " LIMIT ? OFFSET ?"
+	} else {
+		// PostgreSQL uses $1, $2, $3,
+		paginationQuery = " LIMIT $2 OFFSET $3"
+	}
+	query := selectBatchTxs + whereQuery + orderQuery + paginationQuery
 
 	countQuery := "SELECT COUNT(*) FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence" + whereQuery
 	var total uint64
@@ -290,7 +305,7 @@ func EstimateRollupSize(db HostDB, fromSeqNo *big.Int) (uint64, error) {
 	return totalTx, nil
 }
 
-func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
+func fetchBatchHeader(db *sqlx.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
 	var extBatch []byte
 	query := selectExtBatch + whereQuery
 	var err error
@@ -336,7 +351,7 @@ func fetchBatchNumber(db HostDB, args ...any) (*big.Int, error) {
 	return batch.Height, nil
 }
 
-func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
+func fetchPublicBatch(db *sqlx.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
 	var sequenceInt64 uint64
 	var fullHash common.TxHash
 	var heightInt64 int
@@ -366,15 +381,15 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 		SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
 		FullHash:         fullHash,
 		Height:           new(big.Int).SetInt64(int64(heightInt64)),
-		TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
 		Header:           b.Header,
 		EncryptedTxBlob:  b.EncryptedTxBlob,
+		TxHashes:         b.TxHashes,
 	}
 
 	return batch, nil
 }
 
-func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatch, error) {
+func fetchFullBatch(db *sqlx.DB, whereQuery string, args ...any) (*common.ExtBatch, error) {
 	var sequenceInt64 uint64
 	var fullHash common.TxHash
 	var heightInt64 int
@@ -403,7 +418,7 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 	return &b, nil
 }
 
-func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
+func fetchHeadBatch(db *sqlx.DB) (*common.PublicBatch, error) {
 	var sequenceInt64 int
 	var fullHash gethcommon.Hash // common.Hash
 	var heightInt64 int
@@ -427,9 +442,9 @@ func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
 		SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
 		FullHash:         fullHash,
 		Height:           new(big.Int).SetInt64(int64(heightInt64)),
-		TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
 		Header:           b.Header,
 		EncryptedTxBlob:  b.EncryptedTxBlob,
+		TxHashes:         b.TxHashes,
 	}
 
 	return batch, nil
@@ -462,4 +477,15 @@ func fetchTx(db HostDB, seqNo uint64) ([]common.TxHash, error) {
 
 func IsRowExistsError(err error) bool {
 	return strings.Contains(strings.ToLower(err.Error()), "unique") || strings.Contains(strings.ToLower(err.Error()), "duplicate key")
+}
+
+func toPublicBatch(b *common.ExtBatch) *common.PublicBatch {
+	return &common.PublicBatch{
+		SequencerOrderNo: b.SeqNo(),
+		FullHash:         b.Hash(),
+		Height:           b.Header.Number,
+		TxHashes:         b.TxHashes,
+		Header:           b.Header,
+		EncryptedTxBlob:  b.EncryptedTxBlob,
+	}
 }

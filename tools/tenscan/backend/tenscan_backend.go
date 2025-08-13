@@ -52,7 +52,7 @@ func (b *Backend) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	return b.obsClient.GetLatestRollupHeader()
 }
 
-func (b *Backend) GetBatchByHash(hash gethcommon.Hash) (*common.ExtBatch, error) {
+func (b *Backend) GetBatchByHash(hash gethcommon.Hash) (*common.PublicBatch, error) {
 	return b.obsClient.GetBatchByHash(hash)
 }
 

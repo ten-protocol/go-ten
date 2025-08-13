@@ -19,13 +19,14 @@ on:
                - 'dev-testnet'
                - 'uat-testnet'
                - 'sepolia-testnet'
+               - 'mainnet'
          log_level:
             description: 'Log Level 1-Error 5-Trace'
             required: true
             default: 3
             type: number
          confirmation:
-            description: 'Type "confirm" if deploying sepolia'
+            description: 'Type "confirm" if deploying sepolia or mainnet'
             required: false
             type: string
 
@@ -51,8 +52,8 @@ jobs:
          # first, we check the confirmation field if deploying sepolia
          - name: 'Check confirmation'
            run: |
-            if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
-               echo "Confirmation field must say 'confirm' to deploy sepolia to avoid accidental deployments"
+            if [[ ("${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" || "${{ github.event.inputs.testnet_type }}" == "mainnet") && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+               echo "Confirmation field must say 'confirm' to deploy sepolia or mainnet to avoid accidental deployments"
                exit 1
             fi
 
@@ -62,9 +63,14 @@ jobs:
             env:
                TESTNET_TYPE: ${{ github.event.inputs.testnet_type }}
             run: |
-               # strip the -testnet suffix from the testnet type
-               short_name=${TESTNET_TYPE%-testnet}
-               echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_OUTPUT
+                # extract the environment prefix (dev, uat, sepolia, mainnet)
+                if [[ "$TESTNET_TYPE" == "mainnet" ]]; then
+                  short_name="mainnet"
+                else
+                  # strip the -testnet suffix from testnet environments
+                  short_name=${TESTNET_TYPE%-testnet}
+                fi
+                echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_OUTPUT
 
          # checkout *this* repo (so subsequent steps can still see it)
          -  uses: actions/checkout@v4

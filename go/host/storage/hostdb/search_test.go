@@ -36,8 +36,8 @@ func TestSearchByRollupAndBatchHash(t *testing.T) {
 		t.Fatalf("unable to initialise test db: %s", err)
 	}
 
-	metadata := createRollupMetadata(batchNumber - 10)
-	rollup := createRollup(batchNumber)
+	metadata := createRollupMetadata()
+	rollup := createRollup(batchNumber-10, batchNumber)
 	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
 	err = AddBlock(dbtx.Tx, db.GetSQLStatement(), block.Header())
