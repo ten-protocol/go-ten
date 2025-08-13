@@ -96,7 +96,10 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	}
 
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
-	gasOracle := gas.NewGasOracle(l1ChainCfg, storage, logger)
+	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
+	gasPricer := components.NewGasPricer(logger, config)
+	
+	gasOracle := gas.NewGasOracle(l1ChainCfg, storage, gasPricer, logger)
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 
 	// start the mempool in validate only. Based on the config, it might become sequencer
@@ -106,17 +109,15 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 
 	chainContext := evm.NewTenChainContext(storage, gethEncodingService, config, chainConfig, logger)
 	visibilityReader := evm.NewContractVisibilityReader(logger)
-	evmFacade := evm.NewEVMExecutor(chainContext, chainConfig, config, config.GasLocalExecutionCapFlag, storage, gethEncodingService, visibilityReader, logger)
+	evmFacade := evm.NewEVMExecutor(chainContext, chainConfig, config, config.GasLocalExecutionCapFlag, storage, gethEncodingService, visibilityReader, gasPricer, logger)
 
 	tenChain := components.NewChain(storage, config, evmFacade, gethEncodingService, chainConfig, genesis, logger, batchRegistry)
 
-	mempool, err := components.NewTxPool(batchRegistry.EthChain(), config, tenChain, storage, batchRegistry, blockProcessor, gasOracle, config.MinGasPrice, true, logger)
+	mempool, err := components.NewTxPool(batchRegistry.EthChain(), config, tenChain, storage, batchRegistry, blockProcessor, gasOracle, gasPricer, config.MinGasPrice, true, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
-
-	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
-	gasPricer := components.NewGasPricer(logger, config)
+	
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, evmFacade, config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, gasPricer, logger)
 
 	// ensure EVM state data is up-to-date using the persisted batch data

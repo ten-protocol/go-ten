@@ -10,6 +10,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/enclave/config"
+	"github.com/ten-protocol/go-ten/go/enclave/evm"
 )
 
 const (
@@ -95,4 +96,16 @@ func (gp *GasPricer) CalculateBlockBaseFee(cfg *params.ChainConfig, parent *type
 	}
 
 	return calculatedBaseFee
+}
+
+// GetL1PublishingGasPrice returns the gas price for L1 publishing calculations.
+// If dynamic pricing is enabled, returns the fixed rate; otherwise returns header.BaseFee.
+func (gp *GasPricer) GetL1PublishingGasPrice(header *types.Header) *big.Int {
+	if gp.dynamicPricingEnabled.Load() {
+		return evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING
+	}
+	if header != nil && header.BaseFee != nil && header.BaseFee.Sign() > 0 {
+		return header.BaseFee
+	}
+	return evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING
 }

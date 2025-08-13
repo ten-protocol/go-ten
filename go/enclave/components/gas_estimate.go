@@ -31,13 +31,15 @@ type GasEstimator struct {
 	chain     TENChain
 	logger    gethlog.Logger
 	gasOracle gas.Oracle
+	gasPricer *GasPricer
 }
 
-func NewGasEstimator(storage storage.Storage, chain TENChain, gasOracle gas.Oracle, logger gethlog.Logger) *GasEstimator {
+func NewGasEstimator(storage storage.Storage, chain TENChain, gasOracle gas.Oracle, gasPricer *GasPricer, logger gethlog.Logger) *GasEstimator {
 	return &GasEstimator{
 		storage:   storage,
 		chain:     chain,
 		gasOracle: gasOracle,
+		gasPricer: gasPricer,
 		logger:    logger,
 	}
 }
@@ -53,7 +55,11 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
 	// the expected cost into l2 gas based on current pricing.
 	// todo @siliev - add overhead when the base fee becomes dynamic.
-	publishingGas := big.NewInt(0).Div(l1Cost, evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING)
+	divisor := evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING
+	if ge.gasPricer != nil {
+		divisor = ge.gasPricer.GetL1PublishingGasPrice(common.ConvertBatchHeaderToHeader(batch))
+	}
+	publishingGas := big.NewInt(0).Div(l1Cost, divisor)
 
 	// Overestimate the publishing cost in case of spikes.
 	// given that we publish in a blob, the amount will be very low.

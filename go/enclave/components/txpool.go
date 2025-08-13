@@ -65,6 +65,7 @@ type TxPool struct {
 	pool             *gethtxpool.TxPool
 	Chain            *EthChainAdapter
 	gasOracle        gas.Oracle
+	gasPricer        *GasPricer
 	batchRegistry    BatchRegistry
 	storage          storage.Storage
 	l1BlockProcessor L1BlockProcessor
@@ -78,7 +79,7 @@ type TxPool struct {
 }
 
 // NewTxPool returns a new instance of the tx pool
-func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig, tenChain TENChain, storage storage.Storage, batchRegistry BatchRegistry, l1BlockProcessor L1BlockProcessor, gasOracle gas.Oracle, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
+func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig, tenChain TENChain, storage storage.Storage, batchRegistry BatchRegistry, l1BlockProcessor L1BlockProcessor, gasOracle gas.Oracle, gasPricer *GasPricer, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
 	txPoolConfig := legacypool.Config{
 		Locals:       nil,
 		NoLocals:     false,
@@ -102,6 +103,7 @@ func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig,
 		txPoolConfig:     txPoolConfig,
 		storage:          storage,
 		gasOracle:        gasOracle,
+		gasPricer:        gasPricer,
 		batchRegistry:    batchRegistry,
 		l1BlockProcessor: l1BlockProcessor,
 		legacyPool:       legacyPool,
@@ -382,7 +384,7 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 		return nil, fmt.Errorf("could not extract sender from transaction. Cause: %w", err)
 	}
 	txArgs.From = &from
-	ge := NewGasEstimator(t.storage, t.tenChain, t.gasOracle, t.logger)
+	ge := NewGasEstimator(t.storage, t.tenChain, t.gasOracle, t.gasPricer, t.logger)
 	latest := gethrpc.LatestBlockNumber
 	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, &latest, headBatch, t.config.GasLocalExecutionCapFlag)
 

@@ -36,11 +36,12 @@ type evmExecutor struct {
 	storage             storage.Storage
 	gethEncodingService gethencoding.EncodingService
 	visibilityReader    ContractVisibilityReader
+	gasPricer           GasPricer
 
 	logger gethlog.Logger
 }
 
-func NewEVMExecutor(chain *TenChainContext, cc *params.ChainConfig, config *enclaveconfig.EnclaveConfig, gasEstimationCap uint64, storage storage.Storage, gethEncodingService gethencoding.EncodingService, visibilityReader ContractVisibilityReader, logger gethlog.Logger) *evmExecutor {
+func NewEVMExecutor(chain *TenChainContext, cc *params.ChainConfig, config *enclaveconfig.EnclaveConfig, gasEstimationCap uint64, storage storage.Storage, gethEncodingService gethencoding.EncodingService, visibilityReader ContractVisibilityReader, gasPricer GasPricer, logger gethlog.Logger) *evmExecutor {
 	return &evmExecutor{
 		chain:               chain,
 		cc:                  cc,
@@ -49,6 +50,7 @@ func NewEVMExecutor(chain *TenChainContext, cc *params.ChainConfig, config *encl
 		storage:             storage,
 		gethEncodingService: gethEncodingService,
 		visibilityReader:    visibilityReader,
+		gasPricer:           gasPricer,
 		logger:              logger,
 	}
 }
@@ -104,7 +106,7 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 		return nil, err
 	}
 
-	receipt, err := adjustPublishingCostGas(tx, msg, s, header, noBaseFee, func() (*types.Receipt, error) {
+	receipt, err := adjustPublishingCostGas(tx, msg, s, header, noBaseFee, exec.gasPricer, func() (*types.Receipt, error) {
 		s.SetTxContext(tx.Tx.Hash(), tCount)
 		return gethcore.ApplyTransactionWithEVM(msg, gp, s, header.Number, header.Hash(), tx.Tx, usedGas, evmEnv)
 	})

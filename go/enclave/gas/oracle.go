@@ -42,6 +42,11 @@ type Oracle interface {
 	EstimateL1CostForMsg(ctx context.Context, args *gethapi.TransactionArgs, header *common.BatchHeader) (*big.Int, error)
 }
 
+// GasPricer interface for getting L1 publishing gas price
+type GasPricer interface {
+	GetL1PublishingGasPrice(header *types.Header) *big.Int
+}
+
 type oracle struct {
 	l1ChainCfg *params.ChainConfig
 	storage    storage.BlockResolver
@@ -51,12 +56,14 @@ type oracle struct {
 	blobFeeMA map[uint64]*big.Int
 	baseFeeMA map[uint64]*big.Int
 	logger    gethlog.Logger
+	gasPricer GasPricer
 }
 
-func NewGasOracle(l1ChainCfg *params.ChainConfig, storage storage.BlockResolver, logger gethlog.Logger) Oracle {
+func NewGasOracle(l1ChainCfg *params.ChainConfig, storage storage.BlockResolver, gasPricer GasPricer, logger gethlog.Logger) Oracle {
 	return &oracle{
 		l1ChainCfg: l1ChainCfg,
 		storage:    storage,
+		gasPricer:  gasPricer,
 		logger:     logger,
 		headMutex:  sync.RWMutex{},
 		baseFeeMA:  make(map[uint64]*big.Int),
@@ -181,10 +188,14 @@ func (o *oracle) calculateL1Cost(ctx context.Context, block *types.Header, l2Bat
 	// 3. The total cost is the sum of the share of the blob cost and the share of the L1 tx cost
 	totalCost := big.NewInt(0).Add(shareOfBlobCost, shareOfL1TxCost)
 
-	// 4. round the shareOfBlobCost up to the nearest multiple of l2Batch.BaseFee
-	remainder := new(big.Int).Mod(totalCost, evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING)
+	// 4. round the total cost up to the nearest multiple of the L1 publishing gas price
+	multiple := evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING
+	if o.gasPricer != nil {
+		multiple = o.gasPricer.GetL1PublishingGasPrice(common.ConvertBatchHeaderToHeader(l2Batch))
+	}
+	remainder := new(big.Int).Mod(totalCost, multiple)
 	if remainder.Sign() > 0 {
-		totalCost = totalCost.Add(totalCost, new(big.Int).Sub(evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING, remainder))
+		totalCost = totalCost.Add(totalCost, new(big.Int).Sub(multiple, remainder))
 	}
 
 	return totalCost, nil
