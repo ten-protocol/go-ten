@@ -53,10 +53,15 @@ export async function revokeAccountsApi(token: string): Promise<string> {
 }
 
 export async function joinTestnet(): Promise<string> {
-    return await httpRequest<string>({
-        method: 'get',
-        url: tenGatewayAddress + pathToUrl(apiRoutes.join),
-    });
+    return await httpRequest<string>(
+        {
+            method: 'get',
+            url: tenGatewayAddress + pathToUrl(apiRoutes.join),
+        },
+        {
+            withCredentials: false, // Don't send existing cookies for fresh token generation
+        }
+    );
 }
 
 export async function getTokenFromCookie(): Promise<string> {
