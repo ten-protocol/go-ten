@@ -30,11 +30,20 @@ export default function useConnectToTenChain() {
     const uniqueConnectors = connectors;
 
     const connectToTen = async (connector: Connector) => {
+        console.log('🚀 connectToTen: Starting connection process');
+        console.log('🔌 connectToTen: Connector =', connector.name, connector.id);
+        console.log('📊 connectToTen: Current step =', step);
+        
         setStep(1);
         setLoading(true);
         setError(null);
         setSelectedConnector(connector);
+        
+        console.log('📈 connectToTen: Set step to 1, loading to true');
+        console.log('🔗 connectToTen: About to call connector.connect()');
+        
         await connector.connect().catch((error) => {
+            console.error('❌ connectToTen: connector.connect() failed:', error);
             setError({
                 name: 'Unable to connect to wallet.',
                 message: error.message,
@@ -43,10 +52,21 @@ export default function useConnectToTenChain() {
             setLoading(false);
             throw Error(error);
         });
+        
+        console.log('✅ connectToTen: connector.connect() successful');
     };
 
     useEffect(() => {
-        if (step !== 1) return;
+        console.log('🔄 useEffect[step=1]: Triggered');
+        console.log('📊 useEffect[step=1]: step =', step);
+        console.log('🔌 useEffect[step=1]: isConnected =', isConnected);
+        console.log('🔌 useEffect[step=1]: selectedConnector =', selectedConnector?.name, selectedConnector?.uid);
+        console.log('🔌 useEffect[step=1]: connector =', connector?.name, connector?.uid);
+        
+        if (step !== 1) {
+            console.log('⏭️ useEffect[step=1]: step !== 1, returning');
+            return;
+        }
 
         async function switchToTen() {
             console.log('🔄 switchToTen: Starting network addition flow');
@@ -156,7 +176,14 @@ export default function useConnectToTenChain() {
         }
 
         if (isConnected && selectedConnector?.uid === connector?.uid) {
+            console.log('✅ useEffect[step=1]: Conditions met, calling switchToTen()');
             switchToTen();
+        } else {
+            console.log('❌ useEffect[step=1]: Conditions not met');
+            console.log('   isConnected =', isConnected);
+            console.log('   selectedConnector?.uid =', selectedConnector?.uid);
+            console.log('   connector?.uid =', connector?.uid);
+            console.log('   UIDs match =', selectedConnector?.uid === connector?.uid);
         }
     }, [connector, isConnected, selectedConnector, step, chainId, tenToken, setStoreTenToken, setTenTokenToCookie, isTokenLoading]);
 
