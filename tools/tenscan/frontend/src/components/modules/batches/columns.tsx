@@ -143,7 +143,7 @@ export const columns: ColumnDef<Batch>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "txCount",
+    accessorKey: "txHashes",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Tx Count" />
     ),
