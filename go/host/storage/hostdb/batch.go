@@ -7,6 +7,8 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
@@ -303,7 +305,7 @@ func EstimateRollupSize(db HostDB, fromSeqNo *big.Int) (uint64, error) {
 	return totalTx, nil
 }
 
-func fetchBatchHeader(db *sql.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
+func fetchBatchHeader(db *sqlx.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
 	var extBatch []byte
 	query := selectExtBatch + whereQuery
 	var err error
@@ -349,7 +351,7 @@ func fetchBatchNumber(db HostDB, args ...any) (*big.Int, error) {
 	return batch.Height, nil
 }
 
-func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
+func fetchPublicBatch(db *sqlx.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
 	var sequenceInt64 uint64
 	var fullHash common.TxHash
 	var heightInt64 int
@@ -387,7 +389,7 @@ func fetchPublicBatch(db *sql.DB, whereQuery string, args ...any) (*common.Publi
 	return batch, nil
 }
 
-func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatch, error) {
+func fetchFullBatch(db *sqlx.DB, whereQuery string, args ...any) (*common.ExtBatch, error) {
 	var sequenceInt64 uint64
 	var fullHash common.TxHash
 	var heightInt64 int
@@ -416,7 +418,7 @@ func fetchFullBatch(db *sql.DB, whereQuery string, args ...any) (*common.ExtBatc
 	return &b, nil
 }
 
-func fetchHeadBatch(db *sql.DB) (*common.PublicBatch, error) {
+func fetchHeadBatch(db *sqlx.DB) (*common.PublicBatch, error) {
 	var sequenceInt64 int
 	var fullHash gethcommon.Hash // common.Hash
 	var heightInt64 int
