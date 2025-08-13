@@ -7,7 +7,7 @@ import axios from 'axios';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const {deployer} = await hre.getNamedAccounts();
 
-    const rpcUrl = 'http://erpc.sepolia-testnet.obscu.ro:80';
+    const rpcUrl = 'http://erpc.dev-testnet.ten.xyz:80';
     const rpcPayload = {
         jsonrpc: '2.0',
         method: 'ten_config',
