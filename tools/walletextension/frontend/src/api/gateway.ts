@@ -126,6 +126,14 @@ export async function setTokenToCookie(token: string): Promise<void> {
         });
         
         console.log('✅ setTokenToCookie: Successfully stored token in cookie');
+        
+        // Verify the token was actually stored by immediately reading it back
+        console.log('🔍 setTokenToCookie: Verifying token was stored correctly...');
+        const verifyToken = await getTokenFromCookie();
+        console.log('🔍 setTokenToCookie: Token verification - stored:', token);
+        console.log('🔍 setTokenToCookie: Token verification - retrieved:', verifyToken);
+        console.log('🔍 setTokenToCookie: Token verification - match:', token === verifyToken);
+        
         return result;
     } catch (error) {
         console.error('❌ setTokenToCookie: Error storing token in cookie:', error);
