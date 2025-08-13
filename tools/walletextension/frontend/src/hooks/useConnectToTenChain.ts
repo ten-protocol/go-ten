@@ -49,7 +49,8 @@ export default function useConnectToTenChain() {
         if (step !== 1) return;
 
         async function switchToTen() {
-            if (!tenToken && connector) {
+            // Check if TEN chain already exists in wallet
+            if (connector) {
                 const chainExists = await chainExistsCheck(connector);
 
                 if (chainExists) {
@@ -63,17 +64,16 @@ export default function useConnectToTenChain() {
                 }
             }
 
-            const newTenToken =
-                tenToken === ''
-                    ? await joinTestnet().catch((error) => {
-                          setError({
-                              name: 'Unable to retrieve TEN token',
-                              message: error.message,
-                              cause: error.cause,
-                          });
-                          setLoading(false);
-                      })
-                    : tenToken;
+            // Always call /join to get a fresh token when adding new network
+            const newTenToken = await joinTestnet().catch((error) => {
+                setError({
+                    name: 'Unable to retrieve TEN token',
+                    message: error.message,
+                    cause: error.cause,
+                });
+                setLoading(false);
+                return null;
+            });
 
             if (!newTenToken) {
                 throw Error('No tenToken found');
@@ -81,13 +81,9 @@ export default function useConnectToTenChain() {
 
             setStep(2);
 
-            // Determine the final token to use
-            let finalToken = tenToken;
-            if (tenToken === '') {
-                finalToken = newTenToken;
-                await setTenTokenToCookie(newTenToken);
-                setStoreTenToken(newTenToken);
-            }
+            // Store the new token in cookie
+            await setTenTokenToCookie(newTenToken);
+            setStoreTenToken(newTenToken);
 
             if (chainId === tenChainIDDecimal) {
                 setStep(3);
@@ -105,7 +101,7 @@ export default function useConnectToTenChain() {
                 .switchChain({
                     chainId: tenChainIDDecimal,
                     addEthereumChainParameter: {
-                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${finalToken}`],
+                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${newTenToken}`],
                         chainName: tenNetworkName,
                         nativeCurrency: nativeCurrency,
                     },
