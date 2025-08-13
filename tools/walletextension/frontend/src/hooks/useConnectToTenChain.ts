@@ -49,11 +49,18 @@ export default function useConnectToTenChain() {
         if (step !== 1) return;
 
         async function switchToTen() {
+            console.log('🔄 switchToTen: Starting network addition flow');
+            console.log('📝 switchToTen: Current tenToken from hook =', tenToken);
+            console.log('📝 switchToTen: Is token loading =', isTokenLoading);
+            
             // Check if TEN chain already exists in wallet
             if (connector) {
+                console.log('🔍 switchToTen: Checking if TEN chain already exists...');
                 const chainExists = await chainExistsCheck(connector);
+                console.log('🔍 switchToTen: Chain exists check result =', chainExists);
 
                 if (chainExists) {
+                    console.log('⚠️ switchToTen: Existing chain found, showing error');
                     setError({
                         name: 'Existing chain found',
                         message:
@@ -65,7 +72,9 @@ export default function useConnectToTenChain() {
             }
 
             // Always call /join to get a fresh token when adding new network
+            console.log('🎯 switchToTen: About to call joinTestnet()...');
             const newTenToken = await joinTestnet().catch((error) => {
+                console.error('❌ switchToTen: joinTestnet() failed:', error);
                 setError({
                     name: 'Unable to retrieve TEN token',
                     message: error.message,
@@ -75,41 +84,58 @@ export default function useConnectToTenChain() {
                 return null;
             });
 
+            console.log('🎯 switchToTen: joinTestnet() returned =', newTenToken);
+
             if (!newTenToken) {
+                console.error('❌ switchToTen: No token received from joinTestnet()');
                 throw Error('No tenToken found');
             }
 
             setStep(2);
+            console.log('📈 switchToTen: Set step to 2');
 
             // Store the new token in cookie
+            console.log('🍪 switchToTen: About to store token in cookie...');
             await setTenTokenToCookie(newTenToken);
+            console.log('🍪 switchToTen: Token stored in cookie');
+            
+            console.log('🏪 switchToTen: About to store token in UI store...');
             setStoreTenToken(newTenToken);
+            console.log('🏪 switchToTen: Token stored in UI store');
 
             if (chainId === tenChainIDDecimal) {
+                console.log('✅ switchToTen: Already on TEN chain, skipping to step 3');
                 setStep(3);
                 return;
             }
+            
             let switchSuccess = true;
 
             if (!connector) {
+                console.error('❌ switchToTen: No connector available');
                 throw 'Connector is undefined!';
                 return;
             }
+
+            const rpcUrl = `${tenGatewayAddress}/v1/?token=${newTenToken}`;
+            console.log('🌐 switchToTen: About to add network with RPC URL =', rpcUrl);
+            console.log('🌐 switchToTen: Chain ID =', tenChainIDDecimal);
+            console.log('🌐 switchToTen: Chain Name =', tenNetworkName);
 
             //@ts-expect-error Revisit later
             await connector
                 .switchChain({
                     chainId: tenChainIDDecimal,
                     addEthereumChainParameter: {
-                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${newTenToken}`],
+                        rpcUrls: [rpcUrl],
                         chainName: tenNetworkName,
                         nativeCurrency: nativeCurrency,
                     },
                 })
                 .catch((error: Error) => {
-                    console.log(error);
+                    console.error('❌ switchToTen: switchChain failed:', error);
                     if (error?.message.includes('is not a function')) {
-                        console.log('IGNORE THIS ERROR');
+                        console.log('ℹ️ switchToTen: Ignoring "is not a function" error');
                     } else {
                         switchSuccess = false;
                         setError({
@@ -121,8 +147,11 @@ export default function useConnectToTenChain() {
                 });
 
             if (switchSuccess) {
+                console.log('✅ switchToTen: Network addition successful, proceeding to step 3');
                 await sleep(500);
                 setStep(3);
+            } else {
+                console.error('❌ switchToTen: Network addition failed, staying on current step');
             }
         }
 
