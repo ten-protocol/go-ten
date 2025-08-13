@@ -21,7 +21,7 @@ export default function useConnectToTenChain() {
     const setStoreTenToken = useUiStore((state) => state.setTenToken);
     const [step, setStep] = useState<number>(0);
     const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
-    const [tenToken, setTenTokenToCookie] = useTokenFromCookie();
+    const [tenToken, setTenTokenToCookie, isTokenLoading] = useTokenFromCookie();
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
     const { isAuthenticated, isAuthenticatedLoading, authenticateAccount, authenticationError } =
@@ -81,7 +81,10 @@ export default function useConnectToTenChain() {
 
             setStep(2);
 
+            // Determine the final token to use
+            let finalToken = tenToken;
             if (tenToken === '') {
+                finalToken = newTenToken;
                 await setTenTokenToCookie(newTenToken);
                 setStoreTenToken(newTenToken);
             }
@@ -102,7 +105,7 @@ export default function useConnectToTenChain() {
                 .switchChain({
                     chainId: tenChainIDDecimal,
                     addEthereumChainParameter: {
-                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${newTenToken}`],
+                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${finalToken}`],
                         chainName: tenNetworkName,
                         nativeCurrency: nativeCurrency,
                     },
@@ -130,7 +133,7 @@ export default function useConnectToTenChain() {
         if (isConnected && selectedConnector?.uid === connector?.uid) {
             switchToTen();
         }
-    }, [connector, isConnected, selectedConnector, step, chainId, tenToken, setStoreTenToken, setTenTokenToCookie]);
+    }, [connector, isConnected, selectedConnector, step, chainId, tenToken, setStoreTenToken, setTenTokenToCookie, isTokenLoading]);
 
     useEffect(() => {
         if (step !== 3) {

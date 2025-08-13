@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getTokenFromCookie, setTokenToCookie, joinTestnet } from '../api/gateway';
+import { getTokenFromCookie, setTokenToCookie } from '../api/gateway';
 
 export function useTokenFromCookie(): [string, (token: string) => Promise<void>, boolean] {
     const [token, setToken] = useState<string>('');
@@ -14,21 +14,8 @@ export function useTokenFromCookie(): [string, (token: string) => Promise<void>,
         } catch (error: any) {
             console.error('Failed to fetch token from cookie:', error);
             
-            // Check if error message indicates cookie not found
-            if (error?.message?.includes('gateway_token cookie not found')) {
-                console.log('No cookie found, calling /join to create new token');
-                try {
-                    const newToken = await joinTestnet();
-                    if (newToken) {
-                        await setTokenToCookie(newToken);
-                        setToken(newToken);
-                        return;
-                    }
-                } catch (joinError) {
-                    console.error('Failed to join testnet:', joinError);
-                }
-            }
-            
+            // If no cookie found, just set empty token - don't auto-join
+            // The join flow should only happen during wallet connection, not authentication
             setToken(''); // Empty token means not authenticated
         } finally {
             setIsLoading(false);

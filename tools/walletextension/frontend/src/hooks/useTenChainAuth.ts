@@ -10,7 +10,7 @@ import { useTokenFromCookie } from './useTokenFromCookie';
 export function useTenChainAuth(walletAddress?: Address) {
     const authEvents = useUiStore((state) => state.authEvents);
     const [address, setAddress] = useState<Address | undefined>(walletAddress);
-    const [tenToken] = useTokenFromCookie();
+    const [tenToken, , isTokenLoading] = useTokenFromCookie();
     const {
         data: signature,
         signTypedData,
@@ -26,7 +26,7 @@ export function useTenChainAuth(walletAddress?: Address) {
     } = useQuery({
         queryKey: [`beAuthCheck`, address, signature, authEvents],
         queryFn: () => accountIsAuthenticated(tenToken ?? '', address ?? ''),
-        enabled: !!address,
+        enabled: !!address && !isTokenLoading && !!tenToken,
     });
 
     const authenticationMutation = useMutation({
