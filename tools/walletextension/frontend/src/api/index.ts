@@ -17,6 +17,7 @@ interface HttpOptions {
 const baseConfig: AxiosRequestConfig = {
     baseURL: tenGatewayAddress,
     timeout: 10000,
+    withCredentials: true, // Include cookies in cross-origin requests
 };
 
 export const https: AxiosInstance = axios.create(baseConfig);

@@ -6,18 +6,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/valyala/fasthttp"
 )
 
 const (
 	// CORS-related constants.
-	CorsAllowOrigin  = "Access-Control-Allow-Origin"
-	OriginAll        = "*"
-	CorsAllowMethods = "Access-Control-Allow-Methods"
-	ReqOptions       = "OPTIONS"
-	CorsAllowHeaders = "Access-Control-Allow-Headers"
-	CorsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
+	CorsAllowOrigin      = "Access-Control-Allow-Origin"
+	CorsAllowCredentials = "Access-Control-Allow-Credentials"
+	OriginAll            = "*"
+	CorsAllowMethods     = "Access-Control-Allow-Methods"
+	ReqOptions           = "OPTIONS"
+	CorsAllowHeaders     = "Access-Control-Allow-Headers"
+	CorsHeaders          = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
 )
 
 // CreateTLSHTTPClient provides a basic http client prepared with a trusted CA cert
@@ -68,7 +70,18 @@ func ExecuteHTTPReq(client *http.Client, req *http.Request) ([]byte, error) {
 
 // EnableCORS Allows Tenscan and WalletExtension APIs to serve other web apps via CORS.
 func EnableCORS(resp http.ResponseWriter, req *http.Request) bool {
-	resp.Header().Set(CorsAllowOrigin, OriginAll)
+	origin := req.Header.Get("Origin")
+	
+	// For cookie-based authentication, we need to allow specific origins, not "*"
+	// Allow requests from .ten.xyz domains and localhost for development
+	if origin != "" && (strings.HasSuffix(origin, ".ten.xyz") || origin == "https://ten.xyz" || strings.Contains(origin, "localhost") || strings.Contains(origin, "127.0.0.1")) {
+		resp.Header().Set(CorsAllowOrigin, origin)
+		resp.Header().Set(CorsAllowCredentials, "true")
+	} else {
+		// Fallback for non-cookie requests
+		resp.Header().Set(CorsAllowOrigin, OriginAll)
+	}
+	
 	if (*req).Method == ReqOptions {
 		// Returns true if the request was a pre-flight, e.g. OPTIONS, to stop further processing.
 		resp.Header().Set(CorsAllowMethods, ReqOptions)
