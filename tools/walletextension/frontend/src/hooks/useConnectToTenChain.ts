@@ -63,7 +63,7 @@ export default function useConnectToTenChain() {
                 }
             }
 
-            let newTenToken =
+            const newTenToken =
                 tenToken === ''
                     ? await joinTestnet().catch((error) => {
                           setError({
@@ -130,7 +130,7 @@ export default function useConnectToTenChain() {
         if (isConnected && selectedConnector?.uid === connector?.uid) {
             switchToTen();
         }
-    }, [connector, isConnected, selectedConnector, step]);
+    }, [connector, isConnected, selectedConnector, step, chainId, tenToken, setStoreTenToken, setTenTokenToCookie]);
 
     useEffect(() => {
         if (step !== 3) {
@@ -151,7 +151,7 @@ export default function useConnectToTenChain() {
             setStep(4);
             incrementAuthEvents();
         }
-    }, [isAuthenticated, isAuthenticatedLoading, authenticationError, step]);
+    }, [isAuthenticated, isAuthenticatedLoading, authenticationError, step, address, authenticateAccount, incrementAuthEvents]);
 
     const reset = () => {
         setStep(0);

@@ -78,13 +78,13 @@ export function useTenChainAuth(walletAddress?: Address) {
         if (signSuccess) {
             authenticationMutation.mutate(signature);
         }
-    }, [signTypedData, signSuccess]);
+    }, [signSuccess, authenticationMutation, signature]);
 
     useEffect(() => {
         if (authenticationMutation.isSuccess || authenticationMutation.isError) {
             setIsLoading(false);
         }
-    }, [authenticationMutation.status]);
+    }, [authenticationMutation.isSuccess, authenticationMutation.isError]);
 
     const revokeAccount = async () => {
         if (!tenToken) {

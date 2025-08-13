@@ -77,7 +77,7 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
                         />
                     );
                 }),
-        [connectors]
+        [unsupportedWallets]
     );
 
     const usableWalletList = useMemo(
@@ -92,7 +92,7 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
                     />
                 );
             }),
-        [connectors]
+        [usableWallets, connectToTen]
     );
 
     const WalletList = () => {
