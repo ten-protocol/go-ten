@@ -8,7 +8,7 @@ import { useUiStore } from '@/stores/ui.store';
 import { shallow } from 'zustand/shallow';
 import { TbPrompt } from 'react-icons/tb';
 import Image from 'next/image';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTokenFromCookie } from '@/hooks/useTokenFromCookie';
 
 type Props = {
     className?: string;
@@ -21,7 +21,7 @@ export default function ConnectWalletButton({ className }: Props) {
         (state) => [state.setConnectionModal, state.setSettingsModal],
         shallow
     );
-    const [tenToken] = useLocalStorage('ten_token', '');
+    const [tenToken] = useTokenFromCookie();
 
     const isWrongChain = !chain || Number(chain.id) !== Number(tenChainIDDecimal);
 

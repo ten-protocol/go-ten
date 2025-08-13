@@ -22,7 +22,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { RiExternalLinkLine } from 'react-icons/ri';
 import { useMemo, useState } from 'react';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTokenFromCookie } from '@/hooks/useTokenFromCookie';
 
 type Props = {
     isOpen: boolean;
@@ -31,7 +31,7 @@ type Props = {
 
 export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
     const { connectors, connectToTen, step, reset, error } = useConnectToTenChain();
-    const [tenToken] = useLocalStorage<string>('ten_token', '');
+    const [tenToken] = useTokenFromCookie();
     const [isCopied, setIsCopied] = useState(false);
     const rpcUrl = `${process.env.NEXT_PUBLIC_GATEWAY_URL}/v1/?token=${tenToken}`;
 

@@ -8,7 +8,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTokenFromCookie } from '@/hooks/useTokenFromCookie';
 
 type Props = {
     isOpen: boolean;
@@ -16,7 +16,7 @@ type Props = {
 };
 
 export default function ViewTenToken({ isOpen, onChange }: Props) {
-    const [tenToken] = useLocalStorage('ten_token', '');
+    const [tenToken] = useTokenFromCookie();
     const [isCopied, setIsCopied] = useState(false);
     const rpcUrl = `${process.env.NEXT_PUBLIC_GATEWAY_URL}/v1/?token=${tenToken}`;
 

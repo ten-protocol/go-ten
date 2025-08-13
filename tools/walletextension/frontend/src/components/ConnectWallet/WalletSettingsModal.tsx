@@ -22,7 +22,7 @@ import {
     tenNetworkName,
 } from '@/lib/constants';
 import Image from 'next/image';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTokenFromCookie } from '@/hooks/useTokenFromCookie';
 import { useState } from 'react';
 
 type Props = {
@@ -40,7 +40,7 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
         reset: switchChainReset,
     } = useSwitchChain();
     const [missingKeyError, setMissingKeyError] = useState(false);
-    const [tenToken] = useLocalStorage('ten_token', '');
+    const [tenToken] = useTokenFromCookie();
 
     const { data: ethBalance, isLoading: isLoadingEthBalance } = useBalance({
         address,

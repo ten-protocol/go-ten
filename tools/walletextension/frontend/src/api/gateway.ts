@@ -58,3 +58,25 @@ export async function joinTestnet(): Promise<string> {
         url: tenGatewayAddress + pathToUrl(apiRoutes.join),
     });
 }
+
+export async function getTokenFromCookie(): Promise<string> {
+    const response = await httpRequest<string>({
+        method: 'get',
+        url: tenGatewayAddress + pathToUrl(apiRoutes.getToken),
+    });
+    
+    // Check if response indicates cookie not found
+    if (response === 'gateway_token cookie not found') {
+        throw new Error('gateway_token cookie not found');
+    }
+    
+    return response;
+}
+
+export async function setTokenToCookie(token: string): Promise<void> {
+    return await httpRequest<void>({
+        method: 'post',
+        url: tenGatewayAddress + pathToUrl(apiRoutes.setToken),
+        data: { token },
+    });
+}

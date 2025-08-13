@@ -11,10 +11,10 @@ import { useUiStore } from '@/stores/ui.store';
 import { shallow } from 'zustand/shallow';
 import { useEffect, useState } from 'react';
 import WalletSettingsModal from '@/components/ConnectWallet/WalletSettingsModal';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTokenFromCookie } from '@/hooks/useTokenFromCookie';
 
 export default function Home() {
-    const [tenToken] = useLocalStorage<string>('ten_token', '');
+    const [tenToken] = useTokenFromCookie();
     const { isConnected, chainId } = useAccount();
 
     const [isConnectionModalOpen, isSettingsModalOpen, setConnectionModal, setSettingsModal] =

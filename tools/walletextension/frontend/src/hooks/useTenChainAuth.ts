@@ -5,12 +5,12 @@ import { Address, getAddress } from 'viem';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { generateEIP712 } from '@/lib/eip712';
 import { useUiStore } from '@/stores/ui.store';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTokenFromCookie } from './useTokenFromCookie';
 
 export function useTenChainAuth(walletAddress?: Address) {
     const authEvents = useUiStore((state) => state.authEvents);
     const [address, setAddress] = useState<Address | undefined>(walletAddress);
-    const [tenToken] = useLocalStorage<string | null>('ten_token', null);
+    const [tenToken] = useTokenFromCookie();
     const {
         data: signature,
         signTypedData,

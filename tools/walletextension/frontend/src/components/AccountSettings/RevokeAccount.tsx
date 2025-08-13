@@ -1,6 +1,6 @@
 import { useAccount } from 'wagmi';
 import { useTenChainAuth } from '@/hooks/useTenChainAuth';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTokenFromCookie } from '@/hooks/useTokenFromCookie';
 import {
     AlertDialog,
     AlertDialogAction,
@@ -20,12 +20,12 @@ type Props = {
 export default function RevokeAccount({ isOpen, onChange }: Props) {
     const { address } = useAccount();
     const { revokeAccount } = useTenChainAuth(address);
-    const [tenToken, setTenToken] = useLocalStorage('ten_token', '');
+    const [tenToken, setTenTokenToCookie] = useTokenFromCookie();
 
-    const handleRevokeAccount = () => {
+    const handleRevokeAccount = async () => {
         if (tenToken) {
             revokeAccount();
-            setTenToken('');
+            await setTenTokenToCookie(''); // Clear token from cookie
         }
         onChange(false);
     };
