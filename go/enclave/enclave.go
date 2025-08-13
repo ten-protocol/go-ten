@@ -98,7 +98,6 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
 	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
 	gasPricer := components.NewGasPricer(logger, config)
-	
 	gasOracle := gas.NewGasOracle(l1ChainCfg, storage, gasPricer, logger)
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 
@@ -117,7 +116,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
-	
+
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, evmFacade, config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, gasPricer, logger)
 
 	// ensure EVM state data is up-to-date using the persisted batch data
@@ -153,7 +152,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	// these services are directly exposed as the API of the Enclave
 	initAPI := NewEnclaveInitAPI(config, storage, logger, blockProcessor, enclaveKeyService, attestationProvider, sharedSecretService, daEncryptionService, rpcKeyService)
 	adminAPI := NewEnclaveAdminAPI(config, storage, logger, blockProcessor, batchRegistry, batchExecutor, gethEncodingService, stopControl, subscriptionManager, enclaveKeyService, mempool, chainConfig, attestationProvider, sharedSecretService, daEncryptionService, contractRegistryLib, gasOracle, gasPricer)
-	rpcAPI := NewEnclaveRPCAPI(config, storage, tenChain, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, rpcKeyService, evmFacade)
+	rpcAPI := NewEnclaveRPCAPI(config, storage, tenChain, logger, blockProcessor, batchRegistry, gethEncodingService, cachingService, mempool, chainConfig, crossChainProcessors, scb, subscriptionManager, genesis, gasOracle, gasPricer, rpcKeyService, evmFacade)
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{

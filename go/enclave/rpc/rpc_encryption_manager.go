@@ -25,6 +25,7 @@ type EncryptionManager struct {
 	processors           *crosschain.Processors
 	mempool              *components.TxPool
 	gasOracle            gas.Oracle
+	gasPricer            *components.GasPricer
 	blockResolver        storage.BlockResolver
 	l1BlockProcessor     components.L1BlockProcessor
 	config               *enclaveconfig.EnclaveConfig
@@ -32,7 +33,7 @@ type EncryptionManager struct {
 	storageSlotWhitelist *privacy.Whitelist
 }
 
-func NewEncryptionManager(storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, mempool *components.TxPool, processors *crosschain.Processors, config *enclaveconfig.EnclaveConfig, oracle gas.Oracle, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain components.TENChain, rpcKeyService *crypto.RPCKeyService, logger gethlog.Logger) *EncryptionManager {
+func NewEncryptionManager(storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, mempool *components.TxPool, processors *crosschain.Processors, config *enclaveconfig.EnclaveConfig, oracle gas.Oracle, gasPricer *components.GasPricer, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain components.TENChain, rpcKeyService *crypto.RPCKeyService, logger gethlog.Logger) *EncryptionManager {
 	return &EncryptionManager{
 		storage:              storage,
 		cacheService:         cacheService,
@@ -43,6 +44,7 @@ func NewEncryptionManager(storage storage.Storage, cacheService *storage.CacheSe
 		blockResolver:        blockResolver,
 		l1BlockProcessor:     l1BlockProcessor,
 		gasOracle:            oracle,
+		gasPricer:            gasPricer,
 		logger:               logger,
 		rpcKeyService:        rpcKeyService,
 		storageSlotWhitelist: privacy.NewWhitelist(),
