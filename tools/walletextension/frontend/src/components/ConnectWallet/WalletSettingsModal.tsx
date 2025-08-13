@@ -23,6 +23,7 @@ import {
 } from '@/lib/constants';
 import Image from 'next/image';
 import { useTokenFromCookie } from '@/hooks/useTokenFromCookie';
+import { joinTestnet } from '@/api/gateway';
 import { useState } from 'react';
 
 type Props = {
@@ -40,7 +41,7 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
         reset: switchChainReset,
     } = useSwitchChain();
     const [missingKeyError, setMissingKeyError] = useState(false);
-    const [tenToken] = useTokenFromCookie();
+    const [tenToken, setTenTokenToCookie] = useTokenFromCookie();
 
     const { data: ethBalance, isLoading: isLoadingEthBalance } = useBalance({
         address,
@@ -56,20 +57,44 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
     const isWrongChain = !chain || Number(chain.id) !== Number(tenChainIDDecimal);
 
     const handleSwitchChain = async () => {
+        console.log('🔄 handleSwitchChain: Starting switch chain process');
+        console.log('📝 handleSwitchChain: Current tenToken =', tenToken);
+        console.log('📝 handleSwitchChain: Token length =', tenToken?.length);
+        
         try {
-            if (tenToken === '') {
+            // Always get a fresh token when adding/switching to TEN network
+            console.log('🎯 handleSwitchChain: Calling joinTestnet() to get fresh token...');
+            const freshToken = await joinTestnet();
+            console.log('🎯 handleSwitchChain: Received fresh token =', freshToken);
+            
+            if (!freshToken) {
+                console.log('❌ handleSwitchChain: No fresh token received');
                 setMissingKeyError(true);
-            } else {
-                switchChain({
-                    chainId: tenChainIDDecimal,
-                    addEthereumChainParameter: {
-                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${tenToken}`],
-                        chainName: tenNetworkName,
-                        nativeCurrency: nativeCurrency,
-                    },
-                });
+                return;
             }
+            
+            // Store the fresh token in cookie
+            console.log('🍪 handleSwitchChain: Storing fresh token in cookie...');
+            await setTenTokenToCookie(freshToken);
+            console.log('🍪 handleSwitchChain: Fresh token stored successfully');
+            
+            const rpcUrl = `${tenGatewayAddress}/v1/?token=${freshToken}`;
+            console.log('🌐 handleSwitchChain: About to switch chain with fresh RPC URL =', rpcUrl);
+            console.log('🌐 handleSwitchChain: Chain ID =', tenChainIDDecimal);
+            
+            switchChain({
+                chainId: tenChainIDDecimal,
+                addEthereumChainParameter: {
+                    rpcUrls: [rpcUrl],
+                    chainName: tenNetworkName,
+                    nativeCurrency: nativeCurrency,
+                },
+            });
+            
+            console.log('✅ handleSwitchChain: switchChain call completed');
+            
         } catch (error) {
+            console.error('❌ handleSwitchChain: Error occurred:', error);
             console.error(
                 'Failed to switch to TEN Protocol. Please make sure you have added TEN Protocol to your wallet.',
                 error
