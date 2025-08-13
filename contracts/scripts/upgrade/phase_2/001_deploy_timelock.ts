@@ -95,13 +95,6 @@ async function setupGovernance() {
     console.log(`export MULTISIG_ADDRESS="${multisigAddress}"`);
     console.log("===============================\n");
     
-    console.log("📝 Next Steps:");
-    console.log("1. Transfer proxy admin ownership to Timelock for each proxy:");
-    console.log("   - CrossChain proxy admin → Timelock");
-    console.log("   - NetworkEnclaveRegistry proxy admin → Timelock");
-    console.log("   - DataAvailabilityRegistry proxy admin → Timelock");
-    console.log("2. Use the upgrade script to schedule upgrades through timelock");
-    
     return {
         timelockAddress,
         multisigAddress,
