@@ -1,4 +1,4 @@
-import { fetchBatchByHeight } from "@/api/batches";
+import { fetchBatchBySequence } from "@/api/batches";
 import Layout from "@/src/components/layouts/default-layout";
 import { BatchDetailsComponent } from "@/src/components/modules/batches/batch-details";
 import LoadingState from "@repo/ui/components/common/loading-state";
@@ -12,13 +12,14 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/router";
 
-export default function Batch() {
+export default function BatchSequenceDetails() {
   const router = useRouter();
-  const { height } = router.query;
+  const { sequence } = router.query;
 
   const { data, isLoading } = useQuery({
-    queryKey: ["batchHeight", height],
-    queryFn: () => fetchBatchByHeight(height as string),
+    queryKey: ["batchSequenceDetails", sequence],
+    queryFn: () => fetchBatchBySequence(sequence as string),
+    enabled: !!sequence,
   });
 
   const batchDetails = data?.item;
@@ -30,9 +31,9 @@ export default function Batch() {
       ) : batchDetails ? (
         <Card className="col-span-3">
           <CardHeader>
-            <CardTitle>Batch #{Number(batchDetails?.header?.number)}</CardTitle>
+            <CardTitle>Batch #{Number(sequence)}</CardTitle>
             <CardDescription>
-              Overview of the batch #{Number(batchDetails?.header?.number)}
+              Overview of the Batch with sequence #{Number(sequence)}
             </CardDescription>
           </CardHeader>
           <CardContent>
