@@ -85,6 +85,15 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 	// we need the actual driver name so sqlx can replace queries with the correct placeholder
 	driverName := "postgres"
+	// check if driver is already registered
+	drivers := sql.Drivers()
+	for _, driver := range drivers {
+		if driver == driverName {
+			logger.Info("PostgreSQL driver already registered, skipping")
+			return driverName
+		}
+	}
+	// register if it not already present
 	sql.Register(driverName,
 		storage.NewPanicOnDBErrorDriver(
 			&pq.Driver{},
