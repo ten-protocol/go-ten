@@ -22,7 +22,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { RiExternalLinkLine } from 'react-icons/ri';
 import { useMemo, useState } from 'react';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTenToken } from '@/hooks/useTenToken';
 
 type Props = {
     isOpen: boolean;
@@ -31,7 +31,7 @@ type Props = {
 
 export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
     const { connectors, connectToTen, step, reset, error } = useConnectToTenChain();
-    const [tenToken] = useLocalStorage<string>('ten_token', '');
+    const { token: tenToken, loading: tokenLoading } = useTenToken();
     const [isCopied, setIsCopied] = useState(false);
     const rpcUrl = `${process.env.NEXT_PUBLIC_GATEWAY_URL}/v1/?token=${tenToken}`;
 
@@ -123,9 +123,12 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
     };
 
     const copyToClipboard = () => {
-        navigator.clipboard.writeText(rpcUrl);
-        setIsCopied(true);
-        setTimeout(() => setIsCopied(false), 2000);
+        if (!tokenLoading && tenToken) {
+            navigator.clipboard.writeText(rpcUrl);
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+            console.log('[ConnectWalletModal] Copied RPC URL to clipboard');
+        }
     };
 
     return (
@@ -170,8 +173,15 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
                                 Keep this token safe and private - do not share it with anyone
                             </p>
                             <div className="flex items-center justify-center gap-2 bg-white/5 rounded p-1 mb-4">
-                                <code className="text-xs">{rpcUrl}</code>
-                                <Button variant="ghost" size="icon" onClick={copyToClipboard}>
+                                <code className="text-xs">
+                                    {tokenLoading ? 'Loading token...' : rpcUrl}
+                                </code>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={copyToClipboard}
+                                    disabled={tokenLoading || !tenToken}
+                                >
                                     {isCopied ? (
                                         <Check className="h-4 w-4" />
                                     ) : (

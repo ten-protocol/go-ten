@@ -11,10 +11,10 @@ import { useUiStore } from '@/stores/ui.store';
 import { shallow } from 'zustand/shallow';
 import { useEffect, useState } from 'react';
 import WalletSettingsModal from '@/components/ConnectWallet/WalletSettingsModal';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTenToken } from '@/hooks/useTenToken';
 
 export default function Home() {
-    const [tenToken] = useLocalStorage<string>('ten_token', '');
+    const { token: tenToken, loading: tokenLoading } = useTenToken();
     const { isConnected, chainId } = useAccount();
 
     const [isConnectionModalOpen, isSettingsModalOpen, setConnectionModal, setSettingsModal] =
@@ -51,13 +51,15 @@ export default function Home() {
                     </h2>
                 </div>
 
-                {isWalletReady && isConnected && isOnTen && tenToken !== '' ? (
+                {isWalletReady && isConnected && isOnTen && tenToken !== '' && !tokenLoading ? (
                     <WalletConnected />
-                ) : isWalletReady ? (
+                ) : isWalletReady && !tokenLoading ? (
                     <DisconnectedWallet />
                 ) : (
                     <div className="flex justify-center items-center h-64">
-                        <div className="animate-pulse text-lg opacity-70">Loading wallet...</div>
+                        <div className="animate-pulse text-lg opacity-70">
+                            {tokenLoading ? 'Loading token...' : 'Loading wallet...'}
+                        </div>
                     </div>
                 )}
                 <PromoApps />

@@ -7,8 +7,8 @@ import {
     tenGatewayAddress,
     tenNetworkName,
 } from '@/lib/constants';
-import { useLocalStorage } from 'usehooks-ts';
 import { joinTestnet } from '@/api/gateway';
+import { useTenToken } from '@/hooks/useTenToken';
 import { useTenChainAuth } from '@/hooks/useTenChainAuth';
 import { useUiStore } from '@/stores/ui.store';
 import sleep from '@/utils/sleep';
@@ -21,7 +21,7 @@ export default function useConnectToTenChain() {
     const setStoreTenToken = useUiStore((state) => state.setTenToken);
     const [step, setStep] = useState<number>(0);
     const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
-    const [tenToken, setTenToken] = useLocalStorage<string>('ten_token', '');
+    const { token: tenToken, setToken: setTenToken, loading: tokenLoading } = useTenToken();
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
     const { isAuthenticated, isAuthenticatedLoading, authenticateAccount, authenticationError } =
@@ -83,8 +83,9 @@ export default function useConnectToTenChain() {
 
             if (tenToken === '') {
                 newTenToken = `0x${newTenToken}`;
-                setTenToken(newTenToken);
-                setStoreTenToken(`0x${newTenToken}`);
+                console.log('[useConnectToTenChain] Setting new token in cookie:', newTenToken);
+                await setTenToken(newTenToken);
+                setStoreTenToken(newTenToken);
             }
 
             if (chainId === tenChainIDDecimal) {
@@ -191,6 +192,6 @@ export default function useConnectToTenChain() {
         connectors: uniqueConnectors,
         connectToTen,
         reset,
-        loading,
+        loading: loading || tokenLoading,
     };
 }

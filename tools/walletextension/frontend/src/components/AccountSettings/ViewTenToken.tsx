@@ -8,7 +8,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTenToken } from '@/hooks/useTenToken';
 
 type Props = {
     isOpen: boolean;
@@ -16,7 +16,7 @@ type Props = {
 };
 
 export default function ViewTenToken({ isOpen, onChange }: Props) {
-    const [tenToken] = useLocalStorage('ten_token', '');
+    const { token: tenToken, loading } = useTenToken();
     const [isCopied, setIsCopied] = useState(false);
     const rpcUrl = `${process.env.NEXT_PUBLIC_GATEWAY_URL}/v1/?token=${tenToken}`;
 
@@ -45,13 +45,14 @@ export default function ViewTenToken({ isOpen, onChange }: Props) {
                 <div className="space-y-4">
                     <div className="flex items-center gap-2 p-3 bg-neutral-800 rounded-md">
                         <code className="flex-1 text-sm break-all text-green-400 font-mono">
-                            {rpcUrl}
+                            {loading ? 'Loading token...' : rpcUrl}
                         </code>
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={copyAddressToClipboard}
                             className="shrink-0"
+                            disabled={loading || !tenToken}
                             title="Copy address to clipboard"
                         >
                             {isCopied ? (
