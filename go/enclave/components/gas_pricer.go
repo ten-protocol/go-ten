@@ -75,8 +75,8 @@ func (gp *GasPricer) HandleUpgrade(ctx context.Context, featureName string, feat
 func (gp *GasPricer) CalculateBlockBaseFee(cfg *params.ChainConfig, parent *types.Header) *big.Int {
 	// If dynamic pricing is not enabled, return the configured minimum gas price
 	if !gp.dynamicPricingEnabled.Load() {
-		gp.logger.Trace("Using static gas pricing", "minGasPrice", gp.config.MinGasPrice)
-		return new(big.Int).Set(gp.config.MinGasPrice)
+		gp.logger.Trace("Using static gas pricing", "minGasPrice", gp.config.BaseFee)
+		return new(big.Int).Set(gp.config.BaseFee)
 	}
 
 	// Dynamic pricing is enabled - use the EIP-1559 calculation
