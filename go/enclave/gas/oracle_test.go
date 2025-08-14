@@ -18,18 +18,15 @@ import (
 )
 
 // mockGasPricer implements GasPricer interface for tests
-type mockGasPricer struct {
-	price *big.Int
-}
+type mockGasPricer struct{}
 
 func newMockGasPricer() *mockGasPricer {
-	return &mockGasPricer{
-		price: big.NewInt(1000000), // 1 gwei
-	}
+	return &mockGasPricer{}
 }
 
 func (m *mockGasPricer) GetL1PublishingGasPrice(header *types.Header) *big.Int {
-	return new(big.Int).Set(m.price)
+	// Return the same value as the real GasPricer for consistent test behavior
+	return evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING
 }
 
 // mockBlockResolver implements storage.BlockResolver for tests
