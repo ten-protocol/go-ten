@@ -17,6 +17,21 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
 )
 
+// mockGasPricer implements GasPricer interface for tests
+type mockGasPricer struct {
+	price *big.Int
+}
+
+func newMockGasPricer() *mockGasPricer {
+	return &mockGasPricer{
+		price: big.NewInt(1000000), // 1 gwei
+	}
+}
+
+func (m *mockGasPricer) GetL1PublishingGasPrice(header *types.Header) *big.Int {
+	return new(big.Int).Set(m.price)
+}
+
 // mockBlockResolver implements storage.BlockResolver for tests
 type mockBlockResolver struct {
 	headByHeight map[uint64]*types.Header
@@ -120,7 +135,7 @@ func TestEstimateL1StorageGasCost_UsesMAAndRounds_IncludingBlobShare(t *testing.
 	fees := []int64{100, 200, 300}
 	head, resolver := buildChainWithBaseFees(fees)
 
-	oracleIface := NewGasOracle(params.MainnetChainConfig, resolver, gethlog.New())
+	oracleIface := NewGasOracle(params.MainnetChainConfig, resolver, newMockGasPricer(), gethlog.New())
 	impl := oracleIface.(*oracle)
 
 	to := gethcommon.HexToAddress("0x0000000000000000000000000000000000000001")
@@ -162,7 +177,7 @@ func TestEstimateL1CostForMsg_UsesHeadBlockAndRounds(t *testing.T) {
 
 	fees := []int64{500, 700, 900}
 	head, resolver := buildChainWithBaseFees(fees)
-	oracleIface := NewGasOracle(params.MainnetChainConfig, resolver, gethlog.New())
+	oracleIface := NewGasOracle(params.MainnetChainConfig, resolver, newMockGasPricer(), gethlog.New())
 	impl := oracleIface.(*oracle)
 
 	if err := oracleIface.SubmitL1Block(ctx, head); err != nil {
@@ -224,7 +239,7 @@ func TestEstimateL1StorageGasCost_IncreasesWithBaseFeeAndDecreasesOnDrop(t *test
 	resolver.addHeader(h2)
 	resolver.addHeader(h3)
 
-	oracleIface := NewGasOracle(params.MainnetChainConfig, resolver, gethlog.New())
+	oracleIface := NewGasOracle(params.MainnetChainConfig, resolver, newMockGasPricer(), gethlog.New())
 	impl := oracleIface.(*oracle)
 
 	// Keep blob fee at 0 to isolate base fee effect; ensure blob cache hit
@@ -278,7 +293,7 @@ func TestEstimateL1StorageGasCost_IncreasesWithBlobFeeAndDecreasesOnDrop(t *test
 	resolver.addHeader(h2)
 	resolver.addHeader(h3)
 
-	oracleIface := NewGasOracle(params.MainnetChainConfig, resolver, gethlog.New())
+	oracleIface := NewGasOracle(params.MainnetChainConfig, resolver, newMockGasPricer(), gethlog.New())
 	impl := oracleIface.(*oracle)
 
 	// Fix base fee to isolate blob fee effect

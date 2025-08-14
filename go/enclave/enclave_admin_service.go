@@ -129,9 +129,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 	// Replay any finalized upgrades from previous sessions to registered handlers
 	err = upgradeManager.ReplayFinalizedUpgrades(context.Background())
 	if err != nil {
-		logger.Error("Failed to replay finalized upgrades on startup", log.ErrKey, err)
-		// Note: We don't return error here as the enclave should still start
-		// even if replay fails - this is a non-critical operation on startup
+		logger.Crit("Failed to replay finalized upgrades on startup", log.ErrKey, err)
 	}
 
 	// if the current enclave was already marked as an active/backup sequencer, it needs to set the right mempool mode
