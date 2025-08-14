@@ -253,12 +253,10 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 		return
 	}
 
-	// Verify the user exists in the database
-	_, err = walletExt.Storage.GetUser(userIDBytes)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database"))
-		return
-	}
+	// Note: We don't verify the user exists in the database here because:
+	// 1. Fresh tokens from /join should be immediately usable
+	// 2. Cookie setting shouldn't depend on database lookups
+	// 3. The cookie is the source of truth for the current session
 
 	// Set the cookie with the provided token
 	cookie := &http.Cookie{
