@@ -22,7 +22,7 @@ import {
     tenNetworkName,
 } from '@/lib/constants';
 import Image from 'next/image';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTenToken } from '@/contexts/TenTokenContext';
 import { useState } from 'react';
 
 type Props = {
@@ -40,7 +40,7 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
         reset: switchChainReset,
     } = useSwitchChain();
     const [missingKeyError, setMissingKeyError] = useState(false);
-    const [tenToken] = useLocalStorage('ten_token', '');
+    const { token: tenToken } = useTenToken();
 
     const { data: ethBalance, isLoading: isLoadingEthBalance } = useBalance({
         address,
@@ -60,10 +60,14 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
             if (tenToken === '') {
                 setMissingKeyError(true);
             } else {
+                // Remove 0x prefix from token for RPC URL
+                const cleanToken = tenToken.startsWith('0x') ? tenToken.slice(2) : tenToken;
+                console.log('[WalletSettingsModal] Using clean token for RPC URL:', cleanToken);
+                
                 switchChain({
                     chainId: tenChainIDDecimal,
                     addEthereumChainParameter: {
-                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${tenToken}`],
+                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${cleanToken}`],
                         chainName: tenNetworkName,
                         nativeCurrency: nativeCurrency,
                     },

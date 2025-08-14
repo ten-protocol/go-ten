@@ -147,9 +147,10 @@ func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 		Name:     "gateway_token",
 		Value:    hexutils.BytesToHex(userID),
 		Path:     "/",
+		Domain:   ".ten.xyz",              // Share across all .ten.xyz subdomains
 		HttpOnly: true,                    // Prevents XSS
 		Secure:   true,                    // HTTPS only
-		SameSite: http.SameSiteStrictMode, // Prevents CSRF
+		SameSite: http.SameSiteNoneMode,   // Required for cross-origin AJAX requests
 		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
 	}
 
@@ -264,9 +265,10 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 		Name:     "gateway_token",
 		Value:    req.Token,
 		Path:     "/",
+		Domain:   ".ten.xyz",              // Share across all .ten.xyz subdomains
 		HttpOnly: true,                    // Prevents XSS
 		Secure:   true,                    // HTTPS only
-		SameSite: http.SameSiteStrictMode, // Prevents CSRF
+		SameSite: http.SameSiteNoneMode,   // Required for cross-origin AJAX requests
 		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
 	}
 
