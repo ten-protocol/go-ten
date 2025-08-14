@@ -23,7 +23,7 @@ import (
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-var adjustPublishingGas = gethcommon.Big2
+var AdjustPublishingGas = gethcommon.Big2
 
 type GasEstimator struct {
 	storage   storage.Storage
@@ -64,7 +64,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// given that we publish in a blob, the amount will be very low.
 	// Batch execution still deducts normally.
 	// TODO: Change to fixed time period quotes, rather than this.
-	publishingGas = publishingGas.Mul(publishingGas, adjustPublishingGas)
+	publishingGas = publishingGas.Mul(publishingGas, AdjustPublishingGas)
 
 	// Run the execution simulation based on stateDB after head batch.
 	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.

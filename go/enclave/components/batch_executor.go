@@ -361,8 +361,16 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		if err != nil {
 			return fmt.Errorf("unable to estimate l1 storage gas cost. Cause: %w", err)
 		}
-		gasForL1 := big.NewInt(0).Div(gasCost, ec.BaseFee).Uint64()
 
+		// We need to calculate the gas for L1 publishing and remove it as the gas pool can easily run out
+		// if we include publishing costs.
+		gasForL1BigInt := big.NewInt(0).Div(gasCost, ec.BaseFee)
+		remainder := big.NewInt(0).Mod(gasCost, ec.BaseFee)
+		if remainder.Sign() > 0 {
+			gasForL1BigInt.Add(gasForL1BigInt, big.NewInt(1))
+		}
+		// We need to clone the estimation hacks.
+		gasForL1 := gasForL1BigInt.Mul(gasForL1BigInt, AdjustPublishingGas).Uint64()
 		// If we don't have enough space for the next transaction, skip the account.
 		if ec.GasPool.Gas() < ltx.Gas-gasForL1 {
 			executor.logger.Trace("Not enough gas left for transaction", "hash", ltx.Hash, "left", ec.GasPool.Gas(), "needed", ltx.Gas)
