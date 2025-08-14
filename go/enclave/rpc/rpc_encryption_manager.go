@@ -34,6 +34,9 @@ type EncryptionManager struct {
 }
 
 func NewEncryptionManager(storage storage.Storage, cacheService *storage.CacheService, registry components.BatchRegistry, mempool *components.TxPool, processors *crosschain.Processors, config *enclaveconfig.EnclaveConfig, oracle gas.Oracle, gasPricer *components.GasPricer, blockResolver storage.BlockResolver, l1BlockProcessor components.L1BlockProcessor, chain components.TENChain, rpcKeyService *crypto.RPCKeyService, logger gethlog.Logger) *EncryptionManager {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	return &EncryptionManager{
 		storage:              storage,
 		cacheService:         cacheService,

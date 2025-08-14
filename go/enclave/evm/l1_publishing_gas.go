@@ -38,10 +38,7 @@ func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Messa
 
 	// If a transaction has to be published on the l1, it will have an l1 cost
 	if hasL1Cost {
-		divisor := FIXED_L2_GAS_COST_FOR_L1_PUBLISHING
-		if gasPricer != nil {
-			divisor = gasPricer.GetL1PublishingGasPrice(header)
-		}
+		divisor := gasPricer.GetL1PublishingGasPrice(header)
 		l1Gas.Div(l1cost, divisor) // TotalCost/CostPerGas = Gas
 
 		// The gas limit of the transaction (evm message) should always be higher than the gas overhead

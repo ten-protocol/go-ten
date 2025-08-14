@@ -80,6 +80,9 @@ type TxPool struct {
 
 // NewTxPool returns a new instance of the tx pool
 func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig, tenChain TENChain, storage storage.Storage, batchRegistry BatchRegistry, l1BlockProcessor L1BlockProcessor, gasOracle gas.Oracle, gasPricer *GasPricer, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	txPoolConfig := legacypool.Config{
 		Locals:       nil,
 		NoLocals:     false,

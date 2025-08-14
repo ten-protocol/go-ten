@@ -57,14 +57,15 @@ func (gp *GasPricer) HandleUpgrade(ctx context.Context, featureName string, feat
 		"featureName", featureName,
 		"featureData", string(featureData))
 
-	// Check if this is the dynamic pricing upgrade
-	if string(featureData) == DynamicPricingTrigger {
+	// Handle the specific upgrade data
+	switch string(featureData) {
+	case DynamicPricingTrigger:
 		gp.dynamicPricingEnabled.Store(true)
 		gp.logger.Info("Dynamic gas pricing enabled")
-	} else if string(featureData) == StaticPricingTrigger {
+	case StaticPricingTrigger:
 		gp.dynamicPricingEnabled.Store(false)
 		gp.logger.Info("Static gas pricing enabled")
-	} else {
+	default:
 		gp.logger.Warn("Unknown gas pricing upgrade data", "featureData", string(featureData))
 	}
 
@@ -98,14 +99,13 @@ func (gp *GasPricer) CalculateBlockBaseFee(cfg *params.ChainConfig, parent *type
 	return calculatedBaseFee
 }
 
-// GetL1PublishingGasPrice returns the gas price for L1 publishing calculations.
-// If dynamic pricing is enabled, returns the fixed rate; otherwise returns header.BaseFee.
 func (gp *GasPricer) GetL1PublishingGasPrice(header *types.Header) *big.Int {
 	if gp.dynamicPricingEnabled.Load() {
 		return evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING
 	}
-	if header != nil && header.BaseFee != nil && header.BaseFee.Sign() > 0 {
-		return header.BaseFee
+	// Prior behavior: always use header.BaseFee, even if zero/nil
+	if header == nil || header.BaseFee == nil {
+		return big.NewInt(InitialBaseFee)
 	}
-	return evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING
+	return header.BaseFee
 }

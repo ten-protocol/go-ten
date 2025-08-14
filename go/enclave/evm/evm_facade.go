@@ -42,6 +42,9 @@ type evmExecutor struct {
 }
 
 func NewEVMExecutor(chain *TenChainContext, cc *params.ChainConfig, config *enclaveconfig.EnclaveConfig, gasEstimationCap uint64, storage storage.Storage, gethEncodingService gethencoding.EncodingService, visibilityReader ContractVisibilityReader, gasPricer GasPricer, logger gethlog.Logger) *evmExecutor {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	return &evmExecutor{
 		chain:               chain,
 		cc:                  cc,

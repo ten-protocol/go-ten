@@ -87,6 +87,9 @@ func NewBatchExecutor(
 	gasPricer *GasPricer,
 	logger gethlog.Logger,
 ) BatchExecutor {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	return &batchExecutor{
 		storage:                storage,
 		batchRegistry:          batchRegistry,
@@ -353,8 +356,15 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		if ltx == nil {
 			break
 		}
+
+		gasCost, err := executor.gasOracle.EstimateL1StorageGasCost(ec.ctx, ltx.Tx, ec.l1block, ec.currentBatch.Header)
+		if err != nil {
+			return fmt.Errorf("unable to estimate l1 storage gas cost. Cause: %w", err)
+		}
+		gasForL1 := big.NewInt(0).Div(gasCost, ec.BaseFee).Uint64()
+
 		// If we don't have enough space for the next transaction, skip the account.
-		if ec.GasPool.Gas() < ltx.Gas {
+		if ec.GasPool.Gas() < ltx.Gas-gasForL1 {
 			executor.logger.Trace("Not enough gas left for transaction", "hash", ltx.Hash, "left", ec.GasPool.Gas(), "needed", ltx.Gas)
 			mempoolTxs.Pop()
 			continue
@@ -363,7 +373,7 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		tx := ltx.Resolve()
 
 		// check the size limiter
-		err := sizeLimiter.AcceptTransaction(tx)
+		err = sizeLimiter.AcceptTransaction(tx)
 		if err != nil {
 			if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
 				executor.logger.Trace("Unable to accept transaction", log.TxKey, tx.Hash())

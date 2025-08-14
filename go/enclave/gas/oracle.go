@@ -9,7 +9,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
-	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	"github.com/ethereum/go-ethereum/params"
@@ -60,6 +59,9 @@ type oracle struct {
 }
 
 func NewGasOracle(l1ChainCfg *params.ChainConfig, storage storage.BlockResolver, gasPricer GasPricer, logger gethlog.Logger) Oracle {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	return &oracle{
 		l1ChainCfg: l1ChainCfg,
 		storage:    storage,
@@ -189,10 +191,7 @@ func (o *oracle) calculateL1Cost(ctx context.Context, block *types.Header, l2Bat
 	totalCost := big.NewInt(0).Add(shareOfBlobCost, shareOfL1TxCost)
 
 	// 4. round the total cost up to the nearest multiple of the L1 publishing gas price
-	multiple := evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING
-	if o.gasPricer != nil {
-		multiple = o.gasPricer.GetL1PublishingGasPrice(common.ConvertBatchHeaderToHeader(l2Batch))
-	}
+	multiple := o.gasPricer.GetL1PublishingGasPrice(common.ConvertBatchHeaderToHeader(l2Batch))
 	remainder := new(big.Int).Mod(totalCost, multiple)
 	if remainder.Sign() > 0 {
 		totalCost = totalCost.Add(totalCost, new(big.Int).Sub(multiple, remainder))
