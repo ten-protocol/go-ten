@@ -8,7 +8,7 @@ import {
     tenNetworkName,
 } from '@/lib/constants';
 import { joinTestnet } from '@/api/gateway';
-import { useTenToken } from '@/hooks/useTenToken';
+import { useTenToken } from '@/contexts/TenTokenContext';
 import { useTenChainAuth } from '@/hooks/useTenChainAuth';
 import { useUiStore } from '@/stores/ui.store';
 import sleep from '@/utils/sleep';

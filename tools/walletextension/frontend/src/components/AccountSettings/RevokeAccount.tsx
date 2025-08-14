@@ -1,6 +1,6 @@
 import { useAccount } from 'wagmi';
 import { useTenChainAuth } from '@/hooks/useTenChainAuth';
-import { useTenToken } from '@/hooks/useTenToken';
+import { useTenToken } from '@/contexts/TenTokenContext';
 import {
     AlertDialog,
     AlertDialogAction,

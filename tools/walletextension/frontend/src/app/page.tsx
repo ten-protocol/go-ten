@@ -11,7 +11,7 @@ import { useUiStore } from '@/stores/ui.store';
 import { shallow } from 'zustand/shallow';
 import { useEffect, useState } from 'react';
 import WalletSettingsModal from '@/components/ConnectWallet/WalletSettingsModal';
-import { useTenToken } from '@/hooks/useTenToken';
+import { useTenToken } from '@/contexts/TenTokenContext';
 
 export default function Home() {
     const { token: tenToken, loading: tokenLoading } = useTenToken();

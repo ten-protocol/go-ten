@@ -5,7 +5,7 @@ import { Address, getAddress } from 'viem';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { generateEIP712 } from '@/lib/eip712';
 import { useUiStore } from '@/stores/ui.store';
-import { useTenToken } from '@/hooks/useTenToken';
+import { useTenToken } from '@/contexts/TenTokenContext';
 
 export function useTenChainAuth(walletAddress?: Address) {
     const authEvents = useUiStore((state) => state.authEvents);

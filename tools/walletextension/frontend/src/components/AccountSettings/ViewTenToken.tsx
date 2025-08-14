@@ -8,7 +8,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useTenToken } from '@/hooks/useTenToken';
+import { useTenToken } from '@/contexts/TenTokenContext';
 
 type Props = {
     isOpen: boolean;

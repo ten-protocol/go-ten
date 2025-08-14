@@ -8,7 +8,7 @@ import { useUiStore } from '@/stores/ui.store';
 import { shallow } from 'zustand/shallow';
 import { TbPrompt } from 'react-icons/tb';
 import Image from 'next/image';
-import { useTenToken } from '@/hooks/useTenToken';
+import { useTenToken } from '@/contexts/TenTokenContext';
 
 type Props = {
     className?: string;

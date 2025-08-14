@@ -22,7 +22,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { RiExternalLinkLine } from 'react-icons/ri';
 import { useMemo, useState } from 'react';
-import { useTenToken } from '@/hooks/useTenToken';
+import { useTenToken } from '@/contexts/TenTokenContext';
 
 type Props = {
     isOpen: boolean;

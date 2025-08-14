@@ -22,7 +22,7 @@ import {
     tenNetworkName,
 } from '@/lib/constants';
 import Image from 'next/image';
-import { useTenToken } from '@/hooks/useTenToken';
+import { useTenToken } from '@/contexts/TenTokenContext';
 import { useState } from 'react';
 
 type Props = {
