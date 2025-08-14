@@ -230,6 +230,7 @@ npx hardhat run scripts/upgrade/phase_2/004_upgrade_contracts.ts --network mainn
 
 ## References
 
+- [Medium Multisig Upgrade Article](https://medium.com/@msvstj/how-to-upgrade-proxies-in-multisig-safe-b09f03cbce4c)
 - [OpenZeppelin Timelock](https://docs.openzeppelin.com/contracts/4.x/api/governance#TimelockController)
 - [Gnosis Safe](https://docs.safe.global/)
 - [Hardhat Upgrades](https://docs.openzeppelin.com/upgrades-plugins/1.x/)

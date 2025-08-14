@@ -256,23 +256,53 @@ const upgradeContractsWithMultisig = async function (): Promise<void> {
     console.log('3. Verify upgrades on blockchain');
     
     // Print execution commands for later use
-    console.log('\n=== Execution Commands (run after delay) ===');
+    console.log('\n=== SAFE TRANSACTION BUNDLES ===');
+    console.log('Copy these transactions to your Safe UI for manual execution:\n');
+    
+    // Print scheduling transactions (immediate execution)
+    console.log('=== IMMEDIATE: Schedule Upgrades ===');
     for (let i = 0; i < upgradeResults.length; i++) {
         const result = upgradeResults[i];
         const config = upgradeConfigs[i];
         if (config && result) {
-            console.log(`${config.contractName}:`);
-            console.log(`  Timelock: ${governanceConfig.timelockAddress}`);
-            console.log(`  Target: ${result.upgradeTx.target}`);
-            console.log(`  Calldata: ${result.upgradeTx.calldata}`);
+            console.log(`--- Schedule ${config.contractName} Upgrade ---`);
+            console.log(`Description: Schedule ${config.contractName} upgrade through timelock`);
+            console.log(`Contract Address: ${governanceConfig.timelockAddress}`);
+            console.log(`Method: schedule(address,uint256,bytes,bytes32,bytes32,uint256)`);
+            console.log(`Target: ${result.upgradeTx.target}`);
+            console.log(`Value: ${result.upgradeTx.value}`);
+            console.log(`Calldata: ${result.upgradeTx.calldata}`);
+            console.log(`Predecessor: 0x0000000000000000000000000000000000000000000000000000000000000000`);
+            console.log(`Salt: 0x0000000000000000000000000000000000000000000000000000000000000000`);
+            console.log(`Delay: 86400 (24 hours)`);
+            console.log('');
+        }
+    }
+    
+    // Print execution transactions (after 24-hour delay)
+    console.log('=== AFTER 24 HOURS: Execute Upgrades ===');
+    for (let i = 0; i < upgradeResults.length; i++) {
+        const result = upgradeResults[i];
+        const config = upgradeResults[i];
+        if (config && result) {
+            console.log(`--- Execute ${config.contractName} Upgrade ---`);
+            console.log(`Description: Execute ${config.contractName} upgrade after delay period`);
+            console.log(`Contract Address: ${governanceConfig.timelockAddress}`);
+            console.log(`Method: execute(address,uint256,bytes,bytes32,bytes32)`);
+            console.log(`Target: ${result.upgradeTx.target}`);
+            console.log(`Value: ${result.upgradeTx.value}`);
+            console.log(`Calldata: ${result.upgradeTx.calldata}`);
+            console.log(`Predecessor: 0x0000000000000000000000000000000000000000000000000000000000000000`);
+            console.log(`Salt: 0x0000000000000000000000000000000000000000000000000000000000000000`);
+            console.log('');
         }
     }
     
     // Print cancellation commands
-    console.log('\n=== Cancellation Commands (if needed) ===');
+    console.log("=== EXECUTION COMMANDS (After 24-hour delay) ===")
     for (let i = 0; i < upgradeResults.length; i++) {
         const result = upgradeResults[i];
-        const config = upgradeConfigs[i];
+        const config = upgradeResults[i];
         if (config && result) {
             generateExecutionCommands(config.contractName, governanceConfig.timelockAddress, result.upgradeTx);
         }

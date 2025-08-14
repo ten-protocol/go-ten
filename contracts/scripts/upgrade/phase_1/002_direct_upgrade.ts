@@ -197,39 +197,46 @@ async function main() {
             }
         ];
         
-        // Perform batch upgrade
-        const results = await batchDirectUpgrade(upgradeConfigs);
+        console.log('\n=== Deploying New Implementations ===');
+        const implementations: { [key: string]: string } = {};
         
-        // Summary
-        console.log('\n=== Upgrade Summary ===');
-        const successful = results.filter(r => r.success).length;
-        const failed = results.filter(r => !r.success).length;
-        
-        console.log(`Total contracts: ${results.length}`);
-        console.log(`Successful upgrades: ${successful}`);
-        console.log(`Failed upgrades: ${failed}`);
-        
-        if (successful > 0) {
-            console.log('\nSuccessful upgrades:');
-            results.filter(r => r.success).forEach(r => {
-                console.log(`  - ${r.contractName}: ${r.oldImplementation} → ${r.newImplementation}`);
-                console.log(`    TX: ${r.upgradeTx.hash}`);
-            });
+        // Deploy all implementations first
+        for (const config of upgradeConfigs) {
+            console.log(`\n--- Deploying ${config.contractName} Implementation ---`);
+            const newImplementation = await deployNewImplementation(config.contractName);
+            implementations[config.contractName] = newImplementation;
         }
         
-        if (failed > 0) {
-            console.log('\nFailed upgrades:');
-            results.filter(r => !r.success).forEach(r => {
-                console.log(`  - ${r.contractName}`);
-            });
+        console.log('\n=== SAFE TRANSACTION BUNDLE ===');
+        console.log('Copy these transactions to your Safe UI for manual execution:\n');
+        
+        // Generate Safe transaction bundle
+        for (const config of upgradeConfigs) {
+            const newImplementation = implementations[config.contractName];
+            
+            console.log(`--- ${config.contractName} Upgrade Transaction ---`);
+            console.log(`Description: ${config.description}`);
+            console.log(`Contract Address: ${config.proxyAddress}`);
+            console.log(`Method: upgradeTo(address)`);
+            console.log(`Implementation Address: ${newImplementation}`);
+            console.log(`Value: 0 ETH`);
+            console.log('');
+            
+            // Generate calldata for verification
+            const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
+            const proxy = TransparentUpgradeableProxy.attach(config.proxyAddress);
+            const calldata = proxy.interface.encodeFunctionData("upgradeTo", [newImplementation]);
+            console.log(`Calldata: ${calldata}`);
+            console.log('---\n');
         }
         
-        if (failed === 0) {
-            console.log('\nAll upgrades completed successfully!');
-            console.log('Your protocol is now running the latest implementations');
-        } else {
-            console.log('\nSome upgrades failed. Please investigate and retry.');
+        
+        console.log('=== IMPLEMENTATION ADDRESSES ===');
+        console.log('Save these for verification:');
+        for (const [contractName, address] of Object.entries(implementations)) {
+            console.log(`${contractName}: ${address}`);
         }
+        console.log('===============================\n');
         
     } catch (error) {
         console.error("Failed to perform direct upgrades:", error);
