@@ -186,14 +186,18 @@ export default function useConnectToTenChain() {
         }
 
         if (!isAuthenticated && !isAuthenticatedLoading && !authenticationError) {
-            console.log('[useConnectToTenChain] Starting authentication for address:', address);
+            console.log('[useConnectToTenChain] Starting authentication for address:', address, 'with tenToken:', tenToken);
+            if (!tenToken) {
+                console.log('[useConnectToTenChain] ERROR: Attempting to authenticate but no tenToken available!');
+                return;
+            }
             authenticateAccount(address);
         } else if (isAuthenticated && !isAuthenticatedLoading) {
             console.log('[useConnectToTenChain] Authentication successful, moving to step 4');
             setStep(4);
             incrementAuthEvents();
         }
-    }, [isAuthenticated, isAuthenticatedLoading, authenticationError, step, address, authenticateAccount, incrementAuthEvents]);
+    }, [isAuthenticated, isAuthenticatedLoading, authenticationError, step, address, authenticateAccount, incrementAuthEvents, tenToken]);
 
     const reset = () => {
         setStep(0);

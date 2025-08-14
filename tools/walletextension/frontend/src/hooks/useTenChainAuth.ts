@@ -24,8 +24,11 @@ export function useTenChainAuth(walletAddress?: Address) {
         error: beAuthCheckError,
         refetch: beAuthCheckRefetch,
     } = useQuery({
-        queryKey: [`beAuthCheck`, address, signature, authEvents],
-        queryFn: () => accountIsAuthenticated(tenToken || '', address ?? ''),
+        queryKey: [`beAuthCheck`, address, signature, authEvents, tenToken],
+        queryFn: () => {
+            console.log('[useTenChainAuth] beAuthCheck queryFn - tenToken:', tenToken, 'address:', address);
+            return accountIsAuthenticated(tenToken || '', address ?? '');
+        },
         enabled: !!address && !!tenToken && !tenTokenLoading,
     });
 
@@ -36,8 +39,10 @@ export function useTenChainAuth(walletAddress?: Address) {
     });
 
     const getSignature = async () => {
+        console.log('[useTenChainAuth] getSignature called - tenToken value:', tenToken, 'tenTokenLoading:', tenTokenLoading, 'type:', typeof tenToken);
+        
         if (!tenToken) {
-            console.log('[useTenChainAuth] No tenToken available for signing');
+            console.log('[useTenChainAuth] No tenToken available for signing - tenToken is:', tenToken);
             return null;
         }
 
