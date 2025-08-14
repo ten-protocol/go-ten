@@ -4,10 +4,11 @@ import (
 	"database/sql"
 	"embed"
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	"github.com/ten-protocol/go-ten/go/common/storage/migration"
 	"strings"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/ten-protocol/go-ten/go/common/storage/migration"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/lib/pq"
