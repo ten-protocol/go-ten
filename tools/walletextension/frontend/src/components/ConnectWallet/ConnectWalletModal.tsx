@@ -33,7 +33,10 @@ export default function ConnectWalletModal({ isOpen, onOpenChange }: Props) {
     const { connectors, connectToTen, step, reset, error } = useConnectToTenChain();
     const { token: tenToken, loading: tokenLoading } = useTenToken();
     const [isCopied, setIsCopied] = useState(false);
-    const rpcUrl = `${process.env.NEXT_PUBLIC_GATEWAY_URL}/v1/?token=${tenToken}`;
+    
+    // Remove 0x prefix from token for RPC URL
+    const cleanToken = tenToken.startsWith('0x') ? tenToken.slice(2) : tenToken;
+    const rpcUrl = `${process.env.NEXT_PUBLIC_GATEWAY_URL}/v1/?token=${cleanToken}`;
 
     const handleChange = () => {
         reset();

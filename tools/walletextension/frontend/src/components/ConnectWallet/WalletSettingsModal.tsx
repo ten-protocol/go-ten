@@ -60,10 +60,14 @@ export default function WalletSettingsModal({ isOpen, onOpenChange }: Props) {
             if (tenToken === '') {
                 setMissingKeyError(true);
             } else {
+                // Remove 0x prefix from token for RPC URL
+                const cleanToken = tenToken.startsWith('0x') ? tenToken.slice(2) : tenToken;
+                console.log('[WalletSettingsModal] Using clean token for RPC URL:', cleanToken);
+                
                 switchChain({
                     chainId: tenChainIDDecimal,
                     addEthereumChainParameter: {
-                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${tenToken}`],
+                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${cleanToken}`],
                         chainName: tenNetworkName,
                         nativeCurrency: nativeCurrency,
                     },

@@ -30,11 +30,14 @@ export default function useConnectToTenChain() {
     const uniqueConnectors = connectors;
 
     const connectToTen = async (connector: Connector) => {
+        console.log('[useConnectToTenChain] Starting connectToTen with connector:', connector.name);
         setStep(1);
         setLoading(true);
         setError(null);
         setSelectedConnector(connector);
+        console.log('[useConnectToTenChain] Attempting to connect to wallet...');
         await connector.connect().catch((error) => {
+            console.log('[useConnectToTenChain] Wallet connection failed:', error);
             setError({
                 name: 'Unable to connect to wallet.',
                 message: error.message,
@@ -43,16 +46,26 @@ export default function useConnectToTenChain() {
             setLoading(false);
             throw Error(error);
         });
+        console.log('[useConnectToTenChain] Wallet connection initiated successfully');
     };
 
     useEffect(() => {
+        console.log('[useConnectToTenChain] useEffect triggered - step:', step, 'tokenLoading:', tokenLoading);
         if (step !== 1) return;
+        if (tokenLoading) {
+            console.log('[useConnectToTenChain] Token still loading, deferring switchToTen');
+            return;
+        }
 
         async function switchToTen() {
+            console.log('[useConnectToTenChain] Starting switchToTen, tenToken:', tenToken ? 'present' : 'empty', 'connector:', connector?.name);
+            
             if (!tenToken && connector) {
+                console.log('[useConnectToTenChain] No token found, checking if chain exists');
                 const chainExists = await chainExistsCheck(connector);
 
                 if (chainExists) {
+                    console.log('[useConnectToTenChain] Existing chain found, showing error');
                     setError({
                         name: 'Existing chain found',
                         message:
@@ -63,9 +76,11 @@ export default function useConnectToTenChain() {
                 }
             }
 
+            console.log('[useConnectToTenChain] Getting token - current tenToken:', tenToken);
             let newTenToken =
                 tenToken === ''
                     ? await joinTestnet().catch((error) => {
+                          console.log('[useConnectToTenChain] Error joining testnet:', error);
                           setError({
                               name: 'Unable to retrieve TEN token',
                               message: error.message,
@@ -75,10 +90,12 @@ export default function useConnectToTenChain() {
                       })
                     : tenToken;
 
+            console.log('[useConnectToTenChain] New token obtained:', newTenToken ? 'success' : 'failed');
             if (!newTenToken) {
                 throw Error('No tenToken found');
             }
 
+            console.log('[useConnectToTenChain] Moving to step 2');
             setStep(2);
 
             if (tenToken === '') {
@@ -89,31 +106,41 @@ export default function useConnectToTenChain() {
             }
 
             if (chainId === tenChainIDDecimal) {
+                console.log('[useConnectToTenChain] Already on correct chain, moving to step 3');
                 setStep(3);
                 return;
             }
+            
+            console.log('[useConnectToTenChain] Wrong chain detected, current chainId:', chainId, 'expected:', tenChainIDDecimal);
             let switchSuccess = true;
 
             if (!connector) {
+                console.log('[useConnectToTenChain] ERROR: Connector is undefined!');
                 throw 'Connector is undefined!';
                 return;
             }
 
+            // Remove 0x prefix from token for RPC URL
+            const cleanTokenForRpc = newTenToken.startsWith('0x') ? newTenToken.slice(2) : newTenToken;
+            const rpcUrl = `${tenGatewayAddress}/v1/?token=${cleanTokenForRpc}`;
+            console.log('[useConnectToTenChain] Attempting to switch chain with RPC URL:', rpcUrl);
+            
             //@ts-expect-error Revisit later
             await connector
                 .switchChain({
                     chainId: tenChainIDDecimal,
                     addEthereumChainParameter: {
-                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${newTenToken}`],
+                        rpcUrls: [rpcUrl],
                         chainName: tenNetworkName,
                         nativeCurrency: nativeCurrency,
                     },
                 })
                 .catch((error: Error) => {
-                    console.log(error);
+                    console.log('[useConnectToTenChain] Chain switch error:', error);
                     if (error?.message.includes('is not a function')) {
-                        console.log('IGNORE THIS ERROR');
+                        console.log('[useConnectToTenChain] Ignoring "is not a function" error');
                     } else {
+                        console.log('[useConnectToTenChain] Setting switchSuccess to false due to error');
                         switchSuccess = false;
                         setError({
                             name: 'Error switching chains',
@@ -124,22 +151,33 @@ export default function useConnectToTenChain() {
                 });
 
             if (switchSuccess) {
+                console.log('[useConnectToTenChain] Chain switch successful, waiting 500ms then moving to step 3');
                 await sleep(500);
                 setStep(3);
+            } else {
+                console.log('[useConnectToTenChain] Chain switch failed, staying in current step');
             }
         }
 
         if (isConnected && selectedConnector?.uid === connector?.uid) {
-            switchToTen();
+            console.log('[useConnectToTenChain] Conditions met for switchToTen - isConnected:', isConnected, 'selectedConnector.uid:', selectedConnector?.uid, 'connector.uid:', connector?.uid, 'tokenLoading:', tokenLoading);
+            if (!tokenLoading) {
+                switchToTen();
+            } else {
+                console.log('[useConnectToTenChain] Token still loading, waiting...');
+            }
         }
-    }, [connector, isConnected, selectedConnector, step]);
+    }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, setTenToken, setStoreTenToken, chainId]);
 
     useEffect(() => {
         if (step !== 3) {
             return;
         }
 
+        console.log('[useConnectToTenChain] Step 3 - Authentication phase. isAuthenticated:', isAuthenticated, 'isAuthenticatedLoading:', isAuthenticatedLoading, 'authenticationError:', authenticationError, 'address:', address);
+
         if (authenticationError) {
+            console.log('[useConnectToTenChain] Authentication error detected:', authenticationError);
             setError({
                 name: 'Error authenticating token',
                 message: authenticationError.message,
@@ -148,12 +186,14 @@ export default function useConnectToTenChain() {
         }
 
         if (!isAuthenticated && !isAuthenticatedLoading && !authenticationError) {
+            console.log('[useConnectToTenChain] Starting authentication for address:', address);
             authenticateAccount(address);
         } else if (isAuthenticated && !isAuthenticatedLoading) {
+            console.log('[useConnectToTenChain] Authentication successful, moving to step 4');
             setStep(4);
             incrementAuthEvents();
         }
-    }, [isAuthenticated, isAuthenticatedLoading, authenticationError, step]);
+    }, [isAuthenticated, isAuthenticatedLoading, authenticationError, step, address, authenticateAccount, incrementAuthEvents]);
 
     const reset = () => {
         setStep(0);

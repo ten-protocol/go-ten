@@ -18,7 +18,10 @@ type Props = {
 export default function ViewTenToken({ isOpen, onChange }: Props) {
     const { token: tenToken, loading } = useTenToken();
     const [isCopied, setIsCopied] = useState(false);
-    const rpcUrl = `${process.env.NEXT_PUBLIC_GATEWAY_URL}/v1/?token=${tenToken}`;
+    
+    // Remove 0x prefix from token for RPC URL
+    const cleanToken = tenToken.startsWith('0x') ? tenToken.slice(2) : tenToken;
+    const rpcUrl = `${process.env.NEXT_PUBLIC_GATEWAY_URL}/v1/?token=${cleanToken}`;
 
     const copyAddressToClipboard = async () => {
         if (tenToken) {
