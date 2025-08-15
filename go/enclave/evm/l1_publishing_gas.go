@@ -10,11 +10,14 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
 var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
+
+var FIXED_L2_GAS_COST_FOR_L1_PUBLISHING = big.NewInt(params.InitialBaseFee / 100000)
 
 const (
 	BalanceDecreaseL1Payment       tracing.BalanceChangeReason = 100
@@ -23,14 +26,20 @@ const (
 	BalanceRevertIncreaseL1Payment tracing.BalanceChangeReason = 103
 )
 
-func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Message, s *state.StateDB, header *types.Header, noBaseFee bool, execute func() (receipt *types.Receipt, err error)) (*types.Receipt, error) {
+// GasPricer interface for getting L1 publishing gas price
+type GasPricer interface {
+	GetL1PublishingGasPrice(header *types.Header) *big.Int
+}
+
+func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Message, s *state.StateDB, header *types.Header, noBaseFee bool, gasPricer GasPricer, execute func() (receipt *types.Receipt, err error)) (*types.Receipt, error) {
 	l1cost := tx.PublishingCost
 	l1Gas := big.NewInt(0)
 	hasL1Cost := l1cost.Cmp(big.NewInt(0)) != 0
 
 	// If a transaction has to be published on the l1, it will have an l1 cost
 	if hasL1Cost {
-		l1Gas.Div(l1cost, header.BaseFee) // TotalCost/CostPerGas = Gas
+		divisor := gasPricer.GetL1PublishingGasPrice(header)
+		l1Gas.Div(l1cost, divisor) // TotalCost/CostPerGas = Gas
 
 		// The gas limit of the transaction (evm message) should always be higher than the gas overhead
 		// used to cover the l1 cost

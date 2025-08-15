@@ -46,10 +46,10 @@ type enclaveRPCService struct {
 	logger               gethlog.Logger
 }
 
-func NewEnclaveRPCAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, chain components.TENChain, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, batchRegistry components.BatchRegistry, gethEncodingService gethencoding.EncodingService, cachingService *storage.CacheService, mempool *components.TxPool, chainConfig *params.ChainConfig, crossChainProcessors *crosschain.Processors, scb system.SystemContractCallbacks, subscriptionManager *events.SubscriptionManager, genesis *genesis.Genesis, gasOracle gas.Oracle, rpcKeyService *crypto.RPCKeyService, evmFacade evm.EVMFacade) common.EnclaveClientRPC {
+func NewEnclaveRPCAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, chain components.TENChain, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, batchRegistry components.BatchRegistry, gethEncodingService gethencoding.EncodingService, cachingService *storage.CacheService, mempool *components.TxPool, chainConfig *params.ChainConfig, crossChainProcessors *crosschain.Processors, scb system.SystemContractCallbacks, subscriptionManager *events.SubscriptionManager, genesis *genesis.Genesis, gasOracle gas.Oracle, gasPricer *components.GasPricer, rpcKeyService *crypto.RPCKeyService, evmFacade evm.EVMFacade) common.EnclaveClientRPC {
 	debug := debugger.New(chain, storage, chainConfig)
 
-	rpcEncryptionManager := rpc.NewEncryptionManager(storage, cachingService, batchRegistry, mempool, crossChainProcessors, config, gasOracle, storage, blockProcessor, chain, rpcKeyService, logger)
+	rpcEncryptionManager := rpc.NewEncryptionManager(storage, cachingService, batchRegistry, mempool, crossChainProcessors, config, gasOracle, gasPricer, storage, blockProcessor, chain, rpcKeyService, logger)
 
 	return &enclaveRPCService{
 		rpcEncryptionManager: rpcEncryptionManager,
