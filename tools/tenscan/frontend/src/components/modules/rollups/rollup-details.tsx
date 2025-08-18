@@ -29,24 +29,12 @@ export function RollupDetailsComponent({
           }
         />
         <KeyValueItem
-          label="Full Hash"
+          label="Hash"
           value={
             <TruncatedAddress
               address={rollupDetails?.Hash}
               link={pathToUrl(pageLinks.rollupByHash, {
                 hash: rollupDetails?.Hash,
-              })}
-              showFullLength
-            />
-          }
-        />
-        <KeyValueItem
-          label="Rollup Header Hash"
-          value={
-            <TruncatedAddress
-              address={rollupDetails?.Header?.hash}
-              link={pathToUrl(pageLinks.rollupByHash, {
-                hash: rollupDetails?.Header?.hash,
               })}
               showFullLength
             />
@@ -59,10 +47,10 @@ export function RollupDetailsComponent({
           }
         />
         <KeyValueItem
-          label="First Batch Seq No."
+          label="First Batch Sequence Number"
           value={
             <Link
-              href={pathToUrl(pageLinks.rollupByBatchSequence, {
+              href={pathToUrl(pageLinks.batchBySequence, {
                 sequence: rollupDetails?.FirstSeq,
               })}
               className="text-primary"
@@ -72,10 +60,10 @@ export function RollupDetailsComponent({
           }
         />
         <KeyValueItem
-          label="Last Batch Seq No."
+          label="Last Batch Sequence Number"
           value={
             <Link
-              href={pathToUrl(pageLinks.rollupByBatchSequence, {
+              href={pathToUrl(pageLinks.batchBySequence, {
                 sequence: rollupDetails?.LastSeq,
               })}
               className="text-primary"
@@ -150,5 +138,5 @@ export function RollupDetailsComponent({
         />
       </KeyValueList>
     </div>
-  );
+  )
 }
