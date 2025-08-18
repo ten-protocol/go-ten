@@ -44,6 +44,7 @@ func (n *ContractDeployer) Start() error {
 
 	envs := map[string]string{
 		"SEQUENCER_HOST_ADDRESS": n.cfg.SequencerHostAddress,
+		"ETHERSCAN_API_KEY":      n.cfg.EtherscanAPIKey,
 		"NETWORK_JSON": fmt.Sprintf(`
 { 
         "layer1" : {
