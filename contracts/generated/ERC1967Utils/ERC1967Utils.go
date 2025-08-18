@@ -32,7 +32,7 @@ var (
 // ERC1967UtilsMetaData contains all meta data concerning the ERC1967Utils contract.
 var ERC1967UtilsMetaData = &bind.MetaData{
 	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"admin\",\"type\":\"address\"}],\"name\":\"ERC1967InvalidAdmin\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"beacon\",\"type\":\"address\"}],\"name\":\"ERC1967InvalidBeacon\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"implementation\",\"type\":\"address\"}],\"name\":\"ERC1967InvalidImplementation\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"ERC1967NonPayable\",\"type\":\"error\"}]",
-	Bin: "0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea26469706673582212201b579149f7bd58b2e5b2a061f0c29bfb0708b55d95ab7cf2bebd4741fd38627664736f6c634300081c0033",
+	Bin: "0x608060405234601a57604051603e601f823930815050603e90f35b5f80fdfe60806040525f80fdfea26469706673582212207aefd542499c8f37cfa6e06f0fd81e3b585e7eacda49e2b04b40ed0e2ec6711564736f6c634300081c0033",
 }
 
 // ERC1967UtilsABI is the input ABI used to generate the binding from.

@@ -32,7 +32,7 @@ var (
 // AddressMetaData contains all meta data concerning the Address contract.
 var AddressMetaData = &bind.MetaData{
 	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"}],\"name\":\"AddressEmptyCode\",\"type\":\"error\"}]",
-	Bin: "0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea2646970667358221220932d9db8f29400142a62b8523a3020d0fec9e2ae50258f41e97a0130fed3e4b364736f6c634300081c0033",
+	Bin: "0x608060405234601a57604051603e601f823930815050603e90f35b5f80fdfe60806040525f80fdfea2646970667358221220427a0615db17dd2b54c0d3a763ce464f815334b89a54cc82d8cd542f920b61cd64736f6c634300081c0033",
 }
 
 // AddressABI is the input ABI used to generate the binding from.

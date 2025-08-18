@@ -32,7 +32,7 @@ var (
 // StringsMetaData contains all meta data concerning the Strings contract.
 var StringsMetaData = &bind.MetaData{
 	ABI: "[{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"length\",\"type\":\"uint256\"}],\"name\":\"StringsInsufficientHexLength\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"StringsInvalidAddressFormat\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"StringsInvalidChar\",\"type\":\"error\"}]",
-	Bin: "0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea2646970667358221220b1e40f858840c1aa36305acd4ff118e1c950bc59695124e649be7b8237660c8d64736f6c634300081c0033",
+	Bin: "0x608060405234601a57604051603e601f823930815050603e90f35b5f80fdfe60806040525f80fdfea26469706673582212205e6407a62523e1da8622c0804c2551bdbc35bfbdde59787413ac820e5199c61364736f6c634300081c0033",
 }
 
 // StringsABI is the input ABI used to generate the binding from.

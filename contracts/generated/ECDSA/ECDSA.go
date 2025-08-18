@@ -32,7 +32,7 @@ var (
 // ECDSAMetaData contains all meta data concerning the ECDSA contract.
 var ECDSAMetaData = &bind.MetaData{
 	ABI: "[{\"inputs\":[],\"name\":\"ECDSAInvalidSignature\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"length\",\"type\":\"uint256\"}],\"name\":\"ECDSAInvalidSignatureLength\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"s\",\"type\":\"bytes32\"}],\"name\":\"ECDSAInvalidSignatureS\",\"type\":\"error\"}]",
-	Bin: "0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea2646970667358221220a4442455b1f5e30d34711eaf36284b7fd1253dacd12324570a639f77bb4d3d6664736f6c634300081c0033",
+	Bin: "0x608060405234601a57604051603e601f823930815050603e90f35b5f80fdfe60806040525f80fdfea2646970667358221220f5f2ae87dc69cc3727033fad09a2064dd49971eff7fdf7a5b28ad2148a5e834064736f6c634300081c0033",
 }
 
 // ECDSAABI is the input ABI used to generate the binding from.
