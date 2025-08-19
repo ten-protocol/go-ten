@@ -23,7 +23,8 @@ export async function upgradeContract(
     console.log('Importing existing proxy (as TenBridge) into OpenZeppelin tracking system...');
     const currentFactory = await ethers.getContractFactory('TenBridge');
     await upgrades.forceImport(proxyAddress, currentFactory, {
-        kind: 'transparent'
+        kind: 'transparent',
+        implementation: currentImpl
     } as UpgradeOptions);
 
     console.log(`Performing upgrade from TenBridge to ${newContractName}...`);
