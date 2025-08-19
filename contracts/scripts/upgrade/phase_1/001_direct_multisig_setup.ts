@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 /**
  * Direct Multisig Setup for Initial Mainnet Phase
  * 
- * This script transfers proxy admin ownership directly to a Gnosis Safe multisig
+ * This script transfers contract ownership directly to a Gnosis Safe multisig
  * for immediate upgrade control during the initial mainnet release phase.
  * 
  * WARNING: This removes all delay protection. Only use during initial mainnet
@@ -44,7 +44,7 @@ async function setupDirectMultisig() {
         const networkConfig = await ethers.getContractAt('NetworkConfig', networkConfigAddr);
         const addresses = await networkConfig.addresses();
         
-        console.log("\nCurrent proxy addresses:");
+        console.log("\nCurrent contract addresses:");
         console.table({
             NetworkConfig: networkConfigAddr,
             CrossChain: addresses.crossChain,
@@ -52,58 +52,88 @@ async function setupDirectMultisig() {
             DataAvailabilityRegistry: addresses.dataAvailabilityRegistry
         });
         
-        // Get the TransparentUpgradeableProxy contract factory
-        const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
-        
-        // List of proxies to transfer admin ownership
-        const proxies = [
+        // List of contracts to transfer ownership
+        const contracts = [
             { name: "CrossChain", address: addresses.crossChain },
             { name: "NetworkEnclaveRegistry", address: addresses.networkEnclaveRegistry },
             { name: "DataAvailabilityRegistry", address: addresses.dataAvailabilityRegistry }
         ];
         
-        console.log("\n=== Transferring Proxy Admin Ownership to Multisig ===");
-        console.log("This will enable immediate upgrades by the multisig (no delays)");
+        console.log("\n=== Transferring and Accepting Contract Ownership ===");
+        console.log("This will complete the 2-step ownership transfer process");
         
-        for (const proxy of proxies) {
-            console.log(`\n--- Processing ${proxy.name} Proxy ---`);
+        for (const contract of contracts) {
+            console.log(`\n--- Processing ${contract.name} Contract ---`);
             
-            // Get the proxy contract
-            const proxyContract = TransparentUpgradeableProxy.attach(proxy.address);
-            
-            // Get current admin
-            const currentAdmin = await (proxyContract as any).admin();
-            console.log(`Current admin: ${currentAdmin}`);
-            
-            if (currentAdmin.toLowerCase() === multisigAddress.toLowerCase()) {
-                console.log(`${proxy.name} proxy admin already transferred to Multisig`);
-                continue;
+            try {
+                // Get the contract instance
+                const contractInstance = await ethers.getContractAt(contract.name, contract.address);
+                
+                // Get current owner
+                const currentOwner = await (contractInstance as any).owner();
+                console.log(`Current owner: ${currentOwner}`);
+                
+                if (currentOwner.toLowerCase() === multisigAddress.toLowerCase()) {
+                    console.log(`${contract.name} ownership already transferred to Multisig`);
+                    continue;
+                }
+                
+                if (currentOwner.toLowerCase() !== deployer.address.toLowerCase()) {
+                    console.log(`Warning: ${contract.name} owner is not the deployer (${currentOwner})`);
+                    console.log("Skipping this contract - manual intervention required");
+                    continue;
+                }
+                
+                        // Transfer ownership to multisig
+        console.log(`Transferring ownership from ${deployer.address} to ${multisigAddress}...`);
+        
+        const transferTx = await (contractInstance as any).transferOwnership(multisigAddress);
+        await transferTx.wait();
+        
+        console.log(`${contract.name} ownership transfer initiated successfully!`);
+        console.log(`Transaction hash: ${transferTx.hash}`);
+        
+        // Now accept the ownership transfer as the multisig
+        console.log(`Accepting ownership transfer for ${contract.name}...`);
+        
+        // Switch to multisig signer for accepting ownership
+        const multisigSigner = await ethers.getSigner(multisigAddress);
+        if (!multisigSigner) {
+            console.log(`Warning: Could not get multisig signer for ${contract.name}`);
+            continue;
+        }
+        
+        const contractWithMultisig = contractInstance.connect(multisigSigner);
+        const acceptTx = await (contractWithMultisig as any).acceptOwnership();
+        await acceptTx.wait();
+        
+        console.log(`${contract.name} ownership accepted successfully!`);
+        console.log(`Accept transaction hash: ${acceptTx.hash}`);
+        
+        // Verify the transfer
+        const newOwner = await (contractInstance as any).owner();
+        console.log(`New owner: ${newOwner}`);
+        
+        if (newOwner.toLowerCase() === multisigAddress.toLowerCase()) {
+            console.log(`${contract.name} ownership transfer completed successfully!`);
+        } else {
+            console.log(`Warning: ${contract.name} ownership transfer may have failed`);
+        }
+                
+            } catch (error) {
+                console.log(`Error processing ${contract.name}:`, error);
+                console.log("Skipping this contract");
             }
-            
-            if (currentAdmin.toLowerCase() !== deployer.address.toLowerCase()) {
-                console.log(`Warning: ${proxy.name} proxy admin is not the deployer (${currentAdmin})`);
-                console.log("Skipping this proxy - manual intervention required");
-                continue;
-            }
-            
-            // Transfer admin ownership to multisig
-            console.log(`Transferring admin ownership from ${deployer.address} to ${multisigAddress}...`);
-            
-            const transferTx = await (proxyContract as any).changeAdmin(multisigAddress);
-            await transferTx.wait();
-            
-            console.log(`${proxy.name} proxy admin ownership transferred successfully!`);
-            console.log(`Transaction hash: ${transferTx.hash}`);
         }
         
         console.log("\n=== Direct Multisig Setup Complete ===");
-        console.log("All proxy admin ownership transferred to Multisig");
+        console.log("All contract ownership transfers completed (2-step process)");
         
         
         return {
             multisigAddress,
             networkConfigAddr,
-            proxies: proxies.map(p => ({ name: p.name, address: p.address }))
+            contracts: contracts.map(c => ({ name: c.name, address: c.address }))
         };
         
     } catch (error) {
@@ -129,9 +159,7 @@ async function verifyMultisigControl() {
         const networkConfig = await ethers.getContractAt('NetworkConfig', networkConfigAddr);
         const addresses = await networkConfig.addresses();
         
-        const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
-        
-        const proxies = [
+        const contracts = [
             { name: "CrossChain", address: addresses.crossChain },
             { name: "NetworkEnclaveRegistry", address: addresses.networkEnclaveRegistry },
             { name: "DataAvailabilityRegistry", address: addresses.dataAvailabilityRegistry }
@@ -139,24 +167,29 @@ async function verifyMultisigControl() {
         
         let allControlled = true;
         
-        for (const proxy of proxies) {
-            const proxyContract = TransparentUpgradeableProxy.attach(proxy.address);
-            const currentAdmin = await (proxyContract as any).admin();
-            
-            if (currentAdmin.toLowerCase() === multisigAddress.toLowerCase()) {
-                console.log(`${proxy.name}: Controlled by Multisig`);
-            } else {
-                console.log(`${proxy.name}: NOT controlled by Multisig (${currentAdmin})`);
+        for (const contract of contracts) {
+            try {
+                const contractInstance = await ethers.getContractAt(contract.name, contract.address);
+                const currentOwner = await (contractInstance as any).owner();
+                
+                if (currentOwner.toLowerCase() === multisigAddress.toLowerCase()) {
+                    console.log(`${contract.name}: Controlled by Multisig`);
+                } else {
+                    console.log(`${contract.name}: NOT controlled by Multisig (${currentOwner})`);
+                    allControlled = false;
+                }
+            } catch (error) {
+                console.log(`Error checking ${contract.name}:`, error);
                 allControlled = false;
             }
         }
         
         if (allControlled) {
-            console.log("\nAll proxies are under Multisig control!");
+            console.log("\nAll contracts are under Multisig control!");
             console.log("Direct upgrades are now possible (no delays)");
         } else {
-            console.log("\nSome proxies are not under Multisig control");
-            console.log("Please complete the transfer process");
+            console.log("\nSome contracts are not under Multisig control");
+            console.log("Please check the ownership transfer process");
         }
         
         return allControlled;

@@ -35,7 +35,7 @@ go run ./testnet/launcher/multisigsetup/cmd \
 ## What it does
 
 1. Runs the `001_direct_multisig_setup.ts` script in a Docker container
-2. Transfers proxy admin ownership for all contracts to the specified multisig address
+2. Transfers contract ownership for all contracts to the specified multisig address
 3. Verifies that the transfer was successful
 4. Provides detailed logging of the process
 
