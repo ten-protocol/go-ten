@@ -20,20 +20,28 @@ export async function upgradeContract(
     const currentImpl = await upgrades.erc1967.getImplementationAddress(proxyAddress);
     console.log(`Current implementation address: ${currentImpl}`);
 
-    // Force import the existing proxy with its current implementation
+    // Force import the existing proxy (let OpenZeppelin detect current implementation)
     await upgrades.forceImport(proxyAddress, factory, {
         kind: 'transparent',
-        unsafeAllow: ['constructor'],
-        implementation: currentImpl
+        unsafeAllow: ['constructor']
     } as UpgradeOptions);
 
     const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, { 
         kind: 'transparent',
-        unsafeAllow: ['constructor']
+        unsafeAllow: ['constructor']    
     });
 
     const address = await upgraded.getAddress();
-    console.log(`${contractName} upgraded — new implementation at ${address}`);
+    const newImpl = await upgrades.erc1967.getImplementationAddress(proxyAddress);
+    
+    if (newImpl === currentImpl) {
+        throw new Error(`Upgrade failed: implementation address unchanged (${currentImpl})`);
+    }
+    
+    console.log(`${contractName} upgraded successfully:`);
+    console.log(`  Old implementation: ${currentImpl}`);
+    console.log(`  New implementation: ${newImpl}`);
+    console.log(`  Proxy address: ${address}`);
     return upgraded;
 }
 
