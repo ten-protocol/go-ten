@@ -57,7 +57,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
 	// the expected cost into l2 gas based on current pricing.
 	// todo @siliev - add overhead when the base fee becomes dynamic.
-	divisor := ge.gasPricer.GetL1PublishingGasPrice(common.ConvertBatchHeaderToHeader(batch))
+	divisor := ge.gasPricer.StaticL2BaseFee(common.ConvertBatchHeaderToHeader(batch))
 	publishingGas := big.NewInt(0).Div(l1Cost, divisor)
 
 	// Overestimate the publishing cost in case of spikes.

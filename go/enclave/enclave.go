@@ -98,7 +98,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
 	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
 	gasPricer := components.NewGasPricer(logger, config)
-	gasOracle := gas.NewGasOracle(l1ChainCfg, storage, gasPricer, logger)
+	gasOracle := gas.NewGasOracle(l1ChainCfg, storage, logger)
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 
 	// start the mempool in validate only. Based on the config, it might become sequencer
@@ -108,7 +108,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 
 	chainContext := evm.NewTenChainContext(storage, gethEncodingService, config, chainConfig, logger)
 	visibilityReader := evm.NewContractVisibilityReader(logger)
-	evmFacade := evm.NewEVMExecutor(chainContext, chainConfig, config, config.GasLocalExecutionCapFlag, storage, gethEncodingService, visibilityReader, gasPricer, logger)
+	evmFacade := evm.NewEVMExecutor(chainContext, chainConfig, config, config.GasLocalExecutionCapFlag, storage, gethEncodingService, visibilityReader, logger)
 
 	tenChain := components.NewChain(storage, config, evmFacade, gethEncodingService, chainConfig, genesis, logger, batchRegistry)
 

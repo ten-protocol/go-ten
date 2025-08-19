@@ -10,7 +10,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/enclave/config"
-	"github.com/ten-protocol/go-ten/go/enclave/evm"
 )
 
 const (
@@ -99,13 +98,13 @@ func (gp *GasPricer) CalculateBlockBaseFee(cfg *params.ChainConfig, parent *type
 	return calculatedBaseFee
 }
 
-func (gp *GasPricer) GetL1PublishingGasPrice(header *types.Header) *big.Int {
+func (gp *GasPricer) StaticL2BaseFee(header *types.Header) *big.Int {
 	if gp.dynamicPricingEnabled.Load() {
-		return evm.FIXED_L2_GAS_COST_FOR_L1_PUBLISHING
+		return gp.config.BaseFee
 	}
 	// Prior behavior: always use header.BaseFee, even if zero/nil
 	if header == nil || header.BaseFee == nil {
-		return big.NewInt(InitialBaseFee)
+		return gp.config.BaseFee
 	}
 	return header.BaseFee
 }
