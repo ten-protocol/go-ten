@@ -6,19 +6,28 @@ import { UpgradeOptions } from '@openzeppelin/hardhat-upgrades/dist/utils';
 console.log('=== Script started ===');
 
 export async function upgradeContract(
-    contractName: string,
+    newContractName: string,
     proxyAddress: string
 ): Promise<BaseContract> {
-    console.log(`Upgrading proxy ${proxyAddress} to new implementation of ${contractName}`);
+    console.log(`Upgrading proxy ${proxyAddress} to new implementation of ${newContractName}`);
     
     // Assumes the contract is already compiled, otherwise ensure `npx hardhat compile` is run first
-    const factory = await ethers.getContractFactory(contractName);
+    const newFactory = await ethers.getContractFactory(newContractName);
     
     // get the current implementation address
     const currentImpl = await upgrades.erc1967.getImplementationAddress(proxyAddress);
     console.log(`Current implementation address: ${currentImpl}`);
 
-    const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, { 
+    // Import the existing proxy using the CURRENT contract type
+    // The proxy was deployed as TenBridge, so we need to import it as TenBridge first
+    console.log('Importing existing proxy (as TenBridge) into OpenZeppelin tracking system...');
+    const currentFactory = await ethers.getContractFactory('TenBridge');
+    await upgrades.forceImport(proxyAddress, currentFactory, {
+        kind: 'transparent'
+    } as UpgradeOptions);
+
+    console.log(`Performing upgrade from TenBridge to ${newContractName}...`);
+    const upgraded = await upgrades.upgradeProxy(proxyAddress, newFactory, { 
         kind: 'transparent'
     });
 
@@ -29,7 +38,7 @@ export async function upgradeContract(
         throw new Error(`Upgrade failed: implementation address unchanged (${currentImpl})`);
     }
     
-    console.log(`${contractName} upgraded successfully:`);
+    console.log(`${newContractName} upgraded successfully:`);
     console.log(`  Old implementation: ${currentImpl}`);
     console.log(`  New implementation: ${newImpl}`);
     console.log(`  Proxy address: ${address}`);
