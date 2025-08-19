@@ -6,13 +6,11 @@ import { UpgradeOptions } from '@openzeppelin/hardhat-upgrades/dist/utils';
 console.log('=== Script started ===');
 
 export async function upgradeContract(
-    upgraderAddress: string,
     contractName: string,
     proxyAddress: string
 ): Promise<BaseContract> {
-    console.log(
-        `Upgrading proxy ${proxyAddress} to new implementation of ${contractName} (sent from ${upgraderAddress})`
-    );
+    console.log(`Upgrading proxy ${proxyAddress} to new implementation of ${contractName}`);
+    
     // Assumes the contract is already compiled, otherwise ensure `npx hardhat compile` is run first
     const factory = await ethers.getContractFactory(contractName);
     
@@ -20,15 +18,8 @@ export async function upgradeContract(
     const currentImpl = await upgrades.erc1967.getImplementationAddress(proxyAddress);
     console.log(`Current implementation address: ${currentImpl}`);
 
-    // Force import the existing proxy (let OpenZeppelin detect current implementation)
-    await upgrades.forceImport(proxyAddress, factory, {
-        kind: 'transparent',
-        unsafeAllow: ['constructor']
-    } as UpgradeOptions);
-
     const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, { 
-        kind: 'transparent',
-        unsafeAllow: ['constructor']    
+        kind: 'transparent'
     });
 
     const address = await upgraded.getAddress();
@@ -70,7 +61,7 @@ const upgradeContracts = async function (): Promise<void> {
     });
 
     // Perform upgrades
-    await upgradeContract(upgrader, 'TenBridgeTestnet', l1Bridge);
+    await upgradeContract('TenBridgeTestnet', l1Bridge);
 
     console.log('Upgrade completed successfully');
 }
