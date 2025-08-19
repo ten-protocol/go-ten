@@ -29,7 +29,8 @@ export async function upgradeContract(
 
     console.log(`Performing upgrade from TenBridge to ${newContractName}...`);
     const upgraded = await upgrades.upgradeProxy(proxyAddress, newFactory, { 
-        kind: 'transparent'
+        kind: 'transparent',
+        redeployImplementation: 'always'
     });
 
     const address = await upgraded.getAddress();
