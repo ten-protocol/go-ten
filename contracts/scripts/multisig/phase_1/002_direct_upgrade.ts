@@ -1,4 +1,6 @@
 import { ethers } from "hardhat";
+import { upgrades } from "hardhat";
+const hre = require("hardhat");
 
 /**
  * Direct Upgrade Script for Initial Mainnet Phase
@@ -220,61 +222,49 @@ async function printJsonToConsole(filename: string, data: any): Promise<void> {
 }
 
 /**
- * Perform direct upgrade (no timelock, immediate execution)
+ * Perform direct upgrade using Hardhat upgrades plugin
  */
 async function performDirectUpgrade(
     config: UpgradeConfig,
-    newImplementation: string
+    factory: any
 ): Promise<DirectUpgradeResult> {
     const { contractName, proxyAddress, description } = config;
-
+    
     console.log(`\n=== Direct Upgrade: ${contractName} ===`);
     console.log("Proxy address:", proxyAddress);
     console.log("New implementation:", newImplementation);
     console.log("Description:", description);
-
+    
     try {
-        // Get the TransparentUpgradeableProxy contract
-        const TransparentUpgradeableProxy = await ethers.getContractFactory("TransparentUpgradeableProxy");
-        const proxy = TransparentUpgradeableProxy.attach(proxyAddress);
-
-        // Get current implementation before upgrade
-        const oldImplementation = await (proxy as any).implementation();
-        console.log("Current implementation:", oldImplementation);
-
-        // Verify the multisig is the admin
-        const currentAdmin = await (proxy as any).admin();
-        const multisigAddress = process.env.MULTISIG_ADDRESS;
-
-        if (currentAdmin.toLowerCase() !== multisigAddress?.toLowerCase()) {
-            throw new Error(`Proxy admin is not the multisig. Current admin: ${currentAdmin}`);
-        }
-
-        console.log("Multisig control verified");
-
-        // Perform the upgrade immediately
-        console.log("Performing immediate upgrade...");
-        const upgradeTx = await (proxy as any).upgradeTo(newImplementation);
-        await upgradeTx.wait();
-
+        // Get the current implementation address using Hardhat upgrades
+        const currentImpl = await hre.upgrades.erc1967.getImplementationAddress(proxyAddress);
+        console.log("Current implementation address:", currentImpl);
+        
+        // Force import the existing proxy with its current implementation
+        await upgrades.forceImport(proxyAddress, factory, {
+            kind: 'transparent',
+            unsafeAllow: ['constructor'],
+            implementation: currentImpl
+        } as any);
+        
+        // Perform the upgrade using Hardhat upgrades
+        console.log("Performing upgrade using Hardhat upgrades plugin...");
+        const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, {
+            kind: 'transparent',
+            unsafeAllow: ['constructor']
+        } as any);
+        
+        const newImplAddress = await upgraded.getAddress();
         console.log("Upgrade completed successfully!");
-        console.log("Transaction hash:", upgradeTx.hash);
-
-        // Verify the upgrade
-        const newImpl = await (proxy as any).implementation();
-        if (newImpl.toLowerCase() === newImplementation.toLowerCase()) {
-            console.log("Implementation verification successful");
-        } else {
-            throw new Error("Implementation verification failed");
-        }
-
+        console.log("New implementation address:", newImplAddress);
+        
         return {
             contractName,
-            oldImplementation,
-            newImplementation,
+            oldImplementation: currentImpl,
+            newImplementation: newImplAddress,
             success: true
         };
-
+        
     } catch (error) {
         console.error(`Failed to upgrade ${contractName}:`, error);
         return {
@@ -391,77 +381,31 @@ async function main() {
             }
         ];
 
-        console.log('\n=== Deploying New Implementations ===');
-        const implementations: { [key: string]: string } = {};
-
-        // Deploy all implementations first
+                console.log('\n=== PERFORMING DIRECT UPGRADES ===');
+        console.log('Using Hardhat upgrades plugin for immediate upgrades');
+        
+        // Perform upgrades directly using Hardhat upgrades plugin
         for (const config of upgradeConfigs) {
-            console.log(`\n--- Deploying ${config.contractName} Implementation ---`);
-            const newImplementation = await deployNewImplementation(config.contractName);
-            implementations[config.contractName] = newImplementation;
-        }
-
-        console.log('\n=== GENERATING SAFE TRANSACTION FILES ===');
-
-        // Get chain ID for the transaction bundle
-        const chainId = (await ethers.provider.getNetwork()).chainId;
-        console.log(`Chain ID: ${chainId}`);
-
-        // Generate individual transaction files for each contract
-        for (const config of upgradeConfigs) {
-            const newImplementation = implementations[config.contractName];
-            if (!newImplementation) {
-                console.error(`No implementation found for ${config.contractName}`);
-                continue;
+            console.log(`\n--- Upgrading ${config.contractName} ---`);
+            
+            try {
+                // Get the contract factory for the new implementation
+                const factory = await ethers.getContractFactory(config.contractName);
+                
+                // Perform the upgrade
+                const result = await performDirectUpgrade(config, factory);
+                
+                if (result.success) {
+                    console.log(`${config.contractName} upgrade completed successfully`);
+                    console.log(`Old implementation: ${result.oldImplementation}`);
+                    console.log(`New implementation: ${result.newImplementation}`);
+                } else {
+                    console.log(`${config.contractName} upgrade failed`);
+                }
+            } catch (error) {
+                console.error(`Error upgrading ${config.contractName}:`, error);
             }
-
-            console.log(`\n--- Generating ${config.contractName} Transaction ---`);
-
-            // Generate Safe transaction
-            const safeTx = generateSafeTransaction(
-                config.proxyAddress,
-                newImplementation,
-                config.contractName
-            );
-
-            // Print individual transaction JSON to console
-            const filename = `${config.contractName}_upgrade_tx.json`;
-            await printJsonToConsole(filename, safeTx);
-
-            // Print transaction details
-            console.log(`Contract: ${config.contractName}`);
-            console.log(`Proxy Address: ${config.proxyAddress}`);
-            console.log(`New Implementation: ${newImplementation}`);
-            console.log(`Calldata: ${safeTx.data}`);
-            console.log(`File: ${filename}`);
         }
-
-        // Generate batch transaction bundle
-        console.log('\n--- Generating Batch Transaction Bundle ---');
-        const transactionData = upgradeConfigs
-            .map(config => {
-                const newImplementation = implementations[config.contractName];
-                if (!newImplementation) return null;
-                return {
-                    proxyAddress: config.proxyAddress,
-                    newImplementation: newImplementation,
-                    contractName: config.contractName
-                };
-            })
-            .filter((item): item is NonNullable<typeof item> => item !== null);
-
-        if (!multisigAddress) {
-            throw new Error('MULTISIG_ADDRESS environment variable is required');
-        }
-
-        const batchBundle = generateSafeTransactionBundle(
-            transactionData,
-            multisigAddress,
-            Number(chainId)
-        );
-
-        // Print batch bundle JSON to console
-        await printJsonToConsole('batch_upgrade_bundle.json', batchBundle);
 
         console.log('\n=== IMPLEMENTATION ADDRESSES ===');
         console.log('Save these for verification:');
