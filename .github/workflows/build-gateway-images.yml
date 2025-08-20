@@ -41,6 +41,7 @@ on:
           Tenscan URL for frontend build
           Examples by environment:
           • Dev: https://dev-testnet-tenscan.io
+
           • UAT: https://uat-testnet-tenscan.io
           • Sepolia: https://tenscan.io
         required: false
@@ -109,7 +110,7 @@ jobs:
 
           if [[ -z "$GATEWAY_URL" ]]; then
             case "$TESTNET_TYPE" in
-              "dev-testnet") GATEWAY_URL="https://dev-gw-testnet.ten.xyz/v1/" ;;
+              "dev-testnet") GATEWAY_URL="https://dev-gw-testnet.ten.xyz" ;;
               "uat-testnet") GATEWAY_URL="https://uat-gw-testnet.ten.xyz" ;;
               "sepolia-testnet") GATEWAY_URL="https://testnet.ten.xyz" ;;
             esac
