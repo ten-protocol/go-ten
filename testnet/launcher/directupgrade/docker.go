@@ -50,7 +50,7 @@ func (s *DirectUpgrade) Start() error {
 		"MULTISIG_ADDRESS":    s.cfg.multisigAddress,
 	}
 
-	fmt.Printf("Starting direct upgrade script. NetworkConfigAddress: %s, MultisigAddress: %s\n", 
+	fmt.Printf("Starting direct upgrade script. NetworkConfigAddress: %s, MultisigAddress: %s\n",
 		s.cfg.networkConfigAddress, s.cfg.multisigAddress)
 
 	containerID, err := docker.StartNewContainer(
