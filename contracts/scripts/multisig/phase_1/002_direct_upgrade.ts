@@ -25,135 +25,9 @@ interface DirectUpgradeResult {
     success: boolean;
 }
 
-interface SafeTransaction {
-    to: string;
-    value: string;
-    data: string;
-    operation: number;
-    safeTxGas: string;
-    baseGas: string;
-    gasPrice: string;
-    gasToken: string;
-    refundReceiver: string;
-    nonce: number;
-}
 
-interface SafeTransactionBundle {
-    version: string;
-    chainId: number;
-    createdAt: string;
-    meta: {
-        name: string;
-        description: string;
-        txBuilderVersion: string;
-        createdFromSafeAddress: string;
-        createdFromOwnerAddress: string;
-        checksums: { [key: string]: string };
-    };
-    transactions: Array<{
-        to: string;
-        value: string;
-        data: string;
-        contractMethod: {
-            inputs: Array<{
-                name: string;
-                type: string;
-                internalType: string;
-            }>;
-            name: string;
-            payable: boolean;
-        };
-        contractInputsValues: { [key: string]: string };
-    }>;
-}
 
-/**
- * Deploy new implementation for a contract
- */
-async function deployNewImplementation(contractName: string): Promise<string> {
-    console.log(`Deploying new ${contractName} implementation...`);
 
-    const factory = await ethers.getContractFactory(contractName);
-    const implementation = await factory.deploy();
-    await implementation.waitForDeployment();
-
-    const address = await implementation.getAddress();
-    console.log(`${contractName} implementation deployed:`, address);
-    return address;
-}
-
-/**
- * Generate Safe transaction JSON for a contract upgrade
- */
-function generateSafeTransaction(
-    proxyAddress: string,
-    newImplementation: string,
-    contractName: string
-): SafeTransaction {
-    // Get the TransparentUpgradeableProxy ABI for the upgradeTo method
-    const upgradeToData = new ethers.Interface([
-        "function upgradeTo(address newImplementation)"
-    ]).encodeFunctionData("upgradeTo", [newImplementation]);
-
-    return {
-        to: proxyAddress,
-        value: "0",
-        data: upgradeToData,
-        operation: 0, // 0 = call, 1 = delegatecall
-        safeTxGas: "0", // safe estimate
-        baseGas: "0", // safe estimate
-        gasPrice: "0", //safe estimate
-        gasToken: ethers.ZeroAddress,
-        refundReceiver: ethers.ZeroAddress,
-        nonce: 0 // set by Safe
-    };
-}
-
-/**
- * Generate Safe transaction bundle JSON for batch upgrade
- */
-function generateSafeTransactionBundle(
-    transactions: Array<{ proxyAddress: string; newImplementation: string; contractName: string }>,
-    multisigAddress: string,
-    chainId: number
-): SafeTransactionBundle {
-    const now = new Date().toISOString();
-
-    return {
-        version: "1.0",
-        chainId: chainId,
-        createdAt: now,
-        meta: {
-            name: "Contract Upgrade Bundle",
-            description: "Batch upgrade of TEN protocol contracts",
-            txBuilderVersion: "1.0.0",
-            createdFromSafeAddress: multisigAddress,
-            createdFromOwnerAddress: multisigAddress,
-            checksums: {}
-        },
-        transactions: transactions.map(({ proxyAddress, newImplementation, contractName }) => ({
-            to: proxyAddress,
-            value: "0",
-            data: new ethers.Interface([
-                "function upgradeTo(address newImplementation)"
-            ]).encodeFunctionData("upgradeTo", [newImplementation]),
-            contractMethod: {
-                inputs: [
-                    {
-                        name: "newImplementation",
-                        type: "address",
-                        internalType: "address"
-                    }
-                ],
-                name: "upgradeTo",
-                payable: false
-            },
-            contractInputsValues: {
-                newImplementation: newImplementation
-            }
-        }))
-    };
-}
 
 /**
  * Verify that the multisig wallet controls all contracts
@@ -209,17 +83,7 @@ async function verifyMultisigOwnership(
     }
 }
 
-/**
- * Print JSON to console for easy copying
- */
-async function printJsonToConsole(filename: string, data: any): Promise<void> {
-    console.log(`\n=== ${filename.toUpperCase()} ===`);
-    console.log('Copy this JSON:');
-    console.log('='.repeat(60));
-    console.log(JSON.stringify(data, null, 2));
-    console.log('='.repeat(60));
-    console.log(`End of ${filename}\n`);
-}
+
 
 /**
  * Perform direct upgrade using Hardhat upgrades plugin
@@ -232,7 +96,6 @@ async function performDirectUpgrade(
     
     console.log(`\n=== Direct Upgrade: ${contractName} ===`);
     console.log("Proxy address:", proxyAddress);
-    console.log("New implementation:", newImplementation);
     console.log("Description:", description);
     
     try {
@@ -270,42 +133,13 @@ async function performDirectUpgrade(
         return {
             contractName,
             oldImplementation: "0x...",
-            newImplementation,
+            newImplementation: "0x...",
             success: false
         };
     }
 }
 
-/**
- * Batch upgrade multiple contracts
- */
-async function batchDirectUpgrade(
-    configs: UpgradeConfig[]
-): Promise<DirectUpgradeResult[]> {
-    console.log("=== Batch Direct Upgrade Process ===");
-    console.log(`Upgrading ${configs.length} contracts...\n`);
 
-    const results: DirectUpgradeResult[] = [];
-
-    for (const config of configs) {
-        console.log(`\n--- Processing ${config.contractName} ---`);
-
-        // Deploy new implementation
-        const newImplementation = await deployNewImplementation(config.contractName);
-
-        // Perform upgrade
-        const result = await performDirectUpgrade(config, newImplementation);
-        results.push(result);
-
-        if (result.success) {
-            console.log(`${config.contractName} upgrade completed`);
-        } else {
-            console.log(`${config.contractName} upgrade failed`);
-        }
-    }
-
-    return results;
-}
 
 /**
  * Main upgrade function
@@ -381,7 +215,7 @@ async function main() {
             }
         ];
 
-                console.log('\n=== PERFORMING DIRECT UPGRADES ===');
+        console.log('\n=== PERFORMING DIRECT UPGRADES ===');
         console.log('Using Hardhat upgrades plugin for immediate upgrades');
         
         // Perform upgrades directly using Hardhat upgrades plugin
@@ -407,18 +241,7 @@ async function main() {
             }
         }
 
-        console.log('\n=== IMPLEMENTATION ADDRESSES ===');
-        console.log('Save these for verification:');
-        for (const [contractName, address] of Object.entries(implementations)) {
-            console.log(`${contractName}: ${address}`);
-        }
-
-        console.log('\n=== USAGE INSTRUCTIONS ===');
-        console.log('1. Individual transactions: Use the individual JSON files for single upgrades');
-        console.log('2. Batch upgrade: Use batch_upgrade_bundle.json for all upgrades at once');
-        console.log('3. In Gnosis Safe: Go to Apps > Transaction Builder > Import JSON');
-        console.log('4. Drag and drop the JSON file(s) and execute');
-        console.log('===============================\n');
+        console.log('\n=== UPGRADE COMPLETE ===');
 
     } catch (error) {
         console.error("Failed to perform direct upgrades:", error);
@@ -437,7 +260,5 @@ if (require.main === module) {
 }
 
 export {
-    performDirectUpgrade,
-    batchDirectUpgrade,
-    deployNewImplementation
+    performDirectUpgrade
 };
