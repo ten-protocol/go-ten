@@ -25,13 +25,16 @@ interface SafeTransaction {
     to: string;
     value: string;
     data: string;
-    operation: number;
-    safeTxGas: string;
-    baseGas: string;
-    gasPrice: string;
-    gasToken: string;
-    refundReceiver: string;
-    nonce: number;
+    contractMethod: {
+        inputs: Array<{
+            name: string;
+            type: string;
+            internalType: string;
+        }>;
+        name: string;
+        payable: boolean;
+    };
+    contractInputsValues: { [key: string]: string };
 }
 
 interface SafeTransactionBundle {
@@ -46,21 +49,7 @@ interface SafeTransactionBundle {
         createdFromOwnerAddress: string;
         checksums: { [key: string]: string };
     };
-    transactions: Array<{
-        to: string;
-        value: string;
-        data: string;
-        contractMethod: {
-            inputs: Array<{
-                name: string;
-                type: string;
-                internalType: string;
-            }>;
-            name: string;
-            payable: boolean;
-        };
-        contractInputsValues: { [key: string]: string };
-    }>;
+    transactions: SafeTransaction[];
 }
 
 /**
@@ -136,13 +125,20 @@ function generateSafeTransaction(
         to: proxyAddress,
         value: "0",
         data: upgradeToData,
-        operation: 0, // 0 = call, 1 = delegatecall
-        safeTxGas: "0", // safe estimate
-        baseGas: "0", // safe estimate
-        gasPrice: "0", //safe estimate
-        gasToken: ethers.ZeroAddress,
-        refundReceiver: ethers.ZeroAddress,
-        nonce: 0 // set by Safe
+        contractMethod: {
+            inputs: [
+                {
+                    name: "newImplementation",
+                    type: "address",
+                    internalType: "address"
+                }
+            ],
+            name: "upgradeTo",
+            payable: false
+        },
+        contractInputsValues: {
+            newImplementation: newImplementation
+        }
     };
 }
 
@@ -168,27 +164,9 @@ function generateSafeTransactionBundle(
             createdFromOwnerAddress: multisigAddress,
             checksums: {}
         },
-        transactions: transactions.map(({ proxyAddress, newImplementation, contractName }) => ({
-            to: proxyAddress,
-            value: "0",
-            data: new ethers.Interface([
-                "function upgradeTo(address newImplementation)"
-            ]).encodeFunctionData("upgradeTo", [newImplementation]),
-            contractMethod: {
-                inputs: [
-                    {
-                        name: "newImplementation",
-                        type: "address",
-                        internalType: "address"
-                    }
-                ],
-                name: "upgradeTo",
-                payable: false
-            },
-            contractInputsValues: {
-                newImplementation: newImplementation
-            }
-        }))
+        transactions: transactions.map(({ proxyAddress, newImplementation, contractName }) => 
+            generateSafeTransaction(proxyAddress, newImplementation, contractName)
+        )
     };
 }
 
