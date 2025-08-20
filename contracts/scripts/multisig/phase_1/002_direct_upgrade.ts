@@ -171,6 +171,21 @@ function generateSafeTransactionBundle(
 }
 
 /**
+ * Deploy new implementation for a contract
+ */
+async function deployNewImplementation(contractName: string): Promise<string> {
+    console.log(`Deploying new ${contractName} implementation...`);
+    
+    const factory = await ethers.getContractFactory(contractName);
+    const implementation = await factory.deploy();
+    await implementation.waitForDeployment();
+    
+    const address = await implementation.getAddress();
+    console.log(`${contractName} implementation deployed:`, address);
+    return address;
+}
+
+/**
  * Print JSON to console for easy copying
  */
 async function printJsonToConsole(filename: string, data: any): Promise<void> {
@@ -312,6 +327,17 @@ async function main() {
             }
         ];
 
+        console.log('\n=== DEPLOYING NEW IMPLEMENTATIONS ===');
+        
+        // Deploy all new implementations first
+        const implementations: { [key: string]: string } = {};
+        
+        for (const config of upgradeConfigs) {
+            console.log(`\n--- Deploying ${config.contractName} Implementation ---`);
+            const newImplementation = await deployNewImplementation(config.contractName);
+            implementations[config.contractName] = newImplementation;
+        }
+        
         console.log('\n=== GENERATING SAFE TRANSACTION FILES ===');
         
         // Get chain ID for the transaction bundle
@@ -322,14 +348,16 @@ async function main() {
         for (const config of upgradeConfigs) {
             console.log(`\n--- Generating ${config.contractName} Transaction ---`);
             
-            // For now, we'll use a placeholder implementation address
-            // In practice, you would deploy the new implementation first
-            const placeholderImplementation = "0x0000000000000000000000000000000000000000"; // Replace with actual address
+            const newImplementation = implementations[config.contractName];
+            if (!newImplementation) {
+                console.error(`No implementation found for ${config.contractName}`);
+                continue;
+            }
             
             // Generate Safe transaction
             const safeTx = generateSafeTransaction(
                 config.proxyAddress,
-                placeholderImplementation,
+                newImplementation,
                 config.contractName
             );
             
@@ -340,7 +368,7 @@ async function main() {
             // Print transaction details
             console.log(`Contract: ${config.contractName}`);
             console.log(`Proxy Address: ${config.proxyAddress}`);
-            console.log(`New Implementation: ${placeholderImplementation} (PLACEHOLDER - replace with actual address)`);
+            console.log(`New Implementation: ${newImplementation}`);
             console.log(`Calldata: ${safeTx.data}`);
             console.log(`File: ${filename}`);
         }
@@ -349,7 +377,7 @@ async function main() {
         console.log('\n--- Generating Batch Transaction Bundle ---');
         const transactionData = upgradeConfigs.map(config => ({
             proxyAddress: config.proxyAddress,
-            newImplementation: "0x0000000000000000000000000000000000000000", // Replace with actual addresses
+            newImplementation: implementations[config.contractName] || "0x0000000000000000000000000000000000000000",
             contractName: config.contractName
         }));
         
@@ -367,17 +395,18 @@ async function main() {
         await printJsonToConsole('batch_upgrade_bundle.json', batchBundle);
 
         console.log('\n=== TRANSACTION GENERATION COMPLETE ===');
-        console.log('All Safe transaction JSONs have been generated and printed to console');
+        console.log('All new contract implementations have been deployed');
+        console.log('All Safe transaction JSONs have been generated with real addresses');
         console.log('Copy these JSONs and import them into your Gnosis Safe Transaction Builder');
         console.log('\n=== NEXT STEPS ===');
-        console.log('1. Deploy your new contract implementations');
-        console.log('2. Replace the placeholder addresses (0x0000...) in the JSONs with actual addresses');
-        console.log('3. Import the JSONs into Gnosis Safe Transaction Builder');
-        console.log('4. Review and execute the transactions');
-        console.log('\n=== SCRIPT USAGE ===');
-        console.log('This script generates upgrade transactions for all contracts:');
-        console.log('  npx hardhat run scripts/multisig/phase_1/002_direct_upgrade.ts');
-        console.log('===============================\n');
+        console.log('1. Import the JSONs into Gnosis Safe Transaction Builder');
+        console.log('2. Review the transaction details (addresses are already correct)');
+        console.log('3. Execute the transactions');
+        console.log('\n=== IMPLEMENTATION ADDRESSES ===');
+        console.log('Save these for verification:');
+        for (const [contractName, address] of Object.entries(implementations)) {
+            console.log(`${contractName}: ${address}`);
+        }
 
     } catch (error) {
         console.error("Failed to perform direct upgrades:", error);
