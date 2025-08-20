@@ -6,6 +6,7 @@ const (
 	privateKeyFlag        = "private_key"
 	networkConfigAddrFlag = "network_config_addr"
 	multisigAddrFlag      = "multisig_addr"
+	proxyAdminAddrFlag    = "proxy_admin_addr"
 	dockerImageFlag       = "docker_image"
 )
 
@@ -17,6 +18,7 @@ func getFlagUsageMap() map[string]string {
 		privateKeyFlag:        "L1 and L2 private key used in the node",
 		networkConfigAddrFlag: "L1 network config contract address",
 		multisigAddrFlag:      "Multisig address that controls the contracts",
+		proxyAdminAddrFlag:    "Proxy admin contract address",
 		dockerImageFlag:       "Docker image to run",
 	}
 }

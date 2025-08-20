@@ -48,10 +48,11 @@ func (s *DirectUpgrade) Start() error {
 		}`, s.cfg.l1HTTPURL, s.cfg.privateKey),
 		"NETWORK_CONFIG_ADDR": s.cfg.networkConfigAddress,
 		"MULTISIG_ADDR":       s.cfg.multisigAddress,
+		"PROXY_ADMIN_ADDR":    s.cfg.proxyAdminAddress,
 	}
 
-	fmt.Printf("Starting direct upgrade script. NetworkConfigAddress: %s, MultisigAddress: %s\n",
-		s.cfg.networkConfigAddress, s.cfg.multisigAddress)
+	fmt.Printf("Starting direct upgrade script. NetworkConfigAddress: %s, MultisigAddress: %s, ProxyAdminAddress: %s\n",
+		s.cfg.networkConfigAddress, s.cfg.multisigAddress, s.cfg.proxyAdminAddress)
 
 	containerID, err := docker.StartNewContainer(
 		"direct-upgrade",

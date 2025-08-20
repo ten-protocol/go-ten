@@ -65,7 +65,8 @@ interface SafeTransactionBundle {
  */
 async function verifyMultisigOwnership(
     multisigAddress: string,
-    networkConfigAddr: string
+    networkConfigAddr: string,
+    proxyAdminAddr: string
 ): Promise<boolean> {
     console.log("Checking contract ownership...");
 
@@ -76,7 +77,8 @@ async function verifyMultisigOwnership(
         const contracts = [
             { name: "CrossChain", address: addresses.crossChain },
             { name: "NetworkEnclaveRegistry", address: addresses.networkEnclaveRegistry },
-            { name: "DataAvailabilityRegistry", address: addresses.dataAvailabilityRegistry }
+            { name: "DataAvailabilityRegistry", address: addresses.dataAvailabilityRegistry },
+            { name: "ProxyAdmin", address: proxyAdminAddr }
         ];
 
         let allControlled = true;
@@ -281,19 +283,21 @@ async function main() {
     // Configuration validation
     const multisigAddress = process.env.MULTISIG_ADDR || "0x...";
     const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR || "0x...";
+    const proxyAdminAddr = process.env.PROXY_ADMIN_ADDR || "0x...";
 
-    if (multisigAddress === "0x..." || networkConfigAddr === "0x...") {
-        throw new Error('Please set MULTISIG_ADDR and NETWORK_CONFIG_ADDR environment variables');
+    if (multisigAddress === "0x..." || networkConfigAddr === "0x..." || proxyAdminAddr === "0x...") {
+        throw new Error('Please set MULTISIG_ADDR, NETWORK_CONFIG_ADDR, and PROXY_ADMIN_ADDR environment variables');
     }
 
     console.log("Configuration:");
     console.log("- Multisig address:", multisigAddress);
     console.log("- NetworkConfig address:", networkConfigAddr);
+    console.log("- ProxyAdmin address:", proxyAdminAddr);
     console.log("- Deployer address:", deployer.address);
 
     // Verify multisig ownership before proceeding
     console.log("\n=== Verifying Multisig Ownership ===");
-    const ownershipVerified = await verifyMultisigOwnership(multisigAddress, networkConfigAddr);
+    const ownershipVerified = await verifyMultisigOwnership(multisigAddress, networkConfigAddr, proxyAdminAddr);
 
     if (!ownershipVerified) {
         console.error("\nOwnership verification failed!");
