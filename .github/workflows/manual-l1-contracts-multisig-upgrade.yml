@@ -45,7 +45,7 @@ jobs:
           username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Build and push hardhat deployer image'
+      - name: '§'
         run: |
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
           docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
@@ -69,7 +69,7 @@ jobs:
           fi
   
           # Run upgrade script
-          go run ./testnet/launcher/multisigsetup/cmd \
+          go run ./testnet/launcher/directupgrade/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
@@ -78,12 +78,12 @@ jobs:
 
       - name: 'Save upgrade container logs'
         run: |
-          docker logs `docker ps -aqf "name=multisig-setup"` > multisig-setup.out 2>&1
+          docker logs `docker ps -aqf "name=direct-upgrade"` > direct-upgrade.out 2>&1
 
       - name: 'Upload upgrade container logs'
         uses: actions/upload-artifact@v4
         with:
-          name: upgrade-contracts
+          name: direct-upgrade
           path: |
-            upgrade-contracts.out
+            direct-upgrade.out
           retention-days: 7 
