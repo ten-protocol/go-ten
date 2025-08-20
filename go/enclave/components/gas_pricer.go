@@ -10,6 +10,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/enclave/config"
+	"github.com/ten-protocol/go-ten/go/enclave/storage"
 )
 
 const (
@@ -22,13 +23,15 @@ const (
 type GasPricer struct {
 	logger                gethlog.Logger
 	config                *config.EnclaveConfig
+	storage               storage.Storage
 	dynamicPricingEnabled atomic.Bool // tracks whether dynamic pricing upgrade has been applied
 }
 
-func NewGasPricer(logger gethlog.Logger, config *config.EnclaveConfig) *GasPricer {
+func NewGasPricer(logger gethlog.Logger, config *config.EnclaveConfig, storage storage.Storage) *GasPricer {
 	return &GasPricer{
 		logger:                logger,
 		config:                config,
+		storage:               storage,
 		dynamicPricingEnabled: atomic.Bool{}, // start with static pricing (minGasPrice)
 	}
 }
@@ -71,10 +74,33 @@ func (gp *GasPricer) HandleUpgrade(ctx context.Context, featureName string, feat
 	return nil
 }
 
-func (gp *GasPricer) CalculateBlockBaseFee(cfg *params.ChainConfig, parent *types.Header) *big.Int {
-	// If dynamic pricing is not enabled, return the configured minimum gas price
-	if !gp.dynamicPricingEnabled.Load() {
-		gp.logger.Trace("Using static gas pricing", "minGasPrice", gp.config.BaseFee)
+// isDynamicPricingEnabledAtHeight checks if dynamic pricing is enabled for a given L1 block height
+func (gp *GasPricer) isDynamicPricingEnabledAtHeight(ctx context.Context, l1Height uint64) bool {
+	// Query for finalized dynamic pricing upgrades
+	finalizedUpgrades, err := gp.storage.GetFinalizedNetworkUpgrades(ctx)
+	if err != nil {
+		gp.logger.Warn("Failed to get finalized network upgrades, falling back to atomic flag", "error", err)
+		return gp.dynamicPricingEnabled.Load()
+	}
+
+	// Check if dynamic pricing upgrade is activated at this height
+	for _, upgrade := range finalizedUpgrades {
+		if upgrade.FeatureName == ComponentName && string(upgrade.FeatureData) == DynamicPricingTrigger {
+			// The upgrade is activated if the L1 height is >= the finalized activation height
+			if l1Height >= upgrade.AppliedAtL1Height {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+// CalculateBlockBaseFeeAtHeight calculates the base fee for a block using height-based pricing logic
+func (gp *GasPricer) CalculateBlockBaseFeeAtHeight(ctx context.Context, cfg *params.ChainConfig, parent *types.Header, l1Height uint64) *big.Int {
+	// Check if dynamic pricing is enabled at this L1 height
+	if !gp.isDynamicPricingEnabledAtHeight(ctx, l1Height) {
+		gp.logger.Trace("Using static gas pricing", "minGasPrice", gp.config.BaseFee, "l1Height", l1Height)
 		return new(big.Int).Set(gp.config.BaseFee)
 	}
 

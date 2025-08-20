@@ -97,7 +97,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
 	dataCompressionService := compression.NewBrotliDataCompressionService(int64(config.DecompressionLimit))
-	gasPricer := components.NewGasPricer(logger, config)
+	gasPricer := components.NewGasPricer(logger, config, storage)
 	gasOracle := gas.NewGasOracle(l1ChainCfg, storage, logger)
 	blockProcessor := components.NewBlockProcessor(storage, crossChainProcessors, gasOracle, logger)
 
