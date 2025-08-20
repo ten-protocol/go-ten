@@ -18,9 +18,6 @@ async function setupDirectMultisig() {
     }
     
     console.log("=== Setting up Direct Multisig Control ===");
-    console.log("WARNING: This removes all upgrade delay protection!");
-    console.log("Only use during initial mainnet phase for rapid iteration.\n");
-    
     console.log("Deployer address:", deployer.address);
     
     // Configuration - these must be set as environment variables
@@ -59,8 +56,9 @@ async function setupDirectMultisig() {
             { name: "DataAvailabilityRegistry", address: addresses.dataAvailabilityRegistry }
         ];
         
-        console.log("\n=== Transferring and Accepting Contract Ownership ===");
-        console.log("This will complete the 2-step ownership transfer process");
+        console.log("\n=== Transferring Contract Ownership ===");
+        console.log("This will initiate the ownership transfer process");
+        console.log("Note: You must complete the transfer by accepting ownership in your Gnosis Safe");
         
         for (const contract of contracts) {
             console.log(`\n--- Processing ${contract.name} Contract ---`);
@@ -92,33 +90,17 @@ async function setupDirectMultisig() {
         
         console.log(`${contract.name} ownership transfer initiated successfully!`);
         console.log(`Transaction hash: ${transferTx.hash}`);
+        console.log(`Ownership transfer initiated for ${contract.name}`);
+        console.log(`Pending: You must now accept ownership through your Gnosis Safe`);
         
-        // Now accept the ownership transfer as the multisig
-        console.log(`Accepting ownership transfer for ${contract.name}...`);
-        
-        // Switch to multisig signer for accepting ownership
-        const multisigSigner = await ethers.getSigner(multisigAddress);
-        if (!multisigSigner) {
-            console.log(`Warning: Could not get multisig signer for ${contract.name}`);
-            continue;
-        }
-        
-        const contractWithMultisig = contractInstance.connect(multisigSigner);
-        const acceptTx = await (contractWithMultisig as any).acceptOwnership();
-        await acceptTx.wait();
-        
-        console.log(`${contract.name} ownership accepted successfully!`);
-        console.log(`Accept transaction hash: ${acceptTx.hash}`);
-        
-        // Verify the transfer
-        const newOwner = await (contractInstance as any).owner();
-        console.log(`New owner: ${newOwner}`);
-        
-        if (newOwner.toLowerCase() === multisigAddress.toLowerCase()) {
-            console.log(`${contract.name} ownership transfer completed successfully!`);
-        } else {
-            console.log(`Warning: ${contract.name} ownership transfer may have failed`);
-        }
+        // Generate Safe transaction for acceptOwnership
+        const acceptOwnershipData = "0x79ba5097"; // acceptOwnership() function selector
+        console.log(`Safe Transaction Details for ${contract.name}:`);
+        console.log(`   To: ${contract.address}`);
+        console.log(`   Value: 0 ETH`);
+        console.log(`   Data: ${acceptOwnershipData}`);
+        console.log(`   Function: acceptOwnership()`);
+        console.log(`   Status: PENDING ACCEPTANCE`);
                 
             } catch (error) {
                 console.log(`Error processing ${contract.name}:`, error);
@@ -127,8 +109,25 @@ async function setupDirectMultisig() {
         }
         
         console.log("\n=== Direct Multisig Setup Complete ===");
-        console.log("All contract ownership transfers completed (2-step process)");
+        console.log("All ownership transfers have been initiated!");
+        console.log("PENDING: You must now accept ownership through your Gnosis Safe");
         
+        console.log("\n=== NEXT STEPS IN GNOSIS SAFE UI ===");
+        console.log("1. Go to your Gnosis Safe dashboard");
+        console.log("2. Click 'New Transaction'");
+        console.log("3. For each contract, create a transaction with:");
+        console.log("   - To: [Contract Address] (shown above)");
+        console.log("   - Value: 0 ETH");
+        console.log("   - Data: 0x79ba5097");
+        console.log("4. Sign and execute each transaction");
+        console.log("5. Run the upgrade script (002_direct_upgrade.ts) to verify ownership");
+        
+        console.log("\n=== CONTRACT STATUS ===");
+        for (const contract of contracts) {
+            console.log(`${contract.name}: PENDING ACCEPTANCE`);
+            console.log(`   Address: ${contract.address}`);
+            console.log(`   Safe Transaction Data: 0x79ba5097`);
+        }
         
         return {
             multisigAddress,
@@ -143,74 +142,13 @@ async function setupDirectMultisig() {
 }
 
 /**
- * Verify multisig control
- */
-async function verifyMultisigControl() {
-    const multisigAddress = process.env.MULTISIG_ADDRESS || "0x...";
-    const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR || "0x...";
-    
-    if (multisigAddress === "0x..." || networkConfigAddr === "0x...") {
-        throw new Error('Please set MULTISIG_ADDRESS and NETWORK_CONFIG_ADDR environment variables');
-    }
-    
-    console.log("=== Verifying Multisig Control ===");
-    
-    try {
-        const networkConfig = await ethers.getContractAt('NetworkConfig', networkConfigAddr);
-        const addresses = await networkConfig.addresses();
-        
-        const contracts = [
-            { name: "CrossChain", address: addresses.crossChain },
-            { name: "NetworkEnclaveRegistry", address: addresses.networkEnclaveRegistry },
-            { name: "DataAvailabilityRegistry", address: addresses.dataAvailabilityRegistry }
-        ];
-        
-        let allControlled = true;
-        
-        for (const contract of contracts) {
-            try {
-                const contractInstance = await ethers.getContractAt(contract.name, contract.address);
-                const currentOwner = await (contractInstance as any).owner();
-                
-                if (currentOwner.toLowerCase() === multisigAddress.toLowerCase()) {
-                    console.log(`${contract.name}: Controlled by Multisig`);
-                } else {
-                    console.log(`${contract.name}: NOT controlled by Multisig (${currentOwner})`);
-                    allControlled = false;
-                }
-            } catch (error) {
-                console.log(`Error checking ${contract.name}:`, error);
-                allControlled = false;
-            }
-        }
-        
-        if (allControlled) {
-            console.log("\nAll contracts are under Multisig control!");
-            console.log("Direct upgrades are now possible (no delays)");
-        } else {
-            console.log("\nSome contracts are not under Multisig control");
-            console.log("Please check the ownership transfer process");
-        }
-        
-        return allControlled;
-        
-    } catch (error) {
-        console.error("Failed to verify multisig control:", error);
-        throw error;
-    }
-}
-
-/**
  * Main setup function
  */
 async function main() {
     console.log("\n=== Setup Starting ===")
-    // Setup direct multisig control
-    await setupDirectMultisig();
-    
-    console.log("\n=== Verification ===");
-    await verifyMultisigControl();
-    
+            // Setup direct multisig control
+        const result = await setupDirectMultisig();
+        
     console.log("\n=== Setup Complete ===");
 }
 
@@ -224,7 +162,8 @@ if (require.main === module) {
         });
 }
 
+
+
 export {
     setupDirectMultisig,
-    verifyMultisigControl
 };
