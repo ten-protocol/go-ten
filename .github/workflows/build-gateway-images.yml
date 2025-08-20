@@ -41,7 +41,6 @@ on:
           Tenscan URL for frontend build
           Examples by environment:
           • Dev: https://dev-testnet-tenscan.io
-
           • UAT: https://uat-testnet-tenscan.io
           • Sepolia: https://tenscan.io
         required: false
