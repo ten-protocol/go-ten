@@ -114,13 +114,23 @@ async function verifyMultisigOwnership(
 
             for (const proxy of proxyContracts) {
                 try {
-                    const adminOfProxy = await (proxyAdmin as any).getProxyAdmin(proxy.address);
-                    console.log(`${proxy.name} proxy admin: ${adminOfProxy}`);
+                    // Check if this proxy is owned by the ProxyAdmin
+                    // We can do this by checking the proxy's admin storage slot directly
+                    const adminSlot = "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103";
+                    const adminOfProxy = await ethers.provider.getStorage(proxy.address, adminSlot);
                     
-                    if (adminOfProxy.toLowerCase() === proxyAdminAddr.toLowerCase()) {
-                        console.log(`${proxy.name}: ProxyAdmin IS the admin`);
+                    if (adminOfProxy !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+                        const adminAddress = "0x" + adminOfProxy.slice(26); // Remove padding
+                        console.log(`${proxy.name} proxy admin: ${adminAddress}`);
+                        
+                        if (adminAddress.toLowerCase() === proxyAdminAddr.toLowerCase()) {
+                            console.log(`${proxy.name}: ProxyAdmin IS the admin`);
+                        } else {
+                            console.log(`${proxy.name}: ProxyAdmin is NOT the admin (Current: ${adminAddress})`);
+                            allControlled = false;
+                        }
                     } else {
-                        console.log(`${proxy.name}: ProxyAdmin is NOT the admin (Current: ${adminOfProxy})`);
+                        console.log(`${proxy.name}: No proxy admin found`);
                         allControlled = false;
                     }
                 } catch (error) {
