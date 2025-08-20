@@ -100,6 +100,39 @@ async function verifyMultisigOwnership(
             }
         }
 
+        // Additional verification: Check that ProxyAdmin is the admin of all proxy contracts
+        console.log("\n=== Verifying Proxy Admin Control ===");
+        try {
+            const proxyAdmin = await ethers.getContractAt("ProxyAdmin", proxyAdminAddr);
+            
+            // Check each proxy contract to see if ProxyAdmin is its admin
+            const proxyContracts = [
+                { name: "CrossChain", address: addresses.crossChain },
+                { name: "NetworkEnclaveRegistry", address: addresses.networkEnclaveRegistry },
+                { name: "DataAvailabilityRegistry", address: addresses.dataAvailabilityRegistry }
+            ];
+
+            for (const proxy of proxyContracts) {
+                try {
+                    const adminOfProxy = await (proxyAdmin as any).getProxyAdmin(proxy.address);
+                    console.log(`${proxy.name} proxy admin: ${adminOfProxy}`);
+                    
+                    if (adminOfProxy.toLowerCase() === proxyAdminAddr.toLowerCase()) {
+                        console.log(`${proxy.name}: ProxyAdmin IS the admin`);
+                    } else {
+                        console.log(`${proxy.name}: ProxyAdmin is NOT the admin (Current: ${adminOfProxy})`);
+                        allControlled = false;
+                    }
+                } catch (error) {
+                    console.log(`Error checking ${proxy.name} proxy admin:`, error);
+                    allControlled = false;
+                }
+            }
+        } catch (error) {
+            console.log(`Error checking ProxyAdmin contract:`, error);
+            allControlled = false;
+        }
+
         if (allControlled) {
             console.log("\nAll contracts are under Multisig control!");
             console.log("Direct upgrades are now possible (no delays)");
