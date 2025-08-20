@@ -17,6 +17,12 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
+const (
+	// DefaultMinGasPrice is the default minimum gas price for TEN network (10 Gwei)
+	// This matches the value from go/config/defaults/0-base-config.yaml
+	DefaultMinGasPrice = 10000000 // 10 Gwei in wei
+)
+
 // ChainAPI exposes public chain data
 type ChainAPI struct {
 	host   host.Host
@@ -101,33 +107,177 @@ func (api *ChainAPI) MaxPriorityFeePerGas(_ context.Context) (*hexutil.Big, erro
 	return (*hexutil.Big)(header.BaseFee), err
 }
 
-// FeeHistory is a placeholder for an RPC method required by MetaMask/Remix.
-// rpc.DecimalOrHex -> []byte
-func (api *ChainAPI) FeeHistory(context.Context, string, rpc.BlockNumber, []float64) (*FeeHistoryResult, error) {
-	// todo (#1621) - return a non-dummy fee history
-	header, err := api.host.Storage().FetchHeadBatchHeader()
+// FeeHistory returns historical gas fee data for the requested block range.
+// This implements the eth_feeHistory RPC method as specified in EIP-1559.
+// Note from Stefan - Method is AI generated according to spec, looks correct.
+func (api *ChainAPI) FeeHistory(ctx context.Context, blockCountStr string, newestBlock rpc.BlockNumber, rewardPercentiles []float64) (*FeeHistoryResult, error) {
+	// Parse and validate blockCount
+	blockCount, err := hexutil.DecodeUint64(blockCountStr)
 	if err != nil {
-		api.logger.Error("Unable to retrieve header for fee history.", log.ErrKey, err)
-		return nil, fmt.Errorf("unable to retrieve fee history")
+		return nil, fmt.Errorf("invalid blockCount: %w", err)
 	}
 
-	batches := make([]*common.BatchHeader, 0)
-	batches = append(batches, header)
-
-	feeHist := &FeeHistoryResult{
-		OldestBlock:  (*hexutil.Big)(header.Number),
-		Reward:       [][]*hexutil.Big{},
-		BaseFee:      []*hexutil.Big{(*hexutil.Big)(header.BaseFee)},
-		GasUsedRatio: []float64{},
+	// Validate blockCount is within acceptable range (1 to 1024)
+	if blockCount == 0 || blockCount > 1024 {
+		return nil, fmt.Errorf("blockCount must be between 1 and 1024, got %d", blockCount)
 	}
 
-	for _, header := range batches {
-		// 0.9 - This number represents how full the block is. As we dont have a dynamic base fee, we tell whomever is requesting that
-		// we expect the baseFee to increase, rather than decrease in order to avoid underpriced transactions.
-		feeHist.GasUsedRatio = append(feeHist.GasUsedRatio, 0.9)
-		feeHist.BaseFee = append(feeHist.BaseFee, (*hexutil.Big)(header.BaseFee))
+	// Validate reward percentiles are in ascending order and within [0, 100]
+	for i, percentile := range rewardPercentiles {
+		if percentile < 0 || percentile > 100 {
+			return nil, fmt.Errorf("reward percentile must be between 0 and 100, got %f", percentile)
+		}
+		if i > 0 && percentile < rewardPercentiles[i-1] {
+			return nil, fmt.Errorf("reward percentiles must be in ascending order")
+		}
 	}
-	return feeHist, nil
+
+	// Get the newest block header to determine the range
+	var newestHeader *common.BatchHeader
+	if newestBlock == rpc.LatestBlockNumber || newestBlock == rpc.PendingBlockNumber {
+		newestHeader, err = api.host.Storage().FetchHeadBatchHeader()
+		if err != nil {
+			api.logger.Error("Unable to retrieve head batch header for fee history.", log.ErrKey, err)
+			return nil, fmt.Errorf("unable to retrieve latest block")
+		}
+	} else {
+		blockNum := uint64(newestBlock.Int64())
+		newestHeader, err = api.host.Storage().FetchBatchHeaderByHeight(big.NewInt(int64(blockNum)))
+		if err != nil {
+			api.logger.Error("Unable to retrieve batch header for fee history.", log.ErrKey, err, "blockNumber", blockNum)
+			return nil, fmt.Errorf("unable to retrieve block %d", blockNum)
+		}
+	}
+
+	// Calculate the range of blocks to fetch
+	newestBlockNumber := newestHeader.Number.Uint64()
+	var oldestBlockNumber uint64
+	if newestBlockNumber >= blockCount-1 {
+		oldestBlockNumber = newestBlockNumber - blockCount + 1
+	} else {
+		// If we don't have enough blocks, start from genesis
+		oldestBlockNumber = 0
+		blockCount = newestBlockNumber + 1 // Adjust blockCount to available blocks
+	}
+
+	// Fetch the block headers for the range
+	headers := make([]*common.BatchHeader, 0, blockCount)
+	for blockNum := oldestBlockNumber; blockNum <= newestBlockNumber; blockNum++ {
+		header, err := api.host.Storage().FetchBatchHeaderByHeight(big.NewInt(int64(blockNum)))
+		if err != nil {
+			api.logger.Error("Unable to retrieve batch header.", log.ErrKey, err, "blockNumber", blockNum)
+			continue // Skip missing blocks
+		}
+		headers = append(headers, header)
+	}
+
+	if len(headers) == 0 {
+		return nil, fmt.Errorf("no blocks found in range")
+	}
+
+	// Calculate base fees (includes one extra for the next block)
+	baseFees := make([]*hexutil.Big, 0, len(headers)+1)
+	gasUsedRatios := make([]float64, 0, len(headers))
+	rewards := make([][]*hexutil.Big, 0, len(headers))
+
+	for _, header := range headers {
+		// Add base fee for this block
+		baseFees = append(baseFees, (*hexutil.Big)(header.BaseFee))
+
+		// Calculate gas used ratio
+		if header.GasLimit > 0 {
+			ratio := float64(header.GasUsed) / float64(header.GasLimit)
+			gasUsedRatios = append(gasUsedRatios, ratio)
+		} else {
+			gasUsedRatios = append(gasUsedRatios, 0.0)
+		}
+
+		// Calculate reward percentiles if requested
+		if len(rewardPercentiles) > 0 {
+			blockRewards, err := api.calculateRewardPercentiles(ctx, header, rewardPercentiles)
+			if err != nil {
+				api.logger.Error("Unable to calculate reward percentiles.", log.ErrKey, err, "blockNumber", header.Number)
+				// Use zero rewards for this block
+				blockRewards = make([]*hexutil.Big, len(rewardPercentiles))
+				for i := range blockRewards {
+					blockRewards[i] = (*hexutil.Big)(big.NewInt(0))
+				}
+			}
+			rewards = append(rewards, blockRewards)
+		}
+	}
+
+	// Add the base fee for the next block (this is calculated from the latest block)
+	// For simplicity, we'll use the same base fee as the latest block
+	// In a real implementation, this should be calculated based on the latest block's gas usage
+	if len(headers) > 0 {
+		lastHeader := headers[len(headers)-1]
+		nextBaseFee := api.calculateNextBaseFee(lastHeader)
+		baseFees = append(baseFees, (*hexutil.Big)(nextBaseFee))
+	}
+
+	return &FeeHistoryResult{
+		OldestBlock:  (*hexutil.Big)(big.NewInt(int64(oldestBlockNumber))),
+		BaseFee:      baseFees,
+		GasUsedRatio: gasUsedRatios,
+		Reward:       rewards,
+	}, nil
+}
+
+// calculateRewardPercentiles calculates the reward percentiles for a given block.
+// This is a simplified implementation that returns zero rewards since TEN doesn't
+// have traditional miner rewards in the same way as Ethereum.
+func (api *ChainAPI) calculateRewardPercentiles(ctx context.Context, header *common.BatchHeader, percentiles []float64) ([]*hexutil.Big, error) {
+	// For TEN, since we don't have traditional priority fees like Ethereum,
+	// we return zero rewards for all percentiles
+	rewards := make([]*hexutil.Big, len(percentiles))
+	for i := range rewards {
+		rewards[i] = (*hexutil.Big)(big.NewInt(0))
+	}
+	return rewards, nil
+}
+
+// calculateNextBaseFee calculates what the base fee should be for the next block
+// Simple EIP-1559 estimation: if gas usage > 50% of limit, increase by ~12.5%, otherwise decrease
+func (api *ChainAPI) calculateNextBaseFee(header *common.BatchHeader) *big.Int {
+	currentBaseFee := header.BaseFee
+	gasUsed := header.GasUsed
+	gasLimit := header.GasLimit
+
+	// Gas target is 50% of the limit (EIP-1559)
+	gasTarget := gasLimit / 2
+
+	var nextBaseFee *big.Int
+
+	if gasUsed > gasTarget {
+		// Above target: increase base fee by up to 12.5%
+		// Simple approximation: increase by (gasUsed - gasTarget) / gasTarget * 12.5%
+		excess := gasUsed - gasTarget
+		increase := new(big.Int).Mul(currentBaseFee, big.NewInt(int64(excess)))
+		increase.Div(increase, big.NewInt(int64(gasTarget)))
+		increase.Div(increase, big.NewInt(8)) // Divide by 8 for 12.5% max
+
+		nextBaseFee = new(big.Int).Add(currentBaseFee, increase)
+	} else if gasUsed < gasTarget {
+		// Below target: decrease base fee by up to 12.5%
+		deficit := gasTarget - gasUsed
+		decrease := new(big.Int).Mul(currentBaseFee, big.NewInt(int64(deficit)))
+		decrease.Div(decrease, big.NewInt(int64(gasTarget)))
+		decrease.Div(decrease, big.NewInt(8)) // Divide by 8 for 12.5% max
+
+		nextBaseFee = new(big.Int).Sub(currentBaseFee, decrease)
+	} else {
+		// Exactly at target: no change
+		nextBaseFee = new(big.Int).Set(currentBaseFee)
+	}
+
+	// Floor at minimum gas price
+	minGasPrice := big.NewInt(DefaultMinGasPrice)
+	if nextBaseFee.Cmp(minGasPrice) < 0 {
+		nextBaseFee = minGasPrice
+	}
+
+	return nextBaseFee
 }
 
 // FeeHistoryResult is the structure returned by Geth `eth_feeHistory` API.
