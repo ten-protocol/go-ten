@@ -50,8 +50,8 @@ on:
         description: |
           Gateway URL for frontend build
           Examples by environment:
-          • Dev: https://dev-gw-testnet.ten.xyz/v1/
-          • UAT: https://uat-gw-testnet.ten.xyz
+          • Dev: https://rpc.dev-gw-testnet.ten.xyz
+          • UAT: https://rpc.uat-gw-testnet.ten.xyz
           • Sepolia: https://testnet.ten.xyz
         required: false
         type: string
