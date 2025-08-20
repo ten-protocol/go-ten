@@ -47,7 +47,7 @@ func (s *DirectUpgrade) Start() error {
 			}
 		}`, s.cfg.l1HTTPURL, s.cfg.privateKey),
 		"NETWORK_CONFIG_ADDR": s.cfg.networkConfigAddress,
-		"MULTISIG_ADDRESS":    s.cfg.multisigAddress,
+		"MULTISIG_ADDR":       s.cfg.multisigAddress,
 	}
 
 	fmt.Printf("Starting direct upgrade script. NetworkConfigAddress: %s, MultisigAddress: %s\n",

@@ -279,11 +279,11 @@ async function main() {
     }
 
     // Configuration validation
-    const multisigAddress = process.env.MULTISIG_ADDRESS || "0x...";
+    const multisigAddress = process.env.MULTISIG_ADDR || "0x...";
     const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR || "0x...";
 
     if (multisigAddress === "0x..." || networkConfigAddr === "0x...") {
-        throw new Error('Please set MULTISIG_ADDRESS and NETWORK_CONFIG_ADDR environment variables');
+        throw new Error('Please set MULTISIG_ADDR and NETWORK_CONFIG_ADDR environment variables');
     }
 
     console.log("Configuration:");
@@ -394,7 +394,7 @@ async function main() {
         }));
         
         if (!multisigAddress) {
-            throw new Error('MULTISIG_ADDRESS environment variable is required');
+            throw new Error('MULTISIG_ADDR environment variable is required');
         }
         
         const batchBundle = generateSafeTransactionBundle(

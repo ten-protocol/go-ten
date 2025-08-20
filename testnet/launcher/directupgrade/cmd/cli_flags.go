@@ -5,7 +5,7 @@ const (
 	l1HTTPURLFlag         = "l1_http_url"
 	privateKeyFlag        = "private_key"
 	networkConfigAddrFlag = "network_config_addr"
-	multisigAddressFlag   = "multisig_address"
+	multisigAddrFlag      = "multisig_addr"
 	dockerImageFlag       = "docker_image"
 )
 
@@ -16,7 +16,7 @@ func getFlagUsageMap() map[string]string {
 		l1HTTPURLFlag:         "Layer 1 network http RPC addr",
 		privateKeyFlag:        "L1 and L2 private key used in the node",
 		networkConfigAddrFlag: "L1 network config contract address",
-		multisigAddressFlag:   "Multisig address that controls the contracts",
+		multisigAddrFlag:      "Multisig address that controls the contracts",
 		dockerImageFlag:       "Docker image to run",
 	}
 }

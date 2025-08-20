@@ -74,7 +74,7 @@ jobs:
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -network_config_addr=${{ vars.NETWORK_CONFIG_ADDR }} \
-          -multisig_address=${{ vars.MULTISIG_ADDR }}
+          -multisig_addr=${{ vars.MULTISIG_ADDR }}
 
       - name: 'Save upgrade container logs'
         run: |

@@ -24,7 +24,7 @@ Phase 2: Multisig → Timelock → Proxy Admin → Implementation
 Sets up direct multisig control by transferring proxy admin ownership directly to the multisig.
 
 ```bash
-export MULTISIG_ADDRESS="0x..."
+export MULTISIG_ADDR="0x..."
 export NETWORK_CONFIG_ADDR="0x..."
 npx hardhat run deployment_scripts/upgrade/001_direct_multisig_setup.ts --network mainnet
 ```
@@ -38,7 +38,7 @@ npx hardhat run deployment_scripts/upgrade/001_direct_multisig_setup.ts --networ
 Performs direct upgrades without any timelock delays.
 
 ```bash
-export MULTISIG_ADDRESS="0x..."
+export MULTISIG_ADDR="0x..."
 export NETWORK_CONFIG_ADDR="0x..."
 npx hardhat run deployment_scripts/upgrade/002_direct_upgrade.ts --network mainnet
 ```
@@ -53,7 +53,7 @@ npx hardhat run deployment_scripts/upgrade/002_direct_upgrade.ts --network mainn
 Deploys the TimelockController contract for transparent governance.
 
 ```bash
-export MULTISIG_ADDRESS="0x..."
+export MULTISIG_ADDR="0x..."
 npx hardhat run scripts/upgrade/phase_2/001_deploy_timelock.ts --network mainnet
 ```
 
@@ -68,7 +68,7 @@ Bridges Phase 1 to Phase 2 by transferring control from direct multisig to timel
 
 ```bash
 export TIMELOCK_ADDRESS="0x..."
-export MULTISIG_ADDRESS="0x..."
+export MULTISIG_ADDR="0x..."
 export NETWORK_CONFIG_ADDR="0x..."
 npx hardhat run scripts/upgrade/phase_2/003_transition_to_timelock.ts --network mainnet
 ```
@@ -83,7 +83,7 @@ Performs timelock-based upgrades with 24-hour delay protection.
 
 ```bash
 export TIMELOCK_ADDRESS="0x..."
-export MULTISIG_ADDRESS="0x..."
+export MULTISIG_ADDR="0x..."
 export NETWORK_CONFIG_ADDR="0x..."
 npx hardhat run scripts/upgrade/phase_2/004_upgrade_contracts.ts --network mainnet
 ```
@@ -105,7 +105,7 @@ npx hardhat run scripts/upgrade/phase_2/004_upgrade_contracts.ts --network mainn
 
 2. **Setup Direct Multisig Control**
    ```bash
-   export MULTISIG_ADDRESS="0x..."
+   export MULTISIG_ADDR="0x..."
    export NETWORK_CONFIG_ADDR="0x..."
    npx hardhat run deployment_scripts/upgrade/001_direct_multisig_setup.ts --network mainnet
    ```
@@ -119,7 +119,7 @@ npx hardhat run scripts/upgrade/phase_2/004_upgrade_contracts.ts --network mainn
 
 1. **Deploy Timelock (while keeping direct control)**
    ```bash
-   export MULTISIG_ADDRESS="0x..."
+   export MULTISIG_ADDR="0x..."
    npx hardhat run scripts/upgrade/phase_2/001_deploy_timelock.ts --network mainnet
    ```
 
@@ -132,7 +132,7 @@ npx hardhat run scripts/upgrade/phase_2/004_upgrade_contracts.ts --network mainn
 3. **Transition to Timelock Governance**
    ```bash
    export TIMELOCK_ADDRESS="0x..."
-   export MULTISIG_ADDRESS="0x..."
+   export MULTISIG_ADDR="0x..."
    export NETWORK_CONFIG_ADDR="0x..."
    npx hardhat run scripts/upgrade/phase_2/002_transition_to_timelock.ts --network mainnet
    ```
@@ -149,10 +149,10 @@ npx hardhat run scripts/upgrade/phase_2/004_upgrade_contracts.ts --network mainn
 - `NETWORK_CONFIG_ADDR`: Address of the NetworkConfig contract
 
 ### Required for Phase 1
-- `MULTISIG_ADDRESS`: Address of the Gnosis Safe multisig
+- `MULTISIG_ADDR`: Address of the Gnosis Safe multisig
 
 ### Required for Phase 2
-- `MULTISIG_ADDRESS`: Address of the Gnosis Safe multisig
+- `MULTISIG_ADDR`: Address of the Gnosis Safe multisig
 - `TIMELOCK_ADDRESS`: Address of the TimelockController contract
 
 ### Optional

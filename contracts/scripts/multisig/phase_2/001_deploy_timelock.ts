@@ -18,11 +18,11 @@ async function deployTimelockController() {
     console.log("Deployer address:", deployer.address);
     
     // Configuration - these should be set as environment variables
-    const multisigAddress = process.env.MULTISIG_ADDRESS || "0x...";
+    const multisigAddress = process.env.MULTISIG_ADDR || "0x...";
     const delay = process.env.TIMELOCK_DELAY ? parseInt(process.env.TIMELOCK_DELAY) : 24 * 60 * 60; // 24 hours default
     
     if (multisigAddress === "0x...") {
-        throw new Error('Please set MULTISIG_ADDRESS environment variable');
+        throw new Error('Please set MULTISIG_ADDR environment variable');
     }
     
     console.log("Configuration:");
@@ -92,7 +92,7 @@ async function setupGovernance() {
     console.log("\n=== Governance Setup Complete ===");
     console.log("Environment variables to set:");
     console.log(`export TIMELOCK_ADDRESS="${timelockAddress}"`);
-    console.log(`export MULTISIG_ADDRESS="${multisigAddress}"`);
+    console.log(`export MULTISIG_ADDR="${multisigAddress}"`);
     console.log("===============================\n");
     
     return {
