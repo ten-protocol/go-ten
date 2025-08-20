@@ -50,7 +50,7 @@ jobs:
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
           docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
 
-      - name: 'Upgrade L1 Contracts'
+      - name: 'Generate L1 contract upgrade transaction JSON'
         id: upgradeContracts
         shell: bash
         env:

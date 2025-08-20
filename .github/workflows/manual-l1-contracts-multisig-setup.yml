@@ -50,7 +50,7 @@ jobs:
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
           docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
 
-      - name: 'Upgrade L1 Contracts'
+      - name: 'Transfer ownership of L1 contracts to multisig'
         id: upgradeContracts
         shell: bash
         env:
@@ -67,13 +67,13 @@ jobs:
             # Strip the "-testnet" suffix from testnet environments
             TESTNET_TYPE=${TESTNET_TYPE_RAW%-testnet}
           fi
-  
+          
           # Run upgrade script
           go run ./testnet/launcher/multisigsetup/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
-          -network_config_addr=${{ vars.NETWORK_CONFIG_ADDR }}
+          -network_config_addr=${{ vars.NETWORK_CONFIG_ADDR }} \
           -multisig_address=${{ vars.MULTISIG_ADDR }}
 
       - name: 'Save upgrade container logs'
