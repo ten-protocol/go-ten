@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -26,7 +27,7 @@ type SKManager interface {
 	ActivateSessionKey(user *common.GWUser) (bool, error)
 	DeactivateSessionKey(user *common.GWUser) (bool, error)
 	DeleteSessionKey(user *common.GWUser) (bool, error)
-	ListSessionKey(user *common.GWUser) (string, error)
+	ListSessionKey(user *common.GWUser) (*gethcommon.Address, error)
 	SignTx(ctx context.Context, user *common.GWUser, input *types.Transaction) (*types.Transaction, error)
 }
 
@@ -141,11 +142,11 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 	}, nil
 }
 
-func (m *skManager) ListSessionKey(user *common.GWUser) (string, error) {
+func (m *skManager) ListSessionKey(user *common.GWUser) (*gethcommon.Address, error) {
 	if user.SessionKey == nil {
-		return "", nil
+		return nil, nil
 	}
-	return user.SessionKey.Account.Address.Hex(), nil
+	return user.SessionKey.Account.Address, nil
 }
 
 func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, tx *types.Transaction) (*types.Transaction, error) {
