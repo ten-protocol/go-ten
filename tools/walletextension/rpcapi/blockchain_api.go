@@ -217,7 +217,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		if err != nil {
 			return nil, err
 		}
-		return []byte(sk), nil
+		return sk.Bytes(), nil
 	case common.SendUnsignedTxCQMethod:
 		if user.ActiveSK && user.SessionKey != nil {
 			input, err := base64.StdEncoding.DecodeString(params)
