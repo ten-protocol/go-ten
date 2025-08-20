@@ -60,7 +60,7 @@ async function setupDirectMultisig() {
             { name: "CrossChain", address: addresses.crossChain },
             { name: "NetworkEnclaveRegistry", address: addresses.networkEnclaveRegistry },
             { name: "DataAvailabilityRegistry", address: addresses.dataAvailabilityRegistry },
-            { name: "DefaultProxyAdmin", address: proxyAdminAddr }
+            { name: "ProxyAdmin", address: proxyAdminAddr }
         ];
         
         console.log("\n=== Transferring Contract Ownership ===");
