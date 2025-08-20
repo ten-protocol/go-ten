@@ -45,10 +45,10 @@ jobs:
           username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Build and push hardhat deployer image'
-        run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
-          docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+#      - name: 'Build and push hardhat deployer image'
+#        run: |
+#          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
+#          docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
 
       - name: 'Transfer ownership of L1 contracts to multisig'
         id: upgradeContracts
@@ -74,7 +74,7 @@ jobs:
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -network_config_addr=${{ vars.NETWORK_CONFIG_ADDR }} \
-          -multisig_addr=${{ vars.MULTISIG_ADDR }}
+          -multisig_addr=${{ vars.MULTISIG_ADDR }} \
           -proxy_admin_addr=${{ vars.PROXY_ADMIN_ADDR }}
 
       - name: 'Save upgrade container logs'
