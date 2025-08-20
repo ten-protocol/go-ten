@@ -30,7 +30,7 @@ func (s *DirectUpgrade) Start() error {
 		"npx",
 		"hardhat",
 		"run",
-		"scripts/upgrade/phase_1/002_direct_upgrade.ts",
+		"scripts/multisig/phase_1/002_direct_upgrade.ts",
 		"--network",
 		"layer1",
 		"--verbose",

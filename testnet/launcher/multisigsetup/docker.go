@@ -30,7 +30,7 @@ func (s *MultisigSetup) Start() error {
 		"npx",
 		"hardhat",
 		"run",
-		"scripts/upgrade/phase_1/001_direct_multisig_setup.ts",
+		"scripts/multisig/phase_1/001_direct_multisig_setup.ts",
 		"--network",
 		"layer1",
 		"--verbose",

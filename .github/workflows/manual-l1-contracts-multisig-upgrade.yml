@@ -1,5 +1,5 @@
-name: '[M] Upgrade L1 Contracts'
-run-name: '[M] Upgrade L1 Contracts ( ${{ github.event.inputs.testnet_type }} )'
+name: '[M] Multisig Upgrade L1 Contracts '
+run-name: '[M] Multisig Upgrade L1 Contracts ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:
