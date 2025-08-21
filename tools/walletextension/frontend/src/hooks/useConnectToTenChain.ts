@@ -76,18 +76,40 @@ export default function useConnectToTenChain() {
             }
 
             console.log('[useConnectToTenChain] Getting token - current tenToken:', tenToken);
-            let newTenToken =
-                tenToken === ''
-                    ? await joinTestnet().catch((error) => {
-                          console.log('[useConnectToTenChain] Error joining testnet:', error);
-                          setError({
-                              name: 'Unable to retrieve TEN token',
-                              message: error.message,
-                              cause: error.cause,
-                          });
-                          setLoading(false);
-                      })
-                    : tenToken;
+            let newTenToken: string;
+            if (tenToken === '') {
+                console.log('[useConnectToTenChain] No existing token found, calling /join endpoint');
+                console.log('[useConnectToTenChain] /join call context - step:', step, 'connector:', connector?.name, 'address:', address);
+                const startTime = Date.now();
+                
+                try {
+                    newTenToken = await joinTestnet();
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    console.log('[useConnectToTenChain] /join endpoint SUCCESS - duration:', duration + 'ms', 'token received:', newTenToken ? 'yes' : 'no');
+                    console.log('[useConnectToTenChain] /join response token length:', newTenToken?.length || 0, 'first 10 chars:', newTenToken?.substring(0, 10) || 'N/A');
+                } catch (error: any) {
+                    const endTime = Date.now();
+                    const duration = endTime - startTime;
+                    console.log('[useConnectToTenChain] /join endpoint FAILED - duration:', duration + 'ms');
+                    console.log('[useConnectToTenChain] /join error details:', {
+                        message: error?.message,
+                        cause: error?.cause,
+                        stack: error?.stack,
+                        name: error?.name
+                    });
+                    setError({
+                        name: 'Unable to retrieve TEN token',
+                        message: error?.message || 'Unknown error',
+                        cause: error?.cause,
+                    });
+                    setLoading(false);
+                    return; // Exit early on error
+                }
+            } else {
+                console.log('[useConnectToTenChain] Using existing token, skipping /join endpoint call');
+                newTenToken = tenToken;
+            }
 
             console.log('[useConnectToTenChain] New token obtained:', newTenToken ? 'success' : 'failed');
             if (!newTenToken) {
