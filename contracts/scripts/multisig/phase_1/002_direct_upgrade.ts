@@ -383,7 +383,7 @@ async function main() {
             {
                 contractName: 'CrossChain',
                 proxyAddress: addresses.crossChain,
-                description: 'Upgrade CrossChain contract to v2.0.0 with improved security'
+                description: 'Upgrade CrossChain contract to v2.0.0'
             },
             {
                 contractName: 'NetworkEnclaveRegistry',
