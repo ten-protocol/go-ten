@@ -70,6 +70,18 @@ func ExecuteHTTPReq(client *http.Client, req *http.Request) ([]byte, error) {
 
 // EnableCORS Allows Tenscan and WalletExtension APIs to serve other web apps via CORS.
 func EnableCORS(resp http.ResponseWriter, req *http.Request) bool {
+	resp.Header().Set(CorsAllowOrigin, OriginAll)
+	if (*req).Method == ReqOptions {
+		// Returns true if the request was a pre-flight, e.g. OPTIONS, to stop further processing.
+		resp.Header().Set(CorsAllowMethods, ReqOptions)
+		resp.Header().Set(CorsAllowHeaders, CorsHeaders)
+		return true
+	}
+	return false
+}
+
+// EnableRestrictiveCORS Allows only specific origin to access endpoints with credentials.
+func EnableRestrictiveCORS(resp http.ResponseWriter, req *http.Request) bool {
 	resp.Header().Set(CorsAllowOrigin, AllowedOrigin)
 	resp.Header().Set(CorsAllowCredentials, "true")
 	if (*req).Method == ReqOptions {

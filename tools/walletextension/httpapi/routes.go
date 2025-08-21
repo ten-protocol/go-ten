@@ -37,7 +37,7 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetToken,
-			Func: httpHandler(walletExt, getTokenRequestHandler),
+			Func: restrictiveHttpHandler(walletExt, getTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathSetToken,
@@ -111,12 +111,33 @@ func httpHandler(
 	}
 }
 
+func restrictiveHttpHandler(
+	walletExt *services.Services,
+	fun func(walletExt *services.Services, conn UserConn),
+) func(resp http.ResponseWriter, req *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		restrictiveHttpRequestHandler(walletExt, resp, req, fun)
+	}
+}
+
 // Overall request handler for http requests
 func httpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
 	if walletExt.IsStopping() {
 		return
 	}
 	if httputil.EnableCORS(resp, req) {
+		return
+	}
+	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
+	fun(walletExt, userConn)
+}
+
+// Restrictive request handler for endpoints requiring specific origin access
+func restrictiveHttpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
+	if walletExt.IsStopping() {
+		return
+	}
+	if httputil.EnableRestrictiveCORS(resp, req) {
 		return
 	}
 	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
