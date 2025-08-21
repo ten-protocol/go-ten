@@ -393,8 +393,26 @@ async function main() {
         
         for (const config of upgradeConfigs) {
             console.log(`\n--- Deploying ${config.contractName} Implementation ---`);
-            const newImplementation = await deployNewImplementation(config.contractName);
-            implementations[config.contractName] = newImplementation;
+            try {
+                const newImplementation = await deployNewImplementation(config.contractName);
+                implementations[config.contractName] = newImplementation;
+                
+                // Verify the new implementation is valid
+                console.log(`Verifying new implementation at ${newImplementation}...`);
+                const newImplContract = await ethers.getContractAt(config.contractName, newImplementation);
+                
+                // Try to call a basic function to ensure it's working
+                try {
+                    const owner = await (newImplContract as any).owner();
+                    console.log(`New implementation verified - owner(): ${owner}`);
+                } catch (error) {
+                    console.log(`Warning: New implementation may have issues:`, (error as Error).message);
+                }
+                
+            } catch (error) {
+                console.error(`Failed to deploy ${config.contractName}:`, error);
+                throw error;
+            }
         }
         
         console.log('\n=== GENERATING SAFE TRANSACTION FILES ===');
@@ -414,6 +432,10 @@ async function main() {
             }
             
             // Generate Safe transaction
+            console.log(`Generating upgrade transaction for ${config.contractName}...`);
+            console.log(`  Proxy: ${config.proxyAddress}`);
+            console.log(`  New Implementation: ${newImplementation}`);
+            
             const safeTx = generateSafeTransaction(
                 config.proxyAddress,
                 newImplementation,
@@ -430,6 +452,21 @@ async function main() {
             console.log(`New Implementation: ${newImplementation}`);
             console.log(`Calldata: ${safeTx.data}`);
             console.log(`File: ${filename}`);
+            
+            // Test the calldata by trying to decode it
+            try {
+                const iface = new ethers.Interface([
+                    "function upgradeTo(address newImplementation)"
+                ]);
+                const decoded = iface.parseTransaction({ data: safeTx.data });
+                if (decoded) {
+                    console.log(`Calldata decoded successfully: ${decoded.name}(${decoded.args.join(', ')})`);
+                } else {
+                    console.log(`Calldata decoding returned null`);
+                }
+            } catch (error) {
+                console.log(`Calldata decoding failed:`, (error as Error).message);
+            }
         }
         
         // Generate batch transaction bundle
