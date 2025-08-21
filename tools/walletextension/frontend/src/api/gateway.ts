@@ -65,6 +65,7 @@ export async function getTokenFromCookie(): Promise<string> {
         const token = await httpRequest<string>({
             method: 'get',
             url: tenGatewayAddress + pathToUrl(apiRoutes.getToken),
+            withCredentials: true,
         });
         
         // Validate token size and content

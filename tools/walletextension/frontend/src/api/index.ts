@@ -12,6 +12,7 @@ interface HttpOptions {
     timeout?: number;
     responseType?: 'json' | 'arraybuffer' | 'blob' | 'document' | 'text' | undefined;
     searchParams?: Record<string, any>;
+    withCredentials?: boolean;
 }
 
 const baseConfig: AxiosRequestConfig = {
@@ -34,6 +35,7 @@ export const httpRequest = async <ResponseData>(
         timeout,
         responseType,
         searchParams,
+        withCredentials,
     } = options;
     let query = '';
     if (searchParams) {
@@ -58,6 +60,7 @@ export const httpRequest = async <ResponseData>(
         headers: { ...(headers || {}) },
         timeout,
         responseType: responseType,
+        withCredentials,
         ...config,
     };
     const response = await https(httpConfig);
