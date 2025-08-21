@@ -260,14 +260,14 @@ async function main() {
     // Configuration validation
     const config: TransitionConfig = {
         timelockAddress: process.env.TIMELOCK_ADDRESS || "0x...",
-        multisigAddress: process.env.MULTISIG_ADDRESS || "0x...",
+        multisigAddress: process.env.MULTISIG_ADDR || "0x...",
         networkConfigAddr: process.env.NETWORK_CONFIG_ADDR || "0x..."
     };
     
     if (config.timelockAddress === "0x..." || 
         config.multisigAddress === "0x..." || 
         config.networkConfigAddr === "0x...") {
-        throw new Error('Please set TIMELOCK_ADDRESS, MULTISIG_ADDRESS, and NETWORK_CONFIG_ADDR environment variables');
+        throw new Error('Please set TIMELOCK_ADDRESS, MULTISIG_ADDR, and NETWORK_CONFIG_ADDR environment variables');
     }
     
     console.log("Configuration:");

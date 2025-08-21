@@ -27,14 +27,14 @@ Gnosis Safe (Multisig) → Proxy Admin → Implementation
 
 2. **Transfer proxy admin ownership directly to multisig**
    ```bash
-   export MULTISIG_ADDRESS="0x..."
+   export MULTISIG_ADDR="0x..."
    export NETWORK_CONFIG_ADDR="0x..."
    npx hardhat run deployment_scripts/upgrade/001_direct_multisig_setup.ts --network mainnet
    ```
 
 3. **Upgrade contracts**
    ```bash
-   export MULTISIG_ADDRESS="0x..."
+   export MULTISIG_ADDR="0x..."
    export NETWORK_CONFIG_ADDR="0x..."
    npx hardhat run deployment_scripts/upgrade/002_direct_upgrade.ts --network mainnet
    ```
@@ -82,7 +82,7 @@ Gnosis Safe (Multisig) → Timelock → Proxy Admin → Implementation
 
 2. **Deploy Timelock Controller**
    ```bash
-   export MULTISIG_ADDRESS="0x..."
+   export MULTISIG_ADDR="0x..."
    npx hardhat run deployment_scripts/upgrade/001_deploy_timelock.ts --network mainnet
    ```
 

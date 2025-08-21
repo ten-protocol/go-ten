@@ -9,6 +9,7 @@ type Config struct {
 	privateKey           string
 	networkConfigAddress string
 	multisigAddress      string
+	proxyAdminAddress    string
 	dockerImage          string
 }
 
@@ -43,6 +44,11 @@ func WithNetworkConfigAddress(s string) Option {
 func WithMultisigAddress(s string) Option {
 	return func(c *Config) {
 		c.multisigAddress = s
+	}
+}
+func WithProxyAdminAddress(s string) Option {
+	return func(c *Config) {
+		c.proxyAdminAddress = s
 	}
 }
 

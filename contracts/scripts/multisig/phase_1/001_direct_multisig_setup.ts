@@ -21,21 +21,27 @@ async function setupDirectMultisig() {
     console.log("Deployer address:", deployer.address);
     
     // Configuration - these must be set as environment variables
-    const multisigAddress = process.env.MULTISIG_ADDRESS || "0x...";
+    const multisigAddr = process.env.MULTISIG_ADDR || "0x...";
     const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR || "0x...";
-    
-    if (multisigAddress === "0x...") {
-        throw new Error('Please set MULTISIG_ADDRESS environment variable');
+    const proxyAdminAddr = process.env.PROXY_ADMIN_ADDR || "0x...";
+
+    if (multisigAddr === "0x...") {
+        throw new Error('Please set MULTISIG_ADDR environment variable');
     }
     
     if (networkConfigAddr === "0x...") {
         throw new Error('Please set NETWORK_CONFIG_ADDR environment variable');
     }
-    
+
+    if (networkConfigAddr === "0x...") {
+        throw new Error('Please set PROXY_ADMIN_ADDR environment variable');
+    }
+
     console.log("Configuration:");
-    console.log("- Multisig address:", multisigAddress);
+    console.log("- Multisig address:", multisigAddr);
     console.log("- NetworkConfig address:", networkConfigAddr);
-    
+    console.log("- ProxyAdmin address:", proxyAdminAddr);
+
     try {
         // Get addresses from network config
         const networkConfig = await ethers.getContractAt('NetworkConfig', networkConfigAddr);
@@ -53,7 +59,8 @@ async function setupDirectMultisig() {
         const contracts = [
             { name: "CrossChain", address: addresses.crossChain },
             { name: "NetworkEnclaveRegistry", address: addresses.networkEnclaveRegistry },
-            { name: "DataAvailabilityRegistry", address: addresses.dataAvailabilityRegistry }
+            { name: "DataAvailabilityRegistry", address: addresses.dataAvailabilityRegistry },
+            { name: "ProxyAdmin", address: proxyAdminAddr }
         ];
         
         console.log("\n=== Transferring Contract Ownership ===");
@@ -71,7 +78,7 @@ async function setupDirectMultisig() {
                 const currentOwner = await (contractInstance as any).owner();
                 console.log(`Current owner: ${currentOwner}`);
                 
-                if (currentOwner.toLowerCase() === multisigAddress.toLowerCase()) {
+                if (currentOwner.toLowerCase() === multisigAddr.toLowerCase()) {
                     console.log(`${contract.name} ownership already transferred to Multisig`);
                     continue;
                 }
@@ -82,10 +89,10 @@ async function setupDirectMultisig() {
                     continue;
                 }
                 
-                        // Transfer ownership to multisig
-        console.log(`Transferring ownership from ${deployer.address} to ${multisigAddress}...`);
+        // Transfer ownership to multisig
+        console.log(`Transferring ownership from ${deployer.address} to ${multisigAddr}...`);
         
-        const transferTx = await (contractInstance as any).transferOwnership(multisigAddress);
+        const transferTx = await (contractInstance as any).transferOwnership(multisigAddr);
         await transferTx.wait();
         
         console.log(`${contract.name} ownership transfer initiated successfully!`);
@@ -130,7 +137,7 @@ async function setupDirectMultisig() {
         }
         
         return {
-            multisigAddress,
+            multisigAddress: multisigAddr,
             networkConfigAddr,
             contracts: contracts.map(c => ({ name: c.name, address: c.address }))
         };
