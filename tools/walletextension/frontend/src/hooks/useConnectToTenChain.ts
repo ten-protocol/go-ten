@@ -20,7 +20,7 @@ export default function useConnectToTenChain() {
     const connectors = useConnectors();
     const [step, setStep] = useState<number>(0);
     const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
-    const { token: tenToken, loading: tokenLoading } = useTenToken();
+    const { token: tenToken, loading: tokenLoading, refreshToken } = useTenToken();
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
     const { isAuthenticated, isAuthenticatedLoading, authenticateAccount, authenticationError } =
@@ -88,6 +88,10 @@ export default function useConnectToTenChain() {
                     const duration = endTime - startTime;
                     console.log('[useConnectToTenChain] /join endpoint SUCCESS - duration:', duration + 'ms', 'token received:', newTenToken ? 'yes' : 'no');
                     console.log('[useConnectToTenChain] /join response token length:', newTenToken?.length || 0, 'first 10 chars:', newTenToken?.substring(0, 10) || 'N/A');
+                    
+                    // Refresh the token context to get the latest token from cookie
+                    console.log('[useConnectToTenChain] Refreshing token context after successful /join');
+                    await refreshToken();
                 } catch (error: any) {
                     const endTime = Date.now();
                     const duration = endTime - startTime;
@@ -119,9 +123,10 @@ export default function useConnectToTenChain() {
             console.log('[useConnectToTenChain] Moving to step 2');
             setStep(2);
 
-            if (tenToken === '') {
+            // Ensure token has 0x prefix for processing
+            if (!newTenToken.startsWith('0x')) {
                 newTenToken = `0x${newTenToken}`;
-                console.log('[useConnectToTenChain] New token obtained:', newTenToken);
+                console.log('[useConnectToTenChain] Added 0x prefix to token:', newTenToken.substring(0, 10) + '...');
             }
 
             if (chainId === tenChainIDDecimal) {
@@ -141,8 +146,9 @@ export default function useConnectToTenChain() {
 
             // Remove 0x prefix from token for RPC URL
             const cleanTokenForRpc = newTenToken.startsWith('0x') ? newTenToken.slice(2) : newTenToken;
+            console.log('[useConnectToTenChain] Token for RPC URL - original:', newTenToken.substring(0, 10) + '...', 'clean:', cleanTokenForRpc.substring(0, 10) + '...');
             const rpcUrl = `${tenGatewayAddress}/v1/?token=${cleanTokenForRpc}`;
-            console.log('[useConnectToTenChain] Attempting to switch chain with RPC URL:', rpcUrl);
+            console.log('[useConnectToTenChain] Attempting to switch chain with RPC URL:', rpcUrl.replace(/token=[^&]*/, 'token=***HIDDEN***'));
             
             //@ts-expect-error Revisit later
             await connector
@@ -186,7 +192,7 @@ export default function useConnectToTenChain() {
                 console.log('[useConnectToTenChain] Token still loading, waiting...');
             }
         }
-    }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, chainId]);
+    }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, chainId, refreshToken]);
 
     useEffect(() => {
         if (step !== 3) {
