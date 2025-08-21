@@ -83,15 +83,6 @@ func TestTenscan(t *testing.T) {
 	err = waitForFirstRollup(serverAddress)
 	require.NoError(t, err)
 
-	//Timer for running local tests
-	countdownDuration := 24 * time.Hour
-	tickDuration := 5 * time.Minute
-
-	for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
-		fmt.Printf("Shutting down in %s...\n", remaining)
-		time.Sleep(tickDuration)
-	}
-
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
