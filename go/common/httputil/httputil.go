@@ -12,12 +12,14 @@ import (
 
 const (
 	// CORS-related constants.
-	CorsAllowOrigin  = "Access-Control-Allow-Origin"
-	OriginAll        = "*"
-	CorsAllowMethods = "Access-Control-Allow-Methods"
-	ReqOptions       = "OPTIONS"
-	CorsAllowHeaders = "Access-Control-Allow-Headers"
-	CorsHeaders      = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
+	CorsAllowOrigin      = "Access-Control-Allow-Origin"
+	CorsAllowCredentials = "Access-Control-Allow-Credentials"
+	OriginAll            = "*"
+	AllowedOrigin        = "https://uat-gw-testnet.ten.xyz"
+	CorsAllowMethods     = "Access-Control-Allow-Methods"
+	ReqOptions           = "OPTIONS"
+	CorsAllowHeaders     = "Access-Control-Allow-Headers"
+	CorsHeaders          = "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization"
 )
 
 // CreateTLSHTTPClient provides a basic http client prepared with a trusted CA cert
@@ -68,7 +70,8 @@ func ExecuteHTTPReq(client *http.Client, req *http.Request) ([]byte, error) {
 
 // EnableCORS Allows Tenscan and WalletExtension APIs to serve other web apps via CORS.
 func EnableCORS(resp http.ResponseWriter, req *http.Request) bool {
-	resp.Header().Set(CorsAllowOrigin, OriginAll)
+	resp.Header().Set(CorsAllowOrigin, AllowedOrigin)
+	resp.Header().Set(CorsAllowCredentials, "true")
 	if (*req).Method == ReqOptions {
 		// Returns true if the request was a pre-flight, e.g. OPTIONS, to stop further processing.
 		resp.Header().Set(CorsAllowMethods, ReqOptions)
