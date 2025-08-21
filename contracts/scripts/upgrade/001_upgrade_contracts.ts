@@ -17,7 +17,7 @@ export async function upgradeContract(
     );
     // hardhat will compile the contract if it's not already compiled
     const factory = await ethers.getContractFactory(contractName);
-    
+
     // get the current implementation address
     const currentImpl = await hre.upgrades.erc1967.getImplementationAddress(proxyAddress);
     console.log(`Current implementation address: ${currentImpl}`);
@@ -29,7 +29,7 @@ export async function upgradeContract(
         implementation: currentImpl
     } as UpgradeOptions);
 
-    const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, { 
+    const upgraded = await upgrades.upgradeProxy(proxyAddress, factory, {
         kind: 'transparent',
         unsafeAllow: ['constructor']
     } as UpgradeOptions);
