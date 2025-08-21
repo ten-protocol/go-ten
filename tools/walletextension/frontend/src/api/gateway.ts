@@ -74,6 +74,8 @@ export async function getTokenFromCookie(): Promise<string> {
             url: tenGatewayAddress + pathToUrl(apiRoutes.getToken),
             withCredentials: true,
         });
+
+        console.log('[getTokenFromCookie] Retrieved token:', token);
         
         // Validate token size and content
         if (!token || token.length === 0) {
@@ -81,7 +83,25 @@ export async function getTokenFromCookie(): Promise<string> {
             return '';
         }
         
-        console.log('[getTokenFromCookie] Retrieved token:', token);
+        // Check if response is an error message instead of a token
+        if (token.includes('cookie not found') || 
+            token.includes('not found') || 
+            token.includes('error') ||
+            token.toLowerCase().includes('invalid')) {
+            console.log('[getTokenFromCookie] Received error message instead of token:', token);
+            console.log('[getTokenFromCookie] Treating as no token available - returning empty string');
+            return '';
+        }
+        
+        // Validate token format - should be hex (with or without 0x prefix)
+        const cleanToken = token.startsWith('0x') ? token.slice(2) : token;
+        if (!/^[0-9a-fA-F]+$/.test(cleanToken)) {
+            console.log('[getTokenFromCookie] Response is not a valid hex token:', token);
+            console.log('[getTokenFromCookie] Treating as invalid token - returning empty string');
+            return '';
+        }
+        
+        console.log('[getTokenFromCookie] Retrieved valid token:', token);
         
         return token;
     } catch (error) {
