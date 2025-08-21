@@ -20,7 +20,7 @@ export default function useConnectToTenChain() {
     const connectors = useConnectors();
     const [step, setStep] = useState<number>(0);
     const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
-    const { token: tenToken, loading: tokenLoading, refreshToken } = useTenToken();
+    const { token: tenToken, loading: tokenLoading } = useTenToken();
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
     const { isAuthenticated, isAuthenticatedLoading, authenticateAccount, authenticationError } =
@@ -87,11 +87,11 @@ export default function useConnectToTenChain() {
                     const endTime = Date.now();
                     const duration = endTime - startTime;
                     console.log('[useConnectToTenChain] /join endpoint SUCCESS - duration:', duration + 'ms', 'token received:', newTenToken ? 'yes' : 'no');
+                    console.log('[useConnectToTenChain] /join response full token:', newTenToken);
                     console.log('[useConnectToTenChain] /join response token length:', newTenToken?.length || 0, 'first 10 chars:', newTenToken?.substring(0, 10) || 'N/A');
                     
-                    // Refresh the token context to get the latest token from cookie
-                    console.log('[useConnectToTenChain] Refreshing token context after successful /join');
-                    await refreshToken();
+                    
+                    console.log('[useConnectToTenChain] Using token from /join response for RPC URL');
                 } catch (error: any) {
                     const endTime = Date.now();
                     const duration = endTime - startTime;
@@ -192,7 +192,7 @@ export default function useConnectToTenChain() {
                 console.log('[useConnectToTenChain] Token still loading, waiting...');
             }
         }
-    }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, chainId, refreshToken]);
+    }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, chainId]);
 
     useEffect(() => {
         if (step !== 3) {

@@ -1,11 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { getTokenFromCookie } from '@/api/gateway';
 
 interface TenTokenContextType {
     token: string;
     loading: boolean;
     error: string | null;
-    refreshToken: () => Promise<void>;
 }
 
 const TenTokenContext = createContext<TenTokenContextType | undefined>(undefined);
@@ -19,43 +18,35 @@ export function TenTokenProvider({ children }: TenTokenProviderProps) {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Load token from cookie function
-    const loadToken = useCallback(async () => {
-        console.log('[TenTokenProvider] Loading token from cookie');
-        setLoading(true);
-        setError(null);
-        
-        try {
-            const retrievedToken = await getTokenFromCookie();
-            setTokenState(retrievedToken);
-            console.log('[TenTokenProvider] Token loaded successfully:', retrievedToken ? 'present' : 'empty');
-        } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Unknown error loading token';
-            console.log('[TenTokenProvider] Error loading token:', errorMsg);
-            setError(errorMsg);
-            setTokenState('');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
-
     // Load token from cookie on mount
     useEffect(() => {
-        loadToken();
-    }, [loadToken]);
+        const loadToken = async () => {
+            console.log('[TenTokenProvider] Loading token on mount');
+            setLoading(true);
+            setError(null);
+            
+            try {
+                const retrievedToken = await getTokenFromCookie();
+                console.log('[TenTokenProvider] Retrieved token:', retrievedToken);
+                setTokenState(retrievedToken);
+            } catch (err) {
+                const errorMsg = err instanceof Error ? err.message : 'Unknown error loading token';
+                console.log('[TenTokenProvider] Error loading token:', errorMsg);
+                setError(errorMsg);
+                setTokenState('');
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    // Refresh token function (can be called after /join)
-    const refreshToken = useCallback(async () => {
-        console.log('[TenTokenProvider] Refreshing token from cookie');
-        await loadToken();
-    }, [loadToken]);
+        loadToken();
+    }, []);
 
 
     const value = {
         token,
         loading,
         error,
-        refreshToken,
     };
 
     console.log('[TenTokenProvider] Context value updated - token:', token ? 'present' : 'empty', 'loading:', loading);
