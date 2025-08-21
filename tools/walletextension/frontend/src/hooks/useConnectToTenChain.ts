@@ -18,10 +18,9 @@ export default function useConnectToTenChain() {
     const incrementAuthEvents = useUiStore((state) => state.incrementAuthEvents, shallow);
     const { address, connector, isConnected, chainId } = useAccount();
     const connectors = useConnectors();
-    const setStoreTenToken = useUiStore((state) => state.setTenToken);
     const [step, setStep] = useState<number>(0);
     const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
-    const { token: tenToken, setToken: setTenToken, loading: tokenLoading } = useTenToken();
+    const { token: tenToken, loading: tokenLoading } = useTenToken();
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
     const { isAuthenticated, isAuthenticatedLoading, authenticateAccount, authenticationError } =
@@ -100,9 +99,7 @@ export default function useConnectToTenChain() {
 
             if (tenToken === '') {
                 newTenToken = `0x${newTenToken}`;
-                console.log('[useConnectToTenChain] Setting new token in cookie:', newTenToken);
-                await setTenToken(newTenToken);
-                setStoreTenToken(newTenToken);
+                console.log('[useConnectToTenChain] New token obtained:', newTenToken);
             }
 
             if (chainId === tenChainIDDecimal) {
@@ -167,7 +164,7 @@ export default function useConnectToTenChain() {
                 console.log('[useConnectToTenChain] Token still loading, waiting...');
             }
         }
-    }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, setTenToken, setStoreTenToken, chainId]);
+    }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, chainId]);
 
     useEffect(() => {
         if (step !== 3) {

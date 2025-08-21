@@ -60,7 +60,6 @@ export async function joinTestnet(): Promise<string> {
 }
 
 export async function getTokenFromCookie(): Promise<string> {
-    console.log('[getTokenFromCookie] Attempting to retrieve token from cookie');
     try {
         const token = await httpRequest<string>({
             method: 'get',
@@ -74,14 +73,8 @@ export async function getTokenFromCookie(): Promise<string> {
             return '';
         }
         
-        // Check if token is valid hex and correct size (40 chars without 0x, 42 with 0x)
-        const cleanToken = token.startsWith('0x') ? token.slice(2) : token;
-        if (cleanToken.length !== 40 || !/^[0-9a-fA-F]+$/.test(cleanToken)) {
-            console.log('[getTokenFromCookie] Token has invalid format or size:', token.length, '- treating as not set');
-            return '';
-        }
+        console.log('[getTokenFromCookie] Retrieved token:', token);
         
-        console.log('[getTokenFromCookie] Successfully retrieved valid token from cookie');
         return token;
     } catch (error) {
         console.log('[getTokenFromCookie] Failed to retrieve token from cookie:', error);
@@ -89,31 +82,3 @@ export async function getTokenFromCookie(): Promise<string> {
     }
 }
 
-export async function setTokenInCookie(token: string): Promise<boolean> {
-    console.log('[setTokenInCookie] Attempting to set token in cookie');
-    try {
-        if (!token || token.length === 0) {
-            console.log('[setTokenInCookie] Token is empty - cannot set');
-            return false;
-        }
-        
-        // Validate token format
-        const cleanToken = token.startsWith('0x') ? token.slice(2) : token;
-        if (cleanToken.length !== 40 || !/^[0-9a-fA-F]+$/.test(cleanToken)) {
-            console.log('[setTokenInCookie] Invalid token format:', token);
-            return false;
-        }
-        
-        await httpRequest({
-            method: 'post',
-            url: tenGatewayAddress + pathToUrl(apiRoutes.setToken),
-            data: { token },
-        });
-        
-        console.log('[setTokenInCookie] Successfully set token in cookie');
-        return true;
-    } catch (error) {
-        console.log('[setTokenInCookie] Failed to set token in cookie:', error);
-        return false;
-    }
-}

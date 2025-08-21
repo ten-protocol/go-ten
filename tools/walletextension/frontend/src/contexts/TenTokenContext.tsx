@@ -1,9 +1,8 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { getTokenFromCookie, setTokenInCookie } from '@/api/gateway';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { getTokenFromCookie } from '@/api/gateway';
 
 interface TenTokenContextType {
     token: string;
-    setToken: (newToken: string) => Promise<boolean>;
     loading: boolean;
     error: string | null;
 }
@@ -43,34 +42,9 @@ export function TenTokenProvider({ children }: TenTokenProviderProps) {
         loadToken();
     }, []);
 
-    // Set token function
-    const setToken = useCallback(async (newToken: string): Promise<boolean> => {
-        console.log('[TenTokenProvider] Setting new token');
-        setError(null);
-        
-        try {
-            const success = await setTokenInCookie(newToken);
-            if (success) {
-                setTokenState(newToken);
-                console.log('[TenTokenProvider] Token set successfully, new token:', newToken);
-                return true;
-            } else {
-                const errorMsg = 'Failed to set token in cookie';
-                console.log('[TenTokenProvider] ' + errorMsg);
-                setError(errorMsg);
-                return false;
-            }
-        } catch (err) {
-            const errorMsg = err instanceof Error ? err.message : 'Unknown error setting token';
-            console.log('[TenTokenProvider] Error setting token:', errorMsg);
-            setError(errorMsg);
-            return false;
-        }
-    }, []);
 
     const value = {
         token,
-        setToken,
         loading,
         error,
     };

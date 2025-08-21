@@ -20,15 +20,14 @@ type Props = {
 export default function RevokeAccount({ isOpen, onChange }: Props) {
     const { address } = useAccount();
     const { revokeAccount } = useTenChainAuth(address);
-    const { token: tenToken, setToken: setTenToken } = useTenToken();
+    const { token: tenToken } = useTenToken();
 
     const handleRevokeAccount = async () => {
         if (tenToken) {
-            console.log('[RevokeAccount] Revoking account and clearing token');
+            console.log('[RevokeAccount] Revoking account');
             try {
                 await revokeAccount();
-                await setTenToken(''); // Clear the token from cookie
-                console.log('[RevokeAccount] Account revoked and token cleared successfully');
+                console.log('[RevokeAccount] Account revoked successfully');
             } catch (error) {
                 console.log('[RevokeAccount] Error during revocation:', error);
             }
