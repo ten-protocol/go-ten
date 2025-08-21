@@ -55,7 +55,7 @@ contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, Re
      * @param crossChainHashes Array of cross-chain message hashes to verify
      * @return bool True if the bundle is available
      */
-    function isBundleAvailable(bytes[] memory crossChainHashes) external view whenNotPaused returns (bool) {
+    function isBundleAvailable(bytes[] memory crossChainHashes) external view returns (bool) {
         bytes32 bundleHash = bytes32(0);
         for(uint256 i = 0; i < crossChainHashes.length; i++) {
             bundleHash = keccak256(abi.encode(bundleHash, bytes32(crossChainHashes[i])));
