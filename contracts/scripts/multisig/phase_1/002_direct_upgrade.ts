@@ -228,19 +228,30 @@ function generateSafeTransactionBundle(
 }
 
 /**
- * Deploy new implementation for a contract
+ * Generate Safe transaction for deploying a new implementation
  */
-async function deployNewImplementation(contractName: string): Promise<string> {
-    console.log(`Deploying new ${contractName} implementation...`);
-    
-    const factory = await ethers.getContractFactory(contractName);
-    const implementation = await factory.deploy();
-    await implementation.waitForDeployment();
-    
-    const address = await implementation.getAddress();
-    console.log(`${contractName} implementation deployed:`, address);
-    return address;
+function generateDeploymentTransaction(
+    contractName: string,
+    factory: any
+): SafeTransaction {
+    // Get the constructor parameters based on contract type
+    let constructorData = "0x"; // Default: no constructor parameters
+
+    return {
+        to: factory.target, // Factory contract address
+        value: "0",
+        data: factory.interface.encodeFunctionData("deploy", []),
+        operation: 0, // 0 = call, 1 = delegatecall
+        safeTxGas: "0", // safe estimate
+        baseGas: "0", // safe estimate
+        gasPrice: "0", // safe estimate
+        gasToken: ethers.ZeroAddress,
+        refundReceiver: ethers.ZeroAddress,
+        nonce: 0 // set by Safe
+    };
 }
+
+
 
 /**
  * Print JSON to console for easy copying
@@ -386,34 +397,31 @@ async function main() {
             }
         ];
 
-        console.log('\n=== DEPLOYING NEW IMPLEMENTATIONS ===');
+        console.log('\n=== GENERATING DEPLOYMENT TRANSACTIONS ===');
         
-        // Deploy all new implementations first
-        const implementations: { [key: string]: string } = {};
+        // Generate deployment transactions for all new implementations
+        const deploymentTransactions: { [key: string]: SafeTransaction } = {};
         
         for (const config of upgradeConfigs) {
-            console.log(`\n--- Deploying ${config.contractName} Implementation ---`);
+            console.log(`\n--- Generating ${config.contractName} Deployment Transaction ---`);
             try {
-                const newImplementation = await deployNewImplementation(config.contractName);
-                implementations[config.contractName] = newImplementation;
+                const factory = await ethers.getContractFactory(config.contractName);
                 
-                // Verify the new implementation is valid
-                console.log(`Verifying new implementation at ${newImplementation}...`);
-                const newImplContract = await ethers.getContractAt(config.contractName, newImplementation);
+                // Generate deployment transaction
+                const deployTx = generateDeploymentTransaction(config.contractName, factory);
+                deploymentTransactions[config.contractName] = deployTx;
                 
-                // Try to call a basic function to ensure it's working
-                try {
-                    const owner = await (newImplContract as any).owner();
-                    console.log(`New implementation verified - owner(): ${owner}`);
-                } catch (error) {
-                    console.log(`Warning: New implementation may have issues:`, (error as Error).message);
-                }
+                console.log(`Deployment transaction generated for ${config.contractName}`);
+                console.log(`  Factory: ContractFactory for ${config.contractName}`);
+                console.log(`  Calldata: ${deployTx.data}`);
                 
             } catch (error) {
-                console.error(`Failed to deploy ${config.contractName}:`, error);
+                console.error(`Failed to generate deployment transaction for ${config.contractName}:`, error);
                 throw error;
             }
         }
+        
+
         
         console.log('\n=== GENERATING SAFE TRANSACTION FILES ===');
         
@@ -425,20 +433,17 @@ async function main() {
         for (const config of upgradeConfigs) {
             console.log(`\n--- Generating ${config.contractName} Transaction ---`);
             
-            const newImplementation = implementations[config.contractName];
-            if (!newImplementation) {
-                console.error(`No implementation found for ${config.contractName}`);
-                continue;
-            }
-            
-            // Generate Safe transaction
+            // Generate Safe transaction for upgrade (placeholder implementation address)
             console.log(`Generating upgrade transaction for ${config.contractName}...`);
             console.log(`  Proxy: ${config.proxyAddress}`);
-            console.log(`  New Implementation: ${newImplementation}`);
+            console.log(`  New Implementation: [PLACEHOLDER - Replace with deployed address]`);
+            
+            // Use placeholder address for now - will be filled in after deployment
+            const placeholderImplementation = "0x0000000000000000000000000000000000000000";
             
             const safeTx = generateSafeTransaction(
                 config.proxyAddress,
-                newImplementation,
+                placeholderImplementation,
                 config.contractName
             );
             
@@ -449,7 +454,7 @@ async function main() {
             // Print transaction details
             console.log(`Contract: ${config.contractName}`);
             console.log(`Proxy Address: ${config.proxyAddress}`);
-            console.log(`New Implementation: ${newImplementation}`);
+            console.log(`New Implementation: [PLACEHOLDER - Replace with deployed address]`);
             console.log(`Calldata: ${safeTx.data}`);
             console.log(`File: ${filename}`);
             
@@ -473,7 +478,7 @@ async function main() {
         console.log('\n--- Generating Batch Transaction Bundle ---');
         const transactionData = upgradeConfigs.map(config => ({
             proxyAddress: config.proxyAddress,
-            newImplementation: implementations[config.contractName] || "0x0000000000000000000000000000000000000000",
+            newImplementation: "[PLACEHOLDER - Replace with deployed address]",
             contractName: config.contractName
         }));
         
@@ -489,20 +494,27 @@ async function main() {
         
         // Print batch bundle JSON to console
         await printJsonToConsole('batch_upgrade_bundle.json', batchBundle);
+        
+        // Print deployment transactions
+        console.log('\n=== DEPLOYMENT TRANSACTIONS ===');
+        for (const [contractName, deployTx] of Object.entries(deploymentTransactions)) {
+            const filename = `${contractName}_deploy_tx.json`;
+            await printJsonToConsole(filename, deployTx);
+        }
+        
+
 
         console.log('\n=== TRANSACTION GENERATION COMPLETE ===');
-        console.log('All new contract implementations have been deployed');
-        console.log('All Safe transaction JSONs have been generated with real addresses');
+        console.log('All Safe transaction JSONs have been generated');
         console.log('Copy these JSONs and import them into your Gnosis Safe Transaction Builder');
         console.log('\n=== NEXT STEPS ===');
-        console.log('1. Import the JSONs into Gnosis Safe Transaction Builder');
-        console.log('2. Review the transaction details (addresses are already correct)');
-        console.log('3. Execute the transactions');
+        console.log('1. Execute deployment transactions in Gnosis Safe (deploy new implementations)');
+        console.log('2. Replace placeholder addresses in upgrade transactions with actual deployed addresses');
+        console.log('3. Execute upgrade transactions in Gnosis Safe (upgrade proxies to new implementations)');
         console.log('\n=== IMPLEMENTATION ADDRESSES ===');
         console.log('Save these for verification:');
-        for (const [contractName, address] of Object.entries(implementations)) {
-            console.log(`${contractName}: ${address}`);
-        }
+        console.log('Note: Implementation addresses will be available after deployment transactions are executed');
+        console.log('Replace placeholder addresses in upgrade transactions with actual deployed addresses');
 
     } catch (error) {
         console.error("Failed to perform direct upgrades:", error);
