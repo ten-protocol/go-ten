@@ -64,5 +64,17 @@ export const httpRequest = async <ResponseData>(
         ...config,
     };
     const response = await https(httpConfig);
+    
+    // Debug logging for /join endpoint
+    if (url.includes('/join/')) {
+        console.log('[httpRequest] /join response details:', {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+            data: response.data,
+            dataType: typeof response.data
+        });
+    }
+    
     return response.data as ResponseData;
 };

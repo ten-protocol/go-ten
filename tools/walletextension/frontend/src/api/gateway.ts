@@ -53,10 +53,18 @@ export async function revokeAccountsApi(token: string): Promise<string> {
 }
 
 export async function joinTestnet(): Promise<string> {
-    return await httpRequest<string>({
-        method: 'get',
-        url: tenGatewayAddress + pathToUrl(apiRoutes.join),
-    });
+    console.log('[joinTestnet] Calling /join endpoint:', tenGatewayAddress + pathToUrl(apiRoutes.join));
+    try {
+        const response = await httpRequest<string>({
+            method: 'get',
+            url: tenGatewayAddress + pathToUrl(apiRoutes.join),
+        });
+        console.log('[joinTestnet] /join response received:', response);
+        return response;
+    } catch (error) {
+        console.log('[joinTestnet] /join request failed:', error);
+        throw error;
+    }
 }
 
 export async function getTokenFromCookie(): Promise<string> {
