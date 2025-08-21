@@ -9,13 +9,14 @@ import "./IMessageBus.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../../common/UnrenouncableOwnable2Step.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 /**
  * @title MessageBus
  * @dev Implementation of the IMessageBus interface for cross-layer message handling.
  * Manages message publishing, verification, and value transfers between L1 and L2.
  */
-contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
+contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, PausableUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -30,6 +31,7 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
         require(feesAddress != address(0), "Fees address cannot be 0x0");
         require(caller != address(0), "Caller cannot be 0x0");
         __UnrenouncableOwnable2Step_init(caller);  // Initialize UnrenouncableOwnable2Step
+        __Pausable_init();
         fees = IFees(feesAddress);
     }
 
@@ -90,7 +92,7 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
         uint32 topic,
         bytes calldata payload,
         uint8 consistencyLevel
-    ) external payable override returns (uint64 sequence) {
+    ) external payable override whenNotPaused returns (uint64 sequence) {
         if (address(fees) != address(0)) { // No fee required for L1 to L2 messages.
             uint256 fee = getPublishFee();
             require(msg.value >= fee, "Insufficient funds to publish message");
@@ -150,7 +152,7 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
     function storeCrossChainMessage(
         Structs.CrossChainMessage calldata crossChainMessage,
         uint256 finalAfterTimestamp
-    ) external override ownerOrSelf {
+    ) external override ownerOrSelf whenNotPaused {
         //Consider the message as verified after this period. Useful for having a challenge period.
         uint256 finalAtTimestamp = block.timestamp + finalAfterTimestamp;
         bytes32 msgHash = keccak256(abi.encode(crossChainMessage));
@@ -169,5 +171,21 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
 
     fallback() external {
         revert("unsupported");
+    }
+
+    /**
+     * @dev Pauses the message bus in case of emergency
+     * @notice Only callable by the owner
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the message bus
+     * @notice Only callable by the owner
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }

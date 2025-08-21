@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import "../interfaces/ICrossChain.sol";
 import * as MessageBus from "../../cross_chain_messaging/common/MessageBus.sol";
@@ -15,7 +16,7 @@ import "../../common/UnrenouncableOwnable2Step.sol";
  * Implements reentrancy protection and pausable withdrawals for security
  * Uses MerkleTreeMessageBus for message verification and value transfers
  */
-contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, ReentrancyGuardUpgradeable {
+contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, ReentrancyGuardUpgradeable, PausableUpgradeable {
      /**
      * @dev Mapping to track spent withdrawals and prevent double-spending
      */
@@ -44,6 +45,7 @@ contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, Re
         require(owner != address(0), "Owner cannot be 0x0");
         __UnrenouncableOwnable2Step_init(owner);  // This will initialize OwnableUpgradeable and Ownable2StepUpgradeable
         __ReentrancyGuard_init();
+        __Pausable_init();
         merkleMessageBus = MerkleTreeMessageBus.IMerkleTreeMessageBus(_messageBus);
         messageBus = MessageBus.IMessageBus(_messageBus);
     }
@@ -53,11 +55,27 @@ contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, Re
      * @param crossChainHashes Array of cross-chain message hashes to verify
      * @return bool True if the bundle is available
      */
-    function isBundleAvailable(bytes[] memory crossChainHashes) external view returns (bool) {
+    function isBundleAvailable(bytes[] memory crossChainHashes) external view whenNotPaused returns (bool) {
         bytes32 bundleHash = bytes32(0);
         for(uint256 i = 0; i < crossChainHashes.length; i++) {
             bundleHash = keccak256(abi.encode(bundleHash, bytes32(crossChainHashes[i])));
         }
         return isBundleSaved[bundleHash];
+    }
+
+    /**
+     * @dev Pauses the contract in case of emergency
+     * @notice Only callable by the owner
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the contract
+     * @notice Only callable by the owner
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }

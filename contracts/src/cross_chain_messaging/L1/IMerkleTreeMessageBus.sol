@@ -48,4 +48,16 @@ interface IMerkleTreeMessageBus {
      * @param withdrawalManager Address of the withdrawal manager contract
      */
     function initialize(address initialOwner, address withdrawalManager, address fees) external;
+
+    /**
+     * @dev Pauses the message bus in case of emergency
+     * @notice Only callable by admin role
+     */
+    function pause() external;
+
+    /**
+     * @dev Unpauses the message bus
+     * @notice Only callable by admin role
+     */
+    function unpause() external;
 }

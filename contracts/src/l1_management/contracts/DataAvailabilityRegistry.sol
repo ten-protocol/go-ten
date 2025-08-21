@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../../common/UnrenouncableOwnable2Step.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 /**
  * @title DataAvailabilityRegistry
@@ -16,7 +17,7 @@ import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/crypt
  * Implements a challenge period for state root disputes
  * Uses MerkleTreeMessageBus for message verification and value transfers
  */
-contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, UnrenouncableOwnable2Step, EIP712Upgradeable {
+contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, UnrenouncableOwnable2Step, EIP712Upgradeable, PausableUpgradeable {
 
     // RollupStorage: A storage structure to manage and organize MetaRollup instances in a mapping by their hash.
     struct RollupStorage {
@@ -64,6 +65,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
 
         __UnrenouncableOwnable2Step_init(_owner);
         __EIP712_init("DataAvailabilityRegistry", "1");
+        __Pausable_init();
         merkleMessageBus = IMerkleTreeMessageBus(_merkleMessageBus);
         enclaveRegistry = INetworkEnclaveRegistry(_enclaveRegistry);
         lastBatchSeqNo = 0;
@@ -122,7 +124,7 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
      * 
      * TODO can we make it so only attested sequencer enclaves can call this? can pass the requester ID as a param?
      */
-    function addRollup(MetaRollup calldata r) external verifyRollupIntegrity(r) {
+    function addRollup(MetaRollup calldata r) external whenNotPaused verifyRollupIntegrity(r) {
         AppendRollup(r);
 
         if (r.crossChainRoot != bytes32(0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)) {
@@ -158,5 +160,21 @@ contract DataAvailabilityRegistry is IDataAvailabilityRegistry, Initializable, U
      */
     function setChallengePeriod(uint256 _delay) external onlyOwner {
         challengePeriod = _delay;
+    }
+
+    /**
+     * @dev Pauses the contract in case of emergency
+     * @notice Only callable by the owner
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the contract
+     * @notice Only callable by the owner
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }

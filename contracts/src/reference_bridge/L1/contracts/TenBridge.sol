@@ -9,6 +9,7 @@ import "../interfaces/ITenBridge.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 // This is the Ethereum side of the Obscuro Bridge.
 // End-users can interact with it to transfer ERC20 tokens and native eth to the Layer 2 Obscuro.
@@ -17,7 +18,8 @@ contract TenBridge is
     IBridge,
     ITenBridge,
     AccessControlUpgradeable,
-    ReentrancyGuardTransient
+    ReentrancyGuardTransient,
+    PausableUpgradeable
 {
     event Withdrawal(address indexed receiver, address indexed asset, uint256 amount);
     // This is the role that is given to the address that represents a native currency
@@ -40,6 +42,7 @@ contract TenBridge is
 
         CrossChainEnabledTEN.configure(messenger);
         __AccessControl_init();
+        __Pausable_init();
         _grantRole(DEFAULT_ADMIN_ROLE, owner);
         _grantRole(DEFAULT_ADMIN_ROLE, address(this));
         _setRoleAdmin(ADMIN_ROLE, DEFAULT_ADMIN_ROLE);
@@ -96,7 +99,7 @@ contract TenBridge is
 
     // This cross chain message is specialized and will result in automatic increase
     // of balance on the other side.
-    function sendNative(address receiver) external payable override {
+    function sendNative(address receiver) external payable override whenNotPaused {
         require(msg.value > 0, "Empty transfer.");
         bytes memory data = abi.encode(ValueTransfer(msg.value, receiver));
         publishRawMessage(data, uint32(Topics.VALUE), 0, 0); // No fee l1 to l2.
@@ -106,7 +109,7 @@ contract TenBridge is
         address asset,
         uint256 amount,
         address receiver
-    ) external payable override {
+    ) external payable override whenNotPaused {
         require(!hasRole(SUSPENDED_ERC20_ROLE, asset), "Token is paused.");
         require(amount > 0, "Attempting empty transfer.");
         require(
@@ -135,7 +138,7 @@ contract TenBridge is
         address asset,
         uint256 amount,
         address receiver
-    ) external override onlyCrossChainSender(remoteBridgeAddress) nonReentrant {
+    ) external override onlyCrossChainSender(remoteBridgeAddress) nonReentrant whenNotPaused {
         if (hasRole(ERC20_TOKEN_ROLE, asset)) {
             _receiveTokens(asset, amount, receiver);
         } else if (hasRole(NATIVE_TOKEN_ROLE, asset)) {
@@ -158,5 +161,21 @@ contract TenBridge is
         (bool sent, ) = receiver.call{value: amount}("");
         require(sent, "Failed to send Ether");
         emit Withdrawal(receiver, address(0), amount);
+    }
+
+    /**
+     * @dev Pauses the bridge in case of emergency
+     * @notice Only callable by admin role
+     */
+    function pause() external onlyRole(ADMIN_ROLE) {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the bridge
+     * @notice Only callable by admin role
+     */
+    function unpause() external onlyRole(ADMIN_ROLE) {
+        _unpause();
     }
 }

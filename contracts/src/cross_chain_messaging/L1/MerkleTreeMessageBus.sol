@@ -6,6 +6,7 @@ import "./IMerkleTreeMessageBus.sol";
 import "../common/MessageBus.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 /**
  * @title MerkleTreeMessageBus
@@ -48,7 +49,8 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
         // Initialize parent contracts
         __UnrenouncableOwnable2Step_init(initialOwner);
         __AccessControl_init();
-        
+        __Pausable_init();
+
         // Set up roles
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
@@ -60,7 +62,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @dev Grants STATE_ROOT_MANAGER_ROLE to a new address
      * @param manager Address to be granted the role
      */
-    function addStateRootManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addStateRootManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) whenNotPaused {
         require(manager != address(0), "Manager cannot be 0x0");
         grantRole(STATE_ROOT_MANAGER_ROLE, manager);
     }
@@ -69,7 +71,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @dev Revokes STATE_ROOT_MANAGER_ROLE from an address
      * @param manager Address to have the role revoked
      */
-    function removeStateRootManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function removeStateRootManager(address manager) external onlyRole(DEFAULT_ADMIN_ROLE) whenNotPaused {
         require(manager != address(0), "Manager cannot be 0x0");
         revokeRole(STATE_ROOT_MANAGER_ROLE, manager);
     }
@@ -78,7 +80,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @dev Grants WITHDRAWAL_MANAGER_ROLE to a new address
      * @param withdrawalManager Address to be granted the role
      */
-    function addWithdrawalManager(address withdrawalManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addWithdrawalManager(address withdrawalManager) external onlyRole(DEFAULT_ADMIN_ROLE) whenNotPaused {
         _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
     }
 
@@ -86,7 +88,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @dev Revokes WITHDRAWAL_MANAGER_ROLE from an address
      * @param withdrawalManager Address to have the role revoked
      */
-    function removeWithdrawalManager(address withdrawalManager) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function removeWithdrawalManager(address withdrawalManager) external onlyRole(DEFAULT_ADMIN_ROLE) whenNotPaused {
         revokeRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
     }
     /**
@@ -95,7 +97,7 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
      * @param activationTime Timestamp after which the root becomes valid
      * @notice Root must not already exist in the message bus
      */
-    function addStateRoot(bytes32 stateRoot, uint256 activationTime) external onlyRole(STATE_ROOT_MANAGER_ROLE) {
+    function addStateRoot(bytes32 stateRoot, uint256 activationTime) external onlyRole(STATE_ROOT_MANAGER_ROLE) whenNotPaused{
         require(rootValidAfter[stateRoot] == 0, "Root already added to the message bus");
         require(activationTime >= block.timestamp, "Activation time must be in the future");
         rootValidAfter[stateRoot] = activationTime;
@@ -149,5 +151,21 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
         bytes32 leaf = keccak256(abi.encode("v", keccak256(abi.encode(message))));
 
         require(MerkleProof.verifyCalldata(proof, root, keccak256(abi.encodePacked(leaf))), "Invalid inclusion proof for value transfer message.");
+    }
+
+    /**
+     * @dev Pauses the message bus in case of emergency
+     * @notice Only callable by admin role
+     */
+    function pause() external override(IMerkleTreeMessageBus, MessageBus) onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    /**
+     * @dev Unpauses the message bus
+     * @notice Only callable by admin role
+     */
+    function unpause() external override(IMerkleTreeMessageBus, MessageBus) onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 }

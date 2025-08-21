@@ -21,4 +21,16 @@ interface ICrossChain {
      * @return bool True if the bundle is available
      */
     function isBundleAvailable(bytes[] memory crossChainHashes) external view returns (bool);
+
+    /**
+     * @dev Pauses the contract in case of emergency
+     * @notice Only callable by the owner
+     */
+    function pause() external;
+
+    /**
+     * @dev Unpauses the contract
+     * @notice Only callable by the owner
+     */
+    function unpause() external;
 }

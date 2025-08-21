@@ -10,12 +10,13 @@ import "../interfaces/ITokenFactory.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 contract EthereumBridge is
     IBridge,
     ITokenFactory,
     CrossChainEnabledTEN,
-    Initializable
+    Initializable,
+    PausableUpgradeable
 {
     event CreatedWrappedToken(
         address remoteAddress,
@@ -36,7 +37,7 @@ contract EthereumBridge is
     ) public initializer {
         require(messenger != address(0), "Messenger cannot be 0x0");
         require(remoteBridge != address(0), "Remote bridge cannot be 0x0");
-
+        __Pausable_init();
         CrossChainEnabledTEN.configure(messenger);
         remoteBridgeAddress = remoteBridge;
     }
@@ -68,7 +69,7 @@ contract EthereumBridge is
         return _messageBus().getPublishFee();
     }
 
-    function sendNative(address receiver) external payable {
+    function sendNative(address receiver) external payable whenNotPaused {
         require(msg.value > 0, "Nothing sent.");
         require(msg.value >= _messageBus().getPublishFee(), "Insufficient funds to publish value transfer");
         uint256 fee = _messageBus().getPublishFee();
@@ -86,7 +87,7 @@ contract EthereumBridge is
         address asset,
         uint256 amount,
         address receiver
-    ) external payable {
+    ) external payable whenNotPaused {
         require(hasTokenMapping(asset), "No mapping for token.");
         require(amount > 0, "Amount must be greater than 0.");
 
@@ -108,7 +109,7 @@ contract EthereumBridge is
         address asset,
         uint256 amount,
         address receiver
-    ) external onlyCrossChainSender(remoteBridgeAddress) {
+    ) external onlyCrossChainSender(remoteBridgeAddress) whenNotPaused {
         address localAddress = remoteToLocalToken[asset];
 
         WrappedERC20 token = wrappedTokens[localAddress];
@@ -126,5 +127,13 @@ contract EthereumBridge is
 
     receive() external payable {
         revert("Contract does not support receive()");
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }
