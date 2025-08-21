@@ -1,4 +1,5 @@
 import { TypedDataDomain, TypedDataParameter } from 'viem';
+import { tenChainIDDecimal } from '@/lib/constants';
 
 export const generateEIP712 = (
     token: `0x${string}`
@@ -21,7 +22,7 @@ export const generateEIP712 = (
     domain: {
         name: 'Ten',
         version: '1.0',
-        chainId: 443,
+        chainId: tenChainIDDecimal,
         verifyingContract: '0x0000000000000000000000000000000000000000',
     },
     message: {
