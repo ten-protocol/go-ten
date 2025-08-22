@@ -20,17 +20,14 @@ export function TenTokenProvider({ children }: TenTokenProviderProps) {
     const [error, setError] = useState<string | null>(null);
 
     const loadToken = async () => {
-        console.log('[TenTokenProvider] Loading token');
         setLoading(true);
         setError(null);
         
         try {
             const retrievedToken = await getTokenFromCookie();
-            console.log('[TenTokenProvider] Retrieved token:', retrievedToken);
             setTokenState(retrievedToken);
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : 'Unknown error loading token';
-            console.log('[TenTokenProvider] Error loading token:', errorMsg);
             setError(errorMsg);
             setTokenState('');
         } finally {
@@ -39,7 +36,6 @@ export function TenTokenProvider({ children }: TenTokenProviderProps) {
     };
 
     const refreshToken = async () => {
-        console.log('[TenTokenProvider] Refreshing token from external call');
         await loadToken();
     };
 
@@ -55,7 +51,6 @@ export function TenTokenProvider({ children }: TenTokenProviderProps) {
         refreshToken,
     };
 
-    console.log('[TenTokenProvider] Context value updated - token:', token ? 'present' : 'empty', 'loading:', loading);
 
     return (
         <TenTokenContext.Provider value={value}>

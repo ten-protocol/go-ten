@@ -29,14 +29,11 @@ export default function useConnectToTenChain() {
     const uniqueConnectors = connectors;
 
     const connectToTen = async (connector: Connector) => {
-        console.log('[useConnectToTenChain] Starting connectToTen with connector:', connector.name);
         setStep(1);
         setLoading(true);
         setError(null);
         setSelectedConnector(connector);
-        console.log('[useConnectToTenChain] Attempting to connect to wallet...');
         await connector.connect().catch((error) => {
-            console.log('[useConnectToTenChain] Wallet connection failed:', error);
             setError({
                 name: 'Unable to connect to wallet.',
                 message: error.message,
@@ -45,26 +42,20 @@ export default function useConnectToTenChain() {
             setLoading(false);
             throw Error(error);
         });
-        console.log('[useConnectToTenChain] Wallet connection initiated successfully');
     };
 
     useEffect(() => {
-        console.log('[useConnectToTenChain] useEffect triggered - step:', step, 'tokenLoading:', tokenLoading);
         if (step !== 1) return;
         if (tokenLoading) {
-            console.log('[useConnectToTenChain] Token still loading, deferring switchToTen');
             return;
         }
 
         async function switchToTen() {
-            console.log('[useConnectToTenChain] Starting switchToTen, tenToken:', tenToken ? 'present' : 'empty', 'connector:', connector?.name);
             
             if (!tenToken && connector) {
-                console.log('[useConnectToTenChain] No token found, checking if chain exists');
                 const chainExists = await chainExistsCheck(connector);
 
                 if (chainExists) {
-                    console.log('[useConnectToTenChain] Existing chain found, showing error');
                     setError({
                         name: 'Existing chain found',
                         message:
@@ -75,42 +66,17 @@ export default function useConnectToTenChain() {
                 }
             }
 
-            console.log('[useConnectToTenChain] Getting token - current tenToken:', tenToken);
             let newTenToken: string;
             if (tenToken === '') {
-                console.log('[useConnectToTenChain] No existing token found, calling /join endpoint');
-                console.log('[useConnectToTenChain] /join call context - step:', step, 'connector:', connector?.name, 'address:', address);
-                const startTime = Date.now();
-                
                 try {
                     newTenToken = await joinTestnet();
-                    const endTime = Date.now();
-                    const duration = endTime - startTime;
-                    console.log('[useConnectToTenChain] /join endpoint SUCCESS - duration:', duration + 'ms', 'token received:', newTenToken ? 'yes' : 'no');
-                    console.log('[useConnectToTenChain] /join response full token:', newTenToken);
-                    console.log('[useConnectToTenChain] /join response token length:', newTenToken?.length || 0, 'first 10 chars:', newTenToken?.substring(0, 10) || 'N/A');
                     
                     // Set the token to cookie using /set-token endpoint
-                    console.log('[useConnectToTenChain] Setting token to cookie via /set-token...');
                     await setTokenToCookie(newTenToken);
-                    console.log('[useConnectToTenChain] Token set to cookie successfully');
                     
                     // Refresh the token context to sync with the cookie
-                    console.log('[useConnectToTenChain] Refreshing token context...');
                     await refreshToken();
-                    console.log('[useConnectToTenChain] Token context refreshed');
-                    
-                    console.log('[useConnectToTenChain] Using token from /join response for RPC URL');
                 } catch (error: any) {
-                    const endTime = Date.now();
-                    const duration = endTime - startTime;
-                    console.log('[useConnectToTenChain] /join endpoint FAILED - duration:', duration + 'ms');
-                    console.log('[useConnectToTenChain] /join error details:', {
-                        message: error?.message,
-                        cause: error?.cause,
-                        stack: error?.stack,
-                        name: error?.name
-                    });
                     setError({
                         name: 'Unable to retrieve TEN token',
                         message: error?.message || 'Unknown error',
@@ -120,44 +86,33 @@ export default function useConnectToTenChain() {
                     return; // Exit early on error
                 }
             } else {
-                console.log('[useConnectToTenChain] Using existing token, skipping /join endpoint call');
                 newTenToken = tenToken;
             }
 
-            console.log('[useConnectToTenChain] New token obtained:', newTenToken ? 'success' : 'failed');
             if (!newTenToken) {
                 throw Error('No tenToken found');
             }
 
-            console.log('[useConnectToTenChain] Moving to step 2');
             setStep(2);
 
             // Ensure token has 0x prefix for processing
             if (!newTenToken.startsWith('0x')) {
                 newTenToken = `0x${newTenToken}`;
-                console.log('[useConnectToTenChain] Added 0x prefix to token:', newTenToken.substring(0, 10) + '...');
             }
 
             if (chainId === tenChainIDDecimal) {
-                console.log('[useConnectToTenChain] Already on correct chain, moving to step 3');
                 setStep(3);
                 return;
             }
-            
-            console.log('[useConnectToTenChain] Wrong chain detected, current chainId:', chainId, 'expected:', tenChainIDDecimal);
             let switchSuccess = true;
 
             if (!connector) {
-                console.log('[useConnectToTenChain] ERROR: Connector is undefined!');
                 throw 'Connector is undefined!';
-                return;
             }
 
             // Remove 0x prefix from token for RPC URL
             const cleanTokenForRpc = newTenToken.startsWith('0x') ? newTenToken.slice(2) : newTenToken;
-            console.log('[useConnectToTenChain] Token for RPC URL - original:', newTenToken.substring(0, 10) + '...', 'clean:', cleanTokenForRpc.substring(0, 10) + '...');
             const rpcUrl = `${tenGatewayAddress}/v1/?token=${cleanTokenForRpc}`;
-            console.log('[useConnectToTenChain] Attempting to switch chain with RPC URL:', rpcUrl.replace(/token=[^&]*/, 'token=***HIDDEN***'));
             
             //@ts-expect-error Revisit later
             await connector
@@ -170,11 +125,7 @@ export default function useConnectToTenChain() {
                     },
                 })
                 .catch((error: Error) => {
-                    console.log('[useConnectToTenChain] Chain switch error:', error);
-                    if (error?.message.includes('is not a function')) {
-                        console.log('[useConnectToTenChain] Ignoring "is not a function" error');
-                    } else {
-                        console.log('[useConnectToTenChain] Setting switchSuccess to false due to error');
+                    if (!error?.message.includes('is not a function')) {
                         switchSuccess = false;
                         setError({
                             name: 'Error switching chains',
@@ -185,20 +136,14 @@ export default function useConnectToTenChain() {
                 });
 
             if (switchSuccess) {
-                console.log('[useConnectToTenChain] Chain switch successful, waiting 500ms then moving to step 3');
                 await sleep(500);
                 setStep(3);
-            } else {
-                console.log('[useConnectToTenChain] Chain switch failed, staying in current step');
             }
         }
 
         if (isConnected && selectedConnector?.uid === connector?.uid) {
-            console.log('[useConnectToTenChain] Conditions met for switchToTen - isConnected:', isConnected, 'selectedConnector.uid:', selectedConnector?.uid, 'connector.uid:', connector?.uid, 'tokenLoading:', tokenLoading);
             if (!tokenLoading) {
                 switchToTen();
-            } else {
-                console.log('[useConnectToTenChain] Token still loading, waiting...');
             }
         }
     }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, chainId]);
@@ -208,10 +153,8 @@ export default function useConnectToTenChain() {
             return;
         }
 
-        console.log('[useConnectToTenChain] Step 3 - Authentication phase. isAuthenticated:', isAuthenticated, 'isAuthenticatedLoading:', isAuthenticatedLoading, 'authenticationError:', authenticationError, 'address:', address);
 
         if (authenticationError) {
-            console.log('[useConnectToTenChain] Authentication error detected:', authenticationError);
             setError({
                 name: 'Error authenticating token',
                 message: authenticationError.message,
@@ -220,14 +163,11 @@ export default function useConnectToTenChain() {
         }
 
         if (!isAuthenticated && !isAuthenticatedLoading && !authenticationError) {
-            console.log('[useConnectToTenChain] Starting authentication for address:', address, 'with tenToken:', tenToken);
             if (!tenToken) {
-                console.log('[useConnectToTenChain] ERROR: Attempting to authenticate but no tenToken available!');
                 return;
             }
             authenticateAccount(address);
         } else if (isAuthenticated && !isAuthenticatedLoading) {
-            console.log('[useConnectToTenChain] Authentication successful, moving to step 4');
             setStep(4);
             incrementAuthEvents();
         }
