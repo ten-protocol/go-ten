@@ -32,7 +32,7 @@ var (
 // ErrorsMetaData contains all meta data concerning the Errors contract.
 var ErrorsMetaData = &bind.MetaData{
 	ABI: "[{\"inputs\":[],\"name\":\"FailedCall\",\"type\":\"error\"},{\"inputs\":[],\"name\":\"FailedDeployment\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"balance\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"needed\",\"type\":\"uint256\"}],\"name\":\"InsufficientBalance\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"MissingPrecompile\",\"type\":\"error\"}]",
-	Bin: "0x608060405234601a57604051603e601f823930815050603e90f35b5f80fdfe60806040525f80fdfea264697066735822122010c977e2e8be7bb7a7423100318ef4af0b269cf012d4c151f3c238931e2a309364736f6c634300081c0033",
+	Bin: "0x60556032600b8282823980515f1a607314602657634e487b7160e01b5f525f60045260245ffd5b305f52607381538281f3fe730000000000000000000000000000000000000000301460806040525f5ffdfea2646970667358221220c8a381c341aa819b17580003f34895ba0cbb55e5a421fdc58b248a03a0945ce764736f6c634300081c0033",
 }
 
 // ErrorsABI is the input ABI used to generate the binding from.

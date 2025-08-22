@@ -25,7 +25,7 @@ const config: HardhatUserConfig = {
   solidity: {
     version: "0.8.28",
     settings: {
-      viaIR: true,
+      viaIR: false, // viaIR is better for optimization, but it's not playing nicely with our public callbacks currently
       optimizer: {
         enabled: true,
         runs: 1000,
