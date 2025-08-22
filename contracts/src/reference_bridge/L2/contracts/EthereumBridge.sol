@@ -9,7 +9,7 @@ import "../../common/IBridge.sol";
 import "../interfaces/ITokenFactory.sol";
 import "./WrappedERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import "../../../common/PausableWithRoles.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -19,7 +19,7 @@ contract EthereumBridge is
     CrossChainEnabledTEN,
     Initializable,
     UnrenouncableOwnable2Step,
-    PausableUpgradeable
+    PausableWithRoles
 {
     event CreatedWrappedToken(
         address remoteAddress,
@@ -40,7 +40,7 @@ contract EthereumBridge is
     ) public initializer {
         require(messenger != address(0), "Messenger cannot be 0x0");
         require(remoteBridge != address(0), "Remote bridge cannot be 0x0");
-        __Pausable_init();
+        __PausableWithRoles_init(msg.sender);
         CrossChainEnabledTEN.configure(messenger);
         remoteBridgeAddress = remoteBridge;
     }
@@ -130,13 +130,5 @@ contract EthereumBridge is
 
     receive() external payable {
         revert("Contract does not support receive()");
-    }
-
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
     }
 }

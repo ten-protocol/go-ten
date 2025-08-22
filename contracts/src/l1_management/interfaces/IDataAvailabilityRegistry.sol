@@ -62,16 +62,4 @@ interface IDataAvailabilityRegistry {
      * @param delay New duration for the challenge period
      */
     function setChallengePeriod(uint256 delay) external;
-
-    /**
-     * @dev Pauses the contract in case of emergency
-     * @notice Only callable by the owner
-     */
-    function pause() external;
-
-    /**
-     * @dev Unpauses the contract
-     * @notice Only callable by the owner
-     */
-    function unpause() external;
 }

@@ -100,16 +100,4 @@ interface INetworkEnclaveRegistry {
      * @notice Enclave must currently have sequencer status to be revoked
      */
     function revokeSequencerEnclave(address _addr) external;
-
-    /**
-     * @dev Pauses the contract in case of emergency
-     * @notice Only callable by the owner
-     */
-    function pause() external;
-
-    /**
-     * @dev Unpauses the contract
-     * @notice Only callable by the owner
-     */
-    function unpause() external;
 }

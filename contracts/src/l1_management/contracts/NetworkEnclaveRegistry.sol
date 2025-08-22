@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "../interfaces/INetworkEnclaveRegistry.sol";
 import "../../common/UnrenouncableOwnable2Step.sol";
 import {EIP712Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import "../../common/PausableWithRoles.sol";
 
 /**
  * @title NetworkEnclaveRegistry
@@ -16,7 +16,7 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
  * Allows enclaves to request and respond to the network secret
  * Provides sequencer enclave status management
 */
-contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, UnrenouncableOwnable2Step, EIP712Upgradeable, PausableUpgradeable {
+contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, UnrenouncableOwnable2Step, EIP712Upgradeable, PausableWithRoles {
     
     using MessageHashUtils for bytes32;
 
@@ -58,7 +58,7 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
 
         __UnrenouncableOwnable2Step_init(_owner);
         __EIP712_init("NetworkEnclaveRegistry", "1");
-        __Pausable_init();
+        __PausableWithRoles_init(_owner);
         networkSecretInitialized = false;
         sequencerHost = _sequencerHost;
     }
@@ -180,15 +180,5 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
      * @dev Pauses the contract in case of emergency
      * @notice Only callable by the owner
      */
-    function pause() external onlyOwner {
-        _pause();
-    }
 
-    /**
-     * @dev Unpauses the contract
-     * @notice Only callable by the owner
-     */
-    function unpause() external onlyOwner {
-        _unpause();
-    }
 }

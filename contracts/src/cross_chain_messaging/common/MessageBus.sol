@@ -9,14 +9,14 @@ import "./IMessageBus.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../../common/UnrenouncableOwnable2Step.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import "../../common/PausableWithRoles.sol";
 
 /**
  * @title MessageBus
  * @dev Implementation of the IMessageBus interface for cross-layer message handling.
  * Manages message publishing, verification, and value transfers between L1 and L2.
  */
-contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, PausableUpgradeable {
+contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, PausableWithRoles {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -24,14 +24,14 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, Pa
 
     /**
      * @dev Initializes the contract with an owner and fees contract
-     * @param caller The address to set as the owner
+     * @param owner The address to set as the owner
      * @param feesAddress The address of the fees contract
      */
-    function initialize(address caller, address withdrawal, address feesAddress) public virtual initializer {
+    function initialize(address owner, address withdrawal, address feesAddress) public virtual initializer {
         require(feesAddress != address(0), "Fees address cannot be 0x0");
-        require(caller != address(0), "Caller cannot be 0x0");
-        __UnrenouncableOwnable2Step_init(caller);  // Initialize UnrenouncableOwnable2Step
-        __Pausable_init();
+        require(owner != address(0), "Caller cannot be 0x0");
+        __UnrenouncableOwnable2Step_init(owner);  // Initialize UnrenouncableOwnable2Step
+        __PausableWithRoles_init(owner);
         fees = IFees(feesAddress);
     }
 
@@ -171,21 +171,5 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, Pa
 
     fallback() external {
         revert("unsupported");
-    }
-
-    /**
-     * @dev Pauses the message bus in case of emergency
-     * @notice Only callable by the owner
-     */
-    function pause() external virtual onlyOwner {
-        _pause();
-    }
-
-    /**
-     * @dev Unpauses the message bus
-     * @notice Only callable by the owner
-     */
-    function unpause() external virtual onlyOwner {
-        _unpause();
     }
 }

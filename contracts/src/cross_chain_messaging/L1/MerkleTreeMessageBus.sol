@@ -14,7 +14,7 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
  * This contract manages state roots and verifies message inclusion through Merkle proofs.
  * It implements a role-based access control system for state root and withdrawal management.
  */
-contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessControlUpgradeable {
+contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
 
     /**
      * @dev Role identifier for accounts that can manage state roots
@@ -48,9 +48,6 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
 
         // Initialize parent contracts
         __UnrenouncableOwnable2Step_init(initialOwner);
-        __AccessControl_init();
-        __Pausable_init();
-
         // Set up roles
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
@@ -151,21 +148,5 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus, AccessContro
         bytes32 leaf = keccak256(abi.encode("v", keccak256(abi.encode(message))));
 
         require(MerkleProof.verifyCalldata(proof, root, keccak256(abi.encodePacked(leaf))), "Invalid inclusion proof for value transfer message.");
-    }
-
-    /**
-     * @dev Pauses the message bus in case of emergency
-     * @notice Only callable by admin role
-     */
-    function pause() external override(IMerkleTreeMessageBus, MessageBus) onlyRole(DEFAULT_ADMIN_ROLE) {
-        _pause();
-    }
-
-    /**
-     * @dev Unpauses the message bus
-     * @notice Only callable by admin role
-     */
-    function unpause() external override(IMerkleTreeMessageBus, MessageBus) onlyRole(DEFAULT_ADMIN_ROLE) {
-        _unpause();
     }
 }
