@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../../common/PausableWithRoles.sol";
 
 import "../interfaces/ICrossChain.sol";
 import * as MessageBus from "../../cross_chain_messaging/common/MessageBus.sol";
@@ -12,8 +13,8 @@ import "../../common/UnrenouncableOwnable2Step.sol";
 /**
  * @title CrossChain
  * @dev Contract managing cross-chain value transfers and message verification
- * Implements reentrancy protection and pausable withdrawals for security
- * Uses MerkleTreeMessageBus for message verification and value transfers
+ * Implements reentrancy protection. Uses MerkleTreeMessageBus for message 
+ * verification and value transfers
  */
 contract CrossChain is ICrossChain, Initializable, UnrenouncableOwnable2Step, ReentrancyGuardUpgradeable {
      /**

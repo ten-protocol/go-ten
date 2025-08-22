@@ -21,4 +21,5 @@ interface ICrossChain {
      * @return bool True if the bundle is available
      */
     function isBundleAvailable(bytes[] memory crossChainHashes) external view returns (bool);
+
 }
