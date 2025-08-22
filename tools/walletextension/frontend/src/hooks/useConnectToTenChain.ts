@@ -7,8 +7,8 @@ import {
     tenGatewayAddress,
     tenNetworkName,
 } from '@/lib/constants';
-import { useLocalStorage } from 'usehooks-ts';
-import { joinTestnet } from '@/api/gateway';
+import { joinTestnet, setTokenToCookie } from '@/api/gateway';
+import { useTenToken } from '@/contexts/TenTokenContext';
 import { useTenChainAuth } from '@/hooks/useTenChainAuth';
 import { useUiStore } from '@/stores/ui.store';
 import sleep from '@/utils/sleep';
@@ -18,10 +18,9 @@ export default function useConnectToTenChain() {
     const incrementAuthEvents = useUiStore((state) => state.incrementAuthEvents, shallow);
     const { address, connector, isConnected, chainId } = useAccount();
     const connectors = useConnectors();
-    const setStoreTenToken = useUiStore((state) => state.setTenToken);
     const [step, setStep] = useState<number>(0);
     const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
-    const [tenToken, setTenToken] = useLocalStorage<string>('ten_token', '');
+    const { token: tenToken, loading: tokenLoading, refreshToken } = useTenToken();
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
     const { isAuthenticated, isAuthenticatedLoading, authenticateAccount, authenticationError } =
@@ -47,8 +46,12 @@ export default function useConnectToTenChain() {
 
     useEffect(() => {
         if (step !== 1) return;
+        if (tokenLoading) {
+            return;
+        }
 
         async function switchToTen() {
+            
             if (!tenToken && connector) {
                 const chainExists = await chainExistsCheck(connector);
 
@@ -63,17 +66,28 @@ export default function useConnectToTenChain() {
                 }
             }
 
-            let newTenToken =
-                tenToken === ''
-                    ? await joinTestnet().catch((error) => {
-                          setError({
-                              name: 'Unable to retrieve TEN token',
-                              message: error.message,
-                              cause: error.cause,
-                          });
-                          setLoading(false);
-                      })
-                    : tenToken;
+            let newTenToken: string;
+            if (tenToken === '') {
+                try {
+                    newTenToken = await joinTestnet();
+                    
+                    // Set the token to cookie using /set-token endpoint
+                    await setTokenToCookie(newTenToken);
+                    
+                    // Refresh the token context to sync with the cookie
+                    await refreshToken();
+                } catch (error: any) {
+                    setError({
+                        name: 'Unable to retrieve TEN token',
+                        message: error?.message || 'Unknown error',
+                        cause: error?.cause,
+                    });
+                    setLoading(false);
+                    return; // Exit early on error
+                }
+            } else {
+                newTenToken = tenToken;
+            }
 
             if (!newTenToken) {
                 throw Error('No tenToken found');
@@ -81,10 +95,9 @@ export default function useConnectToTenChain() {
 
             setStep(2);
 
-            if (tenToken === '') {
+            // Ensure token has 0x prefix for processing
+            if (!newTenToken.startsWith('0x')) {
                 newTenToken = `0x${newTenToken}`;
-                setTenToken(newTenToken);
-                setStoreTenToken(`0x${newTenToken}`);
             }
 
             if (chainId === tenChainIDDecimal) {
@@ -95,24 +108,24 @@ export default function useConnectToTenChain() {
 
             if (!connector) {
                 throw 'Connector is undefined!';
-                return;
             }
 
+            // Remove 0x prefix from token for RPC URL
+            const cleanTokenForRpc = newTenToken.startsWith('0x') ? newTenToken.slice(2) : newTenToken;
+            const rpcUrl = `${tenGatewayAddress}/v1/?token=${cleanTokenForRpc}`;
+            
             //@ts-expect-error Revisit later
             await connector
                 .switchChain({
                     chainId: tenChainIDDecimal,
                     addEthereumChainParameter: {
-                        rpcUrls: [`${tenGatewayAddress}/v1/?token=${newTenToken}`],
+                        rpcUrls: [rpcUrl],
                         chainName: tenNetworkName,
                         nativeCurrency: nativeCurrency,
                     },
                 })
                 .catch((error: Error) => {
-                    console.log(error);
-                    if (error?.message.includes('is not a function')) {
-                        console.log('IGNORE THIS ERROR');
-                    } else {
+                    if (!error?.message.includes('is not a function')) {
                         switchSuccess = false;
                         setError({
                             name: 'Error switching chains',
@@ -129,14 +142,17 @@ export default function useConnectToTenChain() {
         }
 
         if (isConnected && selectedConnector?.uid === connector?.uid) {
-            switchToTen();
+            if (!tokenLoading) {
+                switchToTen();
+            }
         }
-    }, [connector, isConnected, selectedConnector, step]);
+    }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, chainId, refreshToken]);
 
     useEffect(() => {
         if (step !== 3) {
             return;
         }
+
 
         if (authenticationError) {
             setError({
@@ -147,12 +163,15 @@ export default function useConnectToTenChain() {
         }
 
         if (!isAuthenticated && !isAuthenticatedLoading && !authenticationError) {
+            if (!tenToken) {
+                return;
+            }
             authenticateAccount(address);
         } else if (isAuthenticated && !isAuthenticatedLoading) {
             setStep(4);
             incrementAuthEvents();
         }
-    }, [isAuthenticated, isAuthenticatedLoading, authenticationError, step]);
+    }, [isAuthenticated, isAuthenticatedLoading, authenticationError, step, address, authenticateAccount, incrementAuthEvents, tenToken]);
 
     const reset = () => {
         setStep(0);
@@ -191,6 +210,6 @@ export default function useConnectToTenChain() {
         connectors: uniqueConnectors,
         connectToTen,
         reset,
-        loading,
+        loading: loading || tokenLoading,
     };
 }

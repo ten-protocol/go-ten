@@ -17,6 +17,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { createStorage } from 'wagmi';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar/AppSidebar';
+import { TenTokenProvider } from '@/contexts/TenTokenContext';
 
 const createCustomChain = (rpcUrl: string): Chain =>
     ({
@@ -59,19 +60,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
     return (
         <WagmiProvider config={config}>
             <QueryClientProvider client={queryClient}>
-                <TooltipProvider>
-                    <ThemeProvider
-                        attribute="class"
-                        defaultTheme="dark"
-                        enableSystem
-                        disableTransitionOnChange
-                    >
-                        <SidebarProvider>
-                            <AppSidebar />
-                            {children}
-                        </SidebarProvider>
-                    </ThemeProvider>
-                </TooltipProvider>
+                <TenTokenProvider>
+                    <TooltipProvider>
+                        <ThemeProvider
+                            attribute="class"
+                            defaultTheme="dark"
+                            enableSystem
+                            disableTransitionOnChange
+                        >
+                            <SidebarProvider>
+                                <AppSidebar />
+                                {children}
+                            </SidebarProvider>
+                        </ThemeProvider>
+                    </TooltipProvider>
+                </TenTokenProvider>
             </QueryClientProvider>
         </WagmiProvider>
     );

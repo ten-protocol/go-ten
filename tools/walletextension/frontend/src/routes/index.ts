@@ -9,6 +9,8 @@ export const apiRoutes = {
     queryAccountToken: `/${tenGatewayVersion}/query/`,
     revoke: `/${tenGatewayVersion}/revoke/`,
     version: `/${tenGatewayVersion}/version/`,
+    getToken: `/${tenGatewayVersion}/get-token/`,
+    setToken: `/${tenGatewayVersion}/set-token/`,
 
     // **** INFO ****
     getHealthStatus: `/${tenGatewayVersion}/network-health/`,

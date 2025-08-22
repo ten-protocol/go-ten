@@ -37,11 +37,11 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetToken,
-			Func: httpHandler(walletExt, getTokenRequestHandler),
+			Func: restrictiveHttpHandler(walletExt, getTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathSetToken,
-			Func: httpHandler(walletExt, setTokenRequestHandler),
+			Func: restrictiveHttpHandler(walletExt, setTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetMessage,
@@ -111,12 +111,33 @@ func httpHandler(
 	}
 }
 
+func restrictiveHttpHandler(
+	walletExt *services.Services,
+	fun func(walletExt *services.Services, conn UserConn),
+) func(resp http.ResponseWriter, req *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		restrictiveHttpRequestHandler(walletExt, resp, req, fun)
+	}
+}
+
 // Overall request handler for http requests
 func httpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
 	if walletExt.IsStopping() {
 		return
 	}
 	if httputil.EnableCORS(resp, req) {
+		return
+	}
+	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
+	fun(walletExt, userConn)
+}
+
+// Restrictive request handler for endpoints requiring specific origin access
+func restrictiveHttpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
+	if walletExt.IsStopping() {
+		return
+	}
+	if httputil.EnableRestrictiveCORS(resp, req) {
 		return
 	}
 	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
@@ -140,22 +161,6 @@ func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal Error"))
 		walletExt.Logger().Error("error creating new user", log.ErrKey, err)
-	}
-
-	// set secure HTTP-only cookie with userID
-	cookie := &http.Cookie{
-		Name:     "gateway_token",
-		Value:    hexutils.BytesToHex(userID),
-		Path:     "/",
-		HttpOnly: true,                    // Prevents XSS
-		Secure:   true,                    // HTTPS only
-		SameSite: http.SameSiteStrictMode, // Prevents CSRF
-		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
-	}
-
-	err = conn.SetCookie(cookie)
-	if err != nil {
-		walletExt.Logger().Error("error setting cookie", log.ErrKey, err)
 	}
 
 	// write hex encoded userID in the response
@@ -264,9 +269,10 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 		Name:     "gateway_token",
 		Value:    req.Token,
 		Path:     "/",
+		Domain:   ".ten.xyz",              // Share across all .ten.xyz subdomains
 		HttpOnly: true,                    // Prevents XSS
 		Secure:   true,                    // HTTPS only
-		SameSite: http.SameSiteStrictMode, // Prevents CSRF
+		SameSite: http.SameSiteNoneMode,   // Required for cross-origin AJAX requests
 		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
 	}
 
