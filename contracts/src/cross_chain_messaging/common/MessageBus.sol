@@ -177,7 +177,7 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, Pa
      * @dev Pauses the message bus in case of emergency
      * @notice Only callable by the owner
      */
-    function pause() external onlyOwner {
+    function pause() external virtual onlyOwner {
         _pause();
     }
 
@@ -185,7 +185,7 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, Pa
      * @dev Unpauses the message bus
      * @notice Only callable by the owner
      */
-    function unpause() external onlyOwner {
+    function unpause() external virtual onlyOwner {
         _unpause();
     }
 }

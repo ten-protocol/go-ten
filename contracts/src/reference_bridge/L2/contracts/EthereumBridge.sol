@@ -2,20 +2,23 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
+import "../../../common/UnrenouncableOwnable2Step.sol";
 import "../../../cross_chain_messaging/lib/CrossChainEnabledTEN.sol";
-import "./WrappedERC20.sol";
 
 import "../../common/IBridge.sol";
 import "../interfaces/ITokenFactory.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./WrappedERC20.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 contract EthereumBridge is
     IBridge,
     ITokenFactory,
     CrossChainEnabledTEN,
     Initializable,
+    UnrenouncableOwnable2Step,
     PausableUpgradeable
 {
     event CreatedWrappedToken(

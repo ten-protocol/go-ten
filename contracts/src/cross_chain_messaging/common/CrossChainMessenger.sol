@@ -5,7 +5,6 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./ICrossChainMessenger.sol";
 import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../L1/IMerkleTreeMessageBus.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 
 /**
@@ -21,7 +20,7 @@ import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
  * Notice that this Messenger has no restrictions on who can relay messages, nor does it have any understanding of fees.
  * You can opt in to deploy a customer messenger for your cross chain dApp with more specialized logic.
  */
-contract CrossChainMessenger is ICrossChainMessenger, Initializable, PausableUpgradeable {
+contract CrossChainMessenger is ICrossChainMessenger, Initializable {
     error CallFailed(bytes error);
 
     IMerkleTreeMessageBus public messageBusContract;
@@ -35,7 +34,6 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable, PausableUpg
      * TODO initialize only once
      */
     function initialize(address messageBusAddr) external initializer {
-        __Pausable_init();
         messageBusContract = IMerkleTreeMessageBus(messageBusAddr);
     }
 
@@ -162,13 +160,5 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable, PausableUpg
 
         crossChainSender = address(0x0);
         crossChainTarget = address(0x0);
-    }
-
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
     }
 }
