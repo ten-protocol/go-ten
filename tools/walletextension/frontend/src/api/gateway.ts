@@ -58,6 +58,7 @@ export async function joinTestnet(): Promise<string> {
         const response = await httpRequest<string>({
             method: 'get',
             url: tenGatewayAddress + pathToUrl(apiRoutes.join),
+            withCredentials: true,
         });
         console.log('[joinTestnet] /join response received:', response);
         return response;
