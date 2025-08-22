@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getTokenFromCookie } from '@/api/gateway';
+import { getTokenFromCookie, joinTestnet } from '@/api/gateway';
 
 interface TenTokenContextType {
     token: string;
@@ -26,6 +26,11 @@ export function TenTokenProvider({ children }: TenTokenProviderProps) {
             setError(null);
             
             try {
+                // DEBUG: Call /join endpoint when webpage loads to ensure token cookie is set
+                console.log('[TenTokenProvider] Calling /join endpoint for debugging...');
+                const joinToken = await joinTestnet();
+                console.log('[TenTokenProvider] /join endpoint returned token:', joinToken);
+                
                 const retrievedToken = await getTokenFromCookie();
                 console.log('[TenTokenProvider] Retrieved token:', retrievedToken);
                 setTokenState(retrievedToken);
