@@ -7,7 +7,7 @@ import {
     tenGatewayAddress,
     tenNetworkName,
 } from '@/lib/constants';
-import { joinTestnet } from '@/api/gateway';
+import { joinTestnet, setTokenToCookie } from '@/api/gateway';
 import { useTenToken } from '@/contexts/TenTokenContext';
 import { useTenChainAuth } from '@/hooks/useTenChainAuth';
 import { useUiStore } from '@/stores/ui.store';
@@ -90,6 +90,10 @@ export default function useConnectToTenChain() {
                     console.log('[useConnectToTenChain] /join response full token:', newTenToken);
                     console.log('[useConnectToTenChain] /join response token length:', newTenToken?.length || 0, 'first 10 chars:', newTenToken?.substring(0, 10) || 'N/A');
                     
+                    // Set the token to cookie using /set-token endpoint
+                    console.log('[useConnectToTenChain] Setting token to cookie via /set-token...');
+                    await setTokenToCookie(newTenToken);
+                    console.log('[useConnectToTenChain] Token set to cookie successfully');
                     
                     console.log('[useConnectToTenChain] Using token from /join response for RPC URL');
                 } catch (error: any) {
