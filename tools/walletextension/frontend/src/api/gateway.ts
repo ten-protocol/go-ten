@@ -96,7 +96,7 @@ export async function getTokenFromCookie(): Promise<string> {
         }
         
         return token;
-    } catch (error) {
+    } catch {
         return '';
     }
 }

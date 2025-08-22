@@ -146,7 +146,7 @@ export default function useConnectToTenChain() {
                 switchToTen();
             }
         }
-    }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, chainId]);
+    }, [connector, isConnected, selectedConnector, step, tokenLoading, tenToken, chainId, refreshToken]);
 
     useEffect(() => {
         if (step !== 3) {
