@@ -20,7 +20,7 @@ export default function useConnectToTenChain() {
     const connectors = useConnectors();
     const [step, setStep] = useState<number>(0);
     const [selectedConnector, setSelectedConnector] = useState<Connector | null>(null);
-    const { token: tenToken, loading: tokenLoading } = useTenToken();
+    const { token: tenToken, loading: tokenLoading, refreshToken } = useTenToken();
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<Error | null>(null);
     const { isAuthenticated, isAuthenticatedLoading, authenticateAccount, authenticationError } =
@@ -94,6 +94,11 @@ export default function useConnectToTenChain() {
                     console.log('[useConnectToTenChain] Setting token to cookie via /set-token...');
                     await setTokenToCookie(newTenToken);
                     console.log('[useConnectToTenChain] Token set to cookie successfully');
+                    
+                    // Refresh the token context to sync with the cookie
+                    console.log('[useConnectToTenChain] Refreshing token context...');
+                    await refreshToken();
+                    console.log('[useConnectToTenChain] Token context refreshed');
                     
                     console.log('[useConnectToTenChain] Using token from /join response for RPC URL');
                 } catch (error: any) {
