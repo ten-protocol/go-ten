@@ -41,7 +41,7 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 		},
 		{
 			Name: common.APIVersion1 + common.PathSetToken,
-			Func: httpHandler(walletExt, setTokenRequestHandler),
+			Func: restrictiveHttpHandler(walletExt, setTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetMessage,
