@@ -58,12 +58,27 @@ export async function joinTestnet(): Promise<string> {
         const response = await httpRequest<string>({
             method: 'get',
             url: tenGatewayAddress + pathToUrl(apiRoutes.join),
-            withCredentials: true,
         });
         console.log('[joinTestnet] /join response received:', response);
         return response;
     } catch (error) {
         console.log('[joinTestnet] /join request failed:', error);
+        throw error;
+    }
+}
+
+export async function setTokenToCookie(token: string): Promise<void> {
+    console.log('[setTokenToCookie] Calling /set-token endpoint:', tenGatewayAddress + pathToUrl(apiRoutes.setToken));
+    try {
+        await httpRequest({
+            method: 'post',
+            url: tenGatewayAddress + pathToUrl(apiRoutes.setToken),
+            data: { token },
+            withCredentials: true,
+        });
+        console.log('[setTokenToCookie] Token successfully set to cookie');
+    } catch (error) {
+        console.log('[setTokenToCookie] Failed to set token to cookie:', error);
         throw error;
     }
 }
