@@ -33,6 +33,7 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 	simstats "github.com/ten-protocol/go-ten/integration/simulation/stats"
 )
@@ -162,6 +163,11 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		fromWallet := ti.rndObsWallet()
 		toWallet := ti.rndObsWallet()
 		tenClient := ti.rpcHandles.TenWalletRndClient(fromWallet)
+		price, err := tenClient.GasPrice(ti.ctx)
+		if err != nil {
+			panic(err)
+		}
+		price = new(big.Int).Mul(price, big.NewInt(2))
 		// We avoid transfers to self, unless there is only a single L2 wallet.
 		for len(ti.wallets.SimObsWallets) > 1 && fromWallet.Address().Hex() == toWallet.Address().Hex() {
 			toWallet = ti.rndObsWallet()
@@ -170,8 +176,8 @@ func (ti *TransactionInjector) issueRandomValueTransfers() {
 		txData := &types.LegacyTx{
 			Nonce:    fromWallet.GetNonceAndIncrement(),
 			Value:    big.NewInt(int64(testcommon.RndBtw(1, 100))),
-			Gas:      uint64(50_000),
-			GasPrice: gethcommon.Big1,
+			Gas:      uint64(10_000_000),
+			GasPrice: price,
 			To:       &toWalletAddr,
 		}
 
@@ -438,6 +444,8 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			continue
 		}
 
+		price = new(big.Int).Mul(price, big.NewInt(2))
+
 		// Create EthereumBridge contract binding
 		ethereumBridge, err := EthereumBridge.NewEthereumBridge(l2BridgeAddr, client)
 		if err != nil {
@@ -452,7 +460,7 @@ func (ti *TransactionInjector) issueRandomWithdrawals() {
 			continue
 		}
 		opts.Value = big.NewInt(100) // Send 1 wei
-		opts.GasLimit = uint64(1_000_000)
+		opts.GasLimit = uint64(10_000_000)
 		opts.GasPrice = price
 		opts.Nonce = big.NewInt(int64(fromWallet.GetNonceAndIncrement()))
 
@@ -518,20 +526,28 @@ func (ti *TransactionInjector) rndObsWallet() wallet.Wallet {
 
 func (ti *TransactionInjector) newTenTransferTx(from wallet.Wallet, dest gethcommon.Address, amount uint64, ercType testcommon.ERC20) types.TxData {
 	data := erc20contractlib.CreateTransferTxData(dest, common.ValueInWei(big.NewInt(int64(amount))))
-	return ti.newTx(data, from.GetNonceAndIncrement(), ercType)
+	return ti.newTx(data, from.GetNonceAndIncrement(), ercType, ti.rpcHandles.TenWalletRndClient(from))
 }
 
 func (ti *TransactionInjector) newCustomTenWithdrawalTx(amount uint64) types.TxData {
 	transferERC20data := erc20contractlib.CreateTransferTxData(testcommon.BridgeAddress, common.ValueInWei(big.NewInt(int64(amount))))
-	return ti.newTx(transferERC20data, 1, testcommon.HOC)
+	return ti.newTx(transferERC20data, 1, testcommon.HOC, ti.rpcHandles.TenWalletRndClient(ti.wallets.L2FaucetWallet))
 }
 
-func (ti *TransactionInjector) newTx(data []byte, nonce uint64, ercType testcommon.ERC20) types.TxData {
+func (ti *TransactionInjector) newTx(data []byte, nonce uint64, ercType testcommon.ERC20, client *obsclient.AuthObsClient) types.TxData {
+	price, err := client.GasPrice(ti.ctx)
+	if err != nil {
+		// Fallback to a reasonable gas price if we can't get current price
+		price = big.NewInt(2000000000) // 2 gwei
+	} else {
+		price = new(big.Int).Mul(price, big.NewInt(2))
+	}
+
 	return &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,
-		Gas:      uint64(1_000_000),
-		GasPrice: gethcommon.Big1,
+		Gas:      uint64(10_000_000),
+		GasPrice: price,
 		Data:     data,
 		To:       ti.wallets.Tokens[ercType].L2ContractAddress,
 	}

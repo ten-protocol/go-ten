@@ -29,6 +29,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/enclave/events"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
@@ -174,6 +175,9 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 	if err := r.processNetworkConfigLogs(block, *networkConfigAddress, processed); err != nil {
 		return nil, err
 	}
+	if err := r.processNetworkUpgradeLogs(block, *networkConfigAddress, processed); err != nil {
+		return nil, err
+	}
 	if err := r.processMessageBusLogs(block, allAddresses.L1MessageBus, processed); err != nil {
 		return nil, err
 	}
@@ -223,6 +227,41 @@ func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr ge
 			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
 			return fmt.Errorf("error processing log: %w", err)
 		}
+	}
+	return nil
+}
+
+func (r *DataService) processNetworkUpgradeLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
+	logs, err := r.getContractLogs(block, contractAddr)
+	if err != nil {
+		return err
+	}
+
+	// Filter logs for network upgrade events
+	var upgradeLogs []types.Log
+	for _, l := range logs {
+		if len(l.Topics) > 0 && l.Topics[0] == ethadapter.UpgradedEventID {
+			upgradeLogs = append(upgradeLogs, l)
+		}
+	}
+
+	// Process each upgrade log
+	for _, l := range upgradeLogs {
+		txData, err := r.fetchTxAndReceipt(l.TxHash)
+		if err != nil {
+			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
+			continue
+		}
+
+		// Convert the log to network upgrade data
+		networkUpgrades, err := events.ConvertLogsToNetworkUpgrades([]types.Log{l}, ethadapter.UpgradedEventName, ethadapter.NetworkConfigABI)
+		if err != nil {
+			r.logger.Error("Error converting logs to network upgrades", "txHash", l.TxHash, "error", err)
+			return fmt.Errorf("error converting logs to network upgrades: %w", err)
+		}
+
+		txData.NetworkUpgrades = networkUpgrades
+		processed.AddEvent(common.NetworkUpgradedTx, txData)
 	}
 	return nil
 }

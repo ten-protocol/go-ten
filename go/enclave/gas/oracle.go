@@ -180,10 +180,12 @@ func (o *oracle) calculateL1Cost(ctx context.Context, block *types.Header, l2Bat
 	// 3. The total cost is the sum of the share of the blob cost and the share of the L1 tx cost
 	totalCost := big.NewInt(0).Add(shareOfBlobCost, shareOfL1TxCost)
 
-	// 4. round the shareOfBlobCost up to the nearest multiple of l2Batch.BaseFee
-	remainder := new(big.Int).Mod(totalCost, l2Batch.BaseFee)
+	// 4. round the total cost up to the nearest multiple of the L2 base fee
+	l2Header := common.ConvertBatchHeaderToHeader(l2Batch)
+	multiple := l2Header.BaseFee
+	remainder := new(big.Int).Mod(totalCost, multiple)
 	if remainder.Sign() > 0 {
-		totalCost = totalCost.Add(totalCost, new(big.Int).Sub(l2Batch.BaseFee, remainder))
+		totalCost = totalCost.Add(totalCost, new(big.Int).Sub(multiple, remainder))
 	}
 
 	return totalCost, nil

@@ -65,6 +65,7 @@ type TxPool struct {
 	pool             *gethtxpool.TxPool
 	Chain            *EthChainAdapter
 	gasOracle        gas.Oracle
+	gasPricer        *GasPricer
 	batchRegistry    BatchRegistry
 	storage          storage.Storage
 	l1BlockProcessor L1BlockProcessor
@@ -78,7 +79,10 @@ type TxPool struct {
 }
 
 // NewTxPool returns a new instance of the tx pool
-func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig, tenChain TENChain, storage storage.Storage, batchRegistry BatchRegistry, l1BlockProcessor L1BlockProcessor, gasOracle gas.Oracle, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
+func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig, tenChain TENChain, storage storage.Storage, batchRegistry BatchRegistry, l1BlockProcessor L1BlockProcessor, gasOracle gas.Oracle, gasPricer *GasPricer, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	txPoolConfig := legacypool.Config{
 		Locals:       nil,
 		NoLocals:     false,
@@ -102,6 +106,7 @@ func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig,
 		txPoolConfig:     txPoolConfig,
 		storage:          storage,
 		gasOracle:        gasOracle,
+		gasPricer:        gasPricer,
 		batchRegistry:    batchRegistry,
 		l1BlockProcessor: l1BlockProcessor,
 		legacyPool:       legacyPool,
@@ -233,6 +238,9 @@ func (t *TxPool) PendingTransactions(batchTime uint64) map[gethcommon.Address][]
 		OnlyPlainTxs: true,
 	})
 
+	allTxs := t.pool.Pending(gethtxpool.PendingFilter{})
+	t.logger.Info(fmt.Sprintf("[TXPOOL] Picked %d txs out of %d", len(txs), len(allTxs)))
+
 	// Filter out transactions that have "Time" greater than batchTime + MaxNegativeTxTimeDeltaMs
 	// this is required for serialising the transactiong together with their timestamp delta (which can't be negative).
 	maxDeltaSec := (common.MaxNegativeTxTimeDeltaMs / 1000) - 1
@@ -343,7 +351,9 @@ func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 		t.logger.Crit("invalid mempool. should not happen")
 	}
 
-	if err := gethtxpool.ValidateTransaction(tx, ch.Load(), sig, opts); err != nil {
+	header := ch.Load()
+	header.GasLimit = ^uint64(0) // set to max uint64
+	if err := gethtxpool.ValidateTransaction(tx, header, sig, opts); err != nil {
 		return err
 	}
 	return nil
@@ -377,7 +387,7 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 		return nil, fmt.Errorf("could not extract sender from transaction. Cause: %w", err)
 	}
 	txArgs.From = &from
-	ge := NewGasEstimator(t.storage, t.tenChain, t.gasOracle, t.logger)
+	ge := NewGasEstimator(t.storage, t.tenChain, t.gasOracle, t.gasPricer, t.logger)
 	latest := gethrpc.LatestBlockNumber
 	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, &latest, headBatch, t.config.GasLocalExecutionCapFlag)
 
@@ -385,11 +395,9 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 	if userErr != nil && errors.Is(userErr, vm.ErrExecutionReverted) {
 		return nil, nil
 	}
-
 	if userErr != nil || sysErr != nil {
 		return userErr, sysErr
 	}
-
 	// make sure the tx has enough gas to cover the execution and the tx won't be rejected by the sequencer
 	leastGas = leastGas * 8 / 10 // reduce gas estimate by 20%
 	if tx.Gas() < leastGas {

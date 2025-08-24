@@ -95,12 +95,11 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
     event AdditionalContractAddressRemoved(string name);
 
     /**
-     * @dev Event emitted when a hardfork upgrade occurs
-     * @param forkName The name of the hardfork
+     * @dev Event emitted when a feature is upgraded - for example gas pricing model from static to dynamic.
+     * @param featureName The name of the feature that was upgraded
+     * @param featureData The data of the feature that was upgraded - to be forwarded to it for initialization.
      */
-    event HardforkUpgrade(
-        string indexed forkName
-    );
+    event Upgraded(string featureName, bytes featureData);
 
     /**
      * @dev Initializes the contract with addresses and owner
@@ -275,11 +274,12 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
     }
 
     /**
-     * @dev Emits a hardfork upgrade event that can be subscribed to by the L2
+     * @dev Upgrades a feature of the network - The event emitted is used by the node go code to modify network behaviour after a given
+     * l1 block. The feature data is forwarded to the feature for initialization.
+     * @param featureName The name of the feature that was upgraded
+     * @param featureData The data of the feature that was upgraded - to be forwarded to it for initialization.
      */
-    function recordHardfork(
-        string calldata hardforkName
-    ) external onlyOwner {
-        emit HardforkUpgrade(hardforkName);
+    function upgradeFeature(string calldata featureName, bytes calldata featureData) external onlyOwner {
+        emit Upgraded(featureName, featureData);
     }
 }
