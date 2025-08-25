@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -155,6 +156,7 @@ func (s *SqliteDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 		}
 
 		address := *key.Account.Address
+		now := time.Now()
 		user.SessionKeys[address] = &dbcommon.GWSessionKeyDB{
 			PrivateKey: crypto.FromECDSA(key.PrivateKey.ExportECDSA()),
 			Account: dbcommon.GWAccountDB{
@@ -162,6 +164,8 @@ func (s *SqliteDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 				Signature:      key.Account.Signature,
 				SignatureType:  int(key.Account.SignatureType),
 			},
+			CreatedAt:      now.Unix(),
+			LastFundReturn: now.Unix(), // Initialize to creation time for first 24h cycle
 		}
 		return s.updateUser(dbTx, user)
 	})
