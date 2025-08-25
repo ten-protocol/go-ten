@@ -49,6 +49,7 @@ type Services struct {
 	SKManager           SKManager
 	Config              *common.Config
 	NewHeadsService     *subscriptioncommon.NewHeadsService
+	SessionKeyMaintenanceService SessionKeyMaintenanceService
 	cacheInvalidationCh chan *tencommon.BatchHeader
 	MetricsTracker      metrics.Metrics
 }
@@ -77,6 +78,9 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 
 	rateLimiter := ratelimiter.NewRateLimiter(config.RateLimitUserComputeTime, config.RateLimitWindow, uint32(config.RateLimitMaxConcurrentRequests), logger)
 
+	backendRPC := NewBackendRPC(hostAddrHTTP, hostAddrWS, logger)
+	skManager := NewSKManager(storage, config, logger)
+	
 	services := Services{
 		HostAddrHTTP:        hostAddrHTTP,
 		HostAddrWS:          hostAddrWS,
@@ -85,8 +89,9 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		stopControl:         stopControl,
 		version:             version,
 		RPCResponsesCache:   newGatewayCache,
-		BackendRPC:          NewBackendRPC(hostAddrHTTP, hostAddrWS, logger),
-		SKManager:           NewSKManager(storage, config, logger),
+		BackendRPC:          backendRPC,
+		SKManager:           skManager,
+		SessionKeyMaintenanceService: NewSessionKeyMaintenanceService(storage, backendRPC, skManager, logger),
 		RateLimiter:         rateLimiter,
 		Config:              config,
 		cacheInvalidationCh: make(chan *tencommon.BatchHeader),
@@ -111,6 +116,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		})
 
 	go _startCacheEviction(&services, logger)
+	go _startSessionKeyMaintenanceService(&services, logger)
 	return &services
 }
 
@@ -140,6 +146,23 @@ func _startCacheEviction(services *Services, logger gethlog.Logger) {
 			return
 		}
 	}
+}
+
+func _startSessionKeyMaintenanceService(services *Services, logger gethlog.Logger) {
+	logger.Info("Starting session key maintenance service")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	
+	// Start the maintenance service in background
+	go func() {
+		services.SessionKeyMaintenanceService.Start(ctx)
+	}()
+	
+	// Wait for stop signal
+	<-services.stopControl.Done()
+	logger.Info("Stopping session key maintenance service")
+	services.SessionKeyMaintenanceService.Stop()
+	cancel()
 }
 
 func subscribeToNewHeadsWithRetry(ch chan *tencommon.BatchHeader, services *Services, logger gethlog.Logger) (<-chan error, error) {

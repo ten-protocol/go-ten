@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -146,6 +147,7 @@ func (c *CosmosDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 		}
 
 		addressHex := key.Account.Address.Hex()
+		now := time.Now().Unix()
 		u.SessionKeys[addressHex] = &dbcommon.GWSessionKeyDB{
 			PrivateKey: crypto.FromECDSA(key.PrivateKey.ExportECDSA()),
 			Account: dbcommon.GWAccountDB{
@@ -153,6 +155,8 @@ func (c *CosmosDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 				Signature:      key.Account.Signature,
 				SignatureType:  int(key.Account.SignatureType),
 			},
+			CreatedAt:      now,
+			LastFundReturn: now, // Initialize to creation time for first 24h cycle
 		}
 		return nil
 	})

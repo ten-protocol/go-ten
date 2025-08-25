@@ -1,6 +1,8 @@
 package common
 
 import (
+	"time"
+
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"golang.org/x/exp/maps"
@@ -11,6 +13,11 @@ import (
 const (
 	// MaxSessionKeysPerUser defines the maximum number of session keys a user can have
 	MaxSessionKeysPerUser = 100
+
+	// Session key expiry constants
+	SessionKeyExpiryDuration = 24 * time.Hour  // Session keys expire after 24 hours
+	MinETHReturnThreshold    = 0.001           // Minimum ETH balance to trigger return (in ETH)
+	ExpiryCheckInterval      = 1 * time.Hour   // How often to check for expired session keys
 )
 
 // GWSessionKey - an account key-pair registered for a user
