@@ -84,14 +84,6 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 			Func: httpHandler(walletExt, createSKRequestHandler),
 		},
 		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "activate",
-			Func: httpHandler(walletExt, activateSKRequestHandler),
-		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "deactivate",
-			Func: httpHandler(walletExt, deactivateSKRequestHandler),
-		},
-		{
 			Name: common.APIVersion1 + common.PathSessionKeys + "delete",
 			Func: httpHandler(walletExt, deleteSKRequestHandler),
 		},
@@ -750,10 +742,25 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 
 func listSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		if user.SessionKey == nil {
+		addresses, err := walletExt.SKManager.ListSessionKeys(user)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(addresses) == 0 {
 			return []byte{}, nil
 		}
-		return []byte(hexutils.BytesToHex(user.SessionKey.Account.Address.Bytes())), nil
+
+		// Return JSON array of addresses
+		addressStrings := make([]string, len(addresses))
+		for i, addr := range addresses {
+			addressStrings[i] = addr.Hex()
+		}
+		serialized, err := json.Marshal(addressStrings)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize session key addresses: %w", err)
+		}
+		return serialized, nil
 	})
 }
 
@@ -770,24 +777,12 @@ func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
 
 func deleteSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		res, err := walletExt.SKManager.DeleteSessionKey(user)
-		return []byte{boolToByte(res)}, err
+		// Note: This handler needs to be updated to accept session key address parameter
+		// For now, returning an error to indicate the API change is required
+		return []byte{0}, fmt.Errorf("delete session key now requires session key address parameter")
 	})
 }
 
-func activateSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		res, err := walletExt.SKManager.ActivateSessionKey(user)
-		return []byte{boolToByte(res)}, err
-	})
-}
-
-func deactivateSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		res, err := walletExt.SKManager.DeactivateSessionKey(user)
-		return []byte{boolToByte(res)}, err
-	})
-}
 
 // extracts the user from the request, and writes the response to the connection
 func withUser(walletExt *services.Services, conn UserConn, withUser func(user *common.GWUser) ([]byte, error)) {

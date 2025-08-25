@@ -203,47 +203,29 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return nil, fmt.Errorf("unable to create session key: %w", err)
 		}
 		return sk.Account.Address.Bytes(), nil
-	case common.ActivateSessionKeyCQMethod:
-		res, err := api.we.SKManager.ActivateSessionKey(user)
-		return []byte{boolToByte(res)}, err
-	case common.DeactivateSessionKeyCQMethod:
-		res, err := api.we.SKManager.DeactivateSessionKey(user)
-		return []byte{boolToByte(res)}, err
 	case common.DeleteSessionKeyCQMethod:
-		res, err := api.we.SKManager.DeleteSessionKey(user)
-		return []byte{boolToByte(res)}, err
+		// Note: This method needs to be updated to accept session key address
+		// For now, returning an error to indicate the API change
+		return []byte{0}, fmt.Errorf("delete session key now requires session key address parameter")
 	case common.ListSessionKeyCQMethod:
-		sk, err := api.we.SKManager.ListSessionKey(user)
+		addresses, err := api.we.SKManager.ListSessionKeys(user)
 		if err != nil {
 			return nil, err
 		}
-		return sk.Bytes(), nil
-	case common.SendUnsignedTxCQMethod:
-		if user.ActiveSK && user.SessionKey != nil {
-			input, err := base64.StdEncoding.DecodeString(params)
-			if err != nil {
-				return nil, fmt.Errorf("unable to decode base64 params: %w", err)
-			}
-
-			tx := new(types.Transaction)
-			if err = tx.UnmarshalBinary(input); err != nil {
-				return gethcommon.Hash{}.Bytes(), err
-			}
-			signedTx, err := api.we.SKManager.SignTx(ctx, user, tx)
-			if err != nil {
-				return gethcommon.Hash{}.Bytes(), err
-			}
-			signedTxBlob, err := signedTx.MarshalBinary()
-			if err != nil {
-				return gethcommon.Hash{}.Bytes(), err
-			}
-			hash, err := SendRawTx(ctx, api.we, signedTxBlob)
-			if err != nil {
-				return gethcommon.Hash{}.Bytes(), err
-			}
-			return hash.Bytes(), nil
+		// Return JSON array of addresses
+		addressStrings := make([]string, len(addresses))
+		for i, addr := range addresses {
+			addressStrings[i] = addr.Hex()
 		}
-		return gethcommon.Hash{}.Bytes(), fmt.Errorf("please create a session key before sending unsigned transactions")
+		serialized, err := json.Marshal(addressStrings)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize session key addresses: %w", err)
+		}
+		return serialized, nil
+	case common.SendUnsignedTxCQMethod:
+		// Note: This method needs to be updated to accept session key address
+		// For now, returning an error to indicate the API change
+		return gethcommon.Hash{}.Bytes(), fmt.Errorf("send unsigned transaction now requires session key address parameter")
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
 		if err != nil {

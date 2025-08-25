@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
 )
 
@@ -29,29 +30,56 @@ func (api *SessionKeyAPI) Create(ctx context.Context) (string, error) {
 	return (*sk.Account.Address).Hex(), nil
 }
 
-func (api *SessionKeyAPI) Activate(ctx context.Context) (bool, error) {
+
+func (api *SessionKeyAPI) Delete(ctx context.Context, sessionKeyAddr string) (bool, error) {
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
 		return false, err
 	}
 
-	return api.we.SKManager.ActivateSessionKey(user)
+	if !common.IsHexAddress(sessionKeyAddr) {
+		return false, fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
+	}
+
+	addr := common.HexToAddress(sessionKeyAddr)
+	return api.we.SKManager.DeleteSessionKey(user, addr)
 }
 
-func (api *SessionKeyAPI) Deactivate(ctx context.Context) (bool, error) {
+// List returns all session key addresses for the user
+func (api *SessionKeyAPI) List(ctx context.Context) ([]string, error) {
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	return api.we.SKManager.DeactivateSessionKey(user)
+	addresses, err := api.we.SKManager.ListSessionKeys(user)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]string, len(addresses))
+	for i, addr := range addresses {
+		result[i] = addr.Hex()
+	}
+	return result, nil
 }
 
-func (api *SessionKeyAPI) Delete(ctx context.Context) (bool, error) {
+// Get returns information about a specific session key
+func (api *SessionKeyAPI) Get(ctx context.Context, sessionKeyAddr string) (string, error) {
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
-		return false, err
+		return "", err
 	}
 
-	return api.we.SKManager.DeleteSessionKey(user)
+	if !common.IsHexAddress(sessionKeyAddr) {
+		return "", fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
+	}
+
+	addr := common.HexToAddress(sessionKeyAddr)
+	sessionKey, err := api.we.SKManager.GetSessionKey(user, addr)
+	if err != nil {
+		return "", err
+	}
+
+	return sessionKey.Account.Address.Hex(), nil
 }

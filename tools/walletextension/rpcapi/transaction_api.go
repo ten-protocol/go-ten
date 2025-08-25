@@ -105,17 +105,29 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 	return *txRec, err
 }
 
-func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.TransactionArgs) (common.Hash, error) {
+func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.TransactionArgs, sessionKeyAddr string) (common.Hash, error) {
 	user, err := extractUserForRequest(ctx, s.we)
 	if err != nil {
 		return common.Hash{}, err
 	}
-	if !user.ActiveSK {
-		return common.Hash{}, fmt.Errorf("please activate session key")
+
+	if sessionKeyAddr == "" {
+		return common.Hash{}, fmt.Errorf("session key address is required")
 	}
 
-	// when there is an active Session Key, sign all incoming transactions with that SK
-	signedTx, err := s.we.SKManager.SignTx(ctx, user, args.ToTransaction())
+	if !common.IsHexAddress(sessionKeyAddr) {
+		return common.Hash{}, fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
+	}
+
+	addr := common.HexToAddress(sessionKeyAddr)
+
+	// Verify that the session key exists for this user
+	if user.SessionKeys == nil || user.SessionKeys[addr] == nil {
+		return common.Hash{}, fmt.Errorf("session key not found: %s", sessionKeyAddr)
+	}
+
+	// Sign the transaction with the specified session key
+	signedTx, err := s.we.SKManager.SignTx(ctx, user, addr, args.ToTransaction())
 	if err != nil {
 		return common.Hash{}, err
 	}

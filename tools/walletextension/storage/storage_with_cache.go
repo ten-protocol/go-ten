@@ -42,14 +42,6 @@ func (s *UserStorageWithCache) DeleteUser(userID []byte) error {
 	return nil
 }
 
-func (s *UserStorageWithCache) ActivateSessionKey(userID []byte, active bool) error {
-	err := s.storage.ActivateSessionKey(userID, active)
-	if err != nil {
-		return err
-	}
-	s.cache.Remove(userID)
-	return nil
-}
 
 func (s *UserStorageWithCache) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error {
 	err := s.storage.AddSessionKey(userID, key)
@@ -60,8 +52,8 @@ func (s *UserStorageWithCache) AddSessionKey(userID []byte, key wecommon.GWSessi
 	return nil
 }
 
-func (s *UserStorageWithCache) RemoveSessionKey(userID []byte) error {
-	err := s.storage.RemoveSessionKey(userID)
+func (s *UserStorageWithCache) RemoveSessionKey(userID []byte, sessionKeyAddr []byte) error {
+	err := s.storage.RemoveSessionKey(userID, sessionKeyAddr)
 	if err != nil {
 		return err
 	}
