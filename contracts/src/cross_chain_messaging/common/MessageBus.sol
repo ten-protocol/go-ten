@@ -31,7 +31,7 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, Pa
     function initialize(address owner, address /* withdrawal */, address feesAddress) public virtual initializer {
         require(feesAddress != address(0), "Fees address cannot be 0x0");
         require(owner != address(0), "Caller cannot be 0x0");
-        __UnrenouncableOwnable2Step_init(owner);  // Initialize UnrenouncableOwnable2Step
+        __UnrenouncableOwnable2Ste  p_init(owner);  // Initialize UnrenouncableOwnable2Step
         __PausableWithRoles_init(owner);  // Initialize PausableWithRoles
         fees = IFees(feesAddress);
     }
