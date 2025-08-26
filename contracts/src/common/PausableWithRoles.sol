@@ -19,8 +19,19 @@ abstract contract PausableWithRoles is AccessControlUpgradeable {
     /// @dev Role that can unpause the contract
     bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
-    /// @dev Paused state
-    bool private _paused;
+    /// @custom:storage-location erc7201:openzeppelin.storage.Pausable
+    struct PausableStorage {
+        bool _paused;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.Pausable")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant PausableStorageLocation = 0xcd5ed15c6e187e77e9aee88184c21f4f2182ab5827cb3b7e07fbedcd63f03300;
+
+    function _getPausableStorage() private pure returns (PausableStorage storage $) {
+        assembly {
+            $.slot := PausableStorageLocation
+        }
+    }
 
     /// @dev Emitted when the pause is triggered by `account`.
     event Paused(address account);
@@ -53,7 +64,8 @@ abstract contract PausableWithRoles is AccessControlUpgradeable {
      * @dev Returns true if the contract is paused, and false otherwise.
      */
     function paused() public view virtual returns (bool) {
-        return _paused;
+        PausableStorage storage $ = _getPausableStorage();
+        return $._paused;
     }
 
     /**
@@ -77,7 +89,8 @@ abstract contract PausableWithRoles is AccessControlUpgradeable {
      * @notice Only callable by accounts with PAUSER_ROLE
      */
     function pause() external onlyRole(PAUSER_ROLE) {
-        _paused = true;
+        PausableStorage storage $ = _getPausableStorage();
+        $._paused = true;
         emit Paused(_msgSender());
     }
 
@@ -86,7 +99,8 @@ abstract contract PausableWithRoles is AccessControlUpgradeable {
      * @notice Only callable by accounts with UNPAUSER_ROLE
      */
     function unpause() external onlyRole(UNPAUSER_ROLE) {
-        _paused = false;
+        PausableStorage storage $ = _getPausableStorage();
+        $._paused = false;
         emit Unpaused(_msgSender());
     }
 

@@ -3,15 +3,18 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "../../common/Structs.sol";
 import "./IMerkleTreeMessageBus.sol";
-import "../common/MessageBus.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../../common/UnrenouncableOwnable2Step.sol";
+import "../../common/PausableWithRoles.sol";
+import "../../system/interfaces/IFees.sol";
 /**
  * @title MerkleTreeMessageBus
  * @dev Implementation of IMerkleTreeMessageBus that uses Merkle trees for cross-chain message verification
  * This contract manages state roots and verifies message inclusion through Merkle proofs.
  * It implements a role-based access control system for state root and withdrawal management.
  */
-contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
+contract MerkleTreeMessageBus is IMerkleTreeMessageBus, Initializable, UnrenouncableOwnable2Step, PausableWithRoles {
 
     /**
      * @dev Role identifier for accounts that can manage state roots
@@ -29,22 +32,24 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
      */
     mapping(bytes32 stateRoot => uint256 activationTime) public rootValidAfter;
 
+    IFees fees;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() MessageBus() {
-        // Constructor intentionally left empty
+    constructor() {
+        _disableInitializers();
     }
 
     /**
      * @dev Initializes the contract with provided owner
      * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
      */
-    function initialize(address initialOwner, address withdrawalManager, address _fees) public override(IMerkleTreeMessageBus, MessageBus) initializer {
+    function initialize(address initialOwner, address withdrawalManager, address _fees) public override(IMerkleTreeMessageBus) initializer {
         require(initialOwner != address(0), "Initial owner cannot be 0x0");
         require(withdrawalManager != address(0), "Withdrawal manager cannot be 0x0");
         require(_fees != address(0), "Fees address cannot be 0x0");
 
          __UnrenouncableOwnable2Step_init(initialOwner);
-         __PausableWithRoles_init(initialOwner);
+         __PausableWithRoles_init(initialOwner);  // This calls __AccessControl_init() internally
         
          _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
          _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);

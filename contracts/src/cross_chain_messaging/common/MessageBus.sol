@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.7.0 <0.9.0;
 
+import "../../common/PausableWithRoles.sol";
 import "../../common/Structs.sol";
-import "../../system/contracts/Fees.sol";
 
+import "../../common/UnrenouncableOwnable2Step.sol";
+import "../../system/contracts/Fees.sol";
 import "../../system/interfaces/IFees.sol";
 import "./IMessageBus.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "../../common/UnrenouncableOwnable2Step.sol";
-import "../../common/PausableWithRoles.sol";
 
 /**
  * @title MessageBus
