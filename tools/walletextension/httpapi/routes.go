@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
@@ -750,9 +751,26 @@ func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
 
 func deleteSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		// Note: This handler needs to be updated to accept session key address parameter
-		// For now, returning an error to indicate the API change is required
-		return []byte{0}, fmt.Errorf("delete session key now requires session key address parameter")
+		// Extract session key address from query parameter
+		sessionKeyAddr, err := getQueryParameter(conn.ReadRequestParams(), "sessionKey")
+		if err != nil {
+			return nil, fmt.Errorf("sessionKey parameter required: %w", err)
+		}
+		
+		if !gethcommon.IsHexAddress(sessionKeyAddr) {
+			return nil, fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
+		}
+		
+		addr := gethcommon.HexToAddress(sessionKeyAddr)
+		success, err := walletExt.SKManager.DeleteSessionKey(user, addr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete session key: %w", err)
+		}
+		
+		if success {
+			return []byte("success"), nil
+		}
+		return []byte("false"), nil
 	})
 }
 
