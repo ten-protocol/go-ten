@@ -257,7 +257,6 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 
 func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContext) error {
 	systemDeployerTx, err := system.SystemDeployerInitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader(), executor.config.BridgeAddress)
-	println("SYSTEM DEPLOYER TX: ", systemDeployerTx.Hash())
 	if err != nil {
 		executor.logger.Error("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
 		return err

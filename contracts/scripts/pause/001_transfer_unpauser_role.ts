@@ -13,7 +13,7 @@ async function transferUnpauserRolesOnAllContracts() {
     const multisigAddress = process.env.MULTISIG_ADDR || "0x...";
     const networkConfigAddress = process.env.NETWORK_CONFIG_ADDR || "0x...";
     // this isnt stored in NetworkConfig so we need to pass it in
-    const merkleMessageBusAddress = process.env.MERKLE_MESSAGE_BUS_ADDR || "0x...";
+    // const merkleMessageBusAddress = process.env.MERKLE_MESSAGE_BUS_ADDR || "0x...";
     
     if (multisigAddress === "0x...") {
         throw new Error('Please set MULTISIG_ADDR environment variable');
@@ -23,14 +23,14 @@ async function transferUnpauserRolesOnAllContracts() {
         throw new Error('Please set NETWORK_CONFIG_ADDR environment variable');
     }
     
-    if (merkleMessageBusAddress === "0x...") {
-      throw new Error("Please set MERKLE_MESSAGE_BUS_ADDR environment variable")
-    }
+    // if (merkleMessageBusAddress === "0x...") {
+    //   throw new Error("Please set MERKLE_MESSAGE_BUS_ADDR environment variable")
+    // }
     
     console.log("Configuration:");
     console.log("- Multisig address:", multisigAddress);
     console.log("- Network config address:", networkConfigAddress);
-    console.log("- Merkle message bus address:", merkleMessageBusAddress);
+    // console.log("- Merkle message bus address:", merkleMessageBusAddress);
 
     const networkConfig = await ethers.getContractAt("NetworkConfig", networkConfigAddress);
     const networkConfigData = await networkConfig.addresses();
@@ -44,7 +44,6 @@ async function transferUnpauserRolesOnAllContracts() {
     console.log("- TenBridge:", networkConfigData.l1Bridge)
     console.log("- EthereumBridge:", networkConfigData.l2Bridge)
     // console.log("- MerkleTreeMessageBus:", merkleMessageBusAddress)
-    console.log("- MessageBus:", networkConfigData.messageBus);
 
     const pausableContracts = [
       // { name: "CrossChain", address: networkConfigData.crossChain },

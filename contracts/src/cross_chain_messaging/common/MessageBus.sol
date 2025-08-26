@@ -17,6 +17,7 @@ import "../../common/PausableWithRoles.sol";
  * Manages message publishing, verification, and value transfers between L1 and L2.
  */
 contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, PausableWithRoles {
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -27,11 +28,11 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, Pa
      * @param owner The address to set as the owner
      * @param feesAddress The address of the fees contract
      */
-    function initialize(address owner, address withdrawal, address feesAddress) public virtual initializer {
+    function initialize(address owner, address /* withdrawal */, address feesAddress) public virtual initializer {
         require(feesAddress != address(0), "Fees address cannot be 0x0");
         require(owner != address(0), "Caller cannot be 0x0");
         __UnrenouncableOwnable2Step_init(owner);  // Initialize UnrenouncableOwnable2Step
-        __PausableWithRoles_init(owner);
+        __PausableWithRoles_init(owner);  // Initialize PausableWithRoles
         fees = IFees(feesAddress);
     }
 

@@ -46,12 +46,12 @@ func (r *RoleTransfer) Start() error {
 				"accounts": ["%s"]
 			}
 		}`, r.cfg.l1HTTPURL, r.cfg.privateKey),
-		"NETWORK_CONFIG_ADDR": r.cfg.networkConfigAddress,
-		"MULTISIG_ADDR":       r.cfg.multisigAddress,
+		"NETWORK_CONFIG_ADDR": r.cfg.networkConfigAddr,
+		"MULTISIG_ADDR":       r.cfg.multisigAddr,
 	}
 
 	fmt.Printf("Starting unpauser role transfer script. NetworkConfigAddress: %s, MultisigAddress: %s\n",
-		r.cfg.networkConfigAddress, r.cfg.multisigAddress)
+		r.cfg.networkConfigAddr, r.cfg.multisigAddr)
 
 	containerID, err := docker.StartNewContainer(
 		"transfer-unpauser-roles",

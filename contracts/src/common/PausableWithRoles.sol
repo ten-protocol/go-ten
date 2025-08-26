@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @title PausableWithRoles
@@ -12,7 +11,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
  * - PAUSER_ROLE: Can pause the contract (typically deployer key for quick response)
  * - UNPAUSER_ROLE: Can unpause the contract (typically multisig wallet for controlled recovery)
  */
-abstract contract PausableWithRoles is Initializable, AccessControlUpgradeable {
+abstract contract PausableWithRoles is AccessControlUpgradeable {
     
     /// @dev Role that can pause the contract
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");

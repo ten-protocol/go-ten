@@ -41,9 +41,9 @@ func WithNetworkConfigAddress(s string) Option {
 	}
 }
 
-func WithMerkleMessageBusAddress(s string) Option {
+func WithMultisigAddress(s string) Option {
 	return func(c *Config) {
-		c.merkleMessageBusAddr = s
+		c.multisigAddr = s
 	}
 }
 

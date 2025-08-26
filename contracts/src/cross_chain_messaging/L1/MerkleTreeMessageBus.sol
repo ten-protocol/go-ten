@@ -44,13 +44,11 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
         require(_fees != address(0), "Fees address cannot be 0x0");
 
         // Initialize parent contracts
-        __UnrenouncableOwnable2Step_init(initialOwner);
-        __AccessControl_init();
+        MessageBus.initialize(initialOwner, withdrawalManager, _fees);
+        
         // Set up additional roles
-        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
         _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
-        fees = IFees(_fees);
     }
 
     /**

@@ -19,10 +19,10 @@ func main() {
 		fmt.Println("Error: multisig_addr is required")
 		os.Exit(1)
 	}
-	if cliConfig.merkleMessageBusAddr == "" {
-		fmt.Println("Error: merkle_message_bus_addr is required")
-		os.Exit(1)
-	}
+	//if cliConfig.merkleMessageBusAddr == "" {
+	//	fmt.Println("Error: merkle_message_bus_addr is required")
+	//	os.Exit(1)
+	//}
 
 	roleTransfer, err := transferunpauserroles.NewRoleTransfer(
 		transferunpauserroles.NewRoleTransferConfig(
@@ -30,7 +30,7 @@ func main() {
 			transferunpauserroles.WithPrivateKey(cliConfig.privateKey),
 			transferunpauserroles.WithDockerImage(cliConfig.dockerImage),
 			transferunpauserroles.WithNetworkConfigAddress(cliConfig.networkConfigAddr),
-			transferunpauserroles.WithMultisigAddress(cliConfig.multisigAddress),
+			transferunpauserroles.WithMultisigAddress(cliConfig.multisigAddr),
 		),
 	)
 	if err != nil {
