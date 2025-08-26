@@ -87,10 +87,6 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 			Name: common.APIVersion1 + common.PathSessionKeys + "delete",
 			Func: httpHandler(walletExt, deleteSKRequestHandler),
 		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "list",
-			Func: httpHandler(walletExt, listSKRequestHandler),
-		},
 	}
 }
 
@@ -740,29 +736,6 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 }
 
-func listSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		addresses, err := walletExt.SKManager.ListSessionKeys(user)
-		if err != nil {
-			return nil, err
-		}
-
-		if len(addresses) == 0 {
-			return []byte{}, nil
-		}
-
-		// Return JSON array of addresses
-		addressStrings := make([]string, len(addresses))
-		for i, addr := range addresses {
-			addressStrings[i] = addr.Hex()
-		}
-		serialized, err := json.Marshal(addressStrings)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize session key addresses: %w", err)
-		}
-		return serialized, nil
-	})
-}
 
 func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {

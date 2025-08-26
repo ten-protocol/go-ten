@@ -45,24 +45,6 @@ func (api *SessionKeyAPI) Delete(ctx context.Context, sessionKeyAddr string) (bo
 	return api.we.SKManager.DeleteSessionKey(user, addr)
 }
 
-// List returns all session key addresses for the user
-func (api *SessionKeyAPI) List(ctx context.Context) ([]string, error) {
-	user, err := extractUserForRequest(ctx, api.we)
-	if err != nil {
-		return nil, err
-	}
-
-	addresses, err := api.we.SKManager.ListSessionKeys(user)
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]string, len(addresses))
-	for i, addr := range addresses {
-		result[i] = addr.Hex()
-	}
-	return result, nil
-}
 
 // Get returns information about a specific session key
 func (api *SessionKeyAPI) Get(ctx context.Context, sessionKeyAddr string) (string, error) {

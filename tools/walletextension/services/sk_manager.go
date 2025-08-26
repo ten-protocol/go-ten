@@ -26,7 +26,6 @@ import (
 type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
 	DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (bool, error)
-	ListSessionKeys(user *common.GWUser) ([]gethcommon.Address, error)
 	GetSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (*common.GWSessionKey, error)
 	SignTx(ctx context.Context, user *common.GWUser, sessionKeyAddr gethcommon.Address, input *types.Transaction) (*types.Transaction, error)
 }
@@ -119,17 +118,6 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 	}, nil
 }
 
-func (m *skManager) ListSessionKeys(user *common.GWUser) ([]gethcommon.Address, error) {
-	if user.SessionKeys == nil || len(user.SessionKeys) == 0 {
-		return []gethcommon.Address{}, nil
-	}
-
-	addresses := make([]gethcommon.Address, 0, len(user.SessionKeys))
-	for addr := range user.SessionKeys {
-		addresses = append(addresses, addr)
-	}
-	return addresses, nil
-}
 
 func (m *skManager) GetSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (*common.GWSessionKey, error) {
 	if user.SessionKeys == nil {

@@ -207,21 +207,6 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		// Note: This method needs to be updated to accept session key address
 		// For now, returning an error to indicate the API change
 		return []byte{0}, fmt.Errorf("delete session key now requires session key address parameter")
-	case common.ListSessionKeyCQMethod:
-		addresses, err := api.we.SKManager.ListSessionKeys(user)
-		if err != nil {
-			return nil, err
-		}
-		// Return JSON array of addresses
-		addressStrings := make([]string, len(addresses))
-		for i, addr := range addresses {
-			addressStrings[i] = addr.Hex()
-		}
-		serialized, err := json.Marshal(addressStrings)
-		if err != nil {
-			return nil, fmt.Errorf("failed to serialize session key addresses: %w", err)
-		}
-		return serialized, nil
 	case common.SendUnsignedTxCQMethod:
 		// Note: This method needs to be updated to accept session key address
 		// For now, returning an error to indicate the API change
