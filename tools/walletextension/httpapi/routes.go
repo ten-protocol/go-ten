@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -23,6 +24,15 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
+// generateCookieNameFromDomain generates a safe cookie name from TLS domain
+func generateCookieNameFromDomain(tlsDomain string) string {
+	if tlsDomain == "" {
+		return "gateway_token" // fallback to original name if no domain configured
+	}
+	safeName := strings.ReplaceAll(tlsDomain, ".", "_")
+	safeName = strings.ReplaceAll(safeName, "-", "_")
+	return "gateway_" + safeName
+}
 
 // NewHTTPRoutes returns the http specific routes
 // todo - move these to the rpc framework.
@@ -180,17 +190,18 @@ func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 		return
 	}
 
-	// Find the gateway_token cookie
+	// Find the gateway token cookie (with dynamic name based on TLS domain)
+	cookieName := generateCookieNameFromDomain(walletExt.Config.TLSDomain)
 	var userID string
 	for _, cookie := range req.Cookies() {
-		if cookie.Name == "gateway_token" {
+		if cookie.Name == cookieName {
 			userID = cookie.Value
 			break
 		}
 	}
 
 	if userID == "" {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("gateway_token cookie not found"))
+		handleError(conn, walletExt.Logger(), fmt.Errorf("gateway token cookie not found"))
 		return
 	}
 
@@ -266,8 +277,9 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	// Set the cookie with the provided token
+	cookieName := generateCookieNameFromDomain(walletExt.Config.TLSDomain)
 	cookie := &http.Cookie{
-		Name:     "gateway_token",
+		Name:     cookieName,
 		Value:    req.Token,
 		Path:     "/",
 		Domain:   ".ten.xyz",              // Share across all .ten.xyz subdomains
