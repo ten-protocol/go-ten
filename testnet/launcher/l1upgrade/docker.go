@@ -41,6 +41,7 @@ func (s *UpgradeContracts) Start() error {
 		{
 			"layer1": {
 				"url": "%s",
+				"useGateway": false,
 				"live": false,
 				"saveDeployments": true,
 				"accounts": ["%s"]

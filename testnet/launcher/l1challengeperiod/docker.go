@@ -40,6 +40,7 @@ func (s *SetChallengePeriod) Start() error {
 		"NETWORK_JSON": fmt.Sprintf(`{ 
             "layer1": {
                 "url": "%s",
+                "useGateway": false,
                 "live": false,
                 "saveDeployments": true,
                 "accounts": [ "%s" ]
