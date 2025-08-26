@@ -1,5 +1,5 @@
-name: '[M] Setup for Multisig L1 Contracts Upgrade'
-run-name: '[M] Setup for Multisig L1 Contracts Upgrade ( ${{ github.event.inputs.testnet_type }} )'
+name: '[M] Transfer Unpauser Roles to Multisig'
+run-name: '[M] Transfer Unpauser Roles to Multisig ( ${{ github.event.inputs.testnet_type }} )'
 on:
   workflow_dispatch:
     inputs:
@@ -14,12 +14,12 @@ on:
           - 'sepolia-testnet'
           - 'mainnet'
       confirmation:
-        description: 'Type "confirm" if upgrading sepolia or mainnet'
+        description: 'Type "confirm" if transferring roles on sepolia or mainnet'
         required: false
         type: string
 
 jobs:
-  upgrade:
+  transfer_roles:
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -28,7 +28,7 @@ jobs:
       - name: 'Check confirmation'
         run: |
           if [[ ("${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" || "${{ github.event.inputs.testnet_type }}" == "mainnet") && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
-            echo "Confirmation field must say 'confirm' to upgrade sepolia or mainnet to avoid accidental upgrades"
+            echo "Confirmation field must say 'confirm' to transfer roles on sepolia or mainnet to avoid accidental transfers"
             exit 1
           fi
 
@@ -50,8 +50,8 @@ jobs:
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
           docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
 
-      - name: 'Upgrade L1 Contracts'
-        id: upgradeContracts
+      - name: 'Transfer Unpauser Roles'
+        id: transferRoles
         shell: bash
         env:
           DOCKER_API_VERSION: "1.45"
@@ -68,22 +68,23 @@ jobs:
             TESTNET_TYPE=${TESTNET_TYPE_RAW%-testnet}
           fi
   
-          # Run upgrade script
-          go run ./testnet/launcher/multisigsetup/cmd \
+          # Run role transfer script
+          go run ./testnet/launcher/transferunpauserroles/cmd \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
-          -network_config_addr=${{ vars.NETWORK_CONFIG_ADDR }}
+          -network_config_addr=${{ vars.NETWORK_CONFIG_ADDR }} \
+          -merkle_message_bus_addr=${{ vars.MERKLE_MESSAGE_BUS_ADDR }} \
           -multisig_addr=${{ vars.MULTISIG_ADDR }}
 
-      - name: 'Save upgrade container logs'
+      - name: 'Save role transfer container logs'
         run: |
-          docker logs `docker ps -aqf "name=multisig-setup"` > multisig-setup.out 2>&1
+          docker logs `docker ps -aqf "name=transfer-unpauser-roles"` > transfer-unpauser-roles.out 2>&1
 
-      - name: 'Upload multisig setup container logs'
+      - name: 'Upload role transfer container logs'
         uses: actions/upload-artifact@v4
         with:
-          name: multisig-setup
+          name: transfer-unpauser-roles
           path: |
-            multisig-setup.out
-          retention-days: 7 
+            transfer-unpauser-roles.out
+          retention-days: 7

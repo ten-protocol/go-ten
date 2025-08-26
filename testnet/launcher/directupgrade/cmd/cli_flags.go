@@ -5,7 +5,7 @@ const (
 	l1HTTPURLFlag         = "l1_http_url"
 	privateKeyFlag        = "private_key"
 	networkConfigAddrFlag = "network_config_addr"
-	multisigAddressFlag   = "multisig_address"
+	multisigAddressFlag   = "multisig_addr"
 	dockerImageFlag       = "docker_image"
 )
 
