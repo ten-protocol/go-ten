@@ -128,21 +128,6 @@ type SystemContractAddressesStorage interface {
 	GetSystemContractAddresses(ctx context.Context) (common.SystemContractAddresses, error)
 }
 
-// NetworkUpgradeStorage stores and retrieves network upgrade events
-type NetworkUpgradeStorage interface {
-	// StorePendingNetworkUpgrade stores a new pending network upgrade event
-	StorePendingNetworkUpgrade(ctx context.Context, featureName string, featureData []byte, l1Height uint64, l1Hash gethcommon.Hash, txHash gethcommon.Hash) error
-
-	// FinalizeNetworkUpgrade marks a pending upgrade as finalized
-	FinalizeNetworkUpgrade(ctx context.Context, txHash gethcommon.Hash, finalizedAtHeight uint64, finalizedAtHash gethcommon.Hash) error
-
-	// GetPendingNetworkUpgrades returns all pending network upgrades
-	GetPendingNetworkUpgrades(ctx context.Context) ([]enclavedb.NetworkUpgrade, error)
-
-	// GetFinalizedNetworkUpgrades returns all finalized network upgrades
-	GetFinalizedNetworkUpgrades(ctx context.Context) ([]enclavedb.NetworkUpgrade, error)
-}
-
 // Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
@@ -155,7 +140,6 @@ type Storage interface {
 	EnclaveKeyStorage
 	ScanStorage
 	SystemContractAddressesStorage
-	NetworkUpgradeStorage
 	io.Closer
 
 	// HealthCheck returns whether the storage is deemed healthy or not

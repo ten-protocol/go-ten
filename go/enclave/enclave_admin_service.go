@@ -98,7 +98,6 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 	validatorService := nodetype.NewValidator(blockProcessor, batchExecutor, registry, chainConfig, storage, sigVerifier, mempool, logger)
 
 	upgradeManager := components.NewUpgradeManager(storage, logger)
-	upgradeManager.RegisterUpgradeHandler(components.ComponentName, gasPricer)
 
 	eas := &enclaveAdminService{
 		config:                 config,
@@ -283,12 +282,13 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 		e.dataInMutex.Unlock()
 		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))
 	}
-	e.dataInMutex.Unlock()
 
 	err = e.validator().ExecuteStoredBatches(ctx)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not execute batches. Cause: %w", err))
 	}
+
+	e.dataInMutex.Unlock()
 
 	return nil
 }
