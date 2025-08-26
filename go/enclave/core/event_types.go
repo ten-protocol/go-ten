@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -21,6 +22,41 @@ type EventVisibilityConfig struct {
 	Public                                      bool  // everyone can see and query for this event
 	Topic1CanView, Topic2CanView, Topic3CanView *bool // If the event is not public, and this is true, it means that the address from topicI is an EOA that can view this event
 	SenderCanView                               *bool // if true, the tx signer will see this event. Default false
+}
+
+func (et EventVisibilityConfig) Validate() error {
+	if et.Public {
+		return nil
+	}
+	if et.AutoConfig {
+		return nil
+	}
+
+	noneRelevant := true
+	for i := 0; i <= 3; i++ {
+		if et.canView(i) {
+			noneRelevant = false
+		}
+	}
+	if noneRelevant {
+		return fmt.Errorf("event type not public and has no relevant topics")
+	}
+	return nil
+}
+
+func (et EventVisibilityConfig) canView(reader int) bool {
+	switch reader {
+	case 0:
+		return et.SenderCanView != nil && *et.SenderCanView
+	case 1:
+		return et.Topic1CanView != nil && *et.Topic1CanView
+	case 2:
+		return et.Topic2CanView != nil && *et.Topic2CanView
+	case 3:
+		return et.Topic3CanView != nil && *et.Topic3CanView
+	}
+	// this should not happen under any circumstance
+	panic(fmt.Sprintf("unknown reader no: %d", reader))
 }
 
 // ContractVisibilityConfig represents the configuration as defined by the dApp developer in the smart contract
