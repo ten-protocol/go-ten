@@ -15,7 +15,6 @@ const (
 	CorsAllowOrigin      = "Access-Control-Allow-Origin"
 	CorsAllowCredentials = "Access-Control-Allow-Credentials"
 	OriginAll            = "*"
-	AllowedOrigin        = "https://uat-gw-testnet.ten.xyz"
 	CorsAllowMethods     = "Access-Control-Allow-Methods"
 	ReqOptions           = "OPTIONS"
 	CorsAllowHeaders     = "Access-Control-Allow-Headers"
@@ -80,9 +79,9 @@ func EnableCORS(resp http.ResponseWriter, req *http.Request) bool {
 	return false
 }
 
-// EnableRestrictiveCORS Allows only specific origin to access endpoints with credentials.
-func EnableRestrictiveCORS(resp http.ResponseWriter, req *http.Request) bool {
-	resp.Header().Set(CorsAllowOrigin, AllowedOrigin)
+// EnableRestrictiveCORS Allows only the specified origin to access endpoints with credentials.
+func EnableRestrictiveCORS(resp http.ResponseWriter, req *http.Request, allowedOrigin string) bool {
+	resp.Header().Set(CorsAllowOrigin, allowedOrigin)
 	resp.Header().Set(CorsAllowCredentials, "true")
 	if (*req).Method == ReqOptions {
 		// Returns true if the request was a pre-flight, e.g. OPTIONS, to stop further processing.

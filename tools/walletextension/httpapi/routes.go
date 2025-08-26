@@ -23,6 +23,7 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
+
 // NewHTTPRoutes returns the http specific routes
 // todo - move these to the rpc framework.
 func NewHTTPRoutes(walletExt *services.Services) []node.Route {
@@ -137,7 +138,7 @@ func restrictiveHttpRequestHandler(walletExt *services.Services, resp http.Respo
 	if walletExt.IsStopping() {
 		return
 	}
-	if httputil.EnableRestrictiveCORS(resp, req) {
+	if httputil.EnableRestrictiveCORS(resp, req, walletExt.Config.FrontendURL) {
 		return
 	}
 	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
