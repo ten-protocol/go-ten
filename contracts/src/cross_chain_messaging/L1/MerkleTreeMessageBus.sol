@@ -5,9 +5,6 @@ import "../../common/Structs.sol";
 import "./IMerkleTreeMessageBus.sol";
 import "../common/MessageBus.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-
 /**
  * @title MerkleTreeMessageBus
  * @dev Implementation of IMerkleTreeMessageBus that uses Merkle trees for cross-chain message verification
@@ -48,7 +45,8 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
 
         // Initialize parent contracts
         __UnrenouncableOwnable2Step_init(initialOwner);
-        // Set up roles
+        __AccessControl_init();
+        // Set up additional roles
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
         _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);

@@ -37,17 +37,17 @@ async function transferUnpauserRolesOnAllContracts() {
     
     // contracts that implement PausableWithRoles
     console.log("\nFound contracts:");
-    console.log("- CrossChain:", networkConfigData.crossChain);
+    // console.log("- CrossChain:", networkConfigData.crossChain);
     console.log("- MessageBus:", networkConfigData.messageBus);
     console.log("- NetworkEnclaveRegistry:", networkConfigData.networkEnclaveRegistry);
     console.log("- DataAvailabilityRegistry:", networkConfigData.dataAvailabilityRegistry);
     console.log("- TenBridge:", networkConfigData.l1Bridge)
     console.log("- EthereumBridge:", networkConfigData.l2Bridge)
-    console.log("- MerkleTreeMessageBus:", merkleMessageBusAddress)
+    // console.log("- MerkleTreeMessageBus:", merkleMessageBusAddress)
     console.log("- MessageBus:", networkConfigData.messageBus);
 
     const pausableContracts = [
-      { name: "CrossChain", address: networkConfigData.crossChain },
+      // { name: "CrossChain", address: networkConfigData.crossChain },
       { name: "MessageBus", address: networkConfigData.messageBus },
       {
         name: "NetworkEnclaveRegistry",
@@ -57,7 +57,7 @@ async function transferUnpauserRolesOnAllContracts() {
         name: "DataAvailabilityRegistry",
         address: networkConfigData.dataAvailabilityRegistry,
       },
-      { name: "MerkleTreeMessageBus", address: merkleMessageBusAddress },
+      // { name: "MerkleTreeMessageBus", address: merkleMessageBusAddress },
       { name: "MessageBus", address: networkConfigData.messageBus },
       { name: "TenBridge", address: networkConfigData.l2Bridge },
       { name: "EthereumBridge", address: networkConfigData.l1Bridge },

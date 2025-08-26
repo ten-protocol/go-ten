@@ -175,10 +175,4 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
         delete sequencerEnclave[_addr];
         emit SequencerEnclaveRevoked(_addr);
     }
-
-    /**
-     * @dev Pauses the contract in case of emergency
-     * @notice Only callable by the owner
-     */
-
 }

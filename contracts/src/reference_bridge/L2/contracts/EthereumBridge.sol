@@ -18,7 +18,6 @@ contract EthereumBridge is
     ITokenFactory,
     CrossChainEnabledTEN,
     Initializable,
-    UnrenouncableOwnable2Step,
     PausableWithRoles
 {
     event CreatedWrappedToken(
