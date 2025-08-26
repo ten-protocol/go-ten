@@ -41,7 +41,6 @@ contract TenBridge is
         require(_owner != address(0), "Owner cannot be 0x0");
 
         CrossChainEnabledTEN.configure(messenger);
-        __AccessControl_init();
         __PausableWithRoles_init(_owner);
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
         _grantRole(DEFAULT_ADMIN_ROLE, address(this));
