@@ -167,7 +167,6 @@ func (s *SqliteDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 	})
 }
 
-
 func (s *SqliteDB) RemoveSessionKey(userID []byte, sessionKeyAddr []byte) error {
 	return s.withTx(func(dbTx *sql.Tx) error {
 		user, err := s.readUser(dbTx, userID)

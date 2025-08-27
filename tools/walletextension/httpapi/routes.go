@@ -737,7 +737,6 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 }
 
-
 func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
 		sk, err := walletExt.SKManager.CreateSessionKey(user)
@@ -756,24 +755,23 @@ func deleteSKRequestHandler(walletExt *services.Services, conn UserConn) {
 		if err != nil {
 			return nil, fmt.Errorf("sessionKey parameter required: %w", err)
 		}
-		
+
 		if !gethcommon.IsHexAddress(sessionKeyAddr) {
 			return nil, fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
 		}
-		
+
 		addr := gethcommon.HexToAddress(sessionKeyAddr)
 		success, err := walletExt.SKManager.DeleteSessionKey(user, addr)
 		if err != nil {
 			return nil, fmt.Errorf("failed to delete session key: %w", err)
 		}
-		
+
 		if success {
 			return []byte("success"), nil
 		}
 		return []byte("false"), nil
 	})
 }
-
 
 // extracts the user from the request, and writes the response to the connection
 func withUser(walletExt *services.Services, conn UserConn, withUser func(user *common.GWUser) ([]byte, error)) {
@@ -806,13 +804,6 @@ func withUser(walletExt *services.Services, conn UserConn, withUser func(user *c
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
-}
-
-func boolToByte(res bool) byte {
-	if res {
-		return 1
-	}
-	return 0
 }
 
 func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {

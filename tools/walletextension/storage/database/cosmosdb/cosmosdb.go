@@ -158,7 +158,6 @@ func (c *CosmosDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 	})
 }
 
-
 // Removes a specific session key for the user, with retries on ETag mismatch
 func (c *CosmosDB) RemoveSessionKey(userID []byte, sessionKeyAddr []byte) error {
 	ctx := context.Background()

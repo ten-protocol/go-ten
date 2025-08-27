@@ -252,39 +252,6 @@ func deployContract(t *testing.T, w wallet.Wallet, user0 *GatewayUser) gethcommo
 	return contractReceipt.ContractAddress
 }
 
-func interactWithSmartContractUnsigned(client *ethclient.Client, nonce uint64, contractAddress gethcommon.Address, contractInteractionData []byte, value *big.Int) (*types.Receipt, error) {
-	var result responses.GasPriceType
-	err := client.Client().CallContext(context.Background(), &result, "eth_gasPrice")
-	if err != nil {
-		return nil, err
-	}
-
-	var txHash gethcommon.Hash
-
-	n := hexutil.Uint64(nonce)
-	g := hexutil.Uint64(10_000_000)
-	d := hexutil.Bytes(contractInteractionData)
-	interactionTx := gethapi.TransactionArgs{
-		Nonce:    &n,
-		To:       &contractAddress,
-		Gas:      &g,
-		GasPrice: &result,
-		Data:     &d,
-		Value:    (*hexutil.Big)(value),
-	}
-	err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx)
-	if err != nil {
-		return nil, err
-	}
-
-	txReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), client, txHash, 10*time.Second)
-	if err != nil {
-		return nil, err
-	}
-
-	return txReceipt, nil
-}
-
 func interactWithSmartContractUsingSessionKey(client *ethclient.Client, nonce uint64, toAddress gethcommon.Address, contractInteractionData []byte, value *big.Int, sessionKey string) (*types.Receipt, error) {
 	var result responses.GasPriceType
 	err := client.Client().CallContext(context.Background(), &result, "eth_gasPrice")

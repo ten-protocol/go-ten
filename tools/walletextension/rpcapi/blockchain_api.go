@@ -209,12 +209,12 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		if err != nil {
 			return nil, fmt.Errorf("unable to extract session key address: %w", err)
 		}
-		
+
 		success, err := api.we.SKManager.DeleteSessionKey(user, *sessionKeyAddr)
 		if err != nil {
 			return nil, fmt.Errorf("unable to delete session key: %w", err)
 		}
-		
+
 		if success {
 			return []byte("true"), nil
 		}
@@ -239,13 +239,6 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		// turn resp object into hexutil.Bytes
 		return hexutil.MustDecode(respHex), nil
 	}
-}
-
-func boolToByte(res bool) byte {
-	if res {
-		return 1
-	}
-	return 0
 }
 
 func (api *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
@@ -428,11 +421,11 @@ func extractSessionKeyAddress(params any) (*gethcommon.Address, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unable to unmarshal sessionKeyAddr field to string: %w", err)
 	}
-	
+
 	if !gethcommon.IsHexAddress(sessionKeyStr) {
 		return nil, fmt.Errorf("invalid session key address: %s", sessionKeyStr)
 	}
-	
+
 	address := gethcommon.HexToAddress(sessionKeyStr)
 	return &address, nil
 }
