@@ -26,7 +26,6 @@ func GenerateDeploymentTransaction(initCode []byte, nonce uint64, logger gethlog
 
 	stx := types.NewTx(tx)
 
-	logger.Info("Generated synthetic deployment transaction for the SystemDeployer contract")
 	return stx, nil
 }
 
