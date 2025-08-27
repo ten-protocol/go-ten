@@ -49,6 +49,7 @@ func (n *ContractDeployer) Start() error {
 { 
         "layer1" : {
             "url" : "%s",
+            "gasMultiplier" : 1.2,
             "useGateway" : false,
             "live" : false,
             "saveDeployments" : true,
