@@ -56,9 +56,5 @@ func (gp *GasPricer) CalculateBlockBaseFeeAtHeight(ctx context.Context, cfg *par
 }
 
 func (gp *GasPricer) StaticL2BaseFee(header *types.Header) *big.Int {
-	// Use the header's BaseFee if present; otherwise fall back to configured base fee
-	if header == nil || header.BaseFee == nil {
-		return gp.config.BaseFee
-	}
-	return header.BaseFee
+	return gp.config.BaseFee
 }
