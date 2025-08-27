@@ -30,7 +30,6 @@ func (api *SessionKeyAPI) Create(ctx context.Context) (string, error) {
 	return (*sk.Account.Address).Hex(), nil
 }
 
-
 func (api *SessionKeyAPI) Delete(ctx context.Context, sessionKeyAddr string) (bool, error) {
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
@@ -44,7 +43,6 @@ func (api *SessionKeyAPI) Delete(ctx context.Context, sessionKeyAddr string) (bo
 	addr := common.HexToAddress(sessionKeyAddr)
 	return api.we.SKManager.DeleteSessionKey(user, addr)
 }
-
 
 // Get returns information about a specific session key
 func (api *SessionKeyAPI) Get(ctx context.Context, sessionKeyAddr string) (string, error) {

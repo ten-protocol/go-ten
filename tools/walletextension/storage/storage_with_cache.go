@@ -42,7 +42,6 @@ func (s *UserStorageWithCache) DeleteUser(userID []byte) error {
 	return nil
 }
 
-
 func (s *UserStorageWithCache) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error {
 	err := s.storage.AddSessionKey(userID, key)
 	if err != nil {

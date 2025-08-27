@@ -62,9 +62,8 @@ func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey,
 	return sk, nil
 }
 
-
 func (m *skManager) DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (bool, error) {
-	if user.SessionKeys == nil || len(user.SessionKeys) == 0 {
+	if len(user.SessionKeys) == 0 {
 		return false, fmt.Errorf("no session keys found")
 	}
 
@@ -117,7 +116,6 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 		},
 	}, nil
 }
-
 
 func (m *skManager) GetSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (*common.GWSessionKey, error) {
 	if user.SessionKeys == nil {
