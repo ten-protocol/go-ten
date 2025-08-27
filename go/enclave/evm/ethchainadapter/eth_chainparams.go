@@ -9,7 +9,7 @@ import (
 )
 
 // ChainParams defines the forks of the EVM machine
-// obscuro should typically be on the last fork version
+// TEN should typically be on the last fork version
 func ChainParams(obscuroChainID *big.Int) *params.ChainConfig {
 	zeroTimestamp := uint64(0)
 	maxTimestamp := uint64(math.MaxUint64)

@@ -148,7 +148,8 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 			return nil, fmt.Errorf("failed to instantiate system contracts: expected receipt for system deployer transaction, but no receipts found in batch")
 		}
 
-		err = executor.systemContracts.Initialize(cb.Batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
+		// For multi-phase deployment, combine all receipts into one for address derivation
+		err = executor.systemContracts.InitializeFromMultipleReceipts(cb.Batch, ec.genesisSysCtrResult.Receipts(), executor.crossChainProcessors.Local)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize system contracts: %w", err)
 		}
@@ -256,32 +257,94 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 }
 
 func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContext) error {
-	systemDeployerTx, err := system.SystemDeployerInitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader(), executor.config.BridgeAddress)
+	// Deploy Phase 1 contracts first
+	phase1Tx, err := system.SystemDeployerPhase1InitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader())
 	if err != nil {
-		executor.logger.Error("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
+		executor.logger.Error("[SystemContracts] Failed to create system deployer phase 1 contract", log.ErrKey, err)
 		return err
 	}
 
-	transactions := common.L2PricedTransactions{
+	phase1Transactions := common.L2PricedTransactions{
 		&common.L2PricedTransaction{
-			Tx:             systemDeployerTx,
+			Tx:             phase1Tx,
 			PublishingCost: big.NewInt(0),
 			SystemDeployer: true,
 		},
 	}
 
-	sysCtrGenesisResult, err := executor.executeTxs(ec, 0, transactions, true)
+	phase1Result, err := executor.executeTxs(ec, 0, phase1Transactions, true)
 	if err != nil {
-		return fmt.Errorf("could not process system deployer transaction. Cause: %w", err)
+		return fmt.Errorf("could not process system deployer phase 1 transaction. Cause: %w", err)
 	}
 
-	if err = executor.verifySyntheticTransactionsSuccess(transactions, sysCtrGenesisResult); err != nil {
-		return fmt.Errorf("batch computation failed due to system deployer reverting. Cause: %w", err)
+	if err = executor.verifySyntheticTransactionsSuccess(phase1Transactions, phase1Result); err != nil {
+		return fmt.Errorf("batch computation failed due to system deployer phase 1 reverting. Cause: %w", err)
 	}
 
-	ec.genesisSysCtrResult = sysCtrGenesisResult
+	// Extract fees address from Phase 1 deployment
+	feesAddress, err := executor.extractFeesAddressFromPhase1(phase1Result)
+	if err != nil {
+		executor.logger.Error("[SystemContracts] Failed to extract fees address from phase 1", log.ErrKey, err)
+		return fmt.Errorf("failed to extract fees address from phase 1: %w", err)
+	}
+
+	// Deploy Phase 2 contracts
+	phase2Tx, err := system.SystemDeployerPhase2InitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader(), feesAddress, executor.config.BridgeAddress)
+	if err != nil {
+		executor.logger.Error("[SystemContracts] Failed to create system deployer phase 2 contract", log.ErrKey, err)
+		return err
+	}
+
+	phase2Transactions := common.L2PricedTransactions{
+		&common.L2PricedTransaction{
+			Tx:             phase2Tx,
+			PublishingCost: big.NewInt(0),
+			SystemDeployer: true,
+		},
+	}
+
+	phase2Result, err := executor.executeTxs(ec, len(phase1Transactions), phase2Transactions, true)
+	if err != nil {
+		return fmt.Errorf("could not process system deployer phase 2 transaction. Cause: %w", err)
+	}
+
+	if err = executor.verifySyntheticTransactionsSuccess(phase2Transactions, phase2Result); err != nil {
+		return fmt.Errorf("batch computation failed due to system deployer phase 2 reverting. Cause: %w", err)
+	}
+
+	// Combine results for compatibility
+	allResults := make(core.TxExecResults, 0, len(phase1Result)+len(phase2Result))
+	allResults = append(allResults, phase1Result...)
+	allResults = append(allResults, phase2Result...)
+
+	ec.genesisSysCtrResult = allResults
 	ec.genesisSysCtrResult.MarkSynthetic(true)
 	return nil
+}
+
+func (executor *batchExecutor) extractFeesAddressFromPhase1(phase1Result core.TxExecResults) (gethcommon.Address, error) {
+	if len(phase1Result) == 0 {
+		return gethcommon.Address{}, fmt.Errorf("no phase 1 results")
+	}
+
+	receipt := phase1Result[0].Receipt
+	if receipt == nil {
+		return gethcommon.Address{}, fmt.Errorf("no receipt in phase 1 result")
+	}
+
+	// Parse the events to find the Fees contract address
+	addresses, err := system.DeriveAddresses(receipt)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("failed to derive addresses: %w", err)
+	}
+
+	feesAddr := addresses["Fees"]
+	if feesAddr == nil {
+		return gethcommon.Address{}, fmt.Errorf("Fees address not found in phase 1 deployment")
+	}
+
+	executor.logger.Info("Extracted Fees address from Phase 1", "address", feesAddr.Hex())
+	return *feesAddr, nil
 }
 
 var ErrLowBalance = errors.New("insufficient account balance")
@@ -735,13 +798,11 @@ func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions c
 	}
 
 	for _, rec := range results {
-		//if rec.Receipt.Status == nil {
-		//	return fmt.Errorf("receipt.Status is nil")
-		//}
 		if rec.Receipt == nil {
-			return fmt.Errorf("failed to get receipt for synthetic transaction: ")
+			return fmt.Errorf("failed to get receipt for synthetic transaction. Cause: %s", rec.Err)
 		}
 		if rec.Receipt.Status == 1 {
+			executor.logger.Info("SUCCESSFULLY FOUND RECEIPT FOR: ", rec.Receipt.ContractAddress.Hex())
 			continue
 		}
 		return fmt.Errorf("found a failed receipt for a synthetic transaction: %s", rec.Receipt.TxHash.Hex())

@@ -38,43 +38,24 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
         // Constructor intentionally left empty
     }
 
-//    /**
-//     * @dev Initializes the contract with provided owner
-//     * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
-//     */
-//    function initialize(address initialOwner, address withdrawalManager, address _fees) public override(IMerkleTreeMessageBus, MessageBus) initializer {
-//        require(initialOwner != address(0), "Initial owner cannot be 0x0");
-//        require(withdrawalManager != address(0), "Withdrawal manager cannot be 0x0");
-//        require(_fees != address(0), "Fees address cannot be 0x0");
-//
-//        // Initialize parent contracts
-//        __UnrenouncableOwnable2Step_init(initialOwner);
-////        __PausableWithRoles_init();
-//        __AccessControl_init();
-//
-//        // Set up roles
-//        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
-//        _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
-//        _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
-//        fees = IFees(_fees);
-//    }
-    /*
+    /**
      * @dev Initializes the contract with provided owner
      * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
      */
-    function initialize(address initialOwner, address withdrawalManager, address _fees) public override(IMerkleTreeMessageBus) initializer {
+    function initialize(address initialOwner, address withdrawalManager, address _fees) public override(IMerkleTreeMessageBus, MessageBus) initializer {
         require(initialOwner != address(0), "Initial owner cannot be 0x0");
         require(withdrawalManager != address(0), "Withdrawal manager cannot be 0x0");
         require(_fees != address(0), "Fees address cannot be 0x0");
 
         // Initialize parent contracts
-        __MessageBus_init(initialOwner, withdrawalManager, _fees);
-        __AccessControl_init();
+        __UnrenouncableOwnable2Step_init(initialOwner);
+        __PausableWithRoles_init(initialOwner);
 
         // Set up additional roles
         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
         _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
         _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
+        fees = IFees(_fees);
     }
 
     /**
