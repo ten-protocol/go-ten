@@ -34,6 +34,10 @@ const (
 	defaultAmountName    = "defaultAmount"
 	defaultAmountDefault = 100.0
 	defaultAmountUsage   = "Default amount of token to fund (in ETH)"
+
+	chainIDName    = "chainID"
+	chainIDDefault = 443
+	chainIDUsage   = "The chain ID to use for transactions. Default: 443."
 )
 
 func parseCLIArgs() *faucet.Config {
@@ -43,6 +47,7 @@ func parseCLIArgs() *faucet.Config {
 	jwtSecret := flag.String(jwtSecretName, jwtSecretDefault, jwtSecretUsage)
 	serverPort := flag.Int(serverPortName, serverPortDefault, serverPortUsage)
 	defaultAmount := flag.Float64(defaultAmountName, defaultAmountDefault, defaultAmountUsage)
+	chainID := flag.Int64(chainIDName, chainIDDefault, chainIDUsage)
 	flag.Parse()
 
 	return &faucet.Config{
@@ -51,7 +56,7 @@ func parseCLIArgs() *faucet.Config {
 		PK:                *faucetPK,
 		JWTSecret:         *jwtSecret,
 		ServerPort:        *serverPort,
-		ChainID:           big.NewInt(443), // TODO make this configurable
+		ChainID:           big.NewInt(*chainID),
 		DefaultFundAmount: toWei(defaultAmount),
 	}
 }
