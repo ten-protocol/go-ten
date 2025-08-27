@@ -49,7 +49,8 @@ func (s *MultisigSetup) Start() error {
 			}
 		}`, s.cfg.l1HTTPURL, s.cfg.privateKey),
 		"NETWORK_CONFIG_ADDR": s.cfg.networkConfigAddress,
-		"MULTISIG_ADDRESS":    s.cfg.multisigAddress,
+		"MULTISIG_ADDR":       s.cfg.multisigAddress,
+		"PROXY_ADMIN_ADDR":    s.cfg.proxyAdminAddress,
 	}
 
 	fmt.Printf("Starting multisig setup script. NetworkConfigAddress: %s, MultisigAddress: %s\n",

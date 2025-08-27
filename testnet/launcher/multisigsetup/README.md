@@ -21,6 +21,7 @@ go run ./testnet/launcher/multisigsetup/cmd \
     -private_key="f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb" \
     -network_config_addr="0x..." \
     -multisig_addr="0x..." \
+    -proxy_admin_addr="0x..." \
     -docker_image="testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
 ```
 
@@ -30,6 +31,7 @@ go run ./testnet/launcher/multisigsetup/cmd \
 - `private_key`: L1 private key used for deployment (default: f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb)
 - `network_config_addr`: L1 network config contract address (required)
 - `multisig_addr`: Multisig address to transfer proxy admin ownership to (required)
+- `proxy_admin_addr`: Proxy admin address to transfer ownership from (required)
 - `docker_image`: Docker image to run (default: testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest)
 
 ## What it does

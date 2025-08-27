@@ -19,6 +19,10 @@ func main() {
 		fmt.Println("Error: multisig_addr is required")
 		os.Exit(1)
 	}
+	if cliConfig.proxyAdminAddr == "" {
+		fmt.Println("Error: proxy_admin_addr is required")
+		os.Exit(1)
+	}
 
 	directUpgrade, err := directupgrade.NewDirectUpgrade(
 		directupgrade.NewDirectUpgradeConfig(
@@ -27,6 +31,7 @@ func main() {
 			directupgrade.WithDockerImage(cliConfig.dockerImage),
 			directupgrade.WithNetworkConfigAddress(cliConfig.networkConfigAddr),
 			directupgrade.WithMultisigAddress(cliConfig.multisigAddress),
+			directupgrade.WithProxyAdminAddress(cliConfig.proxyAdminAddr),
 		),
 	)
 	if err != nil {
