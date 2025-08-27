@@ -185,42 +185,46 @@ func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 
 	contractAddr := deployContract(t, w, user0)
 
-	// create session key
-	skAddr, err := user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.CreateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	// create session key using eth_getStorageAt
+	var skAddrBytes []byte
+	err = user0.HTTPClient.Client().CallContext(context.Background(), &skAddrBytes, "eth_getStorageAt", common.CreateSessionKeyCQMethod, "0x", "latest")
 	require.NoError(t, err)
-	skAddress := gethcommon.BytesToAddress(skAddr)
+	skAddress := gethcommon.BytesToAddress(skAddrBytes)
 
 	// move some funds to the SK
 	var skAmount int64 = 100_000_000_000_000_000
 	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], skAddress, skAmount)
 	require.NoError(t, err)
 
-	// activate SK
-	_, err = user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.ActivateSessionKeyCQMethod), gethcommon.Hash{}, nil)
-	require.NoError(t, err)
+	// Session keys are now implicitly active when created - no activation needed
 
 	skNonce := uint64(0)
 
-	// interact with the contract - unsigned tx calling "sendRawTransaction"
+	// interact with the contract using session key - unsigned tx calling "sendTransaction" with session key
 	contractInteractionData, err := eventsContractABI.Pack("setMessage", "user0PrivateEvent")
 	require.NoError(t, err)
-	rec, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil)
+
+	// Use the session key to send the transaction
+	rec, err := interactWithSmartContractUsingSessionKey(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil, skAddress.Hex())
 	require.NoError(t, err)
 	require.Equal(t, uint64(0x1), rec.Status)
 
-	// move money back - unsigned tx calling "sendTransaction"
+	// move money back using session key - unsigned tx calling "sendTransaction" with session key
 	skNonce++
-	rec1, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, user0.Wallets[0].Address(), nil, big.NewInt(1_000))
+	rec1, err := interactWithSmartContractUsingSessionKey(user0.HTTPClient, skNonce, user0.Wallets[0].Address(), nil, big.NewInt(1_000), skAddress.Hex())
 	require.NoError(t, err)
 	require.Equal(t, uint64(0x1), rec1.Status)
 
-	// deactivate
-	_, err = user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.DeactivateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	// delete the session key using eth_getStorageAt
+	deleteParams := fmt.Sprintf(`{"sessionKeyAddr": "%s"}`, skAddress.Hex())
+	var deleteResult []byte
+	err = user0.HTTPClient.Client().CallContext(context.Background(), &deleteResult, "eth_getStorageAt", common.DeleteSessionKeyCQMethod, deleteParams, "latest")
 	require.NoError(t, err)
+	require.Equal(t, []byte("true"), deleteResult)
 
-	// interact with the contract - unsigned - should fail
+	// interact with the contract using deleted session key - should fail
 	skNonce++
-	rec2, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil)
+	rec2, err := interactWithSmartContractUsingSessionKey(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil, skAddress.Hex())
 	require.Error(t, err)
 	require.Nil(t, rec2)
 }
@@ -269,6 +273,42 @@ func interactWithSmartContractUnsigned(client *ethclient.Client, nonce uint64, c
 		Value:    (*hexutil.Big)(value),
 	}
 	err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx)
+	if err != nil {
+		return nil, err
+	}
+
+	txReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), client, txHash, 10*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	return txReceipt, nil
+}
+
+func interactWithSmartContractUsingSessionKey(client *ethclient.Client, nonce uint64, toAddress gethcommon.Address, contractInteractionData []byte, value *big.Int, sessionKey string) (*types.Receipt, error) {
+	var result responses.GasPriceType
+	err := client.Client().CallContext(context.Background(), &result, "eth_gasPrice")
+	if err != nil {
+		return nil, err
+	}
+
+	var txHash gethcommon.Hash
+
+	n := hexutil.Uint64(nonce)
+	g := hexutil.Uint64(10_000_000)
+	d := hexutil.Bytes(contractInteractionData)
+	interactionTx := gethapi.TransactionArgs{
+		Nonce:    &n,
+		To:       &toAddress,
+		Gas:      &g,
+		GasPrice: &result,
+		Data:     &d,
+		Value:    (*hexutil.Big)(value),
+	}
+
+	// Use the session key to send the transaction via eth_sendTransaction
+	// The session key address is passed as a separate parameter in the RPC call
+	err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx, sessionKey)
 	if err != nil {
 		return nil, err
 	}
