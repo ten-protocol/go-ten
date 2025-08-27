@@ -146,10 +146,10 @@ func (s *systemContractCallbacks) InitializeFromMultipleReceipts(batch *core.Bat
 
 	// Combine addresses from all receipts
 	allAddresses := make(map[string]*gethcommon.Address)
-	
+
 	for i, receipt := range receipts {
 		s.logger.Info("Processing receipt", "index", i, "status", receipt.Status, "txHash", receipt.TxHash.Hex())
-		
+
 		addresses, err := verifyAndDeriveAddressesFromReceipt(batch, receipt)
 		if err != nil {
 			s.logger.Error("InitializeFromMultipleReceipts: Failed verifying and deriving addresses", "receiptIndex", i, "error", err)
