@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -23,6 +24,16 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
+// generateCookieNameFromDomain generates a safe cookie name from TLS domain
+func generateCookieNameFromDomain(tlsDomain string) string {
+	if tlsDomain == "" {
+		return "gateway_token" // fallback to original name if no domain configured
+	}
+	safeName := strings.ReplaceAll(tlsDomain, ".", "_")
+	safeName = strings.ReplaceAll(safeName, "-", "_")
+	return "gateway_" + safeName
+}
+
 // NewHTTPRoutes returns the http specific routes
 // todo - move these to the rpc framework.
 func NewHTTPRoutes(walletExt *services.Services) []node.Route {
@@ -37,11 +48,11 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetToken,
-			Func: httpHandler(walletExt, getTokenRequestHandler),
+			Func: restrictiveHttpHandler(walletExt, getTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathSetToken,
-			Func: httpHandler(walletExt, setTokenRequestHandler),
+			Func: restrictiveHttpHandler(walletExt, setTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetMessage,
@@ -111,12 +122,33 @@ func httpHandler(
 	}
 }
 
+func restrictiveHttpHandler(
+	walletExt *services.Services,
+	fun func(walletExt *services.Services, conn UserConn),
+) func(resp http.ResponseWriter, req *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		restrictiveHttpRequestHandler(walletExt, resp, req, fun)
+	}
+}
+
 // Overall request handler for http requests
 func httpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
 	if walletExt.IsStopping() {
 		return
 	}
 	if httputil.EnableCORS(resp, req) {
+		return
+	}
+	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
+	fun(walletExt, userConn)
+}
+
+// Restrictive request handler for endpoints requiring specific origin access
+func restrictiveHttpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
+	if walletExt.IsStopping() {
+		return
+	}
+	if httputil.EnableRestrictiveCORS(resp, req, walletExt.Config.FrontendURL) {
 		return
 	}
 	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
@@ -142,22 +174,6 @@ func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 		walletExt.Logger().Error("error creating new user", log.ErrKey, err)
 	}
 
-	// set secure HTTP-only cookie with userID
-	cookie := &http.Cookie{
-		Name:     "gateway_token",
-		Value:    hexutils.BytesToHex(userID),
-		Path:     "/",
-		HttpOnly: true,                    // Prevents XSS
-		Secure:   true,                    // HTTPS only
-		SameSite: http.SameSiteStrictMode, // Prevents CSRF
-		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
-	}
-
-	err = conn.SetCookie(cookie)
-	if err != nil {
-		walletExt.Logger().Error("error setting cookie", log.ErrKey, err)
-	}
-
 	// write hex encoded userID in the response
 	err = conn.WriteResponse([]byte(hexutils.BytesToHex(userID)))
 	if err != nil {
@@ -174,17 +190,18 @@ func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 		return
 	}
 
-	// Find the gateway_token cookie
+	// Find the gateway token cookie (with dynamic name based on TLS domain)
+	cookieName := generateCookieNameFromDomain(walletExt.Config.TLSDomain)
 	var userID string
 	for _, cookie := range req.Cookies() {
-		if cookie.Name == "gateway_token" {
+		if cookie.Name == cookieName {
 			userID = cookie.Value
 			break
 		}
 	}
 
 	if userID == "" {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("gateway_token cookie not found"))
+		handleError(conn, walletExt.Logger(), fmt.Errorf("gateway token cookie not found"))
 		return
 	}
 
@@ -260,13 +277,15 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	// Set the cookie with the provided token
+	cookieName := generateCookieNameFromDomain(walletExt.Config.TLSDomain)
 	cookie := &http.Cookie{
-		Name:     "gateway_token",
+		Name:     cookieName,
 		Value:    req.Token,
 		Path:     "/",
+		Domain:   ".ten.xyz",              // Share across all .ten.xyz subdomains
 		HttpOnly: true,                    // Prevents XSS
 		Secure:   true,                    // HTTPS only
-		SameSite: http.SameSiteStrictMode, // Prevents CSRF
+		SameSite: http.SameSiteNoneMode,   // Required for cross-origin AJAX requests
 		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
 	}
 
