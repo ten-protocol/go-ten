@@ -381,7 +381,6 @@ func (e *enclaveAdminService) StreamL2Updates() (chan common.StreamL2UpdatesResp
 		close(l2UpdatesChannel)
 		return l2UpdatesChannel, func() {}
 	}
-
 	e.registry.SubscribeForExecutedBatches(func(batch *core.Batch, receipts types.Receipts) {
 		defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "stream batch")
 		e.sendBatch(batch, l2UpdatesChannel)
@@ -389,6 +388,19 @@ func (e *enclaveAdminService) StreamL2Updates() (chan common.StreamL2UpdatesResp
 			e.streamEventsForNewHeadBatch(context.Background(), batch, receipts, l2UpdatesChannel)
 		}
 	})
+
+	// on opening the stream, we (re)send the head batch if we have one
+	// (important for a host reconnecting to the enclave, in case the latest batch failed to be sent)
+	headSeq := e.registry.HeadBatchSeq()
+	if headSeq != nil {
+		headBatch, err := e.storage.FetchBatchBySeqNo(context.Background(), headSeq.Uint64())
+		if err != nil {
+			e.logger.Error("Could not fetch head batch to stream on new connection", log.ErrKey, err, log.BatchSeqNoKey, headSeq)
+		} else {
+			e.sendBatch(headBatch, l2UpdatesChannel)
+			e.logger.Info("Sent head batch on new stream connection", log.BatchHashKey, headBatch.Hash(), log.BatchSeqNoKey, headSeq)
+		}
+	}
 
 	return l2UpdatesChannel, func() {
 		e.registry.UnsubscribeFromBatches()

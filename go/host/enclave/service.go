@@ -205,8 +205,7 @@ func (e *Service) managePeriodicBatches() {
 				e.tryPromoteNewSequencer()
 				continue
 			}
-
-			if activeSeq.InSyncWithL1() {
+			if activeSeq.IsLive() || (activeSeq.InSyncWithL1() && e.sl.L2Repo().FetchLatestBatchSeqNo().Cmp(big.NewInt(5)) < 0) {
 				err = activeSeq.ProduceBatch()
 				if err != nil {
 					// todo: do we want to have a few failed attempts before looking to promote a new one?
