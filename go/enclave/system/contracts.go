@@ -31,7 +31,6 @@ func GenerateDeploymentTransaction(initCode []byte, nonce uint64, logger gethlog
 }
 
 func SystemDeployerPhase1InitTransaction(logger gethlog.Logger, eoaOwner gethcommon.Address) (*common.L2Tx, error) {
-	// Phase 1 constructor signature: constructor(eoaAdmin)
 	abi, _ := SystemDeployerPhase1.SystemDeployerPhase1MetaData.GetAbi()
 	args, err := abi.Constructor.Inputs.Pack(eoaOwner)
 	if err != nil {
@@ -45,7 +44,6 @@ func SystemDeployerPhase1InitTransaction(logger gethlog.Logger, eoaOwner gethcom
 }
 
 func SystemDeployerPhase2InitTransaction(logger gethlog.Logger, eoaOwner gethcommon.Address, feesAddress gethcommon.Address, l1BridgeAddress gethcommon.Address) (*common.L2Tx, error) {
-	// Phase 1 constructor signature: constructor(eoaAdmin)
 	abi, _ := SystemDeployerPhase2.SystemDeployerPhase2MetaData.GetAbi()
 	args, err := abi.Constructor.Inputs.Pack(eoaOwner, feesAddress, l1BridgeAddress)
 	if err != nil {
@@ -54,7 +52,7 @@ func SystemDeployerPhase2InitTransaction(logger gethlog.Logger, eoaOwner gethcom
 	bytecode := gethcommon.FromHex(SystemDeployerPhase2.SystemDeployerPhase2MetaData.Bin)
 	initCode := append(bytecode, args...)
 
-	logger.Info("Generated synthetic deployment transaction for SystemDeployerPhase1")
+	logger.Info("Generated synthetic deployment transaction for SystemDeployerPhase2")
 	return GenerateDeploymentTransaction(initCode, 1, logger)
 }
 
@@ -69,7 +67,6 @@ func DeriveAddresses(receipt *types.Receipt) (common.SystemContractAddresses, er
 
 	addresses := make(map[string]*gethcommon.Address)
 
-	// Try Phase 1 events first
 	phase1Addresses, err := derivePhase1Addresses(receipt)
 	if err == nil {
 		for name, addr := range phase1Addresses {
@@ -77,7 +74,6 @@ func DeriveAddresses(receipt *types.Receipt) (common.SystemContractAddresses, er
 		}
 	}
 
-	// Try Phase 2 events
 	phase2Addresses, err := derivePhase2Addresses(receipt)
 	if err == nil {
 		for name, addr := range phase2Addresses {
@@ -135,7 +131,7 @@ func derivePhase2Addresses(receipt *types.Receipt) (common.SystemContractAddress
 		var event SystemDeployerPhase2.SystemDeployerPhase2SystemContractDeployed
 		err := abi.UnpackIntoInterface(&event, eventName, log.Data)
 		if err != nil {
-			continue // Skip if parsing fails
+			continue // skip if parsing fails
 		}
 
 		addresses[event.Name] = &event.ContractAddress

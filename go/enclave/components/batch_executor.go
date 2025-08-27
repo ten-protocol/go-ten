@@ -312,7 +312,6 @@ func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContex
 		return fmt.Errorf("batch computation failed due to system deployer phase 2 reverting. Cause: %w", err)
 	}
 
-	// Combine results for compatibility
 	allResults := make(core.TxExecResults, 0, len(phase1Result)+len(phase2Result))
 	allResults = append(allResults, phase1Result...)
 	allResults = append(allResults, phase2Result...)
@@ -802,7 +801,6 @@ func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions c
 			return fmt.Errorf("failed to get receipt for synthetic transaction. Cause: %s", rec.Err)
 		}
 		if rec.Receipt.Status == 1 {
-			executor.logger.Info("SUCCESSFULLY FOUND RECEIPT FOR: ", rec.Receipt.ContractAddress.Hex())
 			continue
 		}
 		return fmt.Errorf("found a failed receipt for a synthetic transaction: %s", rec.Receipt.TxHash.Hex())
