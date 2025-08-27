@@ -13,7 +13,7 @@ async function transferUnpauserRolesOnAllContracts() {
     const multisigAddress = process.env.MULTISIG_ADDR || "0x...";
     const networkConfigAddress = process.env.NETWORK_CONFIG_ADDR || "0x...";
     // this isnt stored in NetworkConfig so we need to pass it in
-    // const merkleMessageBusAddress = process.env.MERKLE_MESSAGE_BUS_ADDR || "0x...";
+    const merkleMessageBusAddress = process.env.MERKLE_MESSAGE_BUS_ADDR || "0x...";
     
     if (multisigAddress === "0x...") {
         throw new Error('Please set MULTISIG_ADDR environment variable');
@@ -23,9 +23,9 @@ async function transferUnpauserRolesOnAllContracts() {
         throw new Error('Please set NETWORK_CONFIG_ADDR environment variable');
     }
     
-    // if (merkleMessageBusAddress === "0x...") {
-    //   throw new Error("Please set MERKLE_MESSAGE_BUS_ADDR environment variable")
-    // }
+    if (merkleMessageBusAddress === "0x...") {
+      throw new Error("Please set MERKLE_MESSAGE_BUS_ADDR environment variable")
+    }
     
     console.log("Configuration:");
     console.log("- Multisig address:", multisigAddress);
@@ -37,13 +37,14 @@ async function transferUnpauserRolesOnAllContracts() {
     
     // contracts that implement PausableWithRoles
     console.log("\nFound contracts:");
-    // console.log("- CrossChain:", networkConfigData.crossChain);
     console.log("- MessageBus:", networkConfigData.messageBus);
     console.log("- NetworkEnclaveRegistry:", networkConfigData.networkEnclaveRegistry);
     console.log("- DataAvailabilityRegistry:", networkConfigData.dataAvailabilityRegistry);
     console.log("- TenBridge:", networkConfigData.l1Bridge)
     console.log("- EthereumBridge:", networkConfigData.l2Bridge)
-    // console.log("- MerkleTreeMessageBus:", merkleMessageBusAddress)
+    console.log("- CrossChainMessenger:", networkConfigData.l1CrossChainMessenger)
+    console.log("- L2CrossChainMessenger:", networkConfigData.l2CrossChainMessenger)
+    console.log("- MerkleTreeMessageBus:", merkleMessageBusAddress)
 
     const pausableContracts = [
       // { name: "CrossChain", address: networkConfigData.crossChain },
@@ -56,10 +57,12 @@ async function transferUnpauserRolesOnAllContracts() {
         name: "DataAvailabilityRegistry",
         address: networkConfigData.dataAvailabilityRegistry,
       },
-      // { name: "MerkleTreeMessageBus", address: merkleMessageBusAddress },
       { name: "MessageBus", address: networkConfigData.messageBus },
       { name: "TenBridge", address: networkConfigData.l2Bridge },
       { name: "EthereumBridge", address: networkConfigData.l1Bridge },
+      { name: "CrossChainMessenger", address: networkConfigData.l1CrossChainMessenger },
+      { name: "L2CrossChainMessenger", address: networkConfigData.l2CrossChainMessenger },
+      { name: "MerkleTreeMessageBus", address: merkleMessageBusAddress },
     ]
     
     console.log(`\nTransferring UNPAUSER_ROLE from ${deployer.address} to ${multisigAddress} on all contracts...`);

@@ -47,6 +47,12 @@ func WithMultisigAddress(s string) Option {
 	}
 }
 
+func WithMerkleTreeMessageBus(s string) Option {
+	return func(c *Config) {
+		c.merkleMessageBusAddr = s
+	}
+}
+
 func WithDockerImage(s string) Option {
 	return func(c *Config) {
 		c.dockerImage = s

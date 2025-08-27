@@ -31,6 +31,7 @@ func main() {
 			transferunpauserroles.WithDockerImage(cliConfig.dockerImage),
 			transferunpauserroles.WithNetworkConfigAddress(cliConfig.networkConfigAddr),
 			transferunpauserroles.WithMultisigAddress(cliConfig.multisigAddr),
+			transferunpauserroles.WithMerkleTreeMessageBus(cliConfig.merkleMessageBusAddr),
 		),
 	)
 	if err != nil {
