@@ -28,15 +28,14 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, Pa
      * @param owner The address to set as the owner
      * @param feesAddress The address of the fees contract
      */
-    function initialize(address owner, address /* withdrawal */, address feesAddress) public virtual initializer {
+    function initialize(address owner, address withdrawal, address feesAddress) public virtual initializer {
         require(feesAddress != address(0), "Fees address cannot be 0x0");
         require(owner != address(0), "Caller cannot be 0x0");
         __UnrenouncableOwnable2Step_init(owner);  // Initialize UnrenouncableOwnable2Step
-        __PausableWithRoles_init(owner);  // Initialize PausableWithRoles
+        __PausableWithRoles_init(owner);
         fees = IFees(feesAddress);
     }
 
-    
     /**
      * @dev Modifier to restrict access to owner or self
      * Since this contract exists on L2, when messages are added from L1,

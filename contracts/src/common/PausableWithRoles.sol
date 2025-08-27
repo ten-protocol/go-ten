@@ -2,6 +2,7 @@
 pragma solidity ^0.8.28;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 /**
  * @title PausableWithRoles
@@ -11,7 +12,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
  * - PAUSER_ROLE: Can pause the contract (typically deployer key for quick response)
  * - UNPAUSER_ROLE: Can unpause the contract (typically multisig wallet for controlled recovery)
  */
-abstract contract PausableWithRoles is AccessControlUpgradeable {
+abstract contract PausableWithRoles is AccessControlUpgradeable, PausableUpgradeable {
     
     /// @dev Role that can pause the contract
     bytes32 public constant PAUSER_ROLE = keccak256("PAUSER_ROLE");
@@ -19,69 +20,17 @@ abstract contract PausableWithRoles is AccessControlUpgradeable {
     /// @dev Role that can unpause the contract
     bytes32 public constant UNPAUSER_ROLE = keccak256("UNPAUSER_ROLE");
 
-    /// @custom:storage-location erc7201:openzeppelin.storage.Pausable
-    struct PausableStorage {
-        bool _paused;
-    }
-
-    // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.Pausable")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant PausableStorageLocation = 0xcd5ed15c6e187e77e9aee88184c21f4f2182ab5827cb3b7e07fbedcd63f03300;
-
-    function _getPausableStorage() private pure returns (PausableStorage storage $) {
-        assembly {
-            $.slot := PausableStorageLocation
-        }
-    }
-
-    /// @dev Emitted when the pause is triggered by `account`.
-    event Paused(address account);
-
-    /// @dev Emitted when the pause is lifted by `account`.
-    event Unpaused(address account);
-
-    /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
-
     /**
      * @dev Initializes the contract with the deployer as the initial pauser and unpauser
      * @param deployer The address that will have both PAUSER_ROLE and UNPAUSER_ROLE initially
      */
     function __PausableWithRoles_init(address deployer) internal onlyInitializing {
         __AccessControl_init();
+        __Pausable_init();
         
-        // Grant roles to deployer initially
+        _grantRole(DEFAULT_ADMIN_ROLE, deployer);
         _grantRole(PAUSER_ROLE, deployer);
         _grantRole(UNPAUSER_ROLE, deployer);
-        
-        // Set role admin - only deployer can grant/revoke roles initially
-        _setRoleAdmin(PAUSER_ROLE, DEFAULT_ADMIN_ROLE);
-        _setRoleAdmin(UNPAUSER_ROLE, DEFAULT_ADMIN_ROLE);
-    }
-
-    /**
-     * @dev Returns true if the contract is paused, and false otherwise.
-     */
-    function paused() public view virtual returns (bool) {
-        PausableStorage storage $ = _getPausableStorage();
-        return $._paused;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is not paused.
-     */
-    modifier whenNotPaused() {
-        require(!paused(), "Pausable: paused");
-        _;
-    }
-
-    /**
-     * @dev Modifier to make a function callable only when the contract is paused.
-     */
-    modifier whenPaused() {
-        require(paused(), "Pausable: not paused");
-        _;
     }
 
     /**
@@ -89,9 +38,7 @@ abstract contract PausableWithRoles is AccessControlUpgradeable {
      * @notice Only callable by accounts with PAUSER_ROLE
      */
     function pause() external onlyRole(PAUSER_ROLE) {
-        PausableStorage storage $ = _getPausableStorage();
-        $._paused = true;
-        emit Paused(_msgSender());
+        _pause();
     }
 
     /**
@@ -99,9 +46,7 @@ abstract contract PausableWithRoles is AccessControlUpgradeable {
      * @notice Only callable by accounts with UNPAUSER_ROLE
      */
     function unpause() external onlyRole(UNPAUSER_ROLE) {
-        PausableStorage storage $ = _getPausableStorage();
-        $._paused = false;
-        emit Unpaused(_msgSender());
+        _unpause();
     }
 
     /**

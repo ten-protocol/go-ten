@@ -735,6 +735,12 @@ func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions c
 	}
 
 	for _, rec := range results {
+		//if rec.Receipt.Status == nil {
+		//	return fmt.Errorf("receipt.Status is nil")
+		//}
+		if rec.Receipt == nil {
+			return fmt.Errorf("failed to get receipt for synthetic transaction: ")
+		}
 		if rec.Receipt.Status == 1 {
 			continue
 		}

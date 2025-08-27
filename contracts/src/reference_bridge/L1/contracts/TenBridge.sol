@@ -17,8 +17,8 @@ contract TenBridge is
     CrossChainEnabledTEN,
     IBridge,
     ITenBridge,
-    AccessControlUpgradeable,
     ReentrancyGuardTransient,
+    AccessControlUpgradeable,
     PausableWithRoles
 {
     event Withdrawal(address indexed receiver, address indexed asset, uint256 amount);

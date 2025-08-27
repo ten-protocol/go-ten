@@ -8,13 +8,14 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "../../common/UnrenouncableOwnable2Step.sol";
 import "../../common/PausableWithRoles.sol";
 import "../../system/interfaces/IFees.sol";
+import {MessageBus} from "../common/MessageBus.sol";
 /**
  * @title MerkleTreeMessageBus
  * @dev Implementation of IMerkleTreeMessageBus that uses Merkle trees for cross-chain message verification
  * This contract manages state roots and verifies message inclusion through Merkle proofs.
  * It implements a role-based access control system for state root and withdrawal management.
  */
-contract MerkleTreeMessageBus is IMerkleTreeMessageBus, Initializable, UnrenouncableOwnable2Step, PausableWithRoles {
+contract MerkleTreeMessageBus is IMerkleTreeMessageBus, MessageBus {
 
     /**
      * @dev Role identifier for accounts that can manage state roots
@@ -32,14 +33,32 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, Initializable, Unrenounc
      */
     mapping(bytes32 stateRoot => uint256 activationTime) public rootValidAfter;
 
-    IFees fees;
-
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
+    constructor() MessageBus() {
+        // Constructor intentionally left empty
     }
 
-    /**
+//    /**
+//     * @dev Initializes the contract with provided owner
+//     * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
+//     */
+//    function initialize(address initialOwner, address withdrawalManager, address _fees) public override(IMerkleTreeMessageBus, MessageBus) initializer {
+//        require(initialOwner != address(0), "Initial owner cannot be 0x0");
+//        require(withdrawalManager != address(0), "Withdrawal manager cannot be 0x0");
+//        require(_fees != address(0), "Fees address cannot be 0x0");
+//
+//        // Initialize parent contracts
+//        __UnrenouncableOwnable2Step_init(initialOwner);
+////        __PausableWithRoles_init();
+//        __AccessControl_init();
+//
+//        // Set up roles
+//        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
+//        _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
+//        _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
+//        fees = IFees(_fees);
+//    }
+    /*
      * @dev Initializes the contract with provided owner
      * @param initialOwner Address that will be granted the DEFAULT_ADMIN_ROLE and STATE_ROOT_MANAGER_ROLE
      */
@@ -48,13 +67,14 @@ contract MerkleTreeMessageBus is IMerkleTreeMessageBus, Initializable, Unrenounc
         require(withdrawalManager != address(0), "Withdrawal manager cannot be 0x0");
         require(_fees != address(0), "Fees address cannot be 0x0");
 
-         __UnrenouncableOwnable2Step_init(initialOwner);
-         __PausableWithRoles_init(initialOwner);  // This calls __AccessControl_init() internally
-        
-         _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
-         _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
-         _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
-         fees = IFees(_fees);
+        // Initialize parent contracts
+        __MessageBus_init(initialOwner, withdrawalManager, _fees);
+        __AccessControl_init();
+
+        // Set up additional roles
+        _grantRole(DEFAULT_ADMIN_ROLE, initialOwner);
+        _grantRole(STATE_ROOT_MANAGER_ROLE, initialOwner);
+        _grantRole(WITHDRAWAL_MANAGER_ROLE, withdrawalManager);
     }
 
     /**
