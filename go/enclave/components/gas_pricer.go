@@ -48,8 +48,8 @@ func (gp *GasPricer) CalculateBlockBaseFeeAtHeight(ctx context.Context, cfg *par
 	calculatedBaseFee := eip1559.CalcBaseFee(cfg, parent)
 
 	// Ensure the base fee never falls below the configured minimum
-	if calculatedBaseFee.Cmp(gp.config.MinGasPrice) < 0 {
-		return new(big.Int).Set(gp.config.MinGasPrice)
+	if calculatedBaseFee.Cmp(gp.config.BaseFee) < 0 {
+		return new(big.Int).Set(gp.config.BaseFee)
 	}
 
 	return calculatedBaseFee
