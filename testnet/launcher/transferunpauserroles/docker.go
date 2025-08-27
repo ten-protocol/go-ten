@@ -46,9 +46,9 @@ func (r *RoleTransfer) Start() error {
 				"accounts": ["%s"]
 			}
 		}`, r.cfg.l1HTTPURL, r.cfg.privateKey),
-		"NETWORK_CONFIG_ADDR":     r.cfg.networkConfigAddr,
-		"MULTISIG_ADDR":           r.cfg.multisigAddr,
-		"MERKLE_TREE_MESSAGE_BUS": r.cfg.merkleMessageBusAddr,
+		"NETWORK_CONFIG_ADDR":          r.cfg.networkConfigAddr,
+		"MULTISIG_ADDR":                r.cfg.multisigAddr,
+		"MERKLE_TREE_MESSAGE_BUS_ADDR": r.cfg.merkleMessageBusAddr,
 	}
 
 	fmt.Printf("Starting unpauser role transfer script. NetworkConfigAddress: %s, MultisigAddress: %s\n",
