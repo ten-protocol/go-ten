@@ -193,6 +193,18 @@ func (s *StateTracker) IsLive() bool {
 	return s.status == Live
 }
 
+func (s *StateTracker) IsEnclaveAheadOfHost() bool {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if s.enclaveL2Head == nil {
+		return false
+	}
+	if s.hostL2Head == nil {
+		return true
+	}
+	return s.enclaveL2Head.Cmp(s.hostL2Head) > 0
+}
+
 func (s *StateTracker) GetHostL1Head() gethcommon.Hash {
 	s.m.RLock()
 	defer s.m.RUnlock()

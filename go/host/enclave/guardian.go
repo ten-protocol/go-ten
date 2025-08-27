@@ -190,6 +190,10 @@ func (g *Guardian) InSyncWithL1() bool {
 	return g.state.InSyncWithL1()
 }
 
+func (g *Guardian) IsEnclaveL2AheadOfHost() bool {
+	return g.state.IsEnclaveAheadOfHost()
+}
+
 func (g *Guardian) GetEnclaveState() *StateTracker {
 	return g.state
 }

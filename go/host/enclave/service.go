@@ -21,8 +21,9 @@ import (
 )
 
 var (
-	_noActiveSequencer    = &common.EnclaveID{} // used rather than nil to indicate no active sequencer
-	_defaultBatchInterval = 1 * time.Second     // used if batchInterval is not set in the config
+	_maxFailuresBeforeFailover = 5                   // number of consecutive failures before trying to failover to another sequencer
+	_noActiveSequencer         = &common.EnclaveID{} // used rather than nil to indicate no active sequencer
+	_defaultBatchInterval      = 1 * time.Second     // used if batchInterval is not set in the config
 )
 
 // This private interface enforces the services that the enclaves service depends on
@@ -193,6 +194,7 @@ func (e *Service) managePeriodicBatches() {
 	if interval == 0 {
 		interval = _defaultBatchInterval
 	}
+	failureCount := 0 // count of consecutive failures to produce a batch, used to trigger a new active sequencer if needed
 	// we use ticks rather than sleeps to maintain batch production cadence
 	batchProductionTicker := time.NewTicker(interval)
 
@@ -205,15 +207,32 @@ func (e *Service) managePeriodicBatches() {
 				e.tryPromoteNewSequencer()
 				continue
 			}
-			if activeSeq.IsLive() || (activeSeq.InSyncWithL1() && e.sl.L2Repo().FetchLatestBatchSeqNo().Cmp(big.NewInt(5)) < 0) {
+			if activeSeq.InSyncWithL1() {
+				if activeSeq.IsEnclaveL2AheadOfHost() {
+					// the active seq enclave is failing to feed new batches back to the host, if it continues we will try to promote a new enclave
+					failureCount++
+					e.logger.Error("Active sequencer's L2 head is ahead of host's L2 head", "enclaveState", activeSeq.GetEnclaveState(), "failureCount", failureCount)
+					if failureCount >= _maxFailuresBeforeFailover {
+						// the active sequencer is stuck ahead of the host's L2 head, we will try to promote a new one
+						e.tryPromoteNewSequencer()
+						failureCount = 0
+						continue
+					}
+				}
+
 				err = activeSeq.ProduceBatch()
 				if err != nil {
-					// todo: do we want to have a few failed attempts before looking to promote a new one?
-					e.logger.Error("Sequencer failed to produce batch", log.ErrKey, err)
-					// if the active sequencer fails, we will try to promote a new one
-					e.tryPromoteNewSequencer()
+					failureCount++
+					e.logger.Error("Sequencer failed to produce batch", log.ErrKey, err, "failureCount", failureCount)
+					if failureCount >= _maxFailuresBeforeFailover {
+						// the active sequencer is failing to produce batches, we will try to promote a new one
+						e.tryPromoteNewSequencer()
+						failureCount = 0
+					}
 					continue
 				}
+				// successfully produced a batch, reset failure count
+				failureCount = 0
 			}
 
 			// sanity check/clean up: make sure there are no other enclaves that think they are active sequencers
