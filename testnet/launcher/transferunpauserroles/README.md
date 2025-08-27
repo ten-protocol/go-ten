@@ -1,6 +1,6 @@
-# Multisig Setup for L1 Contracts
+# Transfer Unpauser Roles Launcher
 
-This launcher sets up multisig control for L1 contracts by transferring proxy admin ownership to a specified multisig address.
+This launcher transfers the `UNPAUSER_ROLE` from the deployer to a specified multisig address for contracts using `PausableWithRoles`.
 
 ## Prerequisites
 
@@ -13,14 +13,15 @@ go run ./testnet/launcher/cmd
 
 ## Usage
 
-Once the testnet is running, you can run the multisig setup using:
+Once the testnet is running, you can run the unpauser role transfer using:
 
 ```bash
-go run ./testnet/launcher/multisigsetup/cmd \
+go run ./testnet/launcher/transferunpauserroles/cmd \
     -l1_http_url="http://eth2network:8025" \
     -private_key="f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb" \
     -network_config_addr="0x..." \
     -multisig_addr="0x..." \
+    -merkle_message_bus_addr="0x..." \
     -docker_image="testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest"
 ```
 
@@ -29,16 +30,12 @@ go run ./testnet/launcher/multisigsetup/cmd \
 - `l1_http_url`: Layer 1 network HTTP RPC address (default: http://eth2network:8025)
 - `private_key`: L1 private key used for deployment (default: f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb)
 - `network_config_addr`: L1 network config contract address (required)
-- `multisig_addr`: Multisig address to transfer proxy admin ownership to (required)
+- `multisig_addr`: Multisig address to transfer unpauser role to (required)
 - `docker_image`: Docker image to run (default: testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest)
 
-## What it does
+The script expects these environment variables to be set in the Docker container:
 
-1. Runs the `001_direct_multisig_setup.ts` script in a Docker container
-2. Transfers contract ownership for all contracts to the specified multisig address
-3. Verifies that the transfer was successful
-4. Provides detailed logging of the process
-
-## Finding the network-config-addr
-
-The `network-config-addr` can be found in the following endpoint: `http://localhost:3000/v1/network-config/`
+- `NETWORK_JSON`: Network configuration for hardhat
+- `NETWORK_CONFIG_ADDR`: Network config contract address
+- `MULTISIG_ADDR`: Multisig wallet address
+- `MERKLE_MESSAGE_BUS_ADDR`: Merkle message bus contract address

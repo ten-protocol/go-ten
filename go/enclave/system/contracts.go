@@ -9,13 +9,14 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ten-protocol/go-ten/contracts/generated/SystemDeployer"
+	"github.com/ten-protocol/go-ten/contracts/generated/SystemDeployerPhase1"
+	"github.com/ten-protocol/go-ten/contracts/generated/SystemDeployerPhase2"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
-func GenerateDeploymentTransaction(initCode []byte, logger gethlog.Logger) (*common.L2Tx, error) {
+func GenerateDeploymentTransaction(initCode []byte, nonce uint64, logger gethlog.Logger) (*common.L2Tx, error) {
 	tx := &types.LegacyTx{
-		Nonce:    0, // The first transaction of the owner identity should always be deploying the contract
+		Nonce:    nonce,
 		Value:    gethcommon.Big0,
 		Gas:      20_000_000,      // It's quite the expensive contract.
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
@@ -25,22 +26,33 @@ func GenerateDeploymentTransaction(initCode []byte, logger gethlog.Logger) (*com
 
 	stx := types.NewTx(tx)
 
-	logger.Info("Generated synthetic deployment transaction for the SystemDeployer contract")
-
 	return stx, nil
 }
 
-func SystemDeployerInitTransaction(logger gethlog.Logger, eoaOwner gethcommon.Address, l1BridgeAddress gethcommon.Address) (*common.L2Tx, error) {
-	abi, _ := SystemDeployer.SystemDeployerMetaData.GetAbi()
-	args, err := abi.Constructor.Inputs.Pack(eoaOwner, l1BridgeAddress)
+func SystemDeployerPhase1InitTransaction(logger gethlog.Logger, eoaOwner gethcommon.Address) (*common.L2Tx, error) {
+	abi, _ := SystemDeployerPhase1.SystemDeployerPhase1MetaData.GetAbi()
+	args, err := abi.Constructor.Inputs.Pack(eoaOwner)
 	if err != nil {
 		logger.Crit("This error is fatal. If the system contracts can't be initialized the network cannot bootstrap.", log.ErrKey, err)
 	}
-
-	bytecode := gethcommon.FromHex(SystemDeployer.SystemDeployerMetaData.Bin)
+	bytecode := gethcommon.FromHex(SystemDeployerPhase1.SystemDeployerPhase1MetaData.Bin)
 	initCode := append(bytecode, args...)
 
-	return GenerateDeploymentTransaction(initCode, logger)
+	logger.Info("Generated synthetic deployment transaction for SystemDeployerPhase1")
+	return GenerateDeploymentTransaction(initCode, 0, logger)
+}
+
+func SystemDeployerPhase2InitTransaction(logger gethlog.Logger, eoaOwner gethcommon.Address, feesAddress gethcommon.Address, l1BridgeAddress gethcommon.Address) (*common.L2Tx, error) {
+	abi, _ := SystemDeployerPhase2.SystemDeployerPhase2MetaData.GetAbi()
+	args, err := abi.Constructor.Inputs.Pack(eoaOwner, feesAddress, l1BridgeAddress)
+	if err != nil {
+		logger.Crit("This error is fatal. If the system contracts can't be initialized the network cannot bootstrap.", log.ErrKey, err)
+	}
+	bytecode := gethcommon.FromHex(SystemDeployerPhase2.SystemDeployerPhase2MetaData.Bin)
+	initCode := append(bytecode, args...)
+
+	logger.Info("Generated synthetic deployment transaction for SystemDeployerPhase2")
+	return GenerateDeploymentTransaction(initCode, 1, logger)
 }
 
 func VerifyLogs(receipt *types.Receipt) error {
@@ -54,8 +66,28 @@ func DeriveAddresses(receipt *types.Receipt) (common.SystemContractAddresses, er
 
 	addresses := make(map[string]*gethcommon.Address)
 
+	phase1Addresses, err := derivePhase1Addresses(receipt)
+	if err == nil {
+		for name, addr := range phase1Addresses {
+			addresses[name] = addr
+		}
+	}
+
+	phase2Addresses, err := derivePhase2Addresses(receipt)
+	if err == nil {
+		for name, addr := range phase2Addresses {
+			addresses[name] = addr
+		}
+	}
+
+	return addresses, nil
+}
+
+func derivePhase1Addresses(receipt *types.Receipt) (common.SystemContractAddresses, error) {
+	addresses := make(map[string]*gethcommon.Address)
 	eventName := "SystemContractDeployed"
-	abi, err := SystemDeployer.SystemDeployerMetaData.GetAbi()
+
+	abi, err := SystemDeployerPhase1.SystemDeployerPhase1MetaData.GetAbi()
 	if err != nil {
 		return nil, err
 	}
@@ -67,10 +99,38 @@ func DeriveAddresses(receipt *types.Receipt) (common.SystemContractAddresses, er
 			continue
 		}
 
-		var event SystemDeployer.SystemDeployerSystemContractDeployed
+		var event SystemDeployerPhase1.SystemDeployerPhase1SystemContractDeployed
 		err := abi.UnpackIntoInterface(&event, eventName, log.Data)
 		if err != nil {
-			return nil, err
+			continue // Skip if parsing fails
+		}
+
+		addresses[event.Name] = &event.ContractAddress
+	}
+
+	return addresses, nil
+}
+
+func derivePhase2Addresses(receipt *types.Receipt) (common.SystemContractAddresses, error) {
+	addresses := make(map[string]*gethcommon.Address)
+	eventName := "SystemContractDeployed"
+
+	abi, err := SystemDeployerPhase2.SystemDeployerPhase2MetaData.GetAbi()
+	if err != nil {
+		return nil, err
+	}
+
+	eventID := abi.Events[eventName].ID
+
+	for _, log := range receipt.Logs {
+		if log.Topics[0] != eventID {
+			continue
+		}
+
+		var event SystemDeployerPhase2.SystemDeployerPhase2SystemContractDeployed
+		err := abi.UnpackIntoInterface(&event, eventName, log.Data)
+		if err != nil {
+			continue // skip if parsing fails
 		}
 
 		addresses[event.Name] = &event.ContractAddress

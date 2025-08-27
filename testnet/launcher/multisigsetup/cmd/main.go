@@ -16,7 +16,7 @@ func main() {
 		os.Exit(1)
 	}
 	if cliConfig.multisigAddress == "" {
-		fmt.Println("Error: multisig_address is required")
+		fmt.Println("Error: multisig_addr is required")
 		os.Exit(1)
 	}
 

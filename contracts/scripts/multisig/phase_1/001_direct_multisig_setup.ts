@@ -146,9 +146,7 @@ async function setupDirectMultisig() {
  */
 async function main() {
     console.log("\n=== Setup Starting ===")
-            // Setup direct multisig control
-        const result = await setupDirectMultisig();
-        
+    await setupDirectMultisig();
     console.log("\n=== Setup Complete ===");
 }
 
