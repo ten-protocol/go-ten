@@ -115,8 +115,8 @@ func TestTenGateway(t *testing.T) {
 		"testSubscriptionTopics":               testSubscriptionTopics,
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
-		// "testRateLimiter":                      testRateLimiter,
-		"testSessionKeys": testSessionKeys,
+		"testSessionKeys":                      testSessionKeys,
+		// "testRateLimiter":                   testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, startPort, httpURL, wsURL, w)
@@ -185,11 +185,11 @@ func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 
 	contractAddr := deployContract(t, w, user0)
 
-	// create session key using eth_getStorageAt
-	var skAddrBytes []byte
-	err = user0.HTTPClient.Client().CallContext(context.Background(), &skAddrBytes, "eth_getStorageAt", common.CreateSessionKeyCQMethod, "0x", "latest")
+	// create session key using the dedicated RPC method
+	var skAddressHex string
+	err = user0.HTTPClient.Client().CallContext(context.Background(), &skAddressHex, "sessionkeys_create")
 	require.NoError(t, err)
-	skAddress := gethcommon.BytesToAddress(skAddrBytes)
+	skAddress := gethcommon.HexToAddress(skAddressHex)
 
 	// move some funds to the SK
 	var skAmount int64 = 100_000_000_000_000_000
@@ -215,12 +215,11 @@ func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	require.NoError(t, err)
 	require.Equal(t, uint64(0x1), rec1.Status)
 
-	// delete the session key using eth_getStorageAt
-	deleteParams := fmt.Sprintf(`{"sessionKeyAddr": "%s"}`, skAddress.Hex())
-	var deleteResult []byte
-	err = user0.HTTPClient.Client().CallContext(context.Background(), &deleteResult, "eth_getStorageAt", common.DeleteSessionKeyCQMethod, deleteParams, "latest")
+	// delete the session key using the dedicated RPC method
+	var deleteResult bool
+	err = user0.HTTPClient.Client().CallContext(context.Background(), &deleteResult, "sessionkeys_delete", skAddress.Hex())
 	require.NoError(t, err)
-	require.Equal(t, []byte("true"), deleteResult)
+	require.True(t, deleteResult)
 
 	// interact with the contract using deleted session key - should fail
 	skNonce++
