@@ -356,7 +356,8 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		if ltx == nil {
 			break
 		}
-
+		// Estimating the exeuction cost component of the tx to check against the gas pool
+		// by deducting the estimated publishing cost from the total gas available
 		gasCost, err := executor.gasOracle.EstimateL1StorageGasCost(ec.ctx, ltx.Tx, ec.l1block, ec.currentBatch.Header)
 		if err != nil {
 			return fmt.Errorf("unable to estimate l1 storage gas cost. Cause: %w", err)
