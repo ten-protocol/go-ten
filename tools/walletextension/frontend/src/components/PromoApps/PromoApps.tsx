@@ -28,7 +28,7 @@ export default function PromoApps() {
                 >
                     <CarouselContent className="-ml-1 sm:-ml-2 md:-ml-4 min-w-0">
                         {PROMO_APPS.map((app, index) => (
-                            <CarouselItem key={index} className="pl-1 sm:pl-2 md:pl-8 basis-[85%] sm:basis-1/2 lg:basis-1/2 xl:basis-1/3 min-w-0">
+                            <CarouselItem key={index} className="pl-1 sm:pl-4 md:pl-8 basis-[85%] sm:basis-1/2 lg:basis-1/2 xl:basis-1/3 min-w-0">
                                 <PromoAppCard
                                     title={app.title}
                                     description={app.description}
@@ -38,7 +38,7 @@ export default function PromoApps() {
                             </CarouselItem>
                         ))}
                     </CarouselContent>
-                    <div className="hidden md:block w-[calc(100%-32px)] ml-[16px] h-16 absolute top-1/3">
+                    <div className="hidden md:block w-[calc(100%-64px)] ml-[42px] h-16 absolute top-1/3">
                         <CarouselPrevious />
                         <CarouselNext />
                     </div>
