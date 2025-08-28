@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -21,8 +22,9 @@ import (
 )
 
 var (
-	_noActiveSequencer    = &common.EnclaveID{} // used rather than nil to indicate no active sequencer
-	_defaultBatchInterval = 1 * time.Second     // used if batchInterval is not set in the config
+	_maxFailuresBeforeFailover = 3                   // number of consecutive failures before trying to failover to another sequencer
+	_noActiveSequencer         = &common.EnclaveID{} // used rather than nil to indicate no active sequencer
+	_defaultBatchInterval      = 1 * time.Second     // used if batchInterval is not set in the config
 )
 
 // This private interface enforces the services that the enclaves service depends on
@@ -193,7 +195,7 @@ func (e *Service) managePeriodicBatches() {
 	if interval == 0 {
 		interval = _defaultBatchInterval
 	}
-	// we use ticks rather than sleeps to maintain batch production cadence
+	failureCount := 0 // count of consecutive failures to produce a batch, triggers a new active sequencer if not recovering
 	batchProductionTicker := time.NewTicker(interval)
 
 	for e.running.Load() {
@@ -206,15 +208,46 @@ func (e *Service) managePeriodicBatches() {
 				continue
 			}
 
+			/*
+			 * We perform some checks before asking the active sequencer to produce a batch:
+			 * - Is the active sequencer in sync with L1 (so it can reference the latest L1 block in the batch)
+			 * - Does the active sequencer's L2 head agree with the host's L2 head (the host's head has been broadcast to the network, so it is canonical)
+			 *
+			 * Note: we don't check if the active sequencer is behind the host's L2 head, it is the active sequencer and that is checked at promotion time
+			 */
 			if activeSeq.InSyncWithL1() {
+				// Check if the L2 head hashes match between enclave and host
+				enclaveL2Hash := activeSeq.GetEnclaveState().GetEnclaveL2HeadHash()
+				hostL2Hash := e.getHostL2HeadHash()
+				// enclaveChainConflict is true if the enclave and host both have a non-zero L2 head but the hashes differ
+				// (if true then the enclave's L2 chain is non-canonical, it cannot produce batches)
+				enclaveChainConflict := enclaveL2Hash != hostL2Hash && enclaveL2Hash != (gethcommon.Hash{}) && hostL2Hash != (gethcommon.Hash{})
+				if activeSeq.IsEnclaveL2AheadOfHost() || enclaveChainConflict {
+					e.logger.Error("Active sequencer's L2 head conflicts with the host's L2 head",
+						"enclaveState", activeSeq.GetEnclaveState(), "hostL2Hash", hostL2Hash, "failureCount", failureCount)
+					// the active seq enclave is failing to feed new batches back to the host, if it continues we will try to promote a new enclave
+					failureCount++
+					if failureCount >= _maxFailuresBeforeFailover {
+						// the active sequencer is stuck ahead of the host's L2 head, we will try to promote a new one
+						e.tryPromoteNewSequencer()
+						failureCount = 0
+						continue
+					}
+				}
+
 				err = activeSeq.ProduceBatch()
 				if err != nil {
-					// todo: do we want to have a few failed attempts before looking to promote a new one?
-					e.logger.Error("Sequencer failed to produce batch", log.ErrKey, err)
-					// if the active sequencer fails, we will try to promote a new one
-					e.tryPromoteNewSequencer()
+					failureCount++
+					e.logger.Error("Sequencer failed to produce batch", log.ErrKey, err, "failureCount", failureCount)
+					if failureCount >= _maxFailuresBeforeFailover {
+						// the active sequencer is failing to produce batches, we will try to promote a new one
+						e.tryPromoteNewSequencer()
+						failureCount = 0
+					}
 					continue
 				}
+				// successfully produced a batch, reset failure count
+				failureCount = 0
 			}
 
 			// sanity check/clean up: make sure there are no other enclaves that think they are active sequencers
@@ -452,4 +485,20 @@ func (e *Service) getActiveSequencerGuardian() (*Guardian, error) {
 		}
 	}
 	return nil, errors.New("active sequencer not found in guardians")
+}
+
+// getHostL2HeadHash returns the hash of the latest batch in the host's L2 repository
+func (e *Service) getHostL2HeadHash() gethcommon.Hash {
+	latestSeqNo := e.sl.L2Repo().FetchLatestBatchSeqNo()
+	if latestSeqNo == nil || latestSeqNo.Cmp(big.NewInt(0)) <= 0 {
+		return gethcommon.Hash{} // No batch available
+	}
+
+	batch, err := e.sl.L2Repo().FetchBatchBySeqNo(context.Background(), latestSeqNo)
+	if err != nil {
+		e.logger.Debug("failed to fetch host's L2 head batch for hash comparison", log.ErrKey, err, "seqNo", latestSeqNo)
+		return gethcommon.Hash{}
+	}
+
+	return batch.Hash()
 }

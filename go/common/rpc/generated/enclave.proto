@@ -132,9 +132,10 @@ message StatusResponse {
   int32 statusCode = 1;
   bytes l1Head = 2; // hash for the L1 head block in enclave's view of the canonical chain
   bytes l2Head = 3; // seq number (big.Int) for the L2 head batch that the enclave has seen
-  bytes enclaveID = 4; // enclave ID derived from the public key
-  bool isActiveSequencer = 5;
-  SystemError systemError = 6;
+  bytes l2HeadHash = 4;
+  bytes enclaveID = 5; // enclave ID derived from the public key
+  bool isActiveSequencer = 6;
+  SystemError systemError = 7;
 }
 
 message MakeActiveRequest {}
