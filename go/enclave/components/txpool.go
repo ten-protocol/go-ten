@@ -238,9 +238,6 @@ func (t *TxPool) PendingTransactions(batchTime uint64) map[gethcommon.Address][]
 		OnlyPlainTxs: true,
 	})
 
-	allTxs := t.pool.Pending(gethtxpool.PendingFilter{})
-	t.logger.Info(fmt.Sprintf("[TXPOOL] Picked %d txs out of %d", len(txs), len(allTxs)))
-
 	// Filter out transactions that have "Time" greater than batchTime + MaxNegativeTxTimeDeltaMs
 	// this is required for serialising the transactiong together with their timestamp delta (which can't be negative).
 	maxDeltaSec := (common.MaxNegativeTxTimeDeltaMs / 1000) - 1
@@ -352,7 +349,13 @@ func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 	}
 
 	header := ch.Load()
-	header.GasLimit = ^uint64(0) // set to max uint64
+	// set to max uint64 - this is to skip the validation against the header gas limit
+	// as the internal geth logic does not factor in publishing gas cost and thus assumes everything
+	// is for execution, which means in practice there are edge cases where the tx costs more than the batch
+	// given a certain config values. Highly dependent on the minimumBaseFee we use for estimating and might not be
+	// hit at higher fees, but regardless its a pointless check as we also verify manually in validateTotalGas
+	// which uses an estimation that would block the tx if execution is above gas limit.
+	header.GasLimit = ^uint64(0)
 	if err := gethtxpool.ValidateTransaction(tx, header, sig, opts); err != nil {
 		return err
 	}

@@ -49,7 +49,7 @@ type EnclaveConfig struct {
 	// A json string that specifies the prefunded addresses at the genesis of the TEN network
 	TenGenesis             string
 	GasPaymentAddress      gethcommon.Address
-	BaseFee                *big.Int
+	MinBaseFee             *big.Int
 	GasBatchExecutionLimit uint64
 
 	// **Db configs
@@ -129,7 +129,7 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 
 		MinGasPrice:              tenCfg.Network.Gas.MinGasPrice,
 		GasPaymentAddress:        tenCfg.Network.Gas.PaymentAddress,
-		BaseFee:                  tenCfg.Network.Gas.BaseFee,
+		MinBaseFee:               tenCfg.Network.Gas.MinBaseFee,
 		GasBatchExecutionLimit:   tenCfg.Network.Gas.BatchExecutionLimit,
 		GasLocalExecutionCapFlag: tenCfg.Network.Gas.LocalExecutionCap,
 

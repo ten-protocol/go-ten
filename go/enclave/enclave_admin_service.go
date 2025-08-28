@@ -91,7 +91,7 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 		MaxRollupSize:     config.MaxRollupSize,
 		GasPaymentAddress: config.GasPaymentAddress,
 		BatchGasLimit:     config.GasBatchExecutionLimit,
-		BaseFee:           config.BaseFee,
+		BaseFee:           config.MinBaseFee,
 	}
 
 	sequencerService := nodetype.NewSequencer(blockProcessor, batchExecutor, registry, rollupProducer, rollupCompression, gethEncodingService, logger, chainConfig, enclaveKeyService, mempool, storage, dataCompressionService, seqSettings, contractRegistry.DARegistryLib(), config.L1ChainID)

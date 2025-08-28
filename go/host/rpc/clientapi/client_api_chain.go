@@ -17,12 +17,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-const (
-	// DefaultMinGasPrice is the default minimum gas price for TEN network (10 Gwei)
-	// This matches the value from go/config/defaults/0-base-config.yaml
-	DefaultMinGasPrice = 10000000 // 10 Gwei in wei
-)
-
 // ChainAPI exposes public chain data
 type ChainAPI struct {
 	host   host.Host
@@ -272,7 +266,7 @@ func (api *ChainAPI) calculateNextBaseFee(header *common.BatchHeader) *big.Int {
 	}
 
 	// Floor at minimum gas price
-	minGasPrice := big.NewInt(DefaultMinGasPrice)
+	minGasPrice := api.host.Config().MinBaseFee
 	if nextBaseFee.Cmp(minGasPrice) < 0 {
 		nextBaseFee = minGasPrice
 	}

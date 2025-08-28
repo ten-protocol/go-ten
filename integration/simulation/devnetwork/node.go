@@ -215,7 +215,7 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		DebugNamespaceEnabled:           true,
 		MaxBatchSize:                    1024 * 55,
 		MaxRollupSize:                   1024 * 128,
-		BaseFee:                         defaultCfg.BaseFee, // todo @siliev:: fix test transaction builders so this can be different
+		MinBaseFee:                      defaultCfg.MinBaseFee, // todo @siliev:: fix test transaction builders so this can be different
 		GasBatchExecutionLimit:          defaultCfg.GasBatchExecutionLimit,
 		GasLocalExecutionCapFlag:        defaultCfg.GasLocalExecutionCapFlag,
 		GasPaymentAddress:               defaultCfg.GasPaymentAddress,

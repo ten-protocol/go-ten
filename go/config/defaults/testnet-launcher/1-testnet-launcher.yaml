@@ -3,7 +3,7 @@
 network:
    GenesisJSON: "{}"
    gas:
-      minGasPrice: 999999
+      minGasPrice: 9999999
    sequencer:
       p2pAddress: sequencer-host:15000
       systemContractsUpgrader: 0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77
