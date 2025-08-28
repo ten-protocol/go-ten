@@ -21,7 +21,7 @@ import (
 )
 
 var (
-	_maxFailuresBeforeFailover = 5                   // number of consecutive failures before trying to failover to another sequencer
+	_maxFailuresBeforeFailover = 3                   // number of consecutive failures before trying to failover to another sequencer
 	_noActiveSequencer         = &common.EnclaveID{} // used rather than nil to indicate no active sequencer
 	_defaultBatchInterval      = 1 * time.Second     // used if batchInterval is not set in the config
 )
@@ -194,8 +194,7 @@ func (e *Service) managePeriodicBatches() {
 	if interval == 0 {
 		interval = _defaultBatchInterval
 	}
-	failureCount := 0 // count of consecutive failures to produce a batch, used to trigger a new active sequencer if needed
-	// we use ticks rather than sleeps to maintain batch production cadence
+	failureCount := 0 // count of consecutive failures to produce a batch, triggers a new active sequencer if not recovering
 	batchProductionTicker := time.NewTicker(interval)
 
 	for e.running.Load() {
