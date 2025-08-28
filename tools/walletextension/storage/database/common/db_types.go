@@ -15,10 +15,10 @@ import (
 var ErrUserNotFound = errors.New("user not found")
 
 type GWUserDB struct {
-	UserId      []byte                     `json:"userId"`
-	PrivateKey  []byte                     `json:"privateKey"`
-	Accounts    []GWAccountDB              `json:"accounts"`
-	SessionKeys map[string]*GWSessionKeyDB `json:"sessionKeys"` // map of session key address (hex string) to session key
+	UserId      []byte                             `json:"userId"`
+	PrivateKey  []byte                             `json:"privateKey"`
+	Accounts    []GWAccountDB                      `json:"accounts"`
+	SessionKeys map[common.Address]*GWSessionKeyDB `json:"sessionKeys"` // map of session key address to session key
 }
 
 type GWAccountDB struct {
@@ -53,7 +53,7 @@ func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
 	}
 
 	// Handle session keys
-	for addrStr, sessionKeyDB := range userDB.SessionKeys {
+	for address, sessionKeyDB := range userDB.SessionKeys {
 		ecdsaPrivateKey, err := crypto.ToECDSA(sessionKeyDB.PrivateKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse ECDSA private key: %w", err)
@@ -62,7 +62,6 @@ func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
 		// Convert ECDSA private key to ECIES private key
 		eciesPrivateKey := ecies.ImportECDSA(ecdsaPrivateKey)
 		acc := sessionKeyDB.Account
-		address := common.HexToAddress(addrStr)
 		user.SessionKeys[address] = &wecommon.GWSessionKey{
 			Account: &wecommon.GWAccount{
 				User:          user,

@@ -80,7 +80,7 @@ func (s *SqliteDB) AddUser(userID []byte, privateKey []byte) error {
 		UserId:      userID,
 		PrivateKey:  privateKey,
 		Accounts:    []dbcommon.GWAccountDB{},
-		SessionKeys: make(map[string]*dbcommon.GWSessionKeyDB),
+		SessionKeys: make(map[common.Address]*dbcommon.GWSessionKeyDB),
 	}
 
 	userJSON, err := json.Marshal(user)
@@ -151,11 +151,11 @@ func (s *SqliteDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 
 		// Initialize SessionKeys map if nil
 		if user.SessionKeys == nil {
-			user.SessionKeys = make(map[string]*dbcommon.GWSessionKeyDB)
+			user.SessionKeys = make(map[common.Address]*dbcommon.GWSessionKeyDB)
 		}
 
-		addressHex := key.Account.Address.Hex()
-		user.SessionKeys[addressHex] = &dbcommon.GWSessionKeyDB{
+		address := *key.Account.Address
+		user.SessionKeys[address] = &dbcommon.GWSessionKeyDB{
 			PrivateKey: crypto.FromECDSA(key.PrivateKey.ExportECDSA()),
 			Account: dbcommon.GWAccountDB{
 				AccountAddress: key.Account.Address.Bytes(),
@@ -178,12 +178,12 @@ func (s *SqliteDB) RemoveSessionKey(userID []byte, sessionKeyAddr []byte) error 
 			return fmt.Errorf("no session keys found for user")
 		}
 
-		addressHex := common.BytesToAddress(sessionKeyAddr).Hex()
-		if _, exists := user.SessionKeys[addressHex]; !exists {
-			return fmt.Errorf("session key not found: %s", addressHex)
+		address := common.BytesToAddress(sessionKeyAddr)
+		if _, exists := user.SessionKeys[address]; !exists {
+			return fmt.Errorf("session key not found: %s", address.Hex())
 		}
 
-		delete(user.SessionKeys, addressHex)
+		delete(user.SessionKeys, address)
 		return s.updateUser(dbTx, user)
 	})
 }

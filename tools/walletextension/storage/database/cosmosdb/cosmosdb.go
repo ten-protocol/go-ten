@@ -106,7 +106,7 @@ func (c *CosmosDB) AddUser(userID []byte, privateKey []byte) error {
 		UserId:      userID,
 		PrivateKey:  privateKey,
 		Accounts:    []dbcommon.GWAccountDB{},
-		SessionKeys: make(map[string]*dbcommon.GWSessionKeyDB),
+		SessionKeys: make(map[common.Address]*dbcommon.GWSessionKeyDB),
 	}
 	docJSON, err := c.createEncryptedDoc(user, keyString)
 	if err != nil {
@@ -142,11 +142,11 @@ func (c *CosmosDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 
 		// Initialize SessionKeys map if nil
 		if u.SessionKeys == nil {
-			u.SessionKeys = make(map[string]*dbcommon.GWSessionKeyDB)
+			u.SessionKeys = make(map[common.Address]*dbcommon.GWSessionKeyDB)
 		}
 
-		addressHex := key.Account.Address.Hex()
-		u.SessionKeys[addressHex] = &dbcommon.GWSessionKeyDB{
+		address := *key.Account.Address
+		u.SessionKeys[address] = &dbcommon.GWSessionKeyDB{
 			PrivateKey: crypto.FromECDSA(key.PrivateKey.ExportECDSA()),
 			Account: dbcommon.GWAccountDB{
 				AccountAddress: key.Account.Address.Bytes(),
@@ -166,12 +166,12 @@ func (c *CosmosDB) RemoveSessionKey(userID []byte, sessionKeyAddr []byte) error 
 			return fmt.Errorf("no session keys found for user")
 		}
 
-		addressHex := common.BytesToAddress(sessionKeyAddr).Hex()
-		if _, exists := u.SessionKeys[addressHex]; !exists {
-			return fmt.Errorf("session key not found: %s", addressHex)
+		address := common.BytesToAddress(sessionKeyAddr)
+		if _, exists := u.SessionKeys[address]; !exists {
+			return fmt.Errorf("session key not found: %s", address.Hex())
 		}
 
-		delete(u.SessionKeys, addressHex)
+		delete(u.SessionKeys, address)
 		return nil
 	})
 }
