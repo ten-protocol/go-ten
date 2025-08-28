@@ -8,7 +8,7 @@ export default function Header() {
     return (
         <header>
             <nav className="bg-[rgba(255,255,255,.01)] backdrop-blur-3xl text-white p-4 fixed z-30 w-screen border-b border-[rgba(255,255,255,4%)] top-0 left-0">
-                <div className="px-4 flex justify-between items-center relative">
+                <div className="md:px-4 flex justify-between items-center relative">
                     <Link href="/" className="text-xl font-bold">
                         <Image src="/assets/logo.svg" height={42} width={140} alt="TEN Protocol" />
                     </Link>
