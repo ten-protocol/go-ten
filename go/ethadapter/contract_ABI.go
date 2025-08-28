@@ -38,6 +38,7 @@ var (
 	RollupAddedEventName               = "RollupAdded"
 	NetworkContractAddressAddedName    = "NetworkContractAddressAdded"
 	AdditionalContractAddressAddedName = "AdditionalContractAddressAdded"
+	UpgradedEventName                  = "Upgraded"
 
 	CrossChainEventID                = MessageBusABI.Events[CrossChainEventName].ID
 	ValueTransferEventID             = MessageBusABI.Events[ValueTransferEventName].ID
@@ -49,4 +50,5 @@ var (
 	RollupAddedID                    = DataAvailabilityRegistryABI.Events[RollupAddedEventName].ID
 	NetworkContractAddressAddedID    = NetworkConfigABI.Events[NetworkContractAddressAddedName].ID
 	AdditionalContractAddressAddedID = NetworkConfigABI.Events[AdditionalContractAddressAddedName].ID
+	UpgradedEventID                  = NetworkConfigABI.Events[UpgradedEventName].ID
 )

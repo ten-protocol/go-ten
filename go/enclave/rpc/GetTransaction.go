@@ -57,7 +57,7 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 			builder.Status = NotAuthorised
 			return nil
 		}
-		builder.ReturnValue = newRPCTransaction(rec.Tx, rec.Receipt.BlockHash, rec.Receipt.BlockNumber.Uint64(), uint64(rec.Receipt.TransactionIndex), rpc.config.BaseFee, *rec.From)
+		builder.ReturnValue = newRPCTransaction(rec.Tx, rec.Receipt.BlockHash, rec.Receipt.BlockNumber.Uint64(), uint64(rec.Receipt.TransactionIndex), rpc.config.MinBaseFee, *rec.From)
 		return nil
 	}
 
@@ -80,7 +80,7 @@ func GetTransactionExecute(builder *CallBuilder[gethcommon.Hash, RpcTransaction]
 		return nil
 	}
 
-	builder.ReturnValue = newRPCTransaction(tx, blockHash, blockNumber, index, rpc.config.BaseFee, sender)
+	builder.ReturnValue = newRPCTransaction(tx, blockHash, blockNumber, index, rpc.config.MinBaseFee, sender)
 	return nil
 }
 

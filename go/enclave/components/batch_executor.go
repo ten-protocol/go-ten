@@ -60,6 +60,7 @@ type batchExecutor struct {
 	genesis                *genesis.Genesis
 	logger                 gethlog.Logger
 	gasOracle              gas.Oracle
+	gasPricer              *GasPricer
 	chainConfig            *params.ChainConfig
 	systemContracts        system.SystemContractCallbacks
 	entropyService         *crypto.EvmEntropyService
@@ -83,8 +84,12 @@ func NewBatchExecutor(
 	entropyService *crypto.EvmEntropyService,
 	mempool *TxPool,
 	dataCompressionService compression.DataCompressionService,
+	gasPricer *GasPricer,
 	logger gethlog.Logger,
 ) BatchExecutor {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	return &batchExecutor{
 		storage:                storage,
 		batchRegistry:          batchRegistry,
@@ -96,6 +101,7 @@ func NewBatchExecutor(
 		chainConfig:            chainConfig,
 		logger:                 logger,
 		gasOracle:              gasOracle,
+		gasPricer:              gasPricer,
 		batchGasLimit:          config.GasBatchExecutionLimit,
 		systemContracts:        systemContracts,
 		entropyService:         entropyService,
@@ -104,6 +110,11 @@ func NewBatchExecutor(
 		execMutex:              &sync.Mutex{},
 		lastExecutedBatch:      0,
 	}
+}
+
+// GetGasPricer returns the gas pricer for external access
+func (executor *batchExecutor) GetGasPricer() *GasPricer {
+	return executor.gasPricer
 }
 
 // ComputeBatch where the batch execution conventions are
@@ -235,6 +246,7 @@ func (executor *batchExecutor) verifyContext(ec *BatchExecutionContext) error {
 
 func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 	var err error
+	ec.BaseFee = executor.gasPricer.CalculateBlockBaseFeeAtHeight(ec.ctx, executor.chainConfig, common.ConvertBatchHeaderToHeader(ec.parentBatch), ec.l1block.Number.Uint64())
 	// Create a new batch based on the provided context
 	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator, ec.BatchGasLimit)
 	ec.stateDB, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
@@ -406,8 +418,24 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		if ltx == nil {
 			break
 		}
+		// Estimating the exeuction cost component of the tx to check against the gas pool
+		// by deducting the estimated publishing cost from the total gas available
+		gasCost, err := executor.gasOracle.EstimateL1StorageGasCost(ec.ctx, ltx.Tx, ec.l1block, ec.currentBatch.Header)
+		if err != nil {
+			return fmt.Errorf("unable to estimate l1 storage gas cost. Cause: %w", err)
+		}
+
+		// We need to calculate the gas for L1 publishing and remove it as the gas pool can easily run out
+		// if we include publishing costs.
+		gasForL1BigInt := big.NewInt(0).Div(gasCost, ec.BaseFee)
+		remainder := big.NewInt(0).Mod(gasCost, ec.BaseFee)
+		if remainder.Sign() > 0 {
+			gasForL1BigInt.Add(gasForL1BigInt, big.NewInt(1))
+		}
+		// We need to clone the estimation hacks.
+		gasForL1 := gasForL1BigInt.Mul(gasForL1BigInt, AdjustPublishingGas).Uint64()
 		// If we don't have enough space for the next transaction, skip the account.
-		if ec.GasPool.Gas() < ltx.Gas {
+		if ec.GasPool.Gas() < ltx.Gas-gasForL1 {
 			executor.logger.Trace("Not enough gas left for transaction", "hash", ltx.Hash, "left", ec.GasPool.Gas(), "needed", ltx.Gas)
 			mempoolTxs.Pop()
 			continue
@@ -416,7 +444,7 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		tx := ltx.Resolve()
 
 		// check the size limiter
-		err := sizeLimiter.AcceptTransaction(tx)
+		err = sizeLimiter.AcceptTransaction(tx)
 		if err != nil {
 			if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
 				executor.logger.Trace("Unable to accept transaction", log.TxKey, tx.Hash())

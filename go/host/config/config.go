@@ -1,6 +1,7 @@
 package config
 
 import (
+	"math/big"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -108,6 +109,8 @@ type HostConfig struct {
 	DebugNamespaceEnabled bool
 	// Whether p2p is enabled or not
 	IsInboundP2PDisabled bool
+
+	MinBaseFee *big.Int
 }
 
 func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
@@ -162,5 +165,7 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		MetricsEnabled:        tenCfg.Host.Debug.EnableMetrics,
 		MetricsHTTPPort:       tenCfg.Host.Debug.MetricsHTTPPort,
 		DebugNamespaceEnabled: tenCfg.Host.Debug.EnableDebugNamespace,
+
+		MinBaseFee: tenCfg.Network.Gas.MinBaseFee,
 	}
 }
