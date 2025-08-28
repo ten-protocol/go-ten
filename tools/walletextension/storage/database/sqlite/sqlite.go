@@ -164,8 +164,7 @@ func (s *SqliteDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 				Signature:      key.Account.Signature,
 				SignatureType:  int(key.Account.SignatureType),
 			},
-			CreatedAt:      now.Unix(),
-			LastFundReturn: now.Unix(), // Initialize to creation time for first 24h cycle
+			LastFundReturn: now.Unix(), // Initialize to creation time for first 24h cycle and expiry logic
 		}
 		return s.updateUser(dbTx, user)
 	})

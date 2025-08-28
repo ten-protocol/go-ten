@@ -10,8 +10,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
@@ -80,51 +80,59 @@ func (s *sessionKeyMaintenanceService) ProcessRecurringFundReturns(ctx context.C
 	// iterate through users more efficiently, possibly with pagination
 	// For now, we'll need a way to get all users from storage
 	// This would require extending the storage interface
-	
+
 	s.logger.Debug("Starting recurring fund return processing for all session keys")
-	
+
 	// TODO: Implement user iteration to check all session keys for recurring fund returns
 	// This requires extending the storage interface to iterate through users
-	
+	//
+	// Alternative approach: When we have access to a specific user's session keys,
+	// we can use shouldReturnFundsForSessionKey(lastFundReturn, now) to check if
+	// funds should be returned for each session key based on its LastFundReturn timestamp.
+
 	return nil
 }
 
 // processSessionKeyFundReturnsForUser handles recurring fund returns for a specific user
 func (s *sessionKeyMaintenanceService) processSessionKeyFundReturnsForUser(ctx context.Context, user *wecommon.GWUser) error {
-	now := time.Now().Unix()
-	
 	// Get user's first account (primary account to receive returned funds)
 	var primaryAccount *wecommon.GWAccount
 	for _, account := range user.Accounts {
 		primaryAccount = account
 		break // Take the first account
 	}
-	
+
 	if primaryAccount == nil {
 		return fmt.Errorf("user has no primary account to return funds to")
 	}
-	
+
 	// Check each session key for recurring fund return (every 24 hours)
 	for sessionKeyAddr, sessionKey := range user.SessionKeys {
 		// Check if 24 hours have passed since last fund return (recurring cycle)
-		if s.shouldReturnFunds(sessionKeyAddr, now) {
+		// Note: We need access to the session key's LastFundReturn timestamp from the database
+		// For now, we'll use a placeholder check - this should be implemented when we have
+		// access to the session key metadata from storage
+		// TODO: Replace this placeholder with actual timestamp check using shouldReturnFundsForSessionKey
+		// when we have access to the session key's LastFundReturn timestamp
+		if false { // Placeholder: should check if 24h have passed since last fund return
 			if err := s.returnSessionKeyFunds(ctx, sessionKey, primaryAccount, sessionKeyAddr); err != nil {
-				s.logger.Error("Failed to return funds for session key", 
+				s.logger.Error("Failed to return funds for session key",
 					"sessionKey", sessionKeyAddr.Hex(), "error", err)
 				continue
 			}
 		}
 	}
-	
+
 	return nil
 }
 
-// shouldReturnFunds checks if 24 hours have passed since last fund return
-func (s *sessionKeyMaintenanceService) shouldReturnFunds(sessionKeyAddr common.Address, now int64) bool {
-	// TODO: Query database for LastFundReturn timestamp and check if 24 hours have passed
-	// This requires extending the storage interface to access session key metadata
-	// For now, return false to prevent fund returns until properly implemented
-	return false
+// shouldReturnFundsForSessionKey checks if 24 hours have passed since last fund return for a specific session key
+// This function can be used when we have access to the session key's LastFundReturn timestamp
+func (s *sessionKeyMaintenanceService) shouldReturnFundsForSessionKey(lastFundReturn int64, now int64) bool {
+	// Check if 24 hours have passed since last fund return
+	// LastFundReturn serves as both creation time and last fund return time
+	timeSinceLastReturn := now - lastFundReturn
+	return timeSinceLastReturn >= int64(wecommon.ExpiryCheckInterval.Seconds())
 }
 
 // returnSessionKeyFunds transfers remaining ETH from session key back to primary account (recurring 24h cycle) and updates LastFundReturn
@@ -134,66 +142,67 @@ func (s *sessionKeyMaintenanceService) returnSessionKeyFunds(ctx context.Context
 	if err != nil {
 		return fmt.Errorf("failed to get session key balance: %w", err)
 	}
-	
+
 	// Convert threshold to wei (0.001 ETH = 1e15 wei)
 	thresholdWei := new(big.Int).Mul(big.NewInt(int64(wecommon.MinETHReturnThreshold*1000)), big.NewInt(1e15))
-	
+
 	// Skip if balance is below threshold
 	if balance.Cmp(thresholdWei) < 0 {
-		s.logger.Debug("Session key balance below threshold, skipping", 
+		s.logger.Debug("Session key balance below threshold, skipping",
 			"balance", balance.String(), "threshold", thresholdWei.String())
 		return nil
 	}
-	
+
 	// Estimate gas for transfer
 	gasLimit := uint64(21000) // Standard ETH transfer gas limit
 	gasPrice, err := s.getGasPrice(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get gas price: %w", err)
 	}
-	
+
 	gasCost := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimit)))
-	
+
 	// Calculate amount to transfer (balance - gas cost)
 	transferAmount := new(big.Int).Sub(balance, gasCost)
 	if transferAmount.Sign() <= 0 {
-		s.logger.Debug("Insufficient balance to cover gas fees", 
+		s.logger.Debug("Insufficient balance to cover gas fees",
 			"balance", balance.String(), "gasCost", gasCost.String())
 		return nil
 	}
-	
+
 	// Create and sign transfer transaction
 	nonce, err := s.getNonce(ctx, *sessionKey.Account.Address)
 	if err != nil {
 		return fmt.Errorf("failed to get nonce: %w", err)
 	}
-	
+
 	tx := types.NewTransaction(nonce, *primaryAccount.Address, transferAmount, gasLimit, gasPrice, nil)
-	
+
 	// Sign transaction with session key
 	signedTx, err := s.skManager.SignTx(ctx, sessionKey.Account.User, *sessionKey.Account.Address, tx)
 	if err != nil {
 		return fmt.Errorf("failed to sign transfer transaction: %w", err)
 	}
-	
+
 	// Submit transaction
 	if err := s.submitTransaction(ctx, signedTx); err != nil {
 		return fmt.Errorf("failed to submit transfer transaction: %w", err)
 	}
-	
-	s.logger.Info("Successfully submitted fund return transaction", 
-		"from", sessionKey.Account.Address.Hex(), 
-		"to", primaryAccount.Address.Hex(), 
+
+	s.logger.Info("Successfully submitted fund return transaction",
+		"from", sessionKey.Account.Address.Hex(),
+		"to", primaryAccount.Address.Hex(),
 		"amount", transferAmount.String(),
 		"txHash", signedTx.Hash().Hex())
-	
+
 	// Update LastFundReturn timestamp to start next 24-hour recurring cycle
+	// Note: LastFundReturn serves dual purpose - creation time for expiry logic and last fund return time
 	if err := s.updateLastFundReturn(sessionKeyAddr, time.Now().Unix()); err != nil {
-		s.logger.Error("Failed to update LastFundReturn timestamp", 
+		s.logger.Error("Failed to update LastFundReturn timestamp",
 			"sessionKey", sessionKeyAddr.Hex(), "error", err)
 		// Don't return error here - the fund transfer succeeded, next cycle will continue
 	}
-	
+
 	return nil
 }
 
@@ -261,10 +270,11 @@ func (s *sessionKeyMaintenanceService) submitTransaction(ctx context.Context, tx
 }
 
 // updateLastFundReturn updates the LastFundReturn timestamp to start the next recurring 24-hour cycle
+// Note: LastFundReturn serves dual purpose - creation time for expiry logic and last fund return time
 func (s *sessionKeyMaintenanceService) updateLastFundReturn(sessionKeyAddr common.Address, timestamp int64) error {
 	// TODO: Extend storage interface to update session key metadata
 	// This update starts the next 24-hour recurring fund return cycle
-	s.logger.Debug("Would update LastFundReturn for next recurring cycle", 
+	s.logger.Debug("Would update LastFundReturn for next recurring cycle",
 		"sessionKey", sessionKeyAddr.Hex(), "nextCycleStartsAt", timestamp)
 	return nil
 }

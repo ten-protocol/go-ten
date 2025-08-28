@@ -31,8 +31,7 @@ type GWAccountDB struct {
 type GWSessionKeyDB struct {
 	PrivateKey     []byte      `json:"privateKey"`
 	Account        GWAccountDB `json:"account"`
-	CreatedAt      int64       `json:"createdAt"`      // Unix timestamp when session key was created
-	LastFundReturn int64       `json:"lastFundReturn"` // Unix timestamp when funds were last returned (for recurring 24h returns)
+	LastFundReturn int64       `json:"lastFundReturn"` // Unix timestamp when funds were last returned (also serves as creation time for expiry logic)
 }
 
 func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
