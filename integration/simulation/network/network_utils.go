@@ -80,6 +80,7 @@ func createInMemTenNode(
 		IsInboundP2PDisabled: incomingP2PDisabled,
 		L1BlockTime:          l1BlockTime,
 		UseInMemoryDB:        true,
+		MinBaseFee:           big.NewInt(1),
 	}
 
 	contracts := contractRegistryLib.GetContractAddresses()
