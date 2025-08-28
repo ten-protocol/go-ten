@@ -1,0 +1,90 @@
+name: '[M] Multisig Upgrade L1 Contracts'
+run-name: '[M] Multisig Upgrade L1 Contracts ( ${{ github.event.inputs.testnet_type }} )'
+on:
+  workflow_dispatch:
+    inputs:
+      testnet_type:
+        description: 'Testnet Type'
+        required: true
+        default: 'dev-testnet'
+        type: choice
+        options:
+          - 'dev-testnet'
+          - 'uat-testnet'
+          - 'sepolia-testnet'
+          - 'mainnet'
+      confirmation:
+        description: 'Type "confirm" if upgrading sepolia or mainnet'
+        required: false
+        type: string
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+
+    steps:
+      - name: 'Check confirmation'
+        run: |
+          if [[ ("${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" || "${{ github.event.inputs.testnet_type }}" == "mainnet") && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+            echo "Confirmation field must say 'confirm' to upgrade sepolia or mainnet to avoid accidental upgrades"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.5
+
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Build and push hardhat deployer image'
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
+          docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+
+      - name: 'Generate L1 upgrade transactions'
+        id: upgradeContracts
+        shell: bash
+        env:
+          DOCKER_API_VERSION: "1.45"
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          # Extract the environment prefix from the input
+          TESTNET_TYPE_RAW="${{ github.event.inputs.testnet_type }}"
+          if [[ "$TESTNET_TYPE_RAW" == "mainnet" ]]; then
+            TESTNET_TYPE="mainnet"
+          else
+            # Strip the "-testnet" suffix from testnet environments
+            TESTNET_TYPE=${TESTNET_TYPE_RAW%-testnet}
+          fi
+  
+          # Run upgrade script
+          go run ./testnet/launcher/directupgrade/cmd \
+          -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
+          -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
+          -network_config_addr=${{ vars.NETWORK_CONFIG_ADDR }} \
+          -multisig_addr=${{ vars.MULTISIG_ADDR }} \
+          -proxy_admin_addr=${{ vars.PROXY_ADMIN_ADDR }}
+
+      - name: 'Save upgrade container logs'
+        run: |
+          docker logs `docker ps -aqf "name=direct-upgrade"` > direct-upgrade.out 2>&1
+
+      - name: 'Upload upgrade container logs'
+        uses: actions/upload-artifact@v4
+        with:
+          name: direct-upgrade
+          path: |
+            direct-upgrade.out
+          retention-days: 7 

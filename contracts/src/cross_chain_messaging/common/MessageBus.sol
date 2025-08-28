@@ -1,21 +1,23 @@
 // SPDX-License-Identifier: Apache 2
 pragma solidity >=0.7.0 <0.9.0;
 
+import "../../common/PausableWithRoles.sol";
 import "../../common/Structs.sol";
-import "../../system/contracts/Fees.sol";
 
+import "../../common/UnrenouncableOwnable2Step.sol";
+import "../../system/contracts/Fees.sol";
 import "../../system/interfaces/IFees.sol";
 import "./IMessageBus.sol";
 import "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "../../common/UnrenouncableOwnable2Step.sol";
 
 /**
  * @title MessageBus
  * @dev Implementation of the IMessageBus interface for cross-layer message handling.
  * Manages message publishing, verification, and value transfers between L1 and L2.
  */
-contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
+contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step, PausableWithRoles {
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -23,17 +25,17 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
 
     /**
      * @dev Initializes the contract with an owner and fees contract
-     * @param caller The address to set as the owner
+     * @param owner The address to set as the owner
      * @param feesAddress The address of the fees contract
      */
-    function initialize(address caller, address withdrawal, address feesAddress) public virtual initializer {
+    function initialize(address owner, address withdrawal, address feesAddress) public virtual initializer {
         require(feesAddress != address(0), "Fees address cannot be 0x0");
-        require(caller != address(0), "Caller cannot be 0x0");
-        __UnrenouncableOwnable2Step_init(caller);  // Initialize UnrenouncableOwnable2Step
+        require(owner != address(0), "Caller cannot be 0x0");
+        __UnrenouncableOwnable2Step_init(owner);  // Initialize UnrenouncableOwnable2Step
+        __PausableWithRoles_init(owner);
         fees = IFees(feesAddress);
     }
 
-    
     /**
      * @dev Modifier to restrict access to owner or self
      * Since this contract exists on L2, when messages are added from L1,
@@ -90,7 +92,7 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
         uint32 topic,
         bytes calldata payload,
         uint8 consistencyLevel
-    ) external payable override returns (uint64 sequence) {
+    ) external payable override whenNotPaused returns (uint64 sequence) {
         if (address(fees) != address(0)) { // No fee required for L1 to L2 messages.
             uint256 fee = getPublishFee();
             require(msg.value >= fee, "Insufficient funds to publish message");
@@ -150,7 +152,7 @@ contract MessageBus is IMessageBus, Initializable, UnrenouncableOwnable2Step {
     function storeCrossChainMessage(
         Structs.CrossChainMessage calldata crossChainMessage,
         uint256 finalAfterTimestamp
-    ) external override ownerOrSelf {
+    ) external override ownerOrSelf whenNotPaused {
         //Consider the message as verified after this period. Useful for having a challenge period.
         uint256 finalAtTimestamp = block.timestamp + finalAfterTimestamp;
         bytes32 msgHash = keccak256(abi.encode(crossChainMessage));

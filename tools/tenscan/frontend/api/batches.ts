@@ -56,3 +56,12 @@ export const fetchBatchTransactions = async (
     searchParams: options,
   });
 };
+
+export const fetchBatchBySequence = async (
+  sequence: string
+): Promise<ResponseDataInterface<Batch>> => {
+  return await httpRequest<ResponseDataInterface<Batch>>({
+    method: "get",
+    url: pathToUrl(apiRoutes.getBatchBySequence, { seq: sequence }),
+  });
+};

@@ -18,7 +18,7 @@ export const SWITCHED_CODE = 4902;
 export const tokenHexLength = 42;
 
 export const tenGatewayVersion = 'v1';
-export const tenChainIDDecimal = 443;
+export const tenChainIDDecimal = parseInt(process.env.NEXT_PUBLIC_CHAIN_ID || '443', 10);
 
 export const environment = process.env.NEXT_PUBLIC_ENVIRONMENT;
 

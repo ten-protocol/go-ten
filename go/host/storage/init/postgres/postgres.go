@@ -81,10 +81,9 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 	return db, nil
 }
 
-// registerPanicOnConnectionRefusedDriver registers the custom driver
 func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
-	// we need the actual driver name so sqlx can replace queries with the correct placeholder
-	driverName := "postgres"
+	driverName := "pg-panic-on-unexpected-err"
+
 	sql.Register(driverName,
 		storage.NewPanicOnDBErrorDriver(
 			&pq.Driver{},
@@ -93,5 +92,10 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 				return strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "shutting down")
 			}),
 	)
+
+	// tell sqlx this driver uses PostgreSQL syntax ($1, $2, $3)
+	sqlx.BindDriver(driverName, sqlx.DOLLAR)
+
+	logger.Info("Registered custom PostgreSQL driver with panic handling", "driver_name", driverName)
 	return driverName
 }
