@@ -77,6 +77,7 @@ func (s *RPCServer) Status(ctx context.Context, _ *generated.StatusRequest) (*ge
 		StatusCode:        int32(status.StatusCode),
 		L1Head:            status.L1Head.Bytes(),
 		L2Head:            l2Head,
+		L2HeadHash:        status.L2HeadHash.Bytes(),
 		EnclaveID:         status.EnclaveID.Bytes(),
 		IsActiveSequencer: status.IsActiveSequencer,
 		SystemError:       toRPCError(sysError),
