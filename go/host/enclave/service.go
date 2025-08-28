@@ -208,6 +208,13 @@ func (e *Service) managePeriodicBatches() {
 				continue
 			}
 
+			/*
+			 * We perform some checks before asking the active sequencer to produce a batch:
+			 * - Is the active sequencer in sync with L1 (so it can reference the latest L1 block in the batch)
+			 * - Does the active sequencer's L2 head agree with the host's L2 head (the host's head has been broadcast to the network, so it is canonical)
+			 *
+			 * Note: we don't check if the active sequencer is behind the host's L2 head, it is the active sequencer and that is checked at promotion time
+			 */
 			if activeSeq.InSyncWithL1() {
 				// Check if the L2 head hashes match between enclave and host
 				enclaveL2Hash := activeSeq.GetEnclaveState().GetEnclaveL2HeadHash()
