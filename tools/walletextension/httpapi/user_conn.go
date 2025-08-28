@@ -14,6 +14,7 @@ type UserConn interface {
 	ReadRequest() ([]byte, error)
 	ReadRequestParams() map[string]string
 	WriteResponse(msg []byte) error
+	SetCookie(cookie *http.Cookie) error
 	SupportsSubscriptions() bool
 	IsClosed() bool
 	GetHTTPRequest() *http.Request
@@ -60,6 +61,11 @@ func (h *userConnHTTP) ReadRequestParams() map[string]string {
 
 func (h *userConnHTTP) GetHTTPRequest() *http.Request {
 	return h.req
+}
+
+func (h *userConnHTTP) SetCookie(cookie *http.Cookie) error {
+	http.SetCookie(h.resp, cookie)
+	return nil
 }
 
 func getQueryParams(query url.Values) map[string]string {

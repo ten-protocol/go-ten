@@ -2,15 +2,17 @@ package postgres
 
 import (
 	"database/sql"
+	"embed"
 	"fmt"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
+	"github.com/ten-protocol/go-ten/go/common/storage/migration"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/lib/pq"
-
+	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	_ "github.com/lib/pq"
@@ -19,9 +21,13 @@ import (
 const (
 	defaultDatabase  = "postgres"
 	maxDBConnections = 100
+	initFile         = "001_init.sql"
 )
 
-func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Logger) (*sql.DB, error) {
+//go:embed *.sql
+var sqlFiles embed.FS
+
+func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Logger) (*sqlx.DB, error) {
 	driverName := registerPanicOnConnectionRefusedDriver(logger)
 	if baseURL == "" {
 		return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
@@ -30,7 +36,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 
 	dbName = strings.ToLower(dbName)
 
-	db, err := sql.Open(driverName, dbURL)
+	db, err := sqlx.Open(driverName, dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL server: %v", err)
 	}
@@ -51,7 +57,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 
 	dbURL = fmt.Sprintf("%s%s", baseURL, dbName)
 
-	db, err = sql.Open("postgres", dbURL)
+	db, err = sqlx.Open("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
@@ -60,22 +66,24 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 	db.SetConnMaxLifetime(30 * time.Minute)
 	db.SetConnMaxIdleTime(5 * time.Minute)
 
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return nil, fmt.Errorf("failed to get current directory")
+	// initialise the database with the initial SQL file
+	err = migration.InitialiseDB(db, sqlFiles, initFile)
+	if err != nil {
+		return nil, err
 	}
-	migrationsDir := filepath.Dir(filename)
 
-	if err = storage.ApplyMigrations(db, migrationsDir); err != nil {
+	// apply any additional migrations
+	err = migration.ApplyMigrations(db, sqlFiles, logger.New(log.CmpKey, "DB_MIGRATION"))
+	if err != nil {
 		return nil, err
 	}
 
 	return db, nil
 }
 
-// registerPanicOnConnectionRefusedDriver registers the custom driver
 func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 	driverName := "pg-panic-on-unexpected-err"
+
 	sql.Register(driverName,
 		storage.NewPanicOnDBErrorDriver(
 			&pq.Driver{},
@@ -84,5 +92,10 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 				return strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "shutting down")
 			}),
 	)
+
+	// tell sqlx this driver uses PostgreSQL syntax ($1, $2, $3)
+	sqlx.BindDriver(driverName, sqlx.DOLLAR)
+
+	logger.Info("Registered custom PostgreSQL driver with panic handling", "driver_name", driverName)
 	return driverName
 }

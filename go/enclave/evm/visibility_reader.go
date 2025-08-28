@@ -64,7 +64,12 @@ func (v *contractVisibilityReader) readVisibilityConfig(evm *vm.EVM, contractAdd
 	// only check the config for non-transparent contracts
 	for i := range visibilityRules.EventLogConfigs {
 		logConfig := visibilityRules.EventLogConfigs[i]
-		cfg.EventConfigs[logConfig.EventSignature] = eventCfg(logConfig)
+		eventConfig := eventCfg(logConfig)
+		valErr := eventConfig.Validate()
+		if valErr == nil {
+			// ignore invalid configs
+			cfg.EventConfigs[logConfig.EventSignature] = eventConfig
+		}
 	}
 
 	return cfg, nil

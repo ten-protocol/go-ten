@@ -66,7 +66,7 @@ export function BatchHashDetailsComponent({
     <div className="space-y-8">
       <KeyValueList>
         <KeyValueItem
-          label="Batch Height"
+          label="Height"
           value={
             <Link
               href={pathToUrl(pageLinks.batchByHeight, {
@@ -75,6 +75,19 @@ export function BatchHashDetailsComponent({
               className="text-primary"
             >
               {"#" + Number(batchDetails?.header?.number)}
+            </Link>
+          }
+        />
+        <KeyValueItem
+          label="Sequence"
+          value={
+            <Link
+              href={pathToUrl(pageLinks.batchBySequence, {
+                sequence: +batchDetails?.header?.sequencerOrderNo,
+              })}
+              className="text-primary"
+            >
+              {"#" + Number(batchDetails?.header?.sequencerOrderNo.toString())}
             </Link>
           }
         />
@@ -249,5 +262,5 @@ export function BatchHashDetailsComponent({
         />
       </KeyValueList>
     </div>
-  );
+  )
 }

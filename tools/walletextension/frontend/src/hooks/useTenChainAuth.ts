@@ -5,12 +5,12 @@ import { Address, getAddress } from 'viem';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { generateEIP712 } from '@/lib/eip712';
 import { useUiStore } from '@/stores/ui.store';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTenToken } from '@/contexts/TenTokenContext';
 
 export function useTenChainAuth(walletAddress?: Address) {
     const authEvents = useUiStore((state) => state.authEvents);
     const [address, setAddress] = useState<Address | undefined>(walletAddress);
-    const [tenToken] = useLocalStorage<string | null>('ten_token', null);
+    const { token: tenToken, loading: tenTokenLoading } = useTenToken();
     const {
         data: signature,
         signTypedData,
@@ -24,9 +24,12 @@ export function useTenChainAuth(walletAddress?: Address) {
         error: beAuthCheckError,
         refetch: beAuthCheckRefetch,
     } = useQuery({
-        queryKey: [`beAuthCheck`, address, signature, authEvents],
-        queryFn: () => accountIsAuthenticated(tenToken ?? '', address ?? ''),
-        enabled: !!address,
+        queryKey: [`beAuthCheck`, address, signature, authEvents, tenToken],
+        queryFn: () => {
+            console.log('[useTenChainAuth] beAuthCheck queryFn - tenToken:', tenToken, 'address:', address);
+            return accountIsAuthenticated(tenToken || '', address ?? '');
+        },
+        enabled: !!address && !!tenToken && !tenTokenLoading,
     });
 
     const authenticationMutation = useMutation({
@@ -36,30 +39,43 @@ export function useTenChainAuth(walletAddress?: Address) {
     });
 
     const getSignature = async () => {
-        if (!tenToken) return null;
+        console.log('[useTenChainAuth] getSignature called - tenToken value:', tenToken, 'tenTokenLoading:', tenTokenLoading, 'type:', typeof tenToken);
+        
+        if (!tenToken) {
+            console.log('[useTenChainAuth] No tenToken available for signing - tenToken is:', tenToken);
+            return null;
+        }
 
         const tokenValue = tenToken.startsWith('0x') ? tenToken : '0x' + tenToken;
+        console.log('[useTenChainAuth] Getting signature for token:', tokenValue);
 
         try {
             const checksummedAddress = getAddress(tokenValue);
             signTypedData(generateEIP712(checksummedAddress));
         } catch (err) {
+            console.log('[useTenChainAuth] Error getting signature:', err);
             throw err;
         }
     };
 
     const authenticateWalletWithBE = async (signature: string) => {
-        if (!tenToken || !address) return null;
+        if (!tenToken || !address) {
+            console.log('[useTenChainAuth] Missing tenToken or address for authentication');
+            return null;
+        }
 
+        console.log('[useTenChainAuth] Authenticating wallet with backend');
         const response = await authenticateUser(tenToken, {
             signature,
             address,
         });
 
         if (response === 'internal error') {
+            console.log('[useTenChainAuth] Authentication failed - internal error');
             setIsLoading(false);
             throw Error('Unable to authenticate wallet with the network.');
         } else if (response === 'success') {
+            console.log('[useTenChainAuth] Authentication successful');
             await beAuthCheckRefetch();
             setIsLoading(false);
         }
@@ -88,15 +104,17 @@ export function useTenChainAuth(walletAddress?: Address) {
 
     const revokeAccount = async () => {
         if (!tenToken) {
+            console.log('[useTenChainAuth] Ten token not found for revocation');
             throw Error('Ten token not found.');
         }
 
+        console.log('[useTenChainAuth] Revoking account');
         await revokeAccountsApi(tenToken);
     };
 
     return {
         isAuthenticated: !!beAuthCheck?.status,
-        isAuthenticatedLoading: isLoading,
+        isAuthenticatedLoading: isLoading || tenTokenLoading,
         authenticateAccount,
         revokeAccount,
         beAuthCheckError,

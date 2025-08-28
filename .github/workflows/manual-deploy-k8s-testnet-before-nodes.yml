@@ -119,6 +119,7 @@ jobs:
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
           DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
           DEPLOY_L1_INITIALSEQADDRESS: ${{ vars.ACCOUNT_ADDR_NODE_0 }}
+          DEPLOY_L1_ETHERSCANAPIKEY: ${{ secrets.ETHERSCAN_API_KEY }}
         run: |
           # Run deployer and capture output
           go run ./testnet/launcher/l1contractdeployer/cmd

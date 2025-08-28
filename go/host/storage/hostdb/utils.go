@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 
@@ -17,7 +19,8 @@ import (
 const batchNumber = 777
 
 func CreateSQLiteDB(t *testing.T) (HostDB, error) {
-	hostDB, err := sqlite.CreateTemporarySQLiteHostDB("", "mode=memory")
+	logger := log.New(log.HostCmp, int(gethlog.LvlInfo), log.SysOut)
+	hostDB, err := sqlite.CreateTemporarySQLiteHostDB("", "mode=memory", logger)
 	if err != nil {
 		t.Fatalf("unable to create temp sql db: %s", err)
 	}

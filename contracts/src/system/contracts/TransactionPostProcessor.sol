@@ -3,8 +3,8 @@ pragma solidity ^0.8.28;
 
 import "../../lib/Transaction.sol";
 import "../interfaces/IOnBlockEndCallback.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /**
  * @title TransactionPostProcessor
@@ -18,7 +18,7 @@ import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
  * The contract is designed to be extensible through callbacks while maintaining transparency about
  * what post-processing operations are performed.
  */
-contract TransactionPostProcessor is Initializable, AccessControl{
+contract TransactionPostProcessor is Initializable, AccessControlUpgradeable{
     using Structs for Structs.Transaction;
 
     bytes32 public constant EOA_ADMIN_ROLE = keccak256("EOA_ADMIN_ROLE");
@@ -40,6 +40,7 @@ contract TransactionPostProcessor is Initializable, AccessControl{
     IOnBlockEndCallback[] public onBlockEndListeners;
 
     function initialize(address eoaAdmin) public initializer {
+        __AccessControl_init();
         _grantRole(DEFAULT_ADMIN_ROLE, eoaAdmin);
         _grantRole(EOA_ADMIN_ROLE, eoaAdmin);
     }

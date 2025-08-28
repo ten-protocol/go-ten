@@ -79,6 +79,9 @@ func (t *TenConfig) PrettyPrint() {
 		if configCopy.Deployment.L2Deploy.DeployerPK != "" {
 			configCopy.Deployment.L2Deploy.DeployerPK = _redactedString
 		}
+		if configCopy.Deployment.L1Deploy.EtherscanAPIKey != "" {
+			configCopy.Deployment.L1Deploy.EtherscanAPIKey = _redactedString
+		}
 	}
 
 	output, err := yaml.Marshal(&configCopy)
