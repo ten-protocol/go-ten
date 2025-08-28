@@ -43,23 +43,3 @@ func (api *SessionKeyAPI) Delete(ctx context.Context, sessionKeyAddr string) (bo
 	addr := common.HexToAddress(sessionKeyAddr)
 	return api.we.SKManager.DeleteSessionKey(user, addr)
 }
-
-// Get returns information about a specific session key
-func (api *SessionKeyAPI) Get(ctx context.Context, sessionKeyAddr string) (string, error) {
-	user, err := extractUserForRequest(ctx, api.we)
-	if err != nil {
-		return "", err
-	}
-
-	if !common.IsHexAddress(sessionKeyAddr) {
-		return "", fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
-	}
-
-	addr := common.HexToAddress(sessionKeyAddr)
-	sessionKey, err := api.we.SKManager.GetSessionKey(user, addr)
-	if err != nil {
-		return "", err
-	}
-
-	return sessionKey.Account.Address.Hex(), nil
-}

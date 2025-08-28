@@ -159,19 +159,18 @@ func (c *CosmosDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 }
 
 // Removes a specific session key for the user, with retries on ETag mismatch
-func (c *CosmosDB) RemoveSessionKey(userID []byte, sessionKeyAddr []byte) error {
+func (c *CosmosDB) RemoveSessionKey(userID []byte, sessionKeyAddr *common.Address) error {
 	ctx := context.Background()
 	return c.updateUserWithRetries(ctx, userID, func(u *dbcommon.GWUserDB) error {
 		if u.SessionKeys == nil {
 			return fmt.Errorf("no session keys found for user")
 		}
 
-		address := common.BytesToAddress(sessionKeyAddr)
-		if _, exists := u.SessionKeys[address]; !exists {
-			return fmt.Errorf("session key not found: %s", address.Hex())
+		if _, exists := u.SessionKeys[*sessionKeyAddr]; !exists {
+			return fmt.Errorf("session key not found: %s", sessionKeyAddr.Hex())
 		}
 
-		delete(u.SessionKeys, address)
+		delete(u.SessionKeys, *sessionKeyAddr)
 		return nil
 	})
 }

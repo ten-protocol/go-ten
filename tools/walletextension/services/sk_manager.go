@@ -71,7 +71,7 @@ func (m *skManager) DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcom
 		return false, fmt.Errorf("session key not found: %s", sessionKeyAddr.Hex())
 	}
 
-	err := m.storage.RemoveSessionKey(user.ID, sessionKeyAddr.Bytes())
+	err := m.storage.RemoveSessionKey(user.ID, &sessionKeyAddr)
 	if err != nil {
 		return false, err
 	}

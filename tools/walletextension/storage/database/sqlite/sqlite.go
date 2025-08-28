@@ -167,7 +167,7 @@ func (s *SqliteDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 	})
 }
 
-func (s *SqliteDB) RemoveSessionKey(userID []byte, sessionKeyAddr []byte) error {
+func (s *SqliteDB) RemoveSessionKey(userID []byte, sessionKeyAddr *common.Address) error {
 	return s.withTx(func(dbTx *sql.Tx) error {
 		user, err := s.readUser(dbTx, userID)
 		if err != nil {
@@ -178,12 +178,11 @@ func (s *SqliteDB) RemoveSessionKey(userID []byte, sessionKeyAddr []byte) error 
 			return fmt.Errorf("no session keys found for user")
 		}
 
-		address := common.BytesToAddress(sessionKeyAddr)
-		if _, exists := user.SessionKeys[address]; !exists {
-			return fmt.Errorf("session key not found: %s", address.Hex())
+		if _, exists := user.SessionKeys[*sessionKeyAddr]; !exists {
+			return fmt.Errorf("session key not found: %s", sessionKeyAddr.Hex())
 		}
 
-		delete(user.SessionKeys, address)
+		delete(user.SessionKeys, *sessionKeyAddr)
 		return s.updateUser(dbTx, user)
 	})
 }
