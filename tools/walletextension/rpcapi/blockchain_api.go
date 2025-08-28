@@ -173,8 +173,8 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 }
 
 // GetStorageAt - This method signature matches eth_getStorageAt, but we use the address field to specify the custom query method,
-// the hex-encoded position field to specify the parameters json, and nil for the block number.
-func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.Address, params string, _ rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+// the hex-encoded position field to specify the parameters json, and the block number for session key address in custom queries.
+func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.Address, params string, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
 		return nil, err
@@ -204,13 +204,25 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return sk.Account.Address.Bytes(), nil
 	case common.DeleteSessionKeyCQMethod:
-		// Extract session key address from params
-		sessionKeyAddr, err := extractAddressFromParams(params, "sessionKeyAddr")
-		if err != nil {
-			return nil, fmt.Errorf("unable to extract session key address: %w", err)
+		// Extract session key address from the third parameter (blockNrOrHash)
+		sessionKeyAddr := ""
+		if blockNrOrHash.BlockNumber != nil {
+			sessionKeyAddr = blockNrOrHash.BlockNumber.String()
+		} else if blockNrOrHash.BlockHash != nil {
+			sessionKeyAddr = blockNrOrHash.BlockHash.Hex()
 		}
 
-		success, err := api.we.SKManager.DeleteSessionKey(user, *sessionKeyAddr)
+		if sessionKeyAddr == "" {
+			return gethcommon.Hash{}.Bytes(), fmt.Errorf("session key address is required")
+		}
+
+		if !gethcommon.IsHexAddress(sessionKeyAddr) {
+			return gethcommon.Hash{}.Bytes(), fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
+		}
+
+		addr := gethcommon.HexToAddress(sessionKeyAddr)
+
+		success, err := api.we.SKManager.DeleteSessionKey(user, addr)
 		if err != nil {
 			return nil, fmt.Errorf("unable to delete session key: %w", err)
 		}
@@ -220,9 +232,58 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return []byte("false"), nil
 	case common.SendUnsignedTxCQMethod:
-		// Note: This method needs to be updated to accept session key address
-		// For now, returning an error to indicate the API change
-		return gethcommon.Hash{}.Bytes(), fmt.Errorf("send unsigned transaction now requires session key address parameter")
+		// Extract session key address from the third parameter (blockNrOrHash)
+		sessionKeyAddr := ""
+		if blockNrOrHash.BlockNumber != nil {
+			sessionKeyAddr = blockNrOrHash.BlockNumber.String()
+		} else if blockNrOrHash.BlockHash != nil {
+			sessionKeyAddr = blockNrOrHash.BlockHash.Hex()
+		}
+
+		if sessionKeyAddr == "" {
+			return gethcommon.Hash{}.Bytes(), fmt.Errorf("session key address is required")
+		}
+
+		if !gethcommon.IsHexAddress(sessionKeyAddr) {
+			return gethcommon.Hash{}.Bytes(), fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
+		}
+
+		addr := gethcommon.HexToAddress(sessionKeyAddr)
+
+		// Verify that the session key exists for this user
+		if user.SessionKeys == nil || user.SessionKeys[addr] == nil {
+			return gethcommon.Hash{}.Bytes(), fmt.Errorf("please create a session key before sending unsigned transactions")
+		}
+
+		// Decode base64 params and unmarshal transaction
+		input, err := base64.StdEncoding.DecodeString(params)
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode base64 params: %w", err)
+		}
+
+		tx := new(types.Transaction)
+		if err = tx.UnmarshalBinary(input); err != nil {
+			return gethcommon.Hash{}.Bytes(), err
+		}
+
+		// Sign the transaction with the specified session key
+		signedTx, err := api.we.SKManager.SignTx(ctx, user, addr, tx)
+		if err != nil {
+			return gethcommon.Hash{}.Bytes(), err
+		}
+
+		signedTxBlob, err := signedTx.MarshalBinary()
+		if err != nil {
+			return gethcommon.Hash{}.Bytes(), err
+		}
+
+		hash, err := SendRawTx(ctx, api.we, signedTxBlob)
+		if err != nil {
+			return gethcommon.Hash{}.Bytes(), err
+		}
+
+		return hash.Bytes(), nil
+
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
 		if err != nil {
