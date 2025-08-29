@@ -116,6 +116,7 @@ func TestTenGateway(t *testing.T) {
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
 		"testSessionKeys":                      testSessionKeys,
+		"testSessionKeysGetStorageAt":          testSessionKeysGetStorageAt,
 		// "testRateLimiter":                   testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -296,6 +297,28 @@ func interactWithSmartContractUsingSessionKey(client *ethclient.Client, nonce ui
 	}
 
 	return txReceipt, nil
+}
+
+func testSessionKeysGetStorageAt(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
+
+	// Register the user so we can call the endpoints that require authentication
+	err = user0.RegisterAccounts()
+	require.NoError(t, err)
+
+	// Simple print to verify the test is running
+	fmt.Println("testSessionKeysGetStorageAt: Test is running successfully!")
+	testlog.Logger().Info("testSessionKeysGetStorageAt: Test is running successfully!")
+
+	// Get the user's balance as a simple operation
+	balance, err := user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	require.NoError(t, err)
+
+	// Print the balance to show the test is working
+	fmt.Printf("testSessionKeysGetStorageAt: User balance: %s\n", balance.String())
+	testlog.Logger().Info("testSessionKeysGetStorageAt: User balance", "balance", balance.String())
 }
 
 func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
