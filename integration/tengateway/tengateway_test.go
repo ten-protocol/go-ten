@@ -319,6 +319,16 @@ func testSessionKeysGetStorageAt(t *testing.T, _ int, httpURL, wsURL string, w w
 	// Print the balance to show the test is working
 	fmt.Printf("testSessionKeysGetStorageAt: User balance: %s\n", balance.String())
 	testlog.Logger().Info("testSessionKeysGetStorageAt: User balance", "balance", balance.String())
+
+	// Create session key using getStorageAt with special CreateSessionKeyCQMethod address
+	createSessionKeyAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000003")
+	response, err := user0.HTTPClient.StorageAt(context.Background(), createSessionKeyAddr, gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+
+	// Print the getStorageAt response for session key creation
+	fmt.Printf("testSessionKeysGetStorageAt: getStorageAt response: %s\n", gethcommon.Bytes2Hex(response))
+	testlog.Logger().Info("testSessionKeysGetStorageAt: session key creation response",
+		"response", gethcommon.Bytes2Hex(response))
 }
 
 func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
