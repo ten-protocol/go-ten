@@ -126,6 +126,9 @@ func (s *SubscriptionManager) GetSubscribedLogsForBatch(ctx context.Context, bat
 
 // Encrypts each log with the appropriate viewing key.
 func (s *SubscriptionManager) encryptLogs(logsByID map[gethrpc.ID][]*types.Log) (map[gethrpc.ID][]byte, error) {
+	s.subscriptionMutex.RLock()
+	defer s.subscriptionMutex.RUnlock()
+
 	encryptedLogsByID := map[gethrpc.ID][]byte{}
 
 	for subID, logs := range logsByID {

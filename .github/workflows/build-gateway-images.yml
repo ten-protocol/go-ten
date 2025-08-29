@@ -5,6 +5,7 @@
 #  - NETWORK_NAME
 #  - TENSCAN_URL
 #  - GATEWAY_URL
+#  - CHAIN_ID
 
 name: "[M] Build and Publish Ten Gateway Images"
 run-name: "[M] Build and Publish Ten Gateway Images ( ${{ github.event.inputs.testnet_type }} )"
@@ -20,6 +21,7 @@ on:
           - "dev-testnet"
           - "uat-testnet"
           - "sepolia-testnet"
+          - "mainnet"
 
 jobs:
   build-and-publish:
@@ -37,6 +39,7 @@ jobs:
             "NETWORK_NAME"
             "TENSCAN_URL"
             "GATEWAY_URL"
+            "CHAIN_ID"
           )
 
           for VAR_NAME in "${VAR_NAMES[@]}"; do
@@ -57,6 +60,7 @@ jobs:
           echo "NETWORK_NAME: $NETWORK_NAME"
           echo "TENSCAN_URL: $TENSCAN_URL"
           echo "GATEWAY_URL: $GATEWAY_URL"
+          echo "CHAIN_ID: $CHAIN_ID"
 
       - uses: actions/checkout@v4
 
@@ -96,6 +100,7 @@ jobs:
             --build-arg NEXT_PUBLIC_NETWORK_NAME="${{ env.NETWORK_NAME }}" \
             --build-arg NEXT_PUBLIC_TENSCAN_URL="${{ env.TENSCAN_URL }}" \
             --build-arg NEXT_PUBLIC_GATEWAY_URL="${{ env.GATEWAY_URL }}" \
+            --build-arg NEXT_PUBLIC_CHAIN_ID="${{ env.CHAIN_ID }}" \
             -t ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY_FE }} \
             -f ./tools/walletextension/frontend/Dockerfile .
 

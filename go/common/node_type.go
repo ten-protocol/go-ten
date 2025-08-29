@@ -1,6 +1,9 @@
 package common
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 const (
 	sequencer = "sequencer"
@@ -34,6 +37,23 @@ func (n *NodeType) UnmarshalText(text []byte) error {
 	nodeType, err := ToNodeType(string(text))
 	if err != nil {
 		return err
+	}
+	*n = nodeType
+	return nil
+}
+
+func (n NodeType) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf(`"%s"`, n.String())), nil
+}
+
+func (n *NodeType) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("unmarshalling NodeType: %w", err)
+	}
+	nodeType, err := ToNodeType(s)
+	if err != nil {
+		return fmt.Errorf("unmarshalling NodeType: %w", err)
 	}
 	*n = nodeType
 	return nil

@@ -61,10 +61,11 @@ type enclaveAdminService struct {
 	mempool                *components.TxPool
 	sharedSecretService    *crypto.SharedSecretService
 	gasOracle              gas.Oracle
+	upgradeManager         components.UpgradeManager
 	activeSequencer        bool
 }
 
-func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *components.TxPool, chainConfig *params.ChainConfig, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService, contractRegistry contractlib.ContractRegistryLib, gasOracle gas.Oracle) common.EnclaveAdmin {
+func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Storage, logger gethlog.Logger, blockProcessor components.L1BlockProcessor, registry components.BatchRegistry, batchExecutor components.BatchExecutor, gethEncodingService gethencoding.EncodingService, stopControl *stopcontrol.StopControl, subscriptionManager *events.SubscriptionManager, enclaveKeyService *crypto.EnclaveAttestedKeyService, mempool *components.TxPool, chainConfig *params.ChainConfig, attestationProvider components.AttestationProvider, sharedSecretService *crypto.SharedSecretService, daEncryptionService *crypto.DAEncryptionService, contractRegistry contractlib.ContractRegistryLib, gasOracle gas.Oracle, gasPricer *components.GasPricer) common.EnclaveAdmin {
 	var prof *profiler.Profiler
 	// don't run a profiler on an attested enclave
 	if !config.WillAttest && config.ProfilerEnabled {
@@ -90,11 +91,13 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 		MaxRollupSize:     config.MaxRollupSize,
 		GasPaymentAddress: config.GasPaymentAddress,
 		BatchGasLimit:     config.GasBatchExecutionLimit,
-		BaseFee:           config.BaseFee,
+		BaseFee:           config.MinBaseFee,
 	}
 
 	sequencerService := nodetype.NewSequencer(blockProcessor, batchExecutor, registry, rollupProducer, rollupCompression, gethEncodingService, logger, chainConfig, enclaveKeyService, mempool, storage, dataCompressionService, seqSettings, contractRegistry.DARegistryLib(), config.L1ChainID)
 	validatorService := nodetype.NewValidator(blockProcessor, batchExecutor, registry, chainConfig, storage, sigVerifier, mempool, logger)
+
+	upgradeManager := components.NewUpgradeManager(storage, logger)
 
 	eas := &enclaveAdminService{
 		config:                 config,
@@ -119,6 +122,13 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 		mempool:                mempool,
 		sharedSecretService:    sharedSecretService,
 		gasOracle:              gasOracle,
+		upgradeManager:         upgradeManager,
+	}
+
+	// Replay any finalized upgrades from previous sessions to registered handlers
+	err = upgradeManager.ReplayFinalizedUpgrades(context.Background())
+	if err != nil {
+		logger.Crit("Failed to replay finalized upgrades on startup", log.ErrKey, err)
 	}
 
 	// if the current enclave was already marked as an active/backup sequencer, it needs to set the right mempool mode
@@ -210,6 +220,12 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 	// doing this after the network secret msgs to make sure we have stored the attestation before promotion.
 	e.processSequencerPromotions(blockData)
 
+	// Process network upgrade events when they reach finality
+	err = e.upgradeManager.OnL1Block(ctx, blockHeader, blockData)
+	if err != nil {
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not process network upgrades. Cause: %w", err))
+	}
+
 	return bsr, nil
 }
 
@@ -266,12 +282,13 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 		e.dataInMutex.Unlock()
 		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))
 	}
-	e.dataInMutex.Unlock()
 
 	err = e.validator().ExecuteStoredBatches(ctx)
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not execute batches. Cause: %w", err))
 	}
+
+	e.dataInMutex.Unlock()
 
 	return nil
 }
@@ -390,6 +407,19 @@ func (e *enclaveAdminService) StreamL2Updates() (chan common.StreamL2UpdatesResp
 		}
 	})
 
+	// on opening the stream, we (re)send the head batch if we have one
+	// (important for a host reconnecting to the enclave, in case the latest batch failed to be sent)
+	headSeq := e.registry.HeadBatchSeq()
+	if headSeq != nil {
+		headBatch, err := e.storage.FetchBatchBySeqNo(context.Background(), headSeq.Uint64())
+		if err != nil {
+			e.logger.Error("Could not fetch head batch to stream on new connection", log.ErrKey, err, log.BatchSeqNoKey, headSeq)
+		} else {
+			e.sendBatch(headBatch, l2UpdatesChannel)
+			e.logger.Info("Sent head batch on new stream connection", log.BatchHashKey, headBatch.Hash(), log.BatchSeqNoKey, headSeq)
+		}
+	}
+
 	return l2UpdatesChannel, func() {
 		e.registry.UnsubscribeFromBatches()
 	}
@@ -441,7 +471,7 @@ func (e *enclaveAdminService) HealthCheck(ctx context.Context) (bool, common.Sys
 func (e *enclaveAdminService) Status(ctx context.Context) (common.Status, common.SystemError) {
 	initialised := e.sharedSecretService.IsInitialised()
 	if !initialised {
-		return common.Status{StatusCode: common.AwaitingSecret, L2Head: _noHeadBatch}, nil
+		return common.Status{StatusCode: common.AwaitingSecret, L2Head: _noHeadBatch, L2HeadHash: gethcommon.Hash{}}, nil
 	}
 	var l1HeadHash gethcommon.Hash
 	l1Head, err := e.l1BlockProcessor.GetHead(ctx)
@@ -453,6 +483,7 @@ func (e *enclaveAdminService) Status(ctx context.Context) (common.Status, common
 	}
 	// we use zero when there's no head batch yet, the first seq number is 1
 	l2HeadSeqNo := _noHeadBatch
+	var l2HeadHash gethcommon.Hash
 	// this is the highest seq number that has been received and stored on the enclave (it may not have been executed)
 	currSeqNo, err := e.storage.FetchCurrentSequencerNo(ctx)
 	if err != nil {
@@ -460,9 +491,18 @@ func (e *enclaveAdminService) Status(ctx context.Context) (common.Status, common
 		e.logger.Debug("failed to fetch L2 head batch for status response", log.ErrKey, err)
 	} else {
 		l2HeadSeqNo = currSeqNo
+		// Fetch the L2 head batch hash if we have a valid sequence number
+		if currSeqNo != nil && currSeqNo.Cmp(_noHeadBatch) > 0 {
+			batch, err := e.storage.FetchBatchHeaderBySeqNo(ctx, currSeqNo.Uint64())
+			if err != nil {
+				e.logger.Debug("failed to fetch L2 head batch header for hash", log.ErrKey, err, "seqNo", currSeqNo)
+			} else {
+				l2HeadHash = batch.Hash()
+			}
+		}
 	}
 	enclaveID := e.enclaveKeyService.EnclaveID()
-	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadSeqNo, EnclaveID: enclaveID, IsActiveSequencer: e.activeSequencer}, nil
+	return common.Status{StatusCode: common.Running, L1Head: l1HeadHash, L2Head: l2HeadSeqNo, L2HeadHash: l2HeadHash, EnclaveID: enclaveID, IsActiveSequencer: e.activeSequencer}, nil
 }
 
 func (e *enclaveAdminService) Stop() common.SystemError {

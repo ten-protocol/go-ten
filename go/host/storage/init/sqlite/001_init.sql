@@ -1,3 +1,12 @@
+create table if not exists config
+(
+    ky  varchar(64) primary key,
+    val mediumblob NOT NULL
+    );
+
+insert into config
+values ('CURRENT_SEQ', -1);
+
 create table if not exists block_host
 (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,

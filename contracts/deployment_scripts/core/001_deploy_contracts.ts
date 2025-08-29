@@ -1,6 +1,7 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {ethers} from "hardhat";
+import { hexlify, toUtf8Bytes } from 'ethers';
 
 /*
     This deployment script instantiates the network contracts and stores them in the deployed NetworkConfig contract.

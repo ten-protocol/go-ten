@@ -18,7 +18,7 @@ import {
 import { Button } from "@repo/ui/components/shared/button";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import JSONPretty from "react-json-pretty";
-import React, { useState } from "react";
+import React, {useMemo, useState} from "react";
 import {
   Tooltip,
   TooltipContent,
@@ -28,19 +28,18 @@ import {
 import { pageLinks } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
 
-export function BatchHeightDetailsComponent({
+export function BatchDetailsComponent({
   batchDetails,
 }: {
   batchDetails: Batch;
 }) {
   const { decryptedRollup, decryptEncryptedData } = useRollupsService();
   const [showDecryptedData, setShowDecryptedData] = useState(false);
-
   return (
     <div className="space-y-8">
       <KeyValueList>
         <KeyValueItem
-          label="Batch Height"
+          label="Height"
           value={"#" + Number(batchDetails?.height)}
         />
         <KeyValueItem
@@ -167,9 +166,9 @@ export function BatchHeightDetailsComponent({
         <KeyValueItem
           label="No. of Transactions"
           value={
-            batchDetails?.txCount > 0 ? (
+            batchDetails?.txHashes && batchDetails.txHashes.length > 0 ? (
               <span>
-                {batchDetails?.txCount}{" "}
+                {batchDetails.txHashes.length}{" "}
                 <Link
                   href={pathToUrl(pageLinks.batchTransactions, {
                     hash: batchDetails?.header?.hash,
@@ -180,7 +179,7 @@ export function BatchHeightDetailsComponent({
                 </Link>
               </span>
             ) : (
-              batchDetails?.txCount || "-"
+              "0"
             )
           }
           isLastItem

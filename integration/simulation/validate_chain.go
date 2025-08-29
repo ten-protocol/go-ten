@@ -879,7 +879,7 @@ func getLatestTransactions(t *testing.T, client rpc.Client, nodeIdx int) []gethc
 
 // Retrieves the batch using the transaction hash, and validates it.
 func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, nodeIdx int) {
-	var batchByTx *common.ExtBatch
+	var batchByTx *common.PublicBatch
 	err := client.Call(&batchByTx, rpc.GetBatchByTx, txHash)
 	if err != nil {
 		t.Errorf("node %d: could not retrieve batch for transaction. Cause: %s", nodeIdx, err)
@@ -896,7 +896,7 @@ func checkBatchFromTxs(t *testing.T, client rpc.Client, txHash gethcommon.Hash, 
 		t.Errorf("node %d: retrieved batch by transaction, but transaction was missing from batch", nodeIdx)
 	}
 
-	var batchByHash *common.ExtBatch
+	var batchByHash *common.PublicBatch
 	err = client.Call(&batchByHash, rpc.GetBatch, batchByTx.Header.Hash())
 	if err != nil {
 		t.Errorf("node %d: could not retrieve batch by hash. Cause: %s", nodeIdx, err)

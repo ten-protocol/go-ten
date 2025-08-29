@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -23,6 +24,16 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
+// generateCookieNameFromDomain generates a safe cookie name from TLS domain
+func generateCookieNameFromDomain(tlsDomain string) string {
+	if tlsDomain == "" {
+		return "gateway_token" // fallback to original name if no domain configured
+	}
+	safeName := strings.ReplaceAll(tlsDomain, ".", "_")
+	safeName = strings.ReplaceAll(safeName, "-", "_")
+	return "gateway_" + safeName
+}
+
 // NewHTTPRoutes returns the http specific routes
 // todo - move these to the rpc framework.
 func NewHTTPRoutes(walletExt *services.Services) []node.Route {
@@ -34,6 +45,14 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 		{
 			Name: common.APIVersion1 + common.PathJoin,
 			Func: httpHandler(walletExt, joinRequestHandler),
+		},
+		{
+			Name: common.APIVersion1 + common.PathGetToken,
+			Func: restrictiveHttpHandler(walletExt, getTokenRequestHandler),
+		},
+		{
+			Name: common.APIVersion1 + common.PathSetToken,
+			Func: restrictiveHttpHandler(walletExt, setTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetMessage,
@@ -103,12 +122,33 @@ func httpHandler(
 	}
 }
 
+func restrictiveHttpHandler(
+	walletExt *services.Services,
+	fun func(walletExt *services.Services, conn UserConn),
+) func(resp http.ResponseWriter, req *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		restrictiveHttpRequestHandler(walletExt, resp, req, fun)
+	}
+}
+
 // Overall request handler for http requests
 func httpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
 	if walletExt.IsStopping() {
 		return
 	}
 	if httputil.EnableCORS(resp, req) {
+		return
+	}
+	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
+	fun(walletExt, userConn)
+}
+
+// Restrictive request handler for endpoints requiring specific origin access
+func restrictiveHttpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
+	if walletExt.IsStopping() {
+		return
+	}
+	if httputil.EnableRestrictiveCORS(resp, req, walletExt.Config.FrontendURL) {
 		return
 	}
 	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
@@ -136,6 +176,134 @@ func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	// write hex encoded userID in the response
 	err = conn.WriteResponse([]byte(hexutils.BytesToHex(userID)))
+	if err != nil {
+		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+	}
+}
+
+// This function handles request to /get-token endpoint. It reads the session key from the cookie and returns it to the user.
+func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
+	// Get the HTTP request to access cookies
+	req := conn.GetHTTPRequest()
+	if req == nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("could not access request"))
+		return
+	}
+
+	// Find the gateway token cookie (with dynamic name based on TLS domain)
+	cookieName := generateCookieNameFromDomain(walletExt.Config.TLSDomain)
+	var userID string
+	for _, cookie := range req.Cookies() {
+		if cookie.Name == cookieName {
+			userID = cookie.Value
+			break
+		}
+	}
+
+	if userID == "" {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("gateway token cookie not found"))
+		return
+	}
+
+	// Validate the token format (should be hex)
+	userIDBytes, err := hex.DecodeString(userID)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid token format: %w", err))
+		return
+	}
+
+	if len(userIDBytes) == 0 {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("token cannot be empty"))
+		return
+	}
+
+	// Verify the user exists in the database
+	_, err = walletExt.Storage.GetUser(userIDBytes)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database"))
+		return
+	}
+
+	// Return the userID from the cookie (same format as /join)
+	err = conn.WriteResponse([]byte(userID))
+	if err != nil {
+		walletExt.Logger().Error("error writing token response", log.ErrKey, err)
+	}
+}
+
+// This function handles request to /set-token endpoint. It receives a token in JSON format and sets it as a session cookie.
+func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
+	// Read the request body to get the token
+	requestBody, err := conn.ReadRequest()
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		return
+	}
+
+	// Parse the JSON request
+	type SetTokenRequest struct {
+		Token string `json:"token"`
+	}
+
+	var req SetTokenRequest
+	err = json.Unmarshal(requestBody, &req)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid JSON format: %w", err))
+		return
+	}
+
+	if req.Token == "" {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("token is required"))
+		return
+	}
+
+	// Validate the token format (should be hex)
+	userIDBytes, err := hex.DecodeString(req.Token)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid token format: %w", err))
+		return
+	}
+
+	if len(userIDBytes) == 0 {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("token cannot be empty"))
+		return
+	}
+
+	// Verify the user exists in the database
+	_, err = walletExt.Storage.GetUser(userIDBytes)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database"))
+		return
+	}
+
+	// Set the cookie with the provided token
+	cookieName := generateCookieNameFromDomain(walletExt.Config.TLSDomain)
+	cookie := &http.Cookie{
+		Name:     cookieName,
+		Value:    req.Token,
+		Path:     "/",
+		Domain:   ".ten.xyz",              // Share across all .ten.xyz subdomains
+		HttpOnly: true,                    // Prevents XSS
+		Secure:   true,                    // HTTPS only
+		SameSite: http.SameSiteNoneMode,   // Required for cross-origin AJAX requests
+		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
+	}
+
+	err = conn.SetCookie(cookie)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error setting cookie: %w", err))
+		return
+	}
+
+	// Return success response
+	successResponse := map[string]string{"status": "success", "message": "Token cookie set successfully"}
+	responseBytes, err := json.Marshal(successResponse)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error marshaling response: %w", err))
+		return
+	}
+
+	err = conn.WriteResponse(responseBytes)
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}

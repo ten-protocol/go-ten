@@ -49,7 +49,7 @@ type EnclaveConfig struct {
 	// A json string that specifies the prefunded addresses at the genesis of the TEN network
 	TenGenesis             string
 	GasPaymentAddress      gethcommon.Address
-	BaseFee                *big.Int
+	MinBaseFee             *big.Int
 	GasBatchExecutionLimit uint64
 
 	// **Db configs
@@ -86,7 +86,10 @@ type EnclaveConfig struct {
 	// The public peer-to-peer IP address of the host the enclave service is tied to
 	// This is required to advertise for node discovery, and we include it in the attestation
 	// todo - should we really bind the physical address to the attestation.
-	HostAddress string
+	HostAddress                   string
+	AttestationEDBSecurityVersion uint
+	AttestationSignerID           string
+	AttestationEDBProductID       uint16
 }
 
 func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
@@ -126,12 +129,16 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 
 		MinGasPrice:              tenCfg.Network.Gas.MinGasPrice,
 		GasPaymentAddress:        tenCfg.Network.Gas.PaymentAddress,
-		BaseFee:                  tenCfg.Network.Gas.BaseFee,
+		MinBaseFee:               tenCfg.Network.Gas.MinBaseFee,
 		GasBatchExecutionLimit:   tenCfg.Network.Gas.BatchExecutionLimit,
 		GasLocalExecutionCapFlag: tenCfg.Network.Gas.LocalExecutionCap,
 
 		TenGenesis:    tenCfg.Network.GenesisJSON,
 		MaxBatchSize:  tenCfg.Network.Batch.MaxSize,
 		MaxRollupSize: tenCfg.Network.Rollup.MaxSize,
+
+		AttestationSignerID:           tenCfg.Enclave.Attestation.SignerID,
+		AttestationEDBSecurityVersion: tenCfg.Enclave.Attestation.EDBSecurityVersion,
+		AttestationEDBProductID:       tenCfg.Enclave.Attestation.EDBProductID,
 	}
 }

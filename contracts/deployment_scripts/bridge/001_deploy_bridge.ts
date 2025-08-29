@@ -4,7 +4,7 @@ import { network } from 'hardhat';
 
 
 /* 
-    This deployment script deploys the Obscuro Bridge smart contracts on both L1 and L2
+    This deployment script deploys the TEN Bridge smart contracts on both L1 and L2
     and links them together using the 'setRemoteBridge' call.
 */
 

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "update-package-lock": "./update-package-lock.sh"
   },
   "dependencies": {
     "@next/third-parties": "^15.3.3",
@@ -27,6 +28,8 @@
     "class-variance-authority": "^0.7.1",
     "classnames": "^2.5.1",
     "clsx": "^2.1.1",
+    "embla-carousel-autoplay": "^8.6.0",
+    "embla-carousel-react": "^8.6.0",
     "framer-motion": "12.16.0",
     "lucide-react": "^0.487.0",
     "next": "15.2.4",

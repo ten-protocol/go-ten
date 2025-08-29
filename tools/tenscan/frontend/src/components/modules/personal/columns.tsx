@@ -14,6 +14,24 @@ import Link from "next/link";
 
 export const columns: ColumnDef<PersonalTransactions>[] = [
   {
+      accessorKey: "transactionHash",
+      header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="Transaction Hash" />
+      ),
+      cell: ({ row }) => {
+          return (
+              <TruncatedAddress
+                  address={row.getValue("transactionHash")}
+                  link={pathToUrl(pageLinks.personalTxByHash, {
+                      hash: row.original.transactionHash,
+                  })}
+              />
+          );
+      },
+      enableSorting: false,
+      enableHiding: false,
+  },
+  {
     accessorKey: "blockNumber",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="TEN Batch" />
@@ -46,24 +64,6 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
           address={row.getValue("blockHash")}
           link={pathToUrl(pageLinks.batchByHash, {
             hash: row.original.blockHash,
-          })}
-        />
-      );
-    },
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
-    accessorKey: "transactionHash",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Transaction Hash" />
-    ),
-    cell: ({ row }) => {
-      return (
-        <TruncatedAddress
-          address={row.getValue("transactionHash")}
-          link={pathToUrl(pageLinks.personalTxByHash, {
-            hash: row.original.transactionHash,
           })}
         />
       );

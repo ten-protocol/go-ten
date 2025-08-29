@@ -49,7 +49,7 @@ export default function AccountSettings() {
                     <DropdownMenuSeparator />
                     <DropdownMenuGroup>
                         <DropdownMenuItem onClick={handleOpenViewPrivateKey}>
-                            View TEN Token
+                            View Private Key
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={handleDisconnect}>
                             Disconnect Wallet

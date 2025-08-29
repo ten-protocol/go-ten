@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/jmoiron/sqlx"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -20,7 +22,7 @@ const (
 	selectExtRollup         = "SELECT ext_rollup from rollup_host r join block_host b on r.compression_block=b.id "
 	selectLatestExtRollup   = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
 	selectLatestRollupCount = "SELECT id FROM rollup_host ORDER BY id DESC LIMIT 1"
-	selectRollupBatches     = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON r.start_seq <= b.sequence AND r.end_seq >= b.sequence"
+	selectRollupBatches     = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON b.sequence >= r.start_seq AND b.sequence <= r.end_seq AND b.sequence IS NOT NULL"
 	selectRollups           = "SELECT rh.id, rh.hash, rh.start_seq, rh.end_seq, rh.time_stamp, rh.ext_rollup, bh.hash FROM rollup_host rh join block_host bh on rh.compression_block=bh.id "
 )
 
@@ -40,12 +42,12 @@ func AddRollup(dbtx *dbTransaction, statements *SQLStatements, rollup *common.Ex
 	// Use QueryRow instead of Exec to retrieve the id directly.
 	var rollupId int64
 	err = dbtx.Tx.QueryRow(statements.InsertRollup,
-		rollup.Header.Hash().Bytes(),         // hash
-		metadata.FirstBatchSequence.Uint64(), // first batch sequence
-		rollup.Header.LastBatchSeqNo,         // last batch sequence
-		metadata.StartTime,                   // timestamp
-		extRollup,                            // rollup blob
-		blockId,                              // l1 block hash
+		rollup.Header.Hash().Bytes(),  // hash
+		rollup.Header.FirstBatchSeqNo, // first batch sequence
+		rollup.Header.LastBatchSeqNo,  // last batch sequence
+		metadata.StartTime,            // timestamp
+		extRollup,                     // rollup blob
+		blockId,                       // l1 block hash
 	).Scan(&rollupId)
 	if err != nil {
 		if IsRowExistsError(err) {
@@ -207,7 +209,16 @@ func GetCrossChainMessagesTree(db HostDB, messageHash gethcommon.Hash) ([][]inte
 func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	whereQuery := " WHERE r.hash=" + db.GetSQLStatement().Placeholder
 	orderQuery := " ORDER BY b.sequence DESC "
-	query := selectRollupBatches + whereQuery + orderQuery + db.GetSQLStatement().Pagination
+
+	// TODO @will quick fix to unblock main
+	var paginationQuery string
+	if db.GetSQLStatement().Placeholder == "?" {
+		paginationQuery = " LIMIT ? OFFSET ?"
+	} else {
+		// PostgreSQL uses $1, $2, $3,
+		paginationQuery = " LIMIT $2 OFFSET $3"
+	}
+	query := selectRollupBatches + whereQuery + orderQuery + paginationQuery
 
 	countQuery := "SELECT COUNT(*) FROM rollup_host r JOIN batch_host b ON b.sequence BETWEEN r.start_seq AND r.end_seq" + whereQuery
 	var total uint64
@@ -247,9 +258,9 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.
 			SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
 			FullHash:         fullHash,
 			Height:           new(big.Int).SetInt64(int64(heightInt64)),
-			TxCount:          new(big.Int).SetInt64(int64(len(b.TxHashes))),
 			Header:           b.Header,
 			EncryptedTxBlob:  b.EncryptedTxBlob,
+			TxHashes:         b.TxHashes,
 		}
 		batches = append(batches, batch)
 	}
@@ -264,7 +275,7 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.
 	}, nil
 }
 
-func fetchRollupHeader(db *sql.DB, whereQuery string, args ...any) (*common.RollupHeader, error) {
+func fetchRollupHeader(db *sqlx.DB, whereQuery string, args ...any) (*common.RollupHeader, error) {
 	rollup, err := fetchExtRollup(db, whereQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch ext rollup - %w", err)
@@ -272,7 +283,7 @@ func fetchRollupHeader(db *sql.DB, whereQuery string, args ...any) (*common.Roll
 	return rollup.Header, nil
 }
 
-func fetchExtRollup(db *sql.DB, whereQuery string, args ...any) (*common.ExtRollup, error) {
+func fetchExtRollup(db *sqlx.DB, whereQuery string, args ...any) (*common.ExtRollup, error) {
 	var rollupBlob []byte
 	query := selectExtRollup + whereQuery
 	var err error
@@ -296,7 +307,7 @@ func fetchExtRollup(db *sql.DB, whereQuery string, args ...any) (*common.ExtRoll
 	return &rollup, nil
 }
 
-func fetchHeadRollup(db *sql.DB) (*common.ExtRollup, error) {
+func fetchHeadRollup(db *sqlx.DB) (*common.ExtRollup, error) {
 	var extRollup []byte
 	err := db.QueryRow(selectLatestExtRollup).Scan(&extRollup)
 	if err != nil {
@@ -314,7 +325,7 @@ func fetchHeadRollup(db *sql.DB) (*common.ExtRollup, error) {
 	return &rollup, nil
 }
 
-func fetchTotalRollups(db *sql.DB) (*big.Int, error) {
+func fetchTotalRollups(db *sqlx.DB) (*big.Int, error) {
 	var total int
 	err := db.QueryRow(selectLatestRollupCount).Scan(&total)
 	if err != nil {
@@ -328,7 +339,7 @@ func fetchTotalRollups(db *sql.DB) (*big.Int, error) {
 	return bigTotal, nil
 }
 
-func fetchPublicRollup(db *sql.DB, whereQuery string, args ...any) (*common.PublicRollup, error) {
+func fetchPublicRollup(db *sqlx.DB, whereQuery string, args ...any) (*common.PublicRollup, error) {
 	query := selectRollups + whereQuery
 	var rollup common.PublicRollup
 	var hash, extRollup, compressionblock []byte

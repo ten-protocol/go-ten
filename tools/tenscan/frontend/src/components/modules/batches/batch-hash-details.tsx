@@ -27,21 +27,21 @@ import {
 } from "@repo/ui/components/shared/tooltip";
 import { pathToUrl } from "@/src/routes/router";
 import { pageLinks } from "@/src/routes";
-import { BatchDetails } from "@/src/types/interfaces/BatchInterfaces";
+import {Batch} from "@/src/types/interfaces/BatchInterfaces";
 
 export function BatchHashDetailsComponent({
   batchDetails,
 }: {
-  batchDetails: BatchDetails;
+  batchDetails: Batch;
 }) {
   const { decryptedRollup, decryptEncryptedData } = useRollupsService();
   const [showDecryptedData, setShowDecryptedData] = useState(false);
 
   const transactionHashes = useMemo(
     () =>
-      batchDetails?.TxHashes.length > 0 ? (
+      batchDetails?.txHashes.length > 0 ? (
         <ul>
-          {batchDetails.TxHashes.map((txHash, index) => (
+          {batchDetails.txHashes.map((txHash, index) => (
             <li key={index} className="text-sm">
               <TruncatedAddress
                 address={txHash}
@@ -54,11 +54,11 @@ export function BatchHashDetailsComponent({
       ) : (
         "-"
       ),
-    [batchDetails?.TxHashes]
+    [batchDetails?.txHashes]
   );
 
   const handleDecryptToggle = () => {
-    decryptEncryptedData({ StrData: batchDetails?.EncryptedTxBlob });
+    decryptEncryptedData({ StrData: batchDetails?.encryptedTxBlob });
     setShowDecryptedData(!showDecryptedData);
   };
 
@@ -66,15 +66,28 @@ export function BatchHashDetailsComponent({
     <div className="space-y-8">
       <KeyValueList>
         <KeyValueItem
-          label="Batch Height"
+          label="Height"
           value={
             <Link
               href={pathToUrl(pageLinks.batchByHeight, {
-                height: +batchDetails?.Header?.number,
+                height: +batchDetails?.header?.number,
               })}
               className="text-primary"
             >
-              {"#" + Number(batchDetails?.Header?.number)}
+              {"#" + Number(batchDetails?.header?.number)}
+            </Link>
+          }
+        />
+        <KeyValueItem
+          label="Sequence"
+          value={
+            <Link
+              href={pathToUrl(pageLinks.batchBySequence, {
+                sequence: +batchDetails?.header?.sequencerOrderNo,
+              })}
+              className="text-primary"
+            >
+              {"#" + Number(batchDetails?.header?.sequencerOrderNo.toString())}
             </Link>
           }
         />
@@ -82,7 +95,7 @@ export function BatchHashDetailsComponent({
           label="Hash"
           value={
             <TruncatedAddress
-              address={batchDetails?.Header?.hash}
+              address={batchDetails?.header?.hash}
               showFullLength
             />
           }
@@ -91,7 +104,7 @@ export function BatchHashDetailsComponent({
           label="Parent Hash"
           value={
             <TruncatedAddress
-              address={batchDetails?.Header?.parentHash}
+              address={batchDetails?.header?.parentHash}
               showFullLength
             />
           }
@@ -100,7 +113,7 @@ export function BatchHashDetailsComponent({
           label="State Root"
           value={
             <TruncatedAddress
-              address={batchDetails?.Header?.stateRoot}
+              address={batchDetails?.header?.stateRoot}
               showFullLength
             />
           }
@@ -109,7 +122,7 @@ export function BatchHashDetailsComponent({
           label="Transactions Root"
           value={
             <TruncatedAddress
-              address={batchDetails?.Header?.transactionsRoot}
+              address={batchDetails?.header?.transactionsRoot}
               showFullLength
             />
           }
@@ -118,7 +131,7 @@ export function BatchHashDetailsComponent({
           label="Receipts Root"
           value={
             <TruncatedAddress
-              address={batchDetails?.Header?.receiptsRoot}
+              address={batchDetails?.header?.receiptsRoot}
               showFullLength
             />
           }
@@ -127,9 +140,9 @@ export function BatchHashDetailsComponent({
           label="Timestamp"
           value={
             <Badge variant="secondary">
-              {formatTimeAgo(batchDetails?.Header?.timestamp) +
+              {formatTimeAgo(batchDetails?.header?.timestamp) +
                 " - " +
-                formatTimestampToDate(batchDetails?.Header?.timestamp)}
+                formatTimestampToDate(batchDetails?.header?.timestamp)}
             </Badge>
           }
         />
@@ -137,7 +150,7 @@ export function BatchHashDetailsComponent({
           label="L1 Proof"
           value={
             <TruncatedAddress
-              address={batchDetails?.Header?.l1Proof}
+              address={batchDetails?.header?.l1Proof}
               showFullLength
             />
           }
@@ -146,19 +159,19 @@ export function BatchHashDetailsComponent({
           label="Gas Limit"
           value={
             <Badge variant="secondary">
-              {formatNumber(batchDetails?.Header?.gasLimit)}
+              {formatNumber(batchDetails?.header?.gasLimit)}
             </Badge>
           }
         />
         <KeyValueItem
           label="Gas Used"
-          value={formatNumber(batchDetails?.Header?.gasUsed)}
+          value={formatNumber(batchDetails?.header?.gasUsed)}
         />
         <KeyValueItem
           label="Base Fee Per Gas"
           value={
             <Badge variant="secondary">
-              {formatNumber(batchDetails?.Header?.baseFeePerGas)}
+              {formatNumber(batchDetails?.header?.baseFeePerGas)}
             </Badge>
           }
         />
@@ -166,20 +179,20 @@ export function BatchHashDetailsComponent({
           label="Inbound Cross Chain Hash"
           value={
             <TruncatedAddress
-              address={batchDetails?.Header?.inboundCrossChainHash}
+              address={batchDetails?.header?.inboundCrossChainHash}
               showFullLength
             />
           }
         />
         <KeyValueItem
           label="Inbound Cross Chain Height"
-          value={Number(batchDetails?.Header?.inboundCrossChainHeight)}
+          value={Number(batchDetails?.header?.inboundCrossChainHeight)}
         />
         <KeyValueItem
           label="Miner"
           value={
             <TruncatedAddress
-              address={batchDetails?.Header?.miner}
+              address={batchDetails?.header?.miner}
               showFullLength
             />
           }
@@ -200,7 +213,7 @@ export function BatchHashDetailsComponent({
           value={
             <>
               <div className="flex items-center space-x-2">
-                <TruncatedAddress address={batchDetails?.EncryptedTxBlob} />
+                <TruncatedAddress address={batchDetails?.encryptedTxBlob} />
                 <Button
                   className="text-sm font-bold leading-none hover:text-primary hover:bg-transparent"
                   variant="ghost"
@@ -249,5 +262,5 @@ export function BatchHashDetailsComponent({
         />
       </KeyValueList>
     </div>
-  );
+  )
 }

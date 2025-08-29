@@ -2,20 +2,23 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
+import "../../../common/UnrenouncableOwnable2Step.sol";
 import "../../../cross_chain_messaging/lib/CrossChainEnabledTEN.sol";
-import "./WrappedERC20.sol";
 
 import "../../common/IBridge.sol";
 import "../interfaces/ITokenFactory.sol";
+import "./WrappedERC20.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "../../../common/PausableWithRoles.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract EthereumBridge is
     IBridge,
     ITokenFactory,
     CrossChainEnabledTEN,
-    Initializable
+    Initializable,
+    PausableWithRoles
 {
     event CreatedWrappedToken(
         address remoteAddress,
@@ -36,7 +39,7 @@ contract EthereumBridge is
     ) public initializer {
         require(messenger != address(0), "Messenger cannot be 0x0");
         require(remoteBridge != address(0), "Remote bridge cannot be 0x0");
-
+        __PausableWithRoles_init(msg.sender);
         CrossChainEnabledTEN.configure(messenger);
         remoteBridgeAddress = remoteBridge;
     }
@@ -68,7 +71,7 @@ contract EthereumBridge is
         return _messageBus().getPublishFee();
     }
 
-    function sendNative(address receiver) external payable {
+    function sendNative(address receiver) external payable whenNotPaused {
         require(msg.value > 0, "Nothing sent.");
         require(msg.value >= _messageBus().getPublishFee(), "Insufficient funds to publish value transfer");
         uint256 fee = _messageBus().getPublishFee();
@@ -86,7 +89,7 @@ contract EthereumBridge is
         address asset,
         uint256 amount,
         address receiver
-    ) external payable {
+    ) external payable whenNotPaused {
         require(hasTokenMapping(asset), "No mapping for token.");
         require(amount > 0, "Amount must be greater than 0.");
 
@@ -108,7 +111,7 @@ contract EthereumBridge is
         address asset,
         uint256 amount,
         address receiver
-    ) external onlyCrossChainSender(remoteBridgeAddress) {
+    ) external onlyCrossChainSender(remoteBridgeAddress) whenNotPaused {
         address localAddress = remoteToLocalToken[asset];
 
         WrappedERC20 token = wrappedTokens[localAddress];

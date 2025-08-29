@@ -190,6 +190,10 @@ func (g *Guardian) InSyncWithL1() bool {
 	return g.state.InSyncWithL1()
 }
 
+func (g *Guardian) IsEnclaveL2AheadOfHost() bool {
+	return g.state.IsEnclaveAheadOfHost()
+}
+
 func (g *Guardian) GetEnclaveState() *StateTracker {
 	return g.state
 }
@@ -661,7 +665,6 @@ func (g *Guardian) streamEnclaveData() {
 				g.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				err := g.sl.L2Repo().AddBatch(resp.Batch)
 				if err != nil && !errors.Is(err, errutil.ErrAlreadyExists) {
-					// todo (@matt) this is a catastrophic scenario, the host may never get that batch - handle this
 					g.logger.Crit("failed to add batch to L2 repo", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
 				}
 

@@ -25,8 +25,8 @@ func SepoliaTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		[]string{"http://erpc.sepolia-testnet.ten.xyz:80"},
 		"http://sepolia-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
 		"wss://ethereum-sepolia-rpc.publicnode.com",
-		"https://rpc.testnet.ten.xyz",  //"https://rpc.dexynth-gateway.ten.xyz",
-		"wss://rpc.testnet.ten.xyz:81", // "wss://rpc.dexynth-gateway.ten.xyz:81",
+		"https://testnet.ten.xyz",  //"https://rpc.dexynth-gateway.ten.xyz",
+		"wss://testnet.ten.xyz:81", // "wss://rpc.dexynth-gateway.ten.xyz:81",
 	)
 	return newTestnetEnv(connector, opts...)
 }
@@ -35,7 +35,7 @@ func UATTestnet(opts ...TestnetEnvOption) networktest.Environment {
 	connector := newTestnetConnector(
 		"http://uat-sequencer.ten.xyz:80",
 		[]string{"http://uat-validator-01.ten.xyz:80"},
-		"https://uat-faucet.tenscan.io/fund/eth",
+		"https://uat-faucet.ten.xyz/fund/eth",
 		"wss://ethereum-sepolia-rpc.publicnode.com",
 		"https://rpc.uat-gw-testnet.ten.xyz",
 		"wss://rpc.uat-gw-testnet.ten.xyz:81",
@@ -47,10 +47,10 @@ func DevTestnet(opts ...TestnetEnvOption) networktest.Environment {
 	connector := newTestnetConnector(
 		"http://erpc.dev-testnet.ten.xyz:80", // this is actually a validator...
 		[]string{"http://erpc.dev-testnet.ten.xyz:80"},
-		"http://dev-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
-		"ws://dev-testnet-eth2network.uksouth.cloudapp.azure.com:9000",
-		"https://rpc.dev-testnet.ten.xyz",
-		"wss://rpc.dev-testnet.ten.xyz:81",
+		"https://dev-faucet.ten.xyz/fund/eth",
+		"ws://dev-testnet-eth2network-522.uksouth.cloudapp.azure.com:9000",
+		"https://rpc.dev-gw-testnet.ten.xyz",
+		"wss://rpc.dev-gw-testnet.ten.xyz:81",
 	)
 	return newTestnetEnv(connector, opts...)
 }

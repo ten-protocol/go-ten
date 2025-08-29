@@ -3,7 +3,6 @@ import { apiRoutes } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
 import {
   Batch,
-  BatchDetails,
   BatchResponse,
   LatestBatch,
 } from "@/src/types/interfaces/BatchInterfaces";
@@ -31,8 +30,8 @@ export const fetchLatestBatch = async (
 
 export const fetchBatchByHash = async (
   hash: string
-): Promise<ResponseDataInterface<BatchDetails>> => {
-  return await httpRequest<ResponseDataInterface<BatchDetails>>({
+): Promise<ResponseDataInterface<Batch>> => {
+  return await httpRequest<ResponseDataInterface<Batch>>({
     method: "get",
     url: pathToUrl(apiRoutes.getBatchByHash, { hash }),
   });
@@ -55,5 +54,14 @@ export const fetchBatchTransactions = async (
     method: "get",
     url: pathToUrl(apiRoutes.getBatchTransactions, { fullHash }),
     searchParams: options,
+  });
+};
+
+export const fetchBatchBySequence = async (
+  sequence: string
+): Promise<ResponseDataInterface<Batch>> => {
+  return await httpRequest<ResponseDataInterface<Batch>>({
+    method: "get",
+    url: pathToUrl(apiRoutes.getBatchBySequence, { seq: sequence }),
   });
 };

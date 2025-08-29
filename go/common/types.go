@@ -311,3 +311,8 @@ func (txs TxsWithTimeStamp) EncodeIndex(i int, w *bytes.Buffer) {
 func (txs TxsWithTimeStamp) Len() int {
 	return len(txs.TxsTst)
 }
+
+// GasPricer interface for getting static L2 base fee
+type GasPricer interface {
+	StaticL2BaseFee(header *types.Header) *big.Int
+}

@@ -6,6 +6,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
+	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 )
 
 // L1TenTransaction is an abstraction that transforms an Ethereum transaction into a format that can be consumed more
@@ -68,6 +69,7 @@ const (
 	SequencerRevokedTx
 	NetworkContractAddressAddedTx
 	AdditionalContractAddressAddedTx
+	NetworkUpgradedTx
 )
 
 // ProcessedL1Data is submitted to the enclave by the guardian
@@ -102,9 +104,10 @@ type L1TxData struct {
 	Transaction        *types.Transaction
 	Receipt            *types.Receipt
 	BlobsWithSignature BlobsAndSignatures
-	SequencerEnclaveID gethcommon.Address  // Only non-zero when a new enclave is added as a sequencer
-	CrossChainMessages CrossChainMessages  // Only populated for xchain messages
-	ValueTransfers     ValueTransferEvents // Only populated for xchain transfers
+	SequencerEnclaveID gethcommon.Address                    // Only non-zero when a new enclave is added as a sequencer
+	CrossChainMessages CrossChainMessages                    // Only populated for xchain messages
+	ValueTransfers     ValueTransferEvents                   // Only populated for xchain transfers
+	NetworkUpgrades    []NetworkConfig.NetworkConfigUpgraded // Only populated for network upgrades
 
 	Proof []byte // Some merkle proof TBC
 }
