@@ -1,6 +1,9 @@
 # Use an official Node.js LTS version as a base image
 FROM node:20-alpine AS base
 
+# Install build dependencies for native modules
+RUN apk add --no-cache python3 make g++ py3-pip
+
 ARG NEXT_PUBLIC_NETWORK_NAME
 ARG NEXT_PUBLIC_TENSCAN_URL
 ARG NEXT_PUBLIC_GATEWAY_URL
@@ -27,6 +30,9 @@ RUN npm run build
 
 # Reduce the size of the final image by using a lighter base image
 FROM node:20-alpine AS runner
+
+# Install build dependencies for native modules (needed for production dependencies too)
+RUN apk add --no-cache python3 make g++ py3-pip
 
 # Set the working directory
 WORKDIR /usr/src/app
