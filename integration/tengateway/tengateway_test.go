@@ -263,6 +263,11 @@ func interactWithSmartContractUsingSessionKey(client *ethclient.Client, nonce ui
 	n := hexutil.Uint64(nonce)
 	g := hexutil.Uint64(10_000_000)
 	d := hexutil.Bytes(contractInteractionData)
+
+	// Create AccessList with session key address encoded in storage keys
+	// Use the predefined address 0x0000...1 as specified in the implementation
+	predefinedAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000001")
+
 	interactionTx := gethapi.TransactionArgs{
 		Nonce:    &n,
 		To:       &toAddress,
@@ -270,11 +275,17 @@ func interactWithSmartContractUsingSessionKey(client *ethclient.Client, nonce ui
 		GasPrice: &result,
 		Data:     &d,
 		Value:    (*hexutil.Big)(value),
+		AccessList: &types.AccessList{
+			{
+				Address:     predefinedAddr,
+				StorageKeys: []gethcommon.Hash{gethcommon.HexToHash(sessionKey)},
+			},
+		},
 	}
 
 	// Use the session key to send the transaction via eth_sendTransaction
-	// The session key address is passed as a separate parameter in the RPC call
-	err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx, sessionKey)
+	// The session key address is now passed through the AccessList field
+	err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx)
 	if err != nil {
 		return nil, err
 	}
