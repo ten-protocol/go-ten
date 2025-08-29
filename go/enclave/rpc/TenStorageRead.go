@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/syserr"
@@ -49,19 +48,24 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWit
 		return nil
 	}
 
-	blkNumber, err := gethencoding.ExtractBlockNumber(reqParams[2])
+	var blk any = nil
+	if len(reqParams) == 3 {
+		blk = reqParams[2]
+	}
+
+	blkNumber, err := gethencoding.ExtractBlockNumber(blk)
 	if err != nil {
 		builder.Err = fmt.Errorf("unable to extract requested block number - %w", err)
 		return nil
 	}
 
-	builder.Param = &storageReadWithBlock{address, slot, blkNumber}
+	builder.Param = &storageReadWithBlock{address: address, storageSlot: slot, block: blkNumber}
 
 	return nil
 }
 
 func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], rpc *EncryptionManager) error {
-	stateDb, err := rpc.registry.GetBatchState(builder.ctx, *builder.Param.block)
+	_, reader, err := rpc.registry.GetBatchState(builder.ctx, *builder.Param.block)
 	if err != nil {
 		builder.Err = fmt.Errorf("unable to read block number - %w", err)
 		return nil
@@ -78,19 +82,7 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 	storageSlot := common.Hash{}
 	storageSlot.SetBytes(sl.Bytes())
 
-	account, err := stateDb.GetTrie().GetAccount(*builder.Param.address)
-	if err != nil {
-		builder.Err = fmt.Errorf("unable to get acct address - %w", err)
-		return nil
-	}
-
-	trie, err := stateDb.Database().OpenTrie(account.Root)
-	if err != nil {
-		builder.Err = err
-		return nil
-	}
-
-	value, err := trie.GetStorage(*builder.Param.address, storageSlot.Bytes())
+	value, err := reader.Storage(*builder.Param.address, storageSlot)
 	if err != nil {
 		rpc.logger.Debug("Failed eth_getStorageAt.", log.ErrKey, err)
 
@@ -103,12 +95,7 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], r
 		return nil
 	}
 
-	if len(value) == 0 {
-		builder.ReturnValue = nil
-		return nil
-	}
-
-	encodedResult := hexutil.Encode(value)
+	encodedResult := value.Hex()
 	builder.ReturnValue = &encodedResult
 	return nil
 }

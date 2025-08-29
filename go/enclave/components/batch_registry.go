@@ -199,37 +199,41 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 	return resultBatches, resultBlocks, nil
 }
 
-func (br *batchRegistry) GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, error) {
+func (br *batchRegistry) GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, state.Reader, error) {
 	if blockNumberOrHash.BlockHash != nil {
 		return getBatchState(ctx, br.storage, *blockNumberOrHash.BlockHash)
 	}
 	if blockNumberOrHash.BlockNumber != nil {
 		return br.GetBatchStateAtHeight(ctx, blockNumberOrHash.BlockNumber)
 	}
-	return nil, fmt.Errorf("block number or block hash does not exist")
+	return nil, nil, fmt.Errorf("block number or block hash does not exist")
 }
 
-func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
+func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, state.Reader, error) {
 	// We retrieve the batch of interest.
 	batch, err := br.GetBatchAtHeight(ctx, *blockNumber)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return getBatchState(ctx, br.storage, batch.Hash())
 }
 
-func getBatchState(ctx context.Context, storage storage.Storage, batchHash common.L2BatchHash) (*state.StateDB, error) {
+func getBatchState(ctx context.Context, storage storage.Storage, batchHash common.L2BatchHash) (*state.StateDB, state.Reader, error) {
 	blockchainState, err := storage.CreateStateDB(ctx, batchHash)
 	if err != nil {
-		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
 	if blockchainState == nil {
-		return nil, fmt.Errorf("unable to fetch chain state for batch %s", batchHash.Hex())
+		return nil, nil, fmt.Errorf("unable to fetch chain state for batch %s", batchHash.Hex())
+	}
+	reader, err := storage.StateDB().Reader(batchHash)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return blockchainState, err
+	return blockchainState, reader, err
 }
 
 func (br *batchRegistry) GetBatchAtHeight(ctx context.Context, height gethrpc.BlockNumber) (*core.Batch, error) {

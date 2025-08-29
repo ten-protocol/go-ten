@@ -60,7 +60,7 @@ type storageImpl struct {
 	cachingService         *CacheService
 	eventsStorage          *eventsStorage
 
-	stateCache  state.Database
+	stateCache  *state.CachingDB
 	chainConfig *params.ChainConfig
 	config      *enclaveconfig.EnclaveConfig
 	logger      gethlog.Logger
@@ -99,7 +99,7 @@ func (s *storageImpl) TrieDB() *triedb.Database {
 	return s.stateCache.TrieDB()
 }
 
-func (s *storageImpl) StateDB() state.Database {
+func (s *storageImpl) StateDB() *state.CachingDB {
 	return s.stateCache
 }
 

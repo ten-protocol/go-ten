@@ -249,7 +249,7 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 	ec.BaseFee = executor.gasPricer.CalculateBlockBaseFeeAtHeight(ec.ctx, executor.chainConfig, common.ConvertBatchHeaderToHeader(ec.parentBatch), ec.l1block.Number.Uint64())
 	// Create a new batch based on the provided context
 	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator, ec.BatchGasLimit)
-	ec.stateDB, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
+	ec.stateDB, _, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
 	if err != nil {
 		return fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
