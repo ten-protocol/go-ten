@@ -8,9 +8,19 @@ import {
     CarouselDots,
 } from '@/components/ui/carousel';
 import {PROMO_APPS} from "@/lib/constants";
+import Autoplay from "embla-carousel-autoplay";
+import { useRef } from 'react';
 
 
 export default function PromoApps() {
+    const plugin = useRef(
+        Autoplay({ 
+            delay: 2000, 
+            stopOnInteraction: true,
+            stopOnMouseEnter: false // We'll handle this manually
+        })
+    );
+    
     return (
         <div className="container flex flex-col items-center mt-8">
             <h3 className="text-3xl">Explore some of our apps.</h3>
@@ -24,7 +34,10 @@ export default function PromoApps() {
                         align: 'start',
                         loop: true,
                     }}
+                    plugins={[plugin.current]}
                     className="w-full"
+                    onMouseEnter={() => plugin.current.stop()}
+                    onMouseLeave={() => plugin.current.play()}
                 >
                     <CarouselContent className="-ml-1 sm:-ml-2 md:-ml-4 min-w-0">
                         {PROMO_APPS.map((app, index) => (
