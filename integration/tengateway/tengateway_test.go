@@ -115,8 +115,9 @@ func TestTenGateway(t *testing.T) {
 		"testSubscriptionTopics":               testSubscriptionTopics,
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
-		// "testRateLimiter":                      testRateLimiter,
-		"testSessionKeys": testSessionKeys,
+		"testSessionKeys":                      testSessionKeys,
+		"testSessionKeysGetStorageAt":          testSessionKeysGetStorageAt,
+		// "testRateLimiter":                   testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, startPort, httpURL, wsURL, w)
@@ -185,42 +186,45 @@ func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 
 	contractAddr := deployContract(t, w, user0)
 
-	// create session key
-	skAddr, err := user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.CreateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	// create session key using the dedicated RPC method
+	var skAddressHex string
+	err = user0.HTTPClient.Client().CallContext(context.Background(), &skAddressHex, "sessionkeys_create")
 	require.NoError(t, err)
-	skAddress := gethcommon.BytesToAddress(skAddr)
+	skAddress := gethcommon.HexToAddress(skAddressHex)
 
 	// move some funds to the SK
 	var skAmount int64 = 100_000_000_000_000_000
 	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], skAddress, skAmount)
 	require.NoError(t, err)
 
-	// activate SK
-	_, err = user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.ActivateSessionKeyCQMethod), gethcommon.Hash{}, nil)
-	require.NoError(t, err)
+	// Session keys are now implicitly active when created - no activation needed
 
 	skNonce := uint64(0)
 
-	// interact with the contract - unsigned tx calling "sendRawTransaction"
+	// interact with the contract using session key - unsigned tx calling "sendTransaction" with session key
 	contractInteractionData, err := eventsContractABI.Pack("setMessage", "user0PrivateEvent")
 	require.NoError(t, err)
-	rec, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil)
+
+	// Use the session key to send the transaction
+	rec, err := interactWithSmartContractUsingSessionKey(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil, skAddress.Hex())
 	require.NoError(t, err)
 	require.Equal(t, uint64(0x1), rec.Status)
 
-	// move money back - unsigned tx calling "sendTransaction"
+	// move money back using session key - unsigned tx calling "sendTransaction" with session key
 	skNonce++
-	rec1, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, user0.Wallets[0].Address(), nil, big.NewInt(1_000))
+	rec1, err := interactWithSmartContractUsingSessionKey(user0.HTTPClient, skNonce, user0.Wallets[0].Address(), nil, big.NewInt(1_000), skAddress.Hex())
 	require.NoError(t, err)
 	require.Equal(t, uint64(0x1), rec1.Status)
 
-	// deactivate
-	_, err = user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.DeactivateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	// delete the session key using the dedicated RPC method
+	var deleteResult bool
+	err = user0.HTTPClient.Client().CallContext(context.Background(), &deleteResult, "sessionkeys_delete", skAddress.Hex())
 	require.NoError(t, err)
+	require.True(t, deleteResult)
 
-	// interact with the contract - unsigned - should fail
+	// interact with the contract using deleted session key - should fail
 	skNonce++
-	rec2, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil)
+	rec2, err := interactWithSmartContractUsingSessionKey(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil, skAddress.Hex())
 	require.Error(t, err)
 	require.Nil(t, rec2)
 }
@@ -248,7 +252,7 @@ func deployContract(t *testing.T, w wallet.Wallet, user0 *GatewayUser) gethcommo
 	return contractReceipt.ContractAddress
 }
 
-func interactWithSmartContractUnsigned(client *ethclient.Client, nonce uint64, contractAddress gethcommon.Address, contractInteractionData []byte, value *big.Int) (*types.Receipt, error) {
+func interactWithSmartContractUsingSessionKey(client *ethclient.Client, nonce uint64, toAddress gethcommon.Address, contractInteractionData []byte, value *big.Int, sessionKey string) (*types.Receipt, error) {
 	var result responses.GasPriceType
 	err := client.Client().CallContext(context.Background(), &result, "eth_gasPrice")
 	if err != nil {
@@ -260,14 +264,28 @@ func interactWithSmartContractUnsigned(client *ethclient.Client, nonce uint64, c
 	n := hexutil.Uint64(nonce)
 	g := hexutil.Uint64(100_000_000)
 	d := hexutil.Bytes(contractInteractionData)
+
+	// Create AccessList with session key address encoded in storage keys
+	// Use the predefined address 0x0000...1 as specified in the implementation
+	predefinedAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000001")
+
 	interactionTx := gethapi.TransactionArgs{
 		Nonce:    &n,
-		To:       &contractAddress,
+		To:       &toAddress,
 		Gas:      &g,
 		GasPrice: &result,
 		Data:     &d,
 		Value:    (*hexutil.Big)(value),
+		AccessList: &types.AccessList{
+			{
+				Address:     predefinedAddr,
+				StorageKeys: []gethcommon.Hash{gethcommon.HexToHash(sessionKey)},
+			},
+		},
 	}
+
+	// Use the session key to send the transaction via eth_sendTransaction
+	// The session key address is now passed through the AccessList field
 	err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx)
 	if err != nil {
 		return nil, err
@@ -279,6 +297,38 @@ func interactWithSmartContractUnsigned(client *ethclient.Client, nonce uint64, c
 	}
 
 	return txReceipt, nil
+}
+
+func testSessionKeysGetStorageAt(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
+
+	// Register the user so we can call the endpoints that require authentication
+	err = user0.RegisterAccounts()
+	require.NoError(t, err)
+
+	// Simple print to verify the test is running
+	fmt.Println("testSessionKeysGetStorageAt: Test is running successfully!")
+	testlog.Logger().Info("testSessionKeysGetStorageAt: Test is running successfully!")
+
+	// Get the user's balance as a simple operation
+	balance, err := user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	require.NoError(t, err)
+
+	// Print the balance to show the test is working
+	fmt.Printf("testSessionKeysGetStorageAt: User balance: %s\n", balance.String())
+	testlog.Logger().Info("testSessionKeysGetStorageAt: User balance", "balance", balance.String())
+
+	// Create session key using getStorageAt with special CreateSessionKeyCQMethod address
+	createSessionKeyAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000003")
+	response, err := user0.HTTPClient.StorageAt(context.Background(), createSessionKeyAddr, gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+
+	// Print the getStorageAt response for session key creation
+	fmt.Printf("testSessionKeysGetStorageAt: getStorageAt response: %s\n", gethcommon.Bytes2Hex(response))
+	testlog.Logger().Info("testSessionKeysGetStorageAt: session key creation response",
+		"response", gethcommon.Bytes2Hex(response))
 }
 
 func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {

@@ -3,6 +3,7 @@ package storage
 import (
 	"fmt"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
@@ -17,8 +18,7 @@ type UserStorage interface {
 	DeleteUser(userID []byte) error
 	AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error
 	AddSessionKey(userID []byte, key common.GWSessionKey) error
-	ActivateSessionKey(userID []byte, active bool) error
-	RemoveSessionKey(userID []byte) error
+	RemoveSessionKey(userID []byte, sessionKeyAddr *gethcommon.Address) error
 	GetUser(userID []byte) (*common.GWUser, error)
 	GetEncryptionKey() []byte
 }

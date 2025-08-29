@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
 )
 
@@ -29,29 +30,16 @@ func (api *SessionKeyAPI) Create(ctx context.Context) (string, error) {
 	return (*sk.Account.Address).Hex(), nil
 }
 
-func (api *SessionKeyAPI) Activate(ctx context.Context) (bool, error) {
+func (api *SessionKeyAPI) Delete(ctx context.Context, sessionKeyAddr string) (bool, error) {
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
 		return false, err
 	}
 
-	return api.we.SKManager.ActivateSessionKey(user)
-}
-
-func (api *SessionKeyAPI) Deactivate(ctx context.Context) (bool, error) {
-	user, err := extractUserForRequest(ctx, api.we)
-	if err != nil {
-		return false, err
+	if !common.IsHexAddress(sessionKeyAddr) {
+		return false, fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
 	}
 
-	return api.we.SKManager.DeactivateSessionKey(user)
-}
-
-func (api *SessionKeyAPI) Delete(ctx context.Context) (bool, error) {
-	user, err := extractUserForRequest(ctx, api.we)
-	if err != nil {
-		return false, err
-	}
-
-	return api.we.SKManager.DeleteSessionKey(user)
+	addr := common.HexToAddress(sessionKeyAddr)
+	return api.we.SKManager.DeleteSessionKey(user, addr)
 }

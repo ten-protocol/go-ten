@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
@@ -16,7 +17,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/encryption"
 )
 
@@ -102,9 +103,10 @@ func (c *CosmosDB) AddUser(userID []byte, privateKey []byte) error {
 	keyString, partitionKey := c.dbKey(userID)
 
 	user := dbcommon.GWUserDB{
-		UserId:     userID,
-		PrivateKey: privateKey,
-		Accounts:   []dbcommon.GWAccountDB{},
+		UserId:      userID,
+		PrivateKey:  privateKey,
+		Accounts:    []dbcommon.GWAccountDB{},
+		SessionKeys: make(map[common.Address]*dbcommon.GWSessionKeyDB),
 	}
 	docJSON, err := c.createEncryptedDoc(user, keyString)
 	if err != nil {
@@ -130,10 +132,21 @@ func (c *CosmosDB) DeleteUser(userID []byte) error {
 }
 
 // Adds or updates a session key for the user, with retries on ETag mismatch
-func (c *CosmosDB) AddSessionKey(userID []byte, key common.GWSessionKey) error {
+func (c *CosmosDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error {
 	ctx := context.Background()
 	return c.updateUserWithRetries(ctx, userID, func(u *dbcommon.GWUserDB) error {
-		u.SessionKey = &dbcommon.GWSessionKeyDB{
+		// Check session key limit
+		if len(u.SessionKeys) >= wecommon.MaxSessionKeysPerUser {
+			return fmt.Errorf("maximum number of session keys (%d) reached", wecommon.MaxSessionKeysPerUser)
+		}
+
+		// Initialize SessionKeys map if nil
+		if u.SessionKeys == nil {
+			u.SessionKeys = make(map[common.Address]*dbcommon.GWSessionKeyDB)
+		}
+
+		address := *key.Account.Address
+		u.SessionKeys[address] = &dbcommon.GWSessionKeyDB{
 			PrivateKey: crypto.FromECDSA(key.PrivateKey.ExportECDSA()),
 			Account: dbcommon.GWAccountDB{
 				AccountAddress: key.Account.Address.Bytes(),
@@ -145,20 +158,19 @@ func (c *CosmosDB) AddSessionKey(userID []byte, key common.GWSessionKey) error {
 	})
 }
 
-// Sets the ActiveSK flag for the user, with retries on ETag mismatch
-func (c *CosmosDB) ActivateSessionKey(userID []byte, active bool) error {
+// Removes a specific session key for the user, with retries on ETag mismatch
+func (c *CosmosDB) RemoveSessionKey(userID []byte, sessionKeyAddr *common.Address) error {
 	ctx := context.Background()
 	return c.updateUserWithRetries(ctx, userID, func(u *dbcommon.GWUserDB) error {
-		u.ActiveSK = active
-		return nil
-	})
-}
+		if u.SessionKeys == nil {
+			return fmt.Errorf("no session keys found for user")
+		}
 
-// Removes the session key for the user, with retries on ETag mismatch
-func (c *CosmosDB) RemoveSessionKey(userID []byte) error {
-	ctx := context.Background()
-	return c.updateUserWithRetries(ctx, userID, func(u *dbcommon.GWUserDB) error {
-		u.SessionKey = nil
+		if _, exists := u.SessionKeys[*sessionKeyAddr]; !exists {
+			return fmt.Errorf("session key not found: %s", sessionKeyAddr.Hex())
+		}
+
+		delete(u.SessionKeys, *sessionKeyAddr)
 		return nil
 	})
 }
@@ -177,7 +189,7 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 	})
 }
 
-func (c *CosmosDB) GetUser(userID []byte) (*common.GWUser, error) {
+func (c *CosmosDB) GetUser(userID []byte) (*wecommon.GWUser, error) {
 	user, err := c.getUserDB(userID)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -42,15 +43,6 @@ func (s *UserStorageWithCache) DeleteUser(userID []byte) error {
 	return nil
 }
 
-func (s *UserStorageWithCache) ActivateSessionKey(userID []byte, active bool) error {
-	err := s.storage.ActivateSessionKey(userID, active)
-	if err != nil {
-		return err
-	}
-	s.cache.Remove(userID)
-	return nil
-}
-
 func (s *UserStorageWithCache) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error {
 	err := s.storage.AddSessionKey(userID, key)
 	if err != nil {
@@ -60,8 +52,8 @@ func (s *UserStorageWithCache) AddSessionKey(userID []byte, key wecommon.GWSessi
 	return nil
 }
 
-func (s *UserStorageWithCache) RemoveSessionKey(userID []byte) error {
-	err := s.storage.RemoveSessionKey(userID)
+func (s *UserStorageWithCache) RemoveSessionKey(userID []byte, sessionKeyAddr *gethcommon.Address) error {
+	err := s.storage.RemoveSessionKey(userID, sessionKeyAddr)
 	if err != nil {
 		return err
 	}

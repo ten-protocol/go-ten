@@ -17,18 +17,16 @@ import (
 )
 
 // SKManager - session keys are Private Keys managed by the Gateway
-// At the moment, each user can have a single Session Key. Which is either active or inactive
-// when the SK is active, then all transactions submitted by that user will be signed with the session key
+// Each user can have multiple Session Keys (up to 100), one per dApp
+// Each session key is identified by its address, which serves as the session ID
+// Session keys are implicitly active when used - no activation/deactivation needed
 // The SK is also considered an "Account" of that user
 // when the SK is created, it signs over the VK of the user so that it can interact with a node the standard way
 // From the POV of the Ten network - a session key is a normal account key
 type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
-	ActivateSessionKey(user *common.GWUser) (bool, error)
-	DeactivateSessionKey(user *common.GWUser) (bool, error)
-	DeleteSessionKey(user *common.GWUser) (bool, error)
-	ListSessionKey(user *common.GWUser) (*gethcommon.Address, error)
-	SignTx(ctx context.Context, user *common.GWUser, input *types.Transaction) (*types.Transaction, error)
+	DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (bool, error)
+	SignTx(ctx context.Context, user *common.GWUser, sessionKeyAddr gethcommon.Address, input *types.Transaction) (*types.Transaction, error)
 }
 
 type skManager struct {
@@ -47,9 +45,11 @@ func NewSKManager(storage storage.UserStorage, config *common.Config, logger get
 
 // CreateSessionKey - generates a fresh key and signs over the VK of the user with it
 func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error) {
-	if user.SessionKey != nil {
-		return nil, fmt.Errorf("user already has a session key")
+	// Check session key limit
+	if len(user.SessionKeys) >= common.MaxSessionKeysPerUser {
+		return nil, fmt.Errorf("maximum number of session keys (%d) reached", common.MaxSessionKeysPerUser)
 	}
+
 	sk, err := m.createSK(user)
 	if err != nil {
 		return nil, err
@@ -61,42 +61,16 @@ func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey,
 	return sk, nil
 }
 
-func (m *skManager) ActivateSessionKey(user *common.GWUser) (bool, error) {
-	if user.SessionKey == nil {
-		return false, fmt.Errorf("please create a session key")
+func (m *skManager) DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (bool, error) {
+	if len(user.SessionKeys) == 0 {
+		return false, fmt.Errorf("no session keys found")
 	}
-	if user.ActiveSK {
-		return false, fmt.Errorf("session key already activated")
-	}
-	err := m.storage.ActivateSessionKey(user.ID, true)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
 
-func (m *skManager) DeactivateSessionKey(user *common.GWUser) (bool, error) {
-	if user.SessionKey == nil {
-		return false, fmt.Errorf("please create a session key")
+	if _, exists := user.SessionKeys[sessionKeyAddr]; !exists {
+		return false, fmt.Errorf("session key not found: %s", sessionKeyAddr.Hex())
 	}
-	if !user.ActiveSK {
-		return false, fmt.Errorf("session key is not activated")
-	}
-	err := m.storage.ActivateSessionKey(user.ID, false)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
 
-func (m *skManager) DeleteSessionKey(user *common.GWUser) (bool, error) {
-	if user.SessionKey == nil {
-		return false, fmt.Errorf("please create a session key")
-	}
-	if user.ActiveSK {
-		return false, fmt.Errorf("session key is active. Please deactivate first")
-	}
-	err := m.storage.RemoveSessionKey(user.ID)
+	err := m.storage.RemoveSessionKey(user.ID, &sessionKeyAddr)
 	if err != nil {
 		return false, err
 	}
@@ -142,15 +116,26 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 	}, nil
 }
 
-func (m *skManager) ListSessionKey(user *common.GWUser) (*gethcommon.Address, error) {
-	if user.SessionKey == nil {
-		return nil, nil
+func (m *skManager) GetSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (*common.GWSessionKey, error) {
+	if user.SessionKeys == nil {
+		return nil, fmt.Errorf("no session keys found")
 	}
-	return user.SessionKey.Account.Address, nil
+
+	sessionKey, exists := user.SessionKeys[sessionKeyAddr]
+	if !exists {
+		return nil, fmt.Errorf("session key not found: %s", sessionKeyAddr.Hex())
+	}
+
+	return sessionKey, nil
 }
 
-func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, tx *types.Transaction) (*types.Transaction, error) {
-	prvKey := user.SessionKey.PrivateKey.ExportECDSA()
+func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, sessionKeyAddr gethcommon.Address, tx *types.Transaction) (*types.Transaction, error) {
+	sessionKey, err := m.GetSessionKey(user, sessionKeyAddr)
+	if err != nil {
+		return nil, err
+	}
+
+	prvKey := sessionKey.PrivateKey.ExportECDSA()
 	signer := types.NewCancunSigner(big.NewInt(int64(m.config.TenChainID)))
 
 	stx, err := types.SignTx(tx, signer, prvKey)
@@ -158,7 +143,7 @@ func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, tx *types.T
 		return nil, err
 	}
 
-	m.logger.Debug("Signed transaction with session key", "stxHash", stx.Hash().Hex())
+	m.logger.Debug("Signed transaction with session key", "stxHash", stx.Hash().Hex(), "sessionKey", sessionKeyAddr.Hex())
 
 	return stx, nil
 }

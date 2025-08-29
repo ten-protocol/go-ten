@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strings"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
@@ -95,20 +96,8 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 			Func: httpHandler(walletExt, createSKRequestHandler),
 		},
 		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "activate",
-			Func: httpHandler(walletExt, activateSKRequestHandler),
-		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "deactivate",
-			Func: httpHandler(walletExt, deactivateSKRequestHandler),
-		},
-		{
 			Name: common.APIVersion1 + common.PathSessionKeys + "delete",
 			Func: httpHandler(walletExt, deleteSKRequestHandler),
-		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "list",
-			Func: httpHandler(walletExt, listSKRequestHandler),
 		},
 	}
 }
@@ -767,15 +756,6 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 }
 
-func listSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		if user.SessionKey == nil {
-			return []byte{}, nil
-		}
-		return []byte(hexutils.BytesToHex(user.SessionKey.Account.Address.Bytes())), nil
-	})
-}
-
 func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
 		sk, err := walletExt.SKManager.CreateSessionKey(user)
@@ -789,22 +769,26 @@ func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
 
 func deleteSKRequestHandler(walletExt *services.Services, conn UserConn) {
 	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		res, err := walletExt.SKManager.DeleteSessionKey(user)
-		return []byte{boolToByte(res)}, err
-	})
-}
+		// Extract session key address from query parameter
+		sessionKeyAddr, err := getQueryParameter(conn.ReadRequestParams(), "sessionKey")
+		if err != nil {
+			return nil, fmt.Errorf("sessionKey parameter required: %w", err)
+		}
 
-func activateSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		res, err := walletExt.SKManager.ActivateSessionKey(user)
-		return []byte{boolToByte(res)}, err
-	})
-}
+		if !gethcommon.IsHexAddress(sessionKeyAddr) {
+			return nil, fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
+		}
 
-func deactivateSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		res, err := walletExt.SKManager.DeactivateSessionKey(user)
-		return []byte{boolToByte(res)}, err
+		addr := gethcommon.HexToAddress(sessionKeyAddr)
+		success, err := walletExt.SKManager.DeleteSessionKey(user, addr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to delete session key: %w", err)
+		}
+
+		if success {
+			return []byte("success"), nil
+		}
+		return []byte("false"), nil
 	})
 }
 
@@ -839,13 +823,6 @@ func withUser(walletExt *services.Services, conn UserConn, withUser func(user *c
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
-}
-
-func boolToByte(res bool) byte {
-	if res {
-		return 1
-	}
-	return 0
 }
 
 func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {
