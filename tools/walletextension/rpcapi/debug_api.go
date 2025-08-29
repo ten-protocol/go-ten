@@ -24,31 +24,31 @@ func NewDebugAPI(we *services.Services) *DebugAPI {
 }
 
 func (api *DebugAPI) GetRawHeader(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }
 
 func (api *DebugAPI) GetRawBlock(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }
 
 func (api *DebugAPI) GetRawReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]hexutil.Bytes, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }
 
 func (api *DebugAPI) GetRawTransaction(ctx context.Context, hash gethcommon.Hash) (hexutil.Bytes, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }
 
 func (api *DebugAPI) PrintBlock(ctx context.Context, number uint64) (string, error) {
-	return "", rpcNotImplemented
+	return "", ErrRPCNotImplemented
 }
 
 func (api *DebugAPI) ChaindbProperty(property string) (string, error) {
-	return "", rpcNotImplemented
+	return "", ErrRPCNotImplemented
 }
 
 func (api *DebugAPI) ChaindbCompact() error {
-	return rpcNotImplemented
+	return ErrRPCNotImplemented
 }
 
 func (api *DebugAPI) SetHead(number hexutil.Uint64) {

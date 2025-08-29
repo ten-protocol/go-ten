@@ -122,8 +122,8 @@ func (c CrossChainMessages) FilterValueTransfers(bridgeAuthority gethcommon.Addr
 	return ret
 }
 
-// FailedDecryptErr - when the TEN enclave fails to decrypt an RPC request
-var FailedDecryptErr = errors.New("failed to decrypt RPC payload. please use the correct enclave key")
+// ErrFailedDecrypt - when the TEN enclave fails to decrypt an RPC request
+var ErrFailedDecrypt = errors.New("failed to decrypt RPC payload. please use the correct enclave key")
 
 // EncryptedRPCRequest - an encrypted request with extra plaintext metadata
 type EncryptedRPCRequest struct {

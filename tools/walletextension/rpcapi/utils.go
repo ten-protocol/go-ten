@@ -42,7 +42,7 @@ const (
 	sendTransactionDuration = 20 * time.Second
 )
 
-var rpcNotImplemented = fmt.Errorf("rpc endpoint not implemented")
+var ErrRPCNotImplemented = fmt.Errorf("rpc endpoint not implemented")
 
 type AuthExecCfg struct {
 	// these 4 fields specify the account(s) that should make the backend call
@@ -75,7 +75,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 
 	res, err := cache.WithCache(w.RPCResponsesCache, cfg, generateCacheKey(cacheArgs), func() (*R, error) {
 		return services.WithPlainRPCConnection(ctx, w.BackendRPC, func(client *rpc.Client) (*R, error) {
-			var resp *R = new(R)
+			resp := new(R)
 			var err error
 
 			// wrap the context with a timeout to prevent long executions
