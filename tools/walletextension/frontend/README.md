@@ -57,6 +57,47 @@ Create a `.env.local` file in the root directory of the project and add the foll
 - You can request tokens from the Discord bot by typing `!faucet <your address>` in the #faucet channel
 - You can also revoke accounts by clicking the "Revoke Accounts" button on the homepage
 
+## Docker Deployment
+
+This project uses a pnpm workspace setup but needs npm compatibility for Docker builds.
+
+### Adding New Dependencies
+
+When you add new dependencies with pnpm, you need to update the `package-lock.json` for Docker compatibility:
+
+1. **Add the dependency:**
+   ```bash
+   pnpm add <package-name>
+   ```
+
+2. **Update package-lock.json for Docker:**
+   ```bash
+   # Option 1: Use the npm script
+   npm run update-package-lock
+   
+   # Option 2: Run the script directly
+   ./update-package-lock.sh
+   ```
+
+3. **Build the Docker image:**
+   ```bash
+   # From the repository root (/path/to/go-ten)
+   docker build \
+     --build-arg NEXT_PUBLIC_NETWORK_NAME="your-network-name" \
+     --build-arg NEXT_PUBLIC_TENSCAN_URL="your-tenscan-url" \
+     --build-arg NEXT_PUBLIC_GATEWAY_URL="your-gateway-url" \
+     --build-arg NEXT_PUBLIC_CHAIN_ID="your-chain-id" \
+     -t wallet-extension-frontend \
+     -f ./tools/walletextension/frontend/Dockerfile .
+   ```
+
+### Why This Is Needed
+
+- The project uses **pnpm workspaces** for development
+- Docker builds use **npm** for better container compatibility
+- The `update-package-lock.sh` script generates a clean npm `package-lock.json` from the pnpm-managed `package.json`
+- This ensures all dependencies (including native modules) work correctly in Docker
+
 ## Built With
 
 - [Next.js](https://nextjs.org/)
