@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/common"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -30,7 +29,7 @@ func (hashes CrossChainRootHashes) ToHexString() string {
 	return strings.Join(hexStrings, ",")
 }
 
-func (bundle ExtCrossChainBundle) HashPacked() (common.Hash, error) {
+func (bundle ExtCrossChainBundle) HashPacked() (gethcommon.Hash, error) {
 	uint256type, _ := abi.NewType("uint256", "", nil)
 	bytes32type, _ := abi.NewType("bytes32", "", nil)
 	bytesТype, _ := abi.NewType("bytes[]", "", nil)
@@ -52,7 +51,7 @@ func (bundle ExtCrossChainBundle) HashPacked() (common.Hash, error) {
 
 	bytes, err := args.Pack(bundle.LastBatchHash, bundle.L1BlockHash, bundle.L1BlockNum, bundle.CrossChainRootHashes)
 	if err != nil {
-		return common.Hash{}, err
+		return gethcommon.Hash{}, err
 	}
 
 	hash := crypto.Keccak256Hash(bytes)

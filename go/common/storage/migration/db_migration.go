@@ -49,7 +49,7 @@ func ApplyMigrations(db *sqlx.DB, sqlFiles embed.FS, logger gethlog.Logger) erro
 		migrationName := migrationFiles[currentMigration].Name()
 		// the migration files are indexed from 001. The "currentMigration" is the index in the array.
 		migrationNumber := currentMigration + 1
-		//todo - could sanity check that migrationName starts with migrationNumber
+		// todo - could sanity check that migrationName starts with migrationNumber
 		logger.Info("Executing db migration", "file", migrationName)
 		content, err := sqlFiles.ReadFile(migrationName)
 		if err != nil {

@@ -191,7 +191,7 @@ func searchForAddressInFilterCriteria(filterCriteria common.FilterCriteria, poss
 }
 
 func (api *FilterAPI) NewFilter(crit common.FilterCriteria) (rpc.ID, error) {
-	return rpc.NewID(), rpcNotImplemented
+	return rpc.NewID(), ErrRPCNotImplemented
 }
 
 func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) ([]*types.Log, error) {
@@ -291,5 +291,5 @@ func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.Lo
 }
 
 func (api *FilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }

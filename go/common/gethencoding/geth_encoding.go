@@ -3,6 +3,7 @@ package gethencoding
 import (
 	"context"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -74,14 +75,34 @@ func ExtractAddress(param interface{}) (*gethcommon.Address, error) {
 
 	paramStr, ok := param.(string)
 	if !ok {
-		return nil, fmt.Errorf("unexpectd address value")
+		return nil, fmt.Errorf("unexpected address value")
 	}
 
 	if len(strings.TrimSpace(paramStr)) == 0 {
 		return nil, fmt.Errorf("no address specified")
 	}
 
-	addr := gethcommon.HexToAddress(paramStr)
+	// Validate exact 20-byte hex string format
+	trimmed := strings.TrimSpace(paramStr)
+
+	// Handle optional 0x prefix
+	hexPart := trimmed
+	if strings.HasPrefix(trimmed, "0x") || strings.HasPrefix(trimmed, "0X") {
+		hexPart = trimmed[2:]
+	}
+
+	// Must be exactly 40 hex characters (20 bytes)
+	if len(hexPart) != 40 {
+		return nil, fmt.Errorf("address must be exactly 40 hex characters (20 bytes)")
+	}
+
+	// Use standard library to validate hex and decode
+	_, err := hex.DecodeString(hexPart)
+	if err != nil {
+		return nil, fmt.Errorf("specified address is an invalid hex string: %w", err)
+	}
+
+	addr := gethcommon.HexToAddress(trimmed)
 	return &addr, nil
 }
 

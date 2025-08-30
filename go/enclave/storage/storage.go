@@ -9,14 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
@@ -28,7 +25,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 
-	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -59,11 +55,12 @@ type AttestedEnclave struct {
 // todo - this file needs splitting up based on concerns
 type storageImpl struct {
 	db                     enclavedb.EnclaveDB
+	trieDB                 *triedb.Database
 	preparedStatementCache *enclavedb.PreparedStatementCache
 	cachingService         *CacheService
 	eventsStorage          *eventsStorage
 
-	stateCache  state.Database
+	stateCache  *state.CachingDB
 	chainConfig *params.ChainConfig
 	config      *enclaveconfig.EnclaveConfig
 	logger      gethlog.Logger
@@ -77,33 +74,17 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 	return NewStorage(backingDB, cachingService, config, chainConfig, logger)
 }
 
-var defaultCacheConfig = &gethcore.CacheConfig{
-	TrieCleanLimit: 256,
-	TrieDirtyLimit: 256,
-	TrieTimeLimit:  5 * time.Minute,
-	SnapshotLimit:  256,
-	SnapshotWait:   true,
-	StateScheme:    rawdb.PathScheme,
-}
-
-var trieDBConfig = &triedb.Config{
-	Preimages: defaultCacheConfig.Preimages,
-	IsVerkle:  false,
-	HashDB: &hashdb.Config{
-		CleanCacheSize: defaultCacheConfig.TrieCleanLimit * 1024 * 1024,
-	},
-}
-
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	// Open trie database with provided config
-	triedb := triedb.NewDatabase(backingDB, trieDBConfig)
+	trieDB := triedb.NewDatabase(backingDB, triedb.HashDefaults)
 
 	// todo - figure out the snapshot tree
-	stateDB := state.NewDatabase(triedb, nil)
+	stateDB := state.NewDatabase(trieDB, nil)
 
 	prepStatementCache := enclavedb.NewStatementCache(backingDB.GetSQLDB(), logger)
 	return &storageImpl{
 		db:                     backingDB,
+		trieDB:                 trieDB,
 		stateCache:             stateDB,
 		chainConfig:            chainConfig,
 		config:                 config,
@@ -118,13 +99,14 @@ func (s *storageImpl) TrieDB() *triedb.Database {
 	return s.stateCache.TrieDB()
 }
 
-func (s *storageImpl) StateDB() state.Database {
+func (s *storageImpl) StateDB() *state.CachingDB {
 	return s.stateCache
 }
 
 func (s *storageImpl) Close() error {
 	s.cachingService.Stop()
 	s.preparedStatementCache.Clear()
+	s.trieDB.Close()
 	return s.db.GetSQLDB().Close()
 }
 

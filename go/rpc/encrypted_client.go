@@ -74,7 +74,7 @@ func (c *EncRPCClient) CallContext(ctx context.Context, result interface{}, meth
 	if rpc.IsEncryptedMethod(method) {
 		err := c.executeEncryptedCall(ctx, result, method, args...)
 		// this should only be triggered during testing
-		if err != nil && errors.Is(err, common.FailedDecryptErr) {
+		if err != nil && errors.Is(err, common.ErrFailedDecrypt) {
 			c.logger.Warn("Reconnecting to new backend. Reading the enclave key.")
 			newKey, err := ReadEnclaveKey(c.obscuroClient)
 			if err != nil {

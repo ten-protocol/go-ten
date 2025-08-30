@@ -11,7 +11,6 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
-	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
@@ -124,7 +123,7 @@ func WithEncRPCConnection[R any](ctx context.Context, rpc *BackendRPC, acct *wec
 	return execute(rpcClient)
 }
 
-func WithPlainRPCConnection[R any](ctx context.Context, b *BackendRPC, execute func(client *rpc.Client) (*R, error)) (*R, error) {
+func WithPlainRPCConnection[R any](ctx context.Context, b *BackendRPC, execute func(client *gethrpc.Client) (*R, error)) (*R, error) {
 	connectionObj, err := connectPlain(ctx, b.rpcHTTPConnPool, b.logger)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
@@ -133,13 +132,13 @@ func WithPlainRPCConnection[R any](ctx context.Context, b *BackendRPC, execute f
 	return execute(connectionObj)
 }
 
-func connectPlain(ctx context.Context, p *pool.ObjectPool, logger gethlog.Logger) (*rpc.Client, error) {
+func connectPlain(ctx context.Context, p *pool.ObjectPool, logger gethlog.Logger) (*gethrpc.Client, error) {
 	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "get rpc connection")
 	connectionObj, err := p.BorrowObject(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
 	}
-	conn := connectionObj.(*rpc.Client)
+	conn := connectionObj.(*gethrpc.Client)
 	return conn, nil
 }
 
@@ -149,7 +148,7 @@ func connect(ctx context.Context, p *pool.ObjectPool, account *wecommon.GWAccoun
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
 	}
-	conn := connectionObj.(*rpc.Client)
+	conn := connectionObj.(*gethrpc.Client)
 	encClient, err := wecommon.CreateEncClient(conn, key, account.Address.Bytes(), account.User.UserKey, account.Signature, account.SignatureType, logger)
 	if err != nil {
 		_ = returnConn(p, conn, logger)

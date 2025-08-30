@@ -157,7 +157,7 @@ type Storage interface {
 	TrieDB() *triedb.Database
 
 	// StateDB - return the underlying state database
-	StateDB() state.Database
+	StateDB() *state.CachingDB
 
 	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
 }

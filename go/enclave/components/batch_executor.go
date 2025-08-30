@@ -129,7 +129,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 	// We already rely on the database to prevent it, but there could be some races in extreme conditions.
 	// To be absolutely sure, we implement a second mechanism.
 	if executor.lastExecutedBatch >= ec.SequencerNo.Uint64() {
-		return nil, fmt.Errorf("batch %d already executed. should not happen.", ec.SequencerNo.Uint64())
+		return nil, fmt.Errorf("batch %d already executed. should not happen", ec.SequencerNo.Uint64())
 	}
 
 	ec.ctx = ctx
@@ -249,7 +249,7 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 	ec.BaseFee = executor.gasPricer.CalculateBlockBaseFeeAtHeight(ec.ctx, executor.chainConfig, common.ConvertBatchHeaderToHeader(ec.parentBatch), ec.l1block.Number.Uint64())
 	// Create a new batch based on the provided context
 	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator, ec.BatchGasLimit)
-	ec.stateDB, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
+	ec.stateDB, _, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
 	if err != nil {
 		return fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
@@ -351,7 +351,7 @@ func (executor *batchExecutor) extractFeesAddressFromPhase1(phase1Result core.Tx
 
 	feesAddr := addresses["Fees"]
 	if feesAddr == nil {
-		return gethcommon.Address{}, fmt.Errorf("Fees address not found in phase 1 deployment")
+		return gethcommon.Address{}, fmt.Errorf("fees address not found in phase 1 deployment")
 	}
 
 	executor.logger.Info("Extracted Fees address from Phase 1", "address", feesAddr.Hex())
