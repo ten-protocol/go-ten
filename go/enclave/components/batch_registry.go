@@ -228,7 +228,13 @@ func getBatchState(ctx context.Context, storage storage.Storage, batchHash commo
 	if blockchainState == nil {
 		return nil, nil, fmt.Errorf("unable to fetch chain state for batch %s", batchHash.Hex())
 	}
-	reader, err := storage.StateDB().Reader(batchHash)
+
+	batch, err := storage.FetchBatchHeader(ctx, batchHash)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not fetch batch header. Cause: %w", err)
+	}
+
+	reader, err := storage.StateDB().Reader(batch.Root)
 	if err != nil {
 		return nil, nil, err
 	}
