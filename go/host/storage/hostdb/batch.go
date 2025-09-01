@@ -31,11 +31,10 @@ const (
 	insertTransactions = "INSERT INTO transaction_host (hash, b_sequence) VALUES "
 	updateTxCount      = "UPDATE transaction_count SET total=? WHERE id=1"
 
-	// WHERE clause patterns
-	whereBatchHash = " WHERE b.hash = ?"
-
-	// Placeholder patterns for dynamic SQL building
-	placeholderPair = "(?, ?)"
+	// where queries
+	whereHash     = " WHERE hash = ?"
+	whereSequence = " WHERE sequence = ?"
+	whereHeight   = " WHERE height = ?"
 )
 
 // AddBatch adds a batch and its header to the DB
@@ -61,13 +60,16 @@ func AddBatch(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
 	}
 
 	if len(batch.TxHashes) > 0 {
-		insert := insertTransactions
+		// Build multi-value INSERT statement
+		valuePlaceholders := make([]string, len(batch.TxHashes))
 		args := make([]any, 0)
-		for _, txHash := range batch.TxHashes {
-			insert += fmt.Sprintf(" %s,", db.GetSQLDB().Rebind(placeholderPair))
+		for i, txHash := range batch.TxHashes {
+			valuePlaceholders[i] = "(?, ?)"
 			args = append(args, txHash.Bytes(), batch.SeqNo().Uint64())
 		}
-		insert = strings.TrimRight(insert, ",")
+
+		insert := insertTransactions + strings.Join(valuePlaceholders, ", ")
+		insert = db.GetSQLDB().Rebind(insert)
 		_, err = dbtx.Tx.Exec(insert, args...)
 		if err != nil {
 			return fmt.Errorf("failed to insert transactions. cause: %w", err)
@@ -124,8 +126,7 @@ func GetBatchListing(db HostDB, pagination *common.QueryPagination) (*common.Bat
 
 // GetPublicBatchBySequenceNumber returns the batch with the given sequence number.
 func GetPublicBatchBySequenceNumber(db HostDB, seqNo uint64) (*common.PublicBatch, error) {
-	whereQuery := " WHERE sequence = ?"
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereQuery)
+	reboundWhereQuery := db.GetSQLDB().Rebind(whereSequence)
 	return fetchPublicBatch(db.GetSQLDB(), reboundWhereQuery, seqNo)
 }
 
@@ -136,8 +137,7 @@ func GetTxsBySequenceNumber(db HostDB, seqNo uint64) ([]common.TxHash, error) {
 
 // GetBatchBySequenceNumber returns the ext batch for a given sequence number.
 func GetBatchBySequenceNumber(db HostDB, seqNo uint64) (*common.ExtBatch, error) {
-	whereQuery := " WHERE sequence = ?"
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereQuery)
+	reboundWhereQuery := db.GetSQLDB().Rebind(whereSequence)
 	return fetchFullBatch(db.GetSQLDB(), reboundWhereQuery, seqNo)
 }
 
@@ -148,15 +148,13 @@ func GetCurrentHeadBatch(db HostDB) (*common.PublicBatch, error) {
 
 // GetBatchHeader returns the batch header given the hash.
 func GetBatchHeader(db HostDB, hash gethcommon.Hash) (*common.BatchHeader, error) {
-	whereQuery := " WHERE hash = ?"
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereQuery)
+	reboundWhereQuery := db.GetSQLDB().Rebind(whereHash)
 	return fetchBatchHeader(db.GetSQLDB(), reboundWhereQuery, hash.Bytes())
 }
 
 // GetBatchHashByNumber returns the hash of a batch given its number.
 func GetBatchHashByNumber(db HostDB, number *big.Int) (*gethcommon.Hash, error) {
-	whereQuery := " WHERE height = ?"
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereQuery)
+	reboundWhereQuery := db.GetSQLDB().Rebind(whereHeight)
 	batch, err := fetchBatchHeader(db.GetSQLDB(), reboundWhereQuery, number.Uint64())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch batch header - %w", err)
@@ -211,8 +209,7 @@ func GetBatchTxHashes(db HostDB, batchHash gethcommon.Hash) ([]gethcommon.Hash, 
 
 // GetPublicBatch returns the batch with the given hash.
 func GetPublicBatch(db HostDB, hash common.L2BatchHash) (*common.PublicBatch, error) {
-	whereQuery := " WHERE b.hash = ?"
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereQuery)
+	reboundWhereQuery := db.GetSQLDB().Rebind(whereHash)
 	return fetchPublicBatch(db.GetSQLDB(), reboundWhereQuery, hash.Bytes())
 }
 
@@ -236,29 +233,25 @@ func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.PublicBatch, error
 
 // GetBatchByHash returns the batch with the given hash.
 func GetBatchByHash(db HostDB, hash common.L2BatchHash) (*common.PublicBatch, error) {
-	whereQuery := " WHERE hash = ?"
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereQuery)
+	reboundWhereQuery := db.GetSQLDB().Rebind(whereHash)
 	return fetchPublicBatch(db.GetSQLDB(), reboundWhereQuery, hash.Bytes())
 }
 
 // GetBatchHeaderByHeight returns the batch header given the height
 func GetBatchHeaderByHeight(db HostDB, height *big.Int) (*common.BatchHeader, error) {
-	whereQuery := " WHERE height = ?"
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereQuery)
+	reboundWhereQuery := db.GetSQLDB().Rebind(whereHeight)
 	return fetchBatchHeader(db.GetSQLDB(), reboundWhereQuery, height.Uint64())
 }
 
 // GetBatchByHeight returns the batch header given the height
 func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
-	whereQuery := " WHERE height = ?"
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereQuery)
+	reboundWhereQuery := db.GetSQLDB().Rebind(whereHeight)
 	return fetchPublicBatch(db.GetSQLDB(), reboundWhereQuery, height.Uint64())
 }
 
 // GetBatchTransactions returns the TransactionListingResponse for a given batch hash
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
-	whereQuery := " WHERE b.hash= ?"
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereQuery)
+	reboundWhereQuery := db.GetSQLDB().Rebind(whereHash)
 	orderQuery := " ORDER BY t.id DESC "
 
 	// TODO @will quick fix to unblock main

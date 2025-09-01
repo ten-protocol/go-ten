@@ -46,7 +46,6 @@ func WithMultisigAddress(s string) Option {
 		c.multisigAddress = s
 	}
 }
-
 func WithProxyAdminAddress(s string) Option {
 	return func(c *Config) {
 		c.proxyAdminAddress = s
