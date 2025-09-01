@@ -97,6 +97,7 @@ type BatchExecutionContext struct {
 
 	currentBatch         *core.Batch
 	stateDB              *state.StateDB
+	stateReader          state.Reader
 	beforeProcessingSnap int
 
 	genesisSysCtrResult core.TxExecResults

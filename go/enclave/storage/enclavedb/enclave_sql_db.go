@@ -28,42 +28,43 @@ func (sqlDB *enclaveDB) SyncKeyValue() error {
 
 func (sqlDB *enclaveDB) SyncAncient() error {
 	// TODO implement me
-	panic("implement me")
+	panic("implement me3")
 }
 
 func (sqlDB *enclaveDB) DeleteRange(start, end []byte) error {
 	// TODO implement me
-	panic("implement me")
+	panic("implement me4")
 }
 
 func (sqlDB *enclaveDB) Tail() (uint64, error) {
 	// TODO implement me
-	panic("implement me")
+	panic("implement me5")
 }
 
 func (sqlDB *enclaveDB) TruncateHead(uint64) (uint64, error) {
 	// TODO implement me
-	panic("implement me")
+	panic("implement me6")
 }
 
 func (sqlDB *enclaveDB) TruncateTail(uint64) (uint64, error) {
 	// TODO implement me
-	panic("implement me")
+	panic("implement me7")
 }
 
 func (sqlDB *enclaveDB) MigrateTable(string, func([]byte) ([]byte, error)) error {
 	// TODO implement me
-	panic("implement me")
+	panic("implement me8")
 }
 
 func (sqlDB *enclaveDB) NewBatchWithSize(int) ethdb.Batch {
-	// TODO implement me
-	panic("implement me")
+	return &dbTxBatch{
+		timeout: sqlDB.config.RPCTimeout,
+		db:      sqlDB,
+	}
 }
 
 func (sqlDB *enclaveDB) AncientDatadir() (string, error) {
-	// TODO implement me
-	panic("implement me")
+	return "", fmt.Errorf("not implemented")
 }
 
 func NewEnclaveDB(db *sqlx.DB, rwdb *sqlx.DB, config *enclaveconfig.EnclaveConfig, logger gethlog.Logger) (EnclaveDB, error) {
@@ -95,13 +96,13 @@ func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
 	}
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
-	return Put(ctx, sqlDB.sqldb, key, value)
+	return Put(ctx, sqlDB.rwSqldb, key, value)
 }
 
 func (sqlDB *enclaveDB) Delete(key []byte) error {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
-	return Delete(ctx, sqlDB.sqldb, key)
+	return Delete(ctx, sqlDB.rwSqldb, key)
 }
 
 func (sqlDB *enclaveDB) Close() error {

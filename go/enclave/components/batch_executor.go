@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 
@@ -29,7 +30,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
-	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -249,7 +249,7 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 	ec.BaseFee = executor.gasPricer.CalculateBlockBaseFeeAtHeight(ec.ctx, executor.chainConfig, common.ConvertBatchHeaderToHeader(ec.parentBatch), ec.l1block.Number.Uint64())
 	// Create a new batch based on the provided context
 	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator, ec.BatchGasLimit)
-	ec.stateDB, _, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
+	ec.stateDB, ec.stateReader, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
 	if err != nil {
 		return fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
@@ -602,7 +602,12 @@ func (executor *batchExecutor) postProcessState(ec *BatchExecutionContext) error
 	}
 
 	for _, msg := range valueTransferMessages {
-		ec.stateDB.SubBalance(executor.config.BridgeAddress, uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
+		bal := ec.stateDB.GetBalance(executor.config.BridgeAddress).Uint64()
+		if bal > msg.Amount.Uint64() {
+			ec.stateDB.SubBalance(executor.config.BridgeAddress, uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
+		} else {
+			executor.logger.Error("Insufficient balance for value transfer", "balance", bal, "amount", msg.Amount)
+		}
 	}
 
 	return nil
@@ -648,12 +653,6 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
 	}
 
-	trieDB := executor.storage.TrieDB()
-	err = trieDB.Commit(rootHash, false)
-	if err != nil {
-		executor.logger.Error("Failed to commit trieDB", "error", err)
-		return nil, fmt.Errorf("failed to commit trieDB. Cause: %w", err)
-	}
 	batch.Header.Root = rootHash
 
 	batch.ResetHash()

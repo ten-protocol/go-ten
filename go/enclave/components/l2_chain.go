@@ -92,7 +92,7 @@ func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Transac
 		return nil, nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
 	}
 
-	callMsg, err := apiArgs.ToMessage(batch.Header.GasLimit-1, batch.Header.BaseFee)
+	callMsg, err := apiArgs.ToMessage(params.MaxTxGas, batch.Header.BaseFee)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err), nil
 	}

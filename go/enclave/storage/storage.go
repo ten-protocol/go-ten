@@ -76,7 +76,7 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	// Open trie database with provided config
-	trieDB := triedb.NewDatabase(backingDB, triedb.HashDefaults)
+	trieDB := triedb.NewDatabase(backingDB, triedb.VerkleDefaults)
 
 	// todo - figure out the snapshot tree
 	stateDB := state.NewDatabase(trieDB, nil)
@@ -458,6 +458,14 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 		return nil, err
 	}
 
+	// prefetch
+	//_, process, err := s.stateCache.ReadersWithCacheStats(batch.Root)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//statedb, err := state.NewWithReader(batch.Root, s.stateCache, process)
+
 	statedb, err := state.New(batch.Root, s.stateCache)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
@@ -467,7 +475,7 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	defer s.logDuration("EmptyStateDB", measure.NewStopwatch())
-	statedb, err := state.New(types.EmptyRootHash, s.stateCache)
+	statedb, err := state.New(types.EmptyVerkleHash, state.NewDatabase(s.trieDB, nil))
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}

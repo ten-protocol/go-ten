@@ -27,7 +27,7 @@ type dbTxBatch struct {
 
 func (b *dbTxBatch) DeleteRange(start, end []byte) error {
 	// only needed by the "path" schema
-	panic("implement me")
+	panic("implement me2")
 }
 
 // Put inserts the given value into the batch for later committing.

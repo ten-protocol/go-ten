@@ -146,7 +146,7 @@ const (
 	L2GenesisSeqNo            = uint64(1)
 	L2SysContractGenesisSeqNo = uint64(2)
 
-	SyntheticTxGasLimit = params.MaxGasLimit
+	SyntheticTxGasLimit = params.MaxTxGas
 )
 
 var GethGenesisParentHash = gethcommon.Hash{}

@@ -100,7 +100,7 @@ func createInMemTenNode(
 		MaxBatchSize:                    1024 * 55,
 		MaxRollupSize:                   1024 * 128,
 		MinBaseFee:                      big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
-		GasLocalExecutionCapFlag:        params.MaxGasLimit / 2,
+		GasLocalExecutionCapFlag:        params.MaxTxGas,
 		GasBatchExecutionLimit:          30_000_000,
 		RPCTimeout:                      5 * time.Second,
 		StoreExecutedTransactions:       true,

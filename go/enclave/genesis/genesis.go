@@ -45,8 +45,11 @@ func (g Genesis) CommitGenesisState(storage storage.Storage) error {
 	if err != nil {
 		return err
 	}
-	_, err = stateDB.Commit(0, false, true)
+	root, err := stateDB.Commit(0, false, true)
 	if err != nil {
+		return err
+	}
+	if err := storage.TrieDB().Commit(root, true); err != nil {
 		return err
 	}
 	return nil
