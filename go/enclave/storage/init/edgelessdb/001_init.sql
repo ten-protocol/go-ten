@@ -5,8 +5,8 @@ GRANT ALL ON tendb.* TO ten;
 create table if not exists tendb.keyvalue
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  binary(32) NOT NULL,
-    val binary(32) NOT NULL,
+    ky  binary(33) NOT NULL,
+    val mediumblob NOT NULL,
     primary key (id),
     INDEX USING HASH (ky)
 );

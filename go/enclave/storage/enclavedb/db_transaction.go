@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/status-im/keycard-go/hexutils"
 )
 
 // ---- Implement the geth Batch interface, re-using ideas and types from geth's memorydb.go ----
@@ -32,6 +33,9 @@ func (b *dbTxBatch) DeleteRange(start, end []byte) error {
 
 // Put inserts the given value into the batch for later committing.
 func (b *dbTxBatch) Put(key, value []byte) error {
+	if len(key) > 33 {
+		panic("key too long: " + hexutils.BytesToHex(key))
+	}
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), common.CopyBytes(value), false})
 	b.size += len(key) + len(value)
 	return nil
