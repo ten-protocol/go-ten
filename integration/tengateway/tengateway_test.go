@@ -388,7 +388,25 @@ func testSessionKeysSendTransaction(t *testing.T, _ int, httpURL, wsURL string, 
 	}
 	t.Logf("✓ Return transaction confirmed: %s TEN", returnAmount.String())
 
-	// 4) Delete the session key via getStorageAt (CQ 0x...0004)
+	// 4) Test that eth_sendTransaction fails with non-session key address
+	nonSessionKeyAddr := datagenerator.RandomAddress()
+	t.Logf("Testing eth_sendTransaction with non-session key address: %s", nonSessionKeyAddr.Hex())
+
+	var failTxHash gethcommon.Hash
+	err = user0.HTTPClient.Client().CallContext(ctx, &failTxHash, "eth_sendTransaction", map[string]interface{}{
+		"from":     nonSessionKeyAddr.Hex(),
+		"to":       fromAddr.Hex(),
+		"value":    fmt.Sprintf("0x%x", big.NewInt(1000)),
+		"gas":      fmt.Sprintf("0x%x", uint64(21000)),
+		"gasPrice": fmt.Sprintf("0x%x", skGasPrice),
+		"nonce":    fmt.Sprintf("0x%x", uint64(0)),
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "session key address")
+	require.Contains(t, err.Error(), "not found")
+	t.Logf("✓ eth_sendTransaction correctly failed with non-session key address")
+
+	// 5) Delete the session key via getStorageAt (CQ 0x...0004)
 	delParamsObj := map[string]string{
 		"sessionKeyAddress": skAddress.Hex(),
 	}
