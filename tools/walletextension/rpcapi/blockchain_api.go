@@ -198,39 +198,28 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return serialised, nil
 	case common.CreateSessionKeyCQMethod:
+		fmt.Printf("CreateSessionKeyCQMethod\n")
 		sk, err := api.we.SKManager.CreateSessionKey(user)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create session key: %w", err)
 		}
 		return sk.Account.Address.Bytes(), nil
 	case common.DeleteSessionKeyCQMethod:
-		// Extract session key address from the third parameter (blockNrOrHash)
-		sessionKeyAddr := ""
-		if blockNrOrHash.BlockNumber != nil {
-			sessionKeyAddr = blockNrOrHash.BlockNumber.String()
-		} else if blockNrOrHash.BlockHash != nil {
-			sessionKeyAddr = blockNrOrHash.BlockHash.Hex()
+		// Extract session key address from params JSON
+		sessionKeyAddr, err := extractAddressFromParams(params, "sessionKeyAddress")
+		if err != nil {
+			return nil, fmt.Errorf("unable to extract sessionKeyAddress from params: %w", err)
 		}
 
-		if sessionKeyAddr == "" {
-			return gethcommon.Hash{}.Bytes(), fmt.Errorf("session key address is required")
-		}
-
-		if !gethcommon.IsHexAddress(sessionKeyAddr) {
-			return gethcommon.Hash{}.Bytes(), fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
-		}
-
-		addr := gethcommon.HexToAddress(sessionKeyAddr)
-
-		success, err := api.we.SKManager.DeleteSessionKey(user, addr)
+		success, err := api.we.SKManager.DeleteSessionKey(user, *sessionKeyAddr)
 		if err != nil {
 			return nil, fmt.Errorf("unable to delete session key: %w", err)
 		}
 
 		if success {
-			return []byte("true"), nil
+			return hexutil.Bytes{0x01}, nil // -> "0x01"
 		}
-		return []byte("false"), nil
+		return hexutil.Bytes{0x00}, nil // -> "0x00"
 	case common.SendUnsignedTxCQMethod:
 		// Extract session key address from the third parameter (blockNrOrHash)
 		sessionKeyAddr := ""
