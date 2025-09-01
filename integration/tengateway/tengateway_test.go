@@ -14,9 +14,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ten-protocol/go-ten/go/common/gethapi"
-
-	"github.com/ten-protocol/go-ten/go/responses"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -116,8 +113,8 @@ func TestTenGateway(t *testing.T) {
 		"testSubscriptionTopics":               testSubscriptionTopics,
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
-		"testSessionKeys":                      testSessionKeys,
-		"testSessionKeysGetStorageAt":          testSessionKeysGetStorageAt,
+
+		"testSessionKeysGetStorageAt": testSessionKeysGetStorageAt,
 		// "testRateLimiter":                   testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -171,65 +168,6 @@ func TestTenGateway(t *testing.T) {
 //	require.Equal(t, "rate limit exceeded", err.Error())
 //}
 
-func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
-	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
-	require.NoError(t, err)
-	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
-	err = user0.RegisterAccounts()
-	require.NoError(t, err)
-
-	var amountToTransfer int64 = 1_000_000_000_000_000_000
-	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user0.Wallets[0].Address(), amountToTransfer)
-	require.NoError(t, err)
-
-	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
-	require.NoError(t, err)
-
-	contractAddr := deployContract(t, w, user0)
-
-	// create session key using the dedicated RPC method
-	var skAddressHex string
-	err = user0.HTTPClient.Client().CallContext(context.Background(), &skAddressHex, "sessionkeys_create")
-	require.NoError(t, err)
-	skAddress := gethcommon.HexToAddress(skAddressHex)
-
-	// move some funds to the SK
-	var skAmount int64 = 100_000_000_000_000_000
-	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], skAddress, skAmount)
-	require.NoError(t, err)
-
-	// Session keys are now implicitly active when created - no activation needed
-
-	skNonce := uint64(0)
-
-	// interact with the contract using session key - unsigned tx calling "sendTransaction" with session key
-	contractInteractionData, err := eventsContractABI.Pack("setMessage", "user0PrivateEvent")
-	require.NoError(t, err)
-
-	// Use the session key to send the transaction
-	rec, err := interactWithSmartContractUsingSessionKey(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil, skAddress.Hex())
-	require.NoError(t, err)
-	require.Equal(t, uint64(0x1), rec.Status)
-
-	// move money back using session key - unsigned tx calling "sendTransaction" with session key
-	skNonce++
-	rec1, err := interactWithSmartContractUsingSessionKey(user0.HTTPClient, skNonce, user0.Wallets[0].Address(), nil, big.NewInt(1_000), skAddress.Hex())
-	require.NoError(t, err)
-	require.Equal(t, uint64(0x1), rec1.Status)
-
-	// delete the session key using the dedicated RPC method
-	var deleteResult bool
-	err = user0.HTTPClient.Client().CallContext(context.Background(), &deleteResult, "sessionkeys_delete", skAddress.Hex())
-	require.NoError(t, err)
-	require.True(t, deleteResult)
-
-	// interact with the contract using deleted session key - should fail
-	skNonce++
-	rec2, err := interactWithSmartContractUsingSessionKey(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil, skAddress.Hex())
-	require.Error(t, err)
-	require.Nil(t, rec2)
-}
-
 func deployContract(t *testing.T, w wallet.Wallet, user0 *GatewayUser) gethcommon.Address {
 	// deploy events contract
 	deployTx := &types.LegacyTx{
@@ -251,53 +189,6 @@ func deployContract(t *testing.T, w wallet.Wallet, user0 *GatewayUser) gethcommo
 	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
 	require.NoError(t, err)
 	return contractReceipt.ContractAddress
-}
-
-func interactWithSmartContractUsingSessionKey(client *ethclient.Client, nonce uint64, toAddress gethcommon.Address, contractInteractionData []byte, value *big.Int, sessionKey string) (*types.Receipt, error) {
-	var result responses.GasPriceType
-	err := client.Client().CallContext(context.Background(), &result, "eth_gasPrice")
-	if err != nil {
-		return nil, err
-	}
-
-	var txHash gethcommon.Hash
-
-	n := hexutil.Uint64(nonce)
-	g := hexutil.Uint64(10_000_000)
-	d := hexutil.Bytes(contractInteractionData)
-
-	// Create AccessList with session key address encoded in storage keys
-	// Use the predefined address 0x0000...1 as specified in the implementation
-	predefinedAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000001")
-
-	interactionTx := gethapi.TransactionArgs{
-		Nonce:    &n,
-		To:       &toAddress,
-		Gas:      &g,
-		GasPrice: &result,
-		Data:     &d,
-		Value:    (*hexutil.Big)(value),
-		AccessList: &types.AccessList{
-			{
-				Address:     predefinedAddr,
-				StorageKeys: []gethcommon.Hash{gethcommon.HexToHash(sessionKey)},
-			},
-		},
-	}
-
-	// Use the session key to send the transaction via eth_sendTransaction
-	// The session key address is now passed through the AccessList field
-	err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx)
-	if err != nil {
-		return nil, err
-	}
-
-	txReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), client, txHash, 10*time.Second)
-	if err != nil {
-		return nil, err
-	}
-
-	return txReceipt, nil
 }
 
 func testSessionKeysGetStorageAt(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {

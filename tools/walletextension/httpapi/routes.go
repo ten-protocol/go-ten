@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net/http"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
@@ -79,14 +78,6 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 		{
 			Name: common.APIVersion1 + common.PathKeyExchange,
 			Func: httpHandler(walletExt, keyExchangeRequestHandler),
-		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "create",
-			Func: httpHandler(walletExt, createSKRequestHandler),
-		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "delete",
-			Func: httpHandler(walletExt, deleteSKRequestHandler),
 		},
 	}
 }
@@ -735,42 +726,6 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
-}
-
-func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		sk, err := walletExt.SKManager.CreateSessionKey(user)
-		if err != nil {
-			handleError(conn, walletExt.Logger(), fmt.Errorf("could not create session key: %w", err))
-			return nil, err
-		}
-		return []byte(hexutils.BytesToHex(sk.Account.Address.Bytes())), nil
-	})
-}
-
-func deleteSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		// Extract session key address from query parameter
-		sessionKeyAddr, err := getQueryParameter(conn.ReadRequestParams(), "sessionKey")
-		if err != nil {
-			return nil, fmt.Errorf("sessionKey parameter required: %w", err)
-		}
-
-		if !gethcommon.IsHexAddress(sessionKeyAddr) {
-			return nil, fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
-		}
-
-		addr := gethcommon.HexToAddress(sessionKeyAddr)
-		success, err := walletExt.SKManager.DeleteSessionKey(user, addr)
-		if err != nil {
-			return nil, fmt.Errorf("failed to delete session key: %w", err)
-		}
-
-		if success {
-			return []byte("success"), nil
-		}
-		return []byte("false"), nil
-	})
 }
 
 // extracts the user from the request, and writes the response to the connection

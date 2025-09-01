@@ -15,16 +15,16 @@ const (
 )
 
 const (
-	PathReady                     = "/ready/"
-	PathJoin                      = "/join/"
-	PathGetToken                  = "/get-token/"
-	PathSetToken                  = "/set-token/"
-	PathGetMessage                = "/getmessage/"
-	PathAuthenticate              = "/authenticate/"
-	PathQuery                     = "/query/"
-	PathRevoke                    = "/revoke/"
-	PathHealth                    = "/health/"
-	PathSessionKeys               = "/session-key/"
+	PathReady        = "/ready/"
+	PathJoin         = "/join/"
+	PathGetToken     = "/get-token/"
+	PathSetToken     = "/set-token/"
+	PathGetMessage   = "/getmessage/"
+	PathAuthenticate = "/authenticate/"
+	PathQuery        = "/query/"
+	PathRevoke       = "/revoke/"
+	PathHealth       = "/health/"
+
 	PathNetworkHealth             = "/network-health/"
 	PathNetworkConfig             = "/network-config/"
 	PathKeyExchange               = "/key-exchange/"

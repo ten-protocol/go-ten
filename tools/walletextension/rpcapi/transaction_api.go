@@ -2,8 +2,6 @@ package rpcapi
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 
@@ -106,83 +104,8 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 	return *txRec, err
 }
 
-func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.TransactionArgs) (common.Hash, error) {
-	user, err := extractUserForRequest(ctx, s.we)
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	// Extract session key address from AccessList and remove it
-	sessionKeyAddr, err := extractSessionKeyFromAccessList(&args)
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	if !common.IsHexAddress(sessionKeyAddr) {
-		return common.Hash{}, fmt.Errorf("invalid session key address: %s", sessionKeyAddr)
-	}
-
-	addr := common.HexToAddress(sessionKeyAddr)
-
-	// Verify that the session key exists for this user
-	if user.SessionKeys == nil || user.SessionKeys[addr] == nil {
-		return common.Hash{}, fmt.Errorf("session key not found: %s", sessionKeyAddr)
-	}
-
-	// Sign the transaction with the specified session key
-	signedTx, err := s.we.SKManager.SignTx(ctx, user, addr, args.ToTransaction())
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	blob, err := signedTx.MarshalBinary()
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	return SendRawTx(ctx, s.we, blob)
-}
-
 // extractSessionKeyFromAccessList extracts the session key address from the AccessList
 // and removes the corresponding entry from the AccessList
-func extractSessionKeyFromAccessList(args *gethapi.TransactionArgs) (string, error) {
-	// Default to "0x0" if no AccessList is provided
-	if args.AccessList == nil {
-		return "0x0", errors.New("no access list provided")
-	}
-
-	// Look for the predefined address 0x0000...1 in the AccessList
-	predefinedAddr := common.HexToAddress("0x0000000000000000000000000000000000000001")
-
-	for i, accessTuple := range *args.AccessList {
-		if accessTuple.Address == predefinedAddr && len(accessTuple.StorageKeys) > 0 {
-			// Extract the session key address from the first storage key
-			// The storage key is a 32-byte hash, but we need the last 20 bytes as the address
-			storageKeyHash := accessTuple.StorageKeys[0]
-			sessionKeyAddr := common.BytesToAddress(storageKeyHash[12:]) // Last 20 bytes
-
-			// Remove this entry from the AccessList
-			newAccessList := make([]types.AccessTuple, 0, len(*args.AccessList)-1)
-			for j, tuple := range *args.AccessList {
-				if j != i {
-					newAccessList = append(newAccessList, tuple)
-				}
-			}
-
-			// Update the AccessList in the args
-			if len(newAccessList) > 0 {
-				args.AccessList = (*types.AccessList)(&newAccessList)
-			} else {
-				args.AccessList = nil
-			}
-
-			return sessionKeyAddr.Hex(), nil
-		}
-	}
-
-	// If no session key found in AccessList, default to "0x0"
-	return "0x0", errors.New("no session key found in access list")
-}
 
 type SignTransactionResult struct {
 	Raw hexutil.Bytes      `json:"raw"`
