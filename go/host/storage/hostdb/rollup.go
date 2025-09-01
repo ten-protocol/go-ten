@@ -71,6 +71,7 @@ func AddRollup(dbtx *dbTransaction, db HostDB, rollup *common.ExtRollup, extMeta
 	}
 
 	if len(extMetadata.CrossChainTree) == 0 {
+		println("NO CROSS CHAIN TREE")
 		return nil
 	}
 
@@ -79,6 +80,7 @@ func AddRollup(dbtx *dbTransaction, db HostDB, rollup *common.ExtRollup, extMeta
 		return err
 	}
 
+	println("TREE FOUND")
 	for _, message := range tree {
 		reboundInsertCrossChainMessage := db.GetSQLDB().Rebind(insertCrossChainMessage)
 		_, err = dbtx.Tx.Exec(reboundInsertCrossChainMessage,
