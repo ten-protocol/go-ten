@@ -76,7 +76,7 @@ jobs:
           location: 'uksouth'
           restart-policy: 'Never'
           environment-variables: PORT=80
-          command-line: ./faucet --nodeHost ${{ vars.L2_RPC_URL_VALIDATOR }} --nodePort ${{ vars.L2_RPC_HTTP_PORT }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }} --defaultAmount ${{ vars.FAUCET_PAY_AMOUNT }}
+          command-line: ./faucet --nodeHost ${{ vars.L2_RPC_URL_VALIDATOR }} --nodePort ${{ vars.L2_RPC_HTTP_PORT }} --pk ${{ secrets.FAUCET_PK }} --jwtSecret ${{ secrets.FAUCET_JWT_SECRET }} --defaultAmount ${{ vars.FAUCET_PAY_AMOUNT }} --chainID ${{ vars.CHAIN_ID }}
           ports: '80'
           cpu: 2
           memory: 2

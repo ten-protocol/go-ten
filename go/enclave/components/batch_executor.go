@@ -60,6 +60,7 @@ type batchExecutor struct {
 	genesis                *genesis.Genesis
 	logger                 gethlog.Logger
 	gasOracle              gas.Oracle
+	gasPricer              *GasPricer
 	chainConfig            *params.ChainConfig
 	systemContracts        system.SystemContractCallbacks
 	entropyService         *crypto.EvmEntropyService
@@ -83,8 +84,12 @@ func NewBatchExecutor(
 	entropyService *crypto.EvmEntropyService,
 	mempool *TxPool,
 	dataCompressionService compression.DataCompressionService,
+	gasPricer *GasPricer,
 	logger gethlog.Logger,
 ) BatchExecutor {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	return &batchExecutor{
 		storage:                storage,
 		batchRegistry:          batchRegistry,
@@ -96,6 +101,7 @@ func NewBatchExecutor(
 		chainConfig:            chainConfig,
 		logger:                 logger,
 		gasOracle:              gasOracle,
+		gasPricer:              gasPricer,
 		batchGasLimit:          config.GasBatchExecutionLimit,
 		systemContracts:        systemContracts,
 		entropyService:         entropyService,
@@ -104,6 +110,11 @@ func NewBatchExecutor(
 		execMutex:              &sync.Mutex{},
 		lastExecutedBatch:      0,
 	}
+}
+
+// GetGasPricer returns the gas pricer for external access
+func (executor *batchExecutor) GetGasPricer() *GasPricer {
+	return executor.gasPricer
 }
 
 // ComputeBatch where the batch execution conventions are
@@ -148,7 +159,8 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 			return nil, fmt.Errorf("failed to instantiate system contracts: expected receipt for system deployer transaction, but no receipts found in batch")
 		}
 
-		err = executor.systemContracts.Initialize(cb.Batch, *ec.genesisSysCtrResult.Receipts()[0], executor.crossChainProcessors.Local)
+		// For multi-phase deployment, combine all receipts into one for address derivation
+		err = executor.systemContracts.InitializeFromMultipleReceipts(cb.Batch, ec.genesisSysCtrResult.Receipts(), executor.crossChainProcessors.Local)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize system contracts: %w", err)
 		}
@@ -234,6 +246,7 @@ func (executor *batchExecutor) verifyContext(ec *BatchExecutionContext) error {
 
 func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 	var err error
+	ec.BaseFee = executor.gasPricer.CalculateBlockBaseFeeAtHeight(ec.ctx, executor.chainConfig, common.ConvertBatchHeaderToHeader(ec.parentBatch), ec.l1block.Number.Uint64())
 	// Create a new batch based on the provided context
 	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator, ec.BatchGasLimit)
 	ec.stateDB, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
@@ -256,32 +269,93 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 }
 
 func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContext) error {
-	systemDeployerTx, err := system.SystemDeployerInitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader(), executor.config.BridgeAddress)
+	// Deploy Phase 1 contracts first
+	phase1Tx, err := system.SystemDeployerPhase1InitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader())
 	if err != nil {
-		executor.logger.Error("[SystemContracts] Failed to create system deployer contract", log.ErrKey, err)
+		executor.logger.Error("[SystemContracts] Failed to create system deployer phase 1 contract", log.ErrKey, err)
 		return err
 	}
 
-	transactions := common.L2PricedTransactions{
+	phase1Transactions := common.L2PricedTransactions{
 		&common.L2PricedTransaction{
-			Tx:             systemDeployerTx,
+			Tx:             phase1Tx,
 			PublishingCost: big.NewInt(0),
 			SystemDeployer: true,
 		},
 	}
 
-	sysCtrGenesisResult, err := executor.executeTxs(ec, 0, transactions, true)
+	phase1Result, err := executor.executeTxs(ec, 0, phase1Transactions, true)
 	if err != nil {
-		return fmt.Errorf("could not process system deployer transaction. Cause: %w", err)
+		return fmt.Errorf("could not process system deployer phase 1 transaction. Cause: %w", err)
 	}
 
-	if err = executor.verifySyntheticTransactionsSuccess(transactions, sysCtrGenesisResult); err != nil {
-		return fmt.Errorf("batch computation failed due to system deployer reverting. Cause: %w", err)
+	if err = executor.verifySyntheticTransactionsSuccess(phase1Transactions, phase1Result); err != nil {
+		return fmt.Errorf("batch computation failed due to system deployer phase 1 reverting. Cause: %w", err)
 	}
 
-	ec.genesisSysCtrResult = sysCtrGenesisResult
+	// Extract fees address from Phase 1 deployment
+	feesAddress, err := executor.extractFeesAddressFromPhase1(phase1Result)
+	if err != nil {
+		executor.logger.Error("[SystemContracts] Failed to extract fees address from phase 1", log.ErrKey, err)
+		return fmt.Errorf("failed to extract fees address from phase 1: %w", err)
+	}
+
+	// Deploy Phase 2 contracts
+	phase2Tx, err := system.SystemDeployerPhase2InitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader(), feesAddress, executor.config.BridgeAddress)
+	if err != nil {
+		executor.logger.Error("[SystemContracts] Failed to create system deployer phase 2 contract", log.ErrKey, err)
+		return err
+	}
+
+	phase2Transactions := common.L2PricedTransactions{
+		&common.L2PricedTransaction{
+			Tx:             phase2Tx,
+			PublishingCost: big.NewInt(0),
+			SystemDeployer: true,
+		},
+	}
+
+	phase2Result, err := executor.executeTxs(ec, len(phase1Transactions), phase2Transactions, true)
+	if err != nil {
+		return fmt.Errorf("could not process system deployer phase 2 transaction. Cause: %w", err)
+	}
+
+	if err = executor.verifySyntheticTransactionsSuccess(phase2Transactions, phase2Result); err != nil {
+		return fmt.Errorf("batch computation failed due to system deployer phase 2 reverting. Cause: %w", err)
+	}
+
+	allResults := make(core.TxExecResults, 0, len(phase1Result)+len(phase2Result))
+	allResults = append(allResults, phase1Result...)
+	allResults = append(allResults, phase2Result...)
+
+	ec.genesisSysCtrResult = allResults
 	ec.genesisSysCtrResult.MarkSynthetic(true)
 	return nil
+}
+
+func (executor *batchExecutor) extractFeesAddressFromPhase1(phase1Result core.TxExecResults) (gethcommon.Address, error) {
+	if len(phase1Result) == 0 {
+		return gethcommon.Address{}, fmt.Errorf("no phase 1 results")
+	}
+
+	receipt := phase1Result[0].Receipt
+	if receipt == nil {
+		return gethcommon.Address{}, fmt.Errorf("no receipt in phase 1 result")
+	}
+
+	// Parse the events to find the Fees contract address
+	addresses, err := system.DeriveAddresses(receipt)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("failed to derive addresses: %w", err)
+	}
+
+	feesAddr := addresses["Fees"]
+	if feesAddr == nil {
+		return gethcommon.Address{}, fmt.Errorf("Fees address not found in phase 1 deployment")
+	}
+
+	executor.logger.Info("Extracted Fees address from Phase 1", "address", feesAddr.Hex())
+	return *feesAddr, nil
 }
 
 var ErrLowBalance = errors.New("insufficient account balance")
@@ -344,8 +418,24 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		if ltx == nil {
 			break
 		}
+		// Estimating the exeuction cost component of the tx to check against the gas pool
+		// by deducting the estimated publishing cost from the total gas available
+		gasCost, err := executor.gasOracle.EstimateL1StorageGasCost(ec.ctx, ltx.Tx, ec.l1block, ec.currentBatch.Header)
+		if err != nil {
+			return fmt.Errorf("unable to estimate l1 storage gas cost. Cause: %w", err)
+		}
+
+		// We need to calculate the gas for L1 publishing and remove it as the gas pool can easily run out
+		// if we include publishing costs.
+		gasForL1BigInt := big.NewInt(0).Div(gasCost, ec.BaseFee)
+		remainder := big.NewInt(0).Mod(gasCost, ec.BaseFee)
+		if remainder.Sign() > 0 {
+			gasForL1BigInt.Add(gasForL1BigInt, big.NewInt(1))
+		}
+		// We need to clone the estimation hacks.
+		gasForL1 := gasForL1BigInt.Mul(gasForL1BigInt, AdjustPublishingGas).Uint64()
 		// If we don't have enough space for the next transaction, skip the account.
-		if ec.GasPool.Gas() < ltx.Gas {
+		if ec.GasPool.Gas() < ltx.Gas-gasForL1 {
 			executor.logger.Trace("Not enough gas left for transaction", "hash", ltx.Hash, "left", ec.GasPool.Gas(), "needed", ltx.Gas)
 			mempoolTxs.Pop()
 			continue
@@ -354,7 +444,7 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 		tx := ltx.Resolve()
 
 		// check the size limiter
-		err := sizeLimiter.AcceptTransaction(tx)
+		err = sizeLimiter.AcceptTransaction(tx)
 		if err != nil {
 			if errors.Is(err, limiters.ErrInsufficientSpace) { // Batch ran out of space
 				executor.logger.Trace("Unable to accept transaction", log.TxKey, tx.Hash())
@@ -735,6 +825,9 @@ func (executor *batchExecutor) verifySyntheticTransactionsSuccess(transactions c
 	}
 
 	for _, rec := range results {
+		if rec.Receipt == nil {
+			return fmt.Errorf("failed to get receipt for synthetic transaction. Cause: %s", rec.Err)
+		}
 		if rec.Receipt.Status == 1 {
 			continue
 		}

@@ -23,20 +23,25 @@ import (
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-var adjustPublishingGas = gethcommon.Big2
+var AdjustPublishingGas = gethcommon.Big2
 
 type GasEstimator struct {
 	storage   storage.Storage
 	chain     TENChain
 	logger    gethlog.Logger
 	gasOracle gas.Oracle
+	gasPricer *GasPricer
 }
 
-func NewGasEstimator(storage storage.Storage, chain TENChain, gasOracle gas.Oracle, logger gethlog.Logger) *GasEstimator {
+func NewGasEstimator(storage storage.Storage, chain TENChain, gasOracle gas.Oracle, gasPricer *GasPricer, logger gethlog.Logger) *GasEstimator {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	return &GasEstimator{
 		storage:   storage,
 		chain:     chain,
 		gasOracle: gasOracle,
+		gasPricer: gasPricer,
 		logger:    logger,
 	}
 }
@@ -52,13 +57,14 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
 	// the expected cost into l2 gas based on current pricing.
 	// todo @siliev - add overhead when the base fee becomes dynamic.
-	publishingGas := big.NewInt(0).Div(l1Cost, batch.BaseFee)
+	divisor := ge.gasPricer.StaticL2BaseFee(common.ConvertBatchHeaderToHeader(batch))
+	publishingGas := big.NewInt(0).Div(l1Cost, divisor)
 
 	// Overestimate the publishing cost in case of spikes.
 	// given that we publish in a blob, the amount will be very low.
 	// Batch execution still deducts normally.
 	// TODO: Change to fixed time period quotes, rather than this.
-	publishingGas = publishingGas.Mul(publishingGas, adjustPublishingGas)
+	publishingGas = publishingGas.Mul(publishingGas, AdjustPublishingGas)
 
 	// Run the execution simulation based on stateDB after head batch.
 	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.

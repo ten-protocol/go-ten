@@ -34,7 +34,7 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/transactions/", server.getPublicTransactions)
 	r.GET("/items/transaction/:hash", server.getTransaction)
 	r.GET("/items/transactions/count", server.getTotalTxCount)
-	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
+	r.GET("/items/blocks/", server.getBlockListing)
 
 	// search
 	r.GET("/items/search/", server.search)

@@ -11,10 +11,10 @@ import { useUiStore } from '@/stores/ui.store';
 import { shallow } from 'zustand/shallow';
 import { useEffect, useState } from 'react';
 import WalletSettingsModal from '@/components/ConnectWallet/WalletSettingsModal';
-import { useLocalStorage } from 'usehooks-ts';
+import { useTenToken } from '@/contexts/TenTokenContext';
 
 export default function Home() {
-    const [tenToken] = useLocalStorage<string>('ten_token', '');
+    const { token: tenToken, loading: tokenLoading } = useTenToken();
     const { isConnected, chainId } = useAccount();
 
     const [isConnectionModalOpen, isSettingsModalOpen, setConnectionModal, setSettingsModal] =
@@ -39,25 +39,27 @@ export default function Home() {
     }, []);
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-8 overflow-y-hidden relative w-full">
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 md:p-8 overflow-y-hidden relative w-full">
             <div className="fixed inset-0 pointer-events-none z-40 opacity-[.03] grain-overlay" />
             <Header />
 
             <main className="flex flex-col items-center justify-center flex-1 gap-8 mt-16">
                 <div className="text-center mb-12 mt-8">
-                    <h1 className="text-[3rem] font-bold -mb-1">Welcome to the TEN Gateway!</h1>
+                    <h1 className="text-2xl md:text-[3rem] font-bold -mb-1">Welcome to the TEN Gateway!</h1>
                     <h2 className="opacity-80 text-lg">
                         Your portal into the universe of encrypted Ethereum on TEN Protocol.
                     </h2>
                 </div>
 
-                {isWalletReady && isConnected && isOnTen && tenToken !== '' ? (
+                {isWalletReady && isConnected && isOnTen && tenToken !== '' && !tokenLoading ? (
                     <WalletConnected />
-                ) : isWalletReady ? (
+                ) : isWalletReady && !tokenLoading ? (
                     <DisconnectedWallet />
                 ) : (
                     <div className="flex justify-center items-center h-64">
-                        <div className="animate-pulse text-lg opacity-70">Loading wallet...</div>
+                        <div className="animate-pulse text-lg opacity-70">
+                            {tokenLoading ? 'Loading token...' : 'Loading wallet...'}
+                        </div>
                     </div>
                 )}
                 <PromoApps />

@@ -130,36 +130,36 @@ export const columns: ColumnDef<Batch>[] = [
     cell: ({ row }) => {
       return (
         <Link
-          href={pathToUrl(pageLinks.rollupByBatchSequence, {
+          href={pathToUrl(pageLinks.batchBySequence, {
             sequence: row.original.sequence,
           })}
           className="text-primary"
         >
           {row.original.sequence}
         </Link>
-      );
+      )
     },
     enableSorting: false,
     enableHiding: false,
   },
   {
-    accessorKey: "txCount",
+    accessorKey: "txHashes",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Tx Count" />
     ),
     cell: ({ row }) => {
-      return row.original.txCount > 0 ? (
+      return row.original.txHashes.length > 0 ? (
         <Link
           href={pathToUrl(pageLinks.batchTransactions, {
             hash: row.original.fullHash,
           })}
           className="text-primary"
         >
-          {row.original.txCount}
+          {row.original.txHashes.length}
         </Link>
       ) : (
-        <span>{row.original.txCount}</span>
-      );
+        <span>{row.original.txHashes.length}</span>
+      )
     },
     enableSorting: false,
     enableHiding: false,

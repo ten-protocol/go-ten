@@ -59,6 +59,9 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *sql
 			return fmt.Errorf("could not read contract address. %s. Cause: %w", l.Address, err)
 		}
 		eventType := contract.EventType(l.Topics[0])
+		if eventType == nil {
+			return fmt.Errorf("could not read event type: %s for contract: %s. should not happen because an event log was emitted", l.Topics[0], contract.Address)
+		}
 		if eventType.IsPublic() {
 			isReceiptPublic = true
 		}
