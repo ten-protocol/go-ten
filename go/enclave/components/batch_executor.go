@@ -497,10 +497,6 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 	ec.Transactions = results.BatchTransactions()
 	ec.batchTxResults = results
 
-	if dberr := ec.stateDB.Error(); dberr != nil {
-		return fmt.Errorf("failed to execute new batch. Cause: %w", dberr)
-	}
-
 	return nil
 }
 
@@ -518,10 +514,6 @@ func (executor *batchExecutor) executeExistingBatch(ec *BatchExecutionContext) e
 		return fmt.Errorf("could not process transactions. Cause: %w", err)
 	}
 	ec.batchTxResults = txResults
-
-	if dberr := ec.stateDB.Error(); dberr != nil {
-		return fmt.Errorf("failed to execute existing batch. Cause: %w", dberr)
-	}
 	return nil
 }
 
@@ -542,11 +534,6 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 	}
 
 	executor.crossChainProcessors.Local.ExecuteValueTransfers(ec.ctx, ec.xChainValueMsgs, ec.stateDB)
-
-	if dberr := ec.stateDB.Error(); dberr != nil {
-		return fmt.Errorf("failed to execute xchain value transfer messages. Cause: %w", dberr)
-	}
-
 	crossChainTransactions, err := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ec.ctx, ec.xChainMsgs, ec.xChainValueMsgs, ec.stateDB)
 	if err != nil {
 		return err
@@ -563,18 +550,8 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 	if err != nil {
 		return fmt.Errorf("could not process cross chain messages. Cause: %w", err)
 	}
-	for _, result := range xChainResults {
-		if result.Receipt.Status == types.ReceiptStatusFailed || result.Err != nil {
-			return fmt.Errorf("xchain message execution failed. Receipt %+v. Cause: %w", result.Receipt, result.Err)
-		}
-	}
 
-	if dberr := ec.stateDB.Error(); dberr != nil {
-		return fmt.Errorf("failed to execute xchain messages. Cause: %w", dberr)
-	}
-
-	//ec.xChainResults = xChainResults
-	ec.xChainResults = core.TxExecResults{}
+	ec.xChainResults = xChainResults
 	ec.xChainResults.MarkSynthetic(true)
 	return nil
 }
@@ -613,11 +590,6 @@ func (executor *batchExecutor) execRegisteredCallbacks(ec *BatchExecutionContext
 	}
 	ec.callbackTxResults = publicCallbackTxResult
 	ec.callbackTxResults.MarkSynthetic(true)
-
-	if dberr := ec.stateDB.Error(); dberr != nil {
-		return fmt.Errorf("failed to execute registered callbacks. Cause: %w", dberr)
-	}
-
 	return nil
 }
 
@@ -667,11 +639,6 @@ func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error
 	}
 	ec.blockEndResult = onBlockTxResult
 	ec.blockEndResult.MarkSynthetic(true)
-
-	if dberr := ec.stateDB.Error(); dberr != nil {
-		return fmt.Errorf("failed to execute block end tx. Cause: %w", dberr)
-	}
-
 	return nil
 }
 
@@ -681,10 +648,6 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("failed creating batch. Cause: %w", err)
 	}
 
-	dberr := ec.stateDB.Error()
-	if dberr != nil {
-		executor.logger.Error("Unexpected evm error when executing batch", "err", dberr)
-	}
 	rootHash, err := ec.stateDB.Commit(batch.Number().Uint64(), true, true)
 	if err != nil {
 		return nil, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
