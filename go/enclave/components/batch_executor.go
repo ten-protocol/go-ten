@@ -541,11 +541,16 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 		return err
 	}
 
+	executor.crossChainProcessors.Local.ExecuteValueTransfers(ec.ctx, ec.xChainValueMsgs, ec.stateDB)
+
+	if dberr := ec.stateDB.Error(); dberr != nil {
+		return fmt.Errorf("failed to execute xchain value transfer messages. Cause: %w", dberr)
+	}
+
 	crossChainTransactions, err := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ec.ctx, ec.xChainMsgs, ec.xChainValueMsgs, ec.stateDB)
 	if err != nil {
 		return err
 	}
-	executor.crossChainProcessors.Local.ExecuteValueTransfers(ec.ctx, ec.xChainValueMsgs, ec.stateDB)
 	xchainTxs := make(common.L2PricedTransactions, 0)
 	for _, xTx := range crossChainTransactions {
 		xchainTxs = append(xchainTxs, &common.L2PricedTransaction{
