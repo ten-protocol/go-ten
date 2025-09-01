@@ -497,6 +497,10 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 	ec.Transactions = results.BatchTransactions()
 	ec.batchTxResults = results
 
+	if dberr := ec.stateDB.Error(); dberr != nil {
+		return fmt.Errorf("failed to execute new batch. Cause: %w", dberr)
+	}
+
 	return nil
 }
 
