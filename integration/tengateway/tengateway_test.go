@@ -168,29 +168,6 @@ func TestTenGateway(t *testing.T) {
 //	require.Equal(t, "rate limit exceeded", err.Error())
 //}
 
-func deployContract(t *testing.T, w wallet.Wallet, user0 *GatewayUser) gethcommon.Address {
-	// deploy events contract
-	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
-		Gas:      uint64(1_000_000),
-		GasPrice: gethcommon.Big1,
-		Data:     gethcommon.FromHex(eventsContractBytecode),
-	}
-
-	err := getFeeAndGas(user0.HTTPClient, w, deployTx)
-	require.NoError(t, err)
-
-	signedTx, err := w.SignTransaction(deployTx)
-	require.NoError(t, err)
-
-	err = user0.HTTPClient.SendTransaction(context.Background(), signedTx)
-	require.NoError(t, err)
-
-	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
-	require.NoError(t, err)
-	return contractReceipt.ContractAddress
-}
-
 func testSessionKeysGetStorageAt(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
@@ -237,7 +214,7 @@ func testSessionKeysGetStorageAt(t *testing.T, _ int, httpURL, wsURL string, w w
 	require.NoError(t, err)
 	err = user0.HTTPClient.SendTransaction(ctx, signedFundingTx)
 	require.NoError(t, err)
-  
+
 	// wait for receipt
 	{
 		var rec *types.Receipt

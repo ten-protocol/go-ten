@@ -747,39 +747,6 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 }
 
-// extracts the user from the request, and writes the response to the connection
-func withUser(walletExt *services.Services, conn UserConn, withUser func(user *common.GWUser) ([]byte, error)) {
-	_, err := conn.ReadRequest()
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
-		return
-	}
-
-	userID, err := getUserID(conn)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
-		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
-		return
-	}
-
-	user, err := walletExt.Storage.GetUser(userID)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not get user: %w", err))
-		return
-	}
-
-	resp, err := withUser(user)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not process request: %w", err))
-		return
-	}
-
-	err = conn.WriteResponse(resp)
-	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
-	}
-}
-
 func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {
 	// Read the request
 	body, err := conn.ReadRequest()
