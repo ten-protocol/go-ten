@@ -389,8 +389,14 @@ func testSessionKeysSendTransaction(t *testing.T, _ int, httpURL, wsURL string, 
 	t.Logf("✓ Return transaction confirmed: %s TEN", returnAmount.String())
 
 	// 4) Test that eth_sendTransaction fails with non-session key address
-	nonSessionKeyAddr := datagenerator.RandomAddress()
+	// Use the user's own address (which is not a session key) to test the failure case
+	nonSessionKeyAddr := user0.Wallets[0].Address()
 	t.Logf("Testing eth_sendTransaction with non-session key address: %s", nonSessionKeyAddr.Hex())
+
+	// Get the current nonce for this address to avoid "nonce too low" errors
+	nonceForNonSessionKey, err := user0.HTTPClient.PendingNonceAt(ctx, nonSessionKeyAddr)
+	require.NoError(t, err)
+	t.Logf("Using nonce %d for non-session key address", nonceForNonSessionKey)
 
 	var failTxHash gethcommon.Hash
 	err = user0.HTTPClient.Client().CallContext(ctx, &failTxHash, "eth_sendTransaction", map[string]interface{}{
@@ -399,7 +405,7 @@ func testSessionKeysSendTransaction(t *testing.T, _ int, httpURL, wsURL string, 
 		"value":    fmt.Sprintf("0x%x", big.NewInt(1000)),
 		"gas":      fmt.Sprintf("0x%x", uint64(21000)),
 		"gasPrice": fmt.Sprintf("0x%x", skGasPrice),
-		"nonce":    fmt.Sprintf("0x%x", uint64(0)),
+		"nonce":    fmt.Sprintf("0x%x", nonceForNonSessionKey),
 	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "session key address")
@@ -501,8 +507,12 @@ func testMultipleAccountsSubscription(t *testing.T, _ int, httpURL, wsURL string
 	}
 
 	// deploy events contract
+	// Get current nonce to avoid conflicts with previous tests
+	currentNonce, err := user0.HTTPClient.PendingNonceAt(context.Background(), w.Address())
+	require.NoError(t, err)
+
 	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
@@ -644,8 +654,12 @@ func testSubscriptionTopics(t *testing.T, _ int, httpURL, wsURL string, w wallet
 	}
 
 	// deploy events contract
+	// Get current nonce to avoid conflicts with previous tests
+	currentNonce, err := user0.HTTPClient.PendingNonceAt(context.Background(), w.Address())
+	require.NoError(t, err)
+
 	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
@@ -818,8 +832,12 @@ func testErrorsRevertedArePassed(t *testing.T, _ int, httpURL, wsURL string, w w
 	require.True(t, big.NewInt(0).Cmp(balance) == -1)
 
 	// deploy errors contract
+	// Get current nonce to avoid conflicts with previous tests
+	currentNonce, err := ethStdClient.PendingNonceAt(context.Background(), w.Address())
+	require.NoError(t, err)
+
 	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(errorsContractBytecode),
@@ -890,8 +908,12 @@ func testUnsubscribe(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	require.NoError(t, err)
 
 	// deploy events contract
+	// Get current nonce to avoid conflicts with previous tests
+	currentNonce, err := user.HTTPClient.PendingNonceAt(context.Background(), w.Address())
+	require.NoError(t, err)
+
 	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
@@ -946,8 +968,12 @@ func testClosingConnectionWhileSubscribed(t *testing.T, _ int, httpURL, wsURL st
 	require.NoError(t, err)
 
 	// deploy events contract
+	// Get current nonce to avoid conflicts with previous tests
+	currentNonce, err := user.HTTPClient.PendingNonceAt(context.Background(), w.Address())
+	require.NoError(t, err)
+
 	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
@@ -1064,7 +1090,7 @@ func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet)
 
 	w.SetNonce(nonce)
 	estimatedTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    nonce,
 		To:       &toAddr,
 		Value:    big.NewInt(100),
 		Gas:      uint64(1_000_000),
@@ -1154,8 +1180,14 @@ func getFeeAndGas(client *ethclient.Client, wallet wallet.Wallet, legacyTx *type
 }
 
 func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddress gethcommon.Address, amount int64) (*types.Receipt, error) { //nolint:unparam
+	// Get current nonce to avoid conflicts
+	currentNonce, err := client.PendingNonceAt(context.Background(), wallet.Address())
+	if err != nil {
+		return nil, err
+	}
+
 	transferTx1 := types.LegacyTx{
-		Nonce:    wallet.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		To:       &toAddress,
 		Value:    big.NewInt(amount),
 		Gas:      uint64(10_000_000),
@@ -1163,7 +1195,7 @@ func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 		Data:     nil,
 	}
 
-	err := getFeeAndGas(client, wallet, &transferTx1)
+	err = getFeeAndGas(client, wallet, &transferTx1)
 	if err != nil {
 		return nil, err
 	}
