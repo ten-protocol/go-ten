@@ -20,10 +20,10 @@ const (
 	selectBlockId    = "SELECT id FROM block_host WHERE hash = ?"
 	selectBlock      = "SELECT header FROM block_host WHERE hash = ?"
 	selectBlockCount = "SELECT total FROM block_count WHERE id = 1"
-	
+
 	// SQL statements that need placeholder conversion
-	insertBlock             = "INSERT INTO block_host (hash, header) values (?,?)"
-	updateBlockCount        = "UPDATE block_count SET total=? WHERE id=1"
+	insertBlock      = "INSERT INTO block_host (hash, header) values (?,?)"
+	updateBlockCount = "UPDATE block_count SET total=? WHERE id=1"
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
@@ -95,7 +95,7 @@ func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.Blo
 	} else {
 		paginationQuery = " LIMIT $1 OFFSET $2"
 	}
-	
+
 	query := selectBlocks + paginationQuery
 	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {

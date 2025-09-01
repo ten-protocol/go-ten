@@ -29,7 +29,7 @@ func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*comm
 	} else {
 		paginationQuery = " LIMIT $1 OFFSET $2"
 	}
-	
+
 	query := selectTxs + paginationQuery
 	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {

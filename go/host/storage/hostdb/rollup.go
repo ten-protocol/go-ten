@@ -22,18 +22,18 @@ const (
 	selectLatestRollupCount = "SELECT id FROM rollup_host ORDER BY id DESC LIMIT 1"
 	selectRollupBatches     = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON b.sequence >= r.start_seq AND b.sequence <= r.end_seq AND b.sequence IS NOT NULL"
 	selectRollups           = "SELECT rh.id, rh.hash, rh.start_seq, rh.end_seq, rh.time_stamp, rh.ext_rollup, bh.hash FROM rollup_host rh join block_host bh on rh.compression_block=bh.id "
-	
+
 	// SQL statements that need placeholder conversion
-	insertRollup            = "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?) RETURNING id"
-	insertCrossChainMessage = "INSERT INTO cross_chain_message_host (message_hash, message_type, rollup_id) values (?,?,?)"
-	selectRollupIdByMessage = "SELECT rollup_id FROM cross_chain_message_host WHERE message_hash = ?"
+	insertRollup             = "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?) RETURNING id"
+	insertCrossChainMessage  = "INSERT INTO cross_chain_message_host (message_hash, message_type, rollup_id) values (?,?,?)"
+	selectRollupIdByMessage  = "SELECT rollup_id FROM cross_chain_message_host WHERE message_hash = ?"
 	selectMessagesByRollupId = "SELECT message_hash, message_type FROM cross_chain_message_host WHERE rollup_id = ?"
-	
+
 	// WHERE clause patterns
-	whereRollupHash         = " WHERE r.hash = ?"
-	whereBlockHash          = " WHERE b.hash = ?"
-	whereRollupHostHash     = " WHERE rh.hash = ?"
-	whereSeqBetween         = " WHERE ? BETWEEN start_seq AND end_seq"
+	whereRollupHash     = " WHERE r.hash = ?"
+	whereBlockHash      = " WHERE b.hash = ?"
+	whereRollupHostHash = " WHERE rh.hash = ?"
+	whereSeqBetween     = " WHERE ? BETWEEN start_seq AND end_seq"
 )
 
 // AddRollup adds a rollup to the DB
@@ -96,7 +96,7 @@ func AddRollup(dbtx *dbTransaction, db HostDB, rollup *common.ExtRollup, extMeta
 // For example, offset 1, size 10 will return the latest 11-20 rollups.
 func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
 	orderQuery := " ORDER BY rh.id DESC "
-	
+
 	// Handle pagination with Rebind
 	var paginationQuery string
 	driverName := db.GetSQLDB().DriverName()
@@ -105,7 +105,7 @@ func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.Ro
 	} else {
 		paginationQuery = " LIMIT $1 OFFSET $2"
 	}
-	
+
 	query := selectRollups + orderQuery + paginationQuery
 
 	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
