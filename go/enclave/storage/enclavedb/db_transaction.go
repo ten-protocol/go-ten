@@ -33,7 +33,7 @@ func (b *dbTxBatch) DeleteRange(start, end []byte) error {
 
 // Put inserts the given value into the batch for later committing.
 func (b *dbTxBatch) Put(key, value []byte) error {
-	if len(key) > 33 {
+	if len(key) > 65 {
 		panic("key too long: " + hexutils.BytesToHex(key))
 	}
 	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), common.CopyBytes(value), false})

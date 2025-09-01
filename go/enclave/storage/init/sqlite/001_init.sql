@@ -1,7 +1,7 @@
 create table if not exists keyvalue
 (
     id  INTEGER PRIMARY KEY AUTOINCREMENT,
-    ky  binary(33) UNIQUE NOT NULL,
+    ky  binary(65) UNIQUE NOT NULL,
     val mediumblob        NOT NULL
 );
 create index IDX_KV on keyvalue (ky);
