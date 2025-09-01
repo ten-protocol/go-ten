@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	gethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 
 	"github.com/ten-protocol/go-ten/go/responses"
@@ -258,7 +259,7 @@ func interactWithSmartContractUnsigned(client *ethclient.Client, nonce uint64, c
 	var txHash gethcommon.Hash
 
 	n := hexutil.Uint64(nonce)
-	g := hexutil.Uint64(100_000_000)
+	g := hexutil.Uint64(gethparams.MaxTxGas)
 	d := hexutil.Bytes(contractInteractionData)
 	interactionTx := gethapi.TransactionArgs{
 		Nonce:    &n,
