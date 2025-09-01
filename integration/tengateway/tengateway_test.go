@@ -3,6 +3,7 @@ package tengateway
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -320,15 +321,102 @@ func testSessionKeysGetStorageAt(t *testing.T, _ int, httpURL, wsURL string, w w
 	fmt.Printf("testSessionKeysGetStorageAt: User balance: %s\n", balance.String())
 	testlog.Logger().Info("testSessionKeysGetStorageAt: User balance", "balance", balance.String())
 
-	// Create session key using getStorageAt with special CreateSessionKeyCQMethod address
+	ctx := context.Background()
+
+	// 1) Create session key via eth_getStorageAt (CQ method 0x...0003)
 	createSessionKeyAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000003")
-	response, err := user0.HTTPClient.StorageAt(context.Background(), createSessionKeyAddr, gethcommon.Hash{}, nil)
+	skAddrBytes, err := user0.HTTPClient.StorageAt(ctx, createSessionKeyAddr, gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, skAddrBytes)
+	skAddress := gethcommon.BytesToAddress(skAddrBytes)
+	t.Logf("✓ Session key created: %s", skAddress.Hex())
+	fmt.Printf("Session key created: %s\n", skAddress.Hex())
+
+	// 2) Fund the session key from the original wallet
+	fundAmount := big.NewInt(0).Mul(big.NewInt(1e15), big.NewInt(1)) // 0.001 TEN
+	fromAddr := user0.Wallets[0].Address()
+	gasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	gasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: fromAddr, To: &skAddress, Value: fundAmount})
+	require.NoError(t, err)
+	nonce, err := user0.HTTPClient.PendingNonceAt(ctx, fromAddr)
+	require.NoError(t, err)
+	legacy := &types.LegacyTx{Nonce: nonce, To: &skAddress, Value: fundAmount, GasPrice: gasPrice, Gas: gasLimit}
+	signedFundingTx, err := w.SignTransaction(legacy)
+	require.NoError(t, err)
+	err = user0.HTTPClient.SendTransaction(ctx, signedFundingTx)
 	require.NoError(t, err)
 
-	// Print the getStorageAt response for session key creation
-	fmt.Printf("testSessionKeysGetStorageAt: getStorageAt response: %s\n", gethcommon.Bytes2Hex(response))
-	testlog.Logger().Info("testSessionKeysGetStorageAt: session key creation response",
-		"response", gethcommon.Bytes2Hex(response))
+	// wait for receipt
+	{
+		var rec *types.Receipt
+		for i := 0; i < 60; i++ {
+			rec, err = user0.HTTPClient.TransactionReceipt(ctx, signedFundingTx.Hash())
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
+	}
+	t.Logf("✓ Session key funded with %s TEN", fundAmount.String())
+
+	// 3) Build an unsigned tx from session key back to original account, send via getStorageAt (CQ 0x...0005)
+	returnAmount := big.NewInt(0).Div(fundAmount, big.NewInt(2))
+	skGasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	skGasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: skAddress, To: &fromAddr, Value: returnAmount})
+	require.NoError(t, err)
+	skNonce, err := user0.HTTPClient.PendingNonceAt(ctx, skAddress)
+	require.NoError(t, err)
+	unsigned := types.NewTx(&types.LegacyTx{Nonce: skNonce, To: &fromAddr, Value: returnAmount, GasPrice: skGasPrice, Gas: skGasLimit})
+	blob, err := unsigned.MarshalBinary()
+	require.NoError(t, err)
+	txB64 := base64.StdEncoding.EncodeToString(blob)
+
+	paramsObj := map[string]string{
+		"sessionKeyAddress": skAddress.Hex(),
+		"tx":                txB64,
+	}
+	paramsJSON, err := json.Marshal(paramsObj)
+	require.NoError(t, err)
+
+	var txHashBytes hexutil.Bytes
+	err = user0.HTTPClient.Client().CallContext(ctx, &txHashBytes, "eth_getStorageAt",
+		"0x0000000000000000000000000000000000000005", string(paramsJSON), "latest")
+	require.NoError(t, err)
+	txHash := gethcommon.BytesToHash(txHashBytes)
+
+	// wait for receipt
+	{
+		var rec *types.Receipt
+		for i := 0; i < 60; i++ {
+			rec, err = user0.HTTPClient.TransactionReceipt(ctx, txHash)
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
+	}
+	t.Logf("✓ Return transaction sent: %s TEN", returnAmount.String())
+
+	// 4) Delete the session key via getStorageAt (CQ 0x...0004)
+	delParamsObj := map[string]string{
+		"sessionKeyAddress": skAddress.Hex(),
+	}
+	delParamsJSON, err := json.Marshal(delParamsObj)
+	require.NoError(t, err)
+
+	var delResult hexutil.Bytes
+	err = user0.HTTPClient.Client().CallContext(ctx, &delResult, "eth_getStorageAt",
+		"0x0000000000000000000000000000000000000004", string(delParamsJSON), "latest")
+	require.NoError(t, err)
+	require.Len(t, delResult, 1)
+	require.Equal(t, byte(0x01), delResult[0])
+	t.Logf("✓ Session key deleted: %s", skAddress.Hex())
 }
 
 func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
