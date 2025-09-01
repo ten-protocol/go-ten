@@ -9,8 +9,12 @@ const Copy = ({ value }: { value: string | number }) => {
       type="submit"
       variant={"clear"}
       size="sm"
-      className="text-muted-foreground"
-      onClick={() => copyToClipboard(value.toString())}
+      className="text-muted-foreground hover:text-primary"
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        copyToClipboard(value.toString());
+      }}
     >
       <span className="sr-only">Copy</span>
       {copied ? <CheckIcon className="text-primary" /> : <CopyIcon />}
