@@ -3,7 +3,9 @@ package hostdb
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
 
 	"github.com/jmoiron/sqlx"
@@ -64,6 +66,9 @@ func GetBlockId(db *sql.Tx, dbConn *sqlx.DB, hash gethcommon.Hash) (*int64, erro
 	var blockId int64
 	err := db.QueryRow(reboundQuery, hash.Bytes()).Scan(&blockId)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
 		return nil, fmt.Errorf("query execution for select block failed: %w", err)
 	}
 
