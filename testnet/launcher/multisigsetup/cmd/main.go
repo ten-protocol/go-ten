@@ -15,8 +15,12 @@ func main() {
 		fmt.Println("Error: network_config_addr is required")
 		os.Exit(1)
 	}
-	if cliConfig.multisigAddress == "" {
-		fmt.Println("Error: multisig_address is required")
+	if cliConfig.multisigAddr == "" {
+		fmt.Println("Error: multisig_addr is required")
+		os.Exit(1)
+	}
+	if cliConfig.proxyAdminAddr == "" {
+		fmt.Println("Error: proxy_admin_addr is required")
 		os.Exit(1)
 	}
 
@@ -26,7 +30,8 @@ func main() {
 			multisigsetup.WithPrivateKey(cliConfig.privateKey),
 			multisigsetup.WithDockerImage(cliConfig.dockerImage),
 			multisigsetup.WithNetworkConfigAddress(cliConfig.networkConfigAddr),
-			multisigsetup.WithMultisigAddress(cliConfig.multisigAddress),
+			multisigsetup.WithMultisigAddress(cliConfig.multisigAddr),
+			multisigsetup.WithProxyAdminAddress(cliConfig.proxyAdminAddr),
 		),
 	)
 	if err != nil {

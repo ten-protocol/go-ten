@@ -1161,3 +1161,8 @@ func (s *storageImpl) GetSequencerEnclaveIDs(ctx context.Context) ([]common.Encl
 	}
 	return ids, nil
 }
+
+// NetworkUpgradeStorage implementation
+
+// Removed: StorePendingNetworkUpgrade, FinalizeNetworkUpgrade, GetPendingNetworkUpgrades, GetFinalizedNetworkUpgrades
+// Upgrades are disabled; methods deleted.

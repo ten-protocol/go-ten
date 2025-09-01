@@ -10,11 +10,14 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
 var ErrGasNotEnoughForL1 = errors.New("gas limit too low to pay for execution and l1 fees")
+
+var FIXED_L2_GAS_COST_FOR_L1_PUBLISHING = big.NewInt(params.InitialBaseFee / 100000)
 
 const (
 	BalanceDecreaseL1Payment       tracing.BalanceChangeReason = 100
@@ -30,7 +33,8 @@ func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Messa
 
 	// If a transaction has to be published on the l1, it will have an l1 cost
 	if hasL1Cost {
-		l1Gas.Div(l1cost, header.BaseFee) // TotalCost/CostPerGas = Gas
+		divisor := header.BaseFee
+		l1Gas.Div(l1cost, divisor) // TotalCost/CostPerGas = Gas
 
 		// The gas limit of the transaction (evm message) should always be higher than the gas overhead
 		// used to cover the l1 cost

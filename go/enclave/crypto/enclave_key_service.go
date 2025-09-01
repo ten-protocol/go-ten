@@ -33,26 +33,44 @@ func NewEnclaveAttestedKeyService(logger gethlog.Logger) *EnclaveAttestedKeyServ
 }
 
 func (eks *EnclaveAttestedKeyService) Sign(payload gethcommon.Hash) ([]byte, error) {
+	if eks.enclaveKey == nil {
+		eks.logger.Crit("Sign-enclave key not set")
+	}
 	return signature.Sign(payload.Bytes(), eks.enclaveKey.privateKey)
 }
 
 func (eks *EnclaveAttestedKeyService) EnclaveID() common.EnclaveID {
+	if eks.enclaveKey == nil {
+		eks.logger.Crit("EnclaveID-enclave key not set")
+	}
 	return eks.enclaveKey.enclaveID
 }
 
 func (eks *EnclaveAttestedKeyService) PublicKey() *ecdsa.PublicKey {
+	if eks.enclaveKey == nil {
+		eks.logger.Crit("PublicKey-enclave key not set")
+	}
 	return &eks.enclaveKey.privateKey.PublicKey
 }
 
 func (eks *EnclaveAttestedKeyService) PublicKeyBytes() []byte {
+	if eks.enclaveKey == nil {
+		eks.logger.Crit("PublicKeyBytes-enclave key not set")
+	}
 	return eks.enclaveKey.publicKeyBytes
 }
 
 func (eks *EnclaveAttestedKeyService) Decrypt(encBytes []byte) ([]byte, error) {
+	if eks.enclaveKey == nil {
+		eks.logger.Crit("Decrypt-enclave key not set")
+	}
 	return decryptWithPrivateKey(encBytes, eks.enclaveKey.privateKey)
 }
 
 func (eks *EnclaveAttestedKeyService) Encrypt(encBytes []byte) ([]byte, error) {
+	if eks.enclaveKey == nil {
+		eks.logger.Crit("Encrypt-enclave key not set")
+	}
 	return encryptWithPublicKey(encBytes, &eks.enclaveKey.privateKey.PublicKey)
 }
 

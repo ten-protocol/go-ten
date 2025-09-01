@@ -10,6 +10,7 @@ type DirectUpgradeConfigCLI struct {
 	privateKey        string
 	networkConfigAddr string
 	multisigAddress   string
+	proxyAdminAddr    string
 	dockerImage       string
 }
 
@@ -21,7 +22,8 @@ func ParseConfigCLI() *DirectUpgradeConfigCLI {
 	l1HTTPURL := flag.String(l1HTTPURLFlag, "http://eth2network:8025", flagUsageMap[l1HTTPURLFlag])
 	privateKey := flag.String(privateKeyFlag, "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb", flagUsageMap[privateKeyFlag])
 	networkConfigAddr := flag.String(networkConfigAddrFlag, "", flagUsageMap[networkConfigAddrFlag])
-	multisigAddress := flag.String(multisigAddressFlag, "", flagUsageMap[multisigAddressFlag])
+	multisigAddress := flag.String(multisigAddrFlag, "", flagUsageMap[multisigAddrFlag])
+	proxyAdminAddr := flag.String(proxyAdminAddrFlag, "", flagUsageMap[proxyAdminAddrFlag])
 	dockerImage := flag.String(dockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", flagUsageMap[dockerImageFlag])
 	flag.Parse()
 
@@ -29,6 +31,7 @@ func ParseConfigCLI() *DirectUpgradeConfigCLI {
 	cfg.privateKey = *privateKey
 	cfg.networkConfigAddr = *networkConfigAddr
 	cfg.multisigAddress = *multisigAddress
+	cfg.proxyAdminAddr = *proxyAdminAddr
 	cfg.dockerImage = *dockerImage
 
 	return cfg

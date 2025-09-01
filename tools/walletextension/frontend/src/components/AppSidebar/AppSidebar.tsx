@@ -11,34 +11,16 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { ChevronDown } from 'lucide-react';
-import { TbHexagons, TbUniverse } from 'react-icons/tb';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { RiPokerSpadesFill } from 'react-icons/ri';
-import { GiCableStayedBridge } from 'react-icons/gi';
+import {GiCableStayedBridge} from 'react-icons/gi';
 import { LuTextSearch } from 'react-icons/lu';
 import { GrDocumentText } from 'react-icons/gr';
 import { CgWebsite } from 'react-icons/cg';
 import { FaDiscord } from 'react-icons/fa';
 import * as React from 'react';
+import {PROMO_APPS} from "@/lib/constants";
 
 export function AppSidebar() {
-    const zenItems = [
-        {
-            title: 'House of TEN',
-            url: 'https://houseof.ten.xyz',
-            icon: RiPokerSpadesFill,
-        },
-        {
-            title: 'Battleships',
-            url: 'https://battleships.ten.xyz',
-            icon: TbHexagons,
-        },
-        {
-            title: 'TENZEN',
-            url: 'https://tenzen.ten.xyz',
-            icon: TbUniverse,
-        },
-    ];
     const toolItems = [
         {
             title: 'Bridge',
@@ -79,14 +61,14 @@ export function AppSidebar() {
                     <SidebarGroup>
                         <SidebarGroupLabel asChild>
                             <CollapsibleTrigger className="w-full">
-                                ZEN Earners
+                                Promoted Apps
                                 <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
                             </CollapsibleTrigger>
                         </SidebarGroupLabel>
                         <CollapsibleContent>
                             <SidebarGroupContent>
                                 <SidebarMenu>
-                                    {zenItems.map((item) => (
+                                    {PROMO_APPS.map((item) => (
                                         <SidebarMenuItem key={item.title}>
                                             <SidebarMenuButton asChild>
                                                 <a href={item.url}>

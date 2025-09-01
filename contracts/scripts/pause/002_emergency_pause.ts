@@ -1,5 +1,6 @@
 import { ethers } from "hardhat";
 
+//TODO this is still WIP and needs to be updated
 /**
  * Emergency Pause Script
  * 

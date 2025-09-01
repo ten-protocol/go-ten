@@ -3,9 +3,8 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "./ICrossChainMessenger.sol";
-import "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import "../L1/IMerkleTreeMessageBus.sol";
-
+import {PausableWithRoles} from "../../common/PausableWithRoles.sol";
 
 /**
  * @title CrossChainMessenger
@@ -20,7 +19,7 @@ import "../L1/IMerkleTreeMessageBus.sol";
  * Notice that this Messenger has no restrictions on who can relay messages, nor does it have any understanding of fees.
  * You can opt in to deploy a customer messenger for your cross chain dApp with more specialized logic.
  */
-contract CrossChainMessenger is ICrossChainMessenger, Initializable {
+contract CrossChainMessenger is ICrossChainMessenger, PausableWithRoles {
     error CallFailed(bytes error);
 
     IMerkleTreeMessageBus public messageBusContract;
@@ -34,6 +33,8 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
      * TODO initialize only once
      */
     function initialize(address messageBusAddr) external initializer {
+        require(messageBusAddr != address(0));
+        __PausableWithRoles_init(msg.sender);
         messageBusContract = IMerkleTreeMessageBus(messageBusAddr);
     }
 
@@ -51,7 +52,7 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
      */
     function consumeMessage(
         Structs.CrossChainMessage calldata message
-    ) private {
+    ) private whenNotPaused {
         require(
             IMessageBus(address(messageBusContract)).verifyMessageFinalized(message),
             "Message not found or finalized."
@@ -72,7 +73,7 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
         Structs.CrossChainMessage calldata message,
         bytes32[] calldata proof, 
         bytes32 root
-    ) private {
+    ) private whenNotPaused {
         messageBusContract.verifyMessageInclusion(message, proof, root);
         bytes32 msgHash = keccak256(abi.encode(message));
         require(messageConsumed[msgHash] == false, "Message already consumed.");
@@ -105,7 +106,7 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
      * message bus.
      * @param message The cross-chain message to relay
      */
-    function relayMessage(Structs.CrossChainMessage calldata message) public {
+    function relayMessage(Structs.CrossChainMessage calldata message) public whenNotPaused {
         consumeMessage(message);
 
         crossChainSender = message.sender;
@@ -136,7 +137,7 @@ contract CrossChainMessenger is ICrossChainMessenger, Initializable {
      * @param proof Merkle proof verifying the message inclusion
      * @param root The Merkle root against which to verify the proof
      */
-    function relayMessageWithProof(Structs.CrossChainMessage calldata message, bytes32[] calldata proof, bytes32 root) public {
+    function relayMessageWithProof(Structs.CrossChainMessage calldata message, bytes32[] calldata proof, bytes32 root) public whenNotPaused {
         consumeMessageWithProof(message, proof, root);
 
         crossChainSender = message.sender;

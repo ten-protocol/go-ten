@@ -22,13 +22,17 @@
     "next": "14.0.1",
     "next-themes": "^0.2.1",
     "path-to-regexp": "^6.2.1",
-    "react": "^18.2.0",
+    "react": "18.3.1",
     "react-day-picker": "^8.9.1",
-    "react-dom": "^18.2.0",
+    "react-dom": "18.3.1",
     "react-json-pretty": "^2.2.0",
     "recharts": "^2.9.3",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.7"
+  },
+  "overrides": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@repo/ui": "workspace:*",

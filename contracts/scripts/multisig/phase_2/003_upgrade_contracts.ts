@@ -186,13 +186,13 @@ const upgradeContractsWithMultisig = async function (): Promise<void> {
     // Governance configuration - these should be set as environment variables
     const governanceConfig: GovernanceConfig = {
         timelockAddress: process.env.TIMELOCK_ADDRESS || "0x...",
-        multisigAddress: process.env.MULTISIG_ADDRESS || "0x..."
+        multisigAddress: process.env.MULTISIG_ADDR || "0x..."
     };
     
     // Validate governance config
     if (governanceConfig.timelockAddress === "0x..." || 
         governanceConfig.multisigAddress === "0x...") {
-        throw new Error('Please set TIMELOCK_ADDRESS and MULTISIG_ADDRESS environment variables');
+        throw new Error('Please set TIMELOCK_ADDRESS and MULTISIG_ADDR environment variables');
     }
     
     console.log('Governance Configuration:');
@@ -319,7 +319,7 @@ const executeScheduledUpgrades = async function (): Promise<void> {
     
     const governanceConfig: GovernanceConfig = {
         timelockAddress: process.env.TIMELOCK_ADDRESS || "0x...",
-        multisigAddress: process.env.MULTISIG_ADDRESS || "0x..."
+        multisigAddress: process.env.MULTISIG_ADDR || "0x..."
     };
     
     // This would be called after the delay period

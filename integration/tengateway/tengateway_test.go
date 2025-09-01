@@ -237,7 +237,7 @@ func testSessionKeysGetStorageAt(t *testing.T, _ int, httpURL, wsURL string, w w
 	require.NoError(t, err)
 	err = user0.HTTPClient.SendTransaction(ctx, signedFundingTx)
 	require.NoError(t, err)
-
+  
 	// wait for receipt
 	{
 		var rec *types.Receipt
@@ -534,7 +534,7 @@ func testSubscriptionTopics(t *testing.T, _ int, httpURL, wsURL string, w wallet
 	// deploy events contract
 	deployTx := &types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
-		Gas:      uint64(1_000_000),
+		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
 	}
@@ -780,7 +780,7 @@ func testUnsubscribe(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	// deploy events contract
 	deployTx := &types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
-		Gas:      uint64(1_000_000),
+		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
 	}
@@ -836,7 +836,7 @@ func testClosingConnectionWhileSubscribed(t *testing.T, _ int, httpURL, wsURL st
 	// deploy events contract
 	deployTx := &types.LegacyTx{
 		Nonce:    w.GetNonceAndIncrement(),
-		Gas:      uint64(1_000_000),
+		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
 	}
@@ -1046,7 +1046,7 @@ func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 		Nonce:    wallet.GetNonceAndIncrement(),
 		To:       &toAddress,
 		Value:    big.NewInt(amount),
-		Gas:      uint64(1_000_000),
+		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     nil,
 	}

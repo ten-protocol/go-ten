@@ -41,7 +41,7 @@ type BatchConfig struct {
 //
 //	yaml: `network.gas`
 type GasConfig struct {
-	BaseFee *big.Int `mapstructure:"baseFee"`
+	MinBaseFee *big.Int `mapstructure:"minBaseFee"`
 	// MinGasPrice is the minimum gas price for mining a transaction
 	MinGasPrice         *big.Int           `mapstructure:"minGasPrice"`
 	PaymentAddress      gethcommon.Address `mapstructure:"paymentAddress"`
