@@ -459,13 +459,13 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 	}
 
 	// prefetch
-	//_, process, err := s.stateCache.ReadersWithCacheStats(batch.Root)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//statedb, err := state.NewWithReader(batch.Root, s.stateCache, process)
-	statedb, err := state.New(batch.Root, s.stateCache)
+	_, process, err := s.stateCache.ReadersWithCacheStats(batch.Root)
+	if err != nil {
+		return nil, err
+	}
+
+	statedb, err := state.NewWithReader(batch.Root, s.stateCache, process)
+	// statedb, err := state.New(batch.Root, s.stateCache)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
 	}
