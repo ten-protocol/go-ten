@@ -555,6 +555,12 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 		return fmt.Errorf("could not process cross chain messages. Cause: %w", err)
 	}
 
+	for _, result := range xChainResults {
+		if result.Receipt.Status == types.ReceiptStatusFailed || result.Err != nil {
+			return fmt.Errorf("xchain message execution failed. Receipt %+v. Cause: %w", result.Receipt, result.Err)
+		}
+	}
+
 	if dberr := ec.stateDB.Error(); dberr != nil {
 		return fmt.Errorf("failed to execute xchain messages. Cause: %w", dberr)
 	}
