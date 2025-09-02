@@ -173,8 +173,8 @@ func (api *BlockChainAPI) GetCode(ctx context.Context, address gethcommon.Addres
 }
 
 // GetStorageAt - This method signature matches eth_getStorageAt, but we use the address field to specify the custom query method,
-// the hex-encoded position field to specify the parameters json, and nil for the block number.
-func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.Address, params string, _ rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
+// the hex-encoded position field to specify the parameters json, and the block number for session key address in custom queries.
+func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.Address, params string, blockNrOrHash rpc.BlockNumberOrHash) (hexutil.Bytes, error) {
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
 		return nil, err
@@ -183,7 +183,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 	switch address.Hex() {
 	case common.ListPrivateTransactionsCQMethod:
 		// sensitive CustomQuery methods use the convention of having "address" at the top level of the params json
-		userAddr, err := extractCustomQueryAddress(params)
+		userAddr, err := extractAddressFromParams(params, "address")
 		if err != nil {
 			return nil, fmt.Errorf("unable to extract address from custom query params: %w", err)
 		}
@@ -203,47 +203,70 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 			return nil, fmt.Errorf("unable to create session key: %w", err)
 		}
 		return sk.Account.Address.Bytes(), nil
-	case common.ActivateSessionKeyCQMethod:
-		res, err := api.we.SKManager.ActivateSessionKey(user)
-		return []byte{boolToByte(res)}, err
-	case common.DeactivateSessionKeyCQMethod:
-		res, err := api.we.SKManager.DeactivateSessionKey(user)
-		return []byte{boolToByte(res)}, err
 	case common.DeleteSessionKeyCQMethod:
-		res, err := api.we.SKManager.DeleteSessionKey(user)
-		return []byte{boolToByte(res)}, err
-	case common.ListSessionKeyCQMethod:
-		sk, err := api.we.SKManager.ListSessionKey(user)
+		// Extract session key address from params JSON
+		sessionKeyAddr, err := extractAddressFromParams(params, "sessionKeyAddress")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unable to extract sessionKeyAddress from params: %w", err)
 		}
-		return sk.Bytes(), nil
-	case common.SendUnsignedTxCQMethod:
-		if user.ActiveSK && user.SessionKey != nil {
-			input, err := base64.StdEncoding.DecodeString(params)
-			if err != nil {
-				return nil, fmt.Errorf("unable to decode base64 params: %w", err)
-			}
 
-			tx := new(types.Transaction)
-			if err = tx.UnmarshalBinary(input); err != nil {
-				return gethcommon.Hash{}.Bytes(), err
-			}
-			signedTx, err := api.we.SKManager.SignTx(ctx, user, tx)
-			if err != nil {
-				return gethcommon.Hash{}.Bytes(), err
-			}
-			signedTxBlob, err := signedTx.MarshalBinary()
-			if err != nil {
-				return gethcommon.Hash{}.Bytes(), err
-			}
-			hash, err := SendRawTx(ctx, api.we, signedTxBlob)
-			if err != nil {
-				return gethcommon.Hash{}.Bytes(), err
-			}
-			return hash.Bytes(), nil
+		success, err := api.we.SKManager.DeleteSessionKey(user, *sessionKeyAddr)
+		if err != nil {
+			return nil, fmt.Errorf("unable to delete session key: %w", err)
 		}
-		return gethcommon.Hash{}.Bytes(), fmt.Errorf("please create a session key before sending unsigned transactions")
+
+		if success {
+			return hexutil.Bytes{0x01}, nil // -> "0x01"
+		}
+		return hexutil.Bytes{0x00}, nil // -> "0x00"
+	case common.SendUnsignedTxCQMethod:
+		// Extract session key address and tx (base64) from params JSON
+		skAddrPtr, err := extractAddressFromParams(params, "sessionKeyAddress")
+		if err != nil {
+			return nil, fmt.Errorf("unable to extract sessionKeyAddress from params: %w", err)
+		}
+
+		txB64, err := extractStringFromParams(params, "tx")
+		if err != nil {
+			return nil, fmt.Errorf("unable to extract tx from params: %w", err)
+		}
+
+		addr := *skAddrPtr
+
+		// Verify that the session key exists for this user
+		if user.SessionKeys == nil || user.SessionKeys[addr] == nil {
+			return gethcommon.Hash{}.Bytes(), fmt.Errorf("please create a session key before sending unsigned transactions")
+		}
+
+		// Decode base64 tx and unmarshal transaction
+		input, err := base64.StdEncoding.DecodeString(txB64)
+		if err != nil {
+			return nil, fmt.Errorf("unable to decode base64 tx: %w", err)
+		}
+
+		tx := new(types.Transaction)
+		if err = tx.UnmarshalBinary(input); err != nil {
+			return gethcommon.Hash{}.Bytes(), err
+		}
+
+		// Sign the transaction with the specified session key
+		signedTx, err := api.we.SKManager.SignTx(ctx, user, addr, tx)
+		if err != nil {
+			return gethcommon.Hash{}.Bytes(), err
+		}
+
+		signedTxBlob, err := signedTx.MarshalBinary()
+		if err != nil {
+			return gethcommon.Hash{}.Bytes(), err
+		}
+
+		hash, err := SendRawTx(ctx, api.we, signedTxBlob)
+		if err != nil {
+			return gethcommon.Hash{}.Bytes(), err
+		}
+
+		return hash.Bytes(), nil
+
 	default: // address was not a recognised custom query method address
 		resp, err := ExecAuthRPC[any](ctx, api.we, &AuthExecCfg{tryUntilAuthorised: true}, tenrpc.ERPCGetStorageAt, address, params, nil)
 		if err != nil {
@@ -260,13 +283,6 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		// turn resp object into hexutil.Bytes
 		return hexutil.MustDecode(respHex), nil
 	}
-}
-
-func boolToByte(res bool) byte {
-	if res {
-		return 1
-	}
-	return 0
 }
 
 func (api *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
@@ -378,9 +394,8 @@ func (api *BlockChainAPI) CreateAccessList(ctx context.Context, args gethapi.Tra
 	return nil, ErrRPCNotImplemented
 }
 
-func extractCustomQueryAddress(params any) (*gethcommon.Address, error) {
-	// sensitive CustomQuery methods use the convention of having "address" at the top level of the params json
-	// we don't care about the params struct overall, just want to extract the address string field
+func extractAddressFromParams(params any, fieldName string) (*gethcommon.Address, error) {
+	// Extract address from params json - expects {fieldName: "0x..."}
 	paramsStr, ok := params.(string)
 	if !ok {
 		return nil, fmt.Errorf("params must be a json string")
@@ -400,20 +415,57 @@ func extractCustomQueryAddress(params any) (*gethcommon.Address, error) {
 			return nil, fmt.Errorf("unable to unmarshal params string: %w", err)
 		}
 	}
-	// Extract the RawMessage for the key "address"
-	addressRaw, ok := paramsJSON["address"]
+	// Extract the RawMessage for the specified field
+	addressRaw, ok := paramsJSON[fieldName]
 	if !ok {
-		return nil, fmt.Errorf("params must contain an 'address' field")
+		return nil, fmt.Errorf("params must contain a '%s' field", fieldName)
 	}
 
 	// Unmarshal the RawMessage to a string
 	var addressStr string
 	err = json.Unmarshal(addressRaw, &addressStr)
 	if err != nil {
-		return nil, fmt.Errorf("unable to unmarshal address field to string: %w", err)
+		return nil, fmt.Errorf("unable to unmarshal %s field to string: %w", fieldName, err)
 	}
+
 	address := gethcommon.HexToAddress(addressStr)
 	return &address, nil
+}
+
+// extractStringFromParams extracts an arbitrary string field from the params JSON string
+func extractStringFromParams(params any, fieldName string) (string, error) {
+	paramsStr, ok := params.(string)
+	if !ok {
+		return "", fmt.Errorf("params must be a json string")
+	}
+	var paramsJSON map[string]json.RawMessage
+	err := json.Unmarshal([]byte(paramsStr), &paramsJSON)
+	if err != nil {
+		// try to base64 decode the params string and then unmarshal before giving up
+		bytesStr, err64 := base64.StdEncoding.DecodeString(paramsStr)
+		if err64 != nil {
+			// was not base64 encoded, give up
+			return "", fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
+		// was base64 encoded, try to unmarshal
+		err = json.Unmarshal(bytesStr, &paramsJSON)
+		if err != nil {
+			return "", fmt.Errorf("unable to unmarshal params string: %w", err)
+		}
+	}
+	// Extract the RawMessage for the specified field
+	raw, ok := paramsJSON[fieldName]
+	if !ok {
+		return "", fmt.Errorf("params must contain a '%s' field", fieldName)
+	}
+
+	// Unmarshal the RawMessage to a string
+	var value string
+	err = json.Unmarshal(raw, &value)
+	if err != nil {
+		return "", fmt.Errorf("unable to unmarshal %s field to string: %w", fieldName, err)
+	}
+	return value, nil
 }
 
 // RPCMarshalHeader converts the given header to the RPC output .

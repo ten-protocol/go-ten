@@ -149,8 +149,14 @@ func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, c
 		return nil, err
 	}
 
+	// Get current nonce to avoid conflicts
+	nonce, err := client.PendingNonceAt(context.Background(), wallet.Address())
+	if err != nil {
+		return nil, err
+	}
+
 	interactionTx := types.LegacyTx{
-		Nonce:    wallet.GetNonceAndIncrement(),
+		Nonce:    nonce,
 		To:       &contractAddress,
 		Gas:      uint64(10_000_000),
 		GasPrice: price,
