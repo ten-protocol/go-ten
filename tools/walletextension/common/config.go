@@ -25,11 +25,12 @@ type Config struct {
 	RateLimitWindow                time.Duration
 	RateLimitMaxConcurrentRequests int
 
-	InsideEnclave                bool // Indicates if the program is running inside an enclave
-	EncryptionKeySource          string
-	EnableTLS                    bool
-	TLSDomain                    string
-	EncryptingCertificateEnabled bool
-	DisableCaching               bool
-	FrontendURL                  string // Frontend URL allowed for restrictive CORS
+	InsideEnclave                 bool // Indicates if the program is running inside an enclave
+	EncryptionKeySource           string
+	EnableTLS                     bool
+	TLSDomain                     string
+	EncryptingCertificateEnabled  bool
+	DisableCaching                bool
+	FrontendURL                   string        // Frontend URL allowed for restrictive CORS
+	SessionKeyExpirationThreshold time.Duration // Threshold for session key expiration
 }

@@ -100,6 +100,10 @@ const (
 	frontendURLFlagName    = "frontendURL"
 	frontendURLFlagDefault = "https://uat-gw-testnet.ten.xyz"
 	frontendURLFlagUsage   = "The frontend URL that is allowed to access restricted CORS endpoints. Default: https://uat-gw-testnet.ten.xyz"
+
+	sessionKeyExpirationThresholdFlagName    = "sessionKeyExpirationThreshold"
+	sessionKeyExpirationThresholdFlagDefault = 10 * time.Second
+	sessionKeyExpirationThresholdFlagUsage   = "Threshold for session key expiration. Session keys older than this duration will be considered expired. Default: 10s"
 )
 
 // getLogLevelInt converts string log level to integer value
@@ -146,6 +150,7 @@ func parseCLIArgs() wecommon.Config {
 	encryptingCertificateEnabled := flag.Bool(encryptingCertificateEnabledFlagName, encryptingCertificateEnabledFlagDefault, encryptingCertificateEnabledFlagUsage)
 	disableCaching := flag.Bool(disableCachingFlagName, disableCachingFlagDefault, disableCachingFlagUsage)
 	frontendURL := flag.String(frontendURLFlagName, frontendURLFlagDefault, frontendURLFlagUsage)
+	sessionKeyExpirationThreshold := flag.Duration(sessionKeyExpirationThresholdFlagName, sessionKeyExpirationThresholdFlagDefault, sessionKeyExpirationThresholdFlagUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -171,5 +176,6 @@ func parseCLIArgs() wecommon.Config {
 		EncryptingCertificateEnabled:   *encryptingCertificateEnabled,
 		DisableCaching:                 *disableCaching,
 		FrontendURL:                    *frontendURL,
+		SessionKeyExpirationThreshold:  *sessionKeyExpirationThreshold,
 	}
 }

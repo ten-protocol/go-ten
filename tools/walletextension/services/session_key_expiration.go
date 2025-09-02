@@ -15,14 +15,16 @@ type SessionKeyExpirationService struct {
 	logger      gethlog.Logger
 	stopControl *stopcontrol.StopControl
 	ticker      *time.Ticker
+	config      *wecommon.Config
 }
 
 // NewSessionKeyExpirationService creates a new session key expiration service
-func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl) *SessionKeyExpirationService {
+func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config) *SessionKeyExpirationService {
 	service := &SessionKeyExpirationService{
 		storage:     storage,
 		logger:      logger,
 		stopControl: stopControl,
+		config:      config,
 	}
 
 	// Start the service
@@ -63,10 +65,38 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 
 	s.logger.Info("Session key expiration service running - checking users", "count", len(users))
 
+	// Use configurable expiration threshold
+	expirationThreshold := s.config.SessionKeyExpirationThreshold
+	now := time.Now()
+	expiredKeysCount := 0
+
 	for _, user := range users {
 		s.logger.Info("User found",
 			"userID", wecommon.HashForLogging(user.ID),
 			"accountsCount", len(user.Accounts),
 			"sessionKeysCount", len(user.SessionKeys))
+
+		// Check each session key for expiration
+		for sessionKeyAddr, sessionKey := range user.SessionKeys {
+			age := now.Sub(sessionKey.CreatedAt)
+			if age > expirationThreshold {
+				expiredKeysCount++
+				s.logger.Warn("Expired session key found",
+					"userID", wecommon.HashForLogging(user.ID),
+					"sessionKeyAddress", sessionKeyAddr.Hex(),
+					"createdAt", sessionKey.CreatedAt.Format(time.RFC3339),
+					"age", age.String(),
+					"expirationThreshold", expirationThreshold.String())
+			}
+		}
+	}
+
+	if expiredKeysCount > 0 {
+		s.logger.Info("Session key expiration check completed",
+			"totalExpiredKeys", expiredKeysCount,
+			"expirationThreshold", expirationThreshold.String())
+	} else {
+		s.logger.Info("Session key expiration check completed - no expired keys found",
+			"expirationThreshold", expirationThreshold.String())
 	}
 }
