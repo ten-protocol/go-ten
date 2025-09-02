@@ -114,7 +114,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 	go _startCacheEviction(&services, logger)
 
 	// Create and start session key expiration service
-	services.sessionKeyExpirationService = NewSessionKeyExpirationService(storage, logger, stopControl, config)
+	services.sessionKeyExpirationService = NewSessionKeyExpirationService(storage, logger, stopControl, config, &services)
 
 	return &services
 }

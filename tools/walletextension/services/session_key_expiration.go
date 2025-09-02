@@ -1,10 +1,17 @@
 package services
 
 import (
+	"context"
+	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	tencommonrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
+	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
@@ -16,15 +23,17 @@ type SessionKeyExpirationService struct {
 	stopControl *stopcontrol.StopControl
 	ticker      *time.Ticker
 	config      *wecommon.Config
+	services    *Services // Reference to main services for RPC access
 }
 
 // NewSessionKeyExpirationService creates a new session key expiration service
-func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config) *SessionKeyExpirationService {
+func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config, services *Services) *SessionKeyExpirationService {
 	service := &SessionKeyExpirationService{
 		storage:     storage,
 		logger:      logger,
 		stopControl: stopControl,
 		config:      config,
+		services:    services,
 	}
 
 	// Start the service
@@ -81,12 +90,25 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 			age := now.Sub(sessionKey.CreatedAt)
 			if age > expirationThreshold {
 				expiredKeysCount++
+
+				// Check balance for expired session key
+				balance, err := s.getSessionKeyBalance(user, sessionKeyAddr)
+				balanceStr := "unknown"
+				if err != nil {
+					s.logger.Error("Failed to get balance for expired session key",
+						"error", err,
+						"sessionKeyAddress", sessionKeyAddr.Hex())
+				} else {
+					balanceStr = balance.String()
+				}
+
 				s.logger.Warn("Expired session key found",
 					"userID", wecommon.HashForLogging(user.ID),
 					"sessionKeyAddress", sessionKeyAddr.Hex(),
 					"createdAt", sessionKey.CreatedAt.Format(time.RFC3339),
 					"age", age.String(),
-					"expirationThreshold", expirationThreshold.String())
+					"expirationThreshold", expirationThreshold.String(),
+					"balance", balanceStr)
 			}
 		}
 	}
@@ -99,4 +121,44 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 		s.logger.Info("Session key expiration check completed - no expired keys found",
 			"expirationThreshold", expirationThreshold.String())
 	}
+}
+
+// getSessionKeyBalance retrieves the balance for a session key account
+func (s *SessionKeyExpirationService) getSessionKeyBalance(user *wecommon.GWUser, sessionKeyAddr common.Address) (*hexutil.Big, error) {
+	ctx := context.Background()
+
+	// Use the latest block for balance checking
+	latest := rpc.LatestBlockNumber
+	blockNrOrHash := rpc.BlockNumberOrHash{
+		BlockNumber: &latest,
+	}
+
+	// Create a temporary user with only the session key account for authorization
+	tempUser := &wecommon.GWUser{
+		ID:          user.ID,
+		Accounts:    make(map[common.Address]*wecommon.GWAccount),
+		UserKey:     user.UserKey,
+		SessionKeys: make(map[common.Address]*wecommon.GWSessionKey),
+	}
+
+	// Add the specific session key to the temp user
+	if sessionKey, exists := user.SessionKeys[sessionKeyAddr]; exists {
+		tempUser.SessionKeys[sessionKeyAddr] = sessionKey
+	} else {
+		return nil, fmt.Errorf("session key not found for address %s", sessionKeyAddr.Hex())
+	}
+
+	// Use the existing WithEncRPCConnection infrastructure to get balance
+	// This is similar to how the blockchain API works but without the import cycle
+	balance, err := WithEncRPCConnection(ctx, s.services.BackendRPC, tempUser.SessionKeys[sessionKeyAddr].Account, func(rpcClient *tenrpc.EncRPCClient) (*hexutil.Big, error) {
+		var result hexutil.Big
+		err := rpcClient.CallContext(ctx, &result, tencommonrpc.ERPCGetBalance, sessionKeyAddr, blockNrOrHash)
+		return &result, err
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get balance via RPC: %w", err)
+	}
+
+	return balance, nil
 }
