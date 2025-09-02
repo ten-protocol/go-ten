@@ -80,6 +80,12 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, hexutil.By
 	res := state.GetState(*builder.Param.address, key)
 	enc := (hexutil.Bytes)(res[:])
 	builder.ReturnValue = &enc
+	rpc.logger.Info("TenStorageReadExecute",
+		"address", builder.Param.address.Hex(),
+		"slot", builder.Param.storageSlot,
+		"slot decoded", key,
+		"block", builder.Param.block.String(),
+		"result", enc.String())
 	return nil
 }
 
