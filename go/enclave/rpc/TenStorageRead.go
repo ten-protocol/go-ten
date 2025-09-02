@@ -1,14 +1,14 @@
 package rpc
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
-	"math/big"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
-	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/go/common/syserr"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
@@ -18,7 +18,7 @@ type storageReadWithBlock struct {
 	block       *gethrpc.BlockNumberOrHash
 }
 
-func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWithBlock, string], rpc *EncryptionManager) error {
+func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWithBlock, hexutil.Bytes], rpc *EncryptionManager) error {
 	if len(reqParams) < 2 || len(reqParams) > 3 {
 		builder.Err = fmt.Errorf("unexpected number of parameters")
 		return nil
@@ -64,38 +64,41 @@ func TenStorageReadValidate(reqParams []any, builder *CallBuilder[storageReadWit
 	return nil
 }
 
-func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, string], rpc *EncryptionManager) error {
-	_, reader, err := rpc.registry.GetBatchState(builder.ctx, *builder.Param.block)
+func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, hexutil.Bytes], rpc *EncryptionManager) error {
+	state, _, err := rpc.registry.GetBatchState(builder.ctx, *builder.Param.block)
 	if err != nil {
 		builder.Err = fmt.Errorf("unable to read block number - %w", err)
 		return nil
 	}
 
-	sl := new(big.Int)
-	sl, ok := sl.SetString(builder.Param.storageSlot, 0)
-	if !ok {
-		builder.Err = fmt.Errorf("unable to parse storage slot (%s)", builder.Param.storageSlot)
-		return nil
-	}
-
-	// the storage slot needs to be 32 bytes padded with 0s
-	storageSlot := common.Hash{}
-	storageSlot.SetBytes(sl.Bytes())
-
-	value, err := reader.Storage(*builder.Param.address, storageSlot)
+	key, _, err := decodeHash(builder.Param.storageSlot)
 	if err != nil {
-		rpc.logger.Debug("Failed eth_getStorageAt.", log.ErrKey, err)
-
-		// return system errors to the host
-		if errors.Is(err, syserr.InternalError{}) {
-			return fmt.Errorf("unable to get storage slot - %w", err)
-		}
-
-		builder.Err = fmt.Errorf("unable to get storage slot - %w", err)
+		builder.Err = fmt.Errorf("unable to decode storage key: %s", err)
 		return nil
 	}
 
-	encodedResult := value.Hex()
-	builder.ReturnValue = &encodedResult
+	res := state.GetState(*builder.Param.address, key)
+	enc := (hexutil.Bytes)(res[:])
+	builder.ReturnValue = &enc
 	return nil
+}
+
+// decodeHash parses a hex-encoded 32-byte hash. The input may optionally
+// be prefixed by 0x and can have a byte length up to 32.
+// from go-ethereum
+func decodeHash(s string) (h common.Hash, inputLength int, err error) {
+	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
+		s = s[2:]
+	}
+	if (len(s) & 1) > 0 {
+		s = "0" + s
+	}
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		return common.Hash{}, 0, errors.New("hex string invalid")
+	}
+	if len(b) > 32 {
+		return common.Hash{}, len(b), errors.New("hex string too long, want at most 32 bytes")
+	}
+	return common.BytesToHash(b), len(b), nil
 }
