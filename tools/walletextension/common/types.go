@@ -1,6 +1,8 @@
 package common
 
 import (
+	"time"
+
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"golang.org/x/exp/maps"
@@ -17,6 +19,7 @@ const (
 type GWSessionKey struct {
 	Account    *GWAccount
 	PrivateKey *ecies.PrivateKey // the private key corresponding to the account
+	CreatedAt  time.Time         // timestamp when the session key was created
 }
 
 type GWAccount struct {

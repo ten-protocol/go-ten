@@ -162,6 +162,7 @@ func (s *SqliteDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 				Signature:      key.Account.Signature,
 				SignatureType:  int(key.Account.SignatureType),
 			},
+			CreatedAt: key.CreatedAt,
 		}
 		return s.updateUser(dbTx, user)
 	})

@@ -3,6 +3,7 @@ package common
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -31,6 +32,7 @@ type GWAccountDB struct {
 type GWSessionKeyDB struct {
 	PrivateKey []byte      `json:"privateKey"`
 	Account    GWAccountDB `json:"account"`
+	CreatedAt  time.Time   `json:"createdAt"`
 }
 
 func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
@@ -70,6 +72,7 @@ func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
 				SignatureType: viewingkey.SignatureType(acc.SignatureType),
 			},
 			PrivateKey: eciesPrivateKey,
+			CreatedAt:  sessionKeyDB.CreatedAt,
 		}
 	}
 
