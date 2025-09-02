@@ -133,6 +133,26 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 					// 		"userID", wecommon.HashForLogging(user.ID),
 					// 		"sessionKeyAddress", sessionKeyAddr.Hex())
 					// }
+				} else {
+					// If expired session key has non-zero balance, send funds back to first account
+					s.logger.Info("Expired session key with non-zero balance - attempting fund recovery",
+						"userID", wecommon.HashForLogging(user.ID),
+						"sessionKeyAddress", sessionKeyAddr.Hex(),
+						"balance", balanceStr)
+
+					err := s.recoverFundsFromExpiredSessionKey(user, sessionKeyAddr, balance)
+					if err != nil {
+						s.logger.Error("Failed to recover funds from expired session key",
+							"error", err,
+							"userID", wecommon.HashForLogging(user.ID),
+							"sessionKeyAddress", sessionKeyAddr.Hex(),
+							"balance", balanceStr)
+					} else {
+						s.logger.Info("Successfully initiated fund recovery from expired session key",
+							"userID", wecommon.HashForLogging(user.ID),
+							"sessionKeyAddress", sessionKeyAddr.Hex(),
+							"balance", balanceStr)
+					}
 				}
 			}
 		}
@@ -186,4 +206,68 @@ func (s *SessionKeyExpirationService) getSessionKeyBalance(user *wecommon.GWUser
 	}
 
 	return balance, nil
+}
+
+// recoverFundsFromExpiredSessionKey sends funds from an expired session key to the user's first account
+func (s *SessionKeyExpirationService) recoverFundsFromExpiredSessionKey(user *wecommon.GWUser, sessionKeyAddr common.Address, balance *hexutil.Big) error {
+	ctx := context.Background()
+
+	// Find the first account registered with the user
+	var firstAccount *wecommon.GWAccount
+	for _, account := range user.Accounts {
+		firstAccount = account
+		break // Get the first account
+	}
+
+	if firstAccount == nil {
+		return fmt.Errorf("no accounts found for user %s", wecommon.HashForLogging(user.ID))
+	}
+
+	s.logger.Info("Recovering funds from expired session key",
+		"userID", wecommon.HashForLogging(user.ID),
+		"sessionKeyAddress", sessionKeyAddr.Hex(),
+		"recipientAddress", firstAccount.Address.Hex(),
+		"amount", balance.String())
+
+	// Use the existing transaction API to send funds
+	// This leverages the existing SendTransaction infrastructure that handles session keys properly
+	txHash, err := s.sendFundsUsingTransactionAPI(ctx, user, sessionKeyAddr, *firstAccount.Address, balance)
+	if err != nil {
+		return fmt.Errorf("failed to send funds transaction: %w", err)
+	}
+
+	s.logger.Info("Fund recovery transaction sent",
+		"userID", wecommon.HashForLogging(user.ID),
+		"sessionKeyAddress", sessionKeyAddr.Hex(),
+		"recipientAddress", firstAccount.Address.Hex(),
+		"amount", balance.String(),
+		"transactionHash", txHash.Hex())
+
+	return nil
+}
+
+// sendFundsUsingTransactionAPI uses the existing transaction API to send funds from a session key
+func (s *SessionKeyExpirationService) sendFundsUsingTransactionAPI(ctx context.Context, user *wecommon.GWUser, fromAddr, toAddr common.Address, amount *hexutil.Big) (common.Hash, error) {
+	// Create transaction args that will be handled by the existing SendTransaction API
+	// The transaction API will automatically detect this is a session key transaction and handle it properly
+	txArgs := map[string]interface{}{
+		"from":  fromAddr.Hex(),
+		"to":    toAddr.Hex(),
+		"value": amount.String(),
+		"gas":   "0x5208", // 21000 gas for simple transfer
+	}
+
+	// Use the existing RPC infrastructure to call the transaction API
+	// This will go through the same path as if a dApp sent the transaction
+	result, err := WithEncRPCConnection(ctx, s.services.BackendRPC, user.SessionKeys[fromAddr].Account, func(rpcClient *tenrpc.EncRPCClient) (*common.Hash, error) {
+		var txHash common.Hash
+		err := rpcClient.CallContext(ctx, &txHash, "eth_sendTransaction", txArgs)
+		return &txHash, err
+	})
+
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	return *result, nil
 }
