@@ -37,20 +37,21 @@ import (
 
 // Services handles the various business logic for the api endpoints
 type Services struct {
-	HostAddrHTTP        string // The HTTP address on which the TEN host can be reached
-	HostAddrWS          string // The WS address on which the TEN host can be reached
-	Storage             storage.UserStorage
-	logger              gethlog.Logger
-	stopControl         *stopcontrol.StopControl
-	version             string
-	RPCResponsesCache   cache.Cache
-	BackendRPC          *BackendRPC
-	RateLimiter         *ratelimiter.RateLimiter
-	SKManager           SKManager
-	Config              *common.Config
-	NewHeadsService     *subscriptioncommon.NewHeadsService
-	cacheInvalidationCh chan *tencommon.BatchHeader
-	MetricsTracker      metrics.Metrics
+	HostAddrHTTP                string // The HTTP address on which the TEN host can be reached
+	HostAddrWS                  string // The WS address on which the TEN host can be reached
+	Storage                     storage.UserStorage
+	logger                      gethlog.Logger
+	stopControl                 *stopcontrol.StopControl
+	version                     string
+	RPCResponsesCache           cache.Cache
+	BackendRPC                  *BackendRPC
+	RateLimiter                 *ratelimiter.RateLimiter
+	SKManager                   SKManager
+	Config                      *common.Config
+	NewHeadsService             *subscriptioncommon.NewHeadsService
+	cacheInvalidationCh         chan *tencommon.BatchHeader
+	MetricsTracker              metrics.Metrics
+	sessionKeyExpirationService *SessionKeyExpirationService
 }
 
 type NewHeadNotifier interface {
@@ -111,6 +112,10 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		})
 
 	go _startCacheEviction(&services, logger)
+
+	// Create and start session key expiration service
+	services.sessionKeyExpirationService = NewSessionKeyExpirationService(storage, logger, stopControl)
+
 	return &services
 }
 
@@ -329,4 +334,54 @@ func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlic
 func (w *Services) Stop() {
 	w.BackendRPC.Stop()
 	close(w.cacheInvalidationCh)
+}
+
+// SessionKeyExpirationService runs in the background and monitors users
+type SessionKeyExpirationService struct {
+	storage     storage.UserStorage
+	logger      gethlog.Logger
+	stopControl *stopcontrol.StopControl
+	ticker      *time.Ticker
+}
+
+// NewSessionKeyExpirationService creates a new session key expiration service
+func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl) *SessionKeyExpirationService {
+	service := &SessionKeyExpirationService{
+		storage:     storage,
+		logger:      logger,
+		stopControl: stopControl,
+	}
+
+	// Start the service
+	go service.start()
+
+	return service
+}
+
+// start begins the periodic user monitoring
+func (s *SessionKeyExpirationService) start() {
+	// TODO: Make this interval configurable
+	s.ticker = time.NewTicker(1 * time.Minute)
+
+	go func() {
+		defer s.ticker.Stop()
+
+		for {
+			select {
+			case <-s.ticker.C:
+				s.monitorUsers()
+			case <-s.stopControl.Done():
+				s.logger.Info("Session key expiration service stopped")
+				return
+			}
+		}
+	}()
+
+	s.logger.Info("Session key expiration service started")
+}
+
+// monitorUsers runs the monitoring logic
+func (s *SessionKeyExpirationService) monitorUsers() {
+	s.logger.Info("Session key expiration service running - checking users")
+	// TODO: Implement user enumeration when GetAllUsers method is available
 }
