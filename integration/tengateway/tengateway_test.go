@@ -14,11 +14,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	gethparams "github.com/ethereum/go-ethereum/params"
-	"github.com/ten-protocol/go-ten/go/common/gethapi"
-
-	"github.com/ten-protocol/go-ten/go/responses"
-
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension"

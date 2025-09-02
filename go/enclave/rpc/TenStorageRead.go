@@ -78,7 +78,12 @@ func TenStorageReadExecute(builder *CallBuilder[storageReadWithBlock, hexutil.By
 	}
 
 	res := state.GetState(*builder.Param.address, key)
-	enc := (hexutil.Bytes)(res[:])
+	if state.Error() != nil {
+		builder.Err = fmt.Errorf("unable to read storage: %s", state.Error())
+		return nil
+	}
+
+	enc := (hexutil.Bytes)(res.Big().Bytes())
 	builder.ReturnValue = &enc
 
 	rpc.logger.Debug("TenStorageReadExecute",
