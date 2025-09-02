@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -113,6 +114,7 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 			Signature:     sig,
 			SignatureType: viewingkey.EIP712Signature,
 		},
+		CreatedAt: time.Now(),
 	}, nil
 }
 
