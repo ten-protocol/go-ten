@@ -198,7 +198,6 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 		}
 		return serialised, nil
 	case common.CreateSessionKeyCQMethod:
-		fmt.Printf("CreateSessionKeyCQMethod\n")
 		sk, err := api.we.SKManager.CreateSessionKey(user)
 		if err != nil {
 			return nil, fmt.Errorf("unable to create session key: %w", err)
