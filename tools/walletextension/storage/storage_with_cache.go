@@ -78,6 +78,12 @@ func (s *UserStorageWithCache) GetUser(userID []byte) (*wecommon.GWUser, error) 
 	})
 }
 
+func (s *UserStorageWithCache) GetAllUsers() ([]*wecommon.GWUser, error) {
+	// For GetAllUsers, we bypass the cache and go directly to storage
+	// since caching all users would be memory intensive
+	return s.storage.GetAllUsers()
+}
+
 // GetEncryptionKey delegates to the underlying storage
 func (s *UserStorageWithCache) GetEncryptionKey() []byte {
 	return s.storage.GetEncryptionKey()

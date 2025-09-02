@@ -369,7 +369,7 @@ func (s *SessionKeyExpirationService) start() {
 		for {
 			select {
 			case <-s.ticker.C:
-				s.monitorUsers()
+				s.sessionKeyExpiration()
 			case <-s.stopControl.Done():
 				s.logger.Info("Session key expiration service stopped")
 				return
@@ -380,8 +380,20 @@ func (s *SessionKeyExpirationService) start() {
 	s.logger.Info("Session key expiration service started")
 }
 
-// monitorUsers runs the monitoring logic
-func (s *SessionKeyExpirationService) monitorUsers() {
-	s.logger.Info("Session key expiration service running - checking users")
-	// TODO: Implement user enumeration when GetAllUsers method is available
+// sessionKeyExpiration runs the monitoring logic
+func (s *SessionKeyExpirationService) sessionKeyExpiration() {
+	users, err := s.storage.GetAllUsers()
+	if err != nil {
+		s.logger.Error("Failed to get all users", "error", err)
+		return
+	}
+
+	s.logger.Info("Session key expiration service running - checking users", "count", len(users))
+
+	for _, user := range users {
+		s.logger.Info("User found",
+			"userID", common.HashForLogging(user.ID),
+			"accountsCount", len(user.Accounts),
+			"sessionKeysCount", len(user.SessionKeys))
+	}
 }

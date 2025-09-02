@@ -198,6 +198,39 @@ func (c *CosmosDB) GetUser(userID []byte) (*wecommon.GWUser, error) {
 	return user.user.ToGWUser()
 }
 
+func (c *CosmosDB) GetAllUsers() ([]*wecommon.GWUser, error) {
+	ctx := context.Background()
+
+	// Query all users from the container
+	query := "SELECT * FROM c"
+	pager := c.usersContainer.NewQueryItemsPager(query, azcosmos.NewPartitionKeyString(""), nil)
+
+	var users []*wecommon.GWUser
+
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get next page: %w", err)
+		}
+
+		for _, item := range page.Items {
+			var userDB dbcommon.GWUserDB
+			if err := json.Unmarshal(item, &userDB); err != nil {
+				return nil, fmt.Errorf("failed to unmarshal user data: %w", err)
+			}
+
+			user, err := userDB.ToGWUser()
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert user DB to GWUser: %w", err)
+			}
+
+			users = append(users, user)
+		}
+	}
+
+	return users, nil
+}
+
 func (c *CosmosDB) getUserDB(userID []byte) (userWithETag, error) {
 	keyString, partitionKey := c.dbKey(userID)
 

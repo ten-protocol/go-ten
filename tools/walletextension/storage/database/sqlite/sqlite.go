@@ -201,6 +201,46 @@ func (s *SqliteDB) GetUser(userID []byte) (*wecommon.GWUser, error) {
 	return user.ToGWUser()
 }
 
+func (s *SqliteDB) GetAllUsers() ([]*wecommon.GWUser, error) {
+	var users []*wecommon.GWUser
+	var err error
+
+	err = s.withTx(func(dbTx *sql.Tx) error {
+		rows, err := dbTx.Query("SELECT user_data FROM users")
+		if err != nil {
+			return fmt.Errorf("failed to query users: %w", err)
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var userDataJSON string
+			if err := rows.Scan(&userDataJSON); err != nil {
+				return fmt.Errorf("failed to scan user data: %w", err)
+			}
+
+			var userDB dbcommon.GWUserDB
+			if err := json.Unmarshal([]byte(userDataJSON), &userDB); err != nil {
+				return fmt.Errorf("failed to unmarshal user data: %w", err)
+			}
+
+			user, err := userDB.ToGWUser()
+			if err != nil {
+				return fmt.Errorf("failed to convert user DB to GWUser: %w", err)
+			}
+
+			users = append(users, user)
+		}
+
+		return rows.Err()
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 func (s *SqliteDB) readUser(dbTx *sql.Tx, userID []byte) (dbcommon.GWUserDB, error) {
 	var userDataJSON string
 	err := dbTx.QueryRow("SELECT user_data FROM users WHERE id = ?", string(userID)).Scan(&userDataJSON)

@@ -20,6 +20,7 @@ type UserStorage interface {
 	AddSessionKey(userID []byte, key common.GWSessionKey) error
 	RemoveSessionKey(userID []byte, sessionKeyAddr *gethcommon.Address) error
 	GetUser(userID []byte) (*common.GWUser, error)
+	GetAllUsers() ([]*common.GWUser, error)
 	GetEncryptionKey() []byte
 }
 
