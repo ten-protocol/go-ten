@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -94,12 +95,15 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 				// Check balance for expired session key
 				balance, err := s.getSessionKeyBalance(user, sessionKeyAddr)
 				balanceStr := "unknown"
+				hasZeroBalance := false
 				if err != nil {
 					s.logger.Error("Failed to get balance for expired session key",
 						"error", err,
 						"sessionKeyAddress", sessionKeyAddr.Hex())
 				} else {
 					balanceStr = balance.String()
+					// Check if balance is zero
+					hasZeroBalance = balance.ToInt().Cmp(big.NewInt(0)) == 0
 				}
 
 				s.logger.Warn("Expired session key found",
@@ -109,6 +113,27 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 					"age", age.String(),
 					"expirationThreshold", expirationThreshold.String(),
 					"balance", balanceStr)
+
+				// If expired session key has zero balance, it can be deleted
+				if hasZeroBalance {
+					s.logger.Info("Expired session key with zero balance can be deleted",
+						"userID", wecommon.HashForLogging(user.ID),
+						"sessionKeyAddress", sessionKeyAddr.Hex(),
+						"balance", balanceStr)
+
+					// TODO: Uncomment the following code to actually delete the session key
+					// err := s.storage.RemoveSessionKey(user.ID, &sessionKeyAddr)
+					// if err != nil {
+					// 	s.logger.Error("Failed to delete expired session key with zero balance",
+					// 		"error", err,
+					// 		"userID", wecommon.HashForLogging(user.ID),
+					// 		"sessionKeyAddress", sessionKeyAddr.Hex())
+					// } else {
+					// 	s.logger.Info("Successfully deleted expired session key with zero balance",
+					// 		"userID", wecommon.HashForLogging(user.ID),
+					// 		"sessionKeyAddress", sessionKeyAddr.Hex())
+					// }
+				}
 			}
 		}
 	}
