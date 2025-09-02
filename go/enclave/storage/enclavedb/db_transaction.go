@@ -14,10 +14,13 @@ import (
 
 // keyvalue is a key-value tuple that can be flagged with a deletion field to allow creating database write batches.
 type keyvalue struct {
-	key    []byte
-	value  []byte
-	delete bool
+	key      []byte
+	value    []byte
+	delRange *keyRange
+	delete   bool
 }
+
+type keyRange struct{ start, end []byte }
 
 type dbTxBatch struct {
 	timeout time.Duration
@@ -27,8 +30,8 @@ type dbTxBatch struct {
 }
 
 func (b *dbTxBatch) DeleteRange(start, end []byte) error {
-	// only needed by the "path" schema
-	panic("implement me2")
+	b.writes = append(b.writes, keyvalue{delRange: &keyRange{start: common.CopyBytes(start), end: common.CopyBytes(end)}})
+	return nil
 }
 
 // Put inserts the given value into the batch for later committing.
@@ -36,14 +39,14 @@ func (b *dbTxBatch) Put(key, value []byte) error {
 	if len(key) > 65 {
 		panic("key too long: " + hexutils.BytesToHex(key))
 	}
-	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), common.CopyBytes(value), false})
+	b.writes = append(b.writes, keyvalue{key: common.CopyBytes(key), value: common.CopyBytes(value), delete: false})
 	b.size += len(key) + len(value)
 	return nil
 }
 
 // Delete inserts the a key removal into the batch for later committing.
 func (b *dbTxBatch) Delete(key []byte) error {
-	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), nil, true})
+	b.writes = append(b.writes, keyvalue{key: common.CopyBytes(key), delete: true})
 	b.size += len(key)
 	return nil
 }
@@ -72,6 +75,9 @@ func (b *dbTxBatch) writeCtx(ctx context.Context) error {
 	var updateValues [][]byte
 
 	for _, keyvalue := range b.writes {
+		if keyvalue.delRange != nil {
+			panic("not implemented - delete range")
+		}
 		if keyvalue.delete {
 			deletes = append(deletes, keyvalue.key)
 		} else {
