@@ -607,7 +607,7 @@ func (executor *batchExecutor) postProcessState(ec *BatchExecutionContext) error
 		if bal >= msg.Amount.Uint64() {
 			ec.stateDB.SubBalance(*l2BridgeAddress, uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
 		} else {
-			executor.logger.Error("Insufficient balance for value transfer", "balance", bal, "amount", msg.Amount)
+			executor.logger.Crit("Insufficient balance for value transfer", "balance", bal, "amount", msg.Amount)
 		}
 	}
 
