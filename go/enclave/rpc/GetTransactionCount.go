@@ -41,7 +41,7 @@ func GetTransactionCountExecute(builder *CallBuilder[gethrpc.BlockNumberOrHash, 
 		return nil //nolint:nilerr
 	}
 
-	s, _, err := rpc.registry.GetBatchState(builder.ctx, *builder.Param)
+	s, err := rpc.registry.GetBatchState(builder.ctx, *builder.Param)
 	if err != nil {
 		return err
 	}

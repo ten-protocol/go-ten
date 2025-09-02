@@ -59,7 +59,7 @@ func NewChain(
 }
 
 func (oc *tenChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
-	chainState, _, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
+	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
@@ -82,7 +82,7 @@ func (oc *tenChain) Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, 
 
 func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError) {
 	// fetch the chain state at given batch
-	blockState, _, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
+	blockState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
 		return nil, nil, err
 	}

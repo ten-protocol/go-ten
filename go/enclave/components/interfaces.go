@@ -97,7 +97,6 @@ type BatchExecutionContext struct {
 
 	currentBatch         *core.Batch
 	stateDB              *state.StateDB
-	stateReader          state.Reader
 	beforeProcessingSnap int
 
 	genesisSysCtrResult core.TxExecResults
@@ -141,10 +140,10 @@ type BatchRegistry interface {
 	BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Header, error)
 
 	// GetBatchStateAtHeight - creates a stateDB for the block number
-	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, state.Reader, error)
+	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
 
 	// GetBatchState - creates a stateDB for the block hash
-	GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, state.Reader, error)
+	GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, error)
 
 	// GetBatchAtHeight - same as `GetBatchStateAtHeight`, but instead returns the full batch
 	// rather than its stateDB only.

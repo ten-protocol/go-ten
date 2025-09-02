@@ -70,7 +70,7 @@ func (e *enclaveRPCService) EncryptedRPC(ctx context.Context, encryptedParams co
 }
 
 func (e *enclaveRPCService) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash gethrpc.BlockNumberOrHash) ([]byte, common.SystemError) {
-	stateDB, _, err := e.registry.GetBatchState(ctx, blockNrOrHash)
+	stateDB, err := e.registry.GetBatchState(ctx, blockNrOrHash)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not create stateDB. Cause: %w", err))
 	}
