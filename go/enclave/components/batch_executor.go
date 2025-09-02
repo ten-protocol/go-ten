@@ -602,7 +602,12 @@ func (executor *batchExecutor) postProcessState(ec *BatchExecutionContext) error
 	}
 
 	for _, msg := range valueTransferMessages {
-		ec.stateDB.SubBalance(executor.config.BridgeAddress, uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
+		bal := ec.stateDB.GetBalance(executor.config.BridgeAddress).Uint64()
+		if bal > msg.Amount.Uint64() {
+			ec.stateDB.SubBalance(executor.config.BridgeAddress, uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
+		} else {
+			executor.logger.Error("Insufficient balance for value transfer", "balance", bal, "amount", msg.Amount)
+		}
 	}
 
 	return nil
