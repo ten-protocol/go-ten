@@ -210,7 +210,7 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		EnclaveRegistryAddress:          n.l1Data.EnclaveRegistryAddress,
 		MinGasPrice:                     gethcommon.Big1,
 		MessageBusAddress:               n.l1Data.MessageBusAddr,
-		BridgeAddress:                   n.l1Data.BridgeAddress,
+		L1BridgeAddress:                 n.l1Data.BridgeAddress,
 		SqliteDBPath:                    n.enclaveDBFilepaths[idx],
 		DebugNamespaceEnabled:           true,
 		MaxBatchSize:                    1024 * 55,

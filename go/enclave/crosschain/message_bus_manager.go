@@ -50,6 +50,10 @@ func (m *MessageBusManager) GetBusAddress() *common.L2Address {
 	return m.messageBusAddress
 }
 
+func (m *MessageBusManager) GetL2BridgeAddress() *common.L2Address {
+	return m.bridgeAddress
+}
+
 // Initialize - Derives the address of the message bus contract.
 func (m *MessageBusManager) Initialize(systemAddresses common.SystemContractAddresses) error {
 	address, ok := systemAddresses["MessageBus"]

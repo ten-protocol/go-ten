@@ -93,7 +93,7 @@ func createInMemTenNode(
 		UseInMemoryDB:                   true,
 		MinGasPrice:                     gethcommon.Big1,
 		MessageBusAddress:               l1BusAddress,
-		BridgeAddress:                   l1BridgeAddress,
+		L1BridgeAddress:                 l1BridgeAddress,
 		DataAvailabilityRegistryAddress: contracts.DataAvailabilityRegistry,
 		EnclaveRegistryAddress:          contracts.EnclaveRegistry,
 		SystemContractOwner:             gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"), // Irrelevant for in-mem nodes
