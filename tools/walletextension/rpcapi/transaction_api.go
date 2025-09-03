@@ -106,26 +106,50 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 }
 
 func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.TransactionArgs) (common.Hash, error) {
+	// Extract the From address from the transaction
+	if args.From == nil {
+		return common.Hash{}, fmt.Errorf("missing From address in transaction")
+	}
+
+	fromAddress := *args.From
+
+	// Get the current user from the context
 	user, err := extractUserForRequest(ctx, s.we)
 	if err != nil {
-		return common.Hash{}, err
-	}
-	if !user.ActiveSK {
-		return common.Hash{}, fmt.Errorf("please activate session key")
+		return common.Hash{}, fmt.Errorf("authentication failed: %w", err)
 	}
 
-	// when there is an active Session Key, sign all incoming transactions with that SK
-	signedTx, err := s.we.SKManager.SignTx(ctx, user, args.ToTransaction())
-	if err != nil {
-		return common.Hash{}, err
+	// Check if the From address is a session key for the current user
+	if _, exists := user.SessionKeys[fromAddress]; exists {
+		// Use the session key for this transaction
+		// Convert the transaction args to a proper transaction
+		tx := args.ToTransaction()
+		if tx == nil {
+			return common.Hash{}, fmt.Errorf("failed to convert transaction args to transaction")
+		}
+
+		// Check if SKManager is available
+		if s.we.SKManager == nil {
+			return common.Hash{}, fmt.Errorf("session key manager not available")
+		}
+
+		// Sign the transaction with the session key (passing the session key address)
+		signedTx, err := s.we.SKManager.SignTx(ctx, user, fromAddress, tx)
+		if err != nil {
+			return common.Hash{}, fmt.Errorf("failed to sign transaction with session key: %w", err)
+		}
+
+		// Convert to raw bytes and send
+		blob, err := signedTx.MarshalBinary()
+		if err != nil {
+			return common.Hash{}, fmt.Errorf("failed to marshal signed transaction: %w", err)
+		}
+
+		return SendRawTx(ctx, s.we, blob)
 	}
 
-	blob, err := signedTx.MarshalBinary()
-	if err != nil {
-		return common.Hash{}, err
-	}
-
-	return SendRawTx(ctx, s.we, blob)
+	// If it's not a session key, return an error
+	return common.Hash{}, fmt.Errorf("session key address %s not found for current user", fromAddress.Hex())
 }
 
 type SignTransactionResult struct {

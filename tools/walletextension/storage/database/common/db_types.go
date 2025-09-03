@@ -3,6 +3,7 @@ package common
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 
@@ -15,11 +16,10 @@ import (
 var ErrUserNotFound = errors.New("user not found")
 
 type GWUserDB struct {
-	UserId     []byte          `json:"userId"`
-	PrivateKey []byte          `json:"privateKey"`
-	Accounts   []GWAccountDB   `json:"accounts"`
-	SessionKey *GWSessionKeyDB `json:"sessionKey"`
-	ActiveSK   bool            `json:"activeSK"`
+	UserId      []byte                             `json:"userId"`
+	PrivateKey  []byte                             `json:"privateKey"`
+	Accounts    []GWAccountDB                      `json:"accounts"`
+	SessionKeys map[common.Address]*GWSessionKeyDB `json:"sessionKeys"` // map of session key address to session key
 }
 
 type GWAccountDB struct {
@@ -32,14 +32,15 @@ type GWAccountDB struct {
 type GWSessionKeyDB struct {
 	PrivateKey []byte      `json:"privateKey"`
 	Account    GWAccountDB `json:"account"`
+	CreatedAt  time.Time   `json:"createdAt"`
 }
 
 func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
 	user := &wecommon.GWUser{
-		ID:       userDB.UserId,
-		Accounts: make(map[common.Address]*wecommon.GWAccount),
-		UserKey:  userDB.PrivateKey,
-		ActiveSK: userDB.ActiveSK,
+		ID:          userDB.UserId,
+		Accounts:    make(map[common.Address]*wecommon.GWAccount),
+		UserKey:     userDB.PrivateKey,
+		SessionKeys: make(map[common.Address]*wecommon.GWSessionKey),
 	}
 
 	for _, accountDB := range userDB.Accounts {
@@ -53,23 +54,25 @@ func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
 		user.Accounts[address] = &gwAccount
 	}
 
-	if userDB.SessionKey != nil {
-		ecdsaPrivateKey, err := crypto.ToECDSA(userDB.SessionKey.PrivateKey)
+	// Handle session keys
+	for address, sessionKeyDB := range userDB.SessionKeys {
+		ecdsaPrivateKey, err := crypto.ToECDSA(sessionKeyDB.PrivateKey)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse ECDSA private key: %w", err)
 		}
 
 		// Convert ECDSA private key to ECIES private key
 		eciesPrivateKey := ecies.ImportECDSA(ecdsaPrivateKey)
-		acc := userDB.SessionKey.Account
-		user.SessionKey = &wecommon.GWSessionKey{
+		acc := sessionKeyDB.Account
+		user.SessionKeys[address] = &wecommon.GWSessionKey{
 			Account: &wecommon.GWAccount{
 				User:          user,
-				Address:       (*common.Address)(acc.AccountAddress),
+				Address:       &address,
 				Signature:     acc.Signature,
 				SignatureType: viewingkey.SignatureType(acc.SignatureType),
 			},
 			PrivateKey: eciesPrivateKey,
+			CreatedAt:  sessionKeyDB.CreatedAt,
 		}
 	}
 
