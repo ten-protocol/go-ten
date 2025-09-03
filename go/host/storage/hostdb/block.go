@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/jmoiron/sqlx"
 
