@@ -27,18 +27,20 @@ var AdjustPublishingGas = gethcommon.Big2
 
 type GasEstimator struct {
 	storage   storage.Storage
+	registry  BatchRegistry
 	chain     TENChain
 	logger    gethlog.Logger
 	gasOracle gas.Oracle
 	gasPricer *GasPricer
 }
 
-func NewGasEstimator(storage storage.Storage, chain TENChain, gasOracle gas.Oracle, gasPricer *GasPricer, logger gethlog.Logger) *GasEstimator {
+func NewGasEstimator(storage storage.Storage, registry BatchRegistry, chain TENChain, gasOracle gas.Oracle, gasPricer *GasPricer, logger gethlog.Logger) *GasEstimator {
 	if gasPricer == nil {
 		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
 	}
 	return &GasEstimator{
 		storage:   storage,
+		registry:  registry,
 		chain:     chain,
 		gasOracle: gasOracle,
 		gasPricer: gasPricer,
@@ -46,7 +48,32 @@ func NewGasEstimator(storage storage.Storage, chain TENChain, gasOracle gas.Orac
 	}
 }
 
-func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber, batch *common.BatchHeader, globalGasCap uint64) (uint64, uint64, error, common.SystemError) {
+func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber gethrpc.BlockNumber, globalGasCap uint64) (uint64, uint64, error, common.SystemError) {
+	var batch *common.BatchHeader
+	var err error
+
+	// don't use the latest batch for gas estimation because it might influence the next batch ( possible bug)
+	if blockNumber == gethrpc.LatestBlockNumber || blockNumber == gethrpc.PendingBlockNumber || blockNumber == gethrpc.FinalizedBlockNumber || blockNumber == gethrpc.SafeBlockNumber {
+		headBatchSeq := ge.registry.HeadBatchSeq()
+		batch, err = ge.storage.FetchBatchHeaderBySeqNo(ctx, headBatchSeq.Uint64())
+		if err != nil {
+			return 0, 0, nil, fmt.Errorf("failed to fetch batch header: %w", err)
+		}
+		parent, err := ge.registry.GetBatchAtHeight(ctx, gethrpc.BlockNumber(int64(batch.Number.Uint64())-1))
+		if err != nil {
+			return 0, 0, nil, fmt.Errorf("failed to fetch parent batch: %w", err)
+		}
+		batch = parent.Header
+	} else {
+		b, err := ge.registry.GetBatchAtHeight(ctx, blockNumber)
+		if err != nil {
+			return 0, 0, nil, fmt.Errorf("failed to fetch batch header: %w", err)
+		}
+		batch = b.Header
+	}
+
+	realBlockBumber := gethrpc.BlockNumber(batch.Number.Int64())
+
 	// The message is run through the l1 publishing cost estimation for the current
 	// known head BlockHeader.
 	l1Cost, err := ge.gasOracle.EstimateL1CostForMsg(ctx, args, batch)
@@ -70,7 +97,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.
 	// The single pass will run once at the highest gas cap and return gas used. Not completely reliable,
 	// but is quick.
-	executionGasEstimate, revert, gasPrice, userErr, sysErr := ge.EstimateGasSinglePass(ctx, args, blockNumber, globalGasCap)
+	executionGasEstimate, revert, gasPrice, userErr, sysErr := ge.EstimateGasSinglePass(ctx, args, &realBlockBumber, globalGasCap)
 	if sysErr != nil {
 		return 0, 0, nil, fmt.Errorf("system error during gas estimation: %w", sysErr)
 	}
@@ -84,7 +111,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	}
 
 	totalGasEstimateUint64 := publishingGas.Uint64() + uint64(executionGasEstimate)
-	balance, err := ge.chain.GetBalanceAtBlock(ctx, *args.From, blockNumber)
+	balance, err := ge.chain.GetBalanceAtBlock(ctx, *args.From, &realBlockBumber)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to get account balance: %w", err)
 	}

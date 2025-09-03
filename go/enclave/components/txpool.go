@@ -14,12 +14,11 @@ import (
 	"unsafe"
 
 	"github.com/ethereum/go-ethereum/core/vm"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	tencore "github.com/ten-protocol/go-ten/go/enclave/core"
-	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -371,11 +370,6 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 		return nil, nil
 	}
 
-	headBatch, err := t.storage.FetchBatchHeaderBySeqNo(context.Background(), headBatchSeq.Uint64())
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
-	}
-
 	serTx, err := tx.MarshalJSON()
 	if err != nil {
 		return fmt.Errorf("could not marshal tx. Cause: %w", err), nil
@@ -390,9 +384,8 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 		return nil, fmt.Errorf("could not extract sender from transaction. Cause: %w", err)
 	}
 	txArgs.From = &from
-	ge := NewGasEstimator(t.storage, t.tenChain, t.gasOracle, t.gasPricer, t.logger)
-	latest := gethrpc.LatestBlockNumber
-	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, &latest, headBatch, t.config.GasLocalExecutionCapFlag)
+	ge := NewGasEstimator(t.storage, t.batchRegistry, t.tenChain, t.gasOracle, t.gasPricer, t.logger)
+	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, gethrpc.LatestBlockNumber, t.config.GasLocalExecutionCapFlag)
 
 	// if the transaction reverts we let it through
 	if userErr != nil && errors.Is(userErr, vm.ErrExecutionReverted) {

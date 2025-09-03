@@ -247,15 +247,11 @@ func (br *batchRegistry) GetBatchAtHeight(ctx context.Context, height gethrpc.Bl
 		batch = genesisBatch
 	// note: our API currently treats all these block statuses the same for TEN batches
 	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber, gethrpc.LatestBlockNumber, gethrpc.PendingBlockNumber:
-		headBatch, err := br.storage.FetchBatchHeaderBySeqNo(ctx, br.HeadBatchSeq().Uint64())
+		headBatch, err := br.storage.FetchBatchBySeqNo(ctx, br.HeadBatchSeq().Uint64())
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)
 		}
-		parent, err := br.storage.FetchBatch(ctx, headBatch.ParentHash)
-		if err != nil {
-			return nil, fmt.Errorf("parent batch with requested height %d was not found. Cause: %w", height, err)
-		}
-		batch = parent
+		batch = headBatch
 	default:
 		maybeBatch, err := br.storage.FetchBatchByHeight(ctx, uint64(height))
 		if err != nil {
