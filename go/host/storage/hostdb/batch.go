@@ -60,7 +60,6 @@ func AddBatch(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
 	}
 
 	if len(batch.TxHashes) > 0 {
-		// Build multi-value INSERT statement
 		valuePlaceholders := make([]string, len(batch.TxHashes))
 		args := make([]any, 0)
 		for i, txHash := range batch.TxHashes {

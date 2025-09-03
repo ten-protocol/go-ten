@@ -1,6 +1,8 @@
 package hostdb
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -61,8 +63,6 @@ func AddRollup(dbtx *dbTransaction, db HostDB, rollup *common.ExtRollup, extMeta
 		extRollup,                     // rollup blob
 		blockId,                       // l1 block hash
 	).Scan(&rollupId)
-	println("ADD ROLLUP QUERY: ", reboundInsertRollup)
-	println("ADD ROLLUP ROLLUP ID: ", rollupId)
 	if err != nil {
 		if IsRowExistsError(err) {
 			return errutil.ErrAlreadyExists
@@ -71,7 +71,6 @@ func AddRollup(dbtx *dbTransaction, db HostDB, rollup *common.ExtRollup, extMeta
 	}
 
 	if len(extMetadata.CrossChainTree) == 0 {
-		println("NO CROSS CHAIN TREE")
 		return nil
 	}
 
@@ -80,7 +79,6 @@ func AddRollup(dbtx *dbTransaction, db HostDB, rollup *common.ExtRollup, extMeta
 		return err
 	}
 
-	println("TREE FOUND")
 	for _, message := range tree {
 		reboundInsertCrossChainMessage := db.GetSQLDB().Rebind(insertCrossChainMessage)
 		_, err = dbtx.Tx.Exec(reboundInsertCrossChainMessage,
@@ -91,8 +89,6 @@ func AddRollup(dbtx *dbTransaction, db HostDB, rollup *common.ExtRollup, extMeta
 		if err != nil {
 			return err
 		}
-		println("ADD XCHAIN QUERY: ", reboundInsertCrossChainMessage)
-		println("ADD XCHAIN rollupId: ", rollupId)
 	}
 
 	return nil
@@ -203,9 +199,11 @@ func GetCrossChainMessagesTree(db HostDB, messageHash gethcommon.Hash) ([][]inte
 	// First get the rollupID for this message hash
 	var rollupID int64
 	reboundMessageQuery := db.GetSQLDB().Rebind(selectRollupIdByMessage)
-	println("REBOUND MESSAGE: ", reboundMessageQuery)
 	err := db.GetSQLDB().QueryRow(reboundMessageQuery, messageHash.Bytes()).Scan(&rollupID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to fetch rollup ID for message: %w", err)
 	}
 

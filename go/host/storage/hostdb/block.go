@@ -61,10 +61,10 @@ func AddBlock(dbtx *sql.Tx, db *sqlx.DB, b *types.Header) error {
 }
 
 // GetBlockId returns the block ID given the hash.
-func GetBlockId(db *sql.Tx, dbConn *sqlx.DB, hash gethcommon.Hash) (*int64, error) {
-	reboundQuery := dbConn.Rebind(selectBlockId)
+func GetBlockId(dbTx *sql.Tx, db *sqlx.DB, hash gethcommon.Hash) (*int64, error) {
+	reboundQuery := db.Rebind(selectBlockId)
 	var blockId int64
-	err := db.QueryRow(reboundQuery, hash.Bytes()).Scan(&blockId)
+	err := dbTx.QueryRow(reboundQuery, hash.Bytes()).Scan(&blockId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
