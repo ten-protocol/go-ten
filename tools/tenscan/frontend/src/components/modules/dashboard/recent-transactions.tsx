@@ -4,7 +4,7 @@ import { Badge } from "@repo/ui/components/shared/badge";
 import { formatTimeAgo } from "@repo/ui/lib/utils";
 import { pathToUrl } from "@/src/routes/router";
 import { pageLinks } from "@/src/routes";
-import EncryptedTextAnimation from "@/src/components/EncryptedTextAnimation";
+import GlitchTextAnimation from "@/src/components/GlitchTextAnimation";
 import { RecentItemsList } from "./recent-items-list";
 
 export function RecentTransactions({ transactions }: { transactions: any }) {
@@ -12,10 +12,10 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
     <>
       <div className="ml-4 space-y-1 relative z-10">
         <p className="text-sm font-medium leading-none">
-          <EncryptedTextAnimation text={`#${Number(transaction?.BatchHeight)}`} hover={false} active={isNewItem} onView={false} />
+          <GlitchTextAnimation text={`#${Number(transaction?.BatchHeight)}`} hover={false} active={isNewItem} onView={false} />
         </p>
         <p className="text-sm text-muted-foreground word-break-all">
-          <EncryptedTextAnimation text={formatTimeAgo(transaction?.BatchTimestamp)} hover={false} active={isNewItem} onView={false} />
+          <GlitchTextAnimation text={formatTimeAgo(transaction?.BatchTimestamp)} hover={false} active={isNewItem} onView={false} />
         </p>
       </div>
       
@@ -23,12 +23,13 @@ export function RecentTransactions({ transactions }: { transactions: any }) {
         <TruncatedAddress
           address={transaction?.TransactionHash}
           animate={isNewItem}
-          AnimationComponent={EncryptedTextAnimation}
+          AnimationComponent={GlitchTextAnimation}
+          showPopover={false}
         />
       </div>
       <div className="ml-auto relative z-10">
         <Badge variant={"static-default"}>
-          <EncryptedTextAnimation text={transaction?.Finality} hover={false} active={isNewItem} onView={false} />
+          <GlitchTextAnimation text={transaction?.Finality} hover={false} active={isNewItem} onView={false} />
         </Badge>
       </div>
     </>

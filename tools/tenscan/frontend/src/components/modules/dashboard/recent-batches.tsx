@@ -3,7 +3,7 @@ import { formatTimeAgo } from "@repo/ui/lib/utils";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 import { pathToUrl } from "@/src/routes/router";
 import { pageLinks } from "@/src/routes";
-import EncryptedTextAnimation from "@/src/components/EncryptedTextAnimation";
+import GlitchTextAnimation from "@/src/components/GlitchTextAnimation";
 import { RecentItemsList } from "./recent-items-list";
 
 export function RecentBatches({ batches }: { batches: any }) {
@@ -11,10 +11,10 @@ export function RecentBatches({ batches }: { batches: any }) {
     <>
       <div className="ml-4 space-y-1 relative z-10">
         <p className="text-sm font-medium leading-none">
-          <EncryptedTextAnimation text={`#${Number(batch?.height)}`} hover={false} active={isNewItem} onView={false} />
+          <GlitchTextAnimation text={`#${Number(batch?.height)}`} hover={false} active={isNewItem} onView={false} />
         </p>
         <p className="text-sm text-muted-foreground word-break-all">
-          <EncryptedTextAnimation text={formatTimeAgo(batch?.header?.timestamp)} hover={false} active={isNewItem} onView={false} />
+          <GlitchTextAnimation text={formatTimeAgo(batch?.header?.timestamp)} hover={false} active={isNewItem} onView={false} />
         </p>
       </div>
       
@@ -22,7 +22,8 @@ export function RecentBatches({ batches }: { batches: any }) {
         <TruncatedAddress
           address={batch?.header?.hash}
           animate={isNewItem}
-          AnimationComponent={EncryptedTextAnimation}
+          AnimationComponent={GlitchTextAnimation}
+          showPopover={false}
         />
       </div>
     </>

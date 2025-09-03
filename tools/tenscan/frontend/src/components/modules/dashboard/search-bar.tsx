@@ -121,6 +121,16 @@ export default function SearchBar() {
             <div className="search-container-shape absolute inset-[1px] pointer-events-none">
                 <div className="absolute inset-0 animate-scan-overlay"/>
             </div>
+            <svg className="absolute w-full left-0 top-[1px] h-[97%]" preserveAspectRatio="none" width="100%" height="100%" viewBox="0 0 700 50">
+                <g>
+                    <g transform="matrix(1.00513,0,0,1,-1.79487,0)">
+                        <path d="M155,0L158,3L542,3L545,0L155,0Z" fill="rgba(255,255,255,.1)"/>
+                    </g>
+                    <g transform="matrix(1.00513,0,0,-1,-1.79487,50.5)" fill="rgba(255,255,255,.1)">
+                        <path d="M155,0L158,3L542,3L545,0L155,0Z"/>
+                    </g>
+                </g>
+            </svg>
 
 
             <div className="relative">

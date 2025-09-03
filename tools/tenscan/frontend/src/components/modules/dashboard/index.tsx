@@ -151,7 +151,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="h-full flex-1 flex-col space-y-8 md:flex">
+    <div className="h-full flex-1 flex-col space-y-8 lg:space-y-16 md:flex">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Tenscan</h2>
       </div>

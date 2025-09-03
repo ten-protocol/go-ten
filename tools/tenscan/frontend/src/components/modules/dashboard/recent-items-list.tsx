@@ -1,4 +1,4 @@
-import React, {useEffect} from "react";
+import React, {useEffect, useRef} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -19,26 +19,27 @@ export function RecentItemsList<T>({
   className = "",
   headers
 }: RecentItemsListProps<T>) {
-  const previousItemsRef = React.useRef<Set<string>>(new Set());
+  const previousItemsRef = useRef<Set<string>>(new Set());
+  
+  // Track previous items at component level
+  useEffect(() => {
+    const currentItemIds = new Set(items.map(getItemId));
+    previousItemsRef.current = currentItemIds;
+  }, [items, getItemId]);
   
   return (
-    <div className="space-y-0">
+    <div className="space-y-0 h-full">
       {headers && (
-        <div className="sticky top-0 z-20 bg-background/60 backdrop-blur-sm border-b border-border/50 px-2 py-2 mb-2">
+        <div className="sticky top-0 z-20 bg-background/60 backdrop-blur-sm border-b border-border/50 px-2 py-2">
           {headers}
         </div>
       )}
-      <div className="space-y-2 overflow-y-scroll">
+      <div className="space-y-2 h-[90%] overflow-x-hidden overflow-y-scroll">
         <AnimatePresence mode="popLayout">
         {items?.map((item: T, i: number) => {
           // Check if this item is new (wasn't in previous render)
           const itemId = getItemId(item);
           const isNewItem = !previousItemsRef.current.has(itemId);
-          
-          // Update previous items ref
-          useEffect(() => {
-            previousItemsRef.current.add(itemId);
-          }, [itemId]);
           
           return (
             <motion.div 

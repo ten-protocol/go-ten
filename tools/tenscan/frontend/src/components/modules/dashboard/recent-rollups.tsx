@@ -3,7 +3,7 @@ import { formatTimeAgo } from "@repo/ui/lib/utils";
 import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
 import { pathToUrl } from "@/src/routes/router";
 import { pageLinks } from "@/src/routes";
-import EncryptedTextAnimation from "@/src/components/EncryptedTextAnimation";
+import GlitchTextAnimation from "@/src/components/GlitchTextAnimation";
 import { RecentItemsList } from "./recent-items-list";
 
 export function RecentRollups({ rollups }: { rollups: any }) {
@@ -11,17 +11,18 @@ export function RecentRollups({ rollups }: { rollups: any }) {
     <>
       <div className="ml-4 space-y-1 relative z-10">
         <p className="text-sm font-medium leading-none">
-          <EncryptedTextAnimation text={`#${Number(rollup?.ID)}`} hover={false} active={isNewItem} onView={false} />
+          <GlitchTextAnimation text={`#${Number(rollup?.ID)}`} hover={false} active={isNewItem} onView={false} />
         </p>
         <p className="text-sm text-muted-foreground word-break-all">
-          <EncryptedTextAnimation text={formatTimeAgo(rollup?.Timestamp)} hover={false} active={isNewItem} onView={false} />
+          <GlitchTextAnimation text={formatTimeAgo(rollup?.Timestamp)} hover={false} active={isNewItem} onView={false} />
         </p>
       </div>
       <div className="ml-auto font-medium min-w-[140px] relative z-10" onClick={(e) => e.stopPropagation()}>
         <TruncatedAddress
           address={rollup?.Hash}
           animate={isNewItem}
-          AnimationComponent={EncryptedTextAnimation}
+          AnimationComponent={GlitchTextAnimation}
+          showPopover={false}
         />
       </div>
     </>
@@ -41,7 +42,7 @@ export function RecentRollups({ rollups }: { rollups: any }) {
   return (
     <RecentItemsList
       items={rollups?.result?.RollupsData || []}
-      getItemId={(rollup: Rollup) => rollup.ID}
+      getItemId={(rollup: Rollup) => rollup.ID.toString()}
       getItemLink={(rollup: Rollup) => pathToUrl(pageLinks.rollupByHash, { hash: rollup?.Hash })}
       renderItem={renderRollupItem}
       headers={headers}

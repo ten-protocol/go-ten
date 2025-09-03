@@ -1,9 +1,5 @@
 import Link from "next/link";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "../shared/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "../shared/popover";
 import Copy from "./copy";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
 import React from "react";
@@ -20,6 +16,7 @@ const TruncatedAddress = ({
   showFullLength = false,
   animate = false,
   AnimationComponent,
+  showPopover = true,
 }: {
   address: string;
   prefixLength?: number;
@@ -33,10 +30,16 @@ const TruncatedAddress = ({
       };
   showFullLength?: boolean;
   animate?: boolean;
-  AnimationComponent?: React.ComponentType<{ text: string; hover: boolean; active: boolean; onView: boolean }>;
+  AnimationComponent?: React.ComponentType<{
+    text: string;
+    hover: boolean;
+    active: boolean;
+    onView: boolean;
+  }>;
+  showPopover?: boolean;
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
-  
+
   if (!address) {
     return <span>-</span>;
   }
@@ -48,7 +51,7 @@ const TruncatedAddress = ({
 
   const truncatedAddress = `${address?.substring(
     0,
-    prefixLength || 6
+    prefixLength || 6,
   )}...${address?.substring(address.length - (suffixLength || 4))}`;
 
   return (
@@ -63,26 +66,36 @@ const TruncatedAddress = ({
         ) : (
           <Popover open={isOpen} onOpenChange={setIsOpen}>
             <PopoverTrigger asChild>
-              <span 
+              <span
                 className="cursor-pointer hover:text-primary transition-colors"
-                onMouseEnter={() => setIsOpen(true)}
-                onMouseLeave={() => setIsOpen(false)}
+                onMouseEnter={() => showPopover && setIsOpen(true)}
+                onMouseLeave={() => showPopover && setIsOpen(false)}
               >
-{animate && AnimationComponent ? (
-                  <AnimationComponent text={truncatedAddress} hover={false} active={animate} onView={false} />
+                {animate && AnimationComponent ? (
+                  <AnimationComponent
+                    text={truncatedAddress}
+                    hover={false}
+                    active={animate}
+                    onView={false}
+                  />
                 ) : (
                   truncatedAddress
                 )}
               </span>
             </PopoverTrigger>
-            <PopoverContent 
+            <PopoverContent
               className="w-auto p-2"
-              onMouseEnter={() => setIsOpen(true)}
-              onMouseLeave={() => setIsOpen(false)}
+              onMouseEnter={() => showPopover && setIsOpen(true)}
+              onMouseLeave={() => showPopover && setIsOpen(false)}
             >
               <p className="text-primary font-mono text-sm break-all">
-{animate && AnimationComponent ? (
-                  <AnimationComponent text={address} hover={false} active={animate} onView={false} />
+                {animate && AnimationComponent ? (
+                  <AnimationComponent
+                    text={address}
+                    hover={false}
+                    active={animate}
+                    onView={false}
+                  />
                 ) : (
                   address
                 )}
