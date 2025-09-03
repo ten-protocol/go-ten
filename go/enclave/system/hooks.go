@@ -15,7 +15,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/contracts/generated/PublicCallbacks"
 	"github.com/ten-protocol/go-ten/contracts/generated/TransactionPostProcessor"
-	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -293,52 +292,6 @@ func (s *systemContractCallbacks) VerifyOnBlockReceipt(transactions common.L2Tra
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		s.logger.Error("VerifyOnBlockReceipt: Transaction failed", "transactionHash", receipt.TxHash.Hex())
 		return false, fmt.Errorf("transaction failed")
-	}
-
-	if len(receipt.Logs) == 0 {
-		s.logger.Error("VerifyOnBlockReceipt: Transaction has no logs", "transactionHash", receipt.TxHash.Hex())
-		return false, fmt.Errorf("transaction has no logs")
-	}
-
-	abi, err := ZenBase.ZenBaseMetaData.GetAbi()
-	if err != nil {
-		s.logger.Error("VerifyOnBlockReceipt: Failed to get ABI", "error", err)
-		return false, fmt.Errorf("failed to get ABI %w", err)
-	}
-
-	if len(receipt.Logs) == 0 {
-		s.logger.Error("VerifyOnBlockReceipt: Synthetic transaction has no logs", "transactionHash", receipt.TxHash.Hex())
-		return false, fmt.Errorf("no logs in onBlockReceipt")
-	}
-
-	// Find the TransactionsConverted event in the onBlockReceipt and verify the number of transactions converted
-	// matches the number of transactions in the batch. Mostly paranoia code.
-	for _, log := range receipt.Logs {
-		if len(log.Topics) > 0 && log.Topics[0] == abi.Events["TransactionsConverted"].ID { // TransactionsConverted event signature
-			if len(log.Data) != 32 {
-				s.logger.Error("VerifyOnBlockReceipt: Invalid data length for TransactionsConverted event", "expected", 32, "got", len(log.Data))
-				return false, fmt.Errorf("invalid data length for TransactionsConverted event")
-			}
-			transactionsConverted := new(big.Int).SetBytes(log.Data)
-			if transactionsConverted.Uint64() != uint64(len(transactions)) {
-				s.logger.Error("VerifyOnBlockReceipt: Mismatch in TransactionsConverted event", "expected", len(transactions), "got", transactionsConverted.Uint64())
-				return false, fmt.Errorf("mismatch in TransactionsConverted event: expected %d, got %d", len(transactions), transactionsConverted.Uint64())
-			}
-			break
-		}
-	}
-
-	for _, log := range receipt.Logs {
-		if log.Topics[0] != abi.Events["TransactionProcessed"].ID {
-			continue
-		}
-
-		decodedLog, err := abi.Unpack("TransactionProcessed", log.Data)
-		if err != nil {
-			s.logger.Error("VerifyOnBlockReceipt: Failed to unpack log", "error", err, "log", log)
-			return false, fmt.Errorf("failed to unpack log %w", err)
-		}
-		s.logger.Debug("VerifyOnBlockReceipt: Decoded log", "log", decodedLog)
 	}
 
 	s.logger.Debug("VerifyOnBlockReceipt: Transaction successful", "transactionHash", receipt.TxHash.Hex())

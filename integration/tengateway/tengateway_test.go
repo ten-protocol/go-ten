@@ -3,6 +3,7 @@ package tengateway
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,9 +14,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ten-protocol/go-ten/go/common/gethapi"
-
-	"github.com/ten-protocol/go-ten/go/responses"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -115,8 +113,10 @@ func TestTenGateway(t *testing.T) {
 		"testSubscriptionTopics":               testSubscriptionTopics,
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
-		// "testRateLimiter":                      testRateLimiter,
-		"testSessionKeys": testSessionKeys,
+
+		"testSessionKeysGetStorageAt":    testSessionKeysGetStorageAt,
+		"testSessionKeysSendTransaction": testSessionKeysSendTransaction,
+		// "testRateLimiter":                   testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
 			test(t, startPort, httpURL, wsURL, w)
@@ -169,116 +169,263 @@ func TestTenGateway(t *testing.T) {
 //	require.Equal(t, "rate limit exceeded", err.Error())
 //}
 
-func testSessionKeys(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+func testSessionKeysGetStorageAt(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
 	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
 	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
+
+	// Register the user so we can call the endpoints that require authentication
 	err = user0.RegisterAccounts()
 	require.NoError(t, err)
 
-	var amountToTransfer int64 = 1_000_000_000_000_000_000
-	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], user0.Wallets[0].Address(), amountToTransfer)
+	// Simple print to verify the test is running
+	fmt.Println("testSessionKeysGetStorageAt: Test is running successfully!")
+	testlog.Logger().Info("testSessionKeysGetStorageAt: Test is running successfully!")
+
+	// Get the user's balance as a simple operation
+	balance, err := user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
 	require.NoError(t, err)
 
-	_, err = user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	// Print the balance to show the test is working
+	fmt.Printf("testSessionKeysGetStorageAt: User balance: %s\n", balance.String())
+	testlog.Logger().Info("testSessionKeysGetStorageAt: User balance", "balance", balance.String())
+
+	ctx := context.Background()
+
+	// 1) Create session key via eth_getStorageAt (CQ method 0x...0003)
+	createSessionKeyAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000003")
+	skAddrBytes, err := user0.HTTPClient.StorageAt(ctx, createSessionKeyAddr, gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, skAddrBytes)
+	skAddress := gethcommon.BytesToAddress(skAddrBytes)
+	t.Logf("✓ Session key created: %s", skAddress.Hex())
+	fmt.Printf("Session key created: %s\n", skAddress.Hex())
+
+	// 2) Fund the session key from the original wallet
+	fundAmount := big.NewInt(0).Mul(big.NewInt(1e15), big.NewInt(1)) // 0.001 TEN
+	fromAddr := user0.Wallets[0].Address()
+	gasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	gasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: fromAddr, To: &skAddress, Value: fundAmount})
+	require.NoError(t, err)
+	nonce, err := user0.HTTPClient.PendingNonceAt(ctx, fromAddr)
+	require.NoError(t, err)
+	legacy := &types.LegacyTx{Nonce: nonce, To: &skAddress, Value: fundAmount, GasPrice: gasPrice, Gas: gasLimit}
+	signedFundingTx, err := w.SignTransaction(legacy)
+	require.NoError(t, err)
+	err = user0.HTTPClient.SendTransaction(ctx, signedFundingTx)
 	require.NoError(t, err)
 
-	contractAddr := deployContract(t, w, user0)
+	// wait for receipt
+	{
+		var rec *types.Receipt
+		for i := 0; i < 60; i++ {
+			rec, err = user0.HTTPClient.TransactionReceipt(ctx, signedFundingTx.Hash())
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
+	}
+	t.Logf("✓ Session key funded with %s TEN", fundAmount.String())
 
-	// create session key
-	skAddr, err := user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.CreateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	// 3) Build an unsigned tx from session key back to original account, send via getStorageAt (CQ 0x...0005)
+	returnAmount := big.NewInt(0).Div(fundAmount, big.NewInt(2))
+	skGasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
 	require.NoError(t, err)
-	skAddress := gethcommon.BytesToAddress(skAddr)
+	skGasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: skAddress, To: &fromAddr, Value: returnAmount})
+	require.NoError(t, err)
+	skNonce, err := user0.HTTPClient.PendingNonceAt(ctx, skAddress)
+	require.NoError(t, err)
+	unsigned := types.NewTx(&types.LegacyTx{Nonce: skNonce, To: &fromAddr, Value: returnAmount, GasPrice: skGasPrice, Gas: skGasLimit})
+	blob, err := unsigned.MarshalBinary()
+	require.NoError(t, err)
+	txB64 := base64.StdEncoding.EncodeToString(blob)
 
-	// move some funds to the SK
-	var skAmount int64 = 100_000_000_000_000_000
-	_, err = transferETHToAddress(user0.HTTPClient, user0.Wallets[0], skAddress, skAmount)
+	paramsObj := map[string]string{
+		"sessionKeyAddress": skAddress.Hex(),
+		"tx":                txB64,
+	}
+	paramsJSON, err := json.Marshal(paramsObj)
 	require.NoError(t, err)
 
-	// activate SK
-	_, err = user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.ActivateSessionKeyCQMethod), gethcommon.Hash{}, nil)
+	var txHashBytes hexutil.Bytes
+	err = user0.HTTPClient.Client().CallContext(ctx, &txHashBytes, "eth_getStorageAt",
+		"0x0000000000000000000000000000000000000005", string(paramsJSON), "latest")
+	require.NoError(t, err)
+	txHash := gethcommon.BytesToHash(txHashBytes)
+
+	// wait for receipt
+	{
+		var rec *types.Receipt
+		for i := 0; i < 60; i++ {
+			rec, err = user0.HTTPClient.TransactionReceipt(ctx, txHash)
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
+	}
+	t.Logf("✓ Return transaction sent: %s TEN", returnAmount.String())
+
+	// 4) Delete the session key via getStorageAt (CQ 0x...0004)
+	delParamsObj := map[string]string{
+		"sessionKeyAddress": skAddress.Hex(),
+	}
+	delParamsJSON, err := json.Marshal(delParamsObj)
 	require.NoError(t, err)
 
-	skNonce := uint64(0)
-
-	// interact with the contract - unsigned tx calling "sendRawTransaction"
-	contractInteractionData, err := eventsContractABI.Pack("setMessage", "user0PrivateEvent")
+	var delResult hexutil.Bytes
+	err = user0.HTTPClient.Client().CallContext(ctx, &delResult, "eth_getStorageAt",
+		"0x0000000000000000000000000000000000000004", string(delParamsJSON), "latest")
 	require.NoError(t, err)
-	rec, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil)
-	require.NoError(t, err)
-	require.Equal(t, uint64(0x1), rec.Status)
-
-	// move money back - unsigned tx calling "sendTransaction"
-	skNonce++
-	rec1, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, user0.Wallets[0].Address(), nil, big.NewInt(1_000))
-	require.NoError(t, err)
-	require.Equal(t, uint64(0x1), rec1.Status)
-
-	// deactivate
-	_, err = user0.HTTPClient.StorageAt(context.Background(), gethcommon.HexToAddress(common.DeactivateSessionKeyCQMethod), gethcommon.Hash{}, nil)
-	require.NoError(t, err)
-
-	// interact with the contract - unsigned - should fail
-	skNonce++
-	rec2, err := interactWithSmartContractUnsigned(user0.HTTPClient, skNonce, contractAddr, contractInteractionData, nil)
-	require.Error(t, err)
-	require.Nil(t, rec2)
+	require.Len(t, delResult, 1)
+	require.Equal(t, byte(0x01), delResult[0])
+	t.Logf("✓ Session key deleted: %s", skAddress.Hex())
 }
 
-func deployContract(t *testing.T, w wallet.Wallet, user0 *GatewayUser) gethcommon.Address {
-	// deploy events contract
-	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
-		Gas:      uint64(10_000_000),
-		GasPrice: gethcommon.Big1,
-		Data:     gethcommon.FromHex(eventsContractBytecode),
+func testSessionKeysSendTransaction(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
+
+	// Register the user so we can call the endpoints that require authentication
+	err = user0.RegisterAccounts()
+	require.NoError(t, err)
+
+	// Simple print to verify the test is running
+	fmt.Println("testSessionKeysSendTransaction: Test is running successfully!")
+	testlog.Logger().Info("testSessionKeysSendTransaction: Test is running successfully!")
+
+	// Get the user's balance as a simple operation
+	balance, err := user0.HTTPClient.BalanceAt(context.Background(), user0.Wallets[0].Address(), nil)
+	require.NoError(t, err)
+
+	// Print the balance to show the test is working
+	fmt.Printf("testSessionKeysSendTransaction: User balance: %s\n", balance.String())
+	testlog.Logger().Info("testSessionKeysSendTransaction: User balance", "balance", balance.String())
+
+	ctx := context.Background()
+
+	// 1) Create session key via eth_getStorageAt (CQ method 0x...0003)
+	createSessionKeyAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000003")
+	skAddrBytes, err := user0.HTTPClient.StorageAt(ctx, createSessionKeyAddr, gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, skAddrBytes)
+	skAddress := gethcommon.BytesToAddress(skAddrBytes)
+	t.Logf("✓ Session key created: %s", skAddress.Hex())
+	fmt.Printf("Session key created: %s\n", skAddress.Hex())
+
+	// 2) Fund the session key from the original wallet
+	fundAmount := big.NewInt(0).Mul(big.NewInt(1e15), big.NewInt(1)) // 0.001 TEN
+	fromAddr := user0.Wallets[0].Address()
+	gasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	gasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: fromAddr, To: &skAddress, Value: fundAmount})
+	require.NoError(t, err)
+	nonce, err := user0.HTTPClient.PendingNonceAt(ctx, fromAddr)
+	require.NoError(t, err)
+	legacy := &types.LegacyTx{Nonce: nonce, To: &skAddress, Value: fundAmount, GasPrice: gasPrice, Gas: gasLimit}
+	signedFundingTx, err := w.SignTransaction(legacy)
+	require.NoError(t, err)
+	err = user0.HTTPClient.SendTransaction(ctx, signedFundingTx)
+	require.NoError(t, err)
+
+	// wait for receipt
+	{
+		var rec *types.Receipt
+		for i := 0; i < 60; i++ {
+			rec, err = user0.HTTPClient.TransactionReceipt(ctx, signedFundingTx.Hash())
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
 	}
+	t.Logf("✓ Session key funded with %s TEN", fundAmount.String())
 
-	err := getFeeAndGas(user0.HTTPClient, w, deployTx)
+	// 3) Send transaction using eth_sendTransaction with session key in From field
+	returnAmount := big.NewInt(0).Div(fundAmount, big.NewInt(2))
+	skGasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	skGasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: skAddress, To: &fromAddr, Value: returnAmount})
+	require.NoError(t, err)
+	skNonce, err := user0.HTTPClient.PendingNonceAt(ctx, skAddress)
 	require.NoError(t, err)
 
-	signedTx, err := w.SignTransaction(deployTx)
-	require.NoError(t, err)
-
-	err = user0.HTTPClient.SendTransaction(context.Background(), signedTx)
-	require.NoError(t, err)
-
-	contractReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), user0.HTTPClient, signedTx.Hash(), time.Minute)
-	require.NoError(t, err)
-	return contractReceipt.ContractAddress
-}
-
-func interactWithSmartContractUnsigned(client *ethclient.Client, nonce uint64, contractAddress gethcommon.Address, contractInteractionData []byte, value *big.Int) (*types.Receipt, error) {
-	var result responses.GasPriceType
-	err := client.Client().CallContext(context.Background(), &result, "eth_gasPrice")
-	if err != nil {
-		return nil, err
-	}
-
+	// Send transaction using eth_sendTransaction (this will use our new SendTransaction method)
 	var txHash gethcommon.Hash
+	err = user0.HTTPClient.Client().CallContext(ctx, &txHash, "eth_sendTransaction", map[string]interface{}{
+		"from":     skAddress.Hex(),
+		"to":       fromAddr.Hex(),
+		"value":    fmt.Sprintf("0x%x", returnAmount),
+		"gas":      fmt.Sprintf("0x%x", skGasLimit),
+		"gasPrice": fmt.Sprintf("0x%x", skGasPrice),
+		"nonce":    fmt.Sprintf("0x%x", skNonce),
+	})
+	require.NoError(t, err)
+	require.NotEqual(t, gethcommon.Hash{}, txHash)
+	t.Logf("✓ Transaction sent via eth_sendTransaction: %s", txHash.Hex())
 
-	n := hexutil.Uint64(nonce)
-	g := hexutil.Uint64(100_000_000)
-	d := hexutil.Bytes(contractInteractionData)
-	interactionTx := gethapi.TransactionArgs{
-		Nonce:    &n,
-		To:       &contractAddress,
-		Gas:      &g,
-		GasPrice: &result,
-		Data:     &d,
-		Value:    (*hexutil.Big)(value),
+	// wait for receipt
+	{
+		var rec *types.Receipt
+		for i := 0; i < 60; i++ {
+			rec, err = user0.HTTPClient.TransactionReceipt(ctx, txHash)
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
 	}
-	err = client.Client().CallContext(context.Background(), &txHash, "eth_sendTransaction", interactionTx)
-	if err != nil {
-		return nil, err
-	}
+	t.Logf("✓ Return transaction confirmed: %s TEN", returnAmount.String())
 
-	txReceipt, err := integrationCommon.AwaitReceiptEth(context.Background(), client, txHash, 10*time.Second)
-	if err != nil {
-		return nil, err
-	}
+	// 4) Test that eth_sendTransaction fails with non-session key address
+	// Use the user's own address (which is not a session key) to test the failure case
+	nonSessionKeyAddr := user0.Wallets[0].Address()
+	t.Logf("Testing eth_sendTransaction with non-session key address: %s", nonSessionKeyAddr.Hex())
 
-	return txReceipt, nil
+	// Get the current nonce for this address to avoid "nonce too low" errors
+	nonceForNonSessionKey, err := user0.HTTPClient.PendingNonceAt(ctx, nonSessionKeyAddr)
+	require.NoError(t, err)
+	t.Logf("Using nonce %d for non-session key address", nonceForNonSessionKey)
+
+	var failTxHash gethcommon.Hash
+	err = user0.HTTPClient.Client().CallContext(ctx, &failTxHash, "eth_sendTransaction", map[string]interface{}{
+		"from":     nonSessionKeyAddr.Hex(),
+		"to":       fromAddr.Hex(),
+		"value":    fmt.Sprintf("0x%x", big.NewInt(1000)),
+		"gas":      fmt.Sprintf("0x%x", uint64(21000)),
+		"gasPrice": fmt.Sprintf("0x%x", skGasPrice),
+		"nonce":    fmt.Sprintf("0x%x", nonceForNonSessionKey),
+	})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "session key address")
+	require.Contains(t, err.Error(), "not found")
+	t.Logf("✓ eth_sendTransaction correctly failed with non-session key address")
+
+	// 5) Delete the session key via getStorageAt (CQ 0x...0004)
+	delParamsObj := map[string]string{
+		"sessionKeyAddress": skAddress.Hex(),
+	}
+	delParamsJSON, err := json.Marshal(delParamsObj)
+	require.NoError(t, err)
+
+	var delResult hexutil.Bytes
+	err = user0.HTTPClient.Client().CallContext(ctx, &delResult, "eth_getStorageAt",
+		"0x0000000000000000000000000000000000000004", string(delParamsJSON), "latest")
+	require.NoError(t, err)
+	require.Len(t, delResult, 1)
+	require.Equal(t, byte(0x01), delResult[0])
+	t.Logf("✓ Session key deleted: %s", skAddress.Hex())
 }
 
 func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
@@ -360,8 +507,12 @@ func testMultipleAccountsSubscription(t *testing.T, _ int, httpURL, wsURL string
 	}
 
 	// deploy events contract
+	// Get current nonce to avoid conflicts with previous tests
+	currentNonce, err := user0.HTTPClient.PendingNonceAt(context.Background(), w.Address())
+	require.NoError(t, err)
+
 	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
@@ -503,8 +654,12 @@ func testSubscriptionTopics(t *testing.T, _ int, httpURL, wsURL string, w wallet
 	}
 
 	// deploy events contract
+	// Get current nonce to avoid conflicts with previous tests
+	currentNonce, err := user0.HTTPClient.PendingNonceAt(context.Background(), w.Address())
+	require.NoError(t, err)
+
 	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
@@ -677,8 +832,12 @@ func testErrorsRevertedArePassed(t *testing.T, _ int, httpURL, wsURL string, w w
 	require.True(t, big.NewInt(0).Cmp(balance) == -1)
 
 	// deploy errors contract
+	// Get current nonce to avoid conflicts with previous tests
+	currentNonce, err := ethStdClient.PendingNonceAt(context.Background(), w.Address())
+	require.NoError(t, err)
+
 	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		Gas:      uint64(1_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(errorsContractBytecode),
@@ -749,8 +908,12 @@ func testUnsubscribe(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	require.NoError(t, err)
 
 	// deploy events contract
+	// Get current nonce to avoid conflicts with previous tests
+	currentNonce, err := user.HTTPClient.PendingNonceAt(context.Background(), w.Address())
+	require.NoError(t, err)
+
 	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
@@ -805,8 +968,12 @@ func testClosingConnectionWhileSubscribed(t *testing.T, _ int, httpURL, wsURL st
 	require.NoError(t, err)
 
 	// deploy events contract
+	// Get current nonce to avoid conflicts with previous tests
+	currentNonce, err := user.HTTPClient.PendingNonceAt(context.Background(), w.Address())
+	require.NoError(t, err)
+
 	deployTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		Gas:      uint64(10_000_000),
 		GasPrice: gethcommon.Big1,
 		Data:     gethcommon.FromHex(eventsContractBytecode),
@@ -923,7 +1090,7 @@ func transferRandomAddr(t *testing.T, client *ethclient.Client, w wallet.Wallet)
 
 	w.SetNonce(nonce)
 	estimatedTx := &types.LegacyTx{
-		Nonce:    w.GetNonceAndIncrement(),
+		Nonce:    nonce,
 		To:       &toAddr,
 		Value:    big.NewInt(100),
 		Gas:      uint64(1_000_000),
@@ -1013,8 +1180,14 @@ func getFeeAndGas(client *ethclient.Client, wallet wallet.Wallet, legacyTx *type
 }
 
 func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddress gethcommon.Address, amount int64) (*types.Receipt, error) { //nolint:unparam
+	// Get current nonce to avoid conflicts
+	currentNonce, err := client.PendingNonceAt(context.Background(), wallet.Address())
+	if err != nil {
+		return nil, err
+	}
+
 	transferTx1 := types.LegacyTx{
-		Nonce:    wallet.GetNonceAndIncrement(),
+		Nonce:    currentNonce,
 		To:       &toAddress,
 		Value:    big.NewInt(amount),
 		Gas:      uint64(10_000_000),
@@ -1022,7 +1195,7 @@ func transferETHToAddress(client *ethclient.Client, wallet wallet.Wallet, toAddr
 		Data:     nil,
 	}
 
-	err := getFeeAndGas(client, wallet, &transferTx1)
+	err = getFeeAndGas(client, wallet, &transferTx1)
 	if err != nil {
 		return nil, err
 	}

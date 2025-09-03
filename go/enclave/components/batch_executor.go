@@ -301,7 +301,7 @@ func (executor *batchExecutor) handleSysContractGenesis(ec *BatchExecutionContex
 	}
 
 	// Deploy Phase 2 contracts
-	phase2Tx, err := system.SystemDeployerPhase2InitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader(), feesAddress, executor.config.BridgeAddress)
+	phase2Tx, err := system.SystemDeployerPhase2InitTransaction(executor.logger, *executor.systemContracts.SystemContractsUpgrader(), feesAddress, executor.config.L1BridgeAddress)
 	if err != nil {
 		executor.logger.Error("[SystemContracts] Failed to create system deployer phase 2 contract", log.ErrKey, err)
 		return err
@@ -602,7 +602,13 @@ func (executor *batchExecutor) postProcessState(ec *BatchExecutionContext) error
 	}
 
 	for _, msg := range valueTransferMessages {
-		ec.stateDB.SubBalance(executor.config.BridgeAddress, uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
+		l2BridgeAddress := executor.crossChainProcessors.Local.GetL2BridgeAddress()
+		bal := ec.stateDB.GetBalance(*l2BridgeAddress).Uint64()
+		if bal >= msg.Amount.Uint64() {
+			ec.stateDB.SubBalance(*l2BridgeAddress, uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
+		} else {
+			executor.logger.Crit("Insufficient balance for value transfer", "balance", bal, "amount", msg.Amount)
+		}
 	}
 
 	return nil

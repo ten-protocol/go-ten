@@ -34,6 +34,9 @@ type Manager interface {
 	// GetBusAddress - Returns the L2 address of the message bus contract.
 	GetBusAddress() *common.L2Address
 
+	// GetL2BridgeAddress - Returns the L2 address of the bridge contract.
+	GetL2BridgeAddress() *common.L2Address
+
 	// Initialize - Derives the address of the message bus contract.
 	Initialize(systemAddresses common.SystemContractAddresses) error
 

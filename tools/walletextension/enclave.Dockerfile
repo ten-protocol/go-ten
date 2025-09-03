@@ -40,7 +40,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 RUN ego sign enclave.json
 
 # Run the complete Azure HSM setup (builds signer tool, signs binary, or skips if not needed)
-RUN /home/obscuro/go-obscuro/tools/enclavesigner/AzureHSMSignatureScript.sh main /home/obscuro/go-obscuro/tools/enclavesigner/main
+RUN /home/ten/go-ten/tools/enclavesigner/AzureHSMSignatureScript.sh main /home/ten/go-ten/tools/enclavesigner/main
 
 FROM ghcr.io/edgelesssys/ego-deploy:v1.7.2
 
