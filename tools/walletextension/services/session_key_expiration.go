@@ -89,6 +89,14 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 		// Check each session key for expiration
 		for sessionKeyAddr, sessionKey := range user.SessionKeys {
 			age := now.Sub(sessionKey.CreatedAt)
+			s.logger.Debug("Checking session key",
+				"userID", wecommon.HashForLogging(user.ID),
+				"sessionKeyAddress", sessionKeyAddr.Hex(),
+				"createdAt", sessionKey.CreatedAt.Format(time.RFC3339),
+				"age", age.String(),
+				"expirationThreshold", expirationThreshold.String(),
+				"isExpired", age > expirationThreshold)
+			
 			if age > expirationThreshold {
 				expiredKeysCount++
 
@@ -248,6 +256,12 @@ func (s *SessionKeyExpirationService) recoverFundsFromExpiredSessionKey(user *we
 
 // sendFundsUsingTransactionAPI uses the existing transaction API to send funds from a session key
 func (s *SessionKeyExpirationService) sendFundsUsingTransactionAPI(ctx context.Context, user *wecommon.GWUser, fromAddr, toAddr common.Address, amount *hexutil.Big) (common.Hash, error) {
+	s.logger.Info("Attempting to send funds using transaction API",
+		"userID", wecommon.HashForLogging(user.ID),
+		"fromAddr", fromAddr.Hex(),
+		"toAddr", toAddr.Hex(),
+		"amount", amount.String())
+
 	// Create transaction args that will be handled by the existing SendTransaction API
 	// The transaction API will automatically detect this is a session key transaction and handle it properly
 	txArgs := map[string]interface{}{
@@ -257,17 +271,27 @@ func (s *SessionKeyExpirationService) sendFundsUsingTransactionAPI(ctx context.C
 		"gas":   "0x5208", // 21000 gas for simple transfer
 	}
 
+	s.logger.Debug("Transaction args created", "txArgs", txArgs)
+
 	// Use the existing RPC infrastructure to call the transaction API
 	// This will go through the same path as if a dApp sent the transaction
 	result, err := WithEncRPCConnection(ctx, s.services.BackendRPC, user.SessionKeys[fromAddr].Account, func(rpcClient *tenrpc.EncRPCClient) (*common.Hash, error) {
 		var txHash common.Hash
+		s.logger.Debug("Calling eth_sendTransaction", "txArgs", txArgs)
 		err := rpcClient.CallContext(ctx, &txHash, "eth_sendTransaction", txArgs)
+		if err != nil {
+			s.logger.Error("eth_sendTransaction failed", "error", err)
+		} else {
+			s.logger.Info("eth_sendTransaction succeeded", "txHash", txHash.Hex())
+		}
 		return &txHash, err
 	})
 
 	if err != nil {
+		s.logger.Error("WithEncRPCConnection failed", "error", err)
 		return common.Hash{}, err
 	}
 
+	s.logger.Info("Fund recovery transaction sent successfully", "txHash", result.Hex())
 	return *result, nil
 }
