@@ -33,6 +33,7 @@ const (
 
 	// where queries
 	whereHash     = " WHERE hash = ?"
+	whereBHash    = " WHERE b.hash = ?"
 	whereSequence = " WHERE sequence = ?"
 	whereHeight   = " WHERE height = ?"
 )
@@ -126,7 +127,7 @@ func GetBatchListing(db HostDB, pagination *common.QueryPagination) (*common.Bat
 // GetPublicBatchBySequenceNumber returns the batch with the given sequence number.
 func GetPublicBatchBySequenceNumber(db HostDB, seqNo uint64) (*common.PublicBatch, error) {
 	reboundWhereQuery := db.GetSQLDB().Rebind(whereSequence)
-	return fetchPublicBatch(db.GetSQLDB(), reboundWhereQuery, seqNo)
+	return fetchPublicBatch(db, reboundWhereQuery, seqNo)
 }
 
 // GetTxsBySequenceNumber returns the transaction hashes with sequence number.
@@ -137,24 +138,24 @@ func GetTxsBySequenceNumber(db HostDB, seqNo uint64) ([]common.TxHash, error) {
 // GetBatchBySequenceNumber returns the ext batch for a given sequence number.
 func GetBatchBySequenceNumber(db HostDB, seqNo uint64) (*common.ExtBatch, error) {
 	reboundWhereQuery := db.GetSQLDB().Rebind(whereSequence)
-	return fetchFullBatch(db.GetSQLDB(), reboundWhereQuery, seqNo)
+	return fetchFullBatch(db, reboundWhereQuery, seqNo)
 }
 
 // GetCurrentHeadBatch retrieves the current head batch with the largest sequence number (or height).
 func GetCurrentHeadBatch(db HostDB) (*common.PublicBatch, error) {
-	return fetchHeadBatch(db.GetSQLDB())
+	return fetchHeadBatch(db)
 }
 
 // GetBatchHeader returns the batch header given the hash.
 func GetBatchHeader(db HostDB, hash gethcommon.Hash) (*common.BatchHeader, error) {
 	reboundWhereQuery := db.GetSQLDB().Rebind(whereHash)
-	return fetchBatchHeader(db.GetSQLDB(), reboundWhereQuery, hash.Bytes())
+	return fetchBatchHeader(db, reboundWhereQuery, hash.Bytes())
 }
 
 // GetBatchHashByNumber returns the hash of a batch given its number.
 func GetBatchHashByNumber(db HostDB, number *big.Int) (*gethcommon.Hash, error) {
 	reboundWhereQuery := db.GetSQLDB().Rebind(whereHeight)
-	batch, err := fetchBatchHeader(db.GetSQLDB(), reboundWhereQuery, number.Uint64())
+	batch, err := fetchBatchHeader(db, reboundWhereQuery, number.Uint64())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch batch header - %w", err)
 	}
@@ -164,7 +165,7 @@ func GetBatchHashByNumber(db HostDB, number *big.Int) (*gethcommon.Hash, error) 
 
 // GetHeadBatchHeader returns the latest batch header.
 func GetHeadBatchHeader(db HostDB) (*common.BatchHeader, error) {
-	batch, err := fetchHeadBatch(db.GetSQLDB())
+	batch, err := fetchHeadBatch(db)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch head batch header - %w", err)
 	}
@@ -208,8 +209,7 @@ func GetBatchTxHashes(db HostDB, batchHash gethcommon.Hash) ([]gethcommon.Hash, 
 
 // GetPublicBatch returns the batch with the given hash.
 func GetPublicBatch(db HostDB, hash common.L2BatchHash) (*common.PublicBatch, error) {
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereHash)
-	return fetchPublicBatch(db.GetSQLDB(), reboundWhereQuery, hash.Bytes())
+	return fetchPublicBatch(db, whereBHash, hash.Bytes())
 }
 
 // GetBatchByTx returns the batch with the given hash.
@@ -233,24 +233,24 @@ func GetBatchByTx(db HostDB, txHash gethcommon.Hash) (*common.PublicBatch, error
 // GetBatchByHash returns the batch with the given hash.
 func GetBatchByHash(db HostDB, hash common.L2BatchHash) (*common.PublicBatch, error) {
 	reboundWhereQuery := db.GetSQLDB().Rebind(whereHash)
-	return fetchPublicBatch(db.GetSQLDB(), reboundWhereQuery, hash.Bytes())
+	return fetchPublicBatch(db, reboundWhereQuery, hash.Bytes())
 }
 
 // GetBatchHeaderByHeight returns the batch header given the height
 func GetBatchHeaderByHeight(db HostDB, height *big.Int) (*common.BatchHeader, error) {
 	reboundWhereQuery := db.GetSQLDB().Rebind(whereHeight)
-	return fetchBatchHeader(db.GetSQLDB(), reboundWhereQuery, height.Uint64())
+	return fetchBatchHeader(db, reboundWhereQuery, height.Uint64())
 }
 
 // GetBatchByHeight returns the batch header given the height
 func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 	reboundWhereQuery := db.GetSQLDB().Rebind(whereHeight)
-	return fetchPublicBatch(db.GetSQLDB(), reboundWhereQuery, height.Uint64())
+	return fetchPublicBatch(db, reboundWhereQuery, height.Uint64())
 }
 
 // GetBatchTransactions returns the TransactionListingResponse for a given batch hash
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereHash)
+	reboundWhereQuery := db.GetSQLDB().Rebind(whereBHash)
 	orderQuery := " ORDER BY t.id DESC "
 
 	// TODO @will quick fix to unblock main
@@ -322,14 +322,15 @@ func EstimateRollupSize(db HostDB, fromSeqNo *big.Int) (uint64, error) {
 	return totalTx, nil
 }
 
-func fetchBatchHeader(db *sqlx.DB, whereQuery string, args ...any) (*common.BatchHeader, error) {
+func fetchBatchHeader(db HostDB, whereQuery string, args ...any) (*common.BatchHeader, error) {
 	var extBatch []byte
 	query := selectExtBatch + whereQuery
 	var err error
+	reboundQuery := db.GetSQLDB().Rebind(query)
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&extBatch)
+		err = db.GetSQLDB().QueryRow(reboundQuery, args...).Scan(&extBatch)
 	} else {
-		err = db.QueryRow(query).Scan(&extBatch)
+		err = db.GetSQLDB().QueryRow(reboundQuery).Scan(&extBatch)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -368,19 +369,19 @@ func fetchBatchNumber(db HostDB, args ...any) (*big.Int, error) {
 	return batch.Height, nil
 }
 
-func fetchPublicBatch(db *sqlx.DB, whereQuery string, args ...any) (*common.PublicBatch, error) {
+func fetchPublicBatch(db HostDB, whereQuery string, args ...any) (*common.PublicBatch, error) {
 	var sequenceInt64 uint64
 	var fullHash common.TxHash
 	var heightInt64 int
 	var extBatch []byte
 
 	query := selectBatch + whereQuery
-
+	reboundQuery := db.GetSQLDB().Rebind(query)
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
+		err = db.GetSQLDB().QueryRow(reboundQuery, args...).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	} else {
-		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
+		err = db.GetSQLDB().QueryRow(reboundQuery).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -406,19 +407,19 @@ func fetchPublicBatch(db *sqlx.DB, whereQuery string, args ...any) (*common.Publ
 	return batch, nil
 }
 
-func fetchFullBatch(db *sqlx.DB, whereQuery string, args ...any) (*common.ExtBatch, error) {
+func fetchFullBatch(db HostDB, whereQuery string, args ...any) (*common.ExtBatch, error) {
 	var sequenceInt64 uint64
 	var fullHash common.TxHash
 	var heightInt64 int
 	var extBatch []byte
 
 	query := selectBatch + whereQuery
-
+	reboundQuery := db.GetSQLDB().Rebind(query)
 	var err error
 	if len(args) > 0 {
-		err = db.QueryRow(query, args...).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
+		err = db.GetSQLDB().QueryRow(reboundQuery, args...).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	} else {
-		err = db.QueryRow(query).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
+		err = db.GetSQLDB().QueryRow(reboundQuery).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -435,13 +436,14 @@ func fetchFullBatch(db *sqlx.DB, whereQuery string, args ...any) (*common.ExtBat
 	return &b, nil
 }
 
-func fetchHeadBatch(db *sqlx.DB) (*common.PublicBatch, error) {
+func fetchHeadBatch(db HostDB) (*common.PublicBatch, error) {
 	var sequenceInt64 int
 	var fullHash gethcommon.Hash // common.Hash
 	var heightInt64 int
 	var extBatch []byte
 
-	err := db.QueryRow(selectLatestBatch).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
+	reboundQuery := db.GetSQLDB().Rebind(selectLatestBatch)
+	err := db.GetSQLDB().QueryRow(reboundQuery).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound

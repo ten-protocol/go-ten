@@ -196,7 +196,6 @@ func GetRollupBySeqNo(db HostDB, seqNo uint64) (*common.PublicRollup, error) {
 }
 
 func GetCrossChainMessagesTree(db HostDB, messageHash gethcommon.Hash) ([][]interface{}, error) {
-	// First get the rollupID for this message hash
 	var rollupID int64
 	reboundMessageQuery := db.GetSQLDB().Rebind(selectRollupIdByMessage)
 	err := db.GetSQLDB().QueryRow(reboundMessageQuery, messageHash.Bytes()).Scan(&rollupID)
