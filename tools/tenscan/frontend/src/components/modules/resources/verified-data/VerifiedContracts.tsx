@@ -22,14 +22,13 @@ export default function VerifiedContracts() {
   const { formattedContracts } = useContractsService();
 
   return (
-    <Card>
+    <Card className="bg-transparent">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>Verified Contracts</CardTitle>
       </CardHeader>
       <Separator />
       <CardContent>
         <Table>
-          <TableCaption>Verified Contracts</TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Contract Name</TableHead>

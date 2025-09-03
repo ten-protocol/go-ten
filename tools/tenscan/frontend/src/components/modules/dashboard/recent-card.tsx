@@ -16,9 +16,6 @@ type Props = {
 }
 
 export default function RecentCard({title, goTo, className, data, component}: Props) {
-
-
-   console.log(data)
     return (
         <div className="recents-card-shape h-[450px] relative col-span-1 md:col-span-2 lg:col-span-3 overflow-hidden">
             <div className="absolute inset-[1px] pointer-events-none">
@@ -36,7 +33,7 @@ export default function RecentCard({title, goTo, className, data, component}: Pr
                     </Button>
                 </Link>
             </header>
-            <div className="h-[375px] overflow-y-scroll pl-2 mr-2 overflow-x-hidden" style={{
+            <div className="h-[375px] pl-2 mr-2 overflow-hidden" style={{
                 maskImage: 'linear-gradient(to bottom, black 0%, black 80%, transparent 100%)',
                 WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 80%, transparent 100%)'
             }}>

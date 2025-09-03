@@ -1,4 +1,4 @@
-import React from "react";
+import React, {useEffect} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 
@@ -28,7 +28,7 @@ export function RecentItemsList<T>({
           {headers}
         </div>
       )}
-      <div className="space-y-2">
+      <div className="space-y-2 overflow-y-scroll">
         <AnimatePresence mode="popLayout">
         {items?.map((item: T, i: number) => {
           // Check if this item is new (wasn't in previous render)
@@ -36,7 +36,7 @@ export function RecentItemsList<T>({
           const isNewItem = !previousItemsRef.current.has(itemId);
           
           // Update previous items ref
-          React.useEffect(() => {
+          useEffect(() => {
             previousItemsRef.current.add(itemId);
           }, [itemId]);
           

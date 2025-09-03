@@ -1,10 +1,4 @@
-import React from "react";
-import {
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Card,
-} from "@repo/ui/components/shared/card";
+import {useEffect} from "react";
 import {
   LayersIcon,
   FileTextIcon,
@@ -16,15 +10,12 @@ import {
 
 import { RecentBatches } from "./recent-batches";
 import { RecentTransactions } from "./recent-transactions";
-import { Button } from "@repo/ui/components/shared/button";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { useBatchesService } from "@/src/services/useBatchesService";
 import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { useContractsService } from "@/src/services/useContractsService";
-import { Skeleton } from "@repo/ui/components/shared/skeleton";
 import AnalyticsCard from "./analytics-card";
-import Link from "next/link";
-import { cn, formatNumber } from "@repo/ui/lib/utils";
+import { formatNumber } from "@repo/ui/lib/utils";
 import { Badge } from "@repo/ui/components/shared/badge";
 
 import { useRollupsService } from "@/src/services/useRollupsService";
@@ -60,7 +51,7 @@ export default function Dashboard() {
   } = useBatchesService();
   const { rollups, setNoPolling: setNoPollingRollups } = useRollupsService();
 
-  React.useEffect(() => {
+  useEffect(() => {
     setNoPollingTransactions(false);
     setNoPollingBatches(false);
     setNoPollingRollups(false);

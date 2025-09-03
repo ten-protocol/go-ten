@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { searchRecords } from '@/api/search';
-import { SearchResponse, SearchResult } from '@/src/types/interfaces/SearchInterfaces';
-import { ResponseDataInterface } from '@repo/ui/lib/types/common';
+import {  SearchResult } from '@/src/types/interfaces/SearchInterfaces';
 import { pageLinks } from '@/src/routes';
 import { pathToUrl } from '@/src/routes/router';
 import { Search, Loader2, X } from '@repo/ui/components/shared/react-icons';
 import SearchResultItem from './search-result-item';
+import {Input} from "@/src/components/ui/input";
 
 export default function SearchBar() {
     const [query, setQuery] = useState('');
@@ -20,7 +20,6 @@ export default function SearchBar() {
     const inputRef = useRef<HTMLInputElement>(null);
     const router = useRouter();
 
-    // Debounce the search query
     useEffect(() => {
         const timer = setTimeout(() => {
             setDebouncedQuery(query);
@@ -29,7 +28,7 @@ export default function SearchBar() {
         return () => clearTimeout(timer);
     }, [query]);
 
-    // Close dropdown when clicking outside
+
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
@@ -42,7 +41,6 @@ export default function SearchBar() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Fetch search results
     const { data: searchResponse, isLoading, error, isFetching } = useQuery({
         queryKey: ['search', debouncedQuery],
         queryFn: () => searchRecords(debouncedQuery),
@@ -50,13 +48,8 @@ export default function SearchBar() {
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
 
-    // Extract search results from the response
     const searchResults = searchResponse?.result;
 
-    // Debug logging
-    console.log('Search state:', { query, debouncedQuery, isLoading, isFetching, hasResults: !!searchResults?.ResultsData?.length });
-
-    // Handle input change
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setQuery(value);
@@ -64,7 +57,6 @@ export default function SearchBar() {
         setFocusedIndex(-1);
     };
 
-    // Handle clear button click
     const handleClear = () => {
         setQuery('');
         setDebouncedQuery('');
@@ -73,7 +65,6 @@ export default function SearchBar() {
         inputRef.current?.focus();
     };
 
-    // Handle keyboard navigation
     const handleKeyDown = (e: React.KeyboardEvent) => {
         if (!searchResults?.ResultsData) return;
 
@@ -102,7 +93,6 @@ export default function SearchBar() {
         }
     };
 
-    // Handle result click
     const handleResultClick = (result: SearchResult) => {
         let route = '';
         
@@ -127,10 +117,15 @@ export default function SearchBar() {
     };
 
     return (
-        <div className="relative w-full" ref={searchRef}>
+        <div className="relative w-full max-w-2xl mx-auto p-4" ref={searchRef}>
+            <div className="search-container-shape absolute inset-[1px] pointer-events-none">
+                <div className="absolute inset-0 animate-scan-overlay"/>
+            </div>
+
+
             <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/70 w-5 h-5 z-10"/>
+                <Input
                     ref={inputRef}
                     type="text"
                     placeholder="Search transactions, batches, or rollups..."
@@ -138,10 +133,11 @@ export default function SearchBar() {
                     onChange={handleInputChange}
                     onKeyDown={handleKeyDown}
                     onFocus={() => query.length >= 2 && setIsDropdownOpen(true)}
-                    className="w-full pl-10 pr-4 py-3 border border-white/5 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200"
+                    className="w-full p-6 pl-10 bg-white/5"
                 />
                 {(isLoading || isFetching) && (
-                    <Loader2 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-blue-500 w-5 h-5 animate-spin" />
+                    <Loader2
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-accent w-5 h-5 animate-spin"/>
                 )}
                 {query.length > 0 && !isLoading && !isFetching && (
                     <button
@@ -150,23 +146,26 @@ export default function SearchBar() {
                         type="button"
                         aria-label="Clear search"
                     >
-                        <X className="w-4 h-4" />
+                        <X className="w-4 h-4"/>
                     </button>
                 )}
             </div>
 
-            {/* Dropdown Results */}
             {isDropdownOpen && query.length >= 2 && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 min-h-[100px]">
+                <div
+                    className="absolute top-full left-0 right-0 mt-2 bg-background/80 backdrop-blur border border-white/5 shadow-lg z-50 min-h-[60px]">
+                    <div className="absolute inset-0 animate-scan-overlay opacity-10 pointer-events-none"/>
+
+
                     {error ? (
-                        <div className="p-4 text-red-500 text-center border-b border-gray-100">
+                        <div className="p-4 text-red-500 text-center">
                             Error loading search results
                         </div>
                     ) : (isLoading || isFetching) ? (
-                        <div className="p-6 text-center border-b border-gray-100">
-                            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-blue-500" />
+                        <div className="p-6 text-center">
+                            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-white"/>
                             <p className="text-gray-600 font-medium">Searching...</p>
-                            <p className="text-sm text-gray-500 mt-1">Looking for "{debouncedQuery}"</p>
+                            <p className="text-sm text-gray-500 mt-1">Looking for &quot;{debouncedQuery}&quot;</p>
                         </div>
                     ) : searchResults?.ResultsData && searchResults.ResultsData.length > 0 ? (
                         <div className="max-h-96 overflow-y-auto">
@@ -181,23 +180,24 @@ export default function SearchBar() {
                                 />
                             ))}
                             {searchResults.Total > searchResults.ResultsData.length && (
-                                <div className="p-3 text-center text-sm text-gray-500 border-t border-gray-100 bg-gray-50">
+                                <div
+                                    className="p-3 text-center text-sm text-white">
                                     Showing {searchResults.ResultsData.length} of {searchResults.Total} results
                                 </div>
                             )}
                         </div>
                     ) : debouncedQuery.length >= 2 && !isLoading && !isFetching ? (
-                        <div className="p-4 text-gray-500 text-center border-b border-gray-100">
+                        <div className="p-4 text-white/80 text-center">
                             No results found for &quot;{debouncedQuery}&quot;
                         </div>
                     ) : query !== debouncedQuery ? (
-                        <div className="p-6 text-center border-b border-gray-100">
-                            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-blue-500" />
-                            <p className="text-gray-600 font-medium">Searching...</p>
-                            <p className="text-sm text-gray-500 mt-1">Looking for "{query}"</p>
+                        <div className="p-6 text-center">
+                            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-accent"/>
+                            <p className="text-white/80 font-medium">Searching...</p>
+                            <p className="text-sm text-white/60 mt-1">Looking for &quot;{query}&quot;</p>
                         </div>
                     ) : (
-                        <div className="p-4 text-gray-400 text-center">
+                        <div className="p-4 text-white/60 text-center">
                             <p className="text-sm">Type to search...</p>
                         </div>
                     )}

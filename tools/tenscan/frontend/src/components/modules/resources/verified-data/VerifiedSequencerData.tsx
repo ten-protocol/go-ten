@@ -22,14 +22,13 @@ export default function VerifiedSequencerData() {
   const { sequencerData } = useContractsService();
 
   return (
-    <Card>
+    <Card className="bg-transparent">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>Verified Sequencer Data</CardTitle>
       </CardHeader>
       <Separator />
       <CardContent>
         <Table>
-          <TableCaption>Verified Sequencer Data</TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Contract Name</TableHead>

@@ -43,7 +43,8 @@
     --foreground: 213 31% 91%;
     --muted: 0 0% 11%;
     --muted-foreground: 0 0% 57%;
-    --accent: 0 0 17%;
+    --accent: 0.67 0.11% 29.49%;
+    --text-accent: 0.67 0.11% 29.49%;
     --accent-foreground: 210 40% 98%;
     --popover: 0 0% 10%;
     --popover-foreground: 0 0% 70%;
@@ -53,10 +54,10 @@
     --card-foreground: 213 31% 91%;
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 1.2%;
-    --secondary: 222.2 47.4% 11.2%;
-    --secondary-foreground: 210 40% 98%;
-    --success: 120 63% 31%;
-    --success-foreground: 210 40% 98%;
+    --secondary: 1 0% 0% / 0.12;
+    --secondary-foreground: 1 0% 0%;
+    --success: 148.63 77.77% 50.35%;
+    --success-foreground: .2 0% 0%;
     --warning: 45 80% 40%;
     --warning-foreground: 0 0% 80%;
     --info: 224 40% 54%;
@@ -1209,6 +1210,29 @@
     );
 }
 
+.search-container-shape {
+    clip-path: polygon(
+            0.7143% 0%,
+            0% 10%,
+            0% 90%,
+            0.709% 100%,
+            21.4286% 100%,
+            22.1429% 90.016%,
+            77.8571% 90.016%,
+            78.5714% 100%,
+            99.3424% 100%,
+            100% 90%,
+            100% 10%,
+            99.3424% 0%,
+            78.5714% 0%,
+            77.8571% 10%,
+            22.1429% 10%,
+            21.4286% 0%,
+            0.7143% 0%
+    );
+}
+
+
 .gradient-flash-hover {
     position: relative;
     overflow: hidden;
@@ -1250,3 +1274,32 @@
         transform: translateX(100%);
     }
 }
+
+/*.custom-scrollbar {*/
+/*    scrollbar-width: thin;*/
+/*    scrollbar-color: rgba(234, 234, 234, 0.63) rgba(0, 0, 0, 0.18);*/
+/*}*/
+
+/*.custom-scrollbar::-webkit-scrollbar {*/
+/*    width: 8px;*/
+/*    height: 8px;*/
+/*}*/
+
+/*.custom-scrollbar::-webkit-scrollbar-track {*/
+/*    background: rgba(0, 0, 0, 0.18);*/
+/*    border-radius: 4px;*/
+/*}*/
+
+/*.custom-scrollbar::-webkit-scrollbar-thumb {*/
+/*    background: rgb(234, 234, 234);*/
+/*    border-radius: 4px;*/
+/*    transition: background 0.2s ease;*/
+/*}*/
+
+/*.custom-scrollbar::-webkit-scrollbar-thumb:hover {*/
+/*    background: rgb(234, 234, 234);*/
+/*}*/
+
+/*.custom-scrollbar::-webkit-scrollbar-corner {*/
+/*    background: rgba(0, 0, 0, 0.18)*/
+/*}*/
