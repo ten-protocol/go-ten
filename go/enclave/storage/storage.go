@@ -104,9 +104,17 @@ func (s *storageImpl) StateDB() *state.CachingDB {
 }
 
 func (s *storageImpl) Close() error {
+	head, err := s.FetchHeadBatchHeader(context.Background())
+	if err != nil {
+		s.logger.Error("Failed to fetch head batch header", "err", err)
+	}
+	if err := s.trieDB.Journal(head.Root); err != nil {
+		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
+	}
+
 	s.cachingService.Stop()
-	s.preparedStatementCache.Clear()
-	s.trieDB.Close()
+	_ = s.preparedStatementCache.Clear()
+	_ = s.trieDB.Close()
 	return s.db.GetSQLDB().Close()
 }
 

@@ -238,19 +238,24 @@ func (br *batchRegistry) GetBatchAtHeight(ctx context.Context, height gethrpc.Bl
 	}
 	var batch *core.Batch
 	switch height {
+	// todo - we should probably not support this
 	case gethrpc.EarliestBlockNumber:
 		genesisBatch, err := br.storage.FetchBatchByHeight(ctx, 0)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve genesis rollup. Cause: %w", err)
 		}
 		batch = genesisBatch
-	// note: our API currently treats all these block statuses the same for obscuro batches
+	// note: our API currently treats all these block statuses the same for TEN batches
 	case gethrpc.SafeBlockNumber, gethrpc.FinalizedBlockNumber, gethrpc.LatestBlockNumber, gethrpc.PendingBlockNumber:
-		headBatch, err := br.storage.FetchBatchBySeqNo(ctx, br.HeadBatchSeq().Uint64())
+		headBatch, err := br.storage.FetchBatchHeaderBySeqNo(ctx, br.HeadBatchSeq().Uint64())
 		if err != nil {
 			return nil, fmt.Errorf("batch with requested height %d was not found. Cause: %w", height, err)
 		}
-		batch = headBatch
+		parent, err := br.storage.FetchBatch(ctx, headBatch.ParentHash)
+		if err != nil {
+			return nil, fmt.Errorf("parent batch with requested height %d was not found. Cause: %w", height, err)
+		}
+		batch = parent
 	default:
 		maybeBatch, err := br.storage.FetchBatchByHeight(ctx, uint64(height))
 		if err != nil {

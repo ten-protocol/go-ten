@@ -153,11 +153,19 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	blockContext := gethcore.NewEVMBlockContext(ethHeader, exec.chain, nil)
 	// sets TxKey.origin
 	vmenv := vm.NewEVM(blockContext, cleanState, exec.cc, vmCfg)
+
+	// Monitor the outer context and interrupt the EVM upon cancellation. To avoid
+	// a dangling goroutine until the outer estimation finishes, create an internal
+	// context for the lifetime of this method call.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	go func() {
+		<-ctx.Done()
+		vmenv.Cancel()
+	}()
+
 	result, err := gethcore.ApplyMessage(vmenv, msg, &gp)
-	// Follow the same error check structure as in geth
-	// 1 - vmError / stateDB err check
-	// 2 - evm.Cancelled()  todo (#1576) - support the ability to cancel function call if it takes too long
-	// 3 - error check the ApplyMessage
 
 	// Read the error stored in the database.
 	if vmerr := cleanState.Error(); vmerr != nil {

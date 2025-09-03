@@ -51,7 +51,7 @@ func TenCallExecute(builder *CallBuilder[CallParamsWithBlock, string], rpc *Encr
 
 	apiArgs := builder.Param.callParams
 	blkNumber := builder.Param.block
-	execResult, userErr, sysErr := rpc.chain.Call(builder.ctx, apiArgs, blkNumber)
+	execResult, userErr, sysErr := rpc.chain.ObsCallAtBlock(builder.ctx, apiArgs, blkNumber)
 	if sysErr != nil {
 		rpc.logger.Debug("Failed eth_call.", log.ErrKey, sysErr)
 		return sysErr

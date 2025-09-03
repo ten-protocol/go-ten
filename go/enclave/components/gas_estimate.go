@@ -122,8 +122,8 @@ func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi
 		return 0, nil, nil, userErr, nil
 	}
 
-	// Perform a single gas estimation pass using isGasEnough
-	failed, result, userErr, sysErr := ge.isGasEnough(ctx, args, allowance, blkNumber)
+	// Perform a single gas estimation pass using isNotEnoughGas
+	failed, result, userErr, sysErr := ge.isNotEnoughGas(ctx, args, allowance, blkNumber)
 	if sysErr != nil {
 		// Return zero values and the encountered error if estimation fails
 		return 0, nil, nil, nil, sysErr
@@ -260,8 +260,8 @@ func (ge *GasEstimator) normalizeFeeCapAndAdjustGasLimit(ctx context.Context, ar
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction
-// isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
-func (ge *GasEstimator) isGasEnough(ctx context.Context, args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error, common.SystemError) {
+// isNotEnoughGas returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
+func (ge *GasEstimator) isNotEnoughGas(ctx context.Context, args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(ge.logger, measure.NewStopwatch(), "enclave.go:IsGasEnough")
 	args.Gas = (*hexutil.Uint64)(&gas)
 	result, userErr, sysErr := ge.chain.ObsCallAtBlock(ctx, args, blkNumber)
@@ -270,6 +270,14 @@ func (ge *GasEstimator) isGasEnough(ctx context.Context, args *gethapi.Transacti
 	}
 
 	if userErr != nil {
+		// todo @siliev - do we need these?
+		//if errors.Is(userErr, gethcore.ErrIntrinsicGas) {
+		//	return true, nil, nil, nil // Special case, raise gas limit
+		//}
+		//if errors.Is(userErr, gethcore.ErrGasLimitTooHigh) {
+		//	return true, nil, nil, nil // Special case, lower gas limit
+		//}
+
 		return true, nil, userErr, nil
 	}
 

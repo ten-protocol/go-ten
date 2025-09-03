@@ -17,7 +17,6 @@ import (
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
-	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/enclave/evm"
 	"github.com/ten-protocol/go-ten/go/enclave/genesis"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -65,19 +64,6 @@ func (oc *tenChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommo
 	}
 
 	return (*hexutil.Big)(chainState.GetBalance(accountAddr).ToBig()), nil
-}
-
-func (oc *tenChain) Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError) {
-	result, userErr, sysErr := oc.ObsCallAtBlock(ctx, apiArgs, blockNumber)
-	if sysErr != nil {
-		oc.logger.Debug(fmt.Sprintf("Obs_Call: failed to execute contract %s.", apiArgs.To), log.CtrErrKey, sysErr.Error())
-		return nil, userErr, sysErr
-	}
-
-	if oc.logger.Enabled(context.Background(), gethlog.LevelTrace) {
-		oc.logger.Trace("Obs_Call successful", "result", hexutils.BytesToHex(result.ReturnData))
-	}
-	return result, userErr, sysErr
 }
 
 func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError) {
