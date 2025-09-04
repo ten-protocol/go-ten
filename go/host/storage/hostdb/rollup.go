@@ -231,9 +231,6 @@ func GetCrossChainMessagesTree(db HostDB, messageHash gethcommon.Hash) ([][]inte
 }
 
 func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereRollupHash)
-	orderQuery := " ORDER BY b.sequence DESC "
-
 	// TODO @will quick fix to unblock main
 	var paginationQuery string
 	driverName := db.GetSQLDB().DriverName()
@@ -243,16 +240,19 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.
 		// PostgreSQL uses $1, $2, $3,
 		paginationQuery = " LIMIT $2 OFFSET $3"
 	}
-	query := selectRollupBatches + reboundWhereQuery + orderQuery + paginationQuery
+	orderQuery := " ORDER BY b.sequence DESC "
+	query := selectRollupBatches + whereRollupHash + orderQuery + paginationQuery
+	countQuery := "SELECT COUNT(*) FROM rollup_host r JOIN batch_host b ON b.sequence BETWEEN r.start_seq AND r.end_seq" + whereRollupHash
 
-	countQuery := "SELECT COUNT(*) FROM rollup_host r JOIN batch_host b ON b.sequence BETWEEN r.start_seq AND r.end_seq" + reboundWhereQuery
+	reboundCountQuery := db.GetSQLDB().Rebind(countQuery)
+	reboundQuery := db.GetSQLDB().Rebind(query)
 	var total uint64
-	err := db.GetSQLDB().QueryRow(countQuery, rollupHash.Bytes()).Scan(&total)
+	err := db.GetSQLDB().QueryRow(reboundCountQuery, rollupHash.Bytes()).Scan(&total)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total count: %w", err)
 	}
 
-	rows, err := db.GetSQLDB().Query(query, rollupHash.Bytes(), int64(pagination.Size), int64(pagination.Offset))
+	rows, err := db.GetSQLDB().Query(reboundQuery, rollupHash.Bytes(), int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("query execution for select rollup batches failed: %w", err)
 	}
