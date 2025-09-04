@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
 	"math/rand"
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/CrossChainMessenger"
 	"github.com/ten-protocol/go-ten/contracts/generated/EthereumBridge"
