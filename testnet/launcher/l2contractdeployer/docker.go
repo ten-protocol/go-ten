@@ -51,15 +51,14 @@ func (n *ContractDeployer) Start() error {
 {
         "layer1" : {
             "url" : "%s",
-            "gasMultiplier" : 1.2,
             "useGateway" : false,
             "live" : false,
             "saveDeployments" : true,
-            "deploy": [ 
+            "deploy": [
                 "deployment_scripts/core",
                 "deployment_scripts/testnet/layer1"
             ],
-            "accounts": [ 
+            "accounts": [
                 "%s"
             ]
         },
@@ -69,12 +68,12 @@ func (n *ContractDeployer) Start() error {
             "live" : false,
             "saveDeployments" : true,
             "companionNetworks" : { "layer1" : "layer1" },
-            "deploy": [ 
+            "deploy": [
 				"deployment_scripts/funding/layer1",
                 "deployment_scripts/bridge/",
                 "deployment_scripts/testnet/layer2/"
             ],
-            "accounts": [ 
+            "accounts": [
                 "%s"
             ]
         }

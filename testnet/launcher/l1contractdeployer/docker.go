@@ -46,14 +46,13 @@ func (n *ContractDeployer) Start() error {
 		"SEQUENCER_HOST_ADDRESS": n.cfg.SequencerHostAddress,
 		"ETHERSCAN_API_KEY":      n.cfg.EtherscanAPIKey,
 		"NETWORK_JSON": fmt.Sprintf(`
-{ 
+{
         "layer1" : {
             "url" : "%s",
-            "gasMultiplier" : 1.2,
             "useGateway" : false,
             "live" : false,
             "saveDeployments" : true,
-            "deploy": [ 
+            "deploy": [
                 "deployment_scripts/core",
 				"deployment_scripts/testnet/layer1"
             ],
