@@ -75,7 +75,7 @@
       ]
     },
     "testUatObscuro": {
-      "chainId": 443,
+      "chainId": 8443,
       "url": "https://uat-testnet.ten.xyz/v1/",
       "useGateway": true,
       "companionNetworks" : {
