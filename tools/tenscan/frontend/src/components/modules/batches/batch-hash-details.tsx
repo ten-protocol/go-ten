@@ -11,11 +11,6 @@ import {
 } from "@repo/ui/lib/utils";
 import { Badge } from "@repo/ui/components/shared/badge";
 import Link from "next/link";
-import {
-  EyeClosedIcon,
-  EyeOpenIcon,
-} from "@repo/ui/components/shared/react-icons";
-import { Button } from "@repo/ui/components/shared/button";
 import Copy from "@repo/ui/components/common/copy";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import JSONPretty from "react-json-pretty";
@@ -214,29 +209,6 @@ export function BatchHashDetailsComponent({
             <>
               <div className="flex items-center space-x-2">
                 <TruncatedAddress address={batchDetails?.encryptedTxBlob} />
-                <Button
-                  className="text-sm font-bold leading-none hover:text-primary hover:bg-transparent"
-                  variant="ghost"
-                  onClick={handleDecryptToggle}
-                >
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger>
-                        {showDecryptedData ? (
-                          <EyeClosedIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer ml-2" />
-                        ) : (
-                          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer ml-2" />
-                        )}
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {showDecryptedData
-                          ? "Hide Encrypted Data"
-                          : "Show Encrypted Data"}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </Button>
-
                 {showDecryptedData && decryptedRollup && (
                   <TooltipProvider>
                     <Tooltip>

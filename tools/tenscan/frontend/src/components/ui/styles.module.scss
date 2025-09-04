@@ -1,0 +1,74 @@
+
+
+.input_container {
+  position: relative;
+
+  &:hover {
+    &::before {
+      inset: -2px;
+      border: rgba(255,255,255,.3) 1px solid;
+    }
+
+    &::before {
+      border-color: rgba(255, 255, 255, .3)
+    }
+  }
+
+  &:focus-within {
+    &::before {
+      inset: 0;
+      border: rgba(255,255,255,.7) 1px solid;
+    }
+
+    .focus_effect::before {
+      animation: gradientScan .5s ease-in-out;
+    }
+  }
+
+  &::before {
+    content: '';
+    pointer-events: none;
+    inset: -8px;
+    border: rgba(255,255,255,0) 1px solid;
+    position: absolute;
+    transition: .3s ease-in-out;
+  }
+}
+
+.focus_effect {
+  overflow: hidden;
+  z-index: 2;
+  position: absolute;
+  pointer-events: none;
+  inset: -2px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+            transparent 0%,
+            rgba(255, 255, 255, 0.2) 50%,
+            transparent 100%
+    );
+
+    opacity: 0;
+  }
+}
+
+@keyframes gradientScan {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}

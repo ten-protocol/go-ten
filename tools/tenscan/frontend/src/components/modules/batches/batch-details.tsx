@@ -11,20 +11,9 @@ import {
 import { Badge } from "@repo/ui/components/shared/badge";
 import { Batch } from "@/src/types/interfaces/BatchInterfaces";
 import Link from "next/link";
-import {
-  EyeClosedIcon,
-  EyeOpenIcon,
-} from "@repo/ui/components/shared/react-icons";
-import { Button } from "@repo/ui/components/shared/button";
 import { useRollupsService } from "@/src/services/useRollupsService";
 import JSONPretty from "react-json-pretty";
 import React, {useMemo, useState} from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@repo/ui/components/shared/tooltip";
 import { pageLinks } from "@/src/routes";
 import { pathToUrl } from "@/src/routes/router";
 
@@ -193,36 +182,6 @@ export function BatchDetailsComponent({
             <>
               <div className="flex items-center space-x-2">
                 <TruncatedAddress address={batchDetails?.encryptedTxBlob} />{" "}
-                <Button
-                  className="text-sm font-bold leading-none hover:text-primary hover:bg-transparent"
-                  variant="ghost"
-                  onClick={() => {
-                    decryptEncryptedData({
-                      StrData: batchDetails?.encryptedTxBlob,
-                    });
-                    setShowDecryptedData(!showDecryptedData);
-                  }}
-                >
-                  {showDecryptedData && decryptedRollup ? (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <EyeClosedIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer ml-2" />
-                        </TooltipTrigger>
-                        <TooltipContent>Hide Encrypted Data</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  ) : (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger>
-                          <EyeOpenIcon className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer ml-2" />
-                        </TooltipTrigger>
-                        <TooltipContent>Show Encrypted Data</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </Button>
               </div>
               {decryptedRollup && showDecryptedData ? (
                 <>

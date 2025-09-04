@@ -6,7 +6,13 @@ module.exports = {
     "./src/components/**/*.{ts,tsx}",
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
-    "../../../packages/ui/**/*.{js,ts,jsx,tsx,mdx}",
+    "../../../packages/ui/components/**/*.{js,ts,jsx,tsx}",
+    "../../../packages/ui/lib/**/*.{js,ts,jsx,tsx}",
+    "../../../packages/ui/hooks/**/*.{js,ts,jsx,tsx}",
+    "../../../packages/ui/stores/**/*.{js,ts,jsx,tsx}",
+    "../../../packages/ui/services/**/*.{js,ts,jsx,tsx}",
+    "../../../packages/ui/routes/**/*.{js,ts,jsx,tsx}",
+    "../../../packages/ui/api/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     container: {

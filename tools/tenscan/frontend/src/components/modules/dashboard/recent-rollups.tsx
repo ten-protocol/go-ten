@@ -1,34 +1,51 @@
 import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { formatTimeAgo } from "@repo/ui/lib/utils";
-import { Avatar, AvatarFallback } from "@repo/ui/components/shared/avatar";
 import { Rollup } from "@/src/types/interfaces/RollupInterfaces";
 import { pathToUrl } from "@/src/routes/router";
 import { pageLinks } from "@/src/routes";
+import GlitchTextAnimation from "@/src/components/GlitchTextAnimation";
+import { RecentItemsList } from "./recent-items-list";
 
 export function RecentRollups({ rollups }: { rollups: any }) {
-  return (
-    <div className="space-y-8">
-      {rollups?.result?.RollupsData?.map((rollup: Rollup, i: number) => (
-        <div className="flex items-center" key={i}>
-          <Avatar className="h-9 w-9">
-            <AvatarFallback>RP</AvatarFallback>
-          </Avatar>
-          <div className="ml-4 space-y-1">
-            <p className="text-sm font-medium leading-none">
-              #{Number(rollup?.ID)}
-            </p>
-            <p className="text-sm text-muted-foreground word-break-all">
-              {formatTimeAgo(rollup?.Timestamp)}
-            </p>
-          </div>
-          <div className="ml-auto font-medium min-w-[140px]">
-            <TruncatedAddress
-              address={rollup?.Hash}
-              link={pathToUrl(pageLinks.rollupByHash, { hash: rollup?.Hash })}
-            />
-          </div>
-        </div>
-      ))}
+  const renderRollupItem = (rollup: Rollup, isNewItem: boolean) => (
+    <>
+      <div className="ml-4 space-y-1 relative z-10">
+        <p className="text-sm font-medium leading-none">
+          <GlitchTextAnimation text={`#${Number(rollup?.ID)}`} hover={false} active={isNewItem} onView={false} />
+        </p>
+        <p className="text-sm text-muted-foreground word-break-all">
+          <GlitchTextAnimation text={formatTimeAgo(rollup?.Timestamp)} hover={false} active={isNewItem} onView={false} />
+        </p>
+      </div>
+      <div className="ml-auto font-medium min-w-[140px] relative z-10" onClick={(e) => e.stopPropagation()}>
+        <TruncatedAddress
+          address={rollup?.Hash}
+          animate={isNewItem}
+          AnimationComponent={GlitchTextAnimation}
+          showPopover={false}
+        />
+      </div>
+    </>
+  );
+
+  const headers = (
+    <div className="flex items-center text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="ml-2 flex-1">
+        <span>Rollup</span>
+      </div>
+      <div className="min-w-[140px] text-right mr-8">
+        <span>Hash</span>
+      </div>
     </div>
+  );
+
+  return (
+    <RecentItemsList
+      items={rollups?.result?.RollupsData || []}
+      getItemId={(rollup: Rollup) => rollup.ID.toString()}
+      getItemLink={(rollup: Rollup) => pathToUrl(pageLinks.rollupByHash, { hash: rollup?.Hash })}
+      renderItem={renderRollupItem}
+      headers={headers}
+    />
   );
 }

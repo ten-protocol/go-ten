@@ -17,6 +17,9 @@ export const apiRoutes = {
   getContractCount: "/count/contracts/",
   getVerifiedContracts: "/info/obscuro/",
 
+  // **** SEARCH ****
+  getSearchResults: "/items/search/",
+
   // **** TRANSACTIONS ****
   getTransactions: "/items/transactions/",
   getTransactionCount: "/count/transactions/",
