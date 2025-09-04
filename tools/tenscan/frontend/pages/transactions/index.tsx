@@ -22,12 +22,9 @@ export default function Transactions() {
     Total: 0,
   };
 
-  const firstBatchHeight = getItem(TransactionsData, "BatchHeight");
-  const lastBatchHeight = getItem(
-    TransactionsData,
-    "BatchHeight",
-    ItemPosition.LAST
-  );
+ const firstBatchHeight = TransactionsData?.[0]?.BatchHeight
+ const lastBatchHeight =
+   TransactionsData?.[TransactionsData.length - 1]?.BatchHeight
 
   return (
     <>
