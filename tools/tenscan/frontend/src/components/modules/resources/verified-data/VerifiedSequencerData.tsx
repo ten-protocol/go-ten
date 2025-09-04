@@ -22,7 +22,7 @@ export default function VerifiedSequencerData() {
   const { sequencerData } = useContractsService();
 
   return (
-    <Card className="bg-transparent">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>Verified Sequencer Data</CardTitle>
       </CardHeader>

@@ -39,12 +39,11 @@ const TruncatedAddress = ({
   showPopover?: boolean;
 }) => {
   const [isOpen, setIsOpen] = React.useState(false);
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   if (!address) {
     return <span>-</span>;
   }
-
-  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   // should show full address only on desktop if showFullLength is true; otherwise show truncated version
   const shouldShowFullAddress = isDesktop && showFullLength;
