@@ -76,7 +76,8 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	// Open trie database with provided config
-	trieDB := triedb.NewDatabase(backingDB, triedb.VerkleDefaults)
+	trieDB := triedb.NewDatabase(backingDB, triedb.HashDefaults)
+	// trieDB := triedb.NewDatabase(backingDB, triedb.VerkleDefaults) - todo VERKLE
 
 	// todo - figure out the snapshot tree
 	stateDB := state.NewDatabase(trieDB, nil)
@@ -104,13 +105,14 @@ func (s *storageImpl) StateDB() *state.CachingDB {
 }
 
 func (s *storageImpl) Close() error {
-	head, err := s.FetchHeadBatchHeader(context.Background())
-	if err != nil {
-		s.logger.Error("Failed to fetch head batch header", "err", err)
-	}
-	if err := s.trieDB.Journal(head.Root); err != nil {
-		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
-	}
+	// todo - VERKLE
+	//head, err := s.FetchHeadBatchHeader(context.Background())
+	//if err != nil {
+	//	s.logger.Error("Failed to fetch head batch header", "err", err)
+	//}
+	//if err := s.trieDB.Journal(head.Root); err != nil {
+	//	s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
+	//}
 
 	s.cachingService.Stop()
 	_ = s.preparedStatementCache.Clear()
@@ -482,7 +484,8 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	defer s.logDuration("EmptyStateDB", measure.NewStopwatch())
-	statedb, err := state.New(types.EmptyVerkleHash, state.NewDatabase(s.trieDB, nil))
+	// statedb, err := state.New(types.EmptyVerkleHash, state.NewDatabase(s.trieDB, nil)) - todo VERKLE
+	statedb, err := state.New(types.EmptyRootHash, state.NewDatabase(s.trieDB, nil))
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}

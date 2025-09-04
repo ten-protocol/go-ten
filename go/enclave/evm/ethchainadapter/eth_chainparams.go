@@ -1,6 +1,7 @@
 package ethchainadapter
 
 import (
+	"math"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -11,6 +12,7 @@ import (
 // TEN should typically be on the last fork version
 func ChainParams(obscuroChainID *big.Int) *params.ChainConfig {
 	zeroTimestamp := uint64(0)
+	maxTimestamp := uint64(math.MaxUint64)
 
 	// Initialise the database
 	return &params.ChainConfig{
@@ -31,7 +33,7 @@ func ChainParams(obscuroChainID *big.Int) *params.ChainConfig {
 		CancunTime:   &zeroTimestamp,
 		ShanghaiTime: &zeroTimestamp,
 		PragueTime:   &zeroTimestamp,
-		VerkleTime:   &zeroTimestamp,
-		OsakaTime:    &zeroTimestamp,
+		VerkleTime:   &maxTimestamp, // todo VERKLE - zeroTimestamp,
+		OsakaTime:    &maxTimestamp, // todo VERKLE - zeroTimestamp,
 	}
 }
