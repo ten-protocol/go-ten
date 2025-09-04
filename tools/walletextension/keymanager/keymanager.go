@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/edgelesssys/ego/enclave"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -45,7 +47,7 @@ type KeyExchangeResponse struct {
 // - If no encryptionKeySource is provided, attempt to unseal an existing encryption key.
 // - If the encryptionKeySource is set to "new", check for an existing encryption key and generate a new one if not found.
 // - If an encryptionKeySource is a URL, first try to unseal an existing encryption key, and only perform key exchange if unsealing fails.
-// - If a new key is generated or obtained, seal it for future use.
+// - If a new key is generated or obtained, seal it for future use (existing key will be backed up with timestamp).
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
 	// check if we are using sqlite database and no encryption key needed
 	if config.DBType == "sqlite" {
@@ -109,7 +111,7 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	}
 
 	// Seal the key that we generated / got from the key exchange from another enclave
-	err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave)
+	err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave, logger)
 	if err != nil {
 		logger.Crit("unable to seal encryption key", log.ErrKey, err)
 		return nil, err
@@ -136,12 +138,59 @@ func tryUnsealKey(keyPath string, isEnclave bool) ([]byte, bool, error) {
 	return data, true, nil
 }
 
+// backupExistingKey creates a timestamped backup of an existing key file
+func backupExistingKey(keyPath string, logger gethlog.Logger) error {
+	// Check if the key file exists
+	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+		// No existing key file to backup
+		return nil
+	}
+
+	// Create backup filename with timestamp
+	timestamp := time.Now().Format("20060102_150405")
+	backupPath := fmt.Sprintf("%s.backup_%s", keyPath, timestamp)
+
+	// Copy the existing file to backup location
+	if err := copyFile(keyPath, backupPath); err != nil {
+		logger.Warn("failed to backup existing encryption key", "error", err)
+		return err
+	}
+
+	logger.Info("backed up existing encryption key", "backup_path", backupPath)
+	return nil
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	return err
+}
+
 // trySealKey attempts to seal an encryption key to disk
 // Only seals if running in an SGX enclave
-func trySealKey(key []byte, keyPath string, isEnclave bool) error {
+// If an existing key file exists, it will be backed up before overwriting
+func trySealKey(key []byte, keyPath string, isEnclave bool, logger gethlog.Logger) error {
 	// Only attempt sealing if we're in an SGX enclave
 	if !isEnclave {
 		return nil
+	}
+
+	// Backup existing key file if it exists
+	if err := backupExistingKey(keyPath, logger); err != nil {
+		// Log warning but continue - backup failure shouldn't prevent key sealing
+		logger.Warn("failed to backup existing key, proceeding with new key", "error", err)
 	}
 
 	// Seal and persist the key to /data/encryption.key
