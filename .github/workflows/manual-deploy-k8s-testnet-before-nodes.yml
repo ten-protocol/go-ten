@@ -109,9 +109,6 @@ jobs:
         shell: bash
         env:
           DOCKER_API_VERSION: "1.45"
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
           DEPLOY_NETWORKNAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
           DEPLOY_GITHUBPAT: ${{ secrets.DEPLOY_ACTIONS_PAT }}
