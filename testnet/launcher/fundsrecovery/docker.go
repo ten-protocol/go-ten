@@ -38,14 +38,13 @@ func (n *FundsRecovery) Start() error {
 {
         "layer1" : {
             "url" : "%s",
-            "gasMultiplier" : 1.2,
             "useGateway" : false,
             "live" : false,
             "saveDeployments" : true,
-            "deploy": [ 
+            "deploy": [
                 "deployment_scripts/testnet/recoverfunds"
             ],
-            "accounts": [ 
+            "accounts": [
                 "%s"
             ]
         }

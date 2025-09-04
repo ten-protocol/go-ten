@@ -49,10 +49,9 @@ func (s *GrantSequencers) Start() error {
 	}
 
 	envs := map[string]string{
-		"NETWORK_JSON": fmt.Sprintf(`{ 
+		"NETWORK_JSON": fmt.Sprintf(`{
             "layer1": {
                 "url": "%s",
-                "gasMultiplier": 1.2,
                 "useGateway": false,
                 "live": false,
                 "saveDeployments": true,
