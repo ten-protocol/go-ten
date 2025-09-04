@@ -2,7 +2,9 @@ package simulation
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
 	"math/rand"
 	"strings"
@@ -345,7 +347,7 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		}
 		proof, err = ti.rpcHandles.TenWalletRndClient(fromWallet).GetCrossChainProof(ti.ctx, "m", mtree[0][1].(gethcommon.Hash))
 		if err != nil {
-			if strings.Contains(err.Error(), "j found") {
+			if errors.Is(err, errutil.ErrNotFound) {
 				ti.logger.Info("Proof not found, retrying...", log.ErrKey, err)
 				time.Sleep(1 * time.Second)
 				continue
