@@ -60,7 +60,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 		if err != nil {
 			return 0, 0, nil, fmt.Errorf("failed to fetch batch header: %w", err)
 		}
-		// todo - VERKLE - there seems to be a bug and gas estimation leaks into the state commited as part of the next batch
+		// todo - VERKLE - there seems to be a bug and gas estimation leaks into the state committed as part of the next batch
 		//parentBatch, err := ge.storage.FetchBatchHeader(ctx, headBatch.ParentHash)
 		//if err != nil {
 		//	return 0, 0, nil, fmt.Errorf("failed to fetch parent batch: %w", err)
