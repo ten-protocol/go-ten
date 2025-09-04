@@ -410,7 +410,7 @@ func testSessionKeysSendTransaction(t *testing.T, _ int, httpURL, wsURL string, 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "session key address")
 	require.Contains(t, err.Error(), "not found")
-	t.Logf("✓ eth_sendTransaction correctly failed with non-session key address")
+	t.Logf("✓ eth_sendTransaction correctly rejected with non-session key address")
 
 	// 5) Delete the session key via getStorageAt (CQ 0x...0004)
 	delParamsObj := map[string]string{
