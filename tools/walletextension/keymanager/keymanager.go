@@ -42,9 +42,9 @@ type KeyExchangeResponse struct {
 
 // GetEncryptionKey returns the encryption key for the database
 // - If we use an SQLite database, no encryption key is needed as SQLite typically runs in development or testing environments.
-// - If an encryptionKeySource is provided, attempt to obtain the encryption key from the specified source.
-// - If the encryptionKeySource is set to "new", check for an existing encryption key and generate a new one if not found.
 // - If no encryptionKeySource is provided, attempt to unseal an existing encryption key.
+// - If the encryptionKeySource is set to "new", check for an existing encryption key and generate a new one if not found.
+// - If an encryptionKeySource is a URL, first try to unseal an existing encryption key, and only perform key exchange if unsealing fails.
 // - If a new key is generated or obtained, seal it for future use.
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
 	// check if we are using sqlite database and no encryption key needed
@@ -87,13 +87,24 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 			}
 		}
 	} else {
-		// Attempt to perform key exchange with the specified key provider.
-		// This step is crucial, and the process should fail if the key exchange is not successful.
-		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
-		encryptionKey, err = HandleKeyExchange(config, logger)
+		// First try to unseal an existing encryption key before attempting key exchange
+		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', first trying to unseal existing encryption key", config.EncryptionKeySource))
+		var found bool
+		encryptionKey, found, err = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
 		if err != nil {
-			logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
-			return nil, err
+			logger.Warn("failed to unseal existing encryption key", "error", err)
+		}
+		if found {
+			logger.Info("successfully unsealed existing encryption key")
+		} else {
+			// Attempt to perform key exchange with the specified key provider.
+			// This step is crucial, and the process should fail if the key exchange is not successful.
+			logger.Info(fmt.Sprintf("no existing encryption key found, trying to get encryption key from key provider at '%s'", config.EncryptionKeySource))
+			encryptionKey, err = HandleKeyExchange(config, logger)
+			if err != nil {
+				logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
+				return nil, err
+			}
 		}
 	}
 
