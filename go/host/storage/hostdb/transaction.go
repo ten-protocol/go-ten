@@ -4,8 +4,9 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"math/big"
+
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
