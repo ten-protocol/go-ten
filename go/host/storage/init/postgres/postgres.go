@@ -81,6 +81,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 	return db, nil
 }
 
+// registerPanicOnConnectionRefusedDriver registers the custom driver
 func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 	driverName := "pg-panic-on-unexpected-err"
 

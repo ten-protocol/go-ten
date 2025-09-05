@@ -40,13 +40,13 @@ func TestSearchByRollupAndBatchHash(t *testing.T) {
 	rollup := createRollup(batchNumber-10, batchNumber)
 	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 	dbtx, _ := db.NewDBTransaction()
-	err = AddBlock(dbtx.Tx, db.GetSQLStatement(), block.Header())
+	err = AddBlock(dbtx.Tx, db.GetSQLDB(), block.Header())
 	if err != nil {
 		t.Errorf("could not store block. Cause: %s", err)
 	}
 	dbtx.Write()
 	dbtx, _ = db.NewDBTransaction()
-	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup, &common.ExtRollupMetadata{}, &metadata, block.Header())
+	err = AddRollup(dbtx, db, &rollup, &common.ExtRollupMetadata{}, &metadata, block.Header())
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
@@ -56,7 +56,7 @@ func TestSearchByRollupAndBatchHash(t *testing.T) {
 	txHashes := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne"))}
 	batch := CreateBatch(batchNumber, txHashes)
 	dbtx, _ = db.NewDBTransaction()
-	err = AddBatch(dbtx, db.GetSQLStatement(), &batch)
+	err = AddBatch(dbtx, db, &batch)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -120,7 +120,7 @@ func TestSearchByTransactionHash(t *testing.T) {
 	txHashes := []common.L2TxHash{txHash}
 	batch := CreateBatch(batchNumber, txHashes)
 	dbtx, _ := db.NewDBTransaction()
-	err = AddBatch(dbtx, db.GetSQLStatement(), &batch)
+	err = AddBatch(dbtx, db, &batch)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -168,7 +168,7 @@ func TestSearchByNumber(t *testing.T) {
 	txHashes := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne"))}
 	batch := CreateBatchWithDiffHeight(batchNumber, batchNumber+100, txHashes)
 	dbtx, _ := db.NewDBTransaction()
-	err = AddBatch(dbtx, db.GetSQLStatement(), &batch)
+	err = AddBatch(dbtx, db, &batch)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}
@@ -225,7 +225,7 @@ func TestAmbiguousSearch(t *testing.T) {
 	txHashes := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne"))}
 	batch := CreateBatchWithDiffHeight(batchNumber, 100, txHashes)
 	dbtx, _ := db.NewDBTransaction()
-	err = AddBatch(dbtx, db.GetSQLStatement(), &batch)
+	err = AddBatch(dbtx, db, &batch)
 	if err != nil {
 		t.Errorf("could not store batch. Cause: %s", err)
 	}

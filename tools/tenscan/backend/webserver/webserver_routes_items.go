@@ -250,13 +250,13 @@ func (w *WebServer) getBlockListing(c *gin.Context) {
 		return
 	}
 
-	batchesListing, err := w.backend.GetBlockListing(offset, size)
+	blockListing, err := w.backend.GetBlockListing(offset, size)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute getBlockListing request %w", err), w.logger)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"result": batchesListing})
+	c.JSON(http.StatusOK, gin.H{"result": blockListing})
 }
 
 func (w *WebServer) getRollup(c *gin.Context) {
