@@ -49,6 +49,14 @@ func (g Genesis) CommitGenesisState(storage storage.Storage) error {
 	if err != nil {
 		return err
 	}
+
+	// todo - VERKLE
+	//if root != (gethcommon.Hash{}) {
+	//	if err := storage.TrieDB().Commit(root, true); err != nil {
+	//		return err
+	//	}
+	//}
+
 	return nil
 }
 

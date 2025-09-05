@@ -89,7 +89,7 @@ type StorageResult struct {
 }
 
 func (api *BlockChainAPI) GetProof(ctx context.Context, address gethcommon.Address, storageKeys []string, blockNrOrHash rpc.BlockNumberOrHash) (*AccountResult, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }
 
 func (api *BlockChainAPI) GetHeaderByNumber(ctx context.Context, number rpc.BlockNumber) (map[string]interface{}, error) {
@@ -286,7 +286,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 }
 
 func (api *BlockChainAPI) GetBlockReceipts(ctx context.Context, blockNrOrHash rpc.BlockNumberOrHash) ([]map[string]interface{}, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }
 
 type OverrideAccount struct {
@@ -391,7 +391,7 @@ type accessListResult struct {
 }
 
 func (api *BlockChainAPI) CreateAccessList(ctx context.Context, args gethapi.TransactionArgs, blockNrOrHash *rpc.BlockNumberOrHash) (*accessListResult, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }
 
 func extractAddressFromParams(params any, fieldName string) (*gethcommon.Address, error) {

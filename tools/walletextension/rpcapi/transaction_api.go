@@ -158,7 +158,7 @@ type SignTransactionResult struct {
 }
 
 func (s *TransactionAPI) FillTransaction(ctx context.Context, args gethapi.TransactionArgs) (*SignTransactionResult, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }
 
 func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.Bytes) (common.Hash, error) {
@@ -166,7 +166,7 @@ func (s *TransactionAPI) SendRawTransaction(ctx context.Context, input hexutil.B
 }
 
 func (s *TransactionAPI) PendingTransactions() ([]*rpc.RpcTransaction, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }
 
 func (s *TransactionAPI) Resend(ctx context.Context, sendArgs gethapi.TransactionArgs, gasPrice *hexutil.Big, gasLimit *hexutil.Uint64) (common.Hash, error) {

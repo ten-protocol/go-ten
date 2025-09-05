@@ -53,5 +53,5 @@ func (api *EthereumAPI) FeeHistory(ctx context.Context, blockCount math.HexOrDec
 }
 
 func (api *EthereumAPI) Syncing() (interface{}, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }

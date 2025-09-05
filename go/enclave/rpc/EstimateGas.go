@@ -51,14 +51,9 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	}
 
 	txArgs := builder.Param.callParams
-	headBatchSeq := rpc.registry.HeadBatchSeq()
-	batch, err := rpc.storage.FetchBatchHeaderBySeqNo(builder.ctx, headBatchSeq.Uint64())
-	if err != nil {
-		return fmt.Errorf("failed to fetch batch header: %w", err)
-	}
 
-	ge := components.NewGasEstimator(rpc.storage, rpc.chain, rpc.gasOracle, rpc.gasPricer, rpc.logger)
-	totalCost, _, userErr, sysErr := ge.EstimateTotalGas(builder.ctx, txArgs, builder.Param.block, batch, rpc.config.GasLocalExecutionCapFlag)
+	ge := components.NewGasEstimator(rpc.storage, rpc.registry, rpc.chain, rpc.gasOracle, rpc.gasPricer, rpc.logger)
+	totalCost, _, userErr, sysErr := ge.EstimateTotalGas(builder.ctx, txArgs, *builder.Param.block, rpc.config.GasLocalExecutionCapFlag)
 
 	if sysErr != nil {
 		return fmt.Errorf("system error during gas estimation: %w", sysErr)

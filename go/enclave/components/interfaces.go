@@ -187,9 +187,6 @@ type TENChain interface {
 	// GetBalanceAtBlock - will return the balance of a specific address at the specific given block number (batch number).
 	GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error)
 
-	// Call - The interface for executing eth_call RPC commands against obscuro.
-	Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError)
-
 	// ObsCallAtBlock - Execute eth_call RPC against obscuro for a specific block (batch) number.
 	ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError)
 }

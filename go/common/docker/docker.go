@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
+	cerrdefs "github.com/containerd/errdefs"
 	dockerimage "github.com/docker/docker/api/types/image"
-
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/volume"
 
@@ -35,7 +35,7 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 	_, err = cli.ImageInspect(context.Background(), image)
 	if err != nil {
 		// unexpected error
-		if !client.IsErrNotFound(err) {
+		if !cerrdefs.IsNotFound(err) {
 			return "", err
 		}
 

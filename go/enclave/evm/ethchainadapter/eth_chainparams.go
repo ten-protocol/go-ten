@@ -12,6 +12,7 @@ import (
 // TEN should typically be on the last fork version
 func ChainParams(obscuroChainID *big.Int) *params.ChainConfig {
 	zeroTimestamp := uint64(0)
+	// the forks with this timestamp are not enabled because the current time is always < MaxUint64
 	maxTimestamp := uint64(math.MaxUint64)
 
 	// Initialise the database
@@ -33,6 +34,7 @@ func ChainParams(obscuroChainID *big.Int) *params.ChainConfig {
 		CancunTime:   &zeroTimestamp,
 		ShanghaiTime: &zeroTimestamp,
 		PragueTime:   &zeroTimestamp,
-		VerkleTime:   &maxTimestamp,
+		VerkleTime:   &maxTimestamp, // todo VERKLE - zeroTimestamp,
+		OsakaTime:    &maxTimestamp, // todo VERKLE - zeroTimestamp,
 	}
 }

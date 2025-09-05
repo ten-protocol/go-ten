@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 
 	"github.com/ethereum/go-ethereum/core/tracing"
@@ -199,7 +200,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(_ context.Context, messa
 		tx := &types.LegacyTx{
 			Nonce:    startingNonce + uint64(idx),
 			Value:    gethcommon.Big0,
-			Gas:      5_000_000,
+			Gas:      params.MaxTxGas,
 			GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 			Data:     data,
 			To:       m.messageBusAddress,

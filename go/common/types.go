@@ -13,15 +13,14 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/ethereum/go-ethereum/params"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/contracts/generated/MessageBus"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
 type (
-	StateRoot = common.Hash
-	TxHash    = common.Hash
+	StateRoot = gethcommon.Hash
+	TxHash    = gethcommon.Hash
 
 	// EncryptedSubscriptionLogs - Alias for the event subscription updates going
 	// out of the enclave.
@@ -36,35 +35,35 @@ type (
 	}
 
 	// MainNet aliases
-	L1Address     = common.Address
-	L1BlockHash   = common.Hash
+	L1Address     = gethcommon.Address
+	L1BlockHash   = gethcommon.Hash
 	L1Transaction = types.Transaction
 	L1Receipt     = types.Receipt
 	L1Receipts    = types.Receipts
 
 	// L1 addresses
-	NetworkConfigAddress         = common.Address
-	CrossChainAddress            = common.Address
-	EnclaveRegistryAddress       = common.Address
-	DARegistryAddress            = common.Address
-	L1MessageBusAddress          = common.Address
-	L1BridgeAddress              = common.Address
-	L1CrossChainMessengerAddress = common.Address
+	NetworkConfigAddress         = gethcommon.Address
+	CrossChainAddress            = gethcommon.Address
+	EnclaveRegistryAddress       = gethcommon.Address
+	DARegistryAddress            = gethcommon.Address
+	L1MessageBusAddress          = gethcommon.Address
+	L1BridgeAddress              = gethcommon.Address
+	L1CrossChainMessengerAddress = gethcommon.Address
 
 	// L2 addresses
-	L2BridgeAddress                 = common.Address
-	L2CrossChainMessengerAddress    = common.Address
-	L2MessageBusAddress             = common.Address
-	TransactionPostProcessorAddress = common.Address
-	SystemContractsUpgraderAddress  = common.Address
+	L2BridgeAddress                 = gethcommon.Address
+	L2CrossChainMessengerAddress    = gethcommon.Address
+	L2MessageBusAddress             = gethcommon.Address
+	TransactionPostProcessorAddress = gethcommon.Address
+	SystemContractsUpgraderAddress  = gethcommon.Address
 
 	// Local Obscuro aliases
-	L2BatchHash              = common.Hash
-	L2RollupHash             = common.Hash
-	L2TxHash                 = common.Hash
+	L2BatchHash              = gethcommon.Hash
+	L2RollupHash             = gethcommon.Hash
+	L2TxHash                 = gethcommon.Hash
 	L2Tx                     = types.Transaction
 	L2Transactions           = types.Transactions
-	L2Address                = common.Address
+	L2Address                = gethcommon.Address
 	L2Receipt                = types.Receipt
 	L2Receipts               = types.Receipts
 	SerializedCrossChainTree = []byte
@@ -81,8 +80,8 @@ type (
 	CrossChainMessage  MessageBus.StructsCrossChainMessage
 	CrossChainMessages []CrossChainMessage
 	ValueTransferEvent struct {
-		Sender   common.Address
-		Receiver common.Address
+		Sender   gethcommon.Address
+		Receiver gethcommon.Address
 		Amount   *big.Int
 		Sequence uint64
 	}
@@ -97,7 +96,7 @@ type (
 	EncodedBatchRequest            []byte
 	EncodedBlobHashes              []byte
 
-	EnclaveID = common.Address
+	EnclaveID = gethcommon.Address
 
 	// RollupSignature represents a signature over a rollup's composite hash
 	RollupSignature = []byte
@@ -109,11 +108,11 @@ type (
 	}
 )
 
-func (c CrossChainMessage) IsValueTransfer(bridgeAuthority common.Address) bool {
+func (c CrossChainMessage) IsValueTransfer(bridgeAuthority gethcommon.Address) bool {
 	return c.Sender == bridgeAuthority
 }
 
-func (c CrossChainMessages) FilterValueTransfers(bridgeAuthority common.Address) CrossChainMessages {
+func (c CrossChainMessages) FilterValueTransfers(bridgeAuthority gethcommon.Address) CrossChainMessages {
 	ret := make(CrossChainMessages, 0)
 	for _, msg := range c {
 		if msg.IsValueTransfer(bridgeAuthority) {
@@ -123,8 +122,8 @@ func (c CrossChainMessages) FilterValueTransfers(bridgeAuthority common.Address)
 	return ret
 }
 
-// FailedDecryptErr - when the TEN enclave fails to decrypt an RPC request
-var FailedDecryptErr = errors.New("failed to decrypt RPC payload. please use the correct enclave key")
+// ErrFailedDecrypt - when the TEN enclave fails to decrypt an RPC request
+var ErrFailedDecrypt = errors.New("failed to decrypt RPC payload. please use the correct enclave key")
 
 // EncryptedRPCRequest - an encrypted request with extra plaintext metadata
 type EncryptedRPCRequest struct {
@@ -147,10 +146,10 @@ const (
 	L2GenesisSeqNo            = uint64(1)
 	L2SysContractGenesisSeqNo = uint64(2)
 
-	SyntheticTxGasLimit = params.MaxGasLimit
+	SyntheticTxGasLimit = params.MaxTxGas
 )
 
-var GethGenesisParentHash = common.Hash{}
+var GethGenesisParentHash = gethcommon.Hash{}
 
 // SystemError is the interface for the internal errors generated in the Enclave and consumed by the Host
 type SystemError interface {
@@ -159,10 +158,10 @@ type SystemError interface {
 
 // AttestationReport represents a signed attestation report from a TEE and some metadata about the source of it to verify it
 type AttestationReport struct {
-	Report      []byte         // the signed bytes of the report which includes some encrypted identifying data
-	PubKey      []byte         // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
-	EnclaveID   common.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
-	HostAddress string         // the IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
+	Report      []byte             // the signed bytes of the report which includes some encrypted identifying data
+	PubKey      []byte             // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
+	EnclaveID   gethcommon.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
+	HostAddress string             // the IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
 }
 
 type (
@@ -239,7 +238,7 @@ func (cf *ChainFork) String() string {
 }
 
 func MaskedSender(address L2Address) L2Address {
-	return common.BigToAddress(big.NewInt(0).Sub(address.Big(), big.NewInt(1)))
+	return gethcommon.BigToAddress(big.NewInt(0).Sub(address.Big(), big.NewInt(1)))
 }
 
 type SystemContractAddresses map[string]*gethcommon.Address

@@ -314,6 +314,7 @@ func (s *Simulation) deployPublicCallbacksTest() {
 	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, s.Params.Wallets.L2FaucetWallet))
 	auth.GasPrice = gasPrice
 	auth.Context = s.ctx
+	auth.GasLimit = gethparams.MaxTxGas
 	auth.Value = big.NewInt(0).Mul(big.NewInt(1), big.NewInt(gethparams.Ether))
 
 	_, tx, instance, err := PublicCallbacksTest.DeployPublicCallbacksTest(auth, rpcClient, publicCallbacksAddress)
@@ -377,6 +378,7 @@ func (s *Simulation) deployTenZen() {
 	owner := s.Params.Wallets.L2FaucetWallet
 	ownerRpc := s.RPCHandles.TenWalletClient(owner.Address(), 1)
 	auth.GasPrice = gasPrice
+	auth.GasLimit = gethparams.MaxTxGas
 	auth.Context = context.Background()
 	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
 

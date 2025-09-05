@@ -3,6 +3,7 @@ package system
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -18,7 +19,7 @@ func GenerateDeploymentTransaction(initCode []byte, nonce uint64, logger gethlog
 	tx := &types.LegacyTx{
 		Nonce:    nonce,
 		Value:    gethcommon.Big0,
-		Gas:      20_000_000,      // It's quite the expensive contract.
+		Gas:      params.MaxTxGas, // It's quite the expensive contract.
 		GasPrice: gethcommon.Big0, // Synthetic transactions are on the house. Or the house.
 		Data:     initCode,        // gethcommon.FromHex(SystemDeployer.SystemDeployerMetaData.Bin),
 		To:       nil,             // Geth requires nil instead of gethcommon.Address{} which equates to zero address in order to return receipt.

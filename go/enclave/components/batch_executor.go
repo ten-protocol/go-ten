@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	gethcore "github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 
@@ -29,7 +30,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	smt "github.com/FantasyJony/openzeppelin-merkle-tree-go/standard_merkle_tree"
-	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -129,7 +129,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 	// We already rely on the database to prevent it, but there could be some races in extreme conditions.
 	// To be absolutely sure, we implement a second mechanism.
 	if executor.lastExecutedBatch >= ec.SequencerNo.Uint64() {
-		return nil, fmt.Errorf("batch %d already executed. should not happen.", ec.SequencerNo.Uint64())
+		return nil, fmt.Errorf("batch %d already executed. should not happen", ec.SequencerNo.Uint64())
 	}
 
 	ec.ctx = ctx
@@ -351,7 +351,7 @@ func (executor *batchExecutor) extractFeesAddressFromPhase1(phase1Result core.Tx
 
 	feesAddr := addresses["Fees"]
 	if feesAddr == nil {
-		return gethcommon.Address{}, fmt.Errorf("Fees address not found in phase 1 deployment")
+		return gethcommon.Address{}, fmt.Errorf("fees address not found in phase 1 deployment")
 	}
 
 	executor.logger.Info("Extracted Fees address from Phase 1", "address", feesAddr.Hex())
@@ -533,11 +533,11 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 		return err
 	}
 
+	executor.crossChainProcessors.Local.ExecuteValueTransfers(ec.ctx, ec.xChainValueMsgs, ec.stateDB)
 	crossChainTransactions, err := executor.crossChainProcessors.Local.CreateSyntheticTransactions(ec.ctx, ec.xChainMsgs, ec.xChainValueMsgs, ec.stateDB)
 	if err != nil {
 		return err
 	}
-	executor.crossChainProcessors.Local.ExecuteValueTransfers(ec.ctx, ec.xChainValueMsgs, ec.stateDB)
 	xchainTxs := make(common.L2PricedTransactions, 0)
 	for _, xTx := range crossChainTransactions {
 		xchainTxs = append(xchainTxs, &common.L2PricedTransaction{
@@ -654,12 +654,14 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
 	}
 
+	// todo - VERKLE - comment this
 	trieDB := executor.storage.TrieDB()
 	err = trieDB.Commit(rootHash, false)
 	if err != nil {
 		executor.logger.Error("Failed to commit trieDB", "error", err)
 		return nil, fmt.Errorf("failed to commit trieDB. Cause: %w", err)
 	}
+
 	batch.Header.Root = rootHash
 
 	batch.ResetHash()
