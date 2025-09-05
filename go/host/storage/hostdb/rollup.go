@@ -244,8 +244,11 @@ func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.
 			heightInt64   int
 			extBatch      []byte
 		)
-		err := rows.Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
+		err = rows.Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return nil, errutil.ErrNotFound
+			}
 			return nil, fmt.Errorf("failed to fetch rollup batches: %w", err)
 		}
 		var b common.ExtBatch
@@ -293,6 +296,9 @@ func fetchExtRollup(db *sqlx.DB, whereQuery string, args ...any) (*common.ExtRol
 		err = db.QueryRow(query).Scan(&rollupBlob)
 	}
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to fetch rollup by hash: %w", err)
 	}
 	var rollup common.ExtRollup
@@ -308,6 +314,9 @@ func fetchHeadRollup(db *sqlx.DB) (*common.ExtRollup, error) {
 	var extRollup []byte
 	err := db.QueryRow(selectLatestExtRollup).Scan(&extRollup)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to fetch rollup by hash: %w", err)
 	}
 	var rollup common.ExtRollup
@@ -323,6 +332,9 @@ func fetchTotalRollups(db *sqlx.DB) (*big.Int, error) {
 	var total int
 	err := db.QueryRow(selectLatestRollupCount).Scan(&total)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
 		return big.NewInt(0), fmt.Errorf("failed to fetch rollup latest rollup ID: %w", err)
 	}
 
@@ -346,6 +358,9 @@ func fetchPublicRollup(db *sqlx.DB, whereQuery string, args ...any) (*common.Pub
 		&compressionblock,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errutil.ErrNotFound
+		}
 		return nil, fmt.Errorf("failed to fetch rollup by hash: %w", err)
 	}
 	rollup.ID = big.NewInt(int64(id))
