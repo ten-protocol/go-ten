@@ -1,4 +1,4 @@
-import 'ten-hardhat-plugin';
+import '@tenprotocol/ten-hardhat-plugin';
 import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 
