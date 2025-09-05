@@ -49,38 +49,16 @@ func NewGasEstimator(storage storage.Storage, registry BatchRegistry, chain TENC
 }
 
 func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber gethrpc.BlockNumber, globalGasCap uint64) (uint64, uint64, error, common.SystemError) {
-	var headBatch *common.BatchHeader
-	var estimationBatchHeight gethrpc.BlockNumber
-	var err error
-
-	// don't use the latest batch for gas estimation because it might influence the next batch (possible bug)
-	if blockNumber == gethrpc.LatestBlockNumber || blockNumber == gethrpc.PendingBlockNumber || blockNumber == gethrpc.FinalizedBlockNumber || blockNumber == gethrpc.SafeBlockNumber {
-		headBatchSeq := ge.registry.HeadBatchSeq()
-		headBatch, err = ge.storage.FetchBatchHeaderBySeqNo(ctx, headBatchSeq.Uint64())
-		if err != nil {
-			return 0, 0, nil, fmt.Errorf("failed to fetch batch header: %w", err)
-		}
-		// todo - VERKLE - there seems to be a bug and gas estimation leaks into the state committed as part of the next batch
-		//parentBatch, err := ge.storage.FetchBatchHeader(ctx, headBatch.ParentHash)
-		//if err != nil {
-		//	return 0, 0, nil, fmt.Errorf("failed to fetch parent batch: %w", err)
-		//}
-		//estimationBatchHeight = gethrpc.BlockNumber(parentBatch.Number.Int64())
-		estimationBatchHeight = gethrpc.BlockNumber(headBatch.Number.Int64())
-	} else {
-		b, err := ge.registry.GetBatchAtHeight(ctx, blockNumber)
-		if err != nil {
-			return 0, 0, nil, fmt.Errorf("failed to fetch batch header: %w", err)
-		}
-		headBatch = b.Header
-		estimationBatchHeight = gethrpc.BlockNumber(headBatch.Number.Int64())
+	b, err := ge.registry.GetBatchAtHeight(ctx, blockNumber)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to fetch batch for number %d: %w", blockNumber, err)
 	}
-
-	headHeight := gethrpc.BlockNumber(headBatch.Number.Int64())
+	batchNumber := gethrpc.BlockNumber(b.Number().Int64())
+	batchAtNumber := b.Header
 
 	// The message is run through the l1 publishing cost estimation for the current
 	// known head BlockHeader.
-	l1Cost, err := ge.gasOracle.EstimateL1CostForMsg(ctx, args, headBatch)
+	l1Cost, err := ge.gasOracle.EstimateL1CostForMsg(ctx, args, batchAtNumber)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to estimate L1 cost: %w", err)
 	}
@@ -88,7 +66,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
 	// the expected cost into l2 gas based on current pricing.
 	// todo @siliev - add overhead when the base fee becomes dynamic.
-	divisor := ge.gasPricer.StaticL2BaseFee(common.ConvertBatchHeaderToHeader(headBatch))
+	divisor := ge.gasPricer.StaticL2BaseFee(common.ConvertBatchHeaderToHeader(batchAtNumber))
 	publishingGas := big.NewInt(0).Div(l1Cost, divisor)
 
 	// Overestimate the publishing cost in case of spikes.
@@ -101,7 +79,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.
 	// The single pass will run once at the highest gas cap and return gas used. Not completely reliable,
 	// but is quick.
-	executionGasEstimate, revert, gasPrice, userErr, sysErr := ge.EstimateGasSinglePass(ctx, args, &estimationBatchHeight, &headHeight, globalGasCap)
+	executionGasEstimate, revert, gasPrice, userErr, sysErr := ge.EstimateGasSinglePass(ctx, args, &batchNumber, globalGasCap)
 	if sysErr != nil {
 		return 0, 0, nil, fmt.Errorf("system error during gas estimation: %w", sysErr)
 	}
@@ -115,7 +93,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	}
 
 	totalGasEstimateUint64 := publishingGas.Uint64() + uint64(executionGasEstimate)
-	balance, err := ge.chain.GetBalanceAtBlock(ctx, *args.From, &headHeight)
+	balance, err := ge.chain.GetBalanceAtBlock(ctx, *args.From, &batchNumber)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to get account balance: %w", err)
 	}
@@ -136,7 +114,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 // The modifications are an overhead buffer and a 20% increase to account for warm storage slots. This is because the stateDB
 // for the head batch might not be fully clean in terms of the running call. Cold storage slots cost far more than warm ones to
 // read and write.
-func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, estimationBlk *gethrpc.BlockNumber, headBlk *gethrpc.BlockNumber, globalGasCap uint64) (hexutil.Uint64, []byte, *big.Int, error, common.SystemError) {
+func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, estimationBlk *gethrpc.BlockNumber, globalGasCap uint64) (hexutil.Uint64, []byte, *big.Int, error, common.SystemError) {
 	maxGasCap, err := ge.calculateMaxGasCap(ctx, globalGasCap, args.Gas)
 	if err != nil {
 		return 0, nil, nil, nil, err
@@ -144,7 +122,7 @@ func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi
 
 	// allowance will either be the maxGasCap or the balance allowance.
 	// If the users funds are floaty, this might cause issues combined with the l1 pricing.
-	allowance, feeCap, userErr, sysErr := ge.normalizeFeeCapAndAdjustGasLimit(ctx, args, headBlk, maxGasCap)
+	allowance, feeCap, userErr, sysErr := ge.normalizeFeeCapAndAdjustGasLimit(ctx, args, estimationBlk, maxGasCap)
 	if sysErr != nil {
 		return 0, nil, nil, nil, sysErr
 	}
@@ -165,13 +143,6 @@ func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi
 			ge.logger.Debug("Failed gas estimation", "error", result.Err)
 			return 0, result.Revert(), nil, result.Err, nil
 		}
-		// todo @siliev - do we need these?
-		//if errors.Is(userErr, gethcore.ErrIntrinsicGas) {
-		//	return true, nil, nil, nil // Special case, raise gas limit
-		//}
-		//if errors.Is(userErr, gethcore.ErrGasLimitTooHigh) {
-		//	return true, nil, nil, nil // Special case, lower gas limit
-		//}
 
 		if userErr != nil {
 			return 0, nil, nil, userErr, nil
