@@ -165,6 +165,14 @@ func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi
 			ge.logger.Debug("Failed gas estimation", "error", result.Err)
 			return 0, result.Revert(), nil, result.Err, nil
 		}
+		// todo @siliev - do we need these?
+		//if errors.Is(userErr, gethcore.ErrIntrinsicGas) {
+		//	return true, nil, nil, nil // Special case, raise gas limit
+		//}
+		//if errors.Is(userErr, gethcore.ErrGasLimitTooHigh) {
+		//	return true, nil, nil, nil // Special case, lower gas limit
+		//}
+
 		if userErr != nil {
 			return 0, nil, nil, userErr, nil
 		}
@@ -301,14 +309,6 @@ func (ge *GasEstimator) isNotEnoughGas(ctx context.Context, args *gethapi.Transa
 	}
 
 	if userErr != nil {
-		// todo @siliev - do we need these?
-		//if errors.Is(userErr, gethcore.ErrIntrinsicGas) {
-		//	return true, nil, nil, nil // Special case, raise gas limit
-		//}
-		//if errors.Is(userErr, gethcore.ErrGasLimitTooHigh) {
-		//	return true, nil, nil, nil // Special case, lower gas limit
-		//}
-
 		return true, nil, userErr, nil
 	}
 
