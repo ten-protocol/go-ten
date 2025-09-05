@@ -20,6 +20,7 @@ type Config struct {
 	DockerImage            string
 	FaucetPrefundAmount    string
 	DebugEnabled           bool
+	ChainID                int64
 }
 
 func NewContractDeployerConfig(tenCfg *config.TenConfig) *Config {
@@ -38,5 +39,6 @@ func NewContractDeployerConfig(tenCfg *config.TenConfig) *Config {
 		DockerImage:            tenCfg.Deployment.DockerImage,
 		FaucetPrefundAmount:    tenCfg.Deployment.L2Deploy.FaucetPrefund,
 		DebugEnabled:           tenCfg.Deployment.DebugEnabled,
+		ChainID:                tenCfg.Network.ChainID,
 	}
 }
