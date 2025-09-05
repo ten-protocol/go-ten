@@ -47,6 +47,7 @@ func (n *ContractDeployer) Start() error {
 		"DA_REGISTRY_ADDR":      n.cfg.DaRegistryAddress,
 		"NETWORK_CONFIG_ADDR":   n.cfg.NetworkConfigAddress,
 		"MESSAGE_BUS_ADDR":      n.cfg.MessageBusAddress,
+		"NETWORK_CHAINID":       strconv.FormatInt(n.cfg.ChainID, 10),
 		"NETWORK_JSON": fmt.Sprintf(`
 {
         "layer1" : {
