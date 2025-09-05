@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/jmoiron/sqlx"
-
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -15,23 +13,15 @@ import (
 const (
 	selectTxCount = "SELECT total FROM transaction_count WHERE id = 1"
 	selectTx      = "SELECT hash, b_sequence FROM transaction_host WHERE hash = ?"
-	selectTxs     = "SELECT t.hash, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence ORDER BY b.height DESC "
+	selectTxs     = "SELECT t.hash, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence ORDER BY b.height DESC"
 	countTxs      = "SELECT COUNT(b_sequence) AS row_count FROM transaction_host"
 )
 
 // GetTransactionListing returns a paginated list of transactions in descending order
 func GetTransactionListing(db HostDB, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
-	// Handle pagination with Rebind
-	var paginationQuery string
-	driverName := db.GetSQLDB().DriverName()
-	if sqlx.BindType(driverName) == sqlx.QUESTION {
-		paginationQuery = " LIMIT ? OFFSET ?"
-	} else {
-		paginationQuery = " LIMIT $1 OFFSET $2"
-	}
-
 	query := selectTxs + paginationQuery
-	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
+	reboundQuery := db.GetSQLDB().Rebind(query)
+	rows, err := db.GetSQLDB().Query(reboundQuery, int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
 	}

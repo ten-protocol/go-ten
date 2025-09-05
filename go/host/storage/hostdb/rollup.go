@@ -19,19 +19,16 @@ import (
 )
 
 const (
-	selectExtRollup         = "SELECT ext_rollup from rollup_host r join block_host b on r.compression_block=b.id "
-	selectLatestExtRollup   = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
-	selectLatestRollupCount = "SELECT id FROM rollup_host ORDER BY id DESC LIMIT 1"
-	selectRollupBatches     = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON b.sequence >= r.start_seq AND b.sequence <= r.end_seq AND b.sequence IS NOT NULL"
-	selectRollups           = "SELECT rh.id, rh.hash, rh.start_seq, rh.end_seq, rh.time_stamp, rh.ext_rollup, bh.hash FROM rollup_host rh join block_host bh on rh.compression_block=bh.id "
-
-	// SQL statements that need placeholder conversion
-	insertRollup             = "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?) RETURNING id"
-	insertCrossChainMessage  = "INSERT INTO cross_chain_message_host (message_hash, message_type, rollup_id) values (?,?,?)"
+	selectExtRollup          = "SELECT ext_rollup from rollup_host r join block_host b on r.compression_block=b.id "
+	selectLatestExtRollup    = "SELECT ext_rollup FROM rollup_host ORDER BY time_stamp DESC LIMIT 1"
+	selectLatestRollupCount  = "SELECT id FROM rollup_host ORDER BY id DESC LIMIT 1"
+	selectRollupBatches      = "SELECT b.sequence, b.hash, b.height, b.ext_batch FROM rollup_host r JOIN batch_host b ON b.sequence >= r.start_seq AND b.sequence <= r.end_seq AND b.sequence IS NOT NULL"
+	selectRollups            = "SELECT rh.id, rh.hash, rh.start_seq, rh.end_seq, rh.time_stamp, rh.ext_rollup, bh.hash FROM rollup_host rh join block_host bh on rh.compression_block=bh.id "
 	selectRollupIdByMessage  = "SELECT rollup_id FROM cross_chain_message_host WHERE message_hash = ?"
 	selectMessagesByRollupId = "SELECT message_hash, message_type FROM cross_chain_message_host WHERE rollup_id = ?"
+	insertRollup             = "INSERT INTO rollup_host (hash, start_seq, end_seq, time_stamp, ext_rollup, compression_block) values (?,?,?,?,?,?) RETURNING id"
+	insertCrossChainMessage  = "INSERT INTO cross_chain_message_host (message_hash, message_type, rollup_id) values (?,?,?)"
 
-	// WHERE clause patterns
 	whereRollupHash     = " WHERE r.hash = ?"
 	whereBlockHash      = " WHERE b.hash = ?"
 	whereRollupHostHash = " WHERE rh.hash = ?"
@@ -98,19 +95,9 @@ func AddRollup(dbtx *dbTransaction, db HostDB, rollup *common.ExtRollup, extMeta
 // For example, offset 1, size 10 will return the latest 11-20 rollups.
 func GetRollupListing(db HostDB, pagination *common.QueryPagination) (*common.RollupListingResponse, error) {
 	orderQuery := " ORDER BY rh.id DESC "
-
-	// Handle pagination with Rebind
-	var paginationQuery string
-	driverName := db.GetSQLDB().DriverName()
-	if sqlx.BindType(driverName) == sqlx.QUESTION {
-		paginationQuery = " LIMIT ? OFFSET ?"
-	} else {
-		paginationQuery = " LIMIT $1 OFFSET $2"
-	}
-
 	query := selectRollups + orderQuery + paginationQuery
-
-	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
+	reboundQuery := db.GetSQLDB().Rebind(query)
+	rows, err := db.GetSQLDB().Query(reboundQuery, int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute query %s - %w", query, err)
 	}
@@ -231,15 +218,6 @@ func GetCrossChainMessagesTree(db HostDB, messageHash gethcommon.Hash) ([][]inte
 }
 
 func GetRollupBatches(db HostDB, rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
-	// TODO @will quick fix to unblock main
-	var paginationQuery string
-	driverName := db.GetSQLDB().DriverName()
-	if sqlx.BindType(driverName) == sqlx.QUESTION {
-		paginationQuery = " LIMIT ? OFFSET ?"
-	} else {
-		// PostgreSQL uses $1, $2, $3,
-		paginationQuery = " LIMIT $2 OFFSET $3"
-	}
 	orderQuery := " ORDER BY b.sequence DESC "
 	query := selectRollupBatches + whereRollupHash + orderQuery + paginationQuery
 	countQuery := "SELECT COUNT(*) FROM rollup_host r JOIN batch_host b ON b.sequence BETWEEN r.start_seq AND r.end_seq" + whereRollupHash

@@ -7,8 +7,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/jmoiron/sqlx"
-
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -25,13 +23,10 @@ const (
 	selectTxBySeq       = "SELECT hash FROM transaction_host WHERE b_sequence = ?"
 	selectBatchTxs      = "SELECT t.hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
 	selectSumBatchSizes = "SELECT SUM(txs_size) FROM batch_host WHERE sequence >= ?"
+	insertBatch         = "INSERT INTO batch_host (sequence, hash, height, ext_batch, txs_size) VALUES (?, ?, ?, ?, ?)"
+	insertTransactions  = "INSERT INTO transaction_host (hash, b_sequence) VALUES "
+	updateTxCount       = "UPDATE transaction_count SET total=? WHERE id=1"
 
-	// SQL statements that need placeholder conversion
-	insertBatch        = "INSERT INTO batch_host (sequence, hash, height, ext_batch, txs_size) VALUES (?, ?, ?, ?, ?)"
-	insertTransactions = "INSERT INTO transaction_host (hash, b_sequence) VALUES "
-	updateTxCount      = "UPDATE transaction_count SET total=? WHERE id=1"
-
-	// where queries
 	whereHash     = " WHERE hash = ?"
 	whereBHash    = " WHERE b.hash = ?"
 	whereSequence = " WHERE sequence = ?"
@@ -250,28 +245,18 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 
 // GetBatchTransactions returns the TransactionListingResponse for a given batch hash
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
-	reboundWhereQuery := db.GetSQLDB().Rebind(whereBHash)
 	orderQuery := " ORDER BY t.id DESC "
-
-	// TODO @will quick fix to unblock main
-	var paginationQuery string
-	driverName := db.GetSQLDB().DriverName()
-	if sqlx.BindType(driverName) == sqlx.QUESTION {
-		paginationQuery = " LIMIT ? OFFSET ?"
-	} else {
-		// PostgreSQL uses $1, $2, $3,
-		paginationQuery = " LIMIT $2 OFFSET $3"
-	}
-	query := selectBatchTxs + reboundWhereQuery + orderQuery + paginationQuery
-
-	countQuery := "SELECT COUNT(*) FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence" + reboundWhereQuery
+	query := selectBatchTxs + whereBHash + orderQuery + paginationQuery
+	countQuery := "SELECT COUNT(*) FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence" + whereBHash
+	reboundQuery := db.GetSQLDB().Rebind(query)
+	reboundCountQuery := db.GetSQLDB().Rebind(countQuery)
 	var total uint64
-	err := db.GetSQLDB().QueryRow(countQuery, batchHash.Bytes()).Scan(&total)
+	err := db.GetSQLDB().QueryRow(reboundCountQuery, batchHash.Bytes()).Scan(&total)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get total count: %w", err)
 	}
 
-	rows, err := db.GetSQLDB().Query(query, batchHash.Bytes(), int64(pagination.Size), int64(pagination.Offset))
+	rows, err := db.GetSQLDB().Query(reboundQuery, batchHash.Bytes(), int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("query execution for select batch transactions failed: %w", err)
 	}

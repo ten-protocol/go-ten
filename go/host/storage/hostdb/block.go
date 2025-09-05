@@ -23,10 +23,9 @@ const (
 	selectBlockId    = "SELECT id FROM block_host WHERE hash = ?"
 	selectBlock      = "SELECT header FROM block_host WHERE hash = ?"
 	selectBlockCount = "SELECT total FROM block_count WHERE id = 1"
-
-	// SQL statements that need placeholder conversion
 	insertBlock      = "INSERT INTO block_host (hash, header) values (?,?)"
 	updateBlockCount = "UPDATE block_count SET total=? WHERE id=1"
+	paginationQuery  = " LIMIT ? OFFSET ?"
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
@@ -93,17 +92,9 @@ func GetBlock(db HostDB, hash *gethcommon.Hash) (*types.Header, error) {
 
 // GetBlockListing returns a paginated list of blocks in descending order against the order they were added
 func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
-	// Handle pagination with Rebind
-	var paginationQuery string
-	driverName := db.GetSQLDB().DriverName()
-	if sqlx.BindType(driverName) == sqlx.QUESTION {
-		paginationQuery = " LIMIT ? OFFSET ?"
-	} else {
-		paginationQuery = " LIMIT $1 OFFSET $2"
-	}
-
 	query := selectBlocks + paginationQuery
-	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
+	reboundQuery := db.GetSQLDB().Rebind(query)
+	rows, err := db.GetSQLDB().Query(reboundQuery, int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, err
 	}
