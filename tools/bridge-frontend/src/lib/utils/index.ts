@@ -61,6 +61,13 @@ export const networkMappings = {
     l1Explorer: `${process.env.NEXT_PUBLIC_TENSCAN_URL}`,
     l2Gateway: `${process.env.NEXT_PUBLIC_GATEWAY_URL}`,
   },
+  "mainnet": {
+    l1: L1Network.MAINNET,
+    l2: L2Network.MAINNET,
+    l1Rpc: `${process.env.NEXT_PUBLIC_L1NodeHostHTTP}:${process.env.NEXT_PUBLIC_L1NodePortHTTP}`,
+    l1Explorer: `${process.env.NEXT_PUBLIC_TENSCAN_URL}`,
+    l2Gateway: `${process.env.NEXT_PUBLIC_GATEWAY_URL}`,
+  },
 };
 
 export const currentNetwork = networkMappings[environment as Environment];

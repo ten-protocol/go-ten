@@ -138,13 +138,14 @@ export enum L1Network {
 }
 
 export enum L2Network {
-  SEPOLIA = 443,
-  UAT = 443,
-  DEV = 443,
-  LOCAL = 443,
+  SEPOLIA = 8443,
+  UAT = 8443,
+  DEV = 9443,
+  LOCAL = 7443,
+  MAINNET = 443
 }
 
-export type Environment = "uat-testnet" | "sepolia-testnet" | "dev-testnet";
+export type Environment = "uat-testnet" | "sepolia-testnet" | "dev-testnet" |  "mainnet";
 
 export interface IChain {
   name: string;
