@@ -16,7 +16,7 @@ export default function AnalyticsCard({
 }) {
   return (
     <div className="relative">
-      <div className="stat-shape absolute inset-[1px]">
+      <div className="stat-shape absolute inset-[1px] pointer-events-none">
         <div className="absolute inset-0 animate-scan-overlay" />
       </div>
       <svg
@@ -26,7 +26,7 @@ export default function AnalyticsCard({
         preserveAspectRatio="none"
         version="1.1"
         xmlns="http://www.w3.org/2000/svg"
-        className="z-10 absolute inset-0"
+        className="z-10 absolute inset-0 pointer-events-none"
       >
         <g>
           {/*  TODO: Decide whether to remove stroke*/}
