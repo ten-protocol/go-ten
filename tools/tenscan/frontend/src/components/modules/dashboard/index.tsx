@@ -1,10 +1,4 @@
-import React from "react";
-import {
-  CardHeader,
-  CardTitle,
-  CardContent,
-  Card,
-} from "@repo/ui/components/shared/card";
+import {useEffect} from "react";
 import {
   LayersIcon,
   FileTextIcon,
@@ -16,21 +10,20 @@ import {
 
 import { RecentBatches } from "./recent-batches";
 import { RecentTransactions } from "./recent-transactions";
-import { Button } from "@repo/ui/components/shared/button";
 import { useTransactionsService } from "@/src/services/useTransactionsService";
 import { useBatchesService } from "@/src/services/useBatchesService";
 import TruncatedAddress from "@repo/ui/components/common/truncated-address";
 import { useContractsService } from "@/src/services/useContractsService";
-import { Skeleton } from "@repo/ui/components/shared/skeleton";
 import AnalyticsCard from "./analytics-card";
-import Link from "next/link";
-import { cn, formatNumber } from "@repo/ui/lib/utils";
+import { formatNumber } from "@repo/ui/lib/utils";
 import { Badge } from "@repo/ui/components/shared/badge";
 
 import { useRollupsService } from "@/src/services/useRollupsService";
 import { RecentRollups } from "./recent-rollups";
 import { DashboardAnalyticsData } from "@/src/types/interfaces";
 import { pageLinks } from "@/src/routes";
+import RecentCard from "@/src/components/modules/dashboard/recent-card";
+import SearchBar from "@/src/components/modules/dashboard/search-bar";
 
 interface RecentData {
   title: string;
@@ -58,7 +51,7 @@ export default function Dashboard() {
   } = useBatchesService();
   const { rollups, setNoPolling: setNoPollingRollups } = useRollupsService();
 
-  React.useEffect(() => {
+  useEffect(() => {
     setNoPollingTransactions(false);
     setNoPollingBatches(false);
     setNoPollingRollups(false);
@@ -158,9 +151,12 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="h-full flex-1 flex-col space-y-8 md:flex">
+    <div className="h-full flex-1 flex-col space-y-8 lg:space-y-16 md:flex">
       <div className="flex items-center justify-between space-y-2">
         <h2 className="text-3xl font-bold tracking-tight">Tenscan</h2>
+      </div>
+      <div>
+        <SearchBar/>
       </div>
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-4">
         {DASHBOARD_DATA.map((item: DashboardAnalyticsData, index: number) => (
@@ -169,30 +165,11 @@ export default function Dashboard() {
       </div>
       <div className="grid gap-4 grid-cols-1 md:grid-cols-6 lg:grid-cols-9">
         {RECENT_DATA.map((item: RecentData, index) => (
-          <Card
+          <RecentCard
             key={index}
-            className={cn(item.className, "h-[450px] overflow-y-auto relative")}
-          >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3 sticky top-0 left-0 right-0 bg-background z-10">
-              <CardTitle>{item.title}</CardTitle>
-              <Link
-                href={{
-                  pathname: item.goTo,
-                }}
-              >
-                <Button variant="outline" size="sm">
-                  View All
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="p-3">
-              {item.data ? (
-                item.component
-              ) : (
-                <Skeleton className="w-full h-[200px] rounded-lg" />
-              )}
-            </CardContent>
-          </Card>
+              {...item}
+            />
+
         ))}
       </div>
     </div>

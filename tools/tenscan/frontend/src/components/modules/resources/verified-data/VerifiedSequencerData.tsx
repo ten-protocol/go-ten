@@ -29,7 +29,6 @@ export default function VerifiedSequencerData() {
       <Separator />
       <CardContent>
         <Table>
-          <TableCaption>Verified Sequencer Data</TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Contract Name</TableHead>

@@ -135,7 +135,7 @@ export const columns: ColumnDef<PersonalTransactions>[] = [
           {status.icon && (
             <status.icon className="mr-2 h-4 w-4 text-muted-foreground" />
           )}
-          <Badge variant={status.variant as keyof typeof badgeVariants}>
+          <Badge variant={status.variant as keyof typeof badgeVariants} className="rounded-sm">
             {status.label}
           </Badge>
         </div>

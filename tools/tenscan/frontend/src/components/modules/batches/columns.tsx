@@ -148,17 +148,17 @@ export const columns: ColumnDef<Batch>[] = [
       <DataTableColumnHeader column={column} title="Tx Count" />
     ),
     cell: ({ row }) => {
-      return row.original.txHashes.length > 0 ? (
+      return row.original.txHashes?.length > 0 ? (
         <Link
           href={pathToUrl(pageLinks.batchTransactions, {
             hash: row.original.fullHash,
           })}
           className="text-primary"
         >
-          {row.original.txHashes.length}
+          {row.original.txHashes?.length ?? 0}
         </Link>
       ) : (
-        <span>{row.original.txHashes.length}</span>
+        <span>{row.original.txHashes?.length ?? 0}</span>
       )
     },
     enableSorting: false,

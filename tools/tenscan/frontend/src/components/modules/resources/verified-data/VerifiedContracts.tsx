@@ -29,7 +29,6 @@ export default function VerifiedContracts() {
       <Separator />
       <CardContent>
         <Table>
-          <TableCaption>Verified Contracts</TableCaption>
           <TableHeader>
             <TableRow>
               <TableHead>Contract Name</TableHead>
