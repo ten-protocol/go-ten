@@ -128,6 +128,11 @@ type SystemContractAddressesStorage interface {
 	GetSystemContractAddresses(ctx context.Context) (common.SystemContractAddresses, error)
 }
 
+type NetworkUpgradeStorage interface {
+	StoreNetworkUpgrade(ctx context.Context, upgrade *enclavedb.NetworkUpgrade) error
+	GetNetworkUpgrades(ctx context.Context) ([]*enclavedb.NetworkUpgrade, error)
+}
+
 // Storage is the enclave's interface for interacting with the enclave's datastore
 type Storage interface {
 	BlockResolver
@@ -140,6 +145,7 @@ type Storage interface {
 	EnclaveKeyStorage
 	ScanStorage
 	SystemContractAddressesStorage
+	NetworkUpgradeStorage
 	io.Closer
 
 	// HealthCheck returns whether the storage is deemed healthy or not

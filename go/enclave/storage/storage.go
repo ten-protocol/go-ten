@@ -1164,5 +1164,33 @@ func (s *storageImpl) GetSequencerEnclaveIDs(ctx context.Context) ([]common.Encl
 
 // NetworkUpgradeStorage implementation
 
-// Removed: StorePendingNetworkUpgrade, FinalizeNetworkUpgrade, GetPendingNetworkUpgrades, GetFinalizedNetworkUpgrades
-// Upgrades are disabled; methods deleted.
+func (s *storageImpl) StoreNetworkUpgrade(ctx context.Context, upgrade *enclavedb.NetworkUpgrade) error {
+	defer s.logDuration("StoreNetworkUpgrade", measure.NewStopwatch())
+
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+
+	if err := enclavedb.StoreNetworkUpgrade(ctx, dbTx, upgrade); err != nil {
+		return fmt.Errorf("could not store network upgrade - %w", err)
+	}
+
+	if err := dbTx.Commit(); err != nil {
+		return fmt.Errorf("could not commit network upgrade transaction - %w", err)
+	}
+
+	return nil
+}
+
+func (s *storageImpl) GetNetworkUpgrades(ctx context.Context) ([]*enclavedb.NetworkUpgrade, error) {
+	defer s.logDuration("GetNetworkUpgrades", measure.NewStopwatch())
+
+	upgrades, err := enclavedb.GetNetworkUpgrades(ctx, s.db.GetSQLDB())
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch network upgrades - %w", err)
+	}
+
+	return upgrades, nil
+}
