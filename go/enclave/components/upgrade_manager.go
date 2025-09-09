@@ -8,6 +8,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 )
@@ -36,16 +37,20 @@ func (um *upgradeManager) RegisterUpgradeHandler(featureName string, handler Upg
 	// keep API no-op
 }
 
-func (um *upgradeManager) StoreNetworkUpgrades(ctx context.Context, upgrades []NetworkConfig.NetworkConfigUpgraded) error {
+func (um *upgradeManager) StoreNetworkUpgrades(ctx context.Context, blockHeader *types.Header, upgrades []NetworkConfig.NetworkConfigUpgraded) error {
 	if len(upgrades) == 0 {
 		return nil
 	}
 
 	for _, upgrade := range upgrades {
 		um.logger.Info("Upgrade detected", "featureName", upgrade.FeatureName, "featureData", upgrade.FeatureData)
+		blockHeight := blockHeader.Number.Uint64() + 64
 		err := um.storage.StoreNetworkUpgrade(ctx, &enclavedb.NetworkUpgrade{
-			FeatureName: upgrade.FeatureName,
-			FeatureData: upgrade.FeatureData,
+			FeatureName:       upgrade.FeatureName,
+			FeatureData:       upgrade.FeatureData,
+			BlockHash:         blockHeader.Hash(),
+			BlockHeightFinal:  &blockHeight,
+			BlockHeightActive: &blockHeight,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to store network upgrade. Cause: %w", err)
@@ -99,23 +104,70 @@ func (um *upgradeManager) filterSupportedUpgrades(ctx context.Context, allUpgrad
 	return supportedUpgrades
 }
 
+func (um *upgradeManager) getUpgradesFor(blockHeader *types.Header) ([]NetworkConfig.NetworkConfigUpgraded, error) {
+	ctx := context.Background()
+
+	// Ensure the current block is canonical before proceeding
+	isCanonical, err := um.storage.IsBlockCanonical(ctx, blockHeader.Hash())
+	if err != nil {
+		um.logger.Error("Failed to check block canonicality", "hash", blockHeader.Hash(), "error", err)
+		return nil, fmt.Errorf("failed to check block canonicality: %w", err)
+	}
+	if !isCanonical {
+		return nil, fmt.Errorf("block %s is not canonical", blockHeader.Hash())
+	}
+
+	// Load activated upgrades up to current block height
+	currentHeight := blockHeader.Number.Uint64()
+	stored, err := um.storage.GetActivatedNetworkUpgrades(ctx, currentHeight)
+	if err != nil {
+		um.logger.Error("Failed to load activated network upgrades from storage", "error", err, "height", currentHeight)
+		return nil, fmt.Errorf("failed to load activated network upgrades: %w", err)
+	}
+
+	// Filter: only upgrades whose saved block hash is canonical
+	candidates := make([]NetworkConfig.NetworkConfigUpgraded, 0)
+	for _, u := range stored {
+		// The upgrade must have been recorded for a canonical block hash
+		upgradeBlockCanonical, err := um.storage.IsBlockCanonical(ctx, u.BlockHash)
+		if err != nil {
+			um.logger.Error("Failed to check canonicality for upgrade's block", "hash", u.BlockHash, "error", err)
+			return nil, fmt.Errorf("failed to check canonicality for upgrade's block: %w", err)
+		}
+		if !upgradeBlockCanonical {
+			continue
+		}
+
+		candidates = append(candidates, NetworkConfig.NetworkConfigUpgraded{
+			FeatureName: u.FeatureName,
+			FeatureData: u.FeatureData,
+		})
+	}
+
+	// Verify all selected upgrades are supported by registered handlers
+	supported := um.filterSupportedUpgrades(ctx, candidates)
+	if len(supported) != len(candidates) {
+		return nil, fmt.Errorf("unsupported upgrades detected at height %d: total=%d supported=%d", currentHeight, len(candidates), len(supported))
+	}
+
+	return supported, nil
+}
+
 func (um *upgradeManager) OnL1Block(ctx context.Context, blockHeader *types.Header, processed *common.ProcessedL1Data) error {
 	// Collect all upgrades from L1 data
 	allUpgrades := um.collectNetworkUpgrades(processed)
 
 	// Store all upgrades (both supported and unsupported)
-	err := um.StoreNetworkUpgrades(ctx, allUpgrades)
+	err := um.StoreNetworkUpgrades(ctx, blockHeader, allUpgrades)
 	if err != nil {
 		um.logger.Error("Failed to store network upgrades", "error", err)
 		return err
 	}
 
-	// Filter to get only supported upgrades for processing
-	supportedUpgrades := um.filterSupportedUpgrades(ctx, allUpgrades)
-
-	// Process only the supported upgrades
-	for _, upgrade := range supportedUpgrades {
-		um.logger.Info("Processing supported upgrade", "featureName", upgrade.FeatureName, "featureData", upgrade.FeatureData)
+	_, err = um.getUpgradesFor(blockHeader)
+	if err != nil {
+		um.logger.Error("Failed to get upgrades for block", "error", err)
+		return errutil.ErrUpgradeNotSupported
 	}
 
 	return nil

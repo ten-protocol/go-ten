@@ -152,6 +152,46 @@ func GetNetworkUpgradesByFeature(ctx context.Context, db *sqlx.DB, featureName s
 	return upgrades, rows.Err()
 }
 
+func GetActivatedNetworkUpgrades(ctx context.Context, db *sqlx.DB, height uint64) ([]*NetworkUpgrade, error) {
+	query := `SELECT id, feature_name, feature_data, block_hash, block_height_final, block_height_active, created_at
+			  FROM network_upgrade
+			  WHERE block_height_active IS NOT NULL AND block_height_active <= ?
+			  ORDER BY created_at ASC`
+
+	var upgrades []*NetworkUpgrade
+	rows, err := db.QueryxContext(ctx, query, height)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var upgrade NetworkUpgrade
+		var blockHashBytes []byte
+
+		err := rows.Scan(
+			&upgrade.ID,
+			&upgrade.FeatureName,
+			&upgrade.FeatureData,
+			&blockHashBytes,
+			&upgrade.BlockHeightFinal,
+			&upgrade.BlockHeightActive,
+			&upgrade.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		upgrade.BlockHash = gethcommon.BytesToHash(blockHashBytes)
+		if err := upgrade.UnmarshalFeatureData(); err != nil {
+			return nil, err
+		}
+		upgrades = append(upgrades, &upgrade)
+	}
+
+	return upgrades, rows.Err()
+}
+
 // DeleteNetworkUpgrade removes a network upgrade from the database
 func DeleteNetworkUpgrade(ctx context.Context, db *sqlx.Tx, id uint64) error {
 	query := `DELETE FROM network_upgrade WHERE id = ?`

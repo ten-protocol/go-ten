@@ -1194,3 +1194,14 @@ func (s *storageImpl) GetNetworkUpgrades(ctx context.Context) ([]*enclavedb.Netw
 
 	return upgrades, nil
 }
+
+func (s *storageImpl) GetActivatedNetworkUpgrades(ctx context.Context, height uint64) ([]*enclavedb.NetworkUpgrade, error) {
+	defer s.logDuration("GetActivatedNetworkUpgrades", measure.NewStopwatch())
+
+	upgrades, err := enclavedb.GetActivatedNetworkUpgrades(ctx, s.db.GetSQLDB(), height)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch activated network upgrades - %w", err)
+	}
+
+	return upgrades, nil
+}

@@ -131,6 +131,7 @@ type SystemContractAddressesStorage interface {
 type NetworkUpgradeStorage interface {
 	StoreNetworkUpgrade(ctx context.Context, upgrade *enclavedb.NetworkUpgrade) error
 	GetNetworkUpgrades(ctx context.Context) ([]*enclavedb.NetworkUpgrade, error)
+	GetActivatedNetworkUpgrades(ctx context.Context, height uint64) ([]*enclavedb.NetworkUpgrade, error)
 }
 
 // Storage is the enclave's interface for interacting with the enclave's datastore
