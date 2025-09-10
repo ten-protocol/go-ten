@@ -2,7 +2,6 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { MainNav } from "../main-nav";
-import { ModeToggle } from "@repo/ui/components/shared/mode-toggle";
 import ConnectWalletButton from "@repo/ui/components/common/connect-wallet";
 import { HamburgerMenuIcon, X } from "@repo/ui/components/shared/react-icons";
 import { Button } from "@repo/ui/components/shared/button";
@@ -10,8 +9,8 @@ import HealthIndicator from "../health-indicator";
 
 export default function Header() {
   return (
-    <div className="border-b">
-      <div className="flex h-16 justify-between items-center px-4">
+    <div className="bg-[rgba(255,255,255,.01)] backdrop-blur-3xl text-white fixed z-30 w-screen border-b border-[rgba(255,255,255,4%)] top-0 left-0">
+      <div className="container flex h-16 justify-between items-center px-4">
         <Link href="/" className="min-w-[80px]">
           <Image
             src="/assets/images/black_logotype.png"
@@ -32,7 +31,6 @@ export default function Header() {
           <MainNav className="px-2" />
           <div className="flex items-center space-x-4">
             <HealthIndicator />
-            <ModeToggle />
             <ConnectWalletButton />
           </div>
         </div>
@@ -63,7 +61,6 @@ const MobileMenu = () => {
             <div className="flex flex-col p-4 space-y-2">
               <MainNav className="flex flex-col" />
               <ConnectWalletButton />
-              <ModeToggle />
             </div>
           </div>
         </div>

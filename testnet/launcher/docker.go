@@ -122,6 +122,7 @@ func (t *Testnet) Start() error {
 			DockerImage:            t.cfg.contractDeployerDockerImage,
 			DebugEnabled:           t.cfg.contractDeployerDebug,
 			FaucetPrefundAmount:    "10000",
+			ChainID:                sequencerCfg.Network.ChainID,
 		},
 	)
 	if err != nil {
@@ -179,6 +180,7 @@ func (t *Testnet) Start() error {
 			gateway.WithTenNodeHost("validator-host"),
 			gateway.WithRateLimitUserComputeTime(0), // disable rate limiting for local network
 			gateway.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway:latest"),
+			gateway.WithChainID(sequencerCfg.Network.ChainID),
 		),
 	)
 	if err != nil {
