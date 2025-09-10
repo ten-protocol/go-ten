@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	"github.com/jmoiron/sqlx"
@@ -74,9 +75,17 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 	return NewStorage(backingDB, cachingService, config, chainConfig, logger)
 }
 
+var trieDBConfig = &triedb.Config{
+	Preimages: triedb.HashDefaults.Preimages,
+	IsVerkle:  triedb.HashDefaults.IsVerkle,
+	HashDB: &hashdb.Config{
+		CleanCacheSize: 256 * 1024 * 1024,
+	},
+}
+
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	// Open trie database with provided config
-	trieDB := triedb.NewDatabase(backingDB, triedb.HashDefaults)
+	trieDB := triedb.NewDatabase(backingDB, trieDBConfig)
 	// trieDB := triedb.NewDatabase(backingDB, triedb.VerkleDefaults) - todo VERKLE
 
 	// todo - figure out the snapshot tree
