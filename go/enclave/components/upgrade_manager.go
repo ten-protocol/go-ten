@@ -44,7 +44,8 @@ func (um *upgradeManager) StoreNetworkUpgrades(ctx context.Context, blockHeader 
 
 	for _, upgrade := range upgrades {
 		um.logger.Info("Upgrade detected", "featureName", upgrade.FeatureName, "featureData", upgrade.FeatureData)
-		blockHeight := blockHeader.Number.Uint64() + 1
+		blockHeight := blockHeader.Number.Uint64() + 64
+		blockHeightActive := upgrade.ValidAtBlock.Uint64()
 
 		// Create a FeatureDataMap to properly handle the raw bytes
 		featureDataMap := map[string]interface{}{
@@ -56,7 +57,7 @@ func (um *upgradeManager) StoreNetworkUpgrades(ctx context.Context, blockHeader 
 			FeatureDataMap:    featureDataMap,
 			BlockHash:         blockHeader.Hash(),
 			BlockHeightFinal:  &blockHeight,
-			BlockHeightActive: &blockHeight,
+			BlockHeightActive: &blockHeightActive,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to store network upgrade. Cause: %w", err)
