@@ -44,10 +44,16 @@ func (um *upgradeManager) StoreNetworkUpgrades(ctx context.Context, blockHeader 
 
 	for _, upgrade := range upgrades {
 		um.logger.Info("Upgrade detected", "featureName", upgrade.FeatureName, "featureData", upgrade.FeatureData)
-		blockHeight := blockHeader.Number.Uint64() + 64
+		blockHeight := blockHeader.Number.Uint64() + 1
+
+		// Create a FeatureDataMap to properly handle the raw bytes
+		featureDataMap := map[string]interface{}{
+			"data": string(upgrade.FeatureData),
+		}
+
 		err := um.storage.StoreNetworkUpgrade(ctx, &enclavedb.NetworkUpgrade{
 			FeatureName:       upgrade.FeatureName,
-			FeatureData:       upgrade.FeatureData,
+			FeatureDataMap:    featureDataMap,
 			BlockHash:         blockHeader.Hash(),
 			BlockHeightFinal:  &blockHeight,
 			BlockHeightActive: &blockHeight,

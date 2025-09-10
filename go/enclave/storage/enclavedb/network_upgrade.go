@@ -36,7 +36,15 @@ func (nu *NetworkUpgrade) MarshalFeatureData() error {
 // UnmarshalFeatureData converts FeatureData bytes to FeatureDataMap for easier usage
 func (nu *NetworkUpgrade) UnmarshalFeatureData() error {
 	if len(nu.FeatureData) > 0 {
-		return json.Unmarshal(nu.FeatureData, &nu.FeatureDataMap)
+		err := json.Unmarshal(nu.FeatureData, &nu.FeatureDataMap)
+		if err != nil {
+			// If JSON unmarshaling fails, treat the data as raw bytes
+			// This handles legacy data that might not be JSON formatted
+			nu.FeatureDataMap = map[string]interface{}{
+				"data": string(nu.FeatureData),
+			}
+			return nil
+		}
 	}
 	return nil
 }

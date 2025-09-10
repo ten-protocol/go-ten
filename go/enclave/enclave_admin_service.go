@@ -207,6 +207,7 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 	// Process network upgrade events when they reach finality
 	err = e.upgradeManager.OnL1Block(ctx, blockHeader, blockData)
 	if err != nil {
+		e.logger.Error("Failed to process network upgrades", "error", err)
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not process network upgrades. Cause: %w", err))
 	}
 
