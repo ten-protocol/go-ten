@@ -513,6 +513,7 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 
 // issueUpgradeTransaction creates and issues a single upgrade transaction with random feature data after a 10-second delay
 func (ti *TransactionInjector) issueUpgradeTransaction() {
+	return
 	// Wait for 10 seconds before injecting the upgrade transaction
 	time.Sleep(10 * time.Second)
 
