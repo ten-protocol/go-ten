@@ -557,6 +557,12 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 		// something went wrong, return error and let the main loop check status and try again when appropriate
 		return false, errors.Wrap(err, "could not submit L1 block to enclave")
 	}
+
+	if err != nil {
+		// something went wrong, return error and let the main loop check status and try again when appropriate
+		return false, errors.Wrap(err, "could not submit L1 block to enclave")
+	}
+
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
 	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, g.shouldSyncContracts(*processedData), g.shouldSyncAdditionalContracts(*processedData))
