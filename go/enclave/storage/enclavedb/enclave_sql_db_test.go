@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	createKVTable = `create table if not exists keyvalue
+	createKVTable = `create table if not exists statedb32
 (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
     ky      binary(4),

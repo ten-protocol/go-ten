@@ -20,7 +20,7 @@ const (
 	putQry       = `replace into %s (ky,  val) values(?,  ?);`
 	putQryBatch  = `replace into %s (ky, val) values`
 	putQryValues = `(?,?)`
-	delQry       = `delete from %s sdb where sdb.ky = ? ;`
+	delQry       = `delete from %s where ky = ? ;`
 	// todo - how is the performance of this? probably extraordinarily slow
 	searchQry = `select ky, val from %s sdb where substring(sdb.ky, 1, ?) = ? and sdb.ky >= ? order by sdb.ky asc`
 )
