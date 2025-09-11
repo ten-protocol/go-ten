@@ -1,0 +1,1 @@
+ALTER TABLE tendb.keyvalue MODIFY COLUMN ky varbinary(64) NOT NULL;
