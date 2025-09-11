@@ -13,10 +13,7 @@ import (
 )
 
 const (
-	InitialBaseFee        = params.InitialBaseFee / 10 // InitialBaseFee is ETH's base fee.
-	ComponentName         = "gas_pricing"
-	DynamicPricingTrigger = "dynamic-pricing"
-	StaticPricingTrigger  = "static_pricing"
+	InitialBaseFee = params.InitialBaseFee / 10 // InitialBaseFee is ETH's base fee.
 )
 
 type GasPricer struct {

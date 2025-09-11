@@ -99,7 +99,7 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
      * @param featureName The name of the feature that was upgraded
      * @param featureData The data of the feature that was upgraded - to be forwarded to it for initialization.
      */
-    event Upgraded(string featureName, bytes featureData);
+    event Upgraded(string featureName, bytes featureData, uint256 validAtBlock);
 
     /**
      * @dev Initializes the contract with addresses and owner
@@ -279,7 +279,8 @@ contract NetworkConfig is Initializable, UnrenouncableOwnable2Step {
      * @param featureName The name of the feature that was upgraded
      * @param featureData The data of the feature that was upgraded - to be forwarded to it for initialization.
      */
-    function upgradeFeature(string calldata featureName, bytes calldata featureData) external onlyOwner {
-        emit Upgraded(featureName, featureData);
+    function upgradeFeature(string calldata featureName, bytes calldata featureData, uint256 validAtBlock) external onlyOwner {
+        require(validAtBlock > block.number + 64, "Invalid validAtBlock");
+        emit Upgraded(featureName, featureData, validAtBlock);
     }
 }

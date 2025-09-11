@@ -204,6 +204,13 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
+	// Process network upgrade events when they reach finality
+	err = e.upgradeManager.OnL1Block(ctx, blockHeader, blockData)
+	if err != nil {
+		e.logger.Error("Failed to process network upgrades", "error", err)
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not process network upgrades. Cause: %w", err))
+	}
+
 	err = e.storage.UpdateProcessed(ctx, blockHeader.Hash())
 	if err != nil {
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
@@ -219,12 +226,6 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 
 	// doing this after the network secret msgs to make sure we have stored the attestation before promotion.
 	e.processSequencerPromotions(blockData)
-
-	// Process network upgrade events when they reach finality
-	err = e.upgradeManager.OnL1Block(ctx, blockHeader, blockData)
-	if err != nil {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not process network upgrades. Cause: %w", err))
-	}
 
 	return bsr, nil
 }

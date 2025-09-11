@@ -540,9 +540,18 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
 
+	if resp.RejectError != nil {
+		if resp.RejectError.Is(errutil.ErrUpgradeNotSupported) {
+			g.logger.Info("Upgrade not supported, stopping enclave")
+			g.Stop()
+			g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
+			return false, errutil.ErrUpgradeNotSupported
+		}
+	}
+
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
-	if err != nil {
-		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
+	if resp.RejectError != nil {
+		if strings.Contains(resp.RejectError.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
 			// we have already processed this block, let's try the next canonical block
 			// this is most common when we are returning to a previous fork and the enclave has already seen some of the blocks on it
 			// note: logging this because we don't expect it to happen often and would like visibility on that.
