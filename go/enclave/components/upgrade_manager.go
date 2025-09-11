@@ -47,14 +47,9 @@ func (um *upgradeManager) StoreNetworkUpgrades(ctx context.Context, blockHeader 
 		blockHeight := blockHeader.Number.Uint64() + 64
 		blockHeightActive := upgrade.ValidAtBlock.Uint64()
 
-		// Create a FeatureDataMap to properly handle the raw bytes
-		featureDataMap := map[string]interface{}{
-			"data": string(upgrade.FeatureData),
-		}
-
 		err := um.storage.StoreNetworkUpgrade(ctx, &enclavedb.NetworkUpgrade{
 			FeatureName:       upgrade.FeatureName,
-			FeatureDataMap:    featureDataMap,
+			FeatureData:       upgrade.FeatureData,
 			BlockHash:         blockHeader.Hash(),
 			BlockHeightFinal:  &blockHeight,
 			BlockHeightActive: &blockHeightActive,
