@@ -541,7 +541,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
 
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
-	if resp.RejectError != nil {
+	if resp != nil && resp.RejectError != nil {
 		if strings.Contains(resp.RejectError.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
 			// we have already processed this block, let's try the next canonical block
 			// this is most common when we are returning to a previous fork and the enclave has already seen some of the blocks on it
