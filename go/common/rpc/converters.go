@@ -1,12 +1,14 @@
 package rpc
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 
 	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/rpc/generated"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -78,6 +80,17 @@ func ToBlockSubmissionResponseMsg(response *common.BlockSubmissionResponse) (*ge
 	return msg, nil
 }
 
+func FromBlockSubmissionErrorMsg(msg *generated.BlockSubmissionErrorMsg) *errutil.BlockRejectError {
+	if msg == nil {
+		return nil
+	}
+
+	return &errutil.BlockRejectError{
+		L1Head:  gethcommon.BytesToHash(msg.L1Head),
+		Wrapped: errors.New(msg.Cause),
+	}
+}
+
 func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (*common.BlockSubmissionResponse, error) {
 	rollupMetadata := make([]common.ExtRollupMetadata, len(msg.RollupMetadata))
 	for i, metadata := range msg.RollupMetadata {
@@ -88,6 +101,7 @@ func FromBlockSubmissionResponseMsg(msg *generated.BlockSubmissionResponseMsg) (
 	return &common.BlockSubmissionResponse{
 		ProducedSecretResponses: FromSecretRespMsg(msg.ProducedSecretResponses),
 		RollupMetadata:          rollupMetadata,
+		RejectError:             FromBlockSubmissionErrorMsg(msg.Error),
 	}, nil
 }
 
