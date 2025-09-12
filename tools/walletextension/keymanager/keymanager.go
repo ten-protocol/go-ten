@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -327,7 +328,7 @@ func DeserializePublicKey(data []byte) (*rsa.PublicKey, error) {
 	}
 	pubkey, ok := pubInterface.(*rsa.PublicKey)
 	if !ok {
-		return nil, fmt.Errorf("not RSA public key")
+		return nil, errors.New("not RSA public key")
 	}
 	return pubkey, nil
 }

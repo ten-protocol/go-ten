@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"errors"
 	"fmt"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -34,7 +35,7 @@ func getUserID(conn UserConn) ([]byte, error) {
 		return nil, fmt.Errorf("wrong length of userID from URL. Got: %d, Expected: %d od %d", len(userID), common.MessageUserIDLenWithPrefix, common.MessageUserIDLen)
 	}
 
-	return nil, fmt.Errorf("missing token field")
+	return nil, errors.New("missing token field")
 }
 
 func handleError(conn UserConn, logger gethlog.Logger, err error) {

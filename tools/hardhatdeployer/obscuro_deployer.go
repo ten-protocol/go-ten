@@ -2,6 +2,7 @@ package contractdeployer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -116,7 +117,7 @@ type obscuroDeployer struct {
 
 func (o *obscuroDeployer) Nonce(address gethcommon.Address) (uint64, error) {
 	if address != o.client.Address() {
-		return 0, fmt.Errorf("nonce requested for a different address to the deploying client address - this shouldn't happen")
+		return 0, errors.New("nonce requested for a different address to the deploying client address - this shouldn't happen")
 	}
 	return o.client.NonceAt(context.TODO(), nil)
 }

@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -64,7 +65,7 @@ func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey,
 
 func (m *skManager) DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (bool, error) {
 	if len(user.SessionKeys) == 0 {
-		return false, fmt.Errorf("no session keys found")
+		return false, errors.New("no session keys found")
 	}
 
 	if _, exists := user.SessionKeys[sessionKeyAddr]; !exists {
@@ -120,7 +121,7 @@ func (m *skManager) createSK(user *common.GWUser) (*common.GWSessionKey, error) 
 
 func (m *skManager) GetSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (*common.GWSessionKey, error) {
 	if user.SessionKeys == nil {
-		return nil, fmt.Errorf("no session keys found")
+		return nil, errors.New("no session keys found")
 	}
 
 	sessionKey, exists := user.SessionKeys[sessionKeyAddr]

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -150,7 +151,7 @@ func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 	// generate new key-pair and store it in the database
 	userID, err := walletExt.GenerateAndStoreNewUser()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal Error"))
+		handleError(conn, walletExt.Logger(), errors.New("internal Error"))
 		walletExt.Logger().Error("error creating new user", log.ErrKey, err)
 	}
 
@@ -166,7 +167,7 @@ func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	// Get the HTTP request to access cookies
 	req := conn.GetHTTPRequest()
 	if req == nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not access request"))
+		handleError(conn, walletExt.Logger(), errors.New("could not access request"))
 		return
 	}
 
@@ -181,7 +182,7 @@ func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	if userID == "" {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("gateway token cookie not found"))
+		handleError(conn, walletExt.Logger(), errors.New("gateway token cookie not found"))
 		return
 	}
 
@@ -193,14 +194,14 @@ func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	if len(userIDBytes) == 0 {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("token cannot be empty"))
+		handleError(conn, walletExt.Logger(), errors.New("token cannot be empty"))
 		return
 	}
 
 	// Verify the user exists in the database
 	_, err = walletExt.Storage.GetUser(userIDBytes)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database"))
+		handleError(conn, walletExt.Logger(), errors.New("user not found in database"))
 		return
 	}
 
@@ -233,7 +234,7 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	if req.Token == "" {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("token is required"))
+		handleError(conn, walletExt.Logger(), errors.New("token is required"))
 		return
 	}
 
@@ -245,14 +246,14 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	if len(userIDBytes) == 0 {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("token cannot be empty"))
+		handleError(conn, walletExt.Logger(), errors.New("token cannot be empty"))
 		return
 	}
 
 	// Verify the user exists in the database
 	_, err = walletExt.Storage.GetUser(userIDBytes)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database"))
+		handleError(conn, walletExt.Logger(), errors.New("user not found in database"))
 		return
 	}
 
@@ -318,7 +319,7 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	// get address from the request
 	address, ok := reqJSONMap[common.JSONKeyAddress]
 	if !ok || address == "" {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("unable to read address field from the request"))
+		handleError(conn, walletExt.Logger(), errors.New("unable to read address field from the request"))
 		return
 	}
 
@@ -344,7 +345,7 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	// check signature and add address and signature for that user
 	err = walletExt.AddAddressToUser(userID, address, signature, messageType)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		handleError(conn, walletExt.Logger(), errors.New("internal error"))
 		walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, userID, signature))
 		return
 	}
@@ -368,13 +369,13 @@ func queryRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
+		handleError(conn, walletExt.Logger(), errors.New("user ('u') not found in query parameters"))
 		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
 		return
 	}
 	address, err := getQueryParameter(conn.ReadRequestParams(), common.AddressQueryParameter)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("address ('a') not found in query parameters"))
+		handleError(conn, walletExt.Logger(), errors.New("address ('a') not found in query parameters"))
 		walletExt.Logger().Error("address ('a') not found in query parameters", log.ErrKey, err)
 		return
 	}
@@ -387,7 +388,7 @@ func queryRequestHandler(walletExt *services.Services, conn UserConn) {
 	// check if this account is registered with given user
 	found, err := walletExt.UserHasAccount(userID, address)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		handleError(conn, walletExt.Logger(), errors.New("internal error"))
 		walletExt.Logger().Error("error during checking if account exists for user", "userID", userID, log.ErrKey, err)
 	}
 
@@ -420,7 +421,7 @@ func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
+		handleError(conn, walletExt.Logger(), errors.New("user ('u') not found in query parameters"))
 		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
 		return
 	}
@@ -428,7 +429,7 @@ func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
 	// delete user and accounts associated with it from the database
 	err = walletExt.Storage.DeleteUser(userID)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		handleError(conn, walletExt.Logger(), errors.New("internal error"))
 		walletExt.Logger().Error("unable to delete user", "userID", userID, log.ErrKey, err)
 		return
 	}
@@ -637,14 +638,14 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	// get address from the request
 	encryptionToken, ok := reqJSONMap[common.JSONKeyEncryptionToken]
 	if !ok {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("encryptionToken field not found in the request"))
+		handleError(conn, walletExt.Logger(), errors.New("encryptionToken field not found in the request"))
 		return
 	}
 	if tokenStr, ok := encryptionToken.(string); !ok {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("encryptionToken field is not a string"))
+		handleError(conn, walletExt.Logger(), errors.New("encryptionToken field is not a string"))
 		return
 	} else if len(tokenStr) != common.MessageUserIDLen {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("encryptionToken field is not of correct length"))
+		handleError(conn, walletExt.Logger(), errors.New("encryptionToken field is not of correct length"))
 		return
 	}
 
@@ -653,14 +654,14 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	if formatsInterface, ok := reqJSONMap[common.JSONKeyFormats]; ok {
 		formats, ok := formatsInterface.([]interface{})
 		if !ok {
-			handleError(conn, walletExt.Logger(), fmt.Errorf("formats field is not an array"))
+			handleError(conn, walletExt.Logger(), errors.New("formats field is not an array"))
 			return
 		}
 
 		for _, f := range formats {
 			formatStr, ok := f.(string)
 			if !ok {
-				handleError(conn, walletExt.Logger(), fmt.Errorf("format value is not a string"))
+				handleError(conn, walletExt.Logger(), errors.New("format value is not a string"))
 				return
 			}
 			formatsSlice = append(formatsSlice, formatStr)
@@ -674,7 +675,7 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	message, err := walletExt.GenerateUserMessageToSign(userID, formatsSlice)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		handleError(conn, walletExt.Logger(), errors.New("internal error"))
 		walletExt.Logger().Error("error getting message", log.ErrKey, err)
 		return
 	}

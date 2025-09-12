@@ -42,7 +42,7 @@ const (
 	sendTransactionDuration = 20 * time.Second
 )
 
-var ErrRPCNotImplemented = fmt.Errorf("rpc endpoint not implemented")
+var ErrRPCNotImplemented = errors.New("rpc endpoint not implemented")
 
 type AuthExecCfg struct {
 	// these 4 fields specify the account(s) that should make the backend call
@@ -108,7 +108,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
 	if !rateLimitAllowed {
 		services.Audit(w, services.WarnLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
-		return nil, fmt.Errorf("rate limit exceeded")
+		return nil, errors.New("rate limit exceeded")
 	}
 	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 
@@ -122,7 +122,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 			return nil, err
 		}
 		if len(candidateAccts) == 0 {
-			return nil, fmt.Errorf("illegal access")
+			return nil, errors.New("illegal access")
 		}
 
 		var rpcErr error

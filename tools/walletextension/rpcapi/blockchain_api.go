@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	rpc2 "github.com/ten-protocol/go-ten/go/rpc"
@@ -235,7 +236,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 
 		// Verify that the session key exists for this user
 		if user.SessionKeys == nil || user.SessionKeys[addr] == nil {
-			return gethcommon.Hash{}.Bytes(), fmt.Errorf("please create a session key before sending unsigned transactions")
+			return gethcommon.Hash{}.Bytes(), errors.New("please create a session key before sending unsigned transactions")
 		}
 
 		// Decode base64 tx and unmarshal transaction
@@ -278,7 +279,7 @@ func (api *BlockChainAPI) GetStorageAt(ctx context.Context, address gethcommon.A
 
 		respHex, ok := (*resp).(string)
 		if !ok {
-			return nil, fmt.Errorf("unable to decode response")
+			return nil, errors.New("unable to decode response")
 		}
 		// turn resp object into hexutil.Bytes
 		return hexutil.MustDecode(respHex), nil
@@ -398,7 +399,7 @@ func extractAddressFromParams(params any, fieldName string) (*gethcommon.Address
 	// Extract address from params json - expects {fieldName: "0x..."}
 	paramsStr, ok := params.(string)
 	if !ok {
-		return nil, fmt.Errorf("params must be a json string")
+		return nil, errors.New("params must be a json string")
 	}
 	var paramsJSON map[string]json.RawMessage
 	err := json.Unmarshal([]byte(paramsStr), &paramsJSON)
@@ -436,7 +437,7 @@ func extractAddressFromParams(params any, fieldName string) (*gethcommon.Address
 func extractStringFromParams(params any, fieldName string) (string, error) {
 	paramsStr, ok := params.(string)
 	if !ok {
-		return "", fmt.Errorf("params must be a json string")
+		return "", errors.New("params must be a json string")
 	}
 	var paramsJSON map[string]json.RawMessage
 	err := json.Unmarshal([]byte(paramsStr), &paramsJSON)

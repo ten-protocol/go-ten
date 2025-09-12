@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"time"
 
@@ -225,7 +226,7 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 
 	if recoveredAddress.Hex() != addressFromMessage.Hex() {
 		Audit(w, WarnLevel, "Invalid signature for address: %s, recovered: %s", addressFromMessage.Hex(), recoveredAddress.Hex())
-		return fmt.Errorf("invalid request. Signature doesn't match address")
+		return errors.New("invalid request. Signature doesn't match address")
 	}
 
 	// register the account for that viewing key
