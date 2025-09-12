@@ -11,7 +11,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/contracts/generated/CrossChainMessenger"
 	"github.com/ten-protocol/go-ten/contracts/generated/EthereumBridge"
-	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	"github.com/ten-protocol/go-ten/contracts/generated/TenBridge"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
@@ -509,88 +508,6 @@ func (ti *TransactionInjector) issueInvalidL2Txs() {
 		}
 		time.Sleep(testcommon.RndBtwTime(ti.avgBlockDuration/4, ti.avgBlockDuration))
 	}
-}
-
-// issueUpgradeTransaction creates and issues a single upgrade transaction with random feature data after a 10-second delay
-func (ti *TransactionInjector) issueUpgradeTransaction() {
-	return
-	// Wait for 10 seconds before injecting the upgrade transaction
-	time.Sleep(10 * time.Second)
-
-	// Skip upgrade transaction for in-memory simulations
-	if ti.params.IsInMem {
-		ti.logger.Info("Skipping upgrade transaction for in-memory simulation")
-		return
-	}
-
-	// Check if we should stop before proceeding
-	if atomic.LoadInt32(ti.interruptRun) != 0 {
-		ti.logger.Info("Upgrade transaction injection interrupted")
-		return
-	}
-
-	// Get NetworkConfig contract address from L1TenData
-	networkConfigAddress := ti.params.L1TenData.NetworkConfigAddress
-	if networkConfigAddress.Cmp(gethcommon.Address{}) == 0 {
-		ti.logger.Error("NetworkConfig address is not set, cannot inject upgrade transaction")
-		return
-	}
-
-	// Use L1 client and contract owner wallet
-	l1Client := ti.rpcHandles.RndEthClient()
-	l1Wallet := ti.wallets.ContractOwnerWallet
-
-	// Create NetworkConfig contract instance
-	networkConfig, err := NetworkConfig.NewNetworkConfig(networkConfigAddress, l1Client.EthClient())
-	if err != nil {
-		ti.logger.Error("Failed to create NetworkConfig contract instance", log.ErrKey, err)
-		return
-	}
-
-	// Create transactor for L1 transaction
-	auth, err := bind.NewKeyedTransactorWithChainID(l1Wallet.PrivateKey(), l1Wallet.ChainID())
-	if err != nil {
-		ti.logger.Error("Failed to create transactor for upgrade transaction", log.ErrKey, err)
-		return
-	}
-
-	auth.Nonce = big.NewInt(int64(l1Wallet.GetNonceAndIncrement()))
-	auth.Context = ti.ctx
-	auth.Value = big.NewInt(0)
-
-	// Generate random feature name and data
-	featureName := fmt.Sprintf("test_feature_%d", rand.Intn(1000000))                              //nolint:gosec
-	featureData := []byte(fmt.Sprintf("random_data_%d_%d", time.Now().Unix(), rand.Intn(1000000))) //nolint:gosec
-
-	// Call UpgradeFeature with random feature name and data
-	tx, err := networkConfig.UpgradeFeature(auth, featureName, featureData)
-	if err != nil {
-		ti.logger.Error("Failed to call UpgradeFeature", log.ErrKey, err)
-		return
-	}
-
-	ti.logger.Info("Upgrade transaction injected into L1",
-		log.TxKey, tx.Hash(),
-		"featureName", featureName,
-		"featureData", string(featureData),
-		"from", l1Wallet.Address())
-
-	// Wait for transaction to be mined
-	receipt, err := testcommon.AwaitReceiptEth(ti.ctx, l1Client.EthClient(), tx.Hash(), 30*time.Second)
-	if err != nil {
-		ti.logger.Error("Failed to wait for upgrade transaction receipt", log.ErrKey, err)
-		return
-	}
-
-	if receipt.Status != types.ReceiptStatusSuccessful {
-		ti.logger.Error("Upgrade transaction failed", log.TxKey, tx.Hash())
-		return
-	}
-
-	ti.logger.Info("Successfully injected upgrade transaction",
-		log.TxKey, tx.Hash(),
-		"featureName", featureName,
-		"featureData", string(featureData))
 }
 
 // Uses one of the approaches to create an invalidly-signed transaction.
