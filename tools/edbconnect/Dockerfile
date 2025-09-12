@@ -4,7 +4,7 @@
 # deploy = copies over only the enclave executable without the source
 #          in a lightweight base image specialized for deployment and prepares the /data/ folder.
 
-FROM ghcr.io/edgelesssys/ego-dev:v1.7.2 AS build-base
+FROM ghcr.io/edgelesssys/ego-dev:v1.8.0 AS build-base
 
 # setup container data structure
 RUN mkdir -p /home/ten/go-ten
@@ -34,7 +34,7 @@ RUN ego sign edb-enclave.json
 RUN /home/obscuro/go-obscuro/tools/enclavesigner/AzureHSMSignatureScript.sh main /home/obscuro/go-obscuro/tools/enclavesigner/main
 
 # Trigger a new build stage and use the smaller ego version:
-FROM ghcr.io/edgelesssys/ego-deploy:v1.7.2
+FROM ghcr.io/edgelesssys/ego-deploy:v1.8.0
 
 # Copy the binary and the entrypoint script
 COPY --from=sign-built-enclave \
