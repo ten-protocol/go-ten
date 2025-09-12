@@ -43,10 +43,10 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
 
-	edgelessDBImage := "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
+	edgelessDBImage := "testnetobscuronet.azurecr.io/obscuronet/ten-edb-4096:v0.3.4"
 	// todo: revisit how we should configure the image, this condition is not ideal
 	if !t.cfg.isSGXEnabled {
-		edgelessDBImage = "ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"
+		edgelessDBImage = "testnetobscuronet.azurecr.io/obscuronet/ten-edb-1024:v0.3.4"
 	}
 
 	sequencerCfg, err := config.LoadTenConfig(
