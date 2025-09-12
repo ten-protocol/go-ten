@@ -14,7 +14,7 @@ ARG AZURE_SUBSCRIPTION_ID
 #   /home/obscuro/go-obscuro/go/enclave/main    contains the executable for the enclave
 #
 
-FROM ghcr.io/edgelesssys/ego-dev:v1.7.2 AS build-base
+FROM ghcr.io/edgelesssys/ego-dev:v1.8.0 AS build-base
 
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
@@ -46,7 +46,7 @@ RUN ego sign enclave.json
 RUN /home/obscuro/go-obscuro/tools/enclavesigner/AzureHSMSignatureScript.sh main /home/obscuro/go-obscuro/tools/enclavesigner/main
 
 # Trigger a new build stage and use the smaller ego version:
-FROM ghcr.io/edgelesssys/ego-deploy:v1.7.2
+FROM ghcr.io/edgelesssys/ego-deploy:v1.8.0
 
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \

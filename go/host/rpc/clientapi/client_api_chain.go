@@ -2,6 +2,7 @@ package clientapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -83,7 +84,7 @@ func (api *ChainAPI) GetCode(ctx context.Context, address gethcommon.Address, bl
 	code, sysError := api.host.EnclaveClient().GetCode(ctx, address, blockNrOrHash)
 	if sysError != nil {
 		api.logger.Error(fmt.Sprintf("Enclave System Error. Function %s", "GetCode"), log.ErrKey, sysError)
-		return nil, fmt.Errorf(responses.InternalErrMsg)
+		return nil, errors.New(responses.InternalErrMsg)
 	}
 
 	return code, nil

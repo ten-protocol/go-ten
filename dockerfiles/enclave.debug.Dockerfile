@@ -4,7 +4,7 @@
 # build-enclave = copies over the source and builds the enclave using a go compiler cache
 # final = using the base system copies over only the enclave executable and creates the final image without source and dependencies. 
 
-FROM golang:1.23-alpine as system
+FROM golang:1.25-alpine as system
 
 # install build utils
 RUN apk add build-base

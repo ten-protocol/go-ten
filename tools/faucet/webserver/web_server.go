@@ -2,6 +2,7 @@ package webserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -100,12 +101,12 @@ func errorHandler(c *gin.Context, err error, logger log.Logger) {
 
 func extractBearerToken(header string) (string, error) {
 	if header == "" {
-		return "", fmt.Errorf("bad header value given")
+		return "", errors.New("bad header value given")
 	}
 
 	jwtToken := strings.Split(header, " ")
 	if len(jwtToken) != 2 {
-		return "", fmt.Errorf("incorrectly formatted authorization header")
+		return "", errors.New("incorrectly formatted authorization header")
 	}
 
 	return jwtToken[1], nil

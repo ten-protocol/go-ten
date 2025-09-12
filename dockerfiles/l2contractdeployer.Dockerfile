@@ -1,5 +1,5 @@
 # --- STAGE 1: Build the binary ---
-FROM golang:1.23-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Install necessary tools (for CGO or general build needs)
 RUN apk add --no-cache build-base

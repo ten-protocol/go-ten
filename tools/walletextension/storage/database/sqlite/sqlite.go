@@ -176,7 +176,7 @@ func (s *SqliteDB) RemoveSessionKey(userID []byte, sessionKeyAddr *common.Addres
 		}
 
 		if user.SessionKeys == nil {
-			return fmt.Errorf("no session keys found for user")
+			return errors.New("no session keys found for user")
 		}
 
 		if _, exists := user.SessionKeys[*sessionKeyAddr]; !exists {

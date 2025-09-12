@@ -2,6 +2,7 @@ package rpcapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
@@ -108,7 +109,7 @@ func (s *TransactionAPI) GetTransactionReceipt(ctx context.Context, hash common.
 func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.TransactionArgs) (common.Hash, error) {
 	// Extract the From address from the transaction
 	if args.From == nil {
-		return common.Hash{}, fmt.Errorf("missing From address in transaction")
+		return common.Hash{}, errors.New("missing From address in transaction")
 	}
 
 	fromAddress := *args.From
@@ -125,12 +126,12 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.Trans
 		// Convert the transaction args to a proper transaction
 		tx := args.ToTransaction()
 		if tx == nil {
-			return common.Hash{}, fmt.Errorf("failed to convert transaction args to transaction")
+			return common.Hash{}, errors.New("failed to convert transaction args to transaction")
 		}
 
 		// Check if SKManager is available
 		if s.we.SKManager == nil {
-			return common.Hash{}, fmt.Errorf("session key manager not available")
+			return common.Hash{}, errors.New("session key manager not available")
 		}
 
 		// Sign the transaction with the session key (passing the session key address)

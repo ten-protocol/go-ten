@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -164,7 +165,7 @@ func (c *CosmosDB) RemoveSessionKey(userID []byte, sessionKeyAddr *common.Addres
 	ctx := context.Background()
 	return c.updateUserWithRetries(ctx, userID, func(u *dbcommon.GWUserDB) error {
 		if u.SessionKeys == nil {
-			return fmt.Errorf("no session keys found for user")
+			return errors.New("no session keys found for user")
 		}
 
 		if _, exists := u.SessionKeys[*sessionKeyAddr]; !exists {
@@ -293,5 +294,5 @@ func (c *CosmosDB) updateUserWithRetries(ctx context.Context, userID []byte, mut
 		}
 		return nil
 	}
-	return fmt.Errorf("exceeded max retries, user update failed")
+	return errors.New("exceeded max retries, user update failed")
 }
