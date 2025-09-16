@@ -30,6 +30,7 @@ func (n *DockerFaucet) Start() error {
 		"--pk", n.cfg.faucetPrivKey,
 		"--jwtSecret", "someKey",
 		"--serverPort", fmt.Sprintf("%d", n.cfg.faucetPort),
+		"--chainID", fmt.Sprintf("%d", n.cfg.chainID),
 	}
 
 	_, err := docker.StartNewContainer("faucet", n.cfg.dockerImage, cmds, []int{n.cfg.faucetPort}, nil, nil, nil, false)

@@ -153,6 +153,7 @@ func (t *Testnet) Start() error {
 			faucet.WithTenNodeHost("validator-host"),
 			faucet.WithFaucetPrivKey("0x8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
 			faucet.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/faucet:latest"),
+			faucet.WithChainID(sequencerCfg.Network.ChainID),
 		),
 	)
 	if err != nil {
