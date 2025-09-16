@@ -71,7 +71,7 @@ func TestTenGateway(t *testing.T) {
 		LogPath:                        "sys_out",
 		LogLevel:                       3, // info level
 		DBType:                         "sqlite",
-		TenChainID:                     443,
+		TenChainID:                     5443,
 		StoreIncomingTxs:               true,
 		RateLimitUserComputeTime:       0,
 		RateLimitWindow:                1 * time.Second,

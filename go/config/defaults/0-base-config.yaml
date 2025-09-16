@@ -3,7 +3,7 @@
 #  - serves as template/documentation for config structure
 
 network:
-  chainId: 443
+  chainId: 5443
   genesis: "{}" # json string of genesis block, used for configuring prefunded accounts etc.
   batch:
     interval: 1s
