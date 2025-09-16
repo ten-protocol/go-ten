@@ -11,6 +11,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"database/sql"
+	"database/sql/driver"
 	"embed"
 	"encoding/hex"
 	"encoding/json"
@@ -499,6 +500,17 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 			logger,
 			func(err error) bool {
 				return strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "invalid connection")
+			},
+			func(conn driver.Conn) {
+				execer, ok := conn.(driver.ExecerContext)
+				if !ok {
+					return
+				}
+				// for every connection we set the rocksdb_lock_wait_timeout to 5 seconds
+				_, err := execer.ExecContext(context.Background(), "SET SESSION rocksdb_lock_wait_timeout = 5", nil)
+				if err != nil {
+					logger.Crit("Failed to set rocksdb_lock_wait_timeout", log.ErrKey, err)
+				}
 			}),
 	)
 	return driverName
