@@ -2,6 +2,7 @@ package sqlite
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"embed"
 	"fmt"
 	"os"
@@ -141,6 +142,8 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 			logger,
 			func(err error) bool {
 				return strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "invalid connection")
+			},
+			func(conn driver.Conn) {
 			}),
 	)
 	return driverName
