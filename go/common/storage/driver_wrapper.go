@@ -10,13 +10,14 @@ import (
 
 // NewPanicOnDBErrorDriver returns either a wrapped DriverContext or a Driver that panics on database errors
 // When the database is not available, we prefer to fail instead of entering an inconsistency state.
-func NewPanicOnDBErrorDriver(d driver.Driver, logger gethlog.Logger, isCritical func(error) bool) driver.Driver {
+func NewPanicOnDBErrorDriver(d driver.Driver, logger gethlog.Logger, isCritical func(error) bool, onNewConn func(conn driver.Conn)) driver.Driver {
 	driverContext, isDriverContext := d.(driver.DriverContext)
 	if isDriverContext {
 		return &panicOnDBErrorDriverContext{
 			driver:     driverContext,
 			logger:     logger,
 			isCritical: isCritical,
+			onNewConn:  onNewConn,
 		}
 	}
 
@@ -24,6 +25,7 @@ func NewPanicOnDBErrorDriver(d driver.Driver, logger gethlog.Logger, isCritical 
 		driver:     d,
 		logger:     logger,
 		isCritical: isCritical,
+		onNewConn:  onNewConn,
 	}
 }
 
@@ -32,6 +34,7 @@ type panicOnDBErrorDriver struct {
 	driver     driver.Driver
 	logger     gethlog.Logger
 	isCritical func(error) bool
+	onNewConn  func(conn driver.Conn)
 }
 
 func (d *panicOnDBErrorDriver) Open(dsn string) (driver.Conn, error) {
@@ -39,6 +42,7 @@ func (d *panicOnDBErrorDriver) Open(dsn string) (driver.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
+	d.onNewConn(conn)
 	return &panicOnErrorConnection{conn: conn, logger: d.logger, isCritical: d.isCritical}, nil
 }
 
@@ -47,6 +51,7 @@ type panicOnDBErrorDriverContext struct {
 	driver     driver.DriverContext
 	logger     gethlog.Logger
 	isCritical func(error) bool
+	onNewConn  func(conn driver.Conn)
 }
 
 func (d *panicOnDBErrorDriverContext) OpenConnector(name string) (driver.Connector, error) {
@@ -59,6 +64,7 @@ func (d *panicOnDBErrorDriverContext) OpenConnector(name string) (driver.Connect
 		connector:  connector,
 		logger:     d.logger,
 		isCritical: d.isCritical,
+		onNewConn:  d.onNewConn,
 	}, nil
 }
 
@@ -71,6 +77,7 @@ type panicOnErrorConnector struct {
 	connector  driver.Connector
 	logger     gethlog.Logger
 	isCritical func(error) bool
+	onNewConn  func(conn driver.Conn)
 }
 
 func (conn *panicOnErrorConnector) Connect(ctx context.Context) (driver.Conn, error) {
@@ -78,6 +85,7 @@ func (conn *panicOnErrorConnector) Connect(ctx context.Context) (driver.Conn, er
 	if err != nil {
 		return nil, err
 	}
+	conn.onNewConn(connection)
 	return &panicOnErrorConnection{conn: connection, logger: conn.logger, isCritical: conn.isCritical}, nil
 }
 
