@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/datagenerator"
 	"github.com/ten-protocol/go-ten/integration/networktest"
@@ -24,7 +23,7 @@ func (c *CreateTestUser) String() string {
 func (c *CreateTestUser) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
 	logger := testlog.Logger()
 
-	wal := datagenerator.RandomWallet(integration.TenChainID)
+	wal := datagenerator.RandomWallet(network.ChainID())
 	var user userwallet.User
 	if c.UseGateway {
 		gwURL, err := network.GetGatewayURL()
