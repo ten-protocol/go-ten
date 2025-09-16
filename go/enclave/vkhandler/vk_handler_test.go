@@ -13,7 +13,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 )
 
-const chainID = 443
+const chainID = 5443
 
 // generateRandomUserKeys -
 // generates a random user private key and a random viewing key private key and returns the user private key,

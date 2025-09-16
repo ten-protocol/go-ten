@@ -14,7 +14,7 @@ const (
 
 var (
 	defaultL1ChainID = big.NewInt(1337)
-	defaultL2ChainID = big.NewInt(443)
+	defaultL2ChainID = big.NewInt(5443)
 )
 
 // DefaultConfig stores the contract client default config

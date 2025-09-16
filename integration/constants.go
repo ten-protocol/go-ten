@@ -23,7 +23,7 @@ const (
 
 const (
 	EthereumChainID = 1337
-	TenChainID      = 443
+	TenChainID      = 5443
 )
 
 const (
