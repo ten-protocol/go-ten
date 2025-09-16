@@ -54,32 +54,3 @@ jobs:
         run: |
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_SCAN_API }} -f ./tools/tenscan/backend/Dockerfile . 
           docker push ${{ vars.DOCKER_BUILD_TAG_SCAN_API }}
-
-      - name: "Deploy FE to Azure Container Instances"
-        uses: "azure/aci-deploy@v1"
-        with:
-          resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: ${{ github.event.inputs.testnet_type }}-ten-scan
-          image: ${{ vars.DOCKER_BUILD_TAG_SCAN_FE }}
-          name: ${{ github.event.inputs.testnet_type }}-fe-ten-scan
-          location: "uksouth"
-          restart-policy: "Never"
-          environment-variables: NEXT_PUBLIC_API_HOST=https://${{ github.event.inputs.testnet_type }}-api.tenscan.io NEXT_PUBLIC_FE_VERSION=${{ GITHUB.RUN_NUMBER }}-${{ GITHUB.SHA }} NEXT_PUBLIC_API_HOST_ENVIRONMENT=${{ github.event.inputs.testnet_type }}
-          command-line: pnpm run start-prod
-          ports: "80"
-          cpu: 2
-          memory: 2
-
-      - name: "Deploy API to Azure Container Instances"
-        uses: "azure/aci-deploy@v1"
-        with:
-          resource-group: ${{ secrets.RESOURCE_GROUP }}
-          dns-name-label: ${{ github.event.inputs.testnet_type }}-api-ten-scan
-          image: ${{ vars.DOCKER_BUILD_TAG_SCAN_API }}
-          name: ${{ github.event.inputs.testnet_type }}-api-ten-scan
-          location: "uksouth"
-          restart-policy: "Never"
-          command-line: ./cmd/backend --nodeHostAddress http://${{ vars.L2_RPC_URL_VALIDATOR }}:80 --serverAddress 0.0.0.0:80
-          ports: "80"
-          cpu: 2
-          memory: 2
