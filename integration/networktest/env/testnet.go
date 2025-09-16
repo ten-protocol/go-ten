@@ -35,9 +35,10 @@ type testnetConnector struct {
 	tenGatewayURL         string
 	tenGatewayWSURL       string
 	faucetWallet          userwallet.User
+	chainID               int
 }
 
-func newTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1WSURL string, tenGatewayURL string, tenGatewayWSURL string) *testnetConnector {
+func newTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, faucetHTTPAddress string, l1WSURL string, tenGatewayURL string, tenGatewayWSURL string, chainID int) *testnetConnector {
 	return &testnetConnector{
 		seqRPCAddress:         seqRPCAddr,
 		validatorRPCAddresses: validatorRPCAddressses,
@@ -45,6 +46,7 @@ func newTestnetConnector(seqRPCAddr string, validatorRPCAddressses []string, fau
 		l1RPCURL:              l1WSURL,
 		tenGatewayURL:         tenGatewayURL,
 		tenGatewayWSURL:       tenGatewayWSURL,
+		chainID:               chainID,
 	}
 }
 
@@ -60,11 +62,12 @@ func newTestnetConnectorWithFaucetAccount(seqRPCAddr string, validatorRPCAddress
 		faucetWallet:          userwallet.NewUserWallet(wal, validatorRPCAddressses[0], testlog.Logger()),
 		l1RPCURL:              l1RPCAddress,
 		tenGatewayURL:         tenGatewayURL,
+		chainID:               integration.TenChainID,
 	}
 }
 
 func (t *testnetConnector) ChainID() int64 {
-	return integration.TenChainID
+	return int64(t.chainID)
 }
 
 func (t *testnetConnector) AllocateFaucetFunds(ctx context.Context, account gethcommon.Address) error {

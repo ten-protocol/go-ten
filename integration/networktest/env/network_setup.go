@@ -6,7 +6,6 @@ import (
 	"github.com/ten-protocol/go-ten/integration/common"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/integration"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/networktest"
 	"github.com/ten-protocol/go-ten/tools/walletextension"
@@ -27,6 +26,7 @@ func SepoliaTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		"wss://ethereum-sepolia-rpc.publicnode.com",
 		"https://testnet.ten.xyz",  //"https://rpc.dexynth-gateway.ten.xyz",
 		"wss://testnet.ten.xyz:81", // "wss://rpc.dexynth-gateway.ten.xyz:81",
+		8443,
 	)
 	return newTestnetEnv(connector, opts...)
 }
@@ -39,6 +39,7 @@ func UATTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		"wss://ethereum-sepolia-rpc.publicnode.com",
 		"https://rpc.uat-gw-testnet.ten.xyz",
 		"wss://rpc.uat-gw-testnet.ten.xyz:81",
+		7443,
 	)
 	return newTestnetEnv(connector, opts...)
 }
@@ -51,6 +52,7 @@ func DevTestnet(opts ...TestnetEnvOption) networktest.Environment {
 		"ws://dev-testnet-eth2network-522.uksouth.cloudapp.azure.com:9000",
 		"https://rpc.dev-gw-testnet.ten.xyz",
 		"wss://rpc.dev-gw-testnet.ten.xyz:81",
+		6443,
 	)
 	return newTestnetEnv(connector, opts...)
 }
@@ -112,7 +114,7 @@ func (t *testnetEnv) startTenGateway() {
 		LogPath:                 "sys_out",
 		LogLevel:                3, // info level
 		DBType:                  "sqlite",
-		TenChainID:              integration.TenChainID,
+		TenChainID:              t.testnetConnector.chainID,
 	}
 	tenGWContainer := walletextension.NewContainerFromConfig(cfg, t.logger)
 
