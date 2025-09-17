@@ -15,7 +15,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log(`TenBridge address = ${bridgeAddress}`);
 
     const tenBridge = (await hre.ethers.getContractFactory('TenBridge')).attach(bridgeAddress)
-    const prefundAmount = hre.ethers.parseEther("0.5");
+    // the last L2 deployment run against sepolia used 0.0003 eth (sept 2025)
+    // 0.005 eth aims to allow cushion without requiring unnecessary eth for deployment testing
+    const prefundAmount = hre.ethers.parseEther("0.005");
     console.log(`Prefund amount ${prefundAmount}; MB = ${tenBridge}`);
 
     const tx = await tenBridge.getFunction("sendNative").populateTransaction(deployer);
