@@ -77,6 +77,7 @@ func TestTenGateway(t *testing.T) {
 		RateLimitUserComputeTime:       0,
 		RateLimitWindow:                1 * time.Second,
 		RateLimitMaxConcurrentRequests: 3,
+		SessionKeyExpirationThreshold:  10 * time.Second, // Session keys expire after 10 seconds
 	}
 
 	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
