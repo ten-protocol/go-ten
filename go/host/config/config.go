@@ -66,6 +66,8 @@ type HostConfig struct {
 	// filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or
 	// if using InMemory DB)
 	SqliteDBPath string
+	// Historical transaction count for testnet
+	HistoricalTxCount int
 
 	//////
 	// NODE NETWORKING
@@ -138,9 +140,10 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		LogLevel: tenCfg.Host.Log.Level,
 		LogPath:  tenCfg.Host.Log.Path,
 
-		UseInMemoryDB:  tenCfg.Host.DB.UseInMemory,
-		PostgresDBHost: tenCfg.Host.DB.PostgresHost,
-		SqliteDBPath:   tenCfg.Host.DB.SqlitePath,
+		UseInMemoryDB:     tenCfg.Host.DB.UseInMemory,
+		PostgresDBHost:    tenCfg.Host.DB.PostgresHost,
+		SqliteDBPath:      tenCfg.Host.DB.SqlitePath,
+		HistoricalTxCount: tenCfg.Host.DB.HistoricalTxCount,
 
 		HasClientRPCHTTP:       tenCfg.Host.RPC.EnableHTTP,
 		ClientRPCPortHTTP:      tenCfg.Host.RPC.HTTPPort,

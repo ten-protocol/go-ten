@@ -15,17 +15,18 @@ import (
 )
 
 const (
-	selectBatch         = "SELECT sequence, hash, height, ext_batch FROM batch_host b"
-	selectExtBatch      = "SELECT ext_batch FROM batch_host"
-	selectLatestBatch   = "SELECT sequence, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
-	selectTxsAndBatch   = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.hash = ?"
-	selectBatchSeqByTx  = "SELECT b_sequence FROM transaction_host WHERE hash = ?"
-	selectTxBySeq       = "SELECT hash FROM transaction_host WHERE b_sequence = ?"
-	selectBatchTxs      = "SELECT t.hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
-	selectSumBatchSizes = "SELECT SUM(txs_size) FROM batch_host WHERE sequence >= ?"
-	insertBatch         = "INSERT INTO batch_host (sequence, hash, height, ext_batch, txs_size) VALUES (?, ?, ?, ?, ?)"
-	insertTransactions  = "INSERT INTO transaction_host (hash, b_sequence) VALUES "
-	updateTxCount       = "UPDATE transaction_count SET total=? WHERE id=1"
+	selectBatch             = "SELECT sequence, hash, height, ext_batch FROM batch_host b"
+	selectExtBatch          = "SELECT ext_batch FROM batch_host"
+	selectLatestBatch       = "SELECT sequence, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
+	selectTxsAndBatch       = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.hash = ?"
+	selectBatchSeqByTx      = "SELECT b_sequence FROM transaction_host WHERE hash = ?"
+	selectTxBySeq           = "SELECT hash FROM transaction_host WHERE b_sequence = ?"
+	selectBatchTxs          = "SELECT t.hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
+	selectSumBatchSizes     = "SELECT SUM(txs_size) FROM batch_host WHERE sequence >= ?"
+	insertBatch             = "INSERT INTO batch_host (sequence, hash, height, ext_batch, txs_size) VALUES (?, ?, ?, ?, ?)"
+	insertTransactions      = "INSERT INTO transaction_host (hash, b_sequence) VALUES "
+	updateTxCount           = "UPDATE transaction_count SET total=? WHERE id=1"
+	updateHistoricalTxCount = "UPDATE historical_transaction_count SET total=? WHERE id=1"
 
 	whereHash     = " WHERE hash = ?"
 	whereBHash    = " WHERE b.hash = ?"
@@ -71,6 +72,7 @@ func AddBatch(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
 		}
 	}
 
+	// update current transaction count
 	var currentTotal int
 	reboundSelectTxCount := db.GetSQLDB().Rebind("SELECT total FROM transaction_count WHERE id = 1")
 	err = dbtx.Tx.QueryRow(reboundSelectTxCount).Scan(&currentTotal)
@@ -83,6 +85,21 @@ func AddBatch(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
 	_, err = dbtx.Tx.Exec(reboundUpdateTxCount, newTotal)
 	if err != nil {
 		return fmt.Errorf("failed to update transaction count: %w", err)
+	}
+
+	// update historical transaction count
+	var currentHistoricalTotal int
+	reboundSelectHistoricalTxCount := db.GetSQLDB().Rebind("SELECT total FROM historical_transaction_count WHERE id = 1")
+	err = dbtx.Tx.QueryRow(reboundSelectHistoricalTxCount).Scan(&currentHistoricalTotal)
+	if err != nil {
+		return fmt.Errorf("failed to query historical transaction count: %w", err)
+	}
+
+	newHistoricalTotal := currentHistoricalTotal + len(batch.TxHashes)
+	reoundHistoricalQuery := db.GetSQLDB().Rebind(updateHistoricalTxCount)
+	_, err = dbtx.Tx.Exec(reoundHistoricalQuery, newHistoricalTotal)
+	if err != nil {
+		return fmt.Errorf("failed to update historical transaction count: %w", err)
 	}
 
 	return nil
