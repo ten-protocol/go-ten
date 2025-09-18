@@ -3,8 +3,11 @@
 {
 	"name": "Go",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/go:1-1.23-bookworm",
+	"image": "mcr.microsoft.com/devcontainers/base:bookworm",
 	"features": {
+		"ghcr.io/devcontainers/features/go:1": {
+			"version": "1.25.1"
+		},
 		"ghcr.io/dhoeric/features/act:1": {},
 		"ghcr.io/devcontainers/features/node:1": {
 			"version": "18"
@@ -16,7 +19,6 @@
 			"extensions": [
 				"766b.go-outliner",
 				"golang.go",
-				"zxh404.vscode-proto3",
 				"NomicFoundation.hardhat-solidity"
 			],
 			"settings": {

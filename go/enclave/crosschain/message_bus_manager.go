@@ -217,52 +217,95 @@ func (m *MessageBusManager) CreateSyntheticTransactions(_ context.Context, messa
 func ConvertCrossChainMessagesToValueTransfers(msgs common.CrossChainMessages, eventName string, bridgeAddress *common.L1Address) (common.ValueTransferEvents, error) {
 	transfers := msgs.FilterValueTransfers(*bridgeAddress)
 
-	// Create the ABI components for the ValueTransfer struct
-	uint256Type, _ := abi.NewType("uint256", "", nil)
-	addressType, _ := abi.NewType("address", "", nil)
-
-	// Define the struct components matching the Solidity struct
-	valueTransferComponents := abi.Arguments{
-		{
-			Name: "amount",
-			Type: uint256Type,
-		},
-		{
-			Name: "recipient",
-			Type: addressType,
-		},
-	}
-
 	valueTransfers := make(common.ValueTransferEvents, 0)
-	for _, transfer := range transfers {
-		// Unpack the log data
-		unpacked, err := valueTransferComponents.Unpack(transfer.Payload)
+	for _, m := range transfers {
+		// 1) Decode CrossChainCall wrapper (tuple)
+		out, err := decodeCrossChainCall(m.Payload)
 		if err != nil {
-			return nil, fmt.Errorf("unable to unpack the value transfer struct: %w", err)
+			return nil, fmt.Errorf("unpack CrossChainCall failed: topic=%d sender=%s seq=%d: %w", m.Topic, m.Sender.Hex(), m.Sequence, err)
 		}
 
-		// Make sure we get the expected number of values
-		if len(unpacked) != 2 {
-			return nil, fmt.Errorf("unexpected number of values unpacked: expected 2, got %d", len(unpacked))
+		// 2) Decode inner receiveAssets call
+		asset, amount, recipient, err := decodeReceiveAssetsCall(out.Data)
+		if err != nil {
+			selector := ""
+			if len(out.Data) >= 4 {
+				selector = gethcommon.Bytes2Hex(out.Data[:4])
+			}
+			return nil, fmt.Errorf("unable to unpack receiveAssets call data: topic=%d sender=%s seq=%d selector=%s: %w", m.Topic, m.Sender.Hex(), m.Sequence, selector, err)
 		}
 
-		// Convert the unpacked values to the right types
-		amount, ok1 := unpacked[0].(*big.Int)
-		recipient, ok2 := unpacked[1].(gethcommon.Address)
-
-		if !ok1 || !ok2 {
-			return nil, fmt.Errorf("failed to convert unpacked values to expected types")
+		// Only native asset transfers (asset == address(0)) affect L2 native balance
+		if asset == (gethcommon.Address{}) {
+			valueTransfers = append(valueTransfers, common.ValueTransferEvent{
+				Amount:   amount,
+				Receiver: recipient,
+				Sender:   m.Sender,
+			})
 		}
-
-		// Create the ValueTransferEvent with the unpacked data
-		valueTransfer := common.ValueTransferEvent{
-			Amount:   amount,
-			Receiver: recipient,
-			Sender:   gethcommon.BytesToAddress(transfer.Sender.Bytes()), // Sender is in the first topic
-		}
-
-		valueTransfers = append(valueTransfers, valueTransfer)
 	}
 
 	return valueTransfers, nil
+}
+
+// crossChainCall mirrors the Solidity ICrossChainMessenger.CrossChainCall struct
+type crossChainCall struct {
+	Target gethcommon.Address
+	Data   []byte
+	Gas    *big.Int
+}
+
+func decodeCrossChainCall(payload []byte) (*crossChainCall, error) {
+	tupleType, err := abi.NewType("tuple", "", []abi.ArgumentMarshaling{
+		{Name: "target", Type: "address"},
+		{Name: "data", Type: "bytes"},
+		{Name: "gas", Type: "uint256"},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("build tuple type: %w", err)
+	}
+	args := abi.Arguments{{Type: tupleType}}
+	unpacked, err := args.Unpack(payload)
+	if err != nil {
+		head := 32
+		if len(payload) < head {
+			head = len(payload)
+		}
+		return nil, fmt.Errorf("len=%d head=%s: %w", len(payload), gethcommon.Bytes2Hex(payload[:head]), err)
+	}
+	if len(unpacked) != 1 {
+		return nil, fmt.Errorf("unexpected tuple arity: got=%d", len(unpacked))
+	}
+	conv := abi.ConvertType(unpacked[0], new(crossChainCall))
+	out, ok := conv.(*crossChainCall)
+	if !ok {
+		return nil, fmt.Errorf("failed to convert tuple to crossChainCall")
+	}
+	if out.Target == (gethcommon.Address{}) {
+		return nil, fmt.Errorf("cross chain call has zero target")
+	}
+	return out, nil
+}
+
+func decodeReceiveAssetsCall(data []byte) (gethcommon.Address, *big.Int, gethcommon.Address, error) {
+	if len(data) < 4 {
+		return gethcommon.Address{}, nil, gethcommon.Address{}, fmt.Errorf("calldata too short for selector")
+	}
+	addressType, _ := abi.NewType("address", "", nil)
+	uint256Type, _ := abi.NewType("uint256", "", nil)
+	args := abi.Arguments{{Type: addressType}, {Type: uint256Type}, {Type: addressType}}
+	params, err := args.Unpack(data[4:])
+	if err != nil {
+		return gethcommon.Address{}, nil, gethcommon.Address{}, err
+	}
+	if len(params) != 3 {
+		return gethcommon.Address{}, nil, gethcommon.Address{}, fmt.Errorf("unexpected arg count: %d", len(params))
+	}
+	asset, ok1 := params[0].(gethcommon.Address)
+	amount, ok2 := params[1].(*big.Int)
+	receiver, ok3 := params[2].(gethcommon.Address)
+	if !ok1 || !ok2 || !ok3 {
+		return gethcommon.Address{}, nil, gethcommon.Address{}, fmt.Errorf("type assertion failed")
+	}
+	return asset, amount, receiver, nil
 }
