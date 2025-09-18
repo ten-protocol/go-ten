@@ -145,6 +145,7 @@ func (t *TxPool) start() {
 	)
 	defer close(newHeadCh)
 	defer newHeadSub.Unsubscribe()
+	startWait := time.Now()
 	for {
 		select {
 		case event := <-newHeadCh:
@@ -157,8 +158,7 @@ func (t *TxPool) start() {
 				return
 			}
 		case <-time.After(startMempoolTimeout):
-			t.logger.Crit("Timeout waiting to start mempool.")
-			return
+			t.logger.Error("Still waiting for batches to init mempool", "timeWaiting", time.Since(startWait))
 		}
 	}
 }
