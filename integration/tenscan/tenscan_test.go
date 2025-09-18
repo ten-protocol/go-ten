@@ -104,14 +104,6 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &historicalCountObj)
 	assert.NoError(t, err)
 
-	// The historical count should be greater than or equal to the current count (5)
-	// since it includes historical transactions plus current ones
-	assert.GreaterOrEqual(t, historicalCountObj.Count, 5)
-
-	// If no historical count is configured, it should equal the current count
-	// If historical count is configured, it should be current count + historical count
-	fmt.Printf("Historical transaction count: %d\n", historicalCountObj.Count)
-
 	// historical count should be config value (10) plus the additional 5 transactions added in the test
 	assert.GreaterOrEqual(t, historicalCountObj.Count, 15,
 		"Historical count should be >= current count")
