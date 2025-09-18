@@ -593,7 +593,7 @@ func (executor *batchExecutor) execRegisteredCallbacks(ec *BatchExecutionContext
 	return nil
 }
 
-// postProcessState - Function for applying post processing, which currently is removing the value from the balance of the message bus contract.
+// postProcessState - Function for applying post processing, which currently is removing the value from the balance of the L2 bridge contract.
 func (executor *batchExecutor) postProcessState(ec *BatchExecutionContext) error {
 	receipts := ec.batchTxResults.Receipts()
 	valueTransferMessages, err := executor.crossChainProcessors.Local.ExtractOutboundTransfers(ec.ctx, receipts)
@@ -603,11 +603,19 @@ func (executor *batchExecutor) postProcessState(ec *BatchExecutionContext) error
 
 	for _, msg := range valueTransferMessages {
 		l2BridgeAddress := executor.crossChainProcessors.Local.GetL2BridgeAddress()
-		bal := ec.stateDB.GetBalance(*l2BridgeAddress).Uint64()
-		if bal >= msg.Amount.Uint64() {
-			ec.stateDB.SubBalance(*l2BridgeAddress, uint256.MustFromBig(msg.Amount), tracing.BalanceChangeUnspecified)
+		bal256 := ec.stateDB.GetBalance(*l2BridgeAddress)
+		amt256 := uint256.MustFromBig(msg.Amount)
+		if bal256.Cmp(amt256) >= 0 {
+			ec.stateDB.SubBalance(*l2BridgeAddress, amt256, tracing.BalanceChangeUnspecified)
 		} else {
-			executor.logger.Crit("Insufficient balance for value transfer", "balance", bal, "amount", msg.Amount)
+			executor.logger.Crit("Insufficient balance for value transfer",
+				"balance", bal256.ToBig(),
+				"amount", msg.Amount,
+				"bridgeAddress", *l2BridgeAddress,
+				"sender", msg.Sender,
+				"receiver", msg.Receiver,
+				"sequence", msg.Sequence,
+			)
 		}
 	}
 
