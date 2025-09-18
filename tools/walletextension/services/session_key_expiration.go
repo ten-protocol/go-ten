@@ -294,10 +294,7 @@ func (s *SessionKeyExpirationService) recoverFundsFromExpiredSessionKey(user *we
 		"recipientAddress", firstAccount.Address.Hex(),
 		"amount", balance.String())
 
-	// Send funds to the first account that was authenticated with the gateway
-	// using the same approach as the existing transaction API
-
-	// Get gas price and estimate gas for the transfer
+	// Get gas price for the transaction
 	fmt.Printf("⛽ Getting gas price...\n")
 	gasPrice, err := s.getGasPrice(ctx)
 	if err != nil {
@@ -306,69 +303,79 @@ func (s *SessionKeyExpirationService) recoverFundsFromExpiredSessionKey(user *we
 	}
 	fmt.Printf("⛽ Gas price: %s\n", gasPrice.String())
 
-	// Estimate gas for the transfer (using the full balance initially)
-	fmt.Printf("⛽ Estimating gas for transfer...\n")
-	gasLimit, err := s.estimateGas(ctx, sessionKeyAddr, *firstAccount.Address, balance)
-	if err != nil {
-		fmt.Printf("❌ Failed to estimate gas: %v\n", err)
-		return fmt.Errorf("failed to estimate gas: %w", err)
-	}
-	fmt.Printf("⛽ Gas limit: %d\n", gasLimit)
+	// Calculate gas cost and amount to send
+	gasLimit := uint64(21000) // Minimum gas required for any transaction
 
-	// Calculate gas cost
+	// Calculate gas cost: gasPrice * gasLimit
 	gasCost := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimit)))
-	fmt.Printf("⛽ Gas cost: %s\n", gasCost.String())
+	balanceInt := balance.ToInt()
 
-	// Calculate the amount to send (balance minus gas cost)
-	amountToSend := new(big.Int).Sub(balance.ToInt(), gasCost)
-	fmt.Printf("💰 Amount to send: %s (balance: %s - gas: %s)\n", amountToSend.String(), balance.String(), gasCost.String())
+	// Calculate amount to send: balance - gasCost
+	amountToSend := new(big.Int).Sub(balanceInt, gasCost)
 
-	// Check if we have enough balance to cover gas + transfer
+	fmt.Printf("🔍 Detailed calculation:\n")
+	fmt.Printf("  - Balance (hexutil.Big): %s\n", balance.String())
+	fmt.Printf("  - Balance (big.Int): %s\n", balanceInt.String())
+	fmt.Printf("  - GasPrice: %s\n", gasPrice.String())
+	fmt.Printf("  - GasLimit: %d\n", gasLimit)
+	fmt.Printf("  - GasCost: %s\n", gasCost.String())
+	fmt.Printf("  - AmountToSend: %s\n", amountToSend.String())
+	fmt.Printf("  - Comparison: balance >= gasCost? %v\n", balanceInt.Cmp(gasCost) >= 0)
+
+	fmt.Printf("💰 Gas calculation - Gas: %d, GasPrice: %s, GasCost: %s\n",
+		gasLimit, gasPrice.String(), gasCost.String())
+	fmt.Printf("💰 Amount calculation - Balance: %s, GasCost: %s, AmountToSend: %s\n",
+		balance.String(), gasCost.String(), amountToSend.String())
+	fmt.Printf("🔍 Debug - Balance (hex): %s, GasCost (hex): %s, AmountToSend (hex): %s\n",
+		balance.String(), gasCost.Text(16), amountToSend.Text(16))
+
+	// Check if we have enough funds after gas costs
+	if balanceInt.Cmp(gasCost) < 0 {
+		fmt.Printf("❌ Insufficient balance for gas costs - Balance: %s, GasCost: %s\n",
+			balanceInt.String(), gasCost.String())
+		return fmt.Errorf("insufficient balance for gas costs: balance %s, gas cost %s",
+			balanceInt.String(), gasCost.String())
+	}
+
 	if amountToSend.Cmp(big.NewInt(0)) <= 0 {
-		fmt.Printf("❌ Insufficient balance to cover gas costs: balance=%s, gasCost=%s\n", balance.String(), gasCost.String())
-		s.logger.Warn("Insufficient balance to cover gas costs",
-			"sessionKeyAddress", sessionKeyAddr.Hex(),
-			"balance", balance.String(),
-			"gasCost", gasCost.String(),
-			"gasPrice", gasPrice.String(),
-			"gasLimit", gasLimit)
-		return fmt.Errorf("insufficient balance to cover gas costs: balance=%s, gasCost=%s", balance.String(), gasCost.String())
+		fmt.Printf("❌ Amount to send is zero or negative - Balance: %s, GasCost: %s, AmountToSend: %s\n",
+			balanceInt.String(), gasCost.String(), amountToSend.String())
+		return fmt.Errorf("amount to send is zero or negative: balance %s, gas cost %s, amount %s",
+			balanceInt.String(), gasCost.String(), amountToSend.String())
 	}
 
-	// Get nonce for the session key
-	fmt.Printf("🔢 Getting nonce for session key...\n")
-	nonce, err := s.getNonce(ctx, sessionKeyAddr)
-	if err != nil {
-		fmt.Printf("❌ Failed to get nonce: %v\n", err)
-		return fmt.Errorf("failed to get nonce: %w", err)
-	}
-	fmt.Printf("🔢 Nonce: %d\n", nonce)
-
-	fmt.Printf("📋 Transaction details - From: %s, To: %s, Amount: %s, Gas: %s, Nonce: %d\n",
-		sessionKeyAddr.Hex(), firstAccount.Address.Hex(), amountToSend.String(), gasCost.String(), nonce)
-	s.logger.Info("Transaction details",
-		"sessionKeyAddress", sessionKeyAddr.Hex(),
-		"recipientAddress", firstAccount.Address.Hex(),
-		"totalBalance", balance.String(),
-		"gasPrice", gasPrice.String(),
-		"gasLimit", gasLimit,
-		"gasCost", gasCost.String(),
-		"amountToSend", amountToSend.String(),
-		"nonce", nonce)
-
-	// Create the transfer transaction
+	// Create transaction with the calculated amount (balance minus gas costs)
 	legacyTx := &types.LegacyTx{
-		Nonce:    nonce,
 		To:       firstAccount.Address,
-		Value:    amountToSend,
+		Value:    amountToSend, // Send amount minus gas costs
+		Gas:      gasLimit,     // Minimum gas required for any transaction
 		GasPrice: gasPrice,
-		Gas:      gasLimit,
+		// Nonce will be set automatically by the system
 	}
 
-	// Sign the transaction with the session key
+	fmt.Printf("📋 Creating transaction - To: %s, Value: %s (after gas costs)\n",
+		firstAccount.Address.Hex(), amountToSend.String())
+	fmt.Printf("🔍 Transaction details - To: %s, Value: %s, Gas: %d, GasPrice: %s\n",
+		legacyTx.To.Hex(), legacyTx.Value.String(), legacyTx.Gas, legacyTx.GasPrice.String())
+
+	// Verify the transaction value is correct
+	expectedTotalCost := new(big.Int).Add(legacyTx.Value, new(big.Int).Mul(legacyTx.GasPrice, big.NewInt(int64(legacyTx.Gas))))
+	fmt.Printf("🔍 Final verification - TxValue: %s, GasCost: %s, TotalCost: %s, Balance: %s\n",
+		legacyTx.Value.String(), new(big.Int).Mul(legacyTx.GasPrice, big.NewInt(int64(legacyTx.Gas))).String(),
+		expectedTotalCost.String(), balanceInt.String())
+	fmt.Printf("🔍 Can afford transaction? %v\n", balanceInt.Cmp(expectedTotalCost) >= 0)
+
+	// Create transaction using types.NewTx (same as SendUnsignedTxCQMethod does)
+	tx := types.NewTx(legacyTx)
+	if tx == nil {
+		fmt.Printf("❌ Failed to create transaction\n")
+		return fmt.Errorf("failed to create transaction")
+	}
+
+	// Sign the transaction with the session key (same as SendTransaction does)
 	fmt.Printf("✍️  Signing transaction with session key %s\n", sessionKeyAddr.Hex())
 	s.logger.Info("Signing transaction with session key", "sessionKeyAddress", sessionKeyAddr.Hex())
-	signedTx, err := s.services.SKManager.SignTx(ctx, user, sessionKeyAddr, types.NewTx(legacyTx))
+	signedTx, err := s.services.SKManager.SignTx(ctx, user, sessionKeyAddr, tx)
 	if err != nil {
 		fmt.Printf("❌ Failed to sign transaction: %v\n", err)
 		s.logger.Error("Failed to sign transaction with session key", "error", err, "sessionKeyAddress", sessionKeyAddr.Hex())
@@ -376,7 +383,7 @@ func (s *SessionKeyExpirationService) recoverFundsFromExpiredSessionKey(user *we
 	}
 	fmt.Printf("✅ Transaction signed successfully\n")
 
-	// Convert to raw bytes and send
+	// Convert to raw bytes and send (same as SendTransaction does)
 	fmt.Printf("📦 Marshaling signed transaction...\n")
 	s.logger.Info("Marshaling signed transaction")
 	blob, err := signedTx.MarshalBinary()
@@ -387,8 +394,8 @@ func (s *SessionKeyExpirationService) recoverFundsFromExpiredSessionKey(user *we
 	}
 	fmt.Printf("📦 Transaction marshaled, size: %d bytes\n", len(blob))
 
-	// Send the transaction using the same approach as SendRawTx
-	fmt.Printf("📤 Sending raw transaction...\n")
+	// Send using the EXACT same SendRawTx function that works
+	fmt.Printf("📤 Sending raw transaction using SendRawTx...\n")
 	s.logger.Info("Sending raw transaction", "blobSize", len(blob))
 	hash, err := s.sendRawTransaction(ctx, blob, user, sessionKeyAddr)
 	if err != nil {
@@ -402,8 +409,7 @@ func (s *SessionKeyExpirationService) recoverFundsFromExpiredSessionKey(user *we
 		"userID", wecommon.HashForLogging(user.ID),
 		"sessionKeyAddress", sessionKeyAddr.Hex(),
 		"recipientAddress", firstAccount.Address.Hex(),
-		"amountToSend", amountToSend.String(),
-		"gasCost", gasCost.String(),
+		"amount", balance.String(),
 		"txHash", hash.Hex())
 
 	return nil
@@ -445,11 +451,11 @@ func (s *SessionKeyExpirationService) estimateGas(ctx context.Context, from, to 
 	return gasLimit, nil
 }
 
-// getNonce retrieves the nonce for an address
+// getNonce retrieves the nonce for an address using the same approach as TransactionAPI.GetTransactionCount
 func (s *SessionKeyExpirationService) getNonce(ctx context.Context, addr common.Address) (uint64, error) {
 	var result hexutil.Uint64
 	_, err := WithPlainRPCConnection(ctx, s.services.BackendRPC, func(client *rpc.Client) (*hexutil.Uint64, error) {
-		err := client.CallContext(ctx, &result, "ten_getTransactionCount", addr, rpc.LatestBlockNumber)
+		err := client.CallContext(ctx, &result, "eth_getTransactionCount", addr, "latest")
 		return &result, err
 	})
 	if err != nil {
