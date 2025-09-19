@@ -29,20 +29,18 @@ const (
 var sqlFiles embed.FS
 
 func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Logger) (*sqlx.DB, error) {
-	driverName := registerPanicOnConnectionRefusedDriver(logger)
 	if baseURL == "" {
 		return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
 	}
 	dbURL := baseURL + defaultDatabase
-
+	dbURLNew := fmt.Sprintf("%s?sslmode=disable", dbURL)
 	dbName = strings.ToLower(dbName)
 
-	db, err := sqlx.Open(driverName, dbURL)
+	db, err := sqlx.Open("postgres", dbURLNew)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL server: %v", err)
 	}
 	defer db.Close() // Close the connection when done
-
 	rows, err := db.Query("SELECT 1 FROM pg_database WHERE datname = $1", dbName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query database existence: %v", err)
@@ -56,12 +54,13 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 		}
 	}
 
-	dbURL = fmt.Sprintf("%s%s", baseURL, dbName)
+	dbURL = fmt.Sprintf("%s%s?sslmode=disable", baseURL, dbName)
 
 	db, err = sqlx.Open("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
+	db.SetMaxOpenConns(maxDBConnections)
 	db.SetMaxOpenConns(maxDBConnections)
 	db.SetMaxIdleConns(maxDBConnections / 2)
 	db.SetConnMaxLifetime(30 * time.Minute)

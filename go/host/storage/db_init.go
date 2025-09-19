@@ -17,37 +17,31 @@ const HOST = "HOST_"
 // CreateDBFromConfig creates an appropriate ethdb.Database instance based on your config
 func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (hostdb.HostDB, error) {
 	dbName := HOST + cfg.ID
-	if err := validateDBConf(cfg); err != nil {
+	var db *sqlx.DB
+	var err error
+	if err = validateDBConf(cfg); err != nil {
 		return nil, err
 	}
 	if cfg.UseInMemoryDB {
+		// create sqlite db
 		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
-		sqliteDB, err := sqlite.CreateTemporarySQLiteHostDB(dbName, "mode=memory&cache=shared&_foreign_keys=on", logger)
+		db, err = sqlite.CreateTemporarySQLiteHostDB(dbName, "mode=memory&cache=shared&_foreign_keys=on", logger)
 		if err != nil {
 			return nil, fmt.Errorf("could not create in memory sqlite DB: %w", err)
 		}
-
-		// Update historical transaction count from config if it's greater than 0
-		if cfg.HistoricalTxCount > 0 {
-			err = updateHistoricalTransactionCount(sqliteDB, cfg.HistoricalTxCount)
-			if err != nil {
-				logger.Warn("Failed to update historical transaction count", "error", err)
-			} else {
-				logger.Info("Updated historical transaction count from config", "count", cfg.HistoricalTxCount)
-			}
+	} else {
+		// create postgres db
+		logger.Info(fmt.Sprintf("Preparing Postgres DB connection to %s...", cfg.PostgresDBHost))
+		baseURL := fmt.Sprintf("postgres://WillHester:1866@localhost:5432/")
+		db, err = postgres.CreatePostgresDBConnection(baseURL, dbName, logger)
+		if err != nil {
+			return nil, fmt.Errorf("could not create postresql connection: %w", err)
 		}
-
-		return hostdb.NewHostDB(sqliteDB, logger)
-	}
-	logger.Info(fmt.Sprintf("Preparing Postgres DB connection to %s...", cfg.PostgresDBHost))
-	postgresDB, err := postgres.CreatePostgresDBConnection(cfg.PostgresDBHost, dbName, logger)
-	if err != nil {
-		return nil, fmt.Errorf("could not create postresql connection: %w", err)
 	}
 
 	// Update historical transaction count from config if it's greater than 0
 	if cfg.HistoricalTxCount > 0 {
-		err = updateHistoricalTransactionCount(postgresDB, cfg.HistoricalTxCount)
+		err = updateHistoricalTransactionCount(db, cfg.HistoricalTxCount)
 		if err != nil {
 			logger.Warn("Failed to update historical transaction count", "error", err)
 		} else {
@@ -55,7 +49,7 @@ func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (host
 		}
 	}
 
-	return hostdb.NewHostDB(postgresDB, logger)
+	return hostdb.NewHostDB(db, logger)
 }
 
 // validateDBConf high-level checks that you have a valid configuration for DB creation
