@@ -26,6 +26,8 @@ type HostDB struct {
 	// SqlitePath is the filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or
 	// if using InMemory DB)
 	SqlitePath string `mapstructure:"sqlitePath"`
+	// HistoricalTxCount is the running total of tesnet transactions
+	HistoricalTxCount int `mapstructure:"historicalTxCount"`
 }
 
 // HostLog contains the configuration for the host logger.

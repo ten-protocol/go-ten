@@ -170,6 +170,16 @@ func (oc *ObsClient) GetTotalTransactionCount() (int, error) {
 	return count, nil
 }
 
+// GetHistoricalTransactionCount returns the historical transaction count plus current count
+func (oc *ObsClient) GetHistoricalTransactionCount() (int, error) {
+	var count int
+	err := oc.rpcClient.Call(&count, rpc.GetHistoricalTxCount)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 // GetLatestRollupHeader returns the header of the latest rollup
 func (oc *ObsClient) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	var header *common.RollupHeader

@@ -43,6 +43,11 @@ func (s *ScanAPI) GetTotalTransactionsQuery() (*big.Int, error) {
 	return s.host.Storage().FetchTotalTxsQuery()
 }
 
+// GetHistoricalTransactionCount returns the historical transaction count plus current count
+func (s *ScanAPI) GetHistoricalTransactionCount() (*big.Int, error) {
+	return s.host.Storage().FetchHistoricalTransactionCount()
+}
+
 // GetBatchListing returns a paginated list of batches
 func (s *ScanAPI) GetBatchListing(pagination *common.QueryPagination) (*common.BatchListingResponse, error) {
 	return s.host.Storage().FetchBatchListing(pagination)
