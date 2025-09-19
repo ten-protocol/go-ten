@@ -29,6 +29,13 @@ export const fetchTransactionCount = async (): Promise<TransactionCount> => {
   });
 };
 
+export const fetchHistoricalTransactionCount = async (): Promise<TransactionCount> => {
+  return await httpRequest<TransactionCount>({
+    method: "get",
+    url: pathToUrl(apiRoutes.getHistoricalTransactionCount),
+  });
+};
+
 export const fetchEtherPrice = async (): Promise<Price> => {
   return await httpRequest<Price>({
     method: "get",

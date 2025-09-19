@@ -23,6 +23,7 @@ export const apiRoutes = {
   // **** TRANSACTIONS ****
   getTransactions: "/items/transactions/",
   getTransactionCount: "/count/transactions/",
+  getHistoricalTransactionCount: "/count/transactions/historical/",
   getTransactionByHash: "/items/transaction/:hash",
 
   getEtherPrice:

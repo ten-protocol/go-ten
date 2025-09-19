@@ -49,6 +49,7 @@ host:
     useInMemory: true
     postgresHost: "" # host address for postgres db when used
     sqlitePath: "" # path to sqlite db, will use a throwaway temp file when empty
+    historicalTxCount: 0
   debug:
     enableMetrics: true
     metricsPort: 14000
