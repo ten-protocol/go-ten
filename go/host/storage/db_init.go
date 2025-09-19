@@ -32,8 +32,7 @@ func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (host
 	} else {
 		// create postgres db
 		logger.Info(fmt.Sprintf("Preparing Postgres DB connection to %s...", cfg.PostgresDBHost))
-		baseURL := fmt.Sprintf("postgres://WillHester:1866@localhost:5432/")
-		db, err = postgres.CreatePostgresDBConnection(baseURL, dbName, logger)
+		db, err = postgres.CreatePostgresDBConnection(cfg.PostgresDBHost, dbName, logger)
 		if err != nil {
 			return nil, fmt.Errorf("could not create postresql connection: %w", err)
 		}
