@@ -1,7 +1,4 @@
-SET SESSION rocksdb_max_row_locks = 10000000;
-SET SESSION net_read_timeout = 600;
-SET SESSION net_write_timeout = 600;
-
+SET SESSION  rocksdb_max_row_locks = 10000000;
 DELETE s1 FROM statedb32 s1 INNER JOIN statedb32 s2 ON s1.ky = s2.ky AND s1.id > s2.id;
 ALTER TABLE statedb32 ADD CONSTRAINT unique_ky_statedb32 UNIQUE (ky);
 
