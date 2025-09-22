@@ -3,7 +3,7 @@ run-name: Cleaning runner 01 (${{ github.event_name }})
 
 on:
   schedule:
-    - cron: '0 */2 * * *'  #2 hours
+    - cron: '*/30 * * * *'  #30 mins
   workflow_dispatch:
 
 jobs:
