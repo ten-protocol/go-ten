@@ -10,6 +10,8 @@ type Config struct {
 	SequencerHostAddress string
 	DebugEnabled         bool
 	EtherscanAPIKey      string
+	MaxGasGwei           string
+	CheckGasPrice        string
 }
 
 func NewContractDeployerConfig(tenCfg *config.TenConfig) *Config {
@@ -20,5 +22,7 @@ func NewContractDeployerConfig(tenCfg *config.TenConfig) *Config {
 		SequencerHostAddress: tenCfg.Deployment.L1Deploy.InitialSeqAddress,
 		DebugEnabled:         tenCfg.Deployment.DebugEnabled,
 		EtherscanAPIKey:      tenCfg.Deployment.L1Deploy.EtherscanAPIKey,
+		MaxGasGwei:           tenCfg.Deployment.L1Deploy.MaxGasGwei,
+		CheckGasPrice:        tenCfg.Deployment.L1Deploy.CheckGasPrice,
 	}
 }
