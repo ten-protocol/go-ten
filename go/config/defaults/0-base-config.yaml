@@ -110,6 +110,8 @@ deploy:
     challengePeriod: 1 # challenge period for rollups in seconds
     initialSeqAddress: 0x0 # initial sequencer address for the L1 network, only address allowed to initialize the L2 network
     etherscanAPIKey: "" # optional Etherscan API key for verifying contracts on Etherscan
+    maxGasGwei: 1.5 # max network gas price to proceed with L1 deployment (avoid deploying in spikes)
+    checkGasPrice: false # flag to turn on maxGasGwei checks (for mainnet mostly)
   l2:
     rpcAddress: "localhost" # L2 RPC address for deploying contracts
     httpPort: 80 # L2 RPC port for deploying contracts

@@ -23,6 +23,8 @@ type L1DeployConfig struct {
 	InitialSeqAddress string `mapstructure:"initialSeqAddress"` // the initial sequencer EOA to expect for network initialization
 	ChallengePeriod   int    `mapstructure:"challengePeriod"`   // the rollup challenge period in seconds
 	EtherscanAPIKey   string `mapstructure:"etherscanAPIKey"`   // optional Etherscan API key for contract verification
+	MaxGasGwei        string `mapstructure:"maxGasGwei"`        // maximum network gas price (gwei) - above this we abort
+	CheckGasPrice     string `mapstructure:"checkGasPrice"`     // whether to check maxGasGwei gas price before deployment
 }
 
 // L2DeployConfig contains the configuration for the deployment of the L2 contracts
