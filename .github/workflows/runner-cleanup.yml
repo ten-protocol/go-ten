@@ -3,11 +3,16 @@ run-name: Cleaning runner 01 (${{ github.event_name }})
 
 on:
   schedule:
-    - cron: '0 */2 * * *'  #2 hours
+    - cron: '*/30 * * * *'  #30 mins
   workflow_dispatch:
+
+concurrency:
+  group: clean-runner-01
+  cancel-in-progress: true
 
 jobs:
   clean-ten-persistence:
+    timeout-minutes: 10
     runs-on: [self-hosted, Linux, X64, ten-gh-runner-01]
     steps:
       - name: 'Clean /tmp/ten-persistence (keep newest only)'
@@ -32,4 +37,4 @@ jobs:
           echo "Deleting ${#TO_DELETE[@]} older dir(s):"
           printf ' - %s\n' "${TO_DELETE[@]}"
 
-          sudo rm -rf -- "${TO_DELETE[@]}"
+          sudo -n rm -rf -- "${TO_DELETE[@]}"
