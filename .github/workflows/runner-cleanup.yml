@@ -13,7 +13,7 @@ concurrency:
 jobs:
   clean-ten-persistence:
     timeout-minutes: 10
-    runs-on: [self-hosted, Linux, X64, ten-gh-runner-01]
+    runs-on: [self-hosted, Linux, X64, go-ten-gh-runner-01]
     steps:
       - name: 'Clean /tmp/ten-persistence (keep newest only)'
         shell: bash
