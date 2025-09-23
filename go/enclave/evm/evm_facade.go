@@ -126,6 +126,8 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 	// Compute leftover user gas after the main execution
 	var gasLeft uint64 = actualGasLimit
 	if receipt.GasUsed > gasLeft {
+		// ensure no bugs going overboard with the l1 publishing
+		// or execution before we pick up the leftover gas.
 		return nil, fmt.Errorf("internal: gasUsed (%d) exceeds tx gasLimit (%d)", receipt.GasUsed, gasLeft)
 	}
 	gasLeft -= receipt.GasUsed
