@@ -135,25 +135,12 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 			return nil, fmt.Errorf("out of gas while reading visibility for %s", contractAddress.Hex())
 		}
 
-		// Cap this read by current leftover and the per-call maximum
+		// Cap, reserve, call, and refund using helper
 		cap := min(gasLeft, maxGasForVisibility)
-
-		// Reserve block gas up-front, refund after we know how much was actually used.
-		if err := gp.SubGas(cap); err != nil {
-			return nil, fmt.Errorf("block gas depleted before visibility read for %s: %w", contractAddress.Hex(), err)
-		}
-
-		cfg, visUsed, err1 := exec.visibilityReader.ReadVisibilityConfig(context.Background(), evmEnv, *contractAddress, cap)
+		cfg, visUsed, err1 := exec.readVisibilityWithCap(context.Background(), evmEnv, gp, *contractAddress, cap)
 		if err1 != nil {
-			// Return block gas we reserved (all of it) to be safe; execution will revert anyway.
-			gp.AddGas(cap)
 			exec.logger.Crit("metered visibility read failed", log.ErrKey, err1, "addr", contractAddress.Hex())
-			return nil, err1
-		}
-
-		// Refund any unused portion to the block gas pool
-		if cap >= visUsed {
-			gp.AddGas(cap - visUsed)
+			return nil, fmt.Errorf("visibility read failed for %s: %w", contractAddress.Hex(), err1)
 		}
 
 		// Ensure we still respect the user's tx gas limit
@@ -260,25 +247,10 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 			if gasLeft == 0 {
 				return result, fmt.Errorf("out of gas while estimating visibility read for %s", ca.Hex()), nil
 			}
-			cap := gasLeft
-			if cap > maxGasForVisibility {
-				cap = maxGasForVisibility
-			}
-
-			// Reserve in the estimation GasPool; refund after call.
-			if err := gp.SubGas(cap); err != nil {
-				return result, fmt.Errorf("block gas depleted (estimate) before visibility read for %s: %w", ca.Hex(), err), nil
-			}
-
-			cfg, visUsed, err := exec.visibilityReader.ReadVisibilityConfig(context.Background(), vmenv, *ca, cap)
+			cap := min(gasLeft, maxGasForVisibility)
+			_, visUsed, err := exec.readVisibilityWithCap(context.Background(), vmenv, &gp, *ca, cap)
 			if err != nil {
-				gp.AddGas(cap) // refund all on error
 				return result, fmt.Errorf("visibility read (estimate) failed for %s: %w", ca.Hex(), err), nil
-			}
-			_ = cfg // we don't return it from estimate, but reading it proves ABI/paths work
-
-			if cap >= visUsed {
-				gp.AddGas(cap - visUsed) // refund unused block gas
 			}
 
 			if visUsed > gasLeft {
@@ -311,4 +283,21 @@ func (exec *evmExecutor) chargeBaseFeeOnly(s *state.StateDB, header *types.Heade
 	wei, _ := uint256.FromBig(weiBig)
 	s.SubBalance(payer, wei, tracing.BalanceDecreaseGasBuy)
 	s.AddBalance(header.Coinbase, wei, tracing.BalanceIncreaseRewardTransactionFee)
+}
+
+// readVisibilityWithCap reserves cap gas from the GasPool, invokes the visibility reader,
+// and refunds any unused portion back to the pool. On error, it refunds the full cap if reserved.
+func (exec *evmExecutor) readVisibilityWithCap(ctx context.Context, evmEnv *vm.EVM, gp *gethcore.GasPool, addr gethcommon.Address, cap uint64) (*core.ContractVisibilityConfig, uint64, error) {
+	if err := gp.SubGas(cap); err != nil {
+		return nil, 0, err
+	}
+	cfg, used, err := exec.visibilityReader.ReadVisibilityConfig(ctx, evmEnv, addr, cap)
+	if err != nil {
+		gp.AddGas(cap)
+		return nil, 0, err
+	}
+	if cap >= used {
+		gp.AddGas(cap - used)
+	}
+	return cfg, used, nil
 }
