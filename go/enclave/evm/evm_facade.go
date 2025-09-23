@@ -5,6 +5,7 @@ package evm
 import (
 	"context"
 	"fmt"
+	"math/big"
 	_ "unsafe"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -17,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/holiman/uint256"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
@@ -114,13 +116,61 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 	receipt.Logs = s.GetLogs(tx.Tx.Hash(), header.Number.Uint64(), header.Hash(), header.Time)
 
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
+
+	// Compute leftover user gas after the main execution
+	var gasLeft uint64 = msg.GasLimit
+	if receipt != nil {
+		if receipt.GasUsed > gasLeft {
+			return nil, fmt.Errorf("internal: gasUsed (%d) exceeds tx gasLimit (%d)", receipt.GasUsed, gasLeft)
+		}
+		gasLeft -= receipt.GasUsed
+	}
+
 	for _, contractAddress := range createdContracts {
-		var err1 error
-		contractsWithVisibility[*contractAddress], err1 = exec.visibilityReader.ReadVisibilityConfig(context.Background(), evmEnv, *contractAddress)
+		if gasLeft == 0 {
+			return nil, fmt.Errorf("out of gas while reading visibility for %s", contractAddress.Hex())
+		}
+
+		// Cap this read by current leftover (and by maxGasForVisibility inside the reader)
+		cap := gasLeft
+
+		// Reserve block gas up-front, refund after we know how much was actually used.
+		if err := gp.SubGas(cap); err != nil {
+			return nil, fmt.Errorf("block gas depleted before visibility read for %s: %w", contractAddress.Hex(), err)
+		}
+
+		cfg, visUsed, err1 := exec.visibilityReader.(*contractVisibilityReader).ReadVisibilityConfigMetered(context.Background(), evmEnv, *contractAddress, cap)
 		if err1 != nil {
-			exec.logger.Crit("could not read visibility config. Should not happen", log.ErrKey, err1)
+			// Return block gas we reserved (all of it) to be safe; execution will revert anyway.
+			gp.AddGas(cap)
+			exec.logger.Crit("metered visibility read failed", log.ErrKey, err1, "addr", contractAddress.Hex())
 			return nil, err1
 		}
+
+		// Refund any unused portion to the block gas pool
+		if cap >= visUsed {
+			gp.AddGas(cap - visUsed)
+		}
+
+		// Ensure we still respect the user's tx gas limit
+		if visUsed > gasLeft {
+			return nil, fmt.Errorf("out of gas: visibility read used %d, leftover %d, addr %s", visUsed, gasLeft, contractAddress.Hex())
+		}
+		gasLeft -= visUsed
+
+		// Fold into tx accounting so it looks like part of the tx
+		receipt.GasUsed += visUsed
+		if usedGas != nil {
+			*usedGas += visUsed
+		}
+
+		// Charge baseFee for this portion only (no tip)
+		if header != nil {
+			// baseFee may be nil/zero in some test configs; the helper guards for that.
+			exec.chargeBaseFeeOnly(s, header, from, visUsed)
+		}
+
+		contractsWithVisibility[*contractAddress] = cfg
 	}
 
 	return &core.TxExecResult{
@@ -138,6 +188,18 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		NoBaseFee: true,
 	}
 
+	// a call can create multiple contracts; capture via tracer
+	var createdContracts []*gethcommon.Address
+	vmCfg.Tracer = &tracing.Hooks{
+		OnCodeChange: func(addr gethcommon.Address, prevCodeHash gethcommon.Hash, prevCode []byte, codeHash gethcommon.Hash, code []byte) {
+			if len(prevCode) > 0 {
+				return
+			}
+			a := addr
+			createdContracts = append(createdContracts, &a)
+		},
+	}
+
 	ethHeader, err := exec.gethEncodingService.CreateEthHeaderForBatch(ctx, header)
 	if err != nil {
 		return nil, nil, fmt.Errorf("evmf: could not convert to eth header: %w", err)
@@ -151,8 +213,10 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	defer cleanState.RevertToSnapshot(snapshot) // Always revert after simulation
 
 	blockContext := gethcore.NewEVMBlockContext(ethHeader, exec.chain, nil)
+	// Use hooked state so tracer fires during estimation as well
+	hookedState := state.NewHookedState(cleanState, vmCfg.Tracer)
 	// sets TxKey.origin
-	vmenv := vm.NewEVM(blockContext, cleanState, exec.cc, vmCfg)
+	vmenv := vm.NewEVM(blockContext, hookedState, exec.cc, vmCfg)
 
 	// Monitor the outer context and interrupt the EVM upon cancellation. To avoid
 	// a dangling goroutine until the outer estimation finishes, create an internal
@@ -178,6 +242,48 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		return result, fmt.Errorf("err: %w (supplied gas %d)", err, msg.GasLimit), nil
 	}
 
+	// Meter visibility reads for newly created contracts (estimation)
+	if result != nil && len(createdContracts) > 0 {
+		// leftover from the user's gas limit
+		var gasLeft uint64 = msg.GasLimit
+		if result.UsedGas > gasLeft {
+			return result, fmt.Errorf("internal: estimate gasUsed exceeds limit"), nil
+		}
+		gasLeft -= result.UsedGas
+
+		var extra uint64
+		for _, ca := range createdContracts {
+			if gasLeft == 0 {
+				return result, fmt.Errorf("out of gas while estimating visibility read for %s", ca.Hex()), nil
+			}
+			cap := gasLeft
+
+			// Reserve in the estimation GasPool; refund after call.
+			if err := gp.SubGas(cap); err != nil {
+				return result, fmt.Errorf("block gas depleted (estimate) before visibility read for %s: %w", ca.Hex(), err), nil
+			}
+
+			cfg, visUsed, visErr := exec.visibilityReader.(*contractVisibilityReader).ReadVisibilityConfigMetered(ctx, vmenv, *ca, cap)
+			if visErr != nil {
+				gp.AddGas(cap) // refund all on error
+				return result, fmt.Errorf("visibility read (estimate) failed for %s: %w", ca.Hex(), visErr), nil
+			}
+			_ = cfg // we don't return it from estimate, but reading it proves ABI/paths work
+
+			if cap >= visUsed {
+				gp.AddGas(cap - visUsed) // refund unused block gas
+			}
+
+			if visUsed > gasLeft {
+				return result, fmt.Errorf("out of gas after visibility read (estimate) %s", ca.Hex()), nil
+			}
+			gasLeft -= visUsed
+			extra += visUsed
+		}
+		result.UsedGas += extra
+		exec.logger.Debug("estimate: added visibility-read gas", "created", len(createdContracts), "extraGas", extra, "totalUsedGas", result.UsedGas)
+	}
+
 	return result, nil, nil
 }
 
@@ -185,4 +291,17 @@ func createCleanState(s *state.StateDB, msg *gethcore.Message, ethHeader *types.
 	cleanState := s.Copy()
 	cleanState.Prepare(chainConfig.Rules(ethHeader.Number, true, 0), msg.From, ethHeader.Coinbase, msg.To, nil, msg.AccessList)
 	return cleanState
+}
+
+func (exec *evmExecutor) chargeBaseFeeOnly(s *state.StateDB, header *types.Header, payer gethcommon.Address, gasUsed uint64) {
+	if gasUsed == 0 || header.BaseFee == nil || header.BaseFee.Sign() == 0 {
+		return
+	}
+	weiBig := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), header.BaseFee)
+	if weiBig.Sign() <= 0 {
+		return
+	}
+	wei, _ := uint256.FromBig(weiBig)
+	s.SubBalance(payer, wei, tracing.BalanceDecreaseGasBuy)
+	s.AddBalance(header.Coinbase, wei, tracing.BalanceIncreaseRewardTransactionFee)
 }

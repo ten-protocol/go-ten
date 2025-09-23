@@ -104,6 +104,7 @@ func eventCfg(logConfig ContractTransparencyConfigEventLogConfig) *core.EventVis
 type localContractCaller struct {
 	evm                 *vm.EVM
 	maxGasForVisibility uint64
+	usedGasLast         uint64
 }
 
 // CodeAt - not implemented because it's not needed for our use case. It just has to return something non-nil
@@ -112,6 +113,56 @@ func (cc *localContractCaller) CodeAt(_ context.Context, _ gethcommon.Address, _
 }
 
 func (cc *localContractCaller) CallContract(_ context.Context, call ethereum.CallMsg, _ *big.Int) ([]byte, error) {
-	ret, _, err := cc.evm.Call(call.From, *call.To, call.Data, cc.maxGasForVisibility, uint256.NewInt(0))
+	ret, left, err := cc.evm.Call(call.From, *call.To, call.Data, cc.maxGasForVisibility, uint256.NewInt(0))
+	// record actual gas used under our cap
+	if cc.maxGasForVisibility >= left {
+		cc.usedGasLast = cc.maxGasForVisibility - left
+	} else {
+		cc.usedGasLast = 0
+	}
 	return ret, err
+}
+
+// ReadVisibilityConfigMetered performs the same ABI call but returns (config, gasUsed).
+// gasCap will be clamped to the package-level maxGasForVisibility.
+func (v *contractVisibilityReader) ReadVisibilityConfigMetered(ctx context.Context, evm *vm.EVM, contractAddress gethcommon.Address, gasCap uint64) (*core.ContractVisibilityConfig, uint64, error) {
+	select {
+	case <-ctx.Done():
+		return nil, 0, ctx.Err()
+	default:
+		cap := gasCap
+		if cap == 0 || cap > maxGasForVisibility {
+			cap = maxGasForVisibility
+		}
+		lcc := &localContractCaller{evm: evm, maxGasForVisibility: cap}
+
+		cc, err := NewTransparencyConfigCaller(contractAddress, lcc)
+		if err != nil {
+			// unrecoverable; should not happen
+			v.logger.Crit(fmt.Sprintf("could not create transparency config caller. %v", err))
+		}
+		visibilityRules, err := cc.VisibilityRules(nil)
+		if err != nil {
+			// no visibility defined => auto
+			return &core.ContractVisibilityConfig{AutoConfig: true}, lcc.usedGasLast, nil
+		}
+
+		transp := visibilityRules.ContractCfg == transparent
+		cfg := &core.ContractVisibilityConfig{
+			AutoConfig:   false,
+			Transparent:  &transp,
+			EventConfigs: make(map[gethcommon.Hash]*core.EventVisibilityConfig),
+		}
+		if transp {
+			return cfg, lcc.usedGasLast, nil
+		}
+		for i := range visibilityRules.EventLogConfigs {
+			logConfig := visibilityRules.EventLogConfigs[i]
+			eventConfig := eventCfg(logConfig)
+			if valErr := eventConfig.Validate(); valErr == nil {
+				cfg.EventConfigs[logConfig.EventSignature] = eventConfig
+			}
+		}
+		return cfg, lcc.usedGasLast, nil
+	}
 }
