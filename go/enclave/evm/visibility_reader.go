@@ -9,7 +9,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/holiman/uint256"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
@@ -25,54 +24,41 @@ func NewContractVisibilityReader(logger gethlog.Logger) ContractVisibilityReader
 	return &contractVisibilityReader{logger: logger}
 }
 
-func (v *contractVisibilityReader) ReadVisibilityConfig(ctx context.Context, evm *vm.EVM, contractAddress gethcommon.Address) (*core.ContractVisibilityConfig, error) {
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	default:
-		return v.readVisibilityConfig(evm, contractAddress)
+func (v *contractVisibilityReader) readVisibilityConfig(evm *vm.EVM, contractAddress gethcommon.Address, gasCap uint64) (*core.ContractVisibilityConfig, uint64, error) {
+	cap := gasCap
+	if cap == 0 || cap > maxGasForVisibility {
+		cap = maxGasForVisibility
 	}
-}
+	lcc := &localContractCaller{evm: evm, maxGasForVisibility: cap}
 
-func (v *contractVisibilityReader) readVisibilityConfig(evm *vm.EVM, contractAddress gethcommon.Address) (*core.ContractVisibilityConfig, error) {
-	cc, err := NewTransparencyConfigCaller(contractAddress, &localContractCaller{evm: evm, maxGasForVisibility: maxGasForVisibility})
+	cc, err := NewTransparencyConfigCaller(contractAddress, lcc)
 	if err != nil {
-		// unrecoverable error. should not happen
+		// unrecoverable; should not happen
 		v.logger.Crit(fmt.Sprintf("could not create transparency config caller. %v", err))
 	}
 	visibilityRules, err := cc.VisibilityRules(nil)
 	if err != nil {
-		// there is no visibility defined, so we return auto
-		return &core.ContractVisibilityConfig{AutoConfig: true}, nil
+		// no visibility defined => auto
+		return &core.ContractVisibilityConfig{AutoConfig: true}, lcc.usedGasLast, nil
 	}
 
-	transp := false
-	if visibilityRules.ContractCfg == transparent {
-		transp = true
-	}
-
+	transp := visibilityRules.ContractCfg == transparent
 	cfg := &core.ContractVisibilityConfig{
 		AutoConfig:   false,
 		Transparent:  &transp,
 		EventConfigs: make(map[gethcommon.Hash]*core.EventVisibilityConfig),
 	}
-
 	if transp {
-		return cfg, nil
+		return cfg, lcc.usedGasLast, nil
 	}
-
-	// only check the config for non-transparent contracts
 	for i := range visibilityRules.EventLogConfigs {
 		logConfig := visibilityRules.EventLogConfigs[i]
 		eventConfig := eventCfg(logConfig)
-		valErr := eventConfig.Validate()
-		if valErr == nil {
-			// ignore invalid configs
+		if valErr := eventConfig.Validate(); valErr == nil {
 			cfg.EventConfigs[logConfig.EventSignature] = eventConfig
 		}
 	}
-
-	return cfg, nil
+	return cfg, lcc.usedGasLast, nil
 }
 
 func eventCfg(logConfig ContractTransparencyConfigEventLogConfig) *core.EventVisibilityConfig {
@@ -113,56 +99,20 @@ func (cc *localContractCaller) CodeAt(_ context.Context, _ gethcommon.Address, _
 }
 
 func (cc *localContractCaller) CallContract(_ context.Context, call ethereum.CallMsg, _ *big.Int) ([]byte, error) {
-	ret, left, err := cc.evm.Call(call.From, *call.To, call.Data, cc.maxGasForVisibility, uint256.NewInt(0))
-	// record actual gas used under our cap
-	if cc.maxGasForVisibility >= left {
-		cc.usedGasLast = cc.maxGasForVisibility - left
-	} else {
-		cc.usedGasLast = 0
-	}
+	// Prefer a static call to enforce non-mutating behavior of view/pure methods.
+	ret, left, err := cc.evm.StaticCall(call.From, *call.To, call.Data, cc.maxGasForVisibility)
+	cc.usedGasLast = cc.maxGasForVisibility - left
 	return ret, err
 }
 
 // ReadVisibilityConfigMetered performs the same ABI call but returns (config, gasUsed).
 // gasCap will be clamped to the package-level maxGasForVisibility.
-func (v *contractVisibilityReader) ReadVisibilityConfigMetered(ctx context.Context, evm *vm.EVM, contractAddress gethcommon.Address, gasCap uint64) (*core.ContractVisibilityConfig, uint64, error) {
+func (v *contractVisibilityReader) ReadVisibilityConfig(ctx context.Context, evm *vm.EVM, contractAddress gethcommon.Address, gasCap uint64) (*core.ContractVisibilityConfig, uint64, error) {
 	select {
 	case <-ctx.Done():
 		return nil, 0, ctx.Err()
 	default:
-		cap := gasCap
-		if cap == 0 || cap > maxGasForVisibility {
-			cap = maxGasForVisibility
-		}
-		lcc := &localContractCaller{evm: evm, maxGasForVisibility: cap}
-
-		cc, err := NewTransparencyConfigCaller(contractAddress, lcc)
-		if err != nil {
-			// unrecoverable; should not happen
-			v.logger.Crit(fmt.Sprintf("could not create transparency config caller. %v", err))
-		}
-		visibilityRules, err := cc.VisibilityRules(nil)
-		if err != nil {
-			// no visibility defined => auto
-			return &core.ContractVisibilityConfig{AutoConfig: true}, lcc.usedGasLast, nil
-		}
-
-		transp := visibilityRules.ContractCfg == transparent
-		cfg := &core.ContractVisibilityConfig{
-			AutoConfig:   false,
-			Transparent:  &transp,
-			EventConfigs: make(map[gethcommon.Hash]*core.EventVisibilityConfig),
-		}
-		if transp {
-			return cfg, lcc.usedGasLast, nil
-		}
-		for i := range visibilityRules.EventLogConfigs {
-			logConfig := visibilityRules.EventLogConfigs[i]
-			eventConfig := eventCfg(logConfig)
-			if valErr := eventConfig.Validate(); valErr == nil {
-				cfg.EventConfigs[logConfig.EventSignature] = eventConfig
-			}
-		}
-		return cfg, lcc.usedGasLast, nil
+		cfg, gasUsed, err := v.readVisibilityConfig(evm, contractAddress, gasCap)
+		return cfg, gasUsed, err
 	}
 }

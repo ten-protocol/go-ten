@@ -18,5 +18,5 @@ type EVMFacade interface {
 }
 
 type ContractVisibilityReader interface {
-	ReadVisibilityConfig(ctx context.Context, evm *vm.EVM, contractAddress gethcommon.Address) (*core.ContractVisibilityConfig, error)
+	ReadVisibilityConfig(ctx context.Context, evm *vm.EVM, contractAddress gethcommon.Address, gasCap uint64) (*core.ContractVisibilityConfig, uint64, error)
 }
