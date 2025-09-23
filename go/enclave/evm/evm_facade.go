@@ -106,6 +106,8 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 		return nil, err
 	}
 
+	actualGasLimit := msg.GasLimit // before l1 cost is applied
+
 	receipt, err := adjustPublishingCostGas(tx, msg, s, header, noBaseFee, func() (*types.Receipt, error) {
 		s.SetTxContext(tx.Tx.Hash(), tCount)
 		return gethcore.ApplyTransactionWithEVM(msg, gp, s, header.Number, header.Hash(), header.Time, tx.Tx, usedGas, evmEnv)
@@ -118,7 +120,7 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
 
 	// Compute leftover user gas after the main execution
-	var gasLeft uint64 = msg.GasLimit
+	var gasLeft uint64 = actualGasLimit
 	if receipt != nil {
 		if receipt.GasUsed > gasLeft {
 			return nil, fmt.Errorf("internal: gasUsed (%d) exceeds tx gasLimit (%d)", receipt.GasUsed, gasLeft)
