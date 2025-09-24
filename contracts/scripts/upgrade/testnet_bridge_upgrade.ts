@@ -56,6 +56,9 @@ const upgradeContracts = async function (): Promise<void> {
     const upgrader = deployer.address;
     console.log(`Using signer: ${upgrader}`);
 
+    // Get parameters from command line or use defaults
+    const newContractName = process.argv[2] || 'TenBridgeTestnet';
+
     // get addresses from network config
     const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR;
     if (!networkConfigAddr) {
@@ -65,14 +68,18 @@ const upgradeContracts = async function (): Promise<void> {
     const networkConfig = await ethers.getContractAt('NetworkConfig', networkConfigAddr);
     const { l1Bridge } = await networkConfig.addresses();
 
+    // Use provided proxy address or default to l1Bridge
+    const targetProxyAddress = l1Bridge;
+
     console.log('\nCurrent proxy addresses');
     console.table({
         NetworkConfig: networkConfigAddr,
-        L1Bridge: l1Bridge
+        L1Bridge: l1Bridge,
+        TargetProxy: targetProxyAddress
     });
 
     // Perform upgrades
-    await upgradeContract('TenBridgeTestnet', l1Bridge);
+    await upgradeContract(newContractName, targetProxyAddress);
 
     console.log('Upgrade completed successfully');
 }
