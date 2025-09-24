@@ -332,6 +332,29 @@ func TestGetRollupByHash(t *testing.T) {
 	}
 }
 
+func TestGetRollupListingEmpty(t *testing.T) {
+	db, err := CreateSQLiteDB(t)
+	if err != nil {
+		t.Fatalf("unable to initialise test db: %s", err)
+	}
+
+	// Test with empty database - should return 0 total and empty rollups data
+	rollupListing, err := GetRollupListing(db, &common.QueryPagination{Offset: 0, Size: 10})
+	if err != nil {
+		t.Errorf("could not get rollup listing from empty database. Cause: %s", err)
+	}
+
+	// Should have 0 total rollups
+	if rollupListing.Total != 0 {
+		t.Errorf("expected total to be 0, got %d", rollupListing.Total)
+	}
+
+	// Should have empty rollups data slice
+	if len(rollupListing.RollupsData) != 0 {
+		t.Errorf("expected empty rollups data, got %d items", len(rollupListing.RollupsData))
+	}
+}
+
 func TestGetRollupBatches(t *testing.T) {
 	db, _ := CreateSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
