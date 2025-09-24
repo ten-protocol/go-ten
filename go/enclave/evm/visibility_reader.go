@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	maxGasForVisibility = 30_000 // hardcode at 30k gas.
+	maxGasForVisibility = 200_000 // hardcode at 30k gas.
 )
 
 type contractVisibilityReader struct {
@@ -105,7 +105,7 @@ func (cc *localContractCaller) CallContract(_ context.Context, call ethereum.Cal
 	return ret, err
 }
 
-// ReadVisibilityConfigMetered performs the same ABI call but returns (config, gasUsed).
+// ReadVisibilityConfig performs the same ABI call but returns (config, gasUsed).
 // gasCap will be clamped to the package-level maxGasForVisibility.
 func (v *contractVisibilityReader) ReadVisibilityConfig(ctx context.Context, evm *vm.EVM, contractAddress gethcommon.Address, gasCap uint64) (*core.ContractVisibilityConfig, uint64, error) {
 	select {

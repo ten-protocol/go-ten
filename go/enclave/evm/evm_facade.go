@@ -125,7 +125,7 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 
 	// Compute leftover user gas after the main execution
 	var gasLeft uint64 = actualGasLimit
-	if receipt.GasUsed > gasLeft {
+	if receipt.GasUsed > actualGasLimit {
 		// ensure no bugs going overboard with the l1 publishing
 		// or execution before we pick up the leftover gas.
 		return nil, fmt.Errorf("internal: gasUsed (%d) exceeds tx gasLimit (%d)", receipt.GasUsed, gasLeft)
@@ -137,15 +137,17 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 			return nil, fmt.Errorf("out of gas while reading visibility for %s", contractAddress.Hex())
 		}
 
-		// Cap, reserve, call, and refund using helper
-		cap := min(gasLeft, maxGasForVisibility)
-		cfg, visUsed, err1 := exec.readVisibilityWithCap(context.Background(), evmEnv, gp, *contractAddress, cap)
+		cfg, visUsed, err1 := exec.readVisibilityWithCap(context.Background(), evmEnv, gp, *contractAddress, gasLeft)
 		if err1 != nil {
 			exec.logger.Crit("metered visibility read failed", log.ErrKey, err1, "addr", contractAddress.Hex())
 			return nil, fmt.Errorf("visibility read failed for %s: %w", contractAddress.Hex(), err1)
 		}
 
 		// Ensure we still respect the user's tx gas limit
+		// this should never happen as the limit to go up to is the gasLeft.
+		// thus if we hit the error we have a bug in the code and we error out of the transaction.
+		// Otherwise we might end up overcharging a user - imagine signing a 0.1$ fee transaction
+		// but we end up charging you 500$ because we do not respect the limit for whatever reason.
 		if visUsed > gasLeft {
 			return nil, fmt.Errorf("out of gas: visibility read used %d, leftover %d, addr %s", visUsed, gasLeft, contractAddress.Hex())
 		}
@@ -295,8 +297,7 @@ func (exec *evmExecutor) readVisibilityWithCap(ctx context.Context, evmEnv *vm.E
 	}
 	cfg, used, err := exec.visibilityReader.ReadVisibilityConfig(ctx, evmEnv, addr, cap)
 	if err != nil {
-		gp.AddGas(cap)
-		return nil, 0, err
+		return nil, used, err
 	}
 	if cap >= used {
 		gp.AddGas(cap - used)
