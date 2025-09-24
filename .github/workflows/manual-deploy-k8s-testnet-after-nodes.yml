@@ -94,7 +94,12 @@ jobs:
             env:
                TESTNET_SHORT_NAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
             run: |
-               CFG=cfg/nonprod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
+               # Choose the correct config directory based on environment
+               if [[ "$TESTNET_SHORT_NAME" == "mainnet" ]]; then
+                  CFG=cfg/prod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
+               else
+                  CFG=cfg/nonprod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
+               fi
                
                echo "network_config=$(yq -r '.l1Config.networkConfig'     "$CFG")"   >> $GITHUB_OUTPUT
                echo "message_bus=$(yq -r '.l1Config.messagebus'           "$CFG")"   >> $GITHUB_OUTPUT
