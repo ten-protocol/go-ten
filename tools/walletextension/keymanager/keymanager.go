@@ -8,10 +8,13 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/edgelesssys/ego/enclave"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -42,10 +45,11 @@ type KeyExchangeResponse struct {
 
 // GetEncryptionKey returns the encryption key for the database
 // - If we use an SQLite database, no encryption key is needed as SQLite typically runs in development or testing environments.
-// - If an encryptionKeySource is provided, attempt to obtain the encryption key from the specified source.
-// - If the encryptionKeySource is set to "new", check for an existing encryption key and generate a new one if not found.
-// - If no encryptionKeySource is provided, attempt to unseal an existing encryption key.
-// - If a new key is generated or obtained, seal it for future use.
+// - First try to unseal the existing key if there is one
+//
+// - If no existing key is available, we look at `encryptionKeySource`, if it is `new` we generate a new one, if it is a URL we attempt to perform key exchange
+//
+// - Finally, we seal the key (and if there was an existing key file that could not be unsealed, we store it as a backup)
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
 	// check if we are using sqlite database and no encryption key needed
 	if config.DBType == "sqlite" {
@@ -53,42 +57,38 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return nil, nil
 	}
 
-	// If no encryptionKeySource is provided, attempt to unseal an existing encryption key and fail if no key is found
-	// (in this case operator needs to provide a source for the encryption key or decide to generate a new one)
-	if config.EncryptionKeySource == "" {
-		logger.Info("no key exchange url set, try to unseal existing encryption key")
-		encryptionKey, found, err := tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
-		if !found {
-			logger.Crit("no sealed encryption key found", log.ErrKey, err)
-			return nil, fmt.Errorf("no sealed encryption key found: %w", err)
-		}
-		logger.Info("unsealed existing encryption key")
+	// First try to unseal an existing encryption key before attempting key exchange
+	var encryptionKey []byte
+	var found bool
+	var err error
+
+	encryptionKey, found, err = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
+	if err != nil {
+		logger.Warn("failed to unseal existing encryption key", "error", err)
+	}
+
+	if found {
+		logger.Info("successfully unsealed existing encryption key")
 		return encryptionKey, nil
 	}
 
-	var encryptionKey []byte
-	var err error
+	// If no existing key is available, we look at `encryptionKeySource`
+	// If no encryptionKeySource is provided, fail since we couldn't unseal an existing key
+	if config.EncryptionKeySource == "" {
+		logger.Crit("no sealed encryption key found and no key source provided", log.ErrKey, err)
+		return nil, fmt.Errorf("no sealed encryption key found: %w", err)
+	}
 
-	// If the "new" keyword is used for the encryptionKeySource, we first check if there is an existing encryption key
-	// that can be unsealed and used. If no such key is found, we proceed to generate a new random encryption key.
-	// This ensures that we do not overwrite an existing key unless necessary, and a new key is only generated when
-	// there is no existing key available.
+	// If the "new" keyword is used for the encryptionKeySource, generate a new random encryption key
 	if config.EncryptionKeySource == "new" {
-		logger.Info("encryptionKeySource set to 'new' -> checking if there is an existing encryption key that we can use")
-		var found bool
-		encryptionKey, found, _ = tryUnsealKey(encryptionKeyFile, config.InsideEnclave)
-		logger.Info("Encryption key status", "found", found, "error", err)
-		if !found {
-			logger.Info("No existing encryption key found, generating new random encryption key")
-			encryptionKey, err = common.GenerateRandomKey()
-			if err != nil {
-				logger.Crit("unable to generate random encryption key", log.ErrKey, err)
-				return nil, err
-			}
+		logger.Info("encryptionKeySource set to 'new' -> generating new random encryption key")
+		encryptionKey, err = common.GenerateRandomKey()
+		if err != nil {
+			logger.Crit("unable to generate random encryption key", log.ErrKey, err)
+			return nil, err
 		}
 	} else {
-		// Attempt to perform key exchange with the specified key provider.
-		// This step is crucial, and the process should fail if the key exchange is not successful.
+		// If encryptionKeySource is a URL, attempt to perform key exchange with the specified key provider
 		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
 		encryptionKey, err = HandleKeyExchange(config, logger)
 		if err != nil {
@@ -98,7 +98,7 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	}
 
 	// Seal the key that we generated / got from the key exchange from another enclave
-	err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave)
+	err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave, logger)
 	if err != nil {
 		logger.Crit("unable to seal encryption key", log.ErrKey, err)
 		return nil, err
@@ -125,12 +125,59 @@ func tryUnsealKey(keyPath string, isEnclave bool) ([]byte, bool, error) {
 	return data, true, nil
 }
 
+// backupExistingKey creates a timestamped backup of an existing key file
+func backupExistingKey(keyPath string, logger gethlog.Logger) error {
+	// Check if the key file exists
+	if _, err := os.Stat(keyPath); os.IsNotExist(err) {
+		// No existing key file to backup
+		return nil
+	}
+
+	// Create backup filename with timestamp
+	timestamp := time.Now().Format("20060102_150405")
+	backupPath := fmt.Sprintf("%s.backup_%s", keyPath, timestamp)
+
+	// Copy the existing file to backup location
+	if err := copyFile(keyPath, backupPath); err != nil {
+		logger.Warn("failed to backup existing encryption key", "error", err)
+		return err
+	}
+
+	logger.Info("backed up existing encryption key", "backup_path", backupPath)
+	return nil
+}
+
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	return err
+}
+
 // trySealKey attempts to seal an encryption key to disk
 // Only seals if running in an SGX enclave
-func trySealKey(key []byte, keyPath string, isEnclave bool) error {
+// If an existing key file exists but failed to be unsealed, then it will be backed up before overwriting
+func trySealKey(key []byte, keyPath string, isEnclave bool, logger gethlog.Logger) error {
 	// Only attempt sealing if we're in an SGX enclave
 	if !isEnclave {
 		return nil
+	}
+
+	// Backup existing key file if it exists
+	if err := backupExistingKey(keyPath, logger); err != nil {
+		// Log warning but continue - backup failure shouldn't prevent key sealing
+		logger.Warn("failed to backup existing key, proceeding with new key", "error", err)
 	}
 
 	// Seal and persist the key to /data/encryption.key
@@ -281,7 +328,7 @@ func DeserializePublicKey(data []byte) (*rsa.PublicKey, error) {
 	}
 	pubkey, ok := pubInterface.(*rsa.PublicKey)
 	if !ok {
-		return nil, fmt.Errorf("not RSA public key")
+		return nil, errors.New("not RSA public key")
 	}
 	return pubkey, nil
 }

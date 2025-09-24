@@ -86,12 +86,27 @@ func TestTenscan(t *testing.T) {
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":22}", string(body))
+	assert.Equal(t, "{\"count\":23}", string(body))
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/transactions/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 	assert.Equal(t, "{\"count\":5}", string(body))
+
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/transactions/historical/", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type historicalCountRes struct {
+		Count int `json:"historicalCount"`
+	}
+	historicalCountObj := historicalCountRes{}
+	err = json.Unmarshal(body, &historicalCountObj)
+	assert.NoError(t, err)
+
+	// historical count should be config value (10) plus the additional 5 transactions added in the test
+	assert.GreaterOrEqual(t, historicalCountObj.Count, 15,
+		"Historical count should be >= current count")
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))
 	assert.NoError(t, err)

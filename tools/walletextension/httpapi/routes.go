@@ -5,8 +5,10 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 
 	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
@@ -23,6 +25,16 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
+// generateCookieNameFromDomain generates a safe cookie name from TLS domain
+func generateCookieNameFromDomain(tlsDomain string) string {
+	if tlsDomain == "" {
+		return "gateway_token" // fallback to original name if no domain configured
+	}
+	safeName := strings.ReplaceAll(tlsDomain, ".", "_")
+	safeName = strings.ReplaceAll(safeName, "-", "_")
+	return "gateway_" + safeName
+}
+
 // NewHTTPRoutes returns the http specific routes
 // todo - move these to the rpc framework.
 func NewHTTPRoutes(walletExt *services.Services) []node.Route {
@@ -37,11 +49,11 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetToken,
-			Func: httpHandler(walletExt, getTokenRequestHandler),
+			Func: restrictiveHttpHandler(walletExt, getTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathSetToken,
-			Func: httpHandler(walletExt, setTokenRequestHandler),
+			Func: restrictiveHttpHandler(walletExt, setTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetMessage,
@@ -79,26 +91,6 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 			Name: common.APIVersion1 + common.PathKeyExchange,
 			Func: httpHandler(walletExt, keyExchangeRequestHandler),
 		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "create",
-			Func: httpHandler(walletExt, createSKRequestHandler),
-		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "activate",
-			Func: httpHandler(walletExt, activateSKRequestHandler),
-		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "deactivate",
-			Func: httpHandler(walletExt, deactivateSKRequestHandler),
-		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "delete",
-			Func: httpHandler(walletExt, deleteSKRequestHandler),
-		},
-		{
-			Name: common.APIVersion1 + common.PathSessionKeys + "list",
-			Func: httpHandler(walletExt, listSKRequestHandler),
-		},
 	}
 }
 
@@ -111,12 +103,33 @@ func httpHandler(
 	}
 }
 
+func restrictiveHttpHandler(
+	walletExt *services.Services,
+	fun func(walletExt *services.Services, conn UserConn),
+) func(resp http.ResponseWriter, req *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		restrictiveHttpRequestHandler(walletExt, resp, req, fun)
+	}
+}
+
 // Overall request handler for http requests
 func httpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
 	if walletExt.IsStopping() {
 		return
 	}
 	if httputil.EnableCORS(resp, req) {
+		return
+	}
+	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
+	fun(walletExt, userConn)
+}
+
+// Restrictive request handler for endpoints requiring specific origin access
+func restrictiveHttpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
+	if walletExt.IsStopping() {
+		return
+	}
+	if httputil.EnableRestrictiveCORS(resp, req, walletExt.Config.FrontendURL) {
 		return
 	}
 	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
@@ -138,24 +151,8 @@ func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 	// generate new key-pair and store it in the database
 	userID, err := walletExt.GenerateAndStoreNewUser()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal Error"))
+		handleError(conn, walletExt.Logger(), errors.New("internal Error"))
 		walletExt.Logger().Error("error creating new user", log.ErrKey, err)
-	}
-
-	// set secure HTTP-only cookie with userID
-	cookie := &http.Cookie{
-		Name:     "gateway_token",
-		Value:    hexutils.BytesToHex(userID),
-		Path:     "/",
-		HttpOnly: true,                    // Prevents XSS
-		Secure:   true,                    // HTTPS only
-		SameSite: http.SameSiteStrictMode, // Prevents CSRF
-		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
-	}
-
-	err = conn.SetCookie(cookie)
-	if err != nil {
-		walletExt.Logger().Error("error setting cookie", log.ErrKey, err)
 	}
 
 	// write hex encoded userID in the response
@@ -170,21 +167,22 @@ func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	// Get the HTTP request to access cookies
 	req := conn.GetHTTPRequest()
 	if req == nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not access request"))
+		handleError(conn, walletExt.Logger(), errors.New("could not access request"))
 		return
 	}
 
-	// Find the gateway_token cookie
+	// Find the gateway token cookie (with dynamic name based on TLS domain)
+	cookieName := generateCookieNameFromDomain(walletExt.Config.TLSDomain)
 	var userID string
 	for _, cookie := range req.Cookies() {
-		if cookie.Name == "gateway_token" {
+		if cookie.Name == cookieName {
 			userID = cookie.Value
 			break
 		}
 	}
 
 	if userID == "" {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("gateway_token cookie not found"))
+		handleError(conn, walletExt.Logger(), errors.New("gateway token cookie not found"))
 		return
 	}
 
@@ -196,14 +194,14 @@ func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	if len(userIDBytes) == 0 {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("token cannot be empty"))
+		handleError(conn, walletExt.Logger(), errors.New("token cannot be empty"))
 		return
 	}
 
 	// Verify the user exists in the database
 	_, err = walletExt.Storage.GetUser(userIDBytes)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database"))
+		handleError(conn, walletExt.Logger(), errors.New("user not found in database"))
 		return
 	}
 
@@ -236,7 +234,7 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	if req.Token == "" {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("token is required"))
+		handleError(conn, walletExt.Logger(), errors.New("token is required"))
 		return
 	}
 
@@ -248,25 +246,27 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	if len(userIDBytes) == 0 {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("token cannot be empty"))
+		handleError(conn, walletExt.Logger(), errors.New("token cannot be empty"))
 		return
 	}
 
 	// Verify the user exists in the database
 	_, err = walletExt.Storage.GetUser(userIDBytes)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database"))
+		handleError(conn, walletExt.Logger(), errors.New("user not found in database"))
 		return
 	}
 
 	// Set the cookie with the provided token
+	cookieName := generateCookieNameFromDomain(walletExt.Config.TLSDomain)
 	cookie := &http.Cookie{
-		Name:     "gateway_token",
+		Name:     cookieName,
 		Value:    req.Token,
 		Path:     "/",
+		Domain:   ".ten.xyz",              // Share across all .ten.xyz subdomains
 		HttpOnly: true,                    // Prevents XSS
 		Secure:   true,                    // HTTPS only
-		SameSite: http.SameSiteStrictMode, // Prevents CSRF
+		SameSite: http.SameSiteNoneMode,   // Required for cross-origin AJAX requests
 		MaxAge:   365 * 24 * 60 * 60 * 10, // 10 years (effectively permanent)
 	}
 
@@ -319,7 +319,7 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	// get address from the request
 	address, ok := reqJSONMap[common.JSONKeyAddress]
 	if !ok || address == "" {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("unable to read address field from the request"))
+		handleError(conn, walletExt.Logger(), errors.New("unable to read address field from the request"))
 		return
 	}
 
@@ -345,7 +345,7 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	// check signature and add address and signature for that user
 	err = walletExt.AddAddressToUser(userID, address, signature, messageType)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		handleError(conn, walletExt.Logger(), errors.New("internal error"))
 		walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, userID, signature))
 		return
 	}
@@ -369,13 +369,13 @@ func queryRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
+		handleError(conn, walletExt.Logger(), errors.New("user ('u') not found in query parameters"))
 		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
 		return
 	}
 	address, err := getQueryParameter(conn.ReadRequestParams(), common.AddressQueryParameter)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("address ('a') not found in query parameters"))
+		handleError(conn, walletExt.Logger(), errors.New("address ('a') not found in query parameters"))
 		walletExt.Logger().Error("address ('a') not found in query parameters", log.ErrKey, err)
 		return
 	}
@@ -388,7 +388,7 @@ func queryRequestHandler(walletExt *services.Services, conn UserConn) {
 	// check if this account is registered with given user
 	found, err := walletExt.UserHasAccount(userID, address)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		handleError(conn, walletExt.Logger(), errors.New("internal error"))
 		walletExt.Logger().Error("error during checking if account exists for user", "userID", userID, log.ErrKey, err)
 	}
 
@@ -421,7 +421,7 @@ func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
+		handleError(conn, walletExt.Logger(), errors.New("user ('u') not found in query parameters"))
 		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
 		return
 	}
@@ -429,7 +429,7 @@ func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
 	// delete user and accounts associated with it from the database
 	err = walletExt.Storage.DeleteUser(userID)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		handleError(conn, walletExt.Logger(), errors.New("internal error"))
 		walletExt.Logger().Error("unable to delete user", "userID", userID, log.ErrKey, err)
 		return
 	}
@@ -638,14 +638,14 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	// get address from the request
 	encryptionToken, ok := reqJSONMap[common.JSONKeyEncryptionToken]
 	if !ok {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("encryptionToken field not found in the request"))
+		handleError(conn, walletExt.Logger(), errors.New("encryptionToken field not found in the request"))
 		return
 	}
 	if tokenStr, ok := encryptionToken.(string); !ok {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("encryptionToken field is not a string"))
+		handleError(conn, walletExt.Logger(), errors.New("encryptionToken field is not a string"))
 		return
 	} else if len(tokenStr) != common.MessageUserIDLen {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("encryptionToken field is not of correct length"))
+		handleError(conn, walletExt.Logger(), errors.New("encryptionToken field is not of correct length"))
 		return
 	}
 
@@ -654,14 +654,14 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	if formatsInterface, ok := reqJSONMap[common.JSONKeyFormats]; ok {
 		formats, ok := formatsInterface.([]interface{})
 		if !ok {
-			handleError(conn, walletExt.Logger(), fmt.Errorf("formats field is not an array"))
+			handleError(conn, walletExt.Logger(), errors.New("formats field is not an array"))
 			return
 		}
 
 		for _, f := range formats {
 			formatStr, ok := f.(string)
 			if !ok {
-				handleError(conn, walletExt.Logger(), fmt.Errorf("format value is not a string"))
+				handleError(conn, walletExt.Logger(), errors.New("format value is not a string"))
 				return
 			}
 			formatsSlice = append(formatsSlice, formatStr)
@@ -675,7 +675,7 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	message, err := walletExt.GenerateUserMessageToSign(userID, formatsSlice)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		handleError(conn, walletExt.Logger(), errors.New("internal error"))
 		walletExt.Logger().Error("error getting message", log.ErrKey, err)
 		return
 	}
@@ -746,87 +746,6 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	if err != nil {
 		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
 	}
-}
-
-func listSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		if user.SessionKey == nil {
-			return []byte{}, nil
-		}
-		return []byte(hexutils.BytesToHex(user.SessionKey.Account.Address.Bytes())), nil
-	})
-}
-
-func createSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		sk, err := walletExt.SKManager.CreateSessionKey(user)
-		if err != nil {
-			handleError(conn, walletExt.Logger(), fmt.Errorf("could not create session key: %w", err))
-			return nil, err
-		}
-		return []byte(hexutils.BytesToHex(sk.Account.Address.Bytes())), nil
-	})
-}
-
-func deleteSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		res, err := walletExt.SKManager.DeleteSessionKey(user)
-		return []byte{boolToByte(res)}, err
-	})
-}
-
-func activateSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		res, err := walletExt.SKManager.ActivateSessionKey(user)
-		return []byte{boolToByte(res)}, err
-	})
-}
-
-func deactivateSKRequestHandler(walletExt *services.Services, conn UserConn) {
-	withUser(walletExt, conn, func(user *common.GWUser) ([]byte, error) {
-		res, err := walletExt.SKManager.DeactivateSessionKey(user)
-		return []byte{boolToByte(res)}, err
-	})
-}
-
-// extracts the user from the request, and writes the response to the connection
-func withUser(walletExt *services.Services, conn UserConn, withUser func(user *common.GWUser) ([]byte, error)) {
-	_, err := conn.ReadRequest()
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
-		return
-	}
-
-	userID, err := getUserID(conn)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("user ('u') not found in query parameters"))
-		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
-		return
-	}
-
-	user, err := walletExt.Storage.GetUser(userID)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not get user: %w", err))
-		return
-	}
-
-	resp, err := withUser(user)
-	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not process request: %w", err))
-		return
-	}
-
-	err = conn.WriteResponse(resp)
-	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
-	}
-}
-
-func boolToByte(res bool) byte {
-	if res {
-		return 1
-	}
-	return 0
 }
 
 func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {

@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 
@@ -29,7 +30,7 @@ import (
 
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
 type SqliteDB struct {
@@ -76,9 +77,10 @@ func NewSqliteDatabase(dbPath string) (*SqliteDB, error) {
 
 func (s *SqliteDB) AddUser(userID []byte, privateKey []byte) error {
 	user := dbcommon.GWUserDB{
-		UserId:     userID,
-		PrivateKey: privateKey,
-		Accounts:   []dbcommon.GWAccountDB{},
+		UserId:      userID,
+		PrivateKey:  privateKey,
+		Accounts:    []dbcommon.GWAccountDB{},
+		SessionKeys: make(map[common.Address]*dbcommon.GWSessionKeyDB),
 	}
 
 	userJSON, err := json.Marshal(user)
@@ -135,47 +137,58 @@ func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []
 	})
 }
 
-func (s *SqliteDB) AddSessionKey(userID []byte, key common.GWSessionKey) error {
+func (s *SqliteDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error {
 	return s.withTx(func(dbTx *sql.Tx) error {
 		user, err := s.readUser(dbTx, userID)
 		if err != nil {
 			return err
 		}
-		user.SessionKey = &dbcommon.GWSessionKeyDB{
+
+		// Check session key limit
+		if len(user.SessionKeys) >= wecommon.MaxSessionKeysPerUser {
+			return fmt.Errorf("maximum number of session keys (%d) reached", wecommon.MaxSessionKeysPerUser)
+		}
+
+		// Initialize SessionKeys map if nil
+		if user.SessionKeys == nil {
+			user.SessionKeys = make(map[common.Address]*dbcommon.GWSessionKeyDB)
+		}
+
+		address := *key.Account.Address
+		user.SessionKeys[address] = &dbcommon.GWSessionKeyDB{
 			PrivateKey: crypto.FromECDSA(key.PrivateKey.ExportECDSA()),
 			Account: dbcommon.GWAccountDB{
 				AccountAddress: key.Account.Address.Bytes(),
 				Signature:      key.Account.Signature,
 				SignatureType:  int(key.Account.SignatureType),
 			},
+			CreatedAt: key.CreatedAt,
 		}
 		return s.updateUser(dbTx, user)
 	})
 }
 
-func (s *SqliteDB) ActivateSessionKey(userID []byte, active bool) error {
+func (s *SqliteDB) RemoveSessionKey(userID []byte, sessionKeyAddr *common.Address) error {
 	return s.withTx(func(dbTx *sql.Tx) error {
 		user, err := s.readUser(dbTx, userID)
 		if err != nil {
 			return err
 		}
-		user.ActiveSK = active
-		return s.updateUser(dbTx, user)
-	})
-}
 
-func (s *SqliteDB) RemoveSessionKey(userID []byte) error {
-	return s.withTx(func(dbTx *sql.Tx) error {
-		user, err := s.readUser(dbTx, userID)
-		if err != nil {
-			return err
+		if user.SessionKeys == nil {
+			return errors.New("no session keys found for user")
 		}
-		user.SessionKey = nil
+
+		if _, exists := user.SessionKeys[*sessionKeyAddr]; !exists {
+			return fmt.Errorf("session key not found: %s", sessionKeyAddr.Hex())
+		}
+
+		delete(user.SessionKeys, *sessionKeyAddr)
 		return s.updateUser(dbTx, user)
 	})
 }
 
-func (s *SqliteDB) GetUser(userID []byte) (*common.GWUser, error) {
+func (s *SqliteDB) GetUser(userID []byte) (*wecommon.GWUser, error) {
 	var user dbcommon.GWUserDB
 	var err error
 	err = s.withTx(func(dbTx *sql.Tx) error {

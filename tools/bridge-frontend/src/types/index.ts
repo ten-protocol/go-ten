@@ -138,10 +138,11 @@ export enum L1Network {
 }
 
 export enum L2Network {
-  SEPOLIA = 443,
-  UAT = 443,
-  DEV = 443,
-  LOCAL = 443,
+  MAINNET = 443,
+  SEPOLIA = 8443,
+  UAT = 7443,
+  DEV = 6443,
+  LOCAL = 5443,
 }
 
 export type Environment = "uat-testnet" | "sepolia-testnet" | "dev-testnet";

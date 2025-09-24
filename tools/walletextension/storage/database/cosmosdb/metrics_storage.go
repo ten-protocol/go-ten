@@ -3,6 +3,7 @@ package cosmosdb
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash/fnv"
 	"sort"
@@ -519,7 +520,7 @@ func (m *MetricsStorageCosmosDB) UpdateDailyStats() error {
 // Warning: This is a costly operation, should be used rarely
 func (m *MetricsStorageCosmosDB) ResizeShards(newShardCount int) error {
 	if newShardCount <= 0 {
-		return fmt.Errorf("new shard count must be positive")
+		return errors.New("new shard count must be positive")
 	}
 
 	// Load all current shards to get all active users

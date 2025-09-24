@@ -45,6 +45,26 @@ type L1BlockProcessor interface {
 	HealthCheck() (bool, error)
 }
 
+// UpgradeManager manages network upgrade events and dispatches them to registered handlers
+// when they reach L1 finality
+type UpgradeManager interface {
+	// OnL1Block processes a new L1 block and checks for finalized upgrade events
+	OnL1Block(ctx context.Context, blockHeader *types.Header, processed *common.ProcessedL1Data) error
+	// RegisterUpgradeHandler registers a handler for a specific feature name
+	RegisterUpgradeHandler(featureName string, handler UpgradeHandler)
+	// ReplayFinalizedUpgrades replays all finalized upgrades to registered handlers (used on startup)
+	ReplayFinalizedUpgrades(ctx context.Context) error
+}
+
+// UpgradeHandler defines how a service should handle upgrade events
+type UpgradeHandler interface {
+	// CanUpgrade checks if this handler can process the given upgrade
+	// Returns false for unsupported upgrades, which will cause the node to error out
+	CanUpgrade(ctx context.Context, featureName string, featureData []byte) bool
+	// HandleUpgrade processes a network upgrade event for a specific feature
+	HandleUpgrade(ctx context.Context, featureName string, featureData []byte) error
+}
+
 // BatchExecutionContext - Contains all data that each batch depends on
 type BatchExecutionContext struct {
 	BlockPtr  common.L1BlockHash // BlockHeader is needed for the cross chain messages
@@ -166,9 +186,6 @@ type RollupConsumer interface {
 type TENChain interface {
 	// GetBalanceAtBlock - will return the balance of a specific address at the specific given block number (batch number).
 	GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error)
-
-	// Call - The interface for executing eth_call RPC commands against obscuro.
-	Call(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError)
 
 	// ObsCallAtBlock - Execute eth_call RPC against obscuro for a specific block (batch) number.
 	ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError)

@@ -24,7 +24,7 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 	randomHash := gethcommon.Hash{}
 	randomHash.SetBytes(make([]byte, 32)) // 32 bytes for appropriate length
 	dbtx, _ := db.NewDBTransaction()
-	statements := db.GetSQLStatement()
+	statements := db.GetSQLDB()
 	_, err := GetBlockId(dbtx.Tx, statements, randomHash)
 	if !errors.Is(err, errutil.ErrNotFound) {
 		t.Errorf("expected sql.ErrNoRows for non-existent block, got: %v", err)
@@ -57,7 +57,7 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 		t.Errorf("stored block but could not retrieve block ID: %s", err)
 	}
 	if *blockId != 2 {
-		t.Errorf("expected block ID 2, got %d", *blockId)
+		t.Errorf("expected block ID 2, got %d", blockId)
 	}
 	dbtx.Rollback()
 }
@@ -65,13 +65,13 @@ func TestCanStoreAndRetrieveBlock(t *testing.T) {
 func TestAddBlockWithForeignKeyConstraint(t *testing.T) {
 	db, _ := CreateSQLiteDB(t)
 	dbtx, _ := db.NewDBTransaction()
-	statements := db.GetSQLStatement()
+	statements := db.GetSQLDB()
 	metadata := createRollupMetadata()
 	rollup := createRollup(batchNumber-10, batchNumber)
 	block := types.NewBlock(&types.Header{}, nil, nil, nil)
 
 	// add block
-	err := AddBlock(dbtx.Tx, db.GetSQLStatement(), block.Header())
+	err := AddBlock(dbtx.Tx, db.GetSQLDB(), block.Header())
 	if err != nil {
 		t.Errorf("could not store block. Cause: %s", err)
 	}
@@ -79,7 +79,7 @@ func TestAddBlockWithForeignKeyConstraint(t *testing.T) {
 	dbtx, _ = db.NewDBTransaction()
 
 	// add rollup referencing block
-	err = AddRollup(dbtx, db.GetSQLStatement(), &rollup, &common.ExtRollupMetadata{}, &metadata, block.Header())
+	err = AddRollup(dbtx, db, &rollup, &common.ExtRollupMetadata{}, &metadata, block.Header())
 	if err != nil {
 		t.Errorf("could not store rollup. Cause: %s", err)
 	}
@@ -122,7 +122,7 @@ func createBlock(blockNum int64) types.Header {
 
 func TestBlockCountInListing(t *testing.T) {
 	db, _ := CreateSQLiteDB(t)
-	statements := db.GetSQLStatement()
+	statements := db.GetSQLDB()
 
 	numBlocks := 5
 	for i := 0; i < numBlocks; i++ {

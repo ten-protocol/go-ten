@@ -15,8 +15,6 @@ import (
 
 const (
 	_githubRepoUrl = "github.com/ten-protocol/ten-apps"
-	// path to the file in the repo (env has to be substituted with the testnet env)
-	_githubFilePath = "nonprod-argocd-config/apps/envs/%s/valuesFile/l1-values.yaml"
 )
 
 // GitL1ConfigWrapper matches a yaml file structure in the ten-apps config repo which looks like this:
@@ -62,7 +60,12 @@ func StoreNetworkCfgInGithub(githubPAT string, networkName string, networkConfig
 		return fmt.Errorf("failed to clone repo: %w", err)
 	}
 
-	relFilePath := fmt.Sprintf(_githubFilePath, networkName)
+	// Choose the correct config directory based on network environment
+	configDir := "nonprod-argocd-config"
+	if networkName == "mainnet" {
+		configDir = "prod-argocd-config"
+	}
+	relFilePath := fmt.Sprintf("%s/apps/envs/%s/valuesFile/l1-values.yaml", configDir, networkName)
 	absFilePath := filepath.Join(tmpDir, relFilePath)
 
 	f, err := os.ReadFile(absFilePath)

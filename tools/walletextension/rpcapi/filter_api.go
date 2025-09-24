@@ -2,6 +2,7 @@ package rpcapi
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync/atomic"
@@ -46,7 +47,7 @@ func (api *FilterAPI) NewPendingTransactionFilter(_ *bool) rpc.ID {
 }
 
 func (api *FilterAPI) NewPendingTransactions(ctx context.Context, fullTx *bool) (*rpc.Subscription, error) {
-	return nil, fmt.Errorf("not supported")
+	return nil, errors.New("not supported")
 }
 
 func (api *FilterAPI) NewBlockFilter() rpc.ID {
@@ -57,7 +58,7 @@ func (api *FilterAPI) NewBlockFilter() rpc.ID {
 func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
 	notifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
-		return nil, fmt.Errorf("creation of subscriptions is not supported")
+		return nil, errors.New("creation of subscriptions is not supported")
 	}
 	subscription := notifier.CreateSubscription()
 	api.we.NewHeadsService.RegisterNotifier(notifier, subscription)
@@ -161,12 +162,12 @@ func (api *FilterAPI) closeConnections(backendSubscriptions []*rpc.ClientSubscri
 func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *wecommon.GWUser, error) {
 	subNotifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
-		return nil, nil, fmt.Errorf("creation of subscriptions is not supported")
+		return nil, nil, errors.New("creation of subscriptions is not supported")
 	}
 
 	// todo - we might want to allow access to public logs
 	if len(subNotifier.UserID) == 0 {
-		return nil, nil, fmt.Errorf("illegal access")
+		return nil, nil, errors.New("illegal access")
 	}
 
 	user, err := api.we.Storage.GetUser(subNotifier.UserID)
@@ -191,7 +192,7 @@ func searchForAddressInFilterCriteria(filterCriteria common.FilterCriteria, poss
 }
 
 func (api *FilterAPI) NewFilter(crit common.FilterCriteria) (rpc.ID, error) {
-	return rpc.NewID(), rpcNotImplemented
+	return rpc.NewID(), ErrRPCNotImplemented
 }
 
 func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) ([]*types.Log, error) {
@@ -208,7 +209,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	defer api.we.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	if !rateLimitAllowed {
 		services.Audit(api.we, services.DebugLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
-		return nil, fmt.Errorf("rate limit exceeded")
+		return nil, errors.New("rate limit exceeded")
 	}
 
 	res, err := cache.WithCache(
@@ -291,5 +292,5 @@ func (api *FilterAPI) GetFilterLogs(ctx context.Context, id rpc.ID) ([]*types.Lo
 }
 
 func (api *FilterAPI) GetFilterChanges(id rpc.ID) (interface{}, error) {
-	return nil, rpcNotImplemented
+	return nil, ErrRPCNotImplemented
 }

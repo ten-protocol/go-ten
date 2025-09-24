@@ -9,6 +9,9 @@ type Config struct {
 	DockerImage          string
 	SequencerHostAddress string
 	DebugEnabled         bool
+	EtherscanAPIKey      string
+	MaxGasGwei           string
+	CheckGasPrice        string
 }
 
 func NewContractDeployerConfig(tenCfg *config.TenConfig) *Config {
@@ -18,5 +21,8 @@ func NewContractDeployerConfig(tenCfg *config.TenConfig) *Config {
 		DockerImage:          tenCfg.Deployment.DockerImage,
 		SequencerHostAddress: tenCfg.Deployment.L1Deploy.InitialSeqAddress,
 		DebugEnabled:         tenCfg.Deployment.DebugEnabled,
+		EtherscanAPIKey:      tenCfg.Deployment.L1Deploy.EtherscanAPIKey,
+		MaxGasGwei:           tenCfg.Deployment.L1Deploy.MaxGasGwei,
+		CheckGasPrice:        tenCfg.Deployment.L1Deploy.CheckGasPrice,
 	}
 }

@@ -55,7 +55,7 @@ func HandleEncryptedRPC(ctx context.Context,
 	// 1. Decrypt request
 	plaintextRequest, err := encManager.DecryptBytes(encReq)
 	if err != nil {
-		return responses.AsPlaintextError(common.FailedDecryptErr), nil
+		return responses.AsPlaintextError(common.ErrFailedDecrypt), nil
 	}
 
 	// 2. Unmarshall

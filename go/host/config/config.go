@@ -1,6 +1,7 @@
 package config
 
 import (
+	"math/big"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -65,6 +66,8 @@ type HostConfig struct {
 	// filepath for the sqlite DB persistence file (can be empty if a throwaway file in /tmp/ is acceptable or
 	// if using InMemory DB)
 	SqliteDBPath string
+	// Historical transaction count for testnet
+	HistoricalTxCount int
 
 	//////
 	// NODE NETWORKING
@@ -108,6 +111,8 @@ type HostConfig struct {
 	DebugNamespaceEnabled bool
 	// Whether p2p is enabled or not
 	IsInboundP2PDisabled bool
+
+	MinBaseFee *big.Int
 }
 
 func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
@@ -135,9 +140,10 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		LogLevel: tenCfg.Host.Log.Level,
 		LogPath:  tenCfg.Host.Log.Path,
 
-		UseInMemoryDB:  tenCfg.Host.DB.UseInMemory,
-		PostgresDBHost: tenCfg.Host.DB.PostgresHost,
-		SqliteDBPath:   tenCfg.Host.DB.SqlitePath,
+		UseInMemoryDB:     tenCfg.Host.DB.UseInMemory,
+		PostgresDBHost:    tenCfg.Host.DB.PostgresHost,
+		SqliteDBPath:      tenCfg.Host.DB.SqlitePath,
+		HistoricalTxCount: tenCfg.Host.DB.HistoricalTxCount,
 
 		HasClientRPCHTTP:       tenCfg.Host.RPC.EnableHTTP,
 		ClientRPCPortHTTP:      tenCfg.Host.RPC.HTTPPort,
@@ -162,5 +168,7 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		MetricsEnabled:        tenCfg.Host.Debug.EnableMetrics,
 		MetricsHTTPPort:       tenCfg.Host.Debug.MetricsHTTPPort,
 		DebugNamespaceEnabled: tenCfg.Host.Debug.EnableDebugNamespace,
+
+		MinBaseFee: tenCfg.Network.Gas.MinBaseFee,
 	}
 }

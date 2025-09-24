@@ -10,7 +10,7 @@
       ]
     },
     "localObscuro": {
-      "chainId": 443,
+      "chainId": 5443,
       "url": "http://127.0.0.1:11180/v1/",
       "useGateway": true,
       "companionNetworks" : {
@@ -31,7 +31,7 @@
       ]
     },
     "testObscuro": {
-      "chainId": 443,
+      "chainId": 5443,
       "url": "http://127.0.0.1:11180/v1/",
       "useGateway": true,
       "companionNetworks" : {
@@ -75,7 +75,7 @@
       ]
     },
     "testUatObscuro": {
-      "chainId": 443,
+      "chainId": 7443,
       "url": "https://uat-testnet.ten.xyz/v1/",
       "useGateway": true,
       "companionNetworks" : {
@@ -100,7 +100,7 @@
       ]
     },
     "testDevObscuro": {
-      "chainId": 443,
+      "chainId": 6443,
       "url": "https://dev-testnet.ten.xyz/v1/",
       "useGateway": true,
       "companionNetworks" : {
@@ -126,7 +126,7 @@
       ]
     },
     "localTestnetTen": {
-      "chainId": 443,
+      "chainId": 5443,
       "url": "http://127.0.0.1:3000/v1/",
       "useGateway": true,
       "companionNetworks" : {

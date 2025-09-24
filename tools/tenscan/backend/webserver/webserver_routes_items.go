@@ -34,7 +34,7 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/transactions/", server.getPublicTransactions)
 	r.GET("/items/transaction/:hash", server.getTransaction)
 	r.GET("/items/transactions/count", server.getTotalTxCount)
-	r.GET("/items/blocks/", server.getBlockListing) // Deprecated
+	r.GET("/items/blocks/", server.getBlockListing)
 
 	// search
 	r.GET("/items/search/", server.search)
@@ -250,13 +250,13 @@ func (w *WebServer) getBlockListing(c *gin.Context) {
 		return
 	}
 
-	batchesListing, err := w.backend.GetBlockListing(offset, size)
+	blockListing, err := w.backend.GetBlockListing(offset, size)
 	if err != nil {
 		errorHandler(c, fmt.Errorf("unable to execute getBlockListing request %w", err), w.logger)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"result": batchesListing})
+	c.JSON(http.StatusOK, gin.H{"result": blockListing})
 }
 
 func (w *WebServer) getRollup(c *gin.Context) {

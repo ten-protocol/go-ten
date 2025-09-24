@@ -57,7 +57,7 @@ func (f *Faucet) Fund(address *common.Address, token string, amount *big.Int) (s
 	if token == NativeToken || token == DeprecatedNativeToken {
 		signedTx, err = f.fundNativeToken(address, amount)
 	} else {
-		return "", fmt.Errorf("token not fundable atm")
+		return "", errors.New("token not fundable atm")
 		// todo implement this when contracts are deployable somewhere
 	}
 	if err != nil {
@@ -99,7 +99,7 @@ func (f *Faucet) validateTx(tx *types.Transaction) error {
 		fmt.Println(string(txReceiptBytes))
 
 		if receipt.Status != 1 {
-			return fmt.Errorf("tx status is not 0x1")
+			return errors.New("tx status is not 0x1")
 		}
 		return nil
 	}

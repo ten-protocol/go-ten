@@ -44,13 +44,17 @@ func (n *ContractDeployer) Start() error {
 
 	envs := map[string]string{
 		"SEQUENCER_HOST_ADDRESS": n.cfg.SequencerHostAddress,
+		"ETHERSCAN_API_KEY":      n.cfg.EtherscanAPIKey,
+		"MAX_GAS_GWEI":           n.cfg.MaxGasGwei,
+		"CHECK_GAS_PRICE":        n.cfg.CheckGasPrice,
 		"NETWORK_JSON": fmt.Sprintf(`
-{ 
+{
         "layer1" : {
             "url" : "%s",
+            "useGateway" : false,
             "live" : false,
             "saveDeployments" : true,
-            "deploy": [ 
+            "deploy": [
                 "deployment_scripts/core",
 				"deployment_scripts/testnet/layer1"
             ],
@@ -75,8 +79,9 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	}
 	defer cli.Close()
 
-	// make sure the container has finished execution (10 minutes allows time for L1 transactions to be mined)
-	err = docker.WaitForContainerToFinish(n.containerID, 10*time.Minute)
+	// make sure the container has finished execution
+	// (generous 30 minute timeout allows time for L1 transactions to be mined in unpredictable environments)
+	err = docker.WaitForContainerToFinish(n.containerID, 30*time.Minute)
 	if err != nil {
 		return nil, err
 	}

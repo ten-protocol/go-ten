@@ -14,6 +14,7 @@ type Config struct {
 	gatewayWSPort            int
 	rateLimitUserComputeTime time.Duration
 	dockerImage              string
+	chainID                  int64
 }
 
 func NewGatewayConfig(opts ...Option) *Config {
@@ -65,5 +66,11 @@ func WithGatewayWSPort(i int) Option {
 func WithRateLimitUserComputeTime(d time.Duration) Option {
 	return func(c *Config) {
 		c.rateLimitUserComputeTime = d
+	}
+}
+
+func WithChainID(chainID int64) Option {
+	return func(c *Config) {
+		c.chainID = chainID
 	}
 }

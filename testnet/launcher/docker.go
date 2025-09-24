@@ -43,10 +43,10 @@ func (t *Testnet) Start() error {
 		return fmt.Errorf("unable to deploy l1 contracts - %w", err)
 	}
 
-	edgelessDBImage := "ghcr.io/edgelesssys/edgelessdb-sgx-4gb:v0.3.2"
+	edgelessDBImage := "testnetobscuronet.azurecr.io/obscuronet/ten-edb-4096:v0.3.4"
 	// todo: revisit how we should configure the image, this condition is not ideal
 	if !t.cfg.isSGXEnabled {
-		edgelessDBImage = "ghcr.io/edgelesssys/edgelessdb-sgx-1gb:v0.3.2"
+		edgelessDBImage = "testnetobscuronet.azurecr.io/obscuronet/ten-edb-1024:v0.3.4"
 	}
 
 	sequencerCfg, err := config.LoadTenConfig(
@@ -122,6 +122,7 @@ func (t *Testnet) Start() error {
 			DockerImage:            t.cfg.contractDeployerDockerImage,
 			DebugEnabled:           t.cfg.contractDeployerDebug,
 			FaucetPrefundAmount:    "10000",
+			ChainID:                sequencerCfg.Network.ChainID,
 		},
 	)
 	if err != nil {
@@ -152,6 +153,7 @@ func (t *Testnet) Start() error {
 			faucet.WithTenNodeHost("validator-host"),
 			faucet.WithFaucetPrivKey("0x8dfb8083da6275ae3e4f41e3e8a8c19d028d32c9247e24530933782f2a05035b"),
 			faucet.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/faucet:latest"),
+			faucet.WithChainID(sequencerCfg.Network.ChainID),
 		),
 	)
 	if err != nil {
@@ -179,6 +181,7 @@ func (t *Testnet) Start() error {
 			gateway.WithTenNodeHost("validator-host"),
 			gateway.WithRateLimitUserComputeTime(0), // disable rate limiting for local network
 			gateway.WithDockerImage("testnetobscuronet.azurecr.io/obscuronet/obscuro_gateway:latest"),
+			gateway.WithChainID(sequencerCfg.Network.ChainID),
 		),
 	)
 	if err != nil {

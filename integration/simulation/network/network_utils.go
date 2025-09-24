@@ -80,6 +80,7 @@ func createInMemTenNode(
 		IsInboundP2PDisabled: incomingP2PDisabled,
 		L1BlockTime:          l1BlockTime,
 		UseInMemoryDB:        true,
+		MinBaseFee:           big.NewInt(1),
 	}
 
 	contracts := contractRegistryLib.GetContractAddresses()
@@ -92,14 +93,14 @@ func createInMemTenNode(
 		UseInMemoryDB:                   true,
 		MinGasPrice:                     gethcommon.Big1,
 		MessageBusAddress:               l1BusAddress,
-		BridgeAddress:                   l1BridgeAddress,
+		L1BridgeAddress:                 l1BridgeAddress,
 		DataAvailabilityRegistryAddress: contracts.DataAvailabilityRegistry,
 		EnclaveRegistryAddress:          contracts.EnclaveRegistry,
 		SystemContractOwner:             gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"), // Irrelevant for in-mem nodes
 		MaxBatchSize:                    1024 * 55,
 		MaxRollupSize:                   1024 * 128,
-		BaseFee:                         big.NewInt(1), // todo @siliev:: fix test transaction builders so this can be different
-		GasLocalExecutionCapFlag:        params.MaxGasLimit / 2,
+		MinBaseFee:                      big.NewInt(1),          // todo @siliev:: fix test transaction builders so this can be different
+		GasLocalExecutionCapFlag:        params.MaxGasLimit / 2, // todo - what should this be?
 		GasBatchExecutionLimit:          30_000_000,
 		RPCTimeout:                      5 * time.Second,
 		StoreExecutedTransactions:       true,

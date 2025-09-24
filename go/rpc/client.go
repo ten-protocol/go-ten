@@ -29,6 +29,7 @@ const (
 	GetLatestRollupHeader    = "scan_getLatestRollupHeader"
 	GetTotalTxCount          = "scan_getTotalTransactionCount"
 	GetTotalTxsQuery         = "scan_getTotalTransactionsQuery"
+	GetHistoricalTxCount     = "scan_getHistoricalTransactionCount"
 	GetTotalContractCount    = "scan_getTotalContractCount"
 	GetPublicTransactionData = "scan_getPublicTransactionData"
 	GetBatchListing          = "scan_getBatchListing"

@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -145,13 +144,35 @@ func InteractWithSmartContract(client *ethclient.Client, wallet wallet.Wallet, c
 		return nil, err
 	}
 
+	price, err := client.SuggestGasPrice(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
+	// Get current nonce to avoid conflicts
+	nonce, err := client.PendingNonceAt(context.Background(), wallet.Address())
+	if err != nil {
+		return nil, err
+	}
+
 	interactionTx := types.LegacyTx{
-		Nonce:    wallet.GetNonceAndIncrement(),
+		Nonce:    nonce,
 		To:       &contractAddress,
-		Gas:      uint64(1_000_000),
-		GasPrice: big.NewInt(params.InitialBaseFee),
+		Gas:      uint64(10_000_000),
+		GasPrice: price,
 		Data:     contractInteractionData,
 	}
+
+	gas, err := client.EstimateGas(context.Background(), ethereum.CallMsg{
+		From: wallet.Address(),
+		To:   &contractAddress,
+		Data: contractInteractionData,
+	})
+	if err != nil {
+		return nil, err
+	}
+	interactionTx.Gas = gas
+
 	signedTx, err := wallet.SignTransaction(&interactionTx)
 	if err != nil {
 		return nil, err

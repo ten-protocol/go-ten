@@ -35,6 +35,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/simulation/stats"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ten-protocol/go-ten/contracts/generated/NetworkConfig"
 	testcommon "github.com/ten-protocol/go-ten/integration/common"
 )
 
@@ -103,6 +104,9 @@ func (s *Simulation) Start() {
 
 	fmt.Printf("Prefunding L1 wallets\n")
 	s.prefundL1Accounts() // Prefund every L1 wallet
+
+	fmt.Printf("Triggering dynamic gas pricing upgrade\n")
+	s.triggerGasPricingUpgrade() // Trigger the network upgrade for dynamic gas pricing
 
 	fmt.Printf("Checking health status\n")
 	s.checkHealthStatus() // Checks the nodes health status
@@ -302,9 +306,15 @@ func (s *Simulation) deployPublicCallbacksTest() {
 		panic(fmt.Errorf("public callbacks address is not set"))
 	}
 
+	gasPrice, err := rpcClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
 	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, s.Params.Wallets.L2FaucetWallet))
-	auth.GasPrice = big.NewInt(0).SetUint64(gethparams.InitialBaseFee)
+	auth.GasPrice = gasPrice
 	auth.Context = s.ctx
+	auth.GasLimit = gethparams.MaxTxGas
 	auth.Value = big.NewInt(0).Mul(big.NewInt(1), big.NewInt(gethparams.Ether))
 
 	_, tx, instance, err := PublicCallbacksTest.DeployPublicCallbacksTest(auth, rpcClient, publicCallbacksAddress)
@@ -360,9 +370,15 @@ func (s *Simulation) deployTenZen() {
 		panic(fmt.Errorf("failed to get positive balance after timeout: %w", err))
 	}
 
+	gasPrice, err := rpcClient.SuggestGasPrice(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
 	owner := s.Params.Wallets.L2FaucetWallet
 	ownerRpc := s.RPCHandles.TenWalletClient(owner.Address(), 1)
-	auth.GasPrice = big.NewInt(0).SetUint64(gethparams.InitialBaseFee)
+	auth.GasPrice = gasPrice
+	auth.GasLimit = gethparams.MaxTxGas
 	auth.Context = context.Background()
 	auth.Nonce = big.NewInt(0).SetUint64(NextNonce(s.ctx, s.RPCHandles, owner))
 
@@ -476,6 +492,62 @@ func (s *Simulation) prefundL1Accounts() {
 
 		go s.TxInjector.TxTracker.trackL1Tx(txData)
 	}
+}
+
+func (s *Simulation) triggerGasPricingUpgrade() {
+	if s.Params.IsInMem {
+		return
+	}
+
+	// Use L1 client and wallet to call NetworkConfig contract on L1
+	l1Client := s.RPCHandles.RndEthClient()
+	l1Wallet := s.Params.Wallets.ContractOwnerWallet // Use L1 faucet wallet
+
+	// Get NetworkConfig contract address from L1TenData
+	networkConfigAddress := s.Params.L1TenData.NetworkConfigAddress
+	if networkConfigAddress.Cmp(gethcommon.Address{}) == 0 {
+		panic(fmt.Errorf("network config address is not set"))
+	}
+
+	// Create NetworkConfig contract instance
+	networkConfig, err := NetworkConfig.NewNetworkConfig(networkConfigAddress, l1Client.EthClient())
+	if err != nil {
+		panic(fmt.Errorf("failed to create NetworkConfig contract instance: %w", err))
+	}
+
+	// Create transactor for L1 transaction
+	auth, err := bind.NewKeyedTransactorWithChainID(l1Wallet.PrivateKey(), l1Wallet.ChainID())
+	if err != nil {
+		panic(fmt.Errorf("failed to create transactor for gas pricing upgrade: %w", err))
+	}
+
+	auth.Nonce = big.NewInt(int64(l1Wallet.GetNonceAndIncrement()))
+	auth.Context = s.ctx
+	auth.Value = big.NewInt(0)
+
+	// Call UpgradeFeature with gas_pricing feature and dynamic-pricing data
+	featureName := "gas_pricing"
+	featureData := []byte("dynamic-pricing")
+
+	tx, err := networkConfig.UpgradeFeature(auth, featureName, featureData)
+	if err != nil {
+		panic(fmt.Errorf("failed to call UpgradeFeature: %w", err))
+	}
+
+	// Wait for transaction to be mined
+	receipt, err := testcommon.AwaitReceiptEth(s.ctx, l1Client.EthClient(), tx.Hash(), 20*time.Second)
+	if err != nil {
+		panic(fmt.Errorf("failed to wait for gas pricing upgrade transaction: %w", err))
+	}
+
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		panic(fmt.Errorf("gas pricing upgrade transaction failed"))
+	}
+
+	testlog.Logger().Info("Successfully triggered dynamic gas pricing upgrade",
+		"txHash", tx.Hash().Hex(),
+		"featureName", featureName,
+		"featureData", string(featureData))
 }
 
 func (s *Simulation) checkHealthStatus() {

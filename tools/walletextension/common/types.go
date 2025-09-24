@@ -1,6 +1,8 @@
 package common
 
 import (
+	"time"
+
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"golang.org/x/exp/maps"
@@ -8,10 +10,16 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+const (
+	// MaxSessionKeysPerUser defines the maximum number of session keys a user can have
+	MaxSessionKeysPerUser = 100
+)
+
 // GWSessionKey - an account key-pair registered for a user
 type GWSessionKey struct {
 	Account    *GWAccount
 	PrivateKey *ecies.PrivateKey // the private key corresponding to the account
+	CreatedAt  time.Time         // timestamp when the session key was created
 }
 
 type GWAccount struct {
@@ -22,17 +30,16 @@ type GWAccount struct {
 }
 
 type GWUser struct {
-	ID         []byte
-	Accounts   map[common.Address]*GWAccount
-	UserKey    []byte
-	SessionKey *GWSessionKey
-	ActiveSK   bool // the session key is active, and it must be used to sign all incoming transactions, and used as the preferred account
+	ID          []byte
+	Accounts    map[common.Address]*GWAccount
+	UserKey     []byte
+	SessionKeys map[common.Address]*GWSessionKey // map of session key address to session key
 }
 
 func (u GWUser) AllAccounts() map[common.Address]*GWAccount {
 	res := maps.Clone(u.Accounts)
-	if u.SessionKey != nil {
-		res[*u.SessionKey.Account.Address] = u.SessionKey.Account
+	for addr, sessionKey := range u.SessionKeys {
+		res[addr] = sessionKey.Account
 	}
 	return res
 }

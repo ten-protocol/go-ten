@@ -190,6 +190,10 @@ func (g *Guardian) InSyncWithL1() bool {
 	return g.state.InSyncWithL1()
 }
 
+func (g *Guardian) IsEnclaveL2AheadOfHost() bool {
+	return g.state.IsEnclaveAheadOfHost()
+}
+
 func (g *Guardian) GetEnclaveState() *StateTracker {
 	return g.state
 }
@@ -537,8 +541,8 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
 
 	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
-	if err != nil {
-		if strings.Contains(err.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
+	if resp != nil && resp.RejectError != nil {
+		if strings.Contains(resp.RejectError.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
 			// we have already processed this block, let's try the next canonical block
 			// this is most common when we are returning to a previous fork and the enclave has already seen some of the blocks on it
 			// note: logging this because we don't expect it to happen often and would like visibility on that.
@@ -553,6 +557,12 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 		// something went wrong, return error and let the main loop check status and try again when appropriate
 		return false, errors.Wrap(err, "could not submit L1 block to enclave")
 	}
+
+	if err != nil {
+		// something went wrong, return error and let the main loop check status and try again when appropriate
+		return false, errors.Wrap(err, "could not submit L1 block to enclave")
+	}
+
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
 	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, g.shouldSyncContracts(*processedData), g.shouldSyncAdditionalContracts(*processedData))
@@ -661,7 +671,6 @@ func (g *Guardian) streamEnclaveData() {
 				g.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				err := g.sl.L2Repo().AddBatch(resp.Batch)
 				if err != nil && !errors.Is(err, errutil.ErrAlreadyExists) {
-					// todo (@matt) this is a catastrophic scenario, the host may never get that batch - handle this
 					g.logger.Crit("failed to add batch to L2 repo", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
 				}
 

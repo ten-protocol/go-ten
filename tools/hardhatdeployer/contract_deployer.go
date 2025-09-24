@@ -3,6 +3,7 @@ package contractdeployer
 // todo (@pedro) - we might merge this with the network manager package
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -97,7 +98,7 @@ func (cd *contractDeployer) run() (string, error) {
 	deployContractTx := types.LegacyTx{
 		Nonce:    cd.wallet.GetNonceAndIncrement(),
 		GasPrice: big.NewInt(params.InitialBaseFee),
-		Gas:      uint64(5_000_000),
+		Gas:      params.MaxTxGas,
 		Data:     cd.contractCode,
 	}
 
@@ -106,7 +107,7 @@ func (cd *contractDeployer) run() (string, error) {
 		return "", err
 	}
 	if contractAddr == nil {
-		return "", fmt.Errorf("transaction was successful but could not retrieve address for deployed contract")
+		return "", errors.New("transaction was successful but could not retrieve address for deployed contract")
 	}
 
 	return contractAddr.Hex(), nil

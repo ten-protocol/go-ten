@@ -29,6 +29,11 @@ on:
           description: 'Type "confirm" if deploying sepolia or mainnet'
           required: false
           type: string
+      max_gas_gwei:
+          description: 'Max gas price in gwei (default 1.5)'
+          required: false
+          default: '1.5'
+          type: string
 
 jobs:
   build:
@@ -81,7 +86,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.23.5
+          go-version: 1.25.1
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
@@ -109,9 +114,6 @@ jobs:
         shell: bash
         env:
           DOCKER_API_VERSION: "1.45"
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
           DEPLOY_NETWORKNAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
           DEPLOY_GITHUBPAT: ${{ secrets.DEPLOY_ACTIONS_PAT }}
@@ -119,6 +121,9 @@ jobs:
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
           DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
           DEPLOY_L1_INITIALSEQADDRESS: ${{ vars.ACCOUNT_ADDR_NODE_0 }}
+          DEPLOY_L1_ETHERSCANAPIKEY: ${{ secrets.ETHERSCAN_API_KEY }}
+          DEPLOY_L1_MAXGASGWEI: ${{ github.event.inputs.max_gas_gwei }}
+          DEPLOY_L1_CHECKGASPRICE: ${{ github.event.inputs.testnet_type == 'mainnet' && 'true' || 'false' }}
         run: |
           # Run deployer and capture output
           go run ./testnet/launcher/l1contractdeployer/cmd

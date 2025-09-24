@@ -35,7 +35,7 @@ func (er *EnclaveResponse) Encode() []byte {
 
 func (er *EnclaveResponse) Error() error {
 	if er.Err != nil {
-		return fmt.Errorf(*er.Err)
+		return errors.New(*er.Err)
 	}
 	return nil
 }

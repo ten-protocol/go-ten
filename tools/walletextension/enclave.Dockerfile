@@ -9,7 +9,7 @@
 #   /data                                          persistent volume mount point
 
 # Trigger new build stage for compiling the enclave
-FROM ghcr.io/edgelesssys/ego-dev:v1.7.2 AS build-base
+FROM ghcr.io/edgelesssys/ego-dev:v1.8.0 AS build-base
 
 # Install ca-certificates package and update it
 RUN apt-get update && apt-get install -y \
@@ -39,7 +39,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Sign the enclave executable
 RUN ego sign enclave.json
 
-FROM ghcr.io/edgelesssys/ego-deploy:v1.7.2
+# Run the complete Azure HSM setup (builds signer tool, signs binary, or skips if not needed)
+RUN /home/ten/go-ten/tools/enclavesigner/AzureHSMSignatureScript.sh main /home/ten/go-ten/tools/enclavesigner/main
+
+FROM ghcr.io/edgelesssys/ego-deploy:v1.8.0
 
 # Create data directory that will be used for persistence
 RUN mkdir -p /data && chmod 777 /data

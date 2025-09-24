@@ -14,12 +14,11 @@ import (
 	"unsafe"
 
 	"github.com/ethereum/go-ethereum/core/vm"
+	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 	tencore "github.com/ten-protocol/go-ten/go/enclave/core"
-	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-
 	"github.com/ten-protocol/go-ten/go/enclave/gas"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
@@ -65,6 +64,7 @@ type TxPool struct {
 	pool             *gethtxpool.TxPool
 	Chain            *EthChainAdapter
 	gasOracle        gas.Oracle
+	gasPricer        *GasPricer
 	batchRegistry    BatchRegistry
 	storage          storage.Storage
 	l1BlockProcessor L1BlockProcessor
@@ -78,7 +78,10 @@ type TxPool struct {
 }
 
 // NewTxPool returns a new instance of the tx pool
-func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig, tenChain TENChain, storage storage.Storage, batchRegistry BatchRegistry, l1BlockProcessor L1BlockProcessor, gasOracle gas.Oracle, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
+func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig, tenChain TENChain, storage storage.Storage, batchRegistry BatchRegistry, l1BlockProcessor L1BlockProcessor, gasOracle gas.Oracle, gasPricer *GasPricer, gasTip *big.Int, validateOnly bool, logger gethlog.Logger) (*TxPool, error) {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	txPoolConfig := legacypool.Config{
 		Locals:       nil,
 		NoLocals:     false,
@@ -102,6 +105,7 @@ func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig,
 		txPoolConfig:     txPoolConfig,
 		storage:          storage,
 		gasOracle:        gasOracle,
+		gasPricer:        gasPricer,
 		batchRegistry:    batchRegistry,
 		l1BlockProcessor: l1BlockProcessor,
 		legacyPool:       legacyPool,
@@ -141,6 +145,7 @@ func (t *TxPool) start() {
 	)
 	defer close(newHeadCh)
 	defer newHeadSub.Unsubscribe()
+	startWait := time.Now()
 	for {
 		select {
 		case event := <-newHeadCh:
@@ -153,8 +158,7 @@ func (t *TxPool) start() {
 				return
 			}
 		case <-time.After(startMempoolTimeout):
-			t.logger.Crit("Timeout waiting to start mempool.")
-			return
+			t.logger.Error("Still waiting for batches to init mempool", "timeWaiting", time.Since(startWait))
 		}
 	}
 }
@@ -280,7 +284,7 @@ func (t *TxPool) add(transaction *common.L2Tx) error {
 	}
 
 	if len(strErrors) > 0 {
-		return fmt.Errorf(strings.Join(strErrors, "; ")) // nolint
+		return errors.New(strings.Join(strErrors, "; ")) // nolint
 	}
 	return nil
 }
@@ -343,7 +347,15 @@ func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 		t.logger.Crit("invalid mempool. should not happen")
 	}
 
-	if err := gethtxpool.ValidateTransaction(tx, ch.Load(), sig, opts); err != nil {
+	header := ch.Load()
+	// set to max uint64 - this is to skip the validation against the header gas limit
+	// as the internal geth logic does not factor in publishing gas cost and thus assumes everything
+	// is for execution, which means in practice there are edge cases where the tx costs more than the batch
+	// given a certain config values. Highly dependent on the minimumBaseFee we use for estimating and might not be
+	// hit at higher fees, but regardless its a pointless check as we also verify manually in validateTotalGas
+	// which uses an estimation that would block the tx if execution is above gas limit.
+	header.GasLimit = ^uint64(0)
+	if err := gethtxpool.ValidateTransaction(tx, header, sig, opts); err != nil {
 		return err
 	}
 	return nil
@@ -356,11 +368,6 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 	// don't perform the check while the network is initialising
 	if headBatchSeq == nil {
 		return nil, nil
-	}
-
-	headBatch, err := t.storage.FetchBatchHeaderBySeqNo(context.Background(), headBatchSeq.Uint64())
-	if err != nil {
-		return nil, fmt.Errorf("could not retrieve head batch. Cause: %w", err)
 	}
 
 	serTx, err := tx.MarshalJSON()
@@ -377,19 +384,16 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 		return nil, fmt.Errorf("could not extract sender from transaction. Cause: %w", err)
 	}
 	txArgs.From = &from
-	ge := NewGasEstimator(t.storage, t.tenChain, t.gasOracle, t.logger)
-	latest := gethrpc.LatestBlockNumber
-	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, &latest, headBatch, t.config.GasLocalExecutionCapFlag)
+	ge := NewGasEstimator(t.storage, t.batchRegistry, t.tenChain, t.gasOracle, t.gasPricer, t.logger)
+	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, gethrpc.LatestBlockNumber, t.config.GasLocalExecutionCapFlag)
 
 	// if the transaction reverts we let it through
 	if userErr != nil && errors.Is(userErr, vm.ErrExecutionReverted) {
 		return nil, nil
 	}
-
 	if userErr != nil || sysErr != nil {
 		return userErr, sysErr
 	}
-
 	// make sure the tx has enough gas to cover the execution and the tx won't be rejected by the sequencer
 	leastGas = leastGas * 8 / 10 // reduce gas estimate by 20%
 	if tx.Gas() < leastGas {

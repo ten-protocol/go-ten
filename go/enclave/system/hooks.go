@@ -15,7 +15,6 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/contracts/generated/PublicCallbacks"
 	"github.com/ten-protocol/go-ten/contracts/generated/TransactionPostProcessor"
-	"github.com/ten-protocol/go-ten/contracts/generated/ZenBase"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -35,6 +34,7 @@ type SystemContractCallbacks interface {
 	PublicSystemContracts() map[string]*gethcommon.Address
 	// Initialization
 	Initialize(batch *core.Batch, receipts types.Receipt, msgBusManager SystemContractsInitializable) error
+	InitializeFromMultipleReceipts(batch *core.Batch, receipts []*types.Receipt, msgBusManager SystemContractsInitializable) error
 	Load(msgBusManager SystemContractsInitializable) error
 
 	// Usage
@@ -140,6 +140,41 @@ func (s *systemContractCallbacks) Initialize(batch *core.Batch, receipt types.Re
 	return s.initializeRequiredAddresses(addresses, msgBusManager)
 }
 
+func (s *systemContractCallbacks) InitializeFromMultipleReceipts(batch *core.Batch, receipts []*types.Receipt, msgBusManager SystemContractsInitializable) error {
+	s.logger.Info("InitializeFromMultipleReceipts: Starting initialization of system contracts from multiple receipts", "batchSeqNo", batch.SeqNo(), "receiptCount", len(receipts))
+
+	// Combine addresses from all receipts
+	allAddresses := make(map[string]*gethcommon.Address)
+
+	for i, receipt := range receipts {
+		s.logger.Info("Processing receipt", "index", i, "status", receipt.Status, "txHash", receipt.TxHash.Hex())
+
+		addresses, err := verifyAndDeriveAddressesFromReceipt(batch, receipt)
+		if err != nil {
+			s.logger.Error("InitializeFromMultipleReceipts: Failed verifying and deriving addresses", "receiptIndex", i, "error", err)
+			return fmt.Errorf("failed verifying and deriving addresses from receipt %d: %w", i, err)
+		}
+
+		s.logger.Info("Found addresses in receipt", "receiptIndex", i, "addressCount", len(addresses))
+
+		// Merge addresses from this receipt
+		for name, addr := range addresses {
+			allAddresses[name] = addr
+			s.logger.Info("Found contract address", "receiptIndex", i, "name", name, "address", addr.Hex())
+		}
+	}
+
+	s.logger.Info("Combined all system contract addresses", "totalCount", len(allAddresses))
+
+	if err := s.StoreSystemContractAddresses(allAddresses); err != nil {
+		s.logger.Error("InitializeFromMultipleReceipts: Failed storing system contract addresses", "error", err)
+		return fmt.Errorf("failed storing system contract addresses %w", err)
+	}
+
+	s.logger.Info("InitializeFromMultipleReceipts: Initializing required addresses", "addresses", allAddresses)
+	return s.initializeRequiredAddresses(allAddresses, msgBusManager)
+}
+
 func verifyAndDeriveAddresses(batch *core.Batch, receipt *types.Receipt) (common.SystemContractAddresses, error) {
 	if batch.SeqNo().Uint64() != common.L2SysContractGenesisSeqNo {
 		return nil, fmt.Errorf("batch is not genesis")
@@ -148,6 +183,19 @@ func verifyAndDeriveAddresses(batch *core.Batch, receipt *types.Receipt) (common
 	addresses, err := DeriveAddresses(receipt)
 	if err != nil {
 		return nil, fmt.Errorf("failed deriving addresses %w", err)
+	}
+
+	return addresses, nil
+}
+
+func verifyAndDeriveAddressesFromReceipt(batch *core.Batch, receipt *types.Receipt) (common.SystemContractAddresses, error) {
+	if batch.SeqNo().Uint64() != common.L2SysContractGenesisSeqNo {
+		return nil, fmt.Errorf("batch is not genesis")
+	}
+
+	addresses, err := DeriveAddresses(receipt)
+	if err != nil {
+		return nil, fmt.Errorf("failed deriving addresses from receipt %s: %w", receipt.TxHash.Hex(), err)
 	}
 
 	return addresses, nil
@@ -244,52 +292,6 @@ func (s *systemContractCallbacks) VerifyOnBlockReceipt(transactions common.L2Tra
 	if receipt.Status != types.ReceiptStatusSuccessful {
 		s.logger.Error("VerifyOnBlockReceipt: Transaction failed", "transactionHash", receipt.TxHash.Hex())
 		return false, fmt.Errorf("transaction failed")
-	}
-
-	if len(receipt.Logs) == 0 {
-		s.logger.Error("VerifyOnBlockReceipt: Transaction has no logs", "transactionHash", receipt.TxHash.Hex())
-		return false, fmt.Errorf("transaction has no logs")
-	}
-
-	abi, err := ZenBase.ZenBaseMetaData.GetAbi()
-	if err != nil {
-		s.logger.Error("VerifyOnBlockReceipt: Failed to get ABI", "error", err)
-		return false, fmt.Errorf("failed to get ABI %w", err)
-	}
-
-	if len(receipt.Logs) == 0 {
-		s.logger.Error("VerifyOnBlockReceipt: Synthetic transaction has no logs", "transactionHash", receipt.TxHash.Hex())
-		return false, fmt.Errorf("no logs in onBlockReceipt")
-	}
-
-	// Find the TransactionsConverted event in the onBlockReceipt and verify the number of transactions converted
-	// matches the number of transactions in the batch. Mostly paranoia code.
-	for _, log := range receipt.Logs {
-		if len(log.Topics) > 0 && log.Topics[0] == abi.Events["TransactionsConverted"].ID { // TransactionsConverted event signature
-			if len(log.Data) != 32 {
-				s.logger.Error("VerifyOnBlockReceipt: Invalid data length for TransactionsConverted event", "expected", 32, "got", len(log.Data))
-				return false, fmt.Errorf("invalid data length for TransactionsConverted event")
-			}
-			transactionsConverted := new(big.Int).SetBytes(log.Data)
-			if transactionsConverted.Uint64() != uint64(len(transactions)) {
-				s.logger.Error("VerifyOnBlockReceipt: Mismatch in TransactionsConverted event", "expected", len(transactions), "got", transactionsConverted.Uint64())
-				return false, fmt.Errorf("mismatch in TransactionsConverted event: expected %d, got %d", len(transactions), transactionsConverted.Uint64())
-			}
-			break
-		}
-	}
-
-	for _, log := range receipt.Logs {
-		if log.Topics[0] != abi.Events["TransactionProcessed"].ID {
-			continue
-		}
-
-		decodedLog, err := abi.Unpack("TransactionProcessed", log.Data)
-		if err != nil {
-			s.logger.Error("VerifyOnBlockReceipt: Failed to unpack log", "error", err, "log", log)
-			return false, fmt.Errorf("failed to unpack log %w", err)
-		}
-		s.logger.Debug("VerifyOnBlockReceipt: Decoded log", "log", decodedLog)
 	}
 
 	s.logger.Debug("VerifyOnBlockReceipt: Transaction successful", "transactionHash", receipt.TxHash.Hex())

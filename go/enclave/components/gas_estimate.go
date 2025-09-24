@@ -23,28 +23,42 @@ import (
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
 
-var adjustPublishingGas = gethcommon.Big2
+var AdjustPublishingGas = gethcommon.Big2
 
 type GasEstimator struct {
 	storage   storage.Storage
+	registry  BatchRegistry
 	chain     TENChain
 	logger    gethlog.Logger
 	gasOracle gas.Oracle
+	gasPricer *GasPricer
 }
 
-func NewGasEstimator(storage storage.Storage, chain TENChain, gasOracle gas.Oracle, logger gethlog.Logger) *GasEstimator {
+func NewGasEstimator(storage storage.Storage, registry BatchRegistry, chain TENChain, gasOracle gas.Oracle, gasPricer *GasPricer, logger gethlog.Logger) *GasEstimator {
+	if gasPricer == nil {
+		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
+	}
 	return &GasEstimator{
 		storage:   storage,
+		registry:  registry,
 		chain:     chain,
 		gasOracle: gasOracle,
+		gasPricer: gasPricer,
 		logger:    logger,
 	}
 }
 
-func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber, batch *common.BatchHeader, globalGasCap uint64) (uint64, uint64, error, common.SystemError) {
+func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber gethrpc.BlockNumber, globalGasCap uint64) (uint64, uint64, error, common.SystemError) {
+	b, err := ge.registry.GetBatchAtHeight(ctx, blockNumber)
+	if err != nil {
+		return 0, 0, nil, fmt.Errorf("failed to fetch batch for number %d: %w", blockNumber, err)
+	}
+	batchNumber := gethrpc.BlockNumber(b.Number().Int64())
+	batchAtNumber := b.Header
+
 	// The message is run through the l1 publishing cost estimation for the current
 	// known head BlockHeader.
-	l1Cost, err := ge.gasOracle.EstimateL1CostForMsg(ctx, args, batch)
+	l1Cost, err := ge.gasOracle.EstimateL1CostForMsg(ctx, args, batchAtNumber)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to estimate L1 cost: %w", err)
 	}
@@ -52,19 +66,20 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// We divide the total estimated l1 cost by the l2 fee per gas in order to convert
 	// the expected cost into l2 gas based on current pricing.
 	// todo @siliev - add overhead when the base fee becomes dynamic.
-	publishingGas := big.NewInt(0).Div(l1Cost, batch.BaseFee)
+	divisor := ge.gasPricer.StaticL2BaseFee(common.ConvertBatchHeaderToHeader(batchAtNumber))
+	publishingGas := big.NewInt(0).Div(l1Cost, divisor)
 
 	// Overestimate the publishing cost in case of spikes.
 	// given that we publish in a blob, the amount will be very low.
 	// Batch execution still deducts normally.
 	// TODO: Change to fixed time period quotes, rather than this.
-	publishingGas = publishingGas.Mul(publishingGas, adjustPublishingGas)
+	publishingGas = publishingGas.Mul(publishingGas, AdjustPublishingGas)
 
 	// Run the execution simulation based on stateDB after head batch.
 	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.
 	// The single pass will run once at the highest gas cap and return gas used. Not completely reliable,
 	// but is quick.
-	executionGasEstimate, revert, gasPrice, userErr, sysErr := ge.EstimateGasSinglePass(ctx, args, blockNumber, globalGasCap)
+	executionGasEstimate, revert, gasPrice, userErr, sysErr := ge.EstimateGasSinglePass(ctx, args, &batchNumber, globalGasCap)
 	if sysErr != nil {
 		return 0, 0, nil, fmt.Errorf("system error during gas estimation: %w", sysErr)
 	}
@@ -78,7 +93,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	}
 
 	totalGasEstimateUint64 := publishingGas.Uint64() + uint64(executionGasEstimate)
-	balance, err := ge.chain.GetBalanceAtBlock(ctx, *args.From, blockNumber)
+	balance, err := ge.chain.GetBalanceAtBlock(ctx, *args.From, &batchNumber)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to get account balance: %w", err)
 	}
@@ -99,7 +114,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 // The modifications are an overhead buffer and a 20% increase to account for warm storage slots. This is because the stateDB
 // for the head batch might not be fully clean in terms of the running call. Cold storage slots cost far more than warm ones to
 // read and write.
-func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, globalGasCap uint64) (hexutil.Uint64, []byte, *big.Int, error, common.SystemError) {
+func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, estimationBlk *gethrpc.BlockNumber, globalGasCap uint64) (hexutil.Uint64, []byte, *big.Int, error, common.SystemError) {
 	maxGasCap, err := ge.calculateMaxGasCap(ctx, globalGasCap, args.Gas)
 	if err != nil {
 		return 0, nil, nil, nil, err
@@ -107,7 +122,7 @@ func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi
 
 	// allowance will either be the maxGasCap or the balance allowance.
 	// If the users funds are floaty, this might cause issues combined with the l1 pricing.
-	allowance, feeCap, userErr, sysErr := ge.normalizeFeeCapAndAdjustGasLimit(ctx, args, blkNumber, maxGasCap)
+	allowance, feeCap, userErr, sysErr := ge.normalizeFeeCapAndAdjustGasLimit(ctx, args, estimationBlk, maxGasCap)
 	if sysErr != nil {
 		return 0, nil, nil, nil, sysErr
 	}
@@ -116,8 +131,8 @@ func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi
 		return 0, nil, nil, userErr, nil
 	}
 
-	// Perform a single gas estimation pass using isGasEnough
-	failed, result, userErr, sysErr := ge.isGasEnough(ctx, args, allowance, blkNumber)
+	// Perform a single gas estimation pass using isNotEnoughGas
+	failed, result, userErr, sysErr := ge.isNotEnoughGas(ctx, args, allowance, estimationBlk)
 	if sysErr != nil {
 		// Return zero values and the encountered error if estimation fails
 		return 0, nil, nil, nil, sysErr
@@ -128,6 +143,7 @@ func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi
 			ge.logger.Debug("Failed gas estimation", "error", result.Err)
 			return 0, result.Revert(), nil, result.Err, nil
 		}
+
 		if userErr != nil {
 			return 0, nil, nil, userErr, nil
 		}
@@ -205,7 +221,7 @@ func (ge *GasEstimator) calculateProxyOverhead(txArgs *gethapi.TransactionArgs) 
 	return overhead + memCost
 }
 
-func (ge *GasEstimator) normalizeFeeCapAndAdjustGasLimit(ctx context.Context, args *gethapi.TransactionArgs, blkNumber *gethrpc.BlockNumber, hi uint64) (uint64, *big.Int, error, common.SystemError) {
+func (ge *GasEstimator) normalizeFeeCapAndAdjustGasLimit(ctx context.Context, args *gethapi.TransactionArgs, headBlk *gethrpc.BlockNumber, hi uint64) (uint64, *big.Int, error, common.SystemError) {
 	// Normalize the max fee per gas the call is willing to spend.
 	var feeCap *big.Int
 	if args.GasPrice != nil && (args.MaxFeePerGas != nil || args.MaxPriorityFeePerGas != nil) {
@@ -220,7 +236,7 @@ func (ge *GasEstimator) normalizeFeeCapAndAdjustGasLimit(ctx context.Context, ar
 
 	// Recap the highest gas limit with account's available balance.
 	if feeCap.BitLen() != 0 { //nolint:nestif
-		balance, err := ge.chain.GetBalanceAtBlock(ctx, *args.From, blkNumber)
+		balance, err := ge.chain.GetBalanceAtBlock(ctx, *args.From, headBlk)
 		if err != nil {
 			return 0, gethcommon.Big0, nil, fmt.Errorf("unable to fetch account balance: %w", err)
 		}
@@ -254,11 +270,11 @@ func (ge *GasEstimator) normalizeFeeCapAndAdjustGasLimit(ctx context.Context, ar
 }
 
 // Create a helper to check if a gas allowance results in an executable transaction
-// isGasEnough returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
-func (ge *GasEstimator) isGasEnough(ctx context.Context, args *gethapi.TransactionArgs, gas uint64, blkNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error, common.SystemError) {
+// isNotEnoughGas returns whether the gaslimit should be raised, lowered, or if it was impossible to execute the message
+func (ge *GasEstimator) isNotEnoughGas(ctx context.Context, args *gethapi.TransactionArgs, gas uint64, estimationBlockNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(ge.logger, measure.NewStopwatch(), "enclave.go:IsGasEnough")
 	args.Gas = (*hexutil.Uint64)(&gas)
-	result, userErr, sysErr := ge.chain.ObsCallAtBlock(ctx, args, blkNumber)
+	result, userErr, sysErr := ge.chain.ObsCallAtBlock(ctx, args, estimationBlockNumber)
 	if sysErr != nil {
 		return true, nil, nil, sysErr
 	}

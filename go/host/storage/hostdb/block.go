@@ -9,27 +9,34 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/jmoiron/sqlx"
 
 	"github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/ten-protocol/go-ten/go/common"
+
+	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (
 	selectBlocks     = "SELECT b.id, b.hash, b.header, r.hash FROM block_host b LEFT JOIN rollup_host r on r.compression_block=b.id ORDER BY b.id DESC "
-	selectBlockId    = "SELECT id FROM block_host WHERE hash = "
-	selectBlock      = "SELECT header FROM block_host WHERE hash = "
+	selectBlockId    = "SELECT id FROM block_host WHERE hash = ?"
+	selectBlock      = "SELECT header FROM block_host WHERE hash = ?"
 	selectBlockCount = "SELECT total FROM block_count WHERE id = 1"
+	insertBlock      = "INSERT INTO block_host (hash, header) values (?,?)"
+	updateBlockCount = "UPDATE block_count SET total=? WHERE id=1"
+	paginationQuery  = " LIMIT ? OFFSET ?"
 )
 
 // AddBlock stores a block header with the given rollupHash it contains in the host DB
-func AddBlock(dbtx *sql.Tx, statements *SQLStatements, b *types.Header) error {
+func AddBlock(dbtx *sql.Tx, db *sqlx.DB, b *types.Header) error {
 	header, err := json.Marshal(b)
 	if err != nil {
 		return fmt.Errorf("could not encode block header. Cause: %w", err)
 	}
 
-	_, err = dbtx.Exec(statements.InsertBlock,
+	reboundInsertBlock := db.Rebind(insertBlock)
+	_, err = dbtx.Exec(reboundInsertBlock,
 		b.Hash().Bytes(), // hash
 		header,           // l1 block header
 	)
@@ -44,7 +51,8 @@ func AddBlock(dbtx *sql.Tx, statements *SQLStatements, b *types.Header) error {
 	}
 
 	newTotal := currentTotal + 1
-	_, err = dbtx.Exec(statements.UpdateBlockCount, newTotal)
+	reboundUpdateBlockCount := db.Rebind(updateBlockCount)
+	_, err = dbtx.Exec(reboundUpdateBlockCount, newTotal)
 	if err != nil {
 		return fmt.Errorf("failed to update block count: %w", err)
 	}
@@ -53,10 +61,10 @@ func AddBlock(dbtx *sql.Tx, statements *SQLStatements, b *types.Header) error {
 }
 
 // GetBlockId returns the block ID given the hash.
-func GetBlockId(db *sql.Tx, statements *SQLStatements, hash gethcommon.Hash) (*int64, error) {
-	query := selectBlockId + statements.Placeholder
+func GetBlockId(dbTx *sql.Tx, db *sqlx.DB, hash gethcommon.Hash) (*int64, error) {
+	reboundQuery := db.Rebind(selectBlockId)
 	var blockId int64
-	err := db.QueryRow(query, hash.Bytes()).Scan(&blockId)
+	err := dbTx.QueryRow(reboundQuery, hash.Bytes()).Scan(&blockId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errutil.ErrNotFound
@@ -68,10 +76,10 @@ func GetBlockId(db *sql.Tx, statements *SQLStatements, hash gethcommon.Hash) (*i
 }
 
 // GetBlock returns the block header given the hash.
-func GetBlock(db HostDB, statements *SQLStatements, hash *gethcommon.Hash) (*types.Header, error) {
-	query := selectBlock + statements.Placeholder
+func GetBlock(db HostDB, hash *gethcommon.Hash) (*types.Header, error) {
+	reboundQuery := db.GetSQLDB().Rebind(selectBlock)
 	var header []byte
-	err := db.GetSQLDB().QueryRow(query, hash.Bytes()).Scan(&header)
+	err := db.GetSQLDB().QueryRow(reboundQuery, hash.Bytes()).Scan(&header)
 	if err != nil {
 		return nil, fmt.Errorf("query execution for select block failed: %w", err)
 	}
@@ -84,8 +92,9 @@ func GetBlock(db HostDB, statements *SQLStatements, hash *gethcommon.Hash) (*typ
 
 // GetBlockListing returns a paginated list of blocks in descending order against the order they were added
 func GetBlockListing(db HostDB, pagination *common.QueryPagination) (*common.BlockListingResponse, error) {
-	query := selectBlocks + db.GetSQLStatement().Pagination
-	rows, err := db.GetSQLDB().Query(query, int64(pagination.Size), int64(pagination.Offset))
+	query := selectBlocks + paginationQuery
+	reboundQuery := db.GetSQLDB().Rebind(query)
+	rows, err := db.GetSQLDB().Query(reboundQuery, int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, err
 	}

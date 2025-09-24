@@ -1,11 +1,16 @@
 package sqlite
 
 import (
+	"database/sql"
+	"database/sql/driver"
 	"embed"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/mattn/go-sqlite3"
+	"github.com/ten-protocol/go-ten/go/common/storage"
 	"github.com/ten-protocol/go-ten/go/common/storage/migration"
 
 	"github.com/jmoiron/sqlx"
@@ -17,8 +22,6 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
-
-	_ "github.com/mattn/go-sqlite3" // this imports the sqlite driver to make the sql.Open() connection work
 )
 
 const (
@@ -28,6 +31,12 @@ const (
 
 //go:embed *.sql
 var sqlFiles embed.FS
+
+var driverName string
+
+func init() {
+	driverName = registerPanicOnConnectionRefusedDriver(nil)
+}
 
 // CreateTemporarySQLiteDB if dbPath is empty will use a random throwaway temp file,
 // otherwise dbPath is a filepath for the sqldb file, allows for tests that care about persistence between restarts
@@ -61,7 +70,7 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config *enclavecon
 
 	path := fmt.Sprintf("file:%s?mode=rw&%s", dbPath, dbOptions)
 	logger.Info("Connect to sqlite", "path", path)
-	rwdb, err := sqlx.Open("sqlite3", path)
+	rwdb, err := sqlx.Open(driverName, path)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
@@ -85,7 +94,7 @@ func CreateTemporarySQLiteDB(dbPath string, dbOptions string, config *enclavecon
 
 	roPath := fmt.Sprintf("file:%s?mode=ro&%s", dbPath, dbOptions)
 	logger.Info("Connect to sqlite", "ro_path", roPath)
-	rodb, err := sqlx.Open("sqlite3", roPath)
+	rodb, err := sqlx.Open(driverName, roPath)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't open sqlite db - %w", err)
 	}
@@ -123,4 +132,19 @@ func CreateTempDBFile() (string, error) {
 	}
 	tempFile := filepath.Join(tempDir, "enclave.db")
 	return tempFile, nil
+}
+
+func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
+	driverName := "sqlite3-panic-on-refused"
+	sql.Register(driverName,
+		storage.NewPanicOnDBErrorDriver(
+			&sqlite3.SQLiteDriver{},
+			logger,
+			func(err error) bool {
+				return strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "invalid connection")
+			},
+			func(conn driver.Conn) {
+			}),
+	)
+	return driverName
 }

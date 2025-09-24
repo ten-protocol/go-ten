@@ -1,0 +1,40 @@
+name: '[S] Clean gh-runner-01'
+run-name: Cleaning runner 01 (${{ github.event_name }})
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'  #30 mins
+  workflow_dispatch:
+
+concurrency:
+  group: clean-runner-01
+  cancel-in-progress: true
+
+jobs:
+  clean-ten-persistence:
+    timeout-minutes: 10
+    runs-on: self-hosted
+    steps:
+      - name: 'Clean /tmp/ten-persistence (keep newest only)'
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET="/tmp/ten-persistence"
+          [[ -d "$TARGET" ]] || exit 0
+
+          cd "$TARGET"
+
+          # List immediate subdirs newest→oldest; keep the first, delete the rest.
+          # If 0–1 dirs exist, nothing happens.
+          mapfile -t SORTED < <(ls -1t -d */ 2>/dev/null || true)
+          if (( ${#SORTED[@]} <= 1 )); then
+            echo "Nothing to delete (found ${#SORTED[@]} dir(s))."
+            exit 0
+          fi
+
+          TO_DELETE=("${SORTED[@]:1}")
+          echo "Keeping newest: ${SORTED[0]}"
+          echo "Deleting ${#TO_DELETE[@]} older dir(s):"
+          printf ' - %s\n' "${TO_DELETE[@]}"
+
+          sudo -n rm -rf -- "${TO_DELETE[@]}"

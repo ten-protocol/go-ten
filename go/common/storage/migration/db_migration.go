@@ -45,17 +45,21 @@ func ApplyMigrations(db *sqlx.DB, sqlFiles embed.FS, logger gethlog.Logger) erro
 	}
 
 	// write to the database
-	for i := maxDB; i < maxMigration; i++ {
-		logger.Info("Executing db migration", "file", migrationFiles[i].Name())
-		content, err := sqlFiles.ReadFile(migrationFiles[i].Name())
+	for currentMigration := maxDB; currentMigration < maxMigration; currentMigration++ {
+		migrationName := migrationFiles[currentMigration].Name()
+		// the migration files are indexed from 001. The "currentMigration" is the index in the array.
+		migrationNumber := currentMigration + 1
+		// todo - could sanity check that migrationName starts with migrationNumber
+		logger.Info("Executing db migration", "file", migrationName)
+		content, err := sqlFiles.ReadFile(migrationName)
 		if err != nil {
 			return err
 		}
-		err = executeMigration(db, string(content), i)
+		err = executeMigration(db, string(content), migrationNumber)
 		if err != nil {
-			return fmt.Errorf("unable to execute migration for %s - %w", migrationFiles[i].Name(), err)
+			return fmt.Errorf("unable to execute migration for %s - %w", migrationName, err)
 		}
-		logger.Info("Successfully executed", "file", migrationFiles[i].Name(), "index", i)
+		logger.Info("Successfully executed", "file", migrationName, "index", migrationNumber)
 	}
 
 	return nil

@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"embed"
 	"fmt"
 	"strings"
@@ -81,6 +82,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 	return db, nil
 }
 
+// registerPanicOnConnectionRefusedDriver registers the custom driver
 func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 	driverName := "pg-panic-on-unexpected-err"
 
@@ -90,6 +92,8 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 			logger,
 			func(err error) bool {
 				return strings.Contains(err.Error(), "connection refused") || strings.Contains(err.Error(), "shutting down")
+			},
+			func(conn driver.Conn) {
 			}),
 	)
 

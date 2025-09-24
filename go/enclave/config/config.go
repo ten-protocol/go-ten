@@ -33,7 +33,7 @@ type EnclaveConfig struct {
 	// MessageBus L1 Address
 	MessageBusAddress gethcommon.Address
 	// Bridge L1 Address
-	BridgeAddress gethcommon.Address
+	L1BridgeAddress gethcommon.Address
 	// SystemContractOwner is the address that owns the system contracts
 	SystemContractOwner gethcommon.Address
 
@@ -49,7 +49,7 @@ type EnclaveConfig struct {
 	// A json string that specifies the prefunded addresses at the genesis of the TEN network
 	TenGenesis             string
 	GasPaymentAddress      gethcommon.Address
-	BaseFee                *big.Int
+	MinBaseFee             *big.Int
 	GasBatchExecutionLimit uint64
 
 	// **Db configs
@@ -115,7 +115,7 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 		DataAvailabilityRegistryAddress: tenCfg.Network.L1.L1Contracts.DataAvailabilityRegistry,
 		EnclaveRegistryAddress:          tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract,
 		MessageBusAddress:               tenCfg.Network.L1.L1Contracts.MessageBusContract,
-		BridgeAddress:                   tenCfg.Network.L1.L1Contracts.BridgeContract,
+		L1BridgeAddress:                 tenCfg.Network.L1.L1Contracts.BridgeContract,
 		SystemContractOwner:             tenCfg.Network.Sequencer.SystemContractsUpgrader,
 		LogLevel:                        tenCfg.Enclave.Log.Level,
 		LogPath:                         tenCfg.Enclave.Log.Path,
@@ -129,7 +129,7 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 
 		MinGasPrice:              tenCfg.Network.Gas.MinGasPrice,
 		GasPaymentAddress:        tenCfg.Network.Gas.PaymentAddress,
-		BaseFee:                  tenCfg.Network.Gas.BaseFee,
+		MinBaseFee:               tenCfg.Network.Gas.MinBaseFee,
 		GasBatchExecutionLimit:   tenCfg.Network.Gas.BatchExecutionLimit,
 		GasLocalExecutionCapFlag: tenCfg.Network.Gas.LocalExecutionCap,
 

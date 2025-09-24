@@ -2,6 +2,7 @@ package l1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -218,9 +219,9 @@ func TestBlobResolverRetryStrategy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := fmt.Errorf(tt.errorMessage)
+			err := errors.New(tt.errorMessage)
 			strategy := classifyError(err)
-			require.Equal(t, tt.expectedStrategy, strategy, "Error classification mismatch for: %s", tt.name)
+			require.Equal(t, tt.expectedStrategy, strategy, fmt.Sprintf("Error classification mismatch for: %s", tt.name))
 		})
 	}
 }

@@ -9,14 +9,12 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"time"
 
+	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
@@ -28,7 +26,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/rlp"
 
-	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethcrypto "github.com/ethereum/go-ethereum/crypto"
@@ -59,11 +56,12 @@ type AttestedEnclave struct {
 // todo - this file needs splitting up based on concerns
 type storageImpl struct {
 	db                     enclavedb.EnclaveDB
+	trieDB                 *triedb.Database
 	preparedStatementCache *enclavedb.PreparedStatementCache
 	cachingService         *CacheService
 	eventsStorage          *eventsStorage
 
-	stateCache  state.Database
+	stateCache  *state.CachingDB
 	chainConfig *params.ChainConfig
 	config      *enclaveconfig.EnclaveConfig
 	logger      gethlog.Logger
@@ -77,33 +75,26 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 	return NewStorage(backingDB, cachingService, config, chainConfig, logger)
 }
 
-var defaultCacheConfig = &gethcore.CacheConfig{
-	TrieCleanLimit: 256,
-	TrieDirtyLimit: 256,
-	TrieTimeLimit:  5 * time.Minute,
-	SnapshotLimit:  256,
-	SnapshotWait:   true,
-	StateScheme:    rawdb.PathScheme,
-}
-
 var trieDBConfig = &triedb.Config{
-	Preimages: defaultCacheConfig.Preimages,
-	IsVerkle:  false,
+	Preimages: triedb.HashDefaults.Preimages,
+	IsVerkle:  triedb.HashDefaults.IsVerkle,
 	HashDB: &hashdb.Config{
-		CleanCacheSize: defaultCacheConfig.TrieCleanLimit * 1024 * 1024,
+		CleanCacheSize: 256 * 1024 * 1024,
 	},
 }
 
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	// Open trie database with provided config
-	triedb := triedb.NewDatabase(backingDB, trieDBConfig)
+	trieDB := triedb.NewDatabase(backingDB, trieDBConfig)
+	// trieDB := triedb.NewDatabase(backingDB, triedb.VerkleDefaults) - todo VERKLE
 
 	// todo - figure out the snapshot tree
-	stateDB := state.NewDatabase(triedb, nil)
+	stateDB := state.NewDatabase(trieDB, nil)
 
 	prepStatementCache := enclavedb.NewStatementCache(backingDB.GetSQLDB(), logger)
 	return &storageImpl{
 		db:                     backingDB,
+		trieDB:                 trieDB,
 		stateCache:             stateDB,
 		chainConfig:            chainConfig,
 		config:                 config,
@@ -118,13 +109,23 @@ func (s *storageImpl) TrieDB() *triedb.Database {
 	return s.stateCache.TrieDB()
 }
 
-func (s *storageImpl) StateDB() state.Database {
+func (s *storageImpl) StateDB() *state.CachingDB {
 	return s.stateCache
 }
 
 func (s *storageImpl) Close() error {
+	// todo - VERKLE
+	//head, err := s.FetchHeadBatchHeader(context.Background())
+	//if err != nil {
+	//	s.logger.Error("Failed to fetch head batch header", "err", err)
+	//}
+	//if err := s.trieDB.Journal(head.Root); err != nil {
+	//	s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
+	//}
+
 	s.cachingService.Stop()
-	s.preparedStatementCache.Clear()
+	_ = s.preparedStatementCache.Clear()
+	_ = s.trieDB.Close()
 	return s.db.GetSQLDB().Close()
 }
 
@@ -476,6 +477,13 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 		return nil, err
 	}
 
+	// prefetch
+	//_, process, err := s.stateCache.ReadersWithCacheStats(batch.Root)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//statedb, err := state.NewWithReader(batch.Root, s.stateCache, process)
 	statedb, err := state.New(batch.Root, s.stateCache)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
@@ -485,7 +493,8 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	defer s.logDuration("EmptyStateDB", measure.NewStopwatch())
-	statedb, err := state.New(types.EmptyRootHash, s.stateCache)
+	// statedb, err := state.New(types.EmptyVerkleHash, state.NewDatabase(s.trieDB, nil)) - todo VERKLE
+	statedb, err := state.New(types.EmptyRootHash, state.NewDatabase(s.trieDB, nil))
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
 	}
@@ -1161,3 +1170,8 @@ func (s *storageImpl) GetSequencerEnclaveIDs(ctx context.Context) ([]common.Encl
 	}
 	return ids, nil
 }
+
+// NetworkUpgradeStorage implementation
+
+// Removed: StorePendingNetworkUpgrade, FinalizeNetworkUpgrade, GetPendingNetworkUpgrades, GetFinalizedNetworkUpgrades
+// Upgrades are disabled; methods deleted.

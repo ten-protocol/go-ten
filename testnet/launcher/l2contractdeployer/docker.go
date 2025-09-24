@@ -47,17 +47,19 @@ func (n *ContractDeployer) Start() error {
 		"DA_REGISTRY_ADDR":      n.cfg.DaRegistryAddress,
 		"NETWORK_CONFIG_ADDR":   n.cfg.NetworkConfigAddress,
 		"MESSAGE_BUS_ADDR":      n.cfg.MessageBusAddress,
+		"NETWORK_CHAINID":       strconv.FormatInt(n.cfg.ChainID, 10),
 		"NETWORK_JSON": fmt.Sprintf(`
 {
         "layer1" : {
             "url" : "%s",
+            "useGateway" : false,
             "live" : false,
             "saveDeployments" : true,
-            "deploy": [ 
+            "deploy": [
                 "deployment_scripts/core",
                 "deployment_scripts/testnet/layer1"
             ],
-            "accounts": [ 
+            "accounts": [
                 "%s"
             ]
         },
@@ -67,12 +69,12 @@ func (n *ContractDeployer) Start() error {
             "live" : false,
             "saveDeployments" : true,
             "companionNetworks" : { "layer1" : "layer1" },
-            "deploy": [ 
+            "deploy": [
 				"deployment_scripts/funding/layer1",
                 "deployment_scripts/bridge/",
                 "deployment_scripts/testnet/layer2/"
             ],
-            "accounts": [ 
+            "accounts": [
                 "%s"
             ]
         }

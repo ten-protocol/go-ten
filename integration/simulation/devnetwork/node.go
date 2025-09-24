@@ -210,12 +210,12 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		EnclaveRegistryAddress:          n.l1Data.EnclaveRegistryAddress,
 		MinGasPrice:                     gethcommon.Big1,
 		MessageBusAddress:               n.l1Data.MessageBusAddr,
-		BridgeAddress:                   n.l1Data.BridgeAddress,
+		L1BridgeAddress:                 n.l1Data.BridgeAddress,
 		SqliteDBPath:                    n.enclaveDBFilepaths[idx],
 		DebugNamespaceEnabled:           true,
 		MaxBatchSize:                    1024 * 55,
 		MaxRollupSize:                   1024 * 128,
-		BaseFee:                         defaultCfg.BaseFee, // todo @siliev:: fix test transaction builders so this can be different
+		MinBaseFee:                      defaultCfg.MinBaseFee, // todo @siliev:: fix test transaction builders so this can be different
 		GasBatchExecutionLimit:          defaultCfg.GasBatchExecutionLimit,
 		GasLocalExecutionCapFlag:        defaultCfg.GasLocalExecutionCapFlag,
 		GasPaymentAddress:               defaultCfg.GasPaymentAddress,

@@ -10,6 +10,7 @@ type Config struct {
 	faucetPort    int
 	faucetPrivKey string
 	dockerImage   string
+	chainID       int64
 }
 
 func NewFaucetConfig(opts ...Option) *Config {
@@ -49,5 +50,11 @@ func WithTenNodePort(i int) Option {
 func WithFaucetPort(i int) Option {
 	return func(c *Config) {
 		c.faucetPort = i
+	}
+}
+
+func WithChainID(chainID int64) Option {
+	return func(c *Config) {
+		c.chainID = chainID
 	}
 }

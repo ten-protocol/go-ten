@@ -2,11 +2,20 @@ CREATE USER "ten" REQUIRE ISSUER "/CN=tenCA" SUBJECT "/CN=tenUser";
 CREATE DATABASE tendb;
 GRANT ALL ON tendb.* TO ten;
 
-create table if not exists tendb.keyvalue
+create table if not exists tendb.statedb32
+(
+    id  INTEGER AUTO_INCREMENT,
+    ky  binary(32) NOT NULL,
+    val mediumblob NOT NULL,
+    primary key (id),
+    INDEX USING HASH (ky)
+);
+
+create table if not exists tendb.statedb64
 (
     id  INTEGER AUTO_INCREMENT,
     ky  varbinary(64) NOT NULL,
-    val mediumblob    NOT NULL,
+    val mediumblob NOT NULL,
     primary key (id),
     INDEX USING HASH (ky)
 );
@@ -128,7 +137,7 @@ create table if not exists tendb.receipt_viewer
     receipt INTEGER NOT NULL,
     eoa     INTEGER NOT NULL,
     primary key (id),
-    INDEX (receipt, eoa)
+    INDEX (eoa, receipt)
 );
 
 create table if not exists tendb.contract

@@ -1,6 +1,6 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
-import {ethers} from "hardhat";
+import { hexlify, toUtf8Bytes, parseUnits, formatUnits } from 'ethers';
 
 /*
     This deployment script instantiates the network contracts and stores them in the deployed NetworkConfig contract.
@@ -10,6 +10,30 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     if (!sequencerHostAddress) {
         console.error("SEQUENCER_HOST_ADDRESS environment variable is not set.");
         process.exit(1);
+    }
+
+    // Gas price safety check if enabled
+    if (process.env.CHECK_GAS_PRICE === 'true') {
+        const provider = hre.ethers.provider;
+        const feeData = await provider.getFeeData();
+        const currentGasPrice = feeData.gasPrice;
+        const maxGasGwei = parseFloat(process.env.MAX_GAS_GWEI || '1.5');
+        const maxGasWei = parseUnits(maxGasGwei.toString(), 'gwei');
+
+        if (!currentGasPrice) {
+            console.error("Current gas price unavailable, unable to check price conditions.")
+            console.error("Deployment aborted. Please check network connectivity.")
+            process.exit(1);
+        }
+        
+        if (currentGasPrice > maxGasWei) {
+            const currentGwei = formatUnits(currentGasPrice, 'gwei');
+            console.error(`\n⚠️  Gas price too high: ${currentGwei} gwei (limit: ${maxGasGwei} gwei)`);
+            console.error(`Deployment aborted. Please wait for gas prices to drop or increase the max_gas_gwei limit.\n`);
+            process.exit(1);
+        }
+
+        console.log(`✅ Gas price check passed: ${formatUnits(currentGasPrice, 'gwei')} gwei (limit: ${maxGasGwei} gwei)\n`);
     }
 
     const {

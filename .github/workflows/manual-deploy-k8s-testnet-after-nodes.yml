@@ -94,7 +94,12 @@ jobs:
             env:
                TESTNET_SHORT_NAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
             run: |
-               CFG=cfg/nonprod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
+               # Choose the correct config directory based on environment
+               if [[ "$TESTNET_SHORT_NAME" == "mainnet" ]]; then
+                  CFG=cfg/prod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
+               else
+                  CFG=cfg/nonprod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
+               fi
                
                echo "network_config=$(yq -r '.l1Config.networkConfig'     "$CFG")"   >> $GITHUB_OUTPUT
                echo "message_bus=$(yq -r '.l1Config.messagebus'           "$CFG")"   >> $GITHUB_OUTPUT
@@ -126,7 +131,7 @@ jobs:
 
          -  uses: actions/setup-go@v5
             with:
-               go-version: 1.23.5
+               go-version: 1.25.1
          -  name: 'Build and push obscuro node images'
             run: |
                DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
@@ -170,6 +175,7 @@ jobs:
                DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
                DEPLOY_L2_SEQUENCERURL: http://${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-sequencer.ten.xyz:80
                NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.read-l1-config.outputs.enclave_registry }}
+               NETWORK_CHAINID: ${{ vars.CHAIN_ID }}
 
             run: |
                go run ./testnet/launcher/l1grantsequencers/cmd
@@ -200,6 +206,7 @@ jobs:
          DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
          DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
          DEPLOY_L1_CHALLENGEPERIOD: ${{ vars.L1_CHALLENGE_PERIOD }}
+         NETWORK_CHAINID: ${{ vars.CHAIN_ID }}
       steps:
          -  uses: actions/checkout@v4
 
@@ -250,6 +257,7 @@ jobs:
               NETWORK_L1_CONTRACTS_ROLLUP: ${{ needs.read-l1-config.outputs.rollup }}
               NETWORK_L1_CONTRACTS_CROSSCHAIN: ${{ needs.read-l1-config.outputs.crosschain }}
               NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.read-l1-config.outputs.enclave_registry }}
+              NETWORK_CHAINID: ${{ vars.CHAIN_ID }}
            run: |
               go run ./testnet/launcher/l2contractdeployer/cmd \
 

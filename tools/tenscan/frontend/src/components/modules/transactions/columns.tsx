@@ -16,47 +16,6 @@ import ClickableLink from "@repo/ui/components/common/clickable-link";
 
 export const columns: ColumnDef<Transaction>[] = [
   {
-    accessorKey: "BatchHeight",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Batch" />
-    ),
-    cell: ({ row }) => {
-      return (
-                  <ClickableLink
-            label={row.getValue("BatchHeight")}
-            link={pathToUrl(pageLinks.batchByHeight, {
-                height: row.getValue("BatchHeight"),
-            })}
-        />
-      );
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
-    },
-    enableHiding: false,
-  },
-
-  {
-    accessorKey: "BatchTimestamp",
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Batch Age" />
-    ),
-    cell: ({ row }) => {
-      return (
-        <div className="flex space-x-2">
-          <span className="max-w-[500px] truncate">
-            {formatTimeAgo(row.getValue("BatchTimestamp"))}
-          </span>
-        </div>
-      );
-    },
-    filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
-    },
-    enableHiding: false,
-  },
-
-  {
     accessorKey: "TransactionHash",
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Transaction Hash" />
@@ -69,9 +28,49 @@ export const columns: ColumnDef<Transaction>[] = [
             hash: row.original.TransactionHash,
           })}
         />
-      );
+      )
     },
     enableSorting: false,
+    enableHiding: false,
+  },
+  {
+    accessorKey: "BatchHeight",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Batch" />
+    ),
+    cell: ({ row }) => {
+      const batchHeight = row.getValue("BatchHeight")
+      return (
+        <ClickableLink
+          label={String(batchHeight)}
+          link={pathToUrl(pageLinks.batchByHeight, {
+            height: String(batchHeight),
+          })}
+        />
+      )
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
+    enableHiding: false,
+  },
+  {
+    accessorKey: "BatchTimestamp",
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Batch Age" />
+    ),
+    cell: ({ row }) => {
+      return (
+        <div className="flex space-x-2">
+          <span className="max-w-[500px] truncate">
+            {formatTimeAgo(row.getValue("BatchTimestamp"))}
+          </span>
+        </div>
+      )
+    },
+    filterFn: (row, id, value) => {
+      return value.includes(row.getValue(id))
+    },
     enableHiding: false,
   },
   {
@@ -82,10 +81,10 @@ export const columns: ColumnDef<Transaction>[] = [
     cell: ({ row }) => {
       const finality = statuses.find(
         (finality) => finality.value === row.getValue("Finality")
-      );
+      )
 
       if (!finality) {
-        return null;
+        return null
       }
 
       return (
@@ -95,10 +94,10 @@ export const columns: ColumnDef<Transaction>[] = [
           )}
           <Badge>{finality.label}</Badge>
         </div>
-      );
+      )
     },
     filterFn: (row, id, value) => {
-      return value.includes(row.getValue(id));
+      return value.includes(row.getValue(id))
     },
   },
-];
+]
