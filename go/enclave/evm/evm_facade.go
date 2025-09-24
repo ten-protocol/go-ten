@@ -128,6 +128,8 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 	if receipt.GasUsed > actualGasLimit {
 		// ensure no bugs going overboard with the l1 publishing
 		// or execution before we pick up the leftover gas.
+		// SHOULD NOT HAPPEN  unless we have a bug in the code.
+		// If this happens we bail otherwise we overcharge the user above the authorized max amount.
 		return nil, fmt.Errorf("internal: gasUsed (%d) exceeds tx gasLimit (%d)", receipt.GasUsed, gasLeft)
 	}
 	gasLeft -= receipt.GasUsed
@@ -176,23 +178,25 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 }
 
 // ExecuteCall - executes the eth_call call
-func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader) (*gethcore.ExecutionResult, error, common.SystemError) {
+func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(exec.logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
 	vmCfg := vm.Config{
 		NoBaseFee: true,
 	}
 
-	// a call can create multiple contracts; capture via tracer
+	// a call can create multiple contracts; capture via tracer when estimating
 	var createdContracts []*gethcommon.Address
-	vmCfg.Tracer = &tracing.Hooks{
-		OnCodeChange: func(addr gethcommon.Address, prevCodeHash gethcommon.Hash, prevCode []byte, codeHash gethcommon.Hash, code []byte) {
-			if len(prevCode) > 0 {
-				return
-			}
-			a := addr
-			createdContracts = append(createdContracts, &a)
-		},
+	if isEstimateGas {
+		vmCfg.Tracer = &tracing.Hooks{
+			OnCodeChange: func(addr gethcommon.Address, prevCodeHash gethcommon.Hash, prevCode []byte, codeHash gethcommon.Hash, code []byte) {
+				if len(prevCode) > 0 {
+					return
+				}
+				a := addr
+				createdContracts = append(createdContracts, &a)
+			},
+		}
 	}
 
 	ethHeader, err := exec.gethEncodingService.CreateEthHeaderForBatch(ctx, header)
@@ -208,10 +212,15 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	defer cleanState.RevertToSnapshot(snapshot) // Always revert after simulation
 
 	blockContext := gethcore.NewEVMBlockContext(ethHeader, exec.chain, nil)
-	// Use hooked state so tracer fires during estimation as well
-	hookedState := state.NewHookedState(cleanState, vmCfg.Tracer)
+	// Use hooked state so tracer fires during estimation; otherwise use clean state
+	var evmState vm.StateDB
+	if vmCfg.Tracer != nil {
+		evmState = state.NewHookedState(cleanState, vmCfg.Tracer)
+	} else {
+		evmState = cleanState
+	}
 	// sets TxKey.origin
-	vmenv := vm.NewEVM(blockContext, hookedState, exec.cc, vmCfg)
+	vmenv := vm.NewEVM(blockContext, evmState, exec.cc, vmCfg)
 
 	// Monitor the outer context and interrupt the EVM upon cancellation. To avoid
 	// a dangling goroutine until the outer estimation finishes, create an internal
@@ -238,7 +247,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	}
 
 	// Meter visibility reads for newly created contracts (estimation)
-	if result != nil && len(createdContracts) > 0 {
+	if isEstimateGas && result != nil && len(createdContracts) > 0 {
 		// leftover from the user's gas limit
 		var gasLeft uint64 = msg.GasLimit
 		if result.UsedGas > gasLeft {
@@ -251,8 +260,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 			if gasLeft == 0 {
 				return result, fmt.Errorf("out of gas while estimating visibility read for %s", ca.Hex()), nil
 			}
-			cap := min(gasLeft, maxGasForVisibility)
-			_, visUsed, err := exec.readVisibilityWithCap(context.Background(), vmenv, &gp, *ca, cap)
+			_, visUsed, err := exec.readVisibilityWithCap(context.Background(), vmenv, &gp, *ca, gasLeft)
 			if err != nil {
 				return result, fmt.Errorf("visibility read (estimate) failed for %s: %w", ca.Hex(), err), nil
 			}
