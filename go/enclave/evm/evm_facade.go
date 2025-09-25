@@ -305,6 +305,7 @@ func (exec *evmExecutor) readVisibilityWithCap(ctx context.Context, evmEnv *vm.E
 	}
 	cfg, used, err := exec.visibilityReader.ReadVisibilityConfig(ctx, evmEnv, addr, cap)
 	if err != nil {
+		gp.AddGas(cap) // error out tx is not in batch, do not make the gas pool different between validators
 		return nil, used, err
 	}
 	if cap >= used {
