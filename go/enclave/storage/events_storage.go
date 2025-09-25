@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/ten-protocol/go-ten/go/common/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -111,7 +112,13 @@ func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Contex
 		// sanity check
 		err = et.Validate()
 		if err != nil {
-			return err
+			es.logger.Info("Wrong config for event", log.ErrKey, err)
+			// if the event configuration is invalid, we will ignore it and store the generic default configuration
+			et = enclavedb.EventType{
+				Contract:       c,
+				EventSignature: eventSig,
+				AutoVisibility: true,
+			}
 		}
 
 		_, err = enclavedb.WriteEventType(ctx, dbTX, &et)
@@ -213,7 +220,7 @@ func (es *eventsStorage) storeAutoConfigEventType(ctx context.Context, dbTX *sql
 	// sanity check
 	err := eventType.Validate()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("should not happen. default event type should always be valid: %w", err)
 	}
 
 	id, err := enclavedb.WriteEventType(ctx, dbTX, &eventType)
