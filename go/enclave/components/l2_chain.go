@@ -66,7 +66,7 @@ func (oc *tenChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommo
 	return (*hexutil.Big)(chainState.GetBalance(accountAddr).ToBig()), nil
 }
 
-func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber) (*gethcore.ExecutionResult, error, common.SystemError) {
+func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
 	// fetch the chain state at given batch
 	blockState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
@@ -94,5 +94,5 @@ func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Transac
 			batch.Header.Root.Hex()))
 	}
 
-	return oc.evmFacade.ExecuteCall(ctx, callMsg, blockState, batch.Header)
+	return oc.evmFacade.ExecuteCall(ctx, callMsg, blockState, batch.Header, isEstimateGas)
 }

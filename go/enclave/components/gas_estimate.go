@@ -274,7 +274,7 @@ func (ge *GasEstimator) normalizeFeeCapAndAdjustGasLimit(ctx context.Context, ar
 func (ge *GasEstimator) isNotEnoughGas(ctx context.Context, args *gethapi.TransactionArgs, gas uint64, estimationBlockNumber *gethrpc.BlockNumber) (bool, *gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(ge.logger, measure.NewStopwatch(), "enclave.go:IsGasEnough")
 	args.Gas = (*hexutil.Uint64)(&gas)
-	result, userErr, sysErr := ge.chain.ObsCallAtBlock(ctx, args, estimationBlockNumber)
+	result, userErr, sysErr := ge.chain.ObsCallAtBlock(ctx, args, estimationBlockNumber, true)
 	if sysErr != nil {
 		return true, nil, nil, sysErr
 	}
