@@ -38,20 +38,21 @@ import (
 
 // Services handles the various business logic for the api endpoints
 type Services struct {
-	HostAddrHTTP        string // The HTTP address on which the TEN host can be reached
-	HostAddrWS          string // The WS address on which the TEN host can be reached
-	Storage             storage.UserStorage
-	logger              gethlog.Logger
-	stopControl         *stopcontrol.StopControl
-	version             string
-	RPCResponsesCache   cache.Cache
-	BackendRPC          *BackendRPC
-	RateLimiter         *ratelimiter.RateLimiter
-	SKManager           SKManager
-	Config              *common.Config
-	NewHeadsService     *subscriptioncommon.NewHeadsService
-	cacheInvalidationCh chan *tencommon.BatchHeader
-	MetricsTracker      metrics.Metrics
+	HostAddrHTTP                string // The HTTP address on which the TEN host can be reached
+	HostAddrWS                  string // The WS address on which the TEN host can be reached
+	Storage                     storage.UserStorage
+	logger                      gethlog.Logger
+	stopControl                 *stopcontrol.StopControl
+	version                     string
+	RPCResponsesCache           cache.Cache
+	BackendRPC                  *BackendRPC
+	RateLimiter                 *ratelimiter.RateLimiter
+	SKManager                   SKManager
+	Config                      *common.Config
+	NewHeadsService             *subscriptioncommon.NewHeadsService
+	cacheInvalidationCh         chan *tencommon.BatchHeader
+	MetricsTracker              metrics.Metrics
+	sessionKeyExpirationService *SessionKeyExpirationService
 }
 
 type NewHeadNotifier interface {
@@ -112,6 +113,10 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		})
 
 	go _startCacheEviction(&services, logger)
+
+	// Create and start session key expiration service
+	services.sessionKeyExpirationService = NewSessionKeyExpirationService(storage, logger, stopControl, config, &services)
+
 	return &services
 }
 
