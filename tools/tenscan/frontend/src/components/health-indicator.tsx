@@ -1,7 +1,6 @@
 import React from "react";
 import { Badge, badgeVariants } from "@repo/ui/components/shared/badge";
 import { useGeneralService } from "../services/useGeneralService";
-import { BarChart } from "@repo/ui/components/shared/react-icons";
 import {
   TooltipProvider,
   TooltipTrigger,
@@ -30,12 +29,12 @@ const HealthIndicator = () => {
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
-          <div className="flex items-center space-x-1 border rounded-lg p-2">
-            <span className="text-sm hidden lg:block">Testnet Status</span>
-            <BarChart
-              className={`h-4 w-4 ${status ? "text-success" : "text-destructive"}`}
-            />
+          <div className="flex items-center space-x-1 p-2">
+            <span className="text-sm hidden lg:block mr-2">
+              Testnet Status:
+            </span>
             <Badge
+              className="rounded"
               variant={
                 (status
                   ? "success"
