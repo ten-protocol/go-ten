@@ -43,7 +43,7 @@ See [go/enclave/evm](go/enclave/evm)
 #### 2. Store the state
 The dependency on `go-ethereum` for transaction execution, means that we use the same storage interfaces.
 
-In the current iteration we use [EdglessDB](https://www.edgeless.systems/products/edgelessdb/), an open source database tailor-made 
+In the current iteration we use [EdglessDB](https://www.edgeless.systems), an open source database tailor-made 
 for confidential computing.
 
 `go-ethereum` uses a key-value store interface, which we implement on top of the SQL database. The reason for this odd choice 
