@@ -29,7 +29,8 @@ func (s *ScanAPI) GetTotalContractCount(ctx context.Context) (*big.Int, error) {
 	return s.host.EnclaveClient().GetTotalContractCount(ctx)
 }
 
-// GetHistoricalContractCount returns the number of recorded contracts on the network.
+// GetHistoricalContractCount returns the number of recorded contracts on the network. We store the historical in the host
+// db to try and keep the enclave lightweight.
 func (s *ScanAPI) GetHistoricalContractCount(ctx context.Context) (*big.Int, error) {
 	currentCount, err := s.GetTotalContractCount(ctx)
 	if err != nil {
