@@ -212,6 +212,10 @@ func (s *storageImpl) FetchHistoricalTransactionCount() (*big.Int, error) {
 	return hostdb.GetHistoricalTransactionCount(s.db)
 }
 
+func (s *storageImpl) FetchHistoricalContractCount() (*big.Int, error) {
+	return hostdb.GetHistoricalContractCount(s.db)
+}
+
 func (s *storageImpl) FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {
 	return hostdb.GetTransaction(s.db, hash)
 }

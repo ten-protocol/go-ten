@@ -28,6 +28,8 @@ type HostDB struct {
 	SqlitePath string `mapstructure:"sqlitePath"`
 	// HistoricalTxCount is the running total of tesnet transactions
 	HistoricalTxCount int `mapstructure:"historicalTxCount"`
+	// HistoricalContractCount is the running total of testnet contracts
+	HistoricalContractCount int `mapstructure:"historicalContractCount"`
 }
 
 // HostLog contains the configuration for the host logger.

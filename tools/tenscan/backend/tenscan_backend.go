@@ -52,6 +52,10 @@ func (b *Backend) GetHistoricalTransactionCount() (int, error) {
 	return b.obsClient.GetHistoricalTransactionCount()
 }
 
+func (b *Backend) GetHistoricalContractCount() (int, error) {
+	return b.obsClient.GetHistoricalContractCount()
+}
+
 func (b *Backend) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	return b.obsClient.GetLatestRollupHeader()
 }
