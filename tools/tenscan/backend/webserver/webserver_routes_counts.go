@@ -9,7 +9,7 @@ import (
 
 func routeCounts(r *gin.Engine, server *WebServer) {
 	r.GET("/count/contracts/", server.getTotalContractCount)
-	r.GET("/count/contracts/historical", server.getHistoricalContractCount)
+	r.GET("/count/contracts/historical/", server.getHistoricalContractCount)
 	r.GET("/count/transactions/", server.getTotalTransactionCount)
 	r.GET("/count/transactions/historical/", server.getHistoricalTransactionCount)
 }

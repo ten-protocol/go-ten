@@ -119,8 +119,8 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &historicalContractCountObj)
 	assert.NoError(t, err)
 
-	// historical count will just be the config value as the enclave won't store counts in sims
-	assert.GreaterOrEqual(t, historicalContractCountObj.Count, 99,
+	// historical count will just be the config value of 7 + 23 contracts deployed
+	assert.GreaterOrEqual(t, historicalContractCountObj.Count, 30,
 		"Historical count should be >= current count")
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))
