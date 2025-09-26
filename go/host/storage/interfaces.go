@@ -47,6 +47,8 @@ type BatchResolver interface {
 	FetchTotalTxCount() (*big.Int, error)
 	// FetchTotalTxsQuery returns the number of transactions in the DB. Required for e2e tests
 	FetchTotalTxsQuery() (*big.Int, error)
+	// FetchHistoricalTransactionCount returns the historical number of transactions on the testnet
+	FetchHistoricalTransactionCount() (*big.Int, error)
 	// FetchTransaction returns the transaction given its hash
 	FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error)
 	// FetchBatchTransactions returns a list of public transaction data within a given batch hash

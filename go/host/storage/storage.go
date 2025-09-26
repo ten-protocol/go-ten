@@ -208,6 +208,10 @@ func (s *storageImpl) FetchTotalTxsQuery() (*big.Int, error) {
 	return hostdb.GetTotalTxsQuery(s.db)
 }
 
+func (s *storageImpl) FetchHistoricalTransactionCount() (*big.Int, error) {
+	return hostdb.GetHistoricalTransactionCount(s.db)
+}
+
 func (s *storageImpl) FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {
 	return hostdb.GetTransaction(s.db, hash)
 }
