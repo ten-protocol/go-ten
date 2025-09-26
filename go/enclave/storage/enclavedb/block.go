@@ -96,7 +96,7 @@ func FetchBlockHeader(ctx context.Context, db *sqlx.DB, hash common.L1BlockHash)
 }
 
 func FetchHeadBlock(ctx context.Context, db *sqlx.DB) (*types.Header, error) {
-	return fetchBlock(ctx, db, "order by id desc limit 1")
+	return fetchBlock(ctx, db, "where is_canonical and processed order by id desc limit 1")
 }
 
 func FetchBlockHeaderByHeight(ctx context.Context, db *sqlx.DB, height *big.Int) (*types.Header, error) {
