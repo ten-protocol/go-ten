@@ -130,7 +130,7 @@ func GetHistoricalTransactionCount(db HostDB) (*big.Int, error) {
 	return big.NewInt(int64(historicalCount)), nil
 }
 
-// GetHistoricalContractCount returns the historical transaction count plus current count
+// GetHistoricalContractCount returns the historical contract count stored in the db
 func GetHistoricalContractCount(db HostDB) (*big.Int, error) {
 	var historicalCount int
 	err := db.GetSQLDB().QueryRow(selectHistoricalContractCount).Scan(&historicalCount)
