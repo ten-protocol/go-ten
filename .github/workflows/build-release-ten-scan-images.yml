@@ -1,7 +1,7 @@
-# Deploys Tenscan on Azure for Testnet
+# Deploys Tenscan API on Azure for Testnet
 # Builds the Tenscan image, pushes the image to dockerhub and starts the Tenscan on Azure
 
-name: "[M] Deploy Tenscan Testnet"
+name: "[M] Deploy Tenscan Testnet API"
 run-name: "[M] Deploy Tenscan Testnet ( ${{ github.event.inputs.testnet_type }} )"
 on:
   workflow_dispatch:
@@ -44,11 +44,6 @@ jobs:
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Build and Push Docker FE Image
-        run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_SCAN_FE }} -f ./tools/tenscan/frontend/Dockerfile . 
-          docker push ${{ vars.DOCKER_BUILD_TAG_SCAN_FE }}
 
       - name: Build and Push Docker API Image
         run: |

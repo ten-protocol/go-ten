@@ -22,19 +22,6 @@ const verifyUpgrade = async function (newBridgeAddress: string): Promise<void> {
   )
   console.log(`Current implementation address: ${implementationAddress}`)
 
-  // Get the contract instance
-  const bridgeContract = await ethers.getContractAt(
-    "TenBridgeTestnet",
-    newBridgeAddress
-  )
-  const networkConfigContract = await ethers.getContractAt(
-    "NetworkConfig",
-    networkConfigAddr
-  )
-  const recordL1AddressTx = await networkConfigContract
-    .getFunction("setL1BridgeAddress")
-    .populateTransaction(bridgeContract.address)
-  // Test basic contract functionality
   try {
     console.log("\n=== Testing contract functionality ===")
 

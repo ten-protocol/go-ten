@@ -1,6 +1,5 @@
 import { BaseContract } from 'ethers';
-import { ethers } from 'hardhat';
-import { upgrades } from 'hardhat';
+import { ethers, upgrades } from 'hardhat';
 import { UpgradeOptions } from '@openzeppelin/hardhat-upgrades/dist/utils';
 
 console.log('=== Script started ===');
@@ -18,31 +17,31 @@ export async function upgradeContract(
     const currentImpl = await upgrades.erc1967.getImplementationAddress(proxyAddress);
     console.log(`Current implementation address: ${currentImpl}`);
 
-    // Import the existing proxy using the CURRENT contract type
-    // The proxy was deployed as TenBridge, so we need to import it as TenBridge first
-    console.log('Importing existing proxy (as TenBridge) into OpenZeppelin tracking system...');
+    // Import proxy and upgrade to new implementation
+    console.log('Importing existing proxy into OpenZeppelin tracking system...');
     const currentFactory = await ethers.getContractFactory('TenBridge');
     await upgrades.forceImport(proxyAddress, currentFactory, {
         kind: 'transparent',
+        unsafeAllow: ['constructor'],
         implementation: currentImpl
     } as UpgradeOptions);
 
-    console.log(`Performing upgrade from TenBridge to ${newContractName}...`);
+    console.log(`Performing upgrade to ${newContractName}...`);
     const upgraded = await upgrades.upgradeProxy(proxyAddress, newFactory, { 
         kind: 'transparent',
-        redeployImplementation: 'always'
+        unsafeAllow: ['constructor']
     });
 
     const address = await upgraded.getAddress();
-    const newImpl = await upgrades.erc1967.getImplementationAddress(proxyAddress);
+    const newImplFinal = await upgrades.erc1967.getImplementationAddress(proxyAddress);
     
-    if (newImpl === currentImpl) {
+    if (newImplFinal === currentImpl) {
         throw new Error(`Upgrade failed: implementation address unchanged (${currentImpl})`);
     }
     
     console.log(`${newContractName} upgraded successfully:`);
     console.log(`  Old implementation: ${currentImpl}`);
-    console.log(`  New implementation: ${newImpl}`);
+    console.log(`  New implementation: ${newImplFinal}`);
     console.log(`  Proxy address: ${address}`);
     return upgraded;
 }
