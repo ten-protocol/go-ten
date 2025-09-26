@@ -30,7 +30,7 @@ func (s *UpgradeContracts) Start() error {
 		"npx",
 		"hardhat",
 		"run",
-		"scripts/upgrade/001_upgrade_contracts.ts",
+		"scripts/upgrade/" + s.cfg.upgradeScript,
 		"--network",
 		"layer1",
 		"--verbose",
