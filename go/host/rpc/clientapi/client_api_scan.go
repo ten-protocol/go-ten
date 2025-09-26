@@ -2,6 +2,7 @@ package clientapi
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -26,6 +27,19 @@ func NewScanAPI(host host.Host, logger log.Logger) *ScanAPI {
 // GetTotalContractCount returns the number of recorded contracts on the network.
 func (s *ScanAPI) GetTotalContractCount(ctx context.Context) (*big.Int, error) {
 	return s.host.EnclaveClient().GetTotalContractCount(ctx)
+}
+
+// GetHistoricalContractCount returns the number of recorded contracts on the network.
+func (s *ScanAPI) GetHistoricalContractCount(ctx context.Context) (*big.Int, error) {
+	currentCount, err := s.GetTotalContractCount(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get current contract count from enclave. Cause %w", err)
+	}
+	historicalCount, err := s.host.Storage().FetchHistoricalContractCount()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get historical contract count from storage. Cause %w", err)
+	}
+	return new(big.Int).Add(currentCount, historicalCount), nil
 }
 
 // GetTransaction returns the transaction given its hash.

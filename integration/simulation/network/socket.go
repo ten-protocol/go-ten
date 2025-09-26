@@ -131,6 +131,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)}
 		tenCfg.Host.L1.WebsocketURL = fmt.Sprintf("ws://127.0.0.1:%d", simParams.StartPort+100)
 		tenCfg.Host.DB.HistoricalTxCount = 10 // needed to test historicalTxCount endpoint
+		tenCfg.Host.DB.HistoricalTxCount = 99 // needed to test historicalTxCount endpoint
 		tenCfg.Host.L1.L1BeaconUrl = beaconURL
 		tenCfg.Host.Log.Level = 1
 		tenCfg.Enclave.Log.Level = 1

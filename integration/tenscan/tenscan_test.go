@@ -97,15 +97,30 @@ func TestTenscan(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
 
-	type historicalCountRes struct {
+	type historicalTxCountRes struct {
 		Count int `json:"historicalCount"`
 	}
-	historicalCountObj := historicalCountRes{}
-	err = json.Unmarshal(body, &historicalCountObj)
+	historicalTxCountObj := historicalTxCountRes{}
+	err = json.Unmarshal(body, &historicalTxCountObj)
 	assert.NoError(t, err)
 
 	// historical count should be config value (10) plus the additional 5 transactions added in the test
-	assert.GreaterOrEqual(t, historicalCountObj.Count, 15,
+	assert.GreaterOrEqual(t, historicalTxCountObj.Count, 15,
+		"Historical count should be >= current count")
+
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/historical/", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type historicalContractCountRes struct {
+		Count int `json:"historicalCount"`
+	}
+	historicalContractCountObj := historicalContractCountRes{}
+	err = json.Unmarshal(body, &historicalContractCountObj)
+	assert.NoError(t, err)
+
+	// historical count will just be the config value as the enclave won't store counts in sims
+	assert.GreaterOrEqual(t, historicalContractCountObj.Count, 99,
 		"Historical count should be >= current count")
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/latest/", serverAddress))

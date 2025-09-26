@@ -40,11 +40,21 @@ func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (host
 
 	// Update historical transaction count from config if it's greater than 0
 	if cfg.HistoricalTxCount > 0 {
-		err = updateHistoricalTransactionCount(db, cfg.HistoricalTxCount)
+		err = updateHistoricalCount(db, "historical_transaction_count", cfg.HistoricalTxCount)
 		if err != nil {
 			logger.Warn("Failed to update historical transaction count", "error", err)
 		} else {
 			logger.Info("Updated historical transaction count from config", "count", cfg.HistoricalTxCount)
+		}
+	}
+
+	// Update historical contract count from config if it's greater than 0
+	if cfg.HistoricalContractCount > 0 {
+		err = updateHistoricalCount(db, "historical_contract_count", cfg.HistoricalContractCount)
+		if err != nil {
+			logger.Warn("Failed to update historical contract count", "error", err)
+		} else {
+			logger.Info("Updated historical contract count from config", "count", cfg.HistoricalContractCount)
 		}
 	}
 
@@ -62,14 +72,14 @@ func validateDBConf(cfg *hostconfig.HostConfig) error {
 	return nil
 }
 
-// updateHistoricalTransactionCount updates the historical transaction count from config
-func updateHistoricalTransactionCount(db *sqlx.DB, historicalTxCount int) error {
-	updateQuery := "UPDATE historical_transaction_count SET total = ? where id = 1"
+// updateHistoricalCount updates the historical count for the specified table from config
+func updateHistoricalCount(db *sqlx.DB, tableName string, count int) error {
+	updateQuery := fmt.Sprintf("UPDATE %s SET total = ? where id = 1", tableName)
 
 	reboundQuery := db.Rebind(updateQuery)
-	_, err := db.Exec(reboundQuery, historicalTxCount)
+	_, err := db.Exec(reboundQuery, count)
 	if err != nil {
-		return fmt.Errorf("failed to update historical transaction count: %w", err)
+		return fmt.Errorf("failed to update %s: %w", tableName, err)
 	}
 
 	return nil
