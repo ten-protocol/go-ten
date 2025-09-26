@@ -199,6 +199,63 @@ func (c *CosmosDB) GetUser(userID []byte) (*wecommon.GWUser, error) {
 	return user.user.ToGWUser()
 }
 
+// ListUsers returns a single page using Cosmos DB continuation tokens.
+// Cross-partition query, page size hint, and per-item decryption.
+func (c *CosmosDB) ListUsers(ctx context.Context, pageSize int, nextToken []byte) ([]*wecommon.GWUser, []byte, error) {
+	query := "SELECT * FROM c"
+
+	opts := &azcosmos.QueryOptions{
+		PageSizeHint: int32(pageSize),
+	}
+	if len(nextToken) > 0 {
+		s := string(nextToken)
+		opts.ContinuationToken = &s
+	}
+
+	// Empty PartitionKey => cross-partition query
+	pager := c.usersContainer.NewQueryItemsPager(query, azcosmos.PartitionKey{}, opts)
+
+	if !pager.More() {
+		return nil, nil, nil
+	}
+
+	page, err := pager.NextPage(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to fetch users page: %w", err)
+	}
+
+	users := make([]*wecommon.GWUser, 0, len(page.Items))
+	for _, raw := range page.Items {
+		// 1) Unmarshal encrypted envelope
+		var doc EncryptedDocument
+		if err := json.Unmarshal(raw, &doc); err != nil {
+			return nil, nil, fmt.Errorf("failed to unmarshal encrypted doc: %w", err)
+		}
+		// 2) Decrypt
+		plaintext, err := c.encryptor.Decrypt(doc.Data)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to decrypt user data: %w", err)
+		}
+		// 3) Unmarshal to DB model and convert
+		var userDB dbcommon.GWUserDB
+		if err := json.Unmarshal(plaintext, &userDB); err != nil {
+			return nil, nil, fmt.Errorf("failed to unmarshal user: %w", err)
+		}
+		u, err := userDB.ToGWUser()
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to convert user: %w", err)
+		}
+		users = append(users, u)
+	}
+
+	var newToken []byte
+	if page.ContinuationToken != nil && *page.ContinuationToken != "" {
+		newToken = []byte(*page.ContinuationToken)
+	}
+
+	return users, newToken, nil
+}
+
 func (c *CosmosDB) getUserDB(userID []byte) (userWithETag, error) {
 	keyString, partitionKey := c.dbKey(userID)
 
