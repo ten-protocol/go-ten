@@ -40,6 +40,18 @@ func generateCookieNameFromDomain(tlsDomain string) string {
 func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 	return []node.Route{
 		{
+			Name: "/",
+			Func: func(resp http.ResponseWriter, req *http.Request) {
+				// Only acknowledge the base path; keep previous 404 behavior for others
+				if req.URL.Path == "/" || req.URL.Path == "" {
+					resp.WriteHeader(http.StatusOK)
+					_, _ = resp.Write([]byte("ok"))
+					return
+				}
+				resp.WriteHeader(http.StatusNotFound)
+			},
+		},
+		{
 			Name: common.APIVersion1 + common.PathReady,
 			Func: httpHandler(walletExt, readyRequestHandler),
 		},

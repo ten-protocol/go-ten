@@ -107,12 +107,26 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 			Cache:      certStorage,
 		}
 
-		// Create HTTP-01 challenge handler
+		// Create HTTP-01 challenge handler and also serve base path 200 over plain HTTP
+		acmeHandler := certManager.HTTPHandler(nil)
+		httpMux := http.NewServeMux()
+		// Handle ACME challenges explicitly
+		httpMux.HandleFunc("/.well-known/acme-challenge/", acmeHandler.ServeHTTP)
+		// Serve 200 OK on base path and delegate other paths to ACME handler (which will redirect to HTTPS)
+		httpMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/" || r.URL.Path == "" {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte("ok"))
+				return
+			}
+			acmeHandler.ServeHTTP(w, r)
+		})
+
 		httpServer := &http.Server{
 			Addr:    ":http", // Port 80
-			Handler: certManager.HTTPHandler(nil),
+			Handler: httpMux,
 		}
-		go httpServer.ListenAndServe() // Start HTTP server for ACME challenges
+		go httpServer.ListenAndServe() // Start HTTP server for ACME challenges and base path
 
 		tlsConfig := &tls.Config{
 			GetCertificate: certManager.GetCertificate,
