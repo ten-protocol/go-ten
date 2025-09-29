@@ -109,25 +109,48 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 	if err != nil {
 		return nil, err
 	}
+
+	headerRaw, _ := rlp.EncodeToBytes(header)
+	rc.logger.Debug(fmt.Sprintf("CalldataRollupHeader raw size %d", len(headerRaw)))
+
 	encryptedHeader, err := rc.serialiseCompressAndEncrypt(header)
 	if err != nil {
 		return nil, err
 	}
 
+	rc.logger.Debug(fmt.Sprintf("CalldataRollupHeader encrypted size", "size_bytes", len(encryptedHeader)))
+
 	transactions := make([]*common.TxsWithTimeStamp, len(r.Batches))
+	totalTxs := 0
 	for i, batch := range r.Batches {
 		transactions[i] = common.CreateTxsAndTimeStamp(batch.Transactions, batch.Header.Time)
+		totalTxs += len(batch.Transactions)
 	}
+
+	transactionsRaw, _ := rlp.EncodeToBytes(transactions)
+	rc.logger.Debug(fmt.Sprintf("BatchPayloads raw size: %d bytes, total_batches: %d, total_txs: %d",
+		len(transactionsRaw), len(r.Batches), totalTxs))
+
 	encryptedTransactions, err := rc.serialiseCompressAndEncrypt(transactions)
 	if err != nil {
 		return nil, err
 	}
 
-	return &common.ExtRollup{
+	rc.logger.Debug(fmt.Sprintf("BatchPayloads encrypted size: %d bytes", len(encryptedTransactions)))
+
+	rollupHeaderRaw, _ := rlp.EncodeToBytes(r.Header)
+	rc.logger.Debug(fmt.Sprintf("RollupHeader size: %d bytes", len(rollupHeaderRaw)))
+
+	extRollup := &common.ExtRollup{
 		Header:               r.Header,
 		BatchPayloads:        encryptedTransactions,
 		CalldataRollupHeader: encryptedHeader,
-	}, nil
+	}
+
+	extRollupRaw, _ := rlp.EncodeToBytes(extRollup)
+	rc.logger.Debug(fmt.Sprintf("Total ExtRollup size %d", len(extRollupRaw)))
+
+	return extRollup, nil
 }
 
 // ProcessExtRollup - given an External rollup, responsible with checking and saving all batches found inside
@@ -543,14 +566,22 @@ func (rc *RollupCompression) serialiseCompressAndEncrypt(obj any) ([]byte, error
 	if err != nil {
 		return nil, err
 	}
+	rc.logger.Debug("serialiseCompressAndEncrypt serialised", "size_bytes", len(serialised))
+
 	compressed, err := rc.dataCompressionService.CompressRollup(serialised)
 	if err != nil {
 		return nil, err
 	}
+	compressionRatio := float64(len(compressed)) / float64(len(serialised))
+	rc.logger.Debug("serialiseCompressAndEncrypt compressed", "size_bytes", len(compressed), "compression_ratio", compressionRatio)
+
 	encrypted, err := rc.daEncryptionService.Encrypt(compressed)
 	if err != nil {
 		return nil, err
 	}
+	encryptionOverhead := len(encrypted) - len(compressed)
+	rc.logger.Debug("serialiseCompressAndEncrypt encrypted", "size_bytes", len(encrypted), "encryption_overhead", encryptionOverhead)
+
 	return encrypted, nil
 }
 

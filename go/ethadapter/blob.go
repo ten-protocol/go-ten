@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
@@ -61,11 +62,19 @@ func (KZGToVersionedHasher) BlobHash(blob *kzg4844.Blob) (gethcommon.Hash, kzg48
 
 // EncodeBlobs converts bytes into blobs used for KZG commitment EIP-4844
 // transactions on Ethereum.
-func EncodeBlobs(data []byte) ([]*kzg4844.Blob, error) {
+func EncodeBlobs(data []byte, logger gethlog.Logger) ([]*kzg4844.Blob, error) {
+	originalSize := len(data)
+	logger.Debug(fmt.Sprintf("EncodeBlobs input size: %d bytes\n", originalSize))
+
 	data, err := rlp.EncodeToBytes(data)
 	if err != nil {
 		return nil, err
 	}
+
+	rlpEncodedSize := len(data)
+	rlpOverhead := rlpEncodedSize - originalSize
+	logger.Debug(fmt.Sprintf("EncodeBlobs after RLP encoding: %d bytes (overhead: %d, limit: %d)",
+		rlpEncodedSize, rlpOverhead, MaxBlobBytes))
 
 	if len(data) >= MaxBlobBytes {
 		return nil, fmt.Errorf("data too large to encode in blobs. data length: %d", len(data))
