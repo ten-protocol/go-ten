@@ -68,7 +68,7 @@ func EncodeBlobs(data []byte) ([]*kzg4844.Blob, error) {
 	}
 
 	if len(data) >= MaxBlobBytes {
-		return nil, fmt.Errorf("data too large to encode in blobs")
+		return nil, fmt.Errorf("data too large to encode in blobs. data length: %d", len(data))
 	}
 
 	var blobs []*kzg4844.Blob
