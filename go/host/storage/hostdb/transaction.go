@@ -15,11 +15,12 @@ import (
 )
 
 const (
-	selectTxCount           = "SELECT total FROM transaction_count WHERE id = 1"
-	selectTx                = "SELECT hash, b_sequence FROM transaction_host WHERE hash = ?"
-	selectTxs               = "SELECT t.hash, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence ORDER BY b.height DESC"
-	countTxs                = "SELECT COUNT(b_sequence) AS row_count FROM transaction_host"
-	selectHistoricalTxCount = "SELECT total FROM historical_transaction_count WHERE id = 1"
+	selectTxCount                 = "SELECT total FROM transaction_count WHERE id = 1"
+	selectTx                      = "SELECT hash, b_sequence FROM transaction_host WHERE hash = ?"
+	selectTxs                     = "SELECT t.hash, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence ORDER BY b.height DESC"
+	countTxs                      = "SELECT COUNT(b_sequence) AS row_count FROM transaction_host"
+	selectHistoricalTxCount       = "SELECT total FROM historical_transaction_count WHERE id = 1"
+	selectHistoricalContractCount = "SELECT total FROM historical_contract_count WHERE id = 1"
 )
 
 // GetTransactionListing returns a paginated list of transactions in descending order
@@ -122,6 +123,17 @@ func GetTotalTxsQuery(db HostDB) (*big.Int, error) {
 func GetHistoricalTransactionCount(db HostDB) (*big.Int, error) {
 	var historicalCount int
 	err := db.GetSQLDB().QueryRow(selectHistoricalTxCount).Scan(&historicalCount)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve historical transaction count: %w", err)
+	}
+
+	return big.NewInt(int64(historicalCount)), nil
+}
+
+// GetHistoricalContractCount returns the historical contract count stored in the db
+func GetHistoricalContractCount(db HostDB) (*big.Int, error) {
+	var historicalCount int
+	err := db.GetSQLDB().QueryRow(selectHistoricalContractCount).Scan(&historicalCount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve historical transaction count: %w", err)
 	}

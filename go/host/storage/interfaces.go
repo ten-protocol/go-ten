@@ -49,6 +49,8 @@ type BatchResolver interface {
 	FetchTotalTxsQuery() (*big.Int, error)
 	// FetchHistoricalTransactionCount returns the historical number of transactions on the testnet
 	FetchHistoricalTransactionCount() (*big.Int, error)
+	// FetchHistoricalContractCount returns the historical number of contracts deployed on the testnet
+	FetchHistoricalContractCount() (*big.Int, error)
 	// FetchTransaction returns the transaction given its hash
 	FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error)
 	// FetchBatchTransactions returns a list of public transaction data within a given batch hash

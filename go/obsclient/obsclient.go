@@ -180,6 +180,16 @@ func (oc *ObsClient) GetHistoricalTransactionCount() (int, error) {
 	return count, nil
 }
 
+// GetHistoricalContractCount returns the historical contract count plus current count
+func (oc *ObsClient) GetHistoricalContractCount() (int, error) {
+	var count int
+	err := oc.rpcClient.Call(&count, rpc.GetHistoricalContractCount)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 // GetLatestRollupHeader returns the header of the latest rollup
 func (oc *ObsClient) GetLatestRollupHeader() (*common.RollupHeader, error) {
 	var header *common.RollupHeader
