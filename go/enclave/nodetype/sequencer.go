@@ -327,9 +327,11 @@ func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*comm
 		return nil, fmt.Errorf("failed to encode rollup: %w", err)
 	}
 
+	s.logger.Debug("EncodeRollup size", "size_bytes", len(rollupData))
+
 	// Create blobs to get blob hash
 	s.logger.Debug(fmt.Sprintf("Creating blobs for rollup with from batch %d to %d", rollup.Header.FirstBatchSeqNo, rollup.Header.LastBatchSeqNo))
-	blobs, err := ethadapter.EncodeBlobs(rollupData)
+	blobs, err := ethadapter.EncodeBlobs(rollupData, s.logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode rollup to blobs: %w", err)
 	}
