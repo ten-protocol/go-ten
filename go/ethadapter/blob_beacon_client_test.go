@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/core/types"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/mock"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -99,7 +98,7 @@ func TestBlobEncoding(t *testing.T) {
 	}
 
 	// Encode data into blobs
-	blobs, err := EncodeBlobs(encRollup, gethlog.New())
+	blobs, err := EncodeBlobs(encRollup)
 	if err != nil {
 		t.Errorf("error encoding blobs: %s", err)
 	}
@@ -120,7 +119,7 @@ func TestBlobEncodingLarge(t *testing.T) {
 	// make this rollup larger than 128kb
 	extRlp := createLargeRollup(4445)
 	encRollup, _ := common.EncodeRollup(&extRlp)
-	_, err := EncodeBlobs(encRollup, gethlog.New())
+	_, err := EncodeBlobs(encRollup)
 	require.Error(t, err)
 }
 
