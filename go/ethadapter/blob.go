@@ -3,6 +3,7 @@ package ethadapter
 import (
 	"bytes"
 	"fmt"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
