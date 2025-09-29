@@ -128,7 +128,7 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 	}
 
 	transactionsRaw, _ := rlp.EncodeToBytes(transactions)
-	rc.logger.Debug(fmt.Sprintf("BatchPayloads raw size: %d bytes, total_batches: %d, total_txs: %d\n",
+	rc.logger.Debug(fmt.Sprintf("BatchPayloads raw size: %d bytes, total_batches: %d, total_txs: %d",
 		len(transactionsRaw), len(r.Batches), totalTxs))
 
 	encryptedTransactions, err := rc.serialiseCompressAndEncrypt(transactions)
@@ -139,7 +139,7 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 	rc.logger.Debug(fmt.Sprintf("BatchPayloads encrypted size: %d bytes", len(encryptedTransactions)))
 
 	rollupHeaderRaw, _ := rlp.EncodeToBytes(r.Header)
-	rc.logger.Debug(fmt.Sprintf("RollupHeader size: %d bytes\n", len(rollupHeaderRaw)))
+	rc.logger.Debug(fmt.Sprintf("RollupHeader size: %d bytes", len(rollupHeaderRaw)))
 
 	extRollup := &common.ExtRollup{
 		Header:               r.Header,
