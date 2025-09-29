@@ -81,6 +81,39 @@ const (
 	encryptionKeySourceFlagDefault = ""
 	encryptionKeySourceFlagUsage   = "Source of the encryption key for the gateway database. It can be set to empty (read from the sealed key), URL of another gateway with which we can exchange the key or 'new' to generate a new key (but only if sealed key is not present). Default: empty"
 
+	// Azure HSM / Key Vault flags
+	azureEnableHSMFlagName    = "azureEnableHSM"
+	azureEnableHSMFlagDefault = false
+	azureEnableHSMFlagUsage   = "Enable Azure Managed HSM fallback/write for encryption key"
+
+	azureHSMNameFlagName    = "azureHSMName"
+	azureHSMNameFlagDefault = ""
+	azureHSMNameFlagUsage   = "Azure Managed HSM name (e.g. EnclaveSigningV2)"
+
+	azureKeyNameFlagName    = "azureKeyName"
+	azureKeyNameFlagDefault = ""
+	azureKeyNameFlagUsage   = "Azure secret/key name used to store/read the encryption key"
+
+	azureResourceGroupFlagName    = "azureResourceGroup"
+	azureResourceGroupFlagDefault = ""
+	azureResourceGroupFlagUsage   = "Azure resource group used by CLI auth (optional)"
+
+	azureSubscriptionIDFlagName    = "azureSubscriptionId"
+	azureSubscriptionIDFlagDefault = ""
+	azureSubscriptionIDFlagUsage   = "Azure subscription ID for CLI auth (optional)"
+
+	azureTenantIDFlagName    = "azureTenantId"
+	azureTenantIDFlagDefault = ""
+	azureTenantIDFlagUsage   = "Azure tenant ID for CLI auth (optional)"
+
+	azureReadSecretFlagName    = "azureReadSecret"
+	azureReadSecretFlagDefault = false
+	azureReadSecretFlagUsage   = "Attempt to read encryption key from Azure HSM if other methods fail"
+
+	azureWriteSecretFlagName    = "azureWriteSecret"
+	azureWriteSecretFlagDefault = false
+	azureWriteSecretFlagUsage   = "Write generated/exchanged encryption key to Azure HSM"
+
 	enableTLSFlagName    = "enableTLS"
 	enableTLSFlagDefault = false
 	enableTLSFlagUsage   = "Flag to enable TLS/HTTPS"
@@ -141,6 +174,15 @@ func parseCLIArgs() wecommon.Config {
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
 	insideEnclaveFlag := flag.Bool(insideEnclaveFlagName, insideEnclaveFlagDefault, insideEnclaveFlagUsage)
 	encryptionKeySource := flag.String(encryptionKeySourceFlagName, encryptionKeySourceFlagDefault, encryptionKeySourceFlagUsage)
+	// Azure flags
+	azureEnableHSM := flag.Bool(azureEnableHSMFlagName, azureEnableHSMFlagDefault, azureEnableHSMFlagUsage)
+	azureHSMName := flag.String(azureHSMNameFlagName, azureHSMNameFlagDefault, azureHSMNameFlagUsage)
+	azureKeyName := flag.String(azureKeyNameFlagName, azureKeyNameFlagDefault, azureKeyNameFlagUsage)
+	azureResourceGroup := flag.String(azureResourceGroupFlagName, azureResourceGroupFlagDefault, azureResourceGroupFlagUsage)
+	azureSubscriptionID := flag.String(azureSubscriptionIDFlagName, azureSubscriptionIDFlagDefault, azureSubscriptionIDFlagUsage)
+	azureTenantID := flag.String(azureTenantIDFlagName, azureTenantIDFlagDefault, azureTenantIDFlagUsage)
+	azureReadSecret := flag.Bool(azureReadSecretFlagName, azureReadSecretFlagDefault, azureReadSecretFlagUsage)
+	azureWriteSecret := flag.Bool(azureWriteSecretFlagName, azureWriteSecretFlagDefault, azureWriteSecretFlagUsage)
 	enableTLSFlag := flag.Bool(enableTLSFlagName, enableTLSFlagDefault, enableTLSFlagUsage)
 	tlsDomainFlag := flag.String(tlsDomainFlagName, tlsDomainFlagDefault, tlsDomainFlagUsage)
 	encryptingCertificateEnabled := flag.Bool(encryptingCertificateEnabledFlagName, encryptingCertificateEnabledFlagDefault, encryptingCertificateEnabledFlagUsage)
@@ -166,6 +208,14 @@ func parseCLIArgs() wecommon.Config {
 		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
 		InsideEnclave:                  *insideEnclaveFlag,
 		EncryptionKeySource:            *encryptionKeySource,
+		AzureEnableHSM:                 *azureEnableHSM,
+		AzureHSMName:                   *azureHSMName,
+		AzureKeyName:                   *azureKeyName,
+		AzureResourceGroup:             *azureResourceGroup,
+		AzureSubscriptionID:            *azureSubscriptionID,
+		AzureTenantID:                  *azureTenantID,
+		AzureReadSecret:                *azureReadSecret,
+		AzureWriteSecret:               *azureWriteSecret,
 		EnableTLS:                      *enableTLSFlag,
 		TLSDomain:                      *tlsDomainFlag,
 		EncryptingCertificateEnabled:   *encryptingCertificateEnabled,

@@ -72,6 +72,24 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return encryptionKey, nil
 	}
 
+	// If Azure HSM is enabled and read secret is enabled, try to read the encryption key from Azure HSM
+	if config.AzureEnableHSM && config.AzureReadSecret {
+		logger.Info("attempting to read encryption key from Azure HSM (fallback)")
+		encryptionKey, azureReadErr := azureReadSecret(config, logger)
+		if azureReadErr == nil && len(encryptionKey) > 0 {
+			// Seal the key we read and return
+			if sealErr := trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave, logger); sealErr != nil {
+				logger.Error("unable to seal encryption key read from Azure HSM", log.ErrKey, sealErr)
+				return nil, sealErr
+			}
+			logger.Info("successfully read encryption key from Azure HSM and sealed it")
+			return encryptionKey, nil
+		}
+		if azureReadErr != nil {
+			logger.Warn("failed to read encryption key from Azure HSM", "error", azureReadErr)
+		}
+	}
+
 	// If no existing key is available, we look at `encryptionKeySource`
 	// If no encryptionKeySource is provided, fail since we couldn't unseal an existing key
 	if config.EncryptionKeySource == "" {
@@ -92,7 +110,7 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
 		encryptionKey, err = HandleKeyExchange(config, logger)
 		if err != nil {
-			logger.Crit("unable to get encryption key from key provider", log.ErrKey, err)
+			logger.Crit("unable to get encryption key from key provider", "error", err)
 			return nil, err
 		}
 	}
@@ -104,6 +122,15 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return nil, err
 	}
 	logger.Info("sealed new encryption key")
+
+	// Optionally write the key to Azure HSM for backup/recovery in case if was generated/got from the key exchange.
+	if config.AzureEnableHSM && config.AzureWriteSecret {
+		if writeErr := azureWriteSecret(encryptionKey, config, logger); writeErr != nil {
+			logger.Warn("failed to write encryption key to Azure HSM", "error", writeErr)
+		} else {
+			logger.Info("successfully wrote encryption key to Azure HSM")
+		}
+	}
 
 	return encryptionKey, nil
 }
@@ -382,4 +409,15 @@ func DeserializeAttestationReport(data []byte) (*tencommon.AttestationReport, er
 		return nil, err
 	}
 	return &report, nil
+}
+
+// azureReadSecret attempts to read the encryption key (Base64) from Azure Key Vault using az CLI
+func azureReadSecret(config common.Config, logger gethlog.Logger) ([]byte, error) {
+	// TODO: Implement
+	return nil, nil
+}
+
+func azureWriteSecret(key []byte, config common.Config, logger gethlog.Logger) error {
+	// TODO: Implement
+	return nil
 }

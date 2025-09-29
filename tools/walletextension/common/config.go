@@ -25,8 +25,18 @@ type Config struct {
 	RateLimitWindow                time.Duration
 	RateLimitMaxConcurrentRequests int
 
-	InsideEnclave                bool // Indicates if the program is running inside an enclave
-	EncryptionKeySource          string
+	InsideEnclave       bool // Indicates if the program is running inside an enclave
+	EncryptionKeySource string
+
+	// Azure Managed HSM / Key Vault integration (optional)
+	AzureEnableHSM               bool   // Enable Azure HSM secret fallback/write
+	AzureHSMName                 string // Managed HSM name (e.g. EnclaveSigningV2)
+	AzureKeyName                 string // Secret/Key name to store/read encryption key
+	AzureResourceGroup           string // Resource group for convenience when using CLI auth
+	AzureSubscriptionID          string // Subscription ID for CLI auth
+	AzureTenantID                string // Tenant ID for CLI auth
+	AzureReadSecret              bool   // If true, try reading the secret when other methods fail
+	AzureWriteSecret             bool   // If true, write the generated key to Azure HSM
 	EnableTLS                    bool
 	TLSDomain                    string
 	EncryptingCertificateEnabled bool
