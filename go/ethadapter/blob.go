@@ -3,6 +3,7 @@ package ethadapter
 import (
 	"bytes"
 	"fmt"
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -61,13 +62,14 @@ func (KZGToVersionedHasher) BlobHash(blob *kzg4844.Blob) (gethcommon.Hash, kzg48
 
 // EncodeBlobs converts bytes into blobs used for KZG commitment EIP-4844
 // transactions on Ethereum.
-func EncodeBlobs(data []byte) ([]*kzg4844.Blob, error) {
+func EncodeBlobs(data []byte, logger gethlog.Logger) ([]*kzg4844.Blob, error) {
 	data, err := rlp.EncodeToBytes(data)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(data) >= MaxBlobBytes {
+		logger.Debug("blob too large", "len", len(data))
 		return nil, fmt.Errorf("data too large to encode in blobs")
 	}
 
