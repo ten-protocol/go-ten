@@ -109,10 +109,11 @@ func (s *StateTracker) OnReceivedBlock(l1Head gethcommon.Hash) {
 	s.hostL1Head = l1Head
 }
 
-func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int) {
+func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int, enclL2HeadHash gethcommon.Hash) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.enclaveL2Head = enclL2HeadSeqNo
+	s.enclaveL2HeadHash = enclL2HeadHash
 	s.setStatus("onProcessedBatch", s.calculateStatus())
 }
 
