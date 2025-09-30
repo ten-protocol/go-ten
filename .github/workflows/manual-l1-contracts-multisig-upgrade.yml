@@ -87,4 +87,4 @@ jobs:
           name: direct-upgrade
           path: |
             direct-upgrade.out
-          retention-days: 7 
+          retention-days: 1

@@ -95,4 +95,4 @@ jobs:
           name: pause-all-contracts
           path: |
             pause-all-contracts.out
-          retention-days: 7
+          retention-days: 1

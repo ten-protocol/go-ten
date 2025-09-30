@@ -167,4 +167,4 @@ jobs:
           name: deploy-l1-artifacts
           path: |
             deploy-l1-contracts.out
-          retention-days: 7
+          retention-days: 2
