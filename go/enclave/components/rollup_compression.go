@@ -118,7 +118,7 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 		return nil, err
 	}
 
-	rc.logger.Debug(fmt.Sprintf("CalldataRollupHeader encrypted size", "size_bytes", len(encryptedHeader)))
+	rc.logger.Debug(fmt.Sprintf("CalldataRollupHeader encrypted size %d", len(encryptedHeader)))
 
 	transactions := make([]*common.TxsWithTimeStamp, len(r.Batches))
 	totalTxs := 0
