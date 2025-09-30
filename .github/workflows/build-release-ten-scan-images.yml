@@ -1,7 +1,7 @@
-# Deploys Tenscan on Azure for Testnet
+# Deploys Tenscan API on Azure for Testnet
 # Builds the Tenscan image, pushes the image to dockerhub and starts the Tenscan on Azure
 
-name: "[M] Deploy Tenscan Testnet"
+name: "[M] Deploy Tenscan Testnet API"
 run-name: "[M] Deploy Tenscan Testnet ( ${{ github.event.inputs.testnet_type }} )"
 on:
   workflow_dispatch:
