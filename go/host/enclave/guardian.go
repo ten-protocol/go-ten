@@ -639,7 +639,7 @@ func (g *Guardian) submitL2Batch(batch *common.ExtBatch) error {
 		return errors.Wrap(err, "could not submit L2 batch to enclave")
 	}
 	// successfully processed batch, update the state
-	g.state.OnProcessedBatch(batch.Header.SequencerOrderNo)
+	g.state.OnProcessedBatch(batch.Header.SequencerOrderNo, batch.Hash())
 	return nil
 }
 
@@ -686,7 +686,7 @@ func (g *Guardian) streamEnclaveData() {
 				}
 				// Notify the L2 repo that an enclave has validated a batch, so it can update its validated head and notify subscribers
 				g.sl.L2Repo().NotifyNewValidatedHead(resp.Batch)
-				g.state.OnProcessedBatch(resp.Batch.Header.SequencerOrderNo)
+				g.state.OnProcessedBatch(resp.Batch.Header.SequencerOrderNo, resp.Batch.Hash())
 			}
 
 			if resp.Logs != nil {
