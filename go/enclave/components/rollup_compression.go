@@ -136,7 +136,7 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 		return nil, err
 	}
 
-	rc.logger.Debug("BatchPayloads", "encrypted_siz", len(encryptedTransactions))
+	rc.logger.Debug("BatchPayloads", "encrypted_size", len(encryptedTransactions))
 
 	rollupHeaderRaw, _ := rlp.EncodeToBytes(r.Header)
 	rc.logger.Debug("RollupHeader", "raw_bytes", len(rollupHeaderRaw))
