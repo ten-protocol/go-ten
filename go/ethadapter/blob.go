@@ -64,7 +64,7 @@ func (KZGToVersionedHasher) BlobHash(blob *kzg4844.Blob) (gethcommon.Hash, kzg48
 // transactions on Ethereum.
 func EncodeBlobs(data []byte, logger gethlog.Logger) ([]*kzg4844.Blob, error) {
 	originalSize := len(data)
-	logger.Debug(fmt.Sprintf("EncodeBlobs input size: %d bytes\n", originalSize))
+	logger.Debug("EncodeBlobs input size", "raw_bytes", originalSize)
 
 	data, err := rlp.EncodeToBytes(data)
 	if err != nil {
@@ -73,8 +73,7 @@ func EncodeBlobs(data []byte, logger gethlog.Logger) ([]*kzg4844.Blob, error) {
 
 	rlpEncodedSize := len(data)
 	rlpOverhead := rlpEncodedSize - originalSize
-	logger.Debug(fmt.Sprintf("EncodeBlobs after RLP encoding: %d bytes (overhead: %d, limit: %d)",
-		rlpEncodedSize, rlpOverhead, MaxBlobBytes))
+	logger.Debug("EncodeBlobs after RLP encoding", "encoded_size", rlpEncodedSize, "rlp_overhead", rlpOverhead, "max_blob_bytes", MaxBlobBytes)
 
 	if len(data) >= MaxBlobBytes {
 		return nil, fmt.Errorf("data too large to encode in blobs. data length: %d", len(data))
