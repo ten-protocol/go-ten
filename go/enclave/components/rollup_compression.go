@@ -111,14 +111,14 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 	}
 
 	headerRaw, _ := rlp.EncodeToBytes(header)
-	rc.logger.Debug(fmt.Sprintf("CalldataRollupHeader raw size %d", len(headerRaw)))
+	rc.logger.Debug("CalldataRollupHeader", "raw_size", len(headerRaw))
 
 	encryptedHeader, err := rc.serialiseCompressAndEncrypt(header)
 	if err != nil {
 		return nil, err
 	}
 
-	rc.logger.Debug(fmt.Sprintf("CalldataRollupHeader encrypted size %d", len(encryptedHeader)))
+	rc.logger.Debug("CalldataRollupHeader", "encrypted_size", len(encryptedHeader))
 
 	transactions := make([]*common.TxsWithTimeStamp, len(r.Batches))
 	totalTxs := 0
@@ -128,18 +128,18 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 	}
 
 	transactionsRaw, _ := rlp.EncodeToBytes(transactions)
-	rc.logger.Debug(fmt.Sprintf("BatchPayloads raw size: %d bytes, total_batches: %d, total_txs: %d",
-		len(transactionsRaw), len(r.Batches), totalTxs))
+	rc.logger.Debug("BatchPayloads", "raw_bytes", len(transactionsRaw), "total_batches", len(r.Batches),
+		"num_txs", totalTxs)
 
 	encryptedTransactions, err := rc.serialiseCompressAndEncrypt(transactions)
 	if err != nil {
 		return nil, err
 	}
 
-	rc.logger.Debug(fmt.Sprintf("BatchPayloads encrypted size: %d bytes", len(encryptedTransactions)))
+	rc.logger.Debug("BatchPayloads", "encrypted_size", len(encryptedTransactions))
 
 	rollupHeaderRaw, _ := rlp.EncodeToBytes(r.Header)
-	rc.logger.Debug(fmt.Sprintf("RollupHeader size: %d bytes", len(rollupHeaderRaw)))
+	rc.logger.Debug("RollupHeader", "raw_bytes", len(rollupHeaderRaw))
 
 	extRollup := &common.ExtRollup{
 		Header:               r.Header,
@@ -148,7 +148,7 @@ func (rc *RollupCompression) CreateExtRollup(ctx context.Context, r *core.Rollup
 	}
 
 	extRollupRaw, _ := rlp.EncodeToBytes(extRollup)
-	rc.logger.Debug(fmt.Sprintf("Total ExtRollup size %d", len(extRollupRaw)))
+	rc.logger.Debug("ExtRollup", "total_size", len(extRollupRaw))
 
 	return extRollup, nil
 }
