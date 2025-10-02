@@ -208,6 +208,15 @@ func (s *StateTracker) IsEnclaveAheadOfHost() bool {
 	return s.enclaveL2Head.Cmp(s.hostL2Head) > 0
 }
 
+func (s *StateTracker) IsEnclaveBehindHost() bool {
+	s.m.RLock()
+	defer s.m.RUnlock()
+	if s.enclaveL2Head == nil || s.hostL2Head == nil {
+		return false
+	}
+	return s.enclaveL2Head.Cmp(s.hostL2Head) < 0
+}
+
 func (s *StateTracker) GetHostL1Head() gethcommon.Hash {
 	s.m.RLock()
 	defer s.m.RUnlock()
