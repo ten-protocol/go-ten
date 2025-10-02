@@ -212,8 +212,7 @@ func (e *Service) managePeriodicBatches() {
 			 * We perform some checks before asking the active sequencer to produce a batch:
 			 * - Is the active sequencer in sync with L1 (so it can reference the latest L1 block in the batch)
 			 * - Does the active sequencer's L2 head agree with the host's L2 head (the host's head has been broadcast to the network, so it is canonical)
-			 *
-			 * Note: we don't check if the active sequencer is behind the host's L2 head, it is the active sequencer and that is checked at promotion time
+			 * - Is the active sequencer's L2 head behind the host's L2 head (it shouldn't be as it is the active batch producer)
 			 */
 			if activeSeq.InSyncWithL1() {
 				// Check if the L2 head hashes match between enclave and host
@@ -233,6 +232,14 @@ func (e *Service) managePeriodicBatches() {
 						failureCount = 0
 						continue
 					}
+				}
+
+				// this shouldn't happen, but we still assert it - active sequencer can't be behind the host's L2 head when it produces batches
+				if activeSeq.IsEnclaveL2BehindHost() {
+					e.logger.Error("Active sequencer's L2 head is behind the host's L2 head, demoting active sequencer",
+						"enclaveState", activeSeq.GetEnclaveState(), "hostL2Hash", hostL2Hash)
+					e.tryPromoteNewSequencer()
+					continue
 				}
 
 				err = activeSeq.ProduceBatch()
@@ -277,6 +284,13 @@ func (e *Service) tryPromoteNewSequencer() {
 		enclID := guardian.GetEnclaveID()
 		if prevActiveSeqID != nil && *enclID == *prevActiveSeqID {
 			// skip this enclave since we are replacing it
+			continue
+		}
+
+		if guardian.IsEnclaveL2BehindHost() {
+			// skip this guardian since it is behind the host's L2 head, it needs to catch up first
+			// note: this check seems unnecessary since we check for IsLive() below but to avoid weird timings causing
+			// dud promotions we check it explicitly here too
 			continue
 		}
 

@@ -194,6 +194,10 @@ func (g *Guardian) IsEnclaveL2AheadOfHost() bool {
 	return g.state.IsEnclaveAheadOfHost()
 }
 
+func (g *Guardian) IsEnclaveL2BehindHost() bool {
+	return g.state.IsEnclaveBehindHost()
+}
+
 func (g *Guardian) GetEnclaveState() *StateTracker {
 	return g.state
 }
