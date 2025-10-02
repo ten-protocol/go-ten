@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 
 	"github.com/status-im/keycard-go/hexutils"
@@ -50,9 +52,22 @@ func (o *TGLib) Join() error {
 	return nil
 }
 
+// getChainID returns the chain ID to use for authentication.
+// Priority: NETWORK_CHAINID environment variable → integration default (5443)
+func getChainID() int64 {
+	if chainIDStr := os.Getenv("NETWORK_CHAINID"); chainIDStr != "" {
+		if chainID, err := strconv.ParseInt(chainIDStr, 10, 64); err == nil {
+			return chainID
+		}
+	}
+	// Fallback to integration default
+	return integration.TenChainID
+}
+
 func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	message, err := viewingkey.GenerateMessage(o.userID, integration.TenChainID, 1, viewingkey.EIP712Signature)
+	chainID := getChainID()
+	message, err := viewingkey.GenerateMessage(o.userID, chainID, 1, viewingkey.EIP712Signature)
 	if err != nil {
 		return err
 	}
@@ -102,7 +117,8 @@ func (o *TGLib) RegisterAccount(pk *ecdsa.PrivateKey, addr gethcommon.Address) e
 
 func (o *TGLib) RegisterAccountPersonalSign(pk *ecdsa.PrivateKey, addr gethcommon.Address) error {
 	// create the registration message
-	message, err := viewingkey.GenerateMessage(o.userID, integration.TenChainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
+	chainID := getChainID()
+	message, err := viewingkey.GenerateMessage(o.userID, chainID, viewingkey.PersonalSignVersion, viewingkey.PersonalSign)
 	if err != nil {
 		return err
 	}
