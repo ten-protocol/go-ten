@@ -35,6 +35,7 @@ const (
 )
 
 // AddBatch adds a batch and its header to the DB
+// single threaded
 func AddBatch(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
 	extBatch, err := rlp.EncodeToBytes(batch)
 	if err != nil {
@@ -50,9 +51,6 @@ func AddBatch(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
 		len(batch.EncryptedTxBlob),   // txs_size
 	)
 	if err != nil {
-		if IsRowExistsError(err) {
-			return errutil.ErrAlreadyExists
-		}
 		return fmt.Errorf("host failed to insert batch: %w", err)
 	}
 

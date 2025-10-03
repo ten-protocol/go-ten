@@ -15,6 +15,7 @@ var (
 	// we want to be able to catch both types in a single error-check.
 	ErrNotFound      = ethereum.NotFound
 	ErrAlreadyExists = errors.New("already exists")
+	ErrConflict      = errors.New("conflict")
 	ErrNoImpl        = errors.New("not implemented")
 
 	// Standard errors that can be returned from block submission

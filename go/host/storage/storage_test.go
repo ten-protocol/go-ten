@@ -21,8 +21,8 @@ func TestAddBatchWithDuplicateSequenceNumberStorageImpl(t *testing.T) {
 
 	batch2 := hostdb.CreateBatch(2, []common.L2TxHash{gethcommon.BytesToHash([]byte("different"))})
 	err = s.AddBatch(&batch2)
-	// verify no error is returned
-	if err != nil {
-		t.Errorf("expected no error but got: %v", err)
+	// verify constraint error is returned
+	if err == nil {
+		t.Errorf("expected error but got: success")
 	}
 }
