@@ -193,6 +193,14 @@ func (r *Repository) FetchLatestBatchSeqNo() *big.Int {
 	return r.latestBatchSeqNo
 }
 
+func (r *Repository) FetchLatestBatch() (*common.ExtBatch, error) {
+	seqNo := r.FetchLatestBatchSeqNo()
+	if seqNo.Cmp(big.NewInt(0)) == 0 {
+		return nil, errutil.ErrNotFound
+	}
+	return r.storage.FetchBatchBySeqNo(seqNo.Uint64())
+}
+
 func (r *Repository) FetchLatestValidatedBatchSeqNo() *big.Int {
 	return r.latestValidatedSeqNo
 }

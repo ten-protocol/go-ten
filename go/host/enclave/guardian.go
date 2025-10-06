@@ -132,8 +132,17 @@ func (g *Guardian) Start() error {
 		g.logger = g.logger.New(log.EnclaveIDKey, g.enclaveID)
 		// recreate status with new logger
 		g.state = NewStateTracker(g.logger)
-		g.state.OnReceivedBatch(g.sl.L2Repo().FetchLatestBatchSeqNo())
-		g.logger.Info("Starting guardian process.")
+
+		latestBatch, err := g.sl.L2Repo().FetchLatestBatch()
+		if err != nil {
+			if !errors.Is(err, errutil.ErrNotFound) {
+				return errors.Wrap(err, "could not fetch latest batch from L2 repository")
+			}
+			g.logger.Info("No batches found in L2 repository, starting guardian process with no L2 head")
+		} else {
+			g.state.OnReceivedBatch(latestBatch.SeqNo(), latestBatch.Hash())
+			g.logger.Info("Starting guardian process with existing L2 head", log.BatchSeqNoKey, latestBatch.SeqNo(), log.BatchHashKey, latestBatch.Hash())
+		}
 	}
 
 	go g.mainLoop()
@@ -182,16 +191,16 @@ func (g *Guardian) HealthStatus(context.Context) host.HealthStatus {
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
-func (g *Guardian) IsLive() bool {
-	return g.state.IsLive()
-}
-
 func (g *Guardian) InSyncWithL1() bool {
-	return g.state.InSyncWithL1()
+	res := g.state.InSyncWithL1()
+	g.logger.Debug("InSyncWithL1", "result", res, "enclaveState", g.state)
+	return res
 }
 
-func (g *Guardian) IsEnclaveL2AheadOfHost() bool {
-	return g.state.IsEnclaveAheadOfHost()
+func (g *Guardian) InSyncWithL2() bool {
+	res := g.state.InSyncWithL2()
+	g.logger.Debug("InSyncWithL2", "result", res, "enclaveState", g.state)
+	return res
 }
 
 func (g *Guardian) GetEnclaveState() *StateTracker {
@@ -215,9 +224,9 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 		return nil
 	}
 	l2Head := g.state.GetEnclaveL2Head()
-	if l2Head != nil && l2Head.Cmp(big.NewInt(0)) > 0 && !g.state.IsLive() {
-		// enclave has an L2 head so it's not just starting up, it can't be promoted to active sequencer until it is
-		// up-to-date with the L2 head according to the host's database.
+	if l2Head != nil && l2Head.Cmp(big.NewInt(0)) > 0 && !g.InSyncWithL2() {
+		// enclave has an L2 head so it's not just bootstrapping the network for the first time.
+		// It can't be promoted to active sequencer until it is up-to-date with the L2 head according to the host's database.
 		return errors.New("cannot promote to active sequencer while behind the L2 head, it must finish syncing first")
 	}
 	err := g.enclaveClient.MakeActive()
@@ -277,7 +286,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 
 	g.logger.Debug("Host received L2 batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 	// record the newest batch we've seen
-	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
+	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo, batch.Hash())
 	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
 	if g.state.IsEnclaveActiveSequencer() {
 		g.logger.Debug("Active sequencer cannot receive batches")
@@ -332,6 +341,14 @@ func (g *Guardian) mainLoop() {
 			unavailableCounter = 0
 		}
 		switch status {
+		case Corrupted:
+			// this is a terminal state, we cannot recover from it without manual intervention.
+			// attempt to stop the guardian and the enclave, then exit this main loop
+			err := g.Stop()
+			if err != nil {
+				g.logger.Error("could not stop guardian after enclave marked as corrupted", log.ErrKey, err)
+			}
+			return // exit the loop
 		case Disconnected, Unavailable:
 			// nothing to do, we are waiting for the enclave to be available
 			time.Sleep(_retryInterval)
@@ -670,8 +687,17 @@ func (g *Guardian) streamEnclaveData() {
 				lastBatch = resp.Batch
 				g.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				err := g.sl.L2Repo().AddBatch(resp.Batch)
-				if err != nil && !errors.Is(err, errutil.ErrAlreadyExists) {
-					g.logger.Crit("failed to add batch to L2 repo", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
+				if err != nil {
+					if errors.Is(err, errutil.ErrAlreadyExists) {
+						// ignore, in some situations we accidentally reprocess the same batch
+						g.logger.Debug("Batch already exists in L2 repo", log.BatchHashKey, resp.Batch.Hash())
+					} else if errors.Is(err, errutil.ErrConflict) {
+						g.logger.Error("Batch conflict detected when adding batch to L2 repo - enclave corrupted", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
+						g.state.MarkCorrupted()
+					} else {
+						// unexpected error - we don't want to miss a batch so we fail hard.
+						g.logger.Crit("failed to add batch to L2 repo", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
+					}
 				}
 
 				if g.state.IsEnclaveActiveSequencer() { // active sequencer enclave should broadcast the batch to peers
