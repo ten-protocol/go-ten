@@ -83,7 +83,7 @@ func (s *StateTracker) String() string {
 
 // unsafeToString prints the current state without any locking (it is used internally, when calling from within a lock)
 func (s *StateTracker) unsafeToString() string {
-	return fmt.Sprintf("StateTracker: [%s] enclave(StatusCode=%d, L1Head=%s, L2Head=%s, L2HeadHash=%s, IsSeq=%v), Host(L1Head=%s, L2Head=%s)",
+	return fmt.Sprintf("StateTracker: [%s] enclave(StatusCode=%d, L1Head=%s, L2Head=%s, L2HeadHash=%s, IsSeq=%v), Host(L1Head=%s, L2Head=%s L2HeadHash=%s)",
 		s.status, s.enclaveStatusCode, s.enclaveL1Head, s.enclaveL2Head, s.enclaveL2HeadHash, s.enclaveIsSequencer, s.hostL1Head, s.hostL2Head)
 }
 
