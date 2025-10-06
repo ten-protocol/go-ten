@@ -2,7 +2,7 @@ create table if not exists statedb32
 (
     id  INTEGER PRIMARY KEY AUTOINCREMENT,
     ky  binary(32) UNIQUE NOT NULL,
-    val mediumblob      NOT NULL
+    val mediumblob
 );
 create index IDX_KY32 on statedb32 (ky);
 
@@ -10,7 +10,7 @@ create table if not exists statedb64
 (
     id  INTEGER PRIMARY KEY AUTOINCREMENT,
     ky  varbinary(64) UNIQUE NOT NULL,
-    val mediumblob           NOT NULL
+    val mediumblob
 );
 create index IDX_KY64 on statedb64 (ky);
 
