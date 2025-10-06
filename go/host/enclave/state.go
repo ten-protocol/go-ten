@@ -38,13 +38,15 @@ const (
 	L1Catchup
 	// L2Catchup - enclave is behind on L2 data, host should request and submit L2 batches to catch up
 	L2Catchup
+	// Corrupted - enclave is unusable, either there's a bug or it needs manual intervention
+	Corrupted
 )
 
 // when the L2 head is 0 then it means no batch has been seen or processed (first seq number is always 1)
 var _noBatch = big.NewInt(0)
 
 func (es Status) String() string {
-	return [...]string{"Live", "Disconnected", "Unavailable", "AwaitingSecret", "L1Catchup", "L2Catchup"}[es]
+	return [...]string{"Live", "Disconnected", "Unavailable", "AwaitingSecret", "L1Catchup", "L2Catchup", "Corrupted"}[es]
 }
 
 // StateTracker is the state machine for the enclave
@@ -156,6 +158,13 @@ func (s *StateTracker) OnDisconnected() {
 	s.setStatus("onDisconnect", Disconnected)
 }
 
+// MarkCorrupted is called if the host detects a critical conflict with the enclave state (e.g. L2 head mismatch)
+func (s *StateTracker) MarkCorrupted() {
+	s.m.Lock()
+	defer s.m.Unlock()
+	s.setStatus("markCorrupted", Corrupted)
+}
+
 func (s *StateTracker) SetActiveSequencer(isActive bool) {
 	s.m.Lock()
 	defer s.m.Unlock()
@@ -165,6 +174,11 @@ func (s *StateTracker) SetActiveSequencer(isActive bool) {
 // when enclave is operational, this method will calculate the status based on comparison of current chain heads with enclave heads
 // this must be called from within write-lock to ensure consistency
 func (s *StateTracker) calculateStatus() Status {
+	if s.status == Corrupted {
+		// when the host has marked the enclave as corrupted, it stays that way until manual intervention/restart
+		return Corrupted
+	}
+
 	switch s.enclaveStatusCode {
 	case common.AwaitingSecret:
 		return AwaitingSecret

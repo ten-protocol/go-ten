@@ -337,6 +337,14 @@ func (g *Guardian) mainLoop() {
 			unavailableCounter = 0
 		}
 		switch status {
+		case Corrupted:
+			// this is a terminal state, we cannot recover from it without manual intervention.
+			// attempt to stop the guardian and the enclave, then exit this main loop
+			err := g.Stop()
+			if err != nil {
+				g.logger.Error("could not stop guardian after enclave marked as corrupted", log.ErrKey, err)
+			}
+			return // exit the loop
 		case Disconnected, Unavailable:
 			// nothing to do, we are waiting for the enclave to be available
 			time.Sleep(_retryInterval)
@@ -675,8 +683,17 @@ func (g *Guardian) streamEnclaveData() {
 				lastBatch = resp.Batch
 				g.logger.Trace("Received batch from stream", log.BatchHashKey, lastBatch.Hash())
 				err := g.sl.L2Repo().AddBatch(resp.Batch)
-				if err != nil && !errors.Is(err, errutil.ErrAlreadyExists) {
-					g.logger.Crit("failed to add batch to L2 repo", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
+				if err != nil {
+					if errors.Is(err, errutil.ErrAlreadyExists) {
+						// ignore, in some situations we accidentally reprocess the same batch
+						g.logger.Debug("Batch already exists in L2 repo", log.BatchHashKey, resp.Batch.Hash())
+					} else if errors.Is(err, errutil.ErrConflict) {
+						g.logger.Error("Batch conflict detected when adding batch to L2 repo - enclave corrupted", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
+						g.state.MarkCorrupted()
+					} else {
+						// unexpected error - we don't want to miss a batch so we fail hard.
+						g.logger.Crit("failed to add batch to L2 repo", log.BatchHashKey, resp.Batch.Hash(), log.ErrKey, err)
+					}
 				}
 
 				if g.state.IsEnclaveActiveSequencer() { // active sequencer enclave should broadcast the batch to peers
