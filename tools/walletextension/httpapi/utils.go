@@ -7,6 +7,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
@@ -33,6 +34,20 @@ func getUserID(conn UserConn) ([]byte, error) {
 		}
 
 		return nil, fmt.Errorf("wrong length of userID from URL. Got: %d, Expected: %d od %d", len(userID), common.MessageUserIDLenWithPrefix, common.MessageUserIDLen)
+	}
+
+	// fallback: token from request context (set by shared gethfork HTTP params middleware for JSON-RPC)
+	// Note: REST endpoints are served by the mux and typically do NOT pass through that middleware,
+	// so this is mainly relevant for JSON-RPC calls.
+	req := conn.GetHTTPRequest()
+	if req != nil {
+		if token, ok := req.Context().Value(rpc.GWTokenKey{}).(string); ok && token != "" {
+			if len(token) == common.MessageUserIDLenWithPrefix {
+				return hexutils.HexToBytes(token[2:]), nil
+			} else if len(token) == common.MessageUserIDLen {
+				return hexutils.HexToBytes(token), nil
+			}
+		}
 	}
 
 	return nil, errors.New("missing token field")
