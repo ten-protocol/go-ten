@@ -61,8 +61,9 @@ type StateTracker struct {
 	enclaveIsSequencer bool
 
 	// latest seen heads of L1 and L2 chains from external sources
-	hostL1Head gethcommon.Hash
-	hostL2Head *big.Int
+	hostL1Head     gethcommon.Hash
+	hostL2Head     *big.Int
+	hostL2HeadHash gethcommon.Hash
 
 	m      *sync.RWMutex
 	logger gethlog.Logger
@@ -117,10 +118,11 @@ func (s *StateTracker) OnProcessedBatch(enclL2HeadSeqNo *big.Int, enclL2HeadHash
 	s.setStatus("onProcessedBatch", s.calculateStatus())
 }
 
-func (s *StateTracker) OnReceivedBatch(l2HeadSeqNo *big.Int) {
+func (s *StateTracker) OnReceivedBatch(l2HeadSeqNo *big.Int, l2HeadHash gethcommon.Hash) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.hostL2Head = l2HeadSeqNo
+	s.hostL2HeadHash = l2HeadHash
 }
 
 func (s *StateTracker) OnSecretProvided() {
@@ -190,31 +192,17 @@ func (s *StateTracker) InSyncWithL1() bool {
 	return s.status == Live || s.status == L2Catchup
 }
 
-func (s *StateTracker) IsLive() bool {
+// InSyncWithL2 checks the enclave is **strictly** in sync with L2 data.
+// This is the requirement to be promoted to an active sequencer (and is checked before producing any batch)
+// note: when the network first starts up, this will be false until the first batch is produced and processed
+func (s *StateTracker) InSyncWithL2() bool {
 	s.m.RLock()
 	defer s.m.RUnlock()
-	return s.status == Live
-}
-
-func (s *StateTracker) IsEnclaveAheadOfHost() bool {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if s.enclaveL2Head == nil {
-		return false
-	}
-	if s.hostL2Head == nil {
-		return true
-	}
-	return s.enclaveL2Head.Cmp(s.hostL2Head) > 0
-}
-
-func (s *StateTracker) IsEnclaveBehindHost() bool {
-	s.m.RLock()
-	defer s.m.RUnlock()
-	if s.enclaveL2Head == nil || s.hostL2Head == nil {
-		return false
-	}
-	return s.enclaveL2Head.Cmp(s.hostL2Head) < 0
+	return s.status == Live &&
+		s.enclaveL2Head != nil &&
+		s.hostL2Head != nil &&
+		s.enclaveL2Head.Cmp(s.hostL2Head) == 0 &&
+		s.enclaveL2HeadHash == s.hostL2HeadHash
 }
 
 func (s *StateTracker) GetHostL1Head() gethcommon.Hash {

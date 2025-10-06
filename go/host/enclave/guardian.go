@@ -132,7 +132,17 @@ func (g *Guardian) Start() error {
 		g.logger = g.logger.New(log.EnclaveIDKey, g.enclaveID)
 		// recreate status with new logger
 		g.state = NewStateTracker(g.logger)
-		g.state.OnReceivedBatch(g.sl.L2Repo().FetchLatestBatchSeqNo())
+
+		latestBatch, err := g.sl.L2Repo().FetchLatestBatch()
+		if err != nil {
+			if !errors.Is(err, errutil.ErrNotFound) {
+				return errors.Wrap(err, "could not fetch latest batch from L2 repository")
+			}
+			g.logger.Info("No batches found in L2 repository, starting with no L2 head")
+		} else {
+			// initialize the state tracker with the host L2 head
+			g.state.OnReceivedBatch(latestBatch.SeqNo(), latestBatch.Hash())
+		}
 		g.logger.Info("Starting guardian process.")
 	}
 
@@ -182,20 +192,12 @@ func (g *Guardian) HealthStatus(context.Context) host.HealthStatus {
 	return &host.BasicErrHealthStatus{ErrMsg: errMsg}
 }
 
-func (g *Guardian) IsLive() bool {
-	return g.state.IsLive()
-}
-
 func (g *Guardian) InSyncWithL1() bool {
 	return g.state.InSyncWithL1()
 }
 
-func (g *Guardian) IsEnclaveL2AheadOfHost() bool {
-	return g.state.IsEnclaveAheadOfHost()
-}
-
-func (g *Guardian) IsEnclaveL2BehindHost() bool {
-	return g.state.IsEnclaveBehindHost()
+func (g *Guardian) InSyncWithL2() bool {
+	return g.state.InSyncWithL2()
 }
 
 func (g *Guardian) GetEnclaveState() *StateTracker {
@@ -219,9 +221,9 @@ func (g *Guardian) PromoteToActiveSequencer() error {
 		return nil
 	}
 	l2Head := g.state.GetEnclaveL2Head()
-	if l2Head != nil && l2Head.Cmp(big.NewInt(0)) > 0 && !g.state.IsLive() {
-		// enclave has an L2 head so it's not just starting up, it can't be promoted to active sequencer until it is
-		// up-to-date with the L2 head according to the host's database.
+	if l2Head != nil && l2Head.Cmp(big.NewInt(0)) > 0 && !g.InSyncWithL2() {
+		// enclave has an L2 head so it's not just bootstrapping the network for the first time.
+		// It can't be promoted to active sequencer until it is up-to-date with the L2 head according to the host's database.
 		return errors.New("cannot promote to active sequencer while behind the L2 head, it must finish syncing first")
 	}
 	err := g.enclaveClient.MakeActive()
@@ -281,7 +283,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 
 	g.logger.Debug("Host received L2 batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 	// record the newest batch we've seen
-	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo)
+	g.state.OnReceivedBatch(batch.Header.SequencerOrderNo, batch.Hash())
 	// Sequencer enclaves produce batches, they cannot receive them. Also, enclave will reject new batches if it is not up-to-date
 	if g.state.IsEnclaveActiveSequencer() {
 		g.logger.Debug("Active sequencer cannot receive batches")
