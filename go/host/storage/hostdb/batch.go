@@ -42,18 +42,16 @@ func AddBatch(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
 	}
 
 	// this value is used on host side rollup size estimation
-	txDataSize := 0
+	// empty batches still contribute to rollup size through:
+    // - RLP encoded empty transaction array (~3 bytes)
+    // - Time delta (~1-2 bytes when compressed)
+    // - L1 height delta (~1-2 bytes when compressed)
+	// actual data from mainnet: 12,769 empty batches = 26KB rollup = ~2 bytes/batch final
+    // batchCompressionFactor=0.1: 26KB ÷ 0.1 ÷ 12,769 = ~20 bytes raw estimate
+	compressedSize := 20
 	if len(batch.TxHashes) > 0 {
-		// this will be compressed in the rollup, so apply estimated compression factor
-		txDataSize = len(batch.EncryptedTxBlob)
-	} else {
-		// empty batches still contribute to rollup size through:
-		// - RLP encoded empty transaction array (~3 bytes)
-		// - Time delta (~1-2 bytes when compressed)
-		// - L1 height delta (~1-2 bytes when compressed)
-		// actual data from mainnet: 12,769 empty batches = 26KB rollup = ~2 bytes/batch final
-		// batchCompressionFactor=0.1: 26KB ÷ 0.1 ÷ 12,769 = ~20 bytes raw estimate
-		txDataSize = 20
+		// non-empty batches add transaction data on top of the base overhead
+		compressedSize += len(batch.EncryptedTxBlob)
 	}
 
 	reboundInsertBatch := db.GetSQLDB().Rebind(insertBatch)
@@ -62,7 +60,7 @@ func AddBatch(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
 		batch.Hash(),                 // full hash
 		batch.Header.Number.Uint64(), // height
 		extBatch,                     // ext_batch
-		txDataSize,                   // txs_size
+		compressedSize,                   // txs_size
 	)
 	if err != nil {
 		if IsRowExistsError(err) {
