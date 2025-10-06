@@ -210,11 +210,13 @@ func (e *Service) managePeriodicBatches() {
 			/*
 			 * We perform some checks before asking the active sequencer to produce a batch:
 			 * - Is the active sequencer in sync with L1 (so it can reference the latest L1 block in the batch)
-			 * - Does the active sequencer's L2 head agree with the host's L2 head (the host's head has been broadcast to the network, so it is canonical)
-			 * - Is the active sequencer's L2 head behind the host's L2 head (it shouldn't be as it is the active batch producer)
+			 * - Is the active sequencer in sync with L2 (so it can build on the latest L2 head with no conflicts)
+			 *   - Exception: if the network is just starting up (i.e. there are no batches yet)
 			 */
 			if activeSeq.InSyncWithL1() {
-				if !activeSeq.InSyncWithL2() {
+				networkStarting := e.sl.L2Repo().FetchLatestBatchSeqNo().Cmp(big.NewInt(1)) < 0
+				// if network already started but active sequencer is not in sync with L2, we cannot produce a valid batch
+				if !activeSeq.InSyncWithL2() && !networkStarting {
 					e.logger.Error("Active sequencer's L2 head is out of sync with the host's L2 head",
 						"enclaveState", activeSeq.GetEnclaveState(), "failureCount", failureCount)
 					// the active seq enclave is failing to feed new batches back to the host, if it continues we will try to promote a new enclave

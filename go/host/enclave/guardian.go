@@ -140,8 +140,8 @@ func (g *Guardian) Start() error {
 			}
 			g.logger.Info("No batches found in L2 repository, starting guardian process with no L2 head")
 		} else {
-			g.logger.Info("Starting guardian process with existing L2 head", log.BatchSeqNoKey, latestBatch.SeqNo(), log.BatchHashKey, latestBatch.Hash())
 			g.state.OnReceivedBatch(latestBatch.SeqNo(), latestBatch.Hash())
+			g.logger.Info("Starting guardian process with existing L2 head", log.BatchSeqNoKey, latestBatch.SeqNo(), log.BatchHashKey, latestBatch.Hash())
 		}
 	}
 
