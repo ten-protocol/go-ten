@@ -193,13 +193,13 @@ func (g *Guardian) HealthStatus(context.Context) host.HealthStatus {
 
 func (g *Guardian) InSyncWithL1() bool {
 	res := g.state.InSyncWithL1()
-	g.logger.Trace("InSyncWithL1", "result", res, "enclaveState", g.state)
+	g.logger.Debug("InSyncWithL1", "result", res, "enclaveState", g.state)
 	return res
 }
 
 func (g *Guardian) InSyncWithL2() bool {
 	res := g.state.InSyncWithL2()
-	g.logger.Trace("InSyncWithL2", "result", res, "enclaveState", g.state)
+	g.logger.Debug("InSyncWithL2", "result", res, "enclaveState", g.state)
 	return res
 }
 
