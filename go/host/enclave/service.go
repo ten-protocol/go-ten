@@ -420,6 +420,10 @@ func (e *Service) isRollupRequired(lastSuccessfulRollup time.Time) (bool, uint64
 }
 
 func (e *Service) prepareRollup(guardian *Guardian, fromBatch uint64) (*common.CreateRollupResult, error) {
+	// first check the guardian is in sync with L2 (this rules out corrupted or stuck enclaves)
+	if !guardian.InSyncWithL2() {
+		return nil, fmt.Errorf("enclave guardian is not in sync with the L2 - cannot prepare rollup")
+	}
 	enclID := guardian.GetEnclaveID()
 	e.logger.Info("Attempting to produce rollup.", log.EnclaveIDKey, enclID)
 	result, err := guardian.GetEnclaveClient().CreateRollup(context.Background(), fromBatch)
@@ -474,7 +478,12 @@ func (e *Service) getActiveSequencerGuardian() (*Guardian, error) {
 	}
 
 	for _, guardian := range e.enclaveGuardians {
-		if *(guardian.GetEnclaveID()) == *activeSequencerID {
+		// We don't check the state of the guardian here, sometimes the active sequencer will flicker out-of-sync with
+		//  the L1 or get restarted and we don't want to flip out of it too eagerly.
+		//
+		// We do check that the guardian is running though, stopped Guardians (e.g. for corrupted enclaves) will not
+		//  recover so will trigger promotion of a new active sequencer.
+		if *(guardian.GetEnclaveID()) == *activeSequencerID && guardian.running.Load() {
 			return guardian, nil
 		}
 	}
