@@ -27,6 +27,7 @@ import (
 // From the POV of the Ten network - a session key is a normal account key
 type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
+	CreateTempSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
 	DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (bool, error)
 	SignTx(ctx context.Context, user *common.GWUser, sessionKeyAddr gethcommon.Address, input *types.Transaction) (*types.Transaction, error)
 }
@@ -60,6 +61,17 @@ func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey,
 	if err != nil {
 		return nil, err
 	}
+	return sk, nil
+}
+
+// CreateTempSessionKey - generates a new session key without storing it in the databas for the purpose of auth requests with no actual accounts
+func (m *skManager) CreateTempSessionKey(user *common.GWUser) (*common.GWSessionKey, error) {
+
+	sk, err := m.createSK(user)
+	if err != nil {
+		return nil, err
+	}
+
 	return sk, nil
 }
 
