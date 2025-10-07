@@ -369,8 +369,8 @@ func queryRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("token ('token') not found in query parameters / URL"))
-		walletExt.Logger().Info("token not found in the query params / URL", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), errors.New("token ('token') not found in query parameters"))
+		walletExt.Logger().Debug("token not found in the query params", log.ErrKey, err)
 		return
 	}
 	address, err := getQueryParameter(conn.ReadRequestParams(), common.AddressQueryParameter)
@@ -421,8 +421,8 @@ func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("token ('token') not found in query parameters / URL"))
-		walletExt.Logger().Info("token not found in the query params / URL", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), errors.New("token ('token') not found in query parameters"))
+		walletExt.Logger().Debug("token not found in the query params", log.ErrKey, err)
 		return
 	}
 
