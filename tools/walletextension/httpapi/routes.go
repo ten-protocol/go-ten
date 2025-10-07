@@ -338,7 +338,7 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	// read userID from query params
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("malformed query: 'u' required - representing encryption token - %w", err))
+		handleError(conn, walletExt.Logger(), fmt.Errorf("malformed query: 'token' required - representing encryption token - %w", err))
 		return
 	}
 
@@ -369,8 +369,8 @@ func queryRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("user ('u') not found in query parameters"))
-		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), errors.New("token ('token') not found in query parameters / URL"))
+		walletExt.Logger().Info("token not found in the query params / URL", log.ErrKey, err)
 		return
 	}
 	address, err := getQueryParameter(conn.ReadRequestParams(), common.AddressQueryParameter)
@@ -421,8 +421,8 @@ func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("user ('u') not found in query parameters"))
-		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), errors.New("token ('token') not found in query parameters / URL"))
+		walletExt.Logger().Info("token not found in the query params / URL", log.ErrKey, err)
 		return
 	}
 
