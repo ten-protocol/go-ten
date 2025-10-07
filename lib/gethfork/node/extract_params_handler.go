@@ -41,7 +41,6 @@ func (handler *httpParamsHandler) ServeHTTP(out http.ResponseWriter, r *http.Req
 	}
 	ctx := context.WithValue(r.Context(), rpc.GWTokenKey{}, val)
 	handler.next.ServeHTTP(out, r.WithContext(ctx))
-	handler.next.ServeHTTP(out, r)
 }
 
 // isLikelyHexToken performs a lightweight validation for a user token
