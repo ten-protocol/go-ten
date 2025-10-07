@@ -64,6 +64,9 @@ const rpcResponseCacheSize = 1_000_000
 // Maximum number of accounts allowed per user
 const MaxAccountsPerUser = 100
 
+// ErrMaxAccountsPerUserReached indicates a user has reached the allowed account limit
+var ErrMaxAccountsPerUserReached = errors.New("maximum number of accounts per user reached")
+
 func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserStorage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, metricsTracker metrics.Metrics, config *common.Config) *Services {
 	var newGatewayCache cache.Cache
 	var err error
@@ -230,7 +233,7 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 
 	// Check if user has reached the maximum number of accounts
 	if len(user.Accounts) >= MaxAccountsPerUser {
-		return fmt.Errorf("maximum number of accounts (%d) reached for this user", MaxAccountsPerUser)
+		return fmt.Errorf("%w", ErrMaxAccountsPerUserReached)
 	}
 
 	// check if a message was signed by the correct address and if the signature is valid
