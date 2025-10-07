@@ -2,6 +2,41 @@
 ---
 # Ten Testnet Change Log
 
+# Oct 2025-10-07 (v1.6.0)
+* This is an L2 upgrade release meaning state will be persisted across the release.
+* A full list of the PRs merged in this release is as below;
+    * `98d0184e` Explicitly handle invalid connection (#2705)
+    * `1b92a076` Merge releases/1.5 into main (#2703)
+    * `119bc59c` Always assert that active seq enclave is not behind (#2698)
+    * `f37589ad` Properly check for batch conflicts in the host database (#2699)
+    * `68efff17` Statedb.val can be nullable. (#2701)
+    * `6135e442` Read chainid from env variable and use hardcoded as fallback (#2697)
+    * `cdf0fad4` Add secure http headers (#2683)
+    * `dbf08497` Remove all 7 day retention periods (#2694)
+    * `3023f197` Atomically update l2 head sequence number and hash in statetracker (#2690)
+    * `01b2e2de` Added metering to visibility config. (#2676)
+    * `fcd9e505` Secure tls config: disable 3des (sweet32) (#2691)
+    * `35533087` Historical contract count endpoint (#2687)
+    * `f304f70f` Only look for canonical, processed l1 blocks as current head (#2684)
+    * `4946b000` Remove uis (#2681)
+    * `bf400b81` Fix visib config bug. in case of error, just ignore the wrong config (#2682)
+    * `533319b4` Return zero if no rollups found (#2679)
+    * `83330c7e` Deploy: fix github paths for mainnet config (#2678)
+    * `c998d971` Fix cleanup runner task (#2675)
+    * `09e7f14a` Check gas prices within tolerance before l1 deploy (#2674)
+    * `77ad4f35` Increase gh runner cleanup frequency (#2673)
+    * `780f3e2e` Increase timeouts (#2670) (#2672)
+    * `dff69433` Add historical tx count table  (#2665)
+    * `62e1d08e` Log error instead of crit when enclave waiting for initial batches (#2666)
+    * `c3fc1190` Fixes for decoding lol. (#2669)
+    * `fa2067d9` Change bridged deployment eth from 0.5 to 0.005 (#2664)
+    * `2926a4a0` Add unique index on key (#2663)
+    * `e034d035` Set chainid in testnet launcher (#2661)
+    * `84dfb6a6` Use tenscan github action only to build the images (#2662)
+    * `4c1a3fb4` Increase db lock timeout (#2658) (#2660)
+    * `99382dbf` Network tests: configurable chain ids per env (#2659)
+    * `25cb304a` Pass chainid to the faucet (#2656)
+
 # Sept 2025-09-12 (v1.5.2)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
