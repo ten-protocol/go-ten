@@ -18,6 +18,12 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
+// dustThresholdWei is the minimum balance considered worth recovering from an expired
+// session key. Set in wei for precision.
+// // 1_000_000_000_000 wei = 1e12 wei = 1,000 gwei = 0.000001 ETH (~$0.004 at $4,000/ETH)
+// Adjust the USD intuition based on current ETH price.
+var dustThresholdWei = big.NewInt(1_000_000_000_000)
+
 // sessionKeyExpirationService runs in the background and monitors users
 type sessionKeyExpirationService struct {
 	storage     storage.UserStorage
@@ -107,9 +113,6 @@ func (s *sessionKeyExpirationService) start() {
 func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 	s.logger.Info("Session key expiration check started")
 
-	// Transactions below this dust threshold are considered dust and wont be recovered
-	dustThreshold := big.NewInt(1_000_000_000_000)
-
 	// Iterate users in pages to avoid loading all into memory
 	ctx := context.Background()
 	const pageSize = 100 // iterate over 100 users at a time
@@ -143,7 +146,7 @@ func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 						continue
 					}
 
-					isBalanceAboveDustThreshold := balance.ToInt().Cmp(dustThreshold) > 0
+					isBalanceAboveDustThreshold := balance.ToInt().Cmp(dustThresholdWei) > 0
 
 					// If balance is above dust threshold we should transfer funds to user's primary account
 					if isBalanceAboveDustThreshold {
