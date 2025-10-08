@@ -52,7 +52,7 @@ type Services struct {
 	NewHeadsService             *subscriptioncommon.NewHeadsService
 	cacheInvalidationCh         chan *tencommon.BatchHeader
 	MetricsTracker              metrics.Metrics
-	sessionKeyExpirationService *SessionKeyExpirationService
+	sessionKeyExpirationService *sessionKeyExpirationService
 }
 
 type NewHeadNotifier interface {

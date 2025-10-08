@@ -18,8 +18,8 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
-// SessionKeyExpirationService runs in the background and monitors users
-type SessionKeyExpirationService struct {
+// sessionKeyExpirationService runs in the background and monitors users
+type sessionKeyExpirationService struct {
 	storage     storage.UserStorage
 	logger      gethlog.Logger
 	stopControl *stopcontrol.StopControl
@@ -30,7 +30,7 @@ type SessionKeyExpirationService struct {
 
 // withSK opens an encrypted RPC connection authorized by the session key at `addr`
 // and runs `fn`. Assumes user.SessionKeys[addr] exists.
-func (s *SessionKeyExpirationService) withSK(
+func (s *sessionKeyExpirationService) withSK(
 	ctx context.Context,
 	user *wecommon.GWUser,
 	addr common.Address,
@@ -47,10 +47,10 @@ func (s *SessionKeyExpirationService) withSK(
 }
 
 // NewSessionKeyExpirationService creates a new session key expiration service
-func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config, services *Services) *SessionKeyExpirationService {
+func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config, services *Services) *sessionKeyExpirationService {
 	logger.Info("Creating session key expiration service", "expirationThreshold", config.SessionKeyExpirationThreshold.String())
 
-	service := &SessionKeyExpirationService{
+	service := &sessionKeyExpirationService{
 		storage:     storage,
 		logger:      logger,
 		stopControl: stopControl,
@@ -71,7 +71,7 @@ func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.
 }
 
 // start begins the periodic user monitoring
-func (s *SessionKeyExpirationService) start() {
+func (s *sessionKeyExpirationService) start() {
 	defer func() {
 		if r := recover(); r != nil {
 			s.logger.Error("Session key expiration service panicked", "error", r)
@@ -104,7 +104,7 @@ func (s *SessionKeyExpirationService) start() {
 }
 
 // sessionKeyExpiration runs the monitoring logic
-func (s *SessionKeyExpirationService) sessionKeyExpiration() {
+func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 	s.logger.Info("Session key expiration check started")
 
 	// Transactions below this dust threshold are considered dust and wont be recovered
@@ -169,7 +169,7 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 }
 
 // transferExpiredSessionKeyFundsToPrimaryAccount sends funds from an expired session key to the user's first account
-func (s *SessionKeyExpirationService) transferExpiredSessionKeyFundsToPrimaryAccount(user *wecommon.GWUser, sessionKeyAddr common.Address, balance *hexutil.Big) error {
+func (s *sessionKeyExpirationService) transferExpiredSessionKeyFundsToPrimaryAccount(user *wecommon.GWUser, sessionKeyAddr common.Address, balance *hexutil.Big) error {
 	ctx := context.Background()
 
 	// Find the first account registered with the user - we will send funds to this account
@@ -236,7 +236,7 @@ func (s *SessionKeyExpirationService) transferExpiredSessionKeyFundsToPrimaryAcc
 }
 
 // getGasPrice retrieves the current gas price
-func (s *SessionKeyExpirationService) getGasPrice(ctx context.Context) (*big.Int, error) {
+func (s *sessionKeyExpirationService) getGasPrice(ctx context.Context) (*big.Int, error) {
 	var result hexutil.Big
 	_, err := WithPlainRPCConnection(ctx, s.services.BackendRPC, func(client *rpc.Client) (*hexutil.Big, error) {
 		err := client.CallContext(ctx, &result, tenrpc.GasPrice)
@@ -251,7 +251,7 @@ func (s *SessionKeyExpirationService) getGasPrice(ctx context.Context) (*big.Int
 }
 
 // estimateGas estimates gas for a transfer
-func (s *SessionKeyExpirationService) estimateGas(ctx context.Context, user *wecommon.GWUser, from, to common.Address, value *hexutil.Big) (uint64, error) {
+func (s *sessionKeyExpirationService) estimateGas(ctx context.Context, user *wecommon.GWUser, from, to common.Address, value *hexutil.Big) (uint64, error) {
 	// Session key presence validated in withSK
 
 	var result hexutil.Uint64
@@ -271,7 +271,7 @@ func (s *SessionKeyExpirationService) estimateGas(ctx context.Context, user *wec
 }
 
 // sendRawTransaction sends a raw transaction using the same approach as SendRawTx
-func (s *SessionKeyExpirationService) sendRawTransaction(ctx context.Context, input hexutil.Bytes, user *wecommon.GWUser, sessionKeyAddr common.Address) (common.Hash, error) {
+func (s *sessionKeyExpirationService) sendRawTransaction(ctx context.Context, input hexutil.Bytes, user *wecommon.GWUser, sessionKeyAddr common.Address) (common.Hash, error) {
 	// Session key presence validated in withSK
 
 	var result common.Hash
@@ -285,7 +285,7 @@ func (s *SessionKeyExpirationService) sendRawTransaction(ctx context.Context, in
 }
 
 // getSessionKeyBalance retrieves the balance for a session key account
-func (s *SessionKeyExpirationService) getSessionKeyBalance(user *wecommon.GWUser, sessionKeyAddr common.Address) (*hexutil.Big, error) {
+func (s *sessionKeyExpirationService) getSessionKeyBalance(user *wecommon.GWUser, sessionKeyAddr common.Address) (*hexutil.Big, error) {
 	ctx := context.Background()
 
 	// Use the pending block for balance checking so pending txs are reflected
