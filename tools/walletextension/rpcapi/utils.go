@@ -129,12 +129,12 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 				return nil, errors.New("illegal access")
 			}
 
-			// Create a temporary session key-backed account so we have a valid viewing key and signature
-			sk, err := w.SKManager.CreateTempSessionKey(user)
+			// Create a temporary account
+			tmpAccount, err := w.SKManager.CreateTempAccount(user)
 			if err != nil {
 				return nil, fmt.Errorf("unable to create session key for unauthenticated request: %w", err)
 			}
-			candidateAccts = append(candidateAccts, sk.Account)
+			candidateAccts = append(candidateAccts, tmpAccount)
 		}
 
 		var rpcErr error

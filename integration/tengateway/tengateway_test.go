@@ -113,8 +113,9 @@ func TestTenGateway(t *testing.T) {
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
 
-		"testSessionKeysGetStorageAt":    testSessionKeysGetStorageAt,
-		"testSessionKeysSendTransaction": testSessionKeysSendTransaction,
+		"testSessionKeysGetStorageAt":      testSessionKeysGetStorageAt,
+		"testSessionKeysSendTransaction":   testSessionKeysSendTransaction,
+		"testEthCallWithoutAuthentication": testEthCallWithoutAuthentication,
 		// "testRateLimiter":                   testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -1045,6 +1046,49 @@ func testInvokeNonSensitiveMethod(t *testing.T, _ int, httpURL, wsURL string, w 
 	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", "eth_chainId")) {
 		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", "eth_chainId")
 	}
+}
+
+func testEthCallWithoutAuthentication(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
+	require.NoError(t, err)
+
+	// Test eth_call without authentication (only /join was called)
+	// This should work for public contract calls
+	params := []interface{}{
+		map[string]interface{}{
+			"data": "0x382396ee",
+			"to":   "0x4990728268555284a313294cDF108CeFf516D803",
+		},
+		"latest",
+	}
+
+	respBody := makeHTTPEthJSONReq(httpURL, "eth_call", user.tgClient.UserID(), params)
+
+	// Parse the response to check if it's successful
+	var jsonResp map[string]interface{}
+	err = json.Unmarshal(respBody, &jsonResp)
+	require.NoError(t, err)
+
+	// Check if the response contains an error
+	if errorField, exists := jsonResp["error"]; exists {
+		t.Errorf("eth_call should work without authentication, but got error: %s", errorField)
+	}
+
+	// Verify the response has the expected structure
+	require.Contains(t, jsonResp, "jsonrpc", "Response should contain jsonrpc field")
+	require.Contains(t, jsonResp, "id", "Response should contain id field")
+	require.Contains(t, jsonResp, "result", "Response should contain result field")
+
+	// Verify the jsonrpc version
+	require.Equal(t, "2.0", jsonResp["jsonrpc"], "jsonrpc version should be 2.0")
+
+	// Verify the result is a hex string (could be "0x" for empty result or actual data)
+	result, ok := jsonResp["result"].(string)
+	require.True(t, ok, "Result should be a string")
+	require.True(t, strings.HasPrefix(result, "0x"), "Result should be a hex string starting with 0x")
+
+	// If we get here without error, the test passed
+	t.Logf("✓ eth_call succeeded without authentication, got result: %s", result)
 }
 
 func makeRequestHTTP(url string, body []byte) []byte {
