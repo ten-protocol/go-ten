@@ -2,9 +2,11 @@ package services
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -30,19 +32,50 @@ type SKManager interface {
 	DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (bool, error)
 	SignTx(ctx context.Context, user *common.GWUser, sessionKeyAddr gethcommon.Address, input *types.Transaction) (*types.Transaction, error)
 	CreateTempAccount(user *common.GWUser) (*common.GWAccount, error) // used for unauthenticated RPC requests
+
+	// Get or create a temp (in-memory) account to avoid per-request generation
+	GetOrCreateTempAccount(user *common.GWUser, ttl time.Duration) (*common.GWAccount, error)
 }
 
 type skManager struct {
 	storage storage.UserStorage
 	config  *common.Config
 	logger  gethlog.Logger
+
+	// in-memory temp accounts cache (not persisted)
+	tempMu       sync.Mutex
+	tempAccounts map[string]*tempAcctEntry // key = hex-encoded userID
+}
+
+type tempAcctEntry struct {
+	acct      *common.GWAccount
+	expiresAt time.Time
+}
+
+func (m *skManager) GetOrCreateTempAccount(user *common.GWUser, ttl time.Duration) (*common.GWAccount, error) {
+	key := hex.EncodeToString(user.ID)
+
+	m.tempMu.Lock()
+	defer m.tempMu.Unlock()
+
+	if entry, ok := m.tempAccounts[key]; ok && time.Now().Before(entry.expiresAt) && entry.acct != nil {
+		return entry.acct, nil
+	}
+
+	acct, err := m.CreateTempAccount(user)
+	if err != nil {
+		return nil, err
+	}
+	m.tempAccounts[key] = &tempAcctEntry{acct: acct, expiresAt: time.Now().Add(ttl)}
+	return acct, nil
 }
 
 func NewSKManager(storage storage.UserStorage, config *common.Config, logger gethlog.Logger) SKManager {
 	return &skManager{
-		storage: storage,
-		config:  config,
-		logger:  logger,
+		storage:      storage,
+		config:       config,
+		logger:       logger,
+		tempAccounts: make(map[string]*tempAcctEntry),
 	}
 }
 
