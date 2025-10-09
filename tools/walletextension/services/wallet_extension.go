@@ -80,7 +80,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 
 	rateLimiter := ratelimiter.NewRateLimiter(config.RateLimitUserComputeTime, config.RateLimitWindow, uint32(config.RateLimitMaxConcurrentRequests), logger)
 
-	activityTracker := NewSessionKeyActivityTracker()
+	activityTracker := NewSessionKeyActivityTracker(logger)
 
 	services := Services{
 		HostAddrHTTP:        hostAddrHTTP,
