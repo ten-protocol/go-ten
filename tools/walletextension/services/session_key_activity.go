@@ -5,9 +5,10 @@ import (
 	"time"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethlog "github.com/ethereum/go-ethereum/log"
 )
 
-// SessionKeyActivity holds last-activity metadata for a session key
+// SessionKeyActivity holds last-activity metadata for a session key (public return type)
 type SessionKeyActivity struct {
 	Addr       gethcommon.Address
 	UserID     []byte
@@ -23,25 +24,46 @@ type SessionKeyActivityTracker interface {
 
 type sessionKeyActivityTracker struct {
 	mu    sync.RWMutex
-	byKey map[gethcommon.Address]SessionKeyActivity
+	byKey map[gethcommon.Address]sessionKeyActivityState
+	// maxEntries bounds memory usage; when full, oldest entry is evicted upon new insert
+	maxEntries int
+	logger     gethlog.Logger
 }
 
-func NewSessionKeyActivityTracker() SessionKeyActivityTracker {
+// sessionKeyActivityState is the internal storage value; address is the map key
+type sessionKeyActivityState struct {
+	UserID     []byte
+	LastActive time.Time
+}
+
+// defaultMaxActivityEntries defines an upper bound to avoid unbounded memory growth
+const defaultMaxActivityEntries = 100000
+
+func NewSessionKeyActivityTracker(logger gethlog.Logger) SessionKeyActivityTracker {
 	return &sessionKeyActivityTracker{
-		byKey: make(map[gethcommon.Address]SessionKeyActivity),
+		byKey:      make(map[gethcommon.Address]sessionKeyActivityState),
+		maxEntries: defaultMaxActivityEntries,
+		logger:     logger,
 	}
 }
 
 func (t *sessionKeyActivityTracker) MarkActive(userID []byte, addr gethcommon.Address) {
 	now := time.Now()
 	t.mu.Lock()
-	existing, ok := t.byKey[addr]
-	if ok {
-		existing.LastActive = now
-		// keep original user association
-		t.byKey[addr] = existing
+	// if the address is already in the map, update the last active time
+	if state, ok := t.byKey[addr]; ok {
+		state.LastActive = now
+		t.byKey[addr] = state
 	} else {
-		t.byKey[addr] = SessionKeyActivity{Addr: addr, UserID: userID, LastActive: now}
+		// check if the map is at capacity
+		if len(t.byKey) >= t.maxEntries {
+			if t.logger != nil {
+				t.logger.Warn("SessionKeyActivityTracker capacity reached; dropping new activity", "capacity", t.maxEntries, "addr", addr.Hex())
+			}
+		} else {
+			// if the map is not at capacity, add the address to the map
+			t.byKey[addr] = sessionKeyActivityState{UserID: userID, LastActive: now}
+		}
 	}
 	t.mu.Unlock()
 }
@@ -50,9 +72,9 @@ func (t *sessionKeyActivityTracker) ListOlderThan(cutoff time.Time) []SessionKey
 	t.mu.RLock()
 	// preallocate with current size upper bound; filter below
 	result := make([]SessionKeyActivity, 0, len(t.byKey))
-	for _, entry := range t.byKey {
-		if entry.LastActive.Before(cutoff) {
-			result = append(result, entry)
+	for addr, state := range t.byKey {
+		if state.LastActive.Before(cutoff) {
+			result = append(result, SessionKeyActivity{Addr: addr, UserID: state.UserID, LastActive: state.LastActive})
 		}
 	}
 	t.mu.RUnlock()
