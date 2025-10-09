@@ -113,61 +113,52 @@ func (s *sessionKeyExpirationService) start() {
 func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 	s.logger.Info("Session key expiration check started")
 
-	// Iterate users in pages to avoid loading all into memory
-	ctx := context.Background()
-	const pageSize = 100 // iterate over 100 users at a time
-	var nextToken []byte
+	cutoff := time.Now().Add(-s.config.SessionKeyExpirationThreshold)
+	candidates := s.services.ActivityTracker.ListOlderThan(cutoff)
 
-	for {
-		users, token, err := s.storage.ListUsers(ctx, pageSize, nextToken)
+	if len(candidates) == 0 {
+		return
+	}
+
+	for _, c := range candidates {
+		// Load the user for this session key
+		user, err := s.storage.GetUser(c.UserID)
+		if err != nil || user == nil {
+			s.logger.Error("Failed to load user for session key candidate", "error", err)
+			continue
+		}
+
+		// Ensure this session key still belongs to the user
+		if _, ok := user.SessionKeys[c.Addr]; !ok {
+			// The session key may have been deleted; remove from tracker
+			s.services.ActivityTracker.Delete(c.Addr)
+			continue
+		}
+
+		// Check balance for expired session key
+		balance, err := s.getSessionKeyBalance(user, c.Addr)
 		if err != nil {
-			s.logger.Error("Failed to list users page", "error", err)
-			return
-		}
-		if len(users) == 0 && token == nil {
-			break
+			s.logger.Error("Failed to get balance for expired session key", "error", err, "sessionKeyAddress", c.Addr.Hex())
+			continue
 		}
 
-		s.logger.Info("Session key expiration - checking batch", "batchSize", len(users), "expirationThreshold", s.config.SessionKeyExpirationThreshold.String())
-		now := time.Now()
-
-		for _, user := range users {
-			// Check each session key for expiration
-			for sessionKeyAddr, sessionKey := range user.SessionKeys {
-				age := now.Sub(sessionKey.CreatedAt)
-				// check if session key is expired
-				if age > s.config.SessionKeyExpirationThreshold {
-					// Check balance for expired session key
-					balance, err := s.getSessionKeyBalance(user, sessionKeyAddr)
-					if err != nil {
-						s.logger.Error("Failed to get balance for expired session key",
-							"error", err,
-							"sessionKeyAddress", sessionKeyAddr.Hex())
-						continue
-					}
-
-					isBalanceAboveDustThreshold := balance.ToInt().Cmp(dustThresholdWei) > 0
-
-					// If balance is above dust threshold we should transfer funds to user's primary account
-					if isBalanceAboveDustThreshold {
-						err := s.transferExpiredSessionKeyFundsToPrimaryAccount(user, sessionKeyAddr, balance)
-						if err != nil {
-							s.logger.Error("Failed to recover funds from expired session key",
-								"error", err,
-								"userID", wecommon.HashForLogging(user.ID),
-								"sessionKeyAddress", sessionKeyAddr.Hex(),
-								"balance", balance)
-						}
-					}
-				}
-			}
+		if balance.ToInt().Cmp(dustThresholdWei) <= 0 {
+			continue
 		}
 
-		// move to next page
-		nextToken = token
-		if nextToken == nil {
-			break
+		// Transfer funds to user's primary account
+		err = s.transferExpiredSessionKeyFundsToPrimaryAccount(user, c.Addr, balance)
+		if err != nil {
+			s.logger.Error("Failed to recover funds from expired session key",
+				"error", err,
+				"userID", wecommon.HashForLogging(user.ID),
+				"sessionKeyAddress", c.Addr.Hex(),
+				"balance", balance)
+			continue
 		}
+
+		// After successful external operation, delete from tracker
+		_ = s.services.ActivityTracker.Delete(c.Addr)
 	}
 }
 
