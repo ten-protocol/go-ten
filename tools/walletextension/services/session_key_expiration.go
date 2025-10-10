@@ -2,13 +2,10 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
-	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
@@ -23,24 +20,6 @@ type SessionKeyExpirationService struct {
 	backendRPC      *BackendRPC
 	activityTracker SessionKeyActivityTracker
 	txSender        TxSender
-}
-
-// withSK opens an encrypted RPC connection authorized by the session key at `addr`
-// and runs `fn`. Assumes user.SessionKeys[addr] exists.
-func (s *SessionKeyExpirationService) withSK(
-	ctx context.Context,
-	user *wecommon.GWUser,
-	addr common.Address,
-	fn func(ctx context.Context, c *tenrpc.EncRPCClient) error,
-) error {
-	sk, ok := user.SessionKeys[addr]
-	if !ok {
-		return fmt.Errorf("session key not found for address %s", addr.Hex())
-	}
-	_, err := WithEncRPCConnection(ctx, s.backendRPC, sk.Account, func(c *tenrpc.EncRPCClient) (*struct{}, error) {
-		return &struct{}{}, fn(ctx, c)
-	})
-	return err
 }
 
 // NewSessionKeyExpirationService creates a new session key expiration service
