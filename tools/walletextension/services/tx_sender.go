@@ -15,6 +15,12 @@ import (
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
 
+// dustThresholdWei is the minimum balance considered worth recovering from an expired
+// session key. Set in wei for precision.
+// 1_000_000_000_000 wei = 1e12 wei = 1,000 gwei = 0.000001 ETH (~$0.004 at $4,000/ETH)
+// Adjust the USD intuition based on current ETH price.
+var dustThresholdWei = big.NewInt(1_000_000_000_000)
+
 // TxSender encapsulates sending ETH value transactions signed by a session key
 type TxSender interface {
 	// SendAllMinusGasWithSK transfers entire balance minus gas from `from` to `to`
@@ -46,6 +52,11 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 		return nil
 	}); err != nil {
 		return gethcommon.Hash{}, fmt.Errorf("failed to get balance via RPC: %w", err)
+	}
+
+	// Check if balance is below dust threshold - skip transfer if so
+	if balance.ToInt().Cmp(dustThresholdWei) <= 0 {
+		return gethcommon.Hash{}, nil
 	}
 
 	gasPrice, err := s.getGasPrice(ctx)
