@@ -3,25 +3,15 @@ package services
 import (
 	"context"
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	gethlog "github.com/ethereum/go-ethereum/log"
-	tencommonrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
-	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
-
-// dustThresholdWei is the minimum balance considered worth recovering from an expired
-// session key. Set in wei for precision.
-// // 1_000_000_000_000 wei = 1e12 wei = 1,000 gwei = 0.000001 ETH (~$0.004 at $4,000/ETH)
-// Adjust the USD intuition based on current ETH price.
-var dustThresholdWei = big.NewInt(1_000_000_000_000)
 
 // sessionKeyExpirationService runs in the background and monitors users
 type sessionKeyExpirationService struct {
@@ -134,17 +124,6 @@ func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 			continue
 		}
 
-		// Check balance for expired session key
-		balance, err := s.getSessionKeyBalance(user, c.Addr)
-		if err != nil {
-			s.logger.Error("Failed to get balance for expired session key", "error", err, "sessionKeyAddress", c.Addr.Hex())
-			continue
-		}
-
-		if balance.ToInt().Cmp(dustThresholdWei) <= 0 {
-			continue
-		}
-
 		// Transfer funds to user's primary account using TxSender (sends all minus gas)
 		// Find the first account registered with the user - we will send funds to this account
 		var firstAccount *wecommon.GWAccount
@@ -162,40 +141,11 @@ func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 			s.logger.Error("Failed to recover funds from expired session key",
 				"error", err,
 				"userID", wecommon.HashForLogging(user.ID),
-				"sessionKeyAddress", c.Addr.Hex(),
-				"balance", balance)
+				"sessionKeyAddress", c.Addr.Hex())
 			continue
 		}
 
 		// After successful external operation, delete from tracker
 		_ = s.services.ActivityTracker.Delete(c.Addr)
 	}
-}
-
-// getSessionKeyBalance retrieves the balance for a session key account
-func (s *sessionKeyExpirationService) getSessionKeyBalance(user *wecommon.GWUser, sessionKeyAddr common.Address) (*hexutil.Big, error) {
-	ctx := context.Background()
-
-	// Use the pending block for balance checking so pending txs are reflected
-	pending := rpc.PendingBlockNumber
-	blockNrOrHash := rpc.BlockNumberOrHash{
-		BlockNumber: &pending,
-	}
-
-	// Use the EncRPC to get balance via session key auth
-	var balance *hexutil.Big
-	err := s.withSK(ctx, user, sessionKeyAddr, func(ctx context.Context, rpcClient *tenrpc.EncRPCClient) error {
-		var result hexutil.Big
-		if callErr := rpcClient.CallContext(ctx, &result, tencommonrpc.ERPCGetBalance, sessionKeyAddr, blockNrOrHash); callErr != nil {
-			return callErr
-		}
-		balance = &result
-		return nil
-	})
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to get balance via RPC: %w", err)
-	}
-
-	return balance, nil
 }
