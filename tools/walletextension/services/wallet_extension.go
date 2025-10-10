@@ -54,6 +54,7 @@ type Services struct {
 	MetricsTracker              metrics.Metrics
 	sessionKeyExpirationService *sessionKeyExpirationService
 	ActivityTracker             SessionKeyActivityTracker
+	TxSender                    TxSender
 }
 
 type NewHeadNotifier interface {
@@ -98,6 +99,9 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		MetricsTracker:      metricsTracker,
 		ActivityTracker:     activityTracker,
 	}
+
+	// Initialize transaction sender
+	services.TxSender = NewTxSender(services.BackendRPC, services.SKManager, logger)
 
 	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(
 		func() (chan *tencommon.BatchHeader, <-chan error, error) {
