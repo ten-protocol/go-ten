@@ -65,7 +65,6 @@ func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey,
 
 	// Mark activity for the new session key
 	if m.activityTracker != nil && sk != nil && sk.Account != nil && sk.Account.Address != nil {
-		fmt.Printf("Marking active (CREATE): %s for user %s\n", sk.Account.Address.Hex(), user.ID)
 		m.activityTracker.MarkActive(user.ID, *sk.Account.Address)
 	}
 	return sk, nil
@@ -156,7 +155,6 @@ func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, sessionKeyA
 
 	m.logger.Debug("Signed transaction with session key", "stxHash", stx.Hash().Hex(), "sessionKey", sessionKeyAddr.Hex())
 	if m.activityTracker != nil {
-		fmt.Printf("Marking active (SIGN): %s for user %s\n", sessionKeyAddr.Hex(), user.ID)
 		m.activityTracker.MarkActive(user.ID, sessionKeyAddr)
 	}
 
