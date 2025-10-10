@@ -13,19 +13,21 @@ import (
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
 
-// sessionKeyExpirationService runs in the background and monitors users
-type sessionKeyExpirationService struct {
-	storage     storage.UserStorage
-	logger      gethlog.Logger
-	stopControl *stopcontrol.StopControl
-	ticker      *time.Ticker
-	config      *wecommon.Config
-	services    *Services // Reference to main services for RPC access
+// SessionKeyExpirationService runs in the background and monitors users
+type SessionKeyExpirationService struct {
+	storage         storage.UserStorage
+	logger          gethlog.Logger
+	stopControl     *stopcontrol.StopControl
+	ticker          *time.Ticker
+	config          *wecommon.Config
+	backendRPC      *BackendRPC
+	activityTracker SessionKeyActivityTracker
+	txSender        TxSender
 }
 
 // withSK opens an encrypted RPC connection authorized by the session key at `addr`
 // and runs `fn`. Assumes user.SessionKeys[addr] exists.
-func (s *sessionKeyExpirationService) withSK(
+func (s *SessionKeyExpirationService) withSK(
 	ctx context.Context,
 	user *wecommon.GWUser,
 	addr common.Address,
@@ -35,22 +37,24 @@ func (s *sessionKeyExpirationService) withSK(
 	if !ok {
 		return fmt.Errorf("session key not found for address %s", addr.Hex())
 	}
-	_, err := WithEncRPCConnection(ctx, s.services.BackendRPC, sk.Account, func(c *tenrpc.EncRPCClient) (*struct{}, error) {
+	_, err := WithEncRPCConnection(ctx, s.backendRPC, sk.Account, func(c *tenrpc.EncRPCClient) (*struct{}, error) {
 		return &struct{}{}, fn(ctx, c)
 	})
 	return err
 }
 
 // NewSessionKeyExpirationService creates a new session key expiration service
-func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config, services *Services) *sessionKeyExpirationService {
+func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config, backendRPC *BackendRPC, activityTracker SessionKeyActivityTracker, txSender TxSender) *SessionKeyExpirationService {
 	logger.Info("Creating session key expiration service", "expirationThreshold", config.SessionKeyExpirationThreshold.String())
 
-	service := &sessionKeyExpirationService{
-		storage:     storage,
-		logger:      logger,
-		stopControl: stopControl,
-		config:      config,
-		services:    services,
+	service := &SessionKeyExpirationService{
+		storage:         storage,
+		logger:          logger,
+		stopControl:     stopControl,
+		config:          config,
+		backendRPC:      backendRPC,
+		activityTracker: activityTracker,
+		txSender:        txSender,
 	}
 
 	// Start the service
@@ -66,7 +70,7 @@ func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.
 }
 
 // start begins the periodic user monitoring
-func (s *sessionKeyExpirationService) start() {
+func (s *SessionKeyExpirationService) start() {
 	defer func() {
 		if r := recover(); r != nil {
 			s.logger.Error("Session key expiration service panicked", "error", r)
@@ -99,11 +103,11 @@ func (s *sessionKeyExpirationService) start() {
 }
 
 // sessionKeyExpiration runs the monitoring logic
-func (s *sessionKeyExpirationService) sessionKeyExpiration() {
+func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 	s.logger.Info("Session key expiration check started")
 
 	cutoff := time.Now().Add(-s.config.SessionKeyExpirationThreshold)
-	candidates := s.services.ActivityTracker.ListOlderThan(cutoff)
+	candidates := s.activityTracker.ListOlderThan(cutoff)
 
 	if len(candidates) == 0 {
 		return
@@ -120,7 +124,7 @@ func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 		// Ensure this session key still belongs to the user
 		if _, ok := user.SessionKeys[c.Addr]; !ok {
 			// The session key may have been deleted; remove from tracker
-			s.services.ActivityTracker.Delete(c.Addr)
+			s.activityTracker.Delete(c.Addr)
 			continue
 		}
 
@@ -136,7 +140,7 @@ func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 			continue
 		}
 
-		_, err = s.services.TxSender.SendAllMinusGasWithSK(context.Background(), user, c.Addr, *firstAccount.Address)
+		_, err = s.txSender.SendAllMinusGasWithSK(context.Background(), user, c.Addr, *firstAccount.Address)
 		if err != nil {
 			s.logger.Error("Failed to recover funds from expired session key",
 				"error", err,
@@ -146,6 +150,6 @@ func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 		}
 
 		// After successful external operation, delete from tracker
-		_ = s.services.ActivityTracker.Delete(c.Addr)
+		_ = s.activityTracker.Delete(c.Addr)
 	}
 }

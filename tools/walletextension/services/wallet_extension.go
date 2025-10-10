@@ -38,23 +38,22 @@ import (
 
 // Services handles the various business logic for the api endpoints
 type Services struct {
-	HostAddrHTTP                string // The HTTP address on which the TEN host can be reached
-	HostAddrWS                  string // The WS address on which the TEN host can be reached
-	Storage                     storage.UserStorage
-	logger                      gethlog.Logger
-	stopControl                 *stopcontrol.StopControl
-	version                     string
-	RPCResponsesCache           cache.Cache
-	BackendRPC                  *BackendRPC
-	RateLimiter                 *ratelimiter.RateLimiter
-	SKManager                   SKManager
-	Config                      *common.Config
-	NewHeadsService             *subscriptioncommon.NewHeadsService
-	cacheInvalidationCh         chan *tencommon.BatchHeader
-	MetricsTracker              metrics.Metrics
-	sessionKeyExpirationService *sessionKeyExpirationService
-	ActivityTracker             SessionKeyActivityTracker
-	TxSender                    TxSender
+	HostAddrHTTP        string // The HTTP address on which the TEN host can be reached
+	HostAddrWS          string // The WS address on which the TEN host can be reached
+	Storage             storage.UserStorage
+	logger              gethlog.Logger
+	stopControl         *stopcontrol.StopControl
+	version             string
+	RPCResponsesCache   cache.Cache
+	BackendRPC          *BackendRPC
+	RateLimiter         *ratelimiter.RateLimiter
+	SKManager           SKManager
+	Config              *common.Config
+	NewHeadsService     *subscriptioncommon.NewHeadsService
+	cacheInvalidationCh chan *tencommon.BatchHeader
+	MetricsTracker      metrics.Metrics
+	ActivityTracker     SessionKeyActivityTracker
+	TxSender            TxSender
 }
 
 type NewHeadNotifier interface {
@@ -121,9 +120,6 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		})
 
 	go _startCacheEviction(&services, logger)
-
-	// Create and start session key expiration service
-	services.sessionKeyExpirationService = NewSessionKeyExpirationService(storage, logger, stopControl, config, &services)
 
 	return &services
 }
