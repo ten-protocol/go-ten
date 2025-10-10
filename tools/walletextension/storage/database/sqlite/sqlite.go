@@ -15,7 +15,6 @@ package sqlite
 */
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -200,57 +199,6 @@ func (s *SqliteDB) GetUser(userID []byte) (*wecommon.GWUser, error) {
 		return nil, err
 	}
 	return user.ToGWUser()
-}
-
-// ListUsers returns a page using keyset pagination on id ASC.
-// Token is the last returned id; empty token means start.
-func (s *SqliteDB) ListUsers(ctx context.Context, pageSize int, nextToken []byte) ([]*wecommon.GWUser, []byte, error) {
-	var (
-		rows *sql.Rows
-		err  error
-	)
-	lastID := string(nextToken)
-
-	if lastID == "" {
-		rows, err = s.db.QueryContext(ctx,
-			"SELECT id, user_data FROM users ORDER BY id ASC LIMIT ?", pageSize)
-	} else {
-		rows, err = s.db.QueryContext(ctx,
-			"SELECT id, user_data FROM users WHERE id > ? ORDER BY id ASC LIMIT ?", lastID, pageSize)
-	}
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to query users: %w", err)
-	}
-	defer rows.Close()
-
-	users := make([]*wecommon.GWUser, 0, pageSize)
-	var last string
-
-	for rows.Next() {
-		var id, data string
-		if err := rows.Scan(&id, &data); err != nil {
-			return nil, nil, fmt.Errorf("failed to scan row: %w", err)
-		}
-		var userDB dbcommon.GWUserDB
-		if err := json.Unmarshal([]byte(data), &userDB); err != nil {
-			return nil, nil, fmt.Errorf("failed to unmarshal user: %w", err)
-		}
-		u, err := userDB.ToGWUser()
-		if err != nil {
-			return nil, nil, err
-		}
-		users = append(users, u)
-		last = id
-	}
-	if err := rows.Err(); err != nil {
-		return nil, nil, err
-	}
-
-	// If fewer than pageSize returned, we're done.
-	if len(users) < pageSize {
-		return users, nil, nil
-	}
-	return users, []byte(last), nil
 }
 
 func (s *SqliteDB) readUser(dbTx *sql.Tx, userID []byte) (dbcommon.GWUserDB, error) {

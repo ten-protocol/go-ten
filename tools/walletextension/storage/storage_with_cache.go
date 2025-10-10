@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"context"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
@@ -78,10 +76,6 @@ func (s *UserStorageWithCache) GetUser(userID []byte) (*wecommon.GWUser, error) 
 	return cache.WithCache(s.cache, &cache.Cfg{Type: cache.LongLiving}, userID, func() (*wecommon.GWUser, error) {
 		return s.storage.GetUser(userID)
 	})
-}
-
-func (s *UserStorageWithCache) ListUsers(ctx context.Context, pageSize int, nextToken []byte) ([]*wecommon.GWUser, []byte, error) {
-	return s.storage.ListUsers(ctx, pageSize, nextToken)
 }
 
 // GetEncryptionKey delegates to the underlying storage
