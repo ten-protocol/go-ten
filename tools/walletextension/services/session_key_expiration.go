@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	tencommonrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
@@ -146,8 +145,19 @@ func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 			continue
 		}
 
-		// Transfer funds to user's primary account
-		err = s.transferExpiredSessionKeyFundsToPrimaryAccount(user, c.Addr, balance)
+		// Transfer funds to user's primary account using TxSender (sends all minus gas)
+		// Find the first account registered with the user - we will send funds to this account
+		var firstAccount *wecommon.GWAccount
+		for _, account := range user.Accounts {
+			firstAccount = account
+			break
+		}
+		if firstAccount == nil || firstAccount.Address == nil {
+			s.logger.Error("No primary account found for user", "userID", wecommon.HashForLogging(user.ID))
+			continue
+		}
+
+		_, err = s.services.TxSender.SendAllMinusGasWithSK(context.Background(), user, c.Addr, *firstAccount.Address)
 		if err != nil {
 			s.logger.Error("Failed to recover funds from expired session key",
 				"error", err,
@@ -160,122 +170,6 @@ func (s *sessionKeyExpirationService) sessionKeyExpiration() {
 		// After successful external operation, delete from tracker
 		_ = s.services.ActivityTracker.Delete(c.Addr)
 	}
-}
-
-// transferExpiredSessionKeyFundsToPrimaryAccount sends funds from an expired session key to the user's first account
-func (s *sessionKeyExpirationService) transferExpiredSessionKeyFundsToPrimaryAccount(user *wecommon.GWUser, sessionKeyAddr common.Address, balance *hexutil.Big) error {
-	ctx := context.Background()
-
-	// Find the first account registered with the user - we will send funds to this account
-	var firstAccount *wecommon.GWAccount
-	for _, account := range user.Accounts {
-		firstAccount = account
-		break // Get the first account
-	}
-
-	if firstAccount == nil {
-		return fmt.Errorf("no accounts found for user %s", wecommon.HashForLogging(user.ID))
-	}
-
-	gasPrice, err := s.getGasPrice(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get gas price: %w", err)
-	}
-
-	gasLimit, err := s.estimateGas(ctx, user, sessionKeyAddr, *firstAccount.Address, balance)
-	if err != nil {
-		return fmt.Errorf("failed to estimate gas: %w", err)
-	}
-
-	// Calculate gas cost: gasPrice * gasLimit
-	gasCost := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimit)))
-	balanceInt := balance.ToInt()
-
-	// Calculate amount to send: balance - gasCost
-	amountToSend := new(big.Int).Sub(balanceInt, gasCost)
-
-	legacyTx := &types.LegacyTx{
-		To:       firstAccount.Address,
-		Value:    amountToSend,
-		Gas:      gasLimit,
-		GasPrice: gasPrice,
-	}
-
-	tx := types.NewTx(legacyTx)
-	if tx == nil {
-		return fmt.Errorf("failed to create transaction")
-	}
-
-	// Sign the transaction with the session key
-	signedTx, err := s.services.SKManager.SignTx(ctx, user, sessionKeyAddr, tx)
-	if err != nil {
-		s.logger.Error("Failed to sign transaction with session key", "error", err, "sessionKeyAddress", sessionKeyAddr.Hex())
-		return fmt.Errorf("failed to sign transaction with session key: %w", err)
-	}
-	blob, err := signedTx.MarshalBinary()
-	if err != nil {
-		s.logger.Error("Failed to marshal signed transaction", "error", err)
-		return fmt.Errorf("failed to marshal signed transaction: %w", err)
-	}
-
-	_, err = s.sendRawTransaction(ctx, blob, user, sessionKeyAddr)
-	if err != nil {
-		s.logger.Error("Failed to send transaction", "error", err, "sessionKeyAddress", sessionKeyAddr.Hex())
-		return fmt.Errorf("failed to send transaction: %w", err)
-	}
-
-	// we don't wait for the receipt here if there was an error we will retry this transaction in the next inverval
-
-	return nil
-}
-
-// getGasPrice retrieves the current gas price
-func (s *sessionKeyExpirationService) getGasPrice(ctx context.Context) (*big.Int, error) {
-	var result hexutil.Big
-	_, err := WithPlainRPCConnection(ctx, s.services.BackendRPC, func(client *rpc.Client) (*hexutil.Big, error) {
-		err := client.CallContext(ctx, &result, tenrpc.GasPrice)
-		return &result, err
-	})
-	if err != nil {
-		s.logger.Error("Failed to get gas price", "error", err)
-		return nil, fmt.Errorf("failed to get gas price via RPC: %w", err)
-	}
-	gasPrice := result.ToInt()
-	return gasPrice, nil
-}
-
-// estimateGas estimates gas for a transfer
-func (s *sessionKeyExpirationService) estimateGas(ctx context.Context, user *wecommon.GWUser, from, to common.Address, value *hexutil.Big) (uint64, error) {
-	// Session key presence validated in withSK
-
-	var result hexutil.Uint64
-	err := s.withSK(ctx, user, from, func(ctx context.Context, rpcClient *tenrpc.EncRPCClient) error {
-		params := map[string]interface{}{
-			"from":  from.Hex(),
-			"to":    to.Hex(),
-			"value": value.String(),
-		}
-		return rpcClient.CallContext(ctx, &result, tencommonrpc.ERPCEstimateGas, params)
-	})
-	if err != nil {
-		s.logger.Error("Failed to estimate gas", "error", err, "from", from.Hex(), "to", to.Hex(), "value", value.String())
-		return 0, fmt.Errorf("failed to estimate gas via RPC: %w", err)
-	}
-	return uint64(result), nil
-}
-
-// sendRawTransaction sends a raw transaction using the same approach as SendRawTx
-func (s *sessionKeyExpirationService) sendRawTransaction(ctx context.Context, input hexutil.Bytes, user *wecommon.GWUser, sessionKeyAddr common.Address) (common.Hash, error) {
-	// Session key presence validated in withSK
-
-	var result common.Hash
-	err := s.withSK(ctx, user, sessionKeyAddr, func(ctx context.Context, rpcClient *tenrpc.EncRPCClient) error {
-		return rpcClient.CallContext(ctx, &result, tencommonrpc.ERPCSendRawTransaction, input)
-	})
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return result, nil
 }
 
 // getSessionKeyBalance retrieves the balance for a session key account
