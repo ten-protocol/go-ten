@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"context"
 	"fmt"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -21,7 +20,6 @@ type UserStorage interface {
 	AddSessionKey(userID []byte, key common.GWSessionKey) error
 	RemoveSessionKey(userID []byte, sessionKeyAddr *gethcommon.Address) error
 	GetUser(userID []byte) (*common.GWUser, error)
-	ListUsers(ctx context.Context, pageSize int, nextToken []byte) ([]*common.GWUser, []byte, error)
 	GetEncryptionKey() []byte
 }
 
