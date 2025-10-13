@@ -23,8 +23,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	stdlog "log"
 	"net"
 	"net/http"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -146,6 +148,8 @@ func (h *httpServer) start() error {
 
 	// Initialize the server.
 	h.server = &http.Server{Handler: h}
+	// Always install an ErrorLog writer that filters out common TLS handshake noise
+	h.server.ErrorLog = stdlog.New(&handshakeFilterWriter{w: os.Stderr}, "", 0)
 	if h.timeouts != (rpc.HTTPTimeouts{}) {
 		CheckTimeouts(&h.timeouts)
 		h.server.ReadTimeout = h.timeouts.ReadTimeout
@@ -216,6 +220,20 @@ func (h *httpServer) start() error {
 		}
 	}
 	return nil
+}
+
+// handshakeFilterWriter suppresses common noisy TLS handshake errors emitted by net/http.
+type handshakeFilterWriter struct {
+	w io.Writer
+}
+
+func (f *handshakeFilterWriter) Write(p []byte) (int, error) {
+	s := string(p)
+	if strings.Contains(s, "TLS handshake error") || strings.Contains(s, "remote error: tls:") {
+		// Pretend we wrote it to avoid fallback logging
+		return len(p), nil
+	}
+	return f.w.Write(p)
 }
 
 func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
