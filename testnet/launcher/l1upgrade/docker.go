@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -51,6 +53,21 @@ func (s *UpgradeContracts) Start() error {
 	}
 
 	fmt.Printf("Starting upgrade contracts script. NetworkConfigAddress: %s\n", s.cfg.networkConfigAddress)
+	fmt.Printf("Upgrade script value: '%s'\n", s.cfg.upgradeScript)
+	fmt.Printf("Full script path: '%s'\n", "scripts/upgrade/"+s.cfg.upgradeScript)
+	fmt.Printf("Docker command: %v\n", cmds)
+
+	// Mount only the scripts directory to use updated scripts
+	// This avoids conflicts with node_modules which are platform-specific
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current working directory: %w", err)
+	}
+	scriptsPath := filepath.Join(cwd, "contracts", "scripts")
+	fmt.Printf("Mounting local scripts directory: %s\n", scriptsPath)
+	volumes := map[string]string{
+		scriptsPath: "/home/obscuro/go-obscuro/contracts/scripts",
+	}
 
 	containerID, err := docker.StartNewContainer(
 		"upgrade-contracts",
@@ -59,7 +76,7 @@ func (s *UpgradeContracts) Start() error {
 		nil,
 		envs,
 		nil,
-		nil,
+		volumes,
 		false,
 	)
 	if err != nil {

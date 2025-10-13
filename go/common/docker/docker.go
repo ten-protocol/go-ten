@@ -65,15 +65,26 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 
 	mountVolumes := make([]mount.Mount, 0, len(volumes))
 	for v, mntTarget := range volumes {
-		vol, err := ensureVolumeExists(cli, v)
-		if err != nil {
-			return "", err
+		// Check if v is an absolute path (bind mount) or a volume name
+		if len(v) > 0 && v[0] == '/' {
+			// Bind mount for absolute paths
+			mountVolumes = append(mountVolumes, mount.Mount{
+				Type:   mount.TypeBind,
+				Source: v,
+				Target: mntTarget,
+			})
+		} else {
+			// Docker volume for volume names
+			vol, err := ensureVolumeExists(cli, v)
+			if err != nil {
+				return "", err
+			}
+			mountVolumes = append(mountVolumes, mount.Mount{
+				Type:   mount.TypeVolume,
+				Source: vol.Name,
+				Target: mntTarget,
+			})
 		}
-		mountVolumes = append(mountVolumes, mount.Mount{
-			Type:   mount.TypeVolume,
-			Source: vol.Name,
-			Target: mntTarget,
-		})
 	}
 
 	// convert env vars

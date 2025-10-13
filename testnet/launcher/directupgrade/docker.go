@@ -5,6 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -55,6 +57,18 @@ func (s *DirectUpgrade) Start() error {
 	fmt.Printf("Starting direct upgrade script. NetworkConfigAddress: %s, MultisigAddress: %s, ProxyAdminAddress: %s\n",
 		s.cfg.networkConfigAddress, s.cfg.multisigAddress, s.cfg.proxyAdminAddress)
 
+	// Mount only the scripts directory to use updated scripts
+	// This avoids conflicts with node_modules which are platform-specific
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("failed to get current working directory: %w", err)
+	}
+	scriptsPath := filepath.Join(cwd, "contracts", "scripts")
+	fmt.Printf("Mounting local scripts directory: %s\n", scriptsPath)
+	volumes := map[string]string{
+		scriptsPath: "/home/obscuro/go-obscuro/contracts/scripts",
+	}
+
 	containerID, err := docker.StartNewContainer(
 		"direct-upgrade",
 		s.cfg.dockerImage,
@@ -62,7 +76,7 @@ func (s *DirectUpgrade) Start() error {
 		nil,
 		envs,
 		nil,
-		nil,
+		volumes,
 		false,
 	)
 	if err != nil {

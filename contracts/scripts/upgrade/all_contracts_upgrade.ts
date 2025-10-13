@@ -2,7 +2,6 @@ import { BaseContract } from 'ethers';
 import { ethers } from 'hardhat';
 import { upgrades } from 'hardhat';
 import { UpgradeOptions } from '@openzeppelin/hardhat-upgrades/dist/utils';
-import * as path from 'path';
 const hre = require("hardhat");
 
 console.log('=== Script started ===');
