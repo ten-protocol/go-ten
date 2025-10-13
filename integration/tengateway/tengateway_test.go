@@ -1045,7 +1045,17 @@ func testUnsubscribe(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage", "foo", contractReceipt.ContractAddress)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, len(userLogs))
+	// wait for the first log to arrive (subscription consumes logs asynchronously)
+	{
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			if len(userLogs) >= 1 {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		assert.Equal(t, 1, len(userLogs))
+	}
 
 	// Unsubscribe from events
 	subscription.Unsubscribe()
@@ -1054,6 +1064,8 @@ func testUnsubscribe(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage", "bar", contractReceipt.ContractAddress)
 	require.NoError(t, err)
 
+	// give a short time window to ensure no new logs are received after unsubscribing
+	time.Sleep(1 * time.Second)
 	// check that we are not receiving events after unsubscribing
 	assert.Equal(t, 1, len(userLogs))
 }
