@@ -66,7 +66,6 @@ type batchExecutor struct {
 	entropyService         *crypto.EvmEntropyService
 	mempool                *TxPool
 	execMutex              *sync.Mutex
-	lastExecutedBatch      uint64
 	batchGasLimit          uint64 // max execution gas allowed in a batch
 }
 
@@ -108,7 +107,6 @@ func NewBatchExecutor(
 		mempool:                mempool,
 		dataCompressionService: dataCompressionService,
 		execMutex:              &sync.Mutex{},
-		lastExecutedBatch:      0,
 	}
 }
 
@@ -124,13 +122,6 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 	// only compute one batch at a time
 	executor.execMutex.Lock()
 	defer executor.execMutex.Unlock()
-
-	// Executing a batch twice is catastrophic as it corrupts the state database.
-	// We already rely on the database to prevent it, but there could be some races in extreme conditions.
-	// To be absolutely sure, we implement a second mechanism.
-	if executor.lastExecutedBatch >= ec.SequencerNo.Uint64() {
-		return nil, fmt.Errorf("batch %d already executed. should not happen", ec.SequencerNo.Uint64())
-	}
 
 	ec.ctx = ctx
 	if err := executor.verifyContext(ec); err != nil {
@@ -200,12 +191,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		return nil, fmt.Errorf("failed to post process state. Cause: %w", err)
 	}
 
-	res, err := executor.execResult(ec)
-	if err != nil {
-		executor.lastExecutedBatch = ec.SequencerNo.Uint64()
-	}
-
-	return res, err
+	return executor.execResult(ec)
 }
 
 func (executor *batchExecutor) verifyContext(ec *BatchExecutionContext) error {

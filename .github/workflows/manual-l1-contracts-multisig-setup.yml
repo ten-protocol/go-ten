@@ -87,4 +87,4 @@ jobs:
           name: multisig-setup
           path: |
             multisig-setup.out
-          retention-days: 7 
+          retention-days: 2

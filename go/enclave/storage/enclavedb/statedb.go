@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -92,6 +93,11 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 		}
 		_, err := tx.ExecContext(ctx, update, values...)
 		if err != nil {
+			// for some unknown reason, the mysql-panic driver doesn't intercept this error
+			// until we figure out the reason, we'll panic here to bounce the server
+			if errors.Is(err, mysql.ErrInvalidConn) {
+				panic("Invalid connection")
+			}
 			return fmt.Errorf("failed to exec short k/v transaction statement. kv=%v, err=%w", values, err)
 		}
 	}

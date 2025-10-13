@@ -177,6 +177,7 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 			return nil, nil, err
 		}
 		if !didAcceptBatch {
+			br.logger.Debug(fmt.Sprintf("Did not accept batch at height %d", currentBatchSeq))
 			break
 		}
 

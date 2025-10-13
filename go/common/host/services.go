@@ -135,6 +135,7 @@ type L2BatchRepository interface {
 	EstimateRollupSize(ctx context.Context, fromSeqNo *big.Int) (uint64, error)
 
 	FetchLatestBatchSeqNo() *big.Int
+	FetchLatestBatch() (*common.ExtBatch, error)
 	FetchLatestValidatedBatchSeqNo() *big.Int
 
 	// AddBatch is used to notify the repository of a new batch, e.g. from the enclave when seq produces one or a rollup is consumed

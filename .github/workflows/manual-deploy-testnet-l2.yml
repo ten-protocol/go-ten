@@ -173,7 +173,7 @@ jobs:
           name: deploy-l1-artifacts
           path: |
             deploy-l1-contracts.out
-          retention-days: 7
+          retention-days: 2
 
   deploy:
     needs: build
@@ -477,7 +477,7 @@ jobs:
            name: grant-sequencers
            path: |
              grant-sequencers.out
-           retention-days: 7
+           retention-days: 1
 
   set-challenge-period:
     needs:
@@ -513,7 +513,7 @@ jobs:
            name: set-challenge-period
            path: |
              set-challenge-period.out
-           retention-days: 7
+           retention-days: 1
 
   deploy-l2-contracts:
     needs:
@@ -556,7 +556,7 @@ jobs:
           name: deploy-l2-artifacts
           path: |
             deploy-l2-contracts.out
-          retention-days: 7
+          retention-days: 2
 
   update-loadbalancer:
     needs:

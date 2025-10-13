@@ -35,7 +35,6 @@ jobs:
           # Set required variables from GitHub vars
           declare -a VAR_NAMES=(
             "K8S_DOCKER_BUILD_TAG_GATEWAY"
-            "K8S_DOCKER_BUILD_TAG_GATEWAY_FE"
             "NETWORK_NAME"
             "TENSCAN_URL"
             "GATEWAY_URL"
@@ -56,7 +55,6 @@ jobs:
         run: |
           echo "Selected Testnet Type: ${{ github.event.inputs.testnet_type }}"
           echo "K8S_DOCKER_BUILD_TAG_GATEWAY: $K8S_DOCKER_BUILD_TAG_GATEWAY"
-          echo "K8S_DOCKER_BUILD_TAG_GATEWAY_FE: $K8S_DOCKER_BUILD_TAG_GATEWAY_FE"
           echo "NETWORK_NAME: $NETWORK_NAME"
           echo "TENSCAN_URL: $TENSCAN_URL"
           echo "GATEWAY_URL: $GATEWAY_URL"
@@ -93,21 +91,6 @@ jobs:
 
           echo "✅ Gateway Backend image built and pushed successfully: ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY }}"
 
-      - name: "Build and Push Gateway Frontend Image"
-        run: |
-          echo "Building TEN Gateway Frontend Docker image..."
-          DOCKER_BUILDKIT=1 docker build \
-            --build-arg NEXT_PUBLIC_NETWORK_NAME="${{ env.NETWORK_NAME }}" \
-            --build-arg NEXT_PUBLIC_TENSCAN_URL="${{ env.TENSCAN_URL }}" \
-            --build-arg NEXT_PUBLIC_GATEWAY_URL="${{ env.GATEWAY_URL }}" \
-            --build-arg NEXT_PUBLIC_CHAIN_ID="${{ env.CHAIN_ID }}" \
-            -t ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY_FE }} \
-            -f ./tools/walletextension/frontend/Dockerfile .
-
-          echo "Pushing TEN Gateway Frontend Docker image..."
-          docker push ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY_FE }}
-
-          echo "✅ Gateway Frontend image built and pushed successfully: ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY_FE }}"
 
       - name: "Build Summary"
         run: |
@@ -115,7 +98,6 @@ jobs:
           echo ""
           echo "📦 Images built and published:"
           echo "  Backend:  ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY }}"
-          echo "  Frontend: ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY_FE }}"
           echo ""
           echo "🔧 Environment: ${{ github.event.inputs.testnet_type }}"
           echo "🌿 Branch: ${{ env.BRANCH_NAME }}"

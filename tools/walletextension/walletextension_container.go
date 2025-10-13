@@ -36,6 +36,29 @@ type Container struct {
 }
 
 func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Container {
+	// secureHeaders is a small middleware that sets defensive HTTP headers.
+	secureHeaders := func(next http.Handler, enableHSTS bool) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// MIME sniffing protection
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			// Legacy anti-framing
+			w.Header().Set("X-Frame-Options", "DENY")
+			// Modern anti-framing (CSP)
+			w.Header().Set("Content-Security-Policy", "frame-ancestors 'none'")
+			// Referrer policy
+			w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+			// Feature gating
+			w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=(), payment=(), usb=(), accelerometer=(), gyroscope=(), magnetometer=(), fullscreen=(), autoplay=()")
+
+			// HSTS: only on HTTPS responses
+			if enableHSTS && r.TLS != nil {
+				w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+
 	// create the account manager with a single unauthenticated connection
 	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
 	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
@@ -107,16 +130,45 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 			Cache:      certStorage,
 		}
 
-		// Create HTTP-01 challenge handler
+		// Create HTTP-01 challenge handler + global HTTPS redirect on port 80
+		httpMux := http.NewServeMux()
+		// Serve only ACME challenges
+		httpMux.HandleFunc("/.well-known/acme-challenge/", certManager.HTTPHandler(nil).ServeHTTP)
+		// Redirect everything else to HTTPS
+		httpMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			target := "https://" + r.Host + r.URL.RequestURI()
+			http.Redirect(w, r, target, http.StatusMovedPermanently)
+		})
+
 		httpServer := &http.Server{
 			Addr:    ":http", // Port 80
-			Handler: certManager.HTTPHandler(nil),
+			Handler: httpMux,
 		}
-		go httpServer.ListenAndServe() // Start HTTP server for ACME challenges
+		go func() {
+			if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				logger.Error("http redirect server error", "err", err)
+			}
+		}()
 
 		tlsConfig := &tls.Config{
 			GetCertificate: certManager.GetCertificate,
 			MinVersion:     tls.VersionTLS12,
+			MaxVersion:     tls.VersionTLS13,
+			// Prefer strong cipher suites and explicitly exclude legacy/3DES suites (SWEET32)
+			PreferServerCipherSuites: true,
+			CipherSuites: []uint16{
+				// TLS 1.2 modern suites (TLS 1.3 suites are not configurable and always enabled in Go)
+				tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+				tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+				tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+				tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+			},
+			CurvePreferences: []tls.CurveID{
+				tls.X25519,
+				tls.CurveP256,
+			},
 		}
 
 		// Update RPC server config to use TLS
@@ -125,7 +177,16 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 
 	rpcServer := node.NewServer(cfg, logger)
 
-	rpcServer.RegisterRoutes(httpapi.NewHTTPRoutes(walletExt))
+	// Build routes and wrap each with secure headers
+	routes := httpapi.NewHTTPRoutes(walletExt)
+	for i := range routes {
+		// Wrap route function with middleware
+		handler := http.HandlerFunc(routes[i].Func)
+		secured := secureHeaders(handler, config.EnableTLS)
+		// Adapt back to func(resp, req)
+		routes[i].Func = func(w http.ResponseWriter, r *http.Request) { secured.ServeHTTP(w, r) }
+	}
+	rpcServer.RegisterRoutes(routes)
 
 	// register all RPC endpoints exposed by a typical Geth node
 	rpcServer.RegisterAPIs([]gethrpc.API{

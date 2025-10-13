@@ -24,13 +24,10 @@ type storageImpl struct {
 	io.Closer
 }
 
+// AddBatch adds a batch to the host storage.
+// Must be single-threaded, because it must atomically check the consistency of the network.
+// It is assumed that this is called after confirming that the batch doesn't exist already.
 func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
-	_, err := hostdb.GetBatchHeader(s.db, batch.Hash())
-	if err == nil {
-		// batch already exists don't error
-		return nil
-	}
-
 	dbtx, err := s.db.NewDBTransaction()
 	if err != nil {
 		return err
@@ -38,16 +35,10 @@ func (s *storageImpl) AddBatch(batch *common.ExtBatch) error {
 	defer dbtx.Rollback()
 
 	if err := hostdb.AddBatch(dbtx, s.db, batch); err != nil {
-		if errors.Is(err, errutil.ErrAlreadyExists) {
-			return nil
-		}
 		return fmt.Errorf("could not add batch to host. Cause: %w", err)
 	}
 
 	if err := dbtx.Write(); err != nil {
-		if hostdb.IsRowExistsError(err) {
-			return nil
-		}
 		return fmt.Errorf("could not commit batch tx. Cause: %w", err)
 	}
 	return nil
@@ -210,6 +201,10 @@ func (s *storageImpl) FetchTotalTxsQuery() (*big.Int, error) {
 
 func (s *storageImpl) FetchHistoricalTransactionCount() (*big.Int, error) {
 	return hostdb.GetHistoricalTransactionCount(s.db)
+}
+
+func (s *storageImpl) FetchHistoricalContractCount() (*big.Int, error) {
+	return hostdb.GetHistoricalContractCount(s.db)
 }
 
 func (s *storageImpl) FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {

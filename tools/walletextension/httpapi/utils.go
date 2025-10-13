@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/bytedance/gopkg/util/logger"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -19,16 +20,16 @@ func getQueryParameter(params map[string]string, selectedParameter string) (stri
 	return value, nil
 }
 
-// getUserID returns userID from query params / url of the URL
-// it always first tries to get userID from a query parameter `u` or `token` (`u` parameter will become deprecated)
-// if it fails to get userID from a query parameter it tries to get it from the URL and it needs position as the second parameter
+// getUserID returns userID from query params (it is always used by the REST API methods and never by the JSON-RPC API methods where token can be extracted also from the request URL)
 func getUserID(conn UserConn) ([]byte, error) {
 	// try getting userID (`token`) from query parameters and return it if successful
 	userID, err := getQueryParameter(conn.ReadRequestParams(), common.EncryptedTokenQueryParameter)
 	if err == nil {
 		if len(userID) == common.MessageUserIDLenWithPrefix {
+			logger.Debug("userID with prefix", userID)
 			return hexutils.HexToBytes(userID[2:]), nil
 		} else if len(userID) == common.MessageUserIDLen {
+			logger.Debug("userID without prefix", userID)
 			return hexutils.HexToBytes(userID), nil
 		}
 

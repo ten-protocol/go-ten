@@ -124,4 +124,4 @@ jobs:
           name: upgrade-contracts
           path: |
             upgrade-contracts.out
-          retention-days: 7 
+          retention-days: 1

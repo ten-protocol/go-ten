@@ -45,7 +45,7 @@ type Repository struct {
 
 	// high watermark for batch sequence numbers seen so far. If we can't find batch for seq no < this, then we should ask peers for missing batches
 	latestBatchSeqNo *big.Int
-	latestSeqNoMutex sync.Mutex
+	batchLock        sync.Mutex
 
 	// high watermark for batch sequence numbers validated by our enclave so far.
 	latestValidatedSeqNo *big.Int
@@ -193,6 +193,14 @@ func (r *Repository) FetchLatestBatchSeqNo() *big.Int {
 	return r.latestBatchSeqNo
 }
 
+func (r *Repository) FetchLatestBatch() (*common.ExtBatch, error) {
+	seqNo := r.FetchLatestBatchSeqNo()
+	if seqNo.Cmp(big.NewInt(0)) == 0 {
+		return nil, errutil.ErrNotFound
+	}
+	return r.storage.FetchBatchBySeqNo(seqNo.Uint64())
+}
+
 func (r *Repository) FetchLatestValidatedBatchSeqNo() *big.Int {
 	return r.latestValidatedSeqNo
 }
@@ -201,15 +209,31 @@ func (r *Repository) FetchLatestValidatedBatchSeqNo() *big.Int {
 // - when the node is a sequencer to store newly produced batches (the only way the sequencer host receives batches)
 // - when the node is a validator to store batches read from roll-ups
 // If the repository already has the batch it returns an AlreadyExists error which is typically ignored.
+// If the repository already has a batch with the same seq no but a different hash it returns a ErrConflict error, which must be handled!.
 func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	r.logger.Debug("Saving batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo, log.BatchHashKey, batch.Hash())
-	err := r.storage.AddBatch(batch)
+
+	// the consistency checks must be done atomically
+	r.batchLock.Lock()
+	defer r.batchLock.Unlock()
+
+	_, err := r.storage.FetchBatch(batch.Hash())
+	// we found the exact same batch
+	if err == nil {
+		return errutil.ErrAlreadyExists
+	}
+
+	_, err = r.storage.FetchBatchBySeqNo(batch.SeqNo().Uint64())
+	// we found a batch with the same seq no, but different hash
+	if err == nil {
+		return errutil.ErrConflict
+	}
+
+	err = r.storage.AddBatch(batch)
 	if err != nil {
 		return fmt.Errorf("could not add batch: %w", err)
 	}
-	// atomically compare and swap latest batch sequence number if successfully added batch is newer
-	r.latestSeqNoMutex.Lock()
-	defer r.latestSeqNoMutex.Unlock()
+	// update latest batch sequence number if successfully added batch is newer
 	if batch.Header.SequencerOrderNo.Cmp(r.latestBatchSeqNo) > 0 {
 		r.latestBatchSeqNo = batch.Header.SequencerOrderNo
 		// notify subscribers, a new batch has been successfully added to the db

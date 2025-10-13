@@ -333,7 +333,7 @@ func fetchTotalRollups(db *sqlx.DB) (*big.Int, error) {
 	err := db.QueryRow(selectLatestRollupCount).Scan(&total)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
+			return big.NewInt(0), nil
 		}
 		return big.NewInt(0), fmt.Errorf("failed to fetch rollup latest rollup ID: %w", err)
 	}

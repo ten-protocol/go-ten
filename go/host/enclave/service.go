@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -211,20 +210,15 @@ func (e *Service) managePeriodicBatches() {
 			/*
 			 * We perform some checks before asking the active sequencer to produce a batch:
 			 * - Is the active sequencer in sync with L1 (so it can reference the latest L1 block in the batch)
-			 * - Does the active sequencer's L2 head agree with the host's L2 head (the host's head has been broadcast to the network, so it is canonical)
-			 *
-			 * Note: we don't check if the active sequencer is behind the host's L2 head, it is the active sequencer and that is checked at promotion time
+			 * - Is the active sequencer in sync with L2 (so it can build on the latest L2 head with no conflicts)
+			 *   - Exception: if the network is just starting up (i.e. there are no batches yet)
 			 */
 			if activeSeq.InSyncWithL1() {
-				// Check if the L2 head hashes match between enclave and host
-				enclaveL2Hash := activeSeq.GetEnclaveState().GetEnclaveL2HeadHash()
-				hostL2Hash := e.getHostL2HeadHash()
-				// enclaveChainConflict is true if the enclave and host both have a non-zero L2 head but the hashes differ
-				// (if true then the enclave's L2 chain is non-canonical, it cannot produce batches)
-				enclaveChainConflict := enclaveL2Hash != hostL2Hash && enclaveL2Hash != (gethcommon.Hash{}) && hostL2Hash != (gethcommon.Hash{})
-				if activeSeq.IsEnclaveL2AheadOfHost() || enclaveChainConflict {
-					e.logger.Error("Active sequencer's L2 head conflicts with the host's L2 head",
-						"enclaveState", activeSeq.GetEnclaveState(), "hostL2Hash", hostL2Hash, "failureCount", failureCount)
+				networkStarting := e.sl.L2Repo().FetchLatestBatchSeqNo().Cmp(big.NewInt(1)) < 0
+				// if network already started but active sequencer is not in sync with L2, we cannot produce a valid batch
+				if !activeSeq.InSyncWithL2() && !networkStarting {
+					e.logger.Error("Active sequencer's L2 head is out of sync with the host's L2 head",
+						"enclaveState", activeSeq.GetEnclaveState(), "failureCount", failureCount)
 					// the active seq enclave is failing to feed new batches back to the host, if it continues we will try to promote a new enclave
 					failureCount++
 					if failureCount >= _maxFailuresBeforeFailover {
@@ -282,7 +276,7 @@ func (e *Service) tryPromoteNewSequencer() {
 
 		// if the network is just starting up the candidate just needs to be in sync with L1
 		networkStartingUp := e.sl.L2Repo().FetchLatestBatchSeqNo().Cmp(big.NewInt(1)) < 0
-		if networkStartingUp && guardian.InSyncWithL1() || guardian.IsLive() {
+		if networkStartingUp && guardian.InSyncWithL1() || guardian.InSyncWithL2() {
 			if guardian.state.IsEnclaveActiveSequencer() {
 				// prepend this guardian to the list of guardians to try because it was active
 				// (if the host was restarted, we can go straight back to it as the active sequencer)
@@ -320,9 +314,10 @@ func (e *Service) tryPromoteNewSequencer() {
 	e.activeSequencerID.Store(_noActiveSequencer)
 }
 
-// This compression factor is based on data we've seen in production where the rollups is typically
-// 10-15% the size of the raw batch txs. This still allows some buffer so the rollup should rarely be completely full
-const batchCompressionFactor = 0.25
+// This compression factor is based on actual mainnet data showing much better compression
+// for mostly empty batches: 12,770 batches → 23,677 bytes ≈ 2.5% compression ratio
+// Using conservative 10% to allow buffer for variation in batch content
+const batchCompressionFactor = 0.1
 
 // managePeriodicRollups is a background goroutine that periodically produces a rollup
 // where possible it will prefer to use a non-active sequencer enclave to avoid disrupting the production of batches
@@ -426,6 +421,10 @@ func (e *Service) isRollupRequired(lastSuccessfulRollup time.Time) (bool, uint64
 }
 
 func (e *Service) prepareRollup(guardian *Guardian, fromBatch uint64) (*common.CreateRollupResult, error) {
+	// first check the guardian is in sync with L2 (this rules out corrupted or stuck enclaves)
+	if !guardian.InSyncWithL2() {
+		return nil, fmt.Errorf("enclave guardian is not in sync with the L2 - cannot prepare rollup")
+	}
 	enclID := guardian.GetEnclaveID()
 	e.logger.Info("Attempting to produce rollup.", log.EnclaveIDKey, enclID)
 	result, err := guardian.GetEnclaveClient().CreateRollup(context.Background(), fromBatch)
@@ -480,25 +479,14 @@ func (e *Service) getActiveSequencerGuardian() (*Guardian, error) {
 	}
 
 	for _, guardian := range e.enclaveGuardians {
-		if *(guardian.GetEnclaveID()) == *activeSequencerID {
+		// We don't check the state of the guardian here, sometimes the active sequencer will flicker out-of-sync with
+		//  the L1 or get restarted and we don't want to flip out of it too eagerly.
+		//
+		// We do check that the guardian is running though, stopped Guardians (e.g. for corrupted enclaves) will not
+		//  recover so will trigger promotion of a new active sequencer.
+		if *(guardian.GetEnclaveID()) == *activeSequencerID && guardian.running.Load() {
 			return guardian, nil
 		}
 	}
 	return nil, errors.New("active sequencer not found in guardians")
-}
-
-// getHostL2HeadHash returns the hash of the latest batch in the host's L2 repository
-func (e *Service) getHostL2HeadHash() gethcommon.Hash {
-	latestSeqNo := e.sl.L2Repo().FetchLatestBatchSeqNo()
-	if latestSeqNo == nil || latestSeqNo.Cmp(big.NewInt(0)) <= 0 {
-		return gethcommon.Hash{} // No batch available
-	}
-
-	batch, err := e.sl.L2Repo().FetchBatchBySeqNo(context.Background(), latestSeqNo)
-	if err != nil {
-		e.logger.Debug("failed to fetch host's L2 head batch for hash comparison", log.ErrKey, err, "seqNo", latestSeqNo)
-		return gethcommon.Hash{}
-	}
-
-	return batch.Hash()
 }

@@ -112,6 +112,7 @@ func TestTenGateway(t *testing.T) {
 		"testSubscriptionTopics":               testSubscriptionTopics,
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
+		"testQueryAndRpcTokenModes":            testQueryAndRpcTokenModes,
 
 		"testSessionKeysGetStorageAt":    testSessionKeysGetStorageAt,
 		"testSessionKeysSendTransaction": testSessionKeysSendTransaction,
@@ -1045,6 +1046,47 @@ func testInvokeNonSensitiveMethod(t *testing.T, _ int, httpURL, wsURL string, w 
 	if strings.Contains(string(respBody), fmt.Sprintf("method %s cannot be called with an unauthorised client - no signed viewing keys found", "eth_chainId")) {
 		t.Errorf("sensitive method called without authenticating viewingkeys and did fail because of it:  %s", "eth_chainId")
 	}
+}
+
+func testQueryAndRpcTokenModes(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+	// 1) Create a user and authenticate (register address)
+	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
+	require.NoError(t, err)
+
+	// Register the user so REST /query can validate
+	require.NoError(t, user.RegisterAccounts())
+
+	// 2) Call REST /v1/query/?token=...&a=<address>
+	addrHex := user.Wallets[0].Address().Hex()
+	queryURL := fmt.Sprintf("%s/v1/query/?token=%s&a=%s", httpURL, user.tgClient.UserID(), addrHex)
+	status, body, err := fasthttp.Get(nil, queryURL)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, status)
+
+	// Response format: {"status": true|false}
+	type queryResp struct {
+		Status bool `json:"status"`
+	}
+	var qres queryResp
+	require.NoError(t, json.Unmarshal(body, &qres))
+	require.True(t, qres.Status, "expected registered address to be found")
+
+	// 3) Call JSON-RPC eth_getBalance in two ways and compare results
+	ethClientWithQuery, err := ethclient.Dial(fmt.Sprintf("%s/v1/?token=%s", httpURL, user.tgClient.UserID()))
+	require.NoError(t, err)
+	defer ethClientWithQuery.Close()
+
+	ethClientWithPath, err := ethclient.Dial(fmt.Sprintf("%s/v1/%s", httpURL, user.tgClient.UserID()))
+	require.NoError(t, err)
+	defer ethClientWithPath.Close()
+
+	balanceQuery, err := ethClientWithQuery.BalanceAt(context.Background(), user.Wallets[0].Address(), nil)
+	require.NoError(t, err)
+
+	balancePath, err := ethClientWithPath.BalanceAt(context.Background(), user.Wallets[0].Address(), nil)
+	require.NoError(t, err)
+
+	require.Equal(t, 0, balanceQuery.Cmp(balancePath), "balances via query vs path token should match")
 }
 
 func makeRequestHTTP(url string, body []byte) []byte {
