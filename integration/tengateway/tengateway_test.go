@@ -504,9 +504,26 @@ func testSessionKeyExpirationAndFundRecovery(t *testing.T, _ int, httpURL, wsURL
 	require.NoError(t, err)
 	t.Logf("✓ Final session key balance: %s TEN", finalBalance.String())
 
-	// 7) Check user's first account balance after fund recovery
-	finalUserBalance, err := user0.HTTPClient.PendingBalanceAt(ctx, fromAddr)
-	require.NoError(t, err)
+	// 7) Poll user's pending balance until it increases (async refund tx inclusion)
+	var finalUserBalance *big.Int
+	{
+		deadline := time.Now().Add(15 * time.Second)
+		for time.Now().Before(deadline) {
+			bal, err := user0.HTTPClient.PendingBalanceAt(ctx, fromAddr)
+			require.NoError(t, err)
+			if bal.Cmp(initialUserBalance) > 0 {
+				finalUserBalance = bal
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		if finalUserBalance == nil {
+			// take one last reading for logging and fail with a clear message
+			bal, _ := user0.HTTPClient.PendingBalanceAt(ctx, fromAddr)
+			t.Logf("Pending balance did not increase within the timeout. last=%s, initial=%s", bal.String(), initialUserBalance.String())
+			require.FailNow(t, "Timed out waiting for recovered funds to reflect in user's pending balance")
+		}
+	}
 	t.Logf("✓ Final user balance: %s TEN", finalUserBalance.String())
 
 	// Check if the final balance on the session key is smaller than the threshold balance
