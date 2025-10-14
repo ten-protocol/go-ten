@@ -32,7 +32,7 @@ func main() {
 
 	err = l1Upgrade.WaitForFinish()
 	if err != nil {
-		fmt.Printf("unexpected error waiting for l1 upgrade %s to finish - %w", cliConfig.upgradeScript, err)
+		fmt.Printf("unexpected error waiting for l1 upgrade %s to finish - %s", cliConfig.upgradeScript, err)
 		os.Exit(1)
 	}
 	fmt.Println("L1 upgrades were successfully completed...")
