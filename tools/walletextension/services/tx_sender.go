@@ -59,9 +59,15 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 		return gethcommon.Hash{}, nil
 	}
 
-	gasPrice, err := s.getGasPrice(ctx)
+	// Compute EIP-1559 fees. Fallback to legacy gasPrice on error.
+	gasTipCap, gasFeeCap, err := s.getDynamicFees(ctx)
 	if err != nil {
-		return gethcommon.Hash{}, err
+		// Fallback to legacy gas price to remain robust
+		gasPrice, gpErr := s.getGasPrice(ctx)
+		if gpErr != nil {
+			return gethcommon.Hash{}, fmt.Errorf("failed to determine fees: %v; gasPrice fallback failed: %w", err, gpErr)
+		}
+		gasTipCap, gasFeeCap = gasPrice, gasPrice
 	}
 
 	gasLimit, err := s.estimateGas(ctx, user, from, to, &balance)
@@ -69,7 +75,8 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 		return gethcommon.Hash{}, err
 	}
 
-	gasCost := new(big.Int).Mul(gasPrice, big.NewInt(int64(gasLimit)))
+	// Use GasFeeCap for a conservative ceiling of potential cost
+	gasCost := new(big.Int).Mul(gasFeeCap, big.NewInt(int64(gasLimit)))
 	amountToSend := new(big.Int).Sub(balance.ToInt(), gasCost)
 	if amountToSend.Sign() <= 0 {
 		return gethcommon.Hash{}, fmt.Errorf("insufficient balance for gas: balance=%s gasCost=%s", balance.ToInt().String(), gasCost.String())
@@ -79,8 +86,8 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 		To:        &to,
 		Value:     amountToSend,
 		Gas:       gasLimit,
-		GasTipCap: gasPrice,
-		GasFeeCap: gasPrice,
+		GasTipCap: gasTipCap,
+		GasFeeCap: gasFeeCap,
 	}
 
 	tx := types.NewTx(dynTx)
@@ -135,6 +142,42 @@ func (s *txSender) getGasPrice(ctx context.Context) (*big.Int, error) {
 		return nil, fmt.Errorf("failed to get gas price via RPC: %w", err)
 	}
 	return result.ToInt(), nil
+}
+
+// getDynamicFees fetches EIP-1559 fee suggestions. It first tries
+// maxPriorityFeePerGas and feeHistory(baseFee), falling back to gasPrice on errors.
+func (s *txSender) getDynamicFees(ctx context.Context) (*big.Int, *big.Int, error) { // tip, feeCap
+	var tip hexutil.Big
+	_, err := WithPlainRPCConnection(ctx, s.backend, func(client *rpc.Client) (*hexutil.Big, error) {
+		// ten exposes eth_maxPriorityFeePerGas-compatible method on ChainAPI
+		callErr := client.CallContext(ctx, &tip, "ten_maxPriorityFeePerGas")
+		return &tip, callErr
+	})
+	if err != nil || tip.ToInt() == nil {
+		return nil, nil, fmt.Errorf("failed maxPriorityFeePerGas: %w", err)
+	}
+
+	// Use feeHistory to get the latest baseFee
+	type feeHistoryResp struct {
+		BaseFee []*hexutil.Big `json:"baseFeePerGas"`
+	}
+	var fh feeHistoryResp
+	_, err = WithPlainRPCConnection(ctx, s.backend, func(client *rpc.Client) (*feeHistoryResp, error) {
+		// Request last 1 block, newest=latest, empty percentile list
+		callErr := client.CallContext(ctx, &fh, "ten_feeHistory", hexutil.EncodeUint64(1), rpc.LatestBlockNumber, []float64{})
+		return &fh, callErr
+	})
+	if err != nil || len(fh.BaseFee) == 0 || fh.BaseFee[len(fh.BaseFee)-1] == nil {
+		return nil, nil, fmt.Errorf("failed feeHistory: %w", err)
+	}
+	baseFee := fh.BaseFee[len(fh.BaseFee)-1].ToInt()
+	if baseFee == nil {
+		return nil, nil, fmt.Errorf("nil baseFee")
+	}
+
+	// Simple cap: baseFee + tip (caller can adjust multiplier later if needed)
+	feeCap := new(big.Int).Add(baseFee, tip.ToInt())
+	return tip.ToInt(), feeCap, nil
 }
 
 func (s *txSender) estimateGas(ctx context.Context, user *wecommon.GWUser, from, to gethcommon.Address, value *hexutil.Big) (uint64, error) {

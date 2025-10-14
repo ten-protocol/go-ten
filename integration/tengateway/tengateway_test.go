@@ -527,7 +527,7 @@ func testSessionKeyExpirationAndFundRecovery(t *testing.T, _ int, httpURL, wsURL
 	t.Logf("✓ Final user balance: %s TEN", finalUserBalance.String())
 
 	// Check if the final balance on the session key is smaller than the threshold balance
-	dustThreshold := big.NewInt(1_000_000_000_000)
+	dustThreshold := big.NewInt(2_000_000_000_000)
 	if finalBalance.Cmp(dustThreshold) >= 0 {
 		t.Fatalf("Final session key balance is above the threshold: %s TEN", finalBalance.String())
 	}
