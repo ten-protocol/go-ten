@@ -8,12 +8,15 @@ import { hexlify, toUtf8Bytes, parseUnits, formatUnits } from 'ethers';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     console.log("Starting L1 contract deploy")
     const sequencerHostAddress = process.env.SEQUENCER_HOST_ADDRESS;
+    console.log("Sequencer Host Address: ", sequencerHostAddress)
     if (!sequencerHostAddress) {
+    console.log("ERROR Sequencer Host Address: ", sequencerHostAddress)
         console.error("SEQUENCER_HOST_ADDRESS environment variable is not set.");
         process.exit(1);
     }
 
     // Gas price safety check if enabled
+    console.log("about to check gas price")
     if (process.env.CHECK_GAS_PRICE === 'true') {
         console.log("Checking gas price")
         const provider = hre.ethers.provider;
@@ -37,7 +40,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
         console.log(`✅ Gas price check passed: ${formatUnits(currentGasPrice, 'gwei')} gwei (limit: ${maxGasGwei} gwei)\n`);
     }
-
+    console.log("didnt check gas price")
     const {
         deployments,
         getNamedAccounts
