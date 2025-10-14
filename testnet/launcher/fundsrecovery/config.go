@@ -5,11 +5,11 @@ type Option = func(c *Config)
 
 // Config holds the properties that configure the package
 type Config struct {
-	l1HTTPURL    string
-	l1privateKey string
-	dockerImage  string
+	l1HTTPURL            string
+	l1privateKey         string
+	dockerImage          string
 	networkConfigAddress string
-	receiverAddress string
+	receiverAddress      string
 }
 
 func NewFundsRecoveryConfig(opts ...Option) *Config {

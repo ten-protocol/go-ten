@@ -40,6 +40,15 @@ jobs:
           DOCKER_BUILDKIT=1 docker build -t ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} -f tools/hardhatdeployer/Dockerfile .
           docker push ${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }}
 
+      -  name: Parse l1-config.yaml
+         id: parse
+         env:
+           TESTNET_SHORT_NAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
+         run: |
+           CFG=cfg/nonprod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
+           
+           echo "network_config=$(yq -r '.l1Config.networkConfig'     "$CFG")"   >> $GITHUB_OUTPUT
+
       - name: 'Run the funds recovery'
         id: runFundsRecovery
         shell: bash
@@ -48,6 +57,7 @@ jobs:
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
+          -network_config_addr="${{ steps.parse.outputs.network_config }}" 
 
       - name: 'Save container logs on failure'
         if: ${{ always() }}

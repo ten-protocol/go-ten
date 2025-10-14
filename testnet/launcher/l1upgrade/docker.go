@@ -52,11 +52,6 @@ func (s *UpgradeContracts) Start() error {
 		"NETWORK_CONFIG_ADDR": s.cfg.networkConfigAddress,
 	}
 
-	fmt.Printf("Starting upgrade contracts script. NetworkConfigAddress: %s\n", s.cfg.networkConfigAddress)
-	fmt.Printf("Upgrade script value: '%s'\n", s.cfg.upgradeScript)
-	fmt.Printf("Full script path: '%s'\n", "scripts/upgrade/"+s.cfg.upgradeScript)
-	fmt.Printf("Docker command: %v\n", cmds)
-
 	// Mount only the scripts directory to use updated scripts
 	// This avoids conflicts with node_modules which are platform-specific
 	cwd, err := os.Getwd()
