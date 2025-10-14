@@ -6,6 +6,7 @@ import { hexlify, toUtf8Bytes, parseUnits, formatUnits } from 'ethers';
     This deployment script instantiates the network contracts and stores them in the deployed NetworkConfig contract.
 */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+    console.log("Starting L1 contract deploy")
     const sequencerHostAddress = process.env.SEQUENCER_HOST_ADDRESS;
     if (!sequencerHostAddress) {
         console.error("SEQUENCER_HOST_ADDRESS environment variable is not set.");
@@ -14,6 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // Gas price safety check if enabled
     if (process.env.CHECK_GAS_PRICE === 'true') {
+        console.log("Checking gas price")
         const provider = hre.ethers.provider;
         const feeData = await provider.getFeeData();
         const currentGasPrice = feeData.gasPrice;
