@@ -75,14 +75,15 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 		return gethcommon.Hash{}, fmt.Errorf("insufficient balance for gas: balance=%s gasCost=%s", balance.ToInt().String(), gasCost.String())
 	}
 
-	legacyTx := &types.LegacyTx{
-		To:       &to,
-		Value:    amountToSend,
-		Gas:      gasLimit,
-		GasPrice: gasPrice,
+	dynTx := &types.DynamicFeeTx{
+		To:        &to,
+		Value:     amountToSend,
+		Gas:       gasLimit,
+		GasTipCap: gasPrice,
+		GasFeeCap: gasPrice,
 	}
 
-	tx := types.NewTx(legacyTx)
+	tx := types.NewTx(dynTx)
 	if tx == nil {
 		return gethcommon.Hash{}, fmt.Errorf("failed to create transaction")
 	}
