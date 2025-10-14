@@ -10,7 +10,6 @@ import (
 	"github.com/docker/docker/api/types/container"
 
 	"github.com/docker/docker/client"
-	"github.com/sanity-io/litter"
 	"github.com/ten-protocol/go-ten/go/common/docker"
 )
 
@@ -26,31 +25,33 @@ func NewFundsRecovery(cfg *Config) (*FundsRecovery, error) {
 }
 
 func (n *FundsRecovery) Start() error {
-	fmt.Printf("Starting L2 contract deployer with config: \n%s\n\n", litter.Sdump(*n.cfg))
-
+	fmt.Printf("Starting funds recovery with config: %s\n", n.cfg)
+	var err error
 	cmds := []string{
-		"npx", "hardhat", "deploy",
-		"--network", "layer1",
+		"npx",
+		"hardhat",
+		"run",
+		"scripts/recover/recover_testnet_funds.ts",
+		"--network",
+		"layer1",
+		"--verbose",
 	}
 
 	envs := map[string]string{
 		"NETWORK_JSON": fmt.Sprintf(`
-{
-        "layer1" : {
-            "url" : "%s",
-            "useGateway" : false,
-            "live" : false,
-            "saveDeployments" : true,
-            "deploy": [
-                "deployment_scripts/testnet/recoverfunds"
-            ],
-            "accounts": [
-                "%s"
-            ]
-        }
-    }
-`, n.cfg.l1HTTPURL, n.cfg.l1privateKey),
+		{
+			"layer1": {
+				"url": "%s",
+				"useGateway": false,
+				"live": false,
+				"saveDeployments": true,
+				"accounts": ["%s"]
+			}
+		}`, n.cfg.l1HTTPURL, n.cfg.l1privateKey),
+		"NETWORK_CONFIG_ADDR": n.cfg.networkConfigAddress,
+		"RECEIVER_ADDRESS":    n.cfg.receiverAddress,
 	}
+
 
 	containerID, err := docker.StartNewContainer("recover-funds", n.cfg.dockerImage, cmds, nil, envs, nil, nil, false)
 	if err != nil {

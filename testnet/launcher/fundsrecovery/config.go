@@ -8,6 +8,8 @@ type Config struct {
 	l1HTTPURL    string
 	l1privateKey string
 	dockerImage  string
+	networkConfigAddress string
+	receiverAddress string
 }
 
 func NewFundsRecoveryConfig(opts ...Option) *Config {
@@ -35,5 +37,17 @@ func WithL1PrivateKey(s string) Option {
 func WithDockerImage(s string) Option {
 	return func(c *Config) {
 		c.dockerImage = s
+	}
+}
+
+func WithNetworkConfigAddress(s string) Option {
+	return func(c *Config) {
+		c.networkConfigAddress = s
+	}
+}
+
+func WithReceiverAddress(s string) Option {
+	return func(c *Config) {
+		c.receiverAddress = s
 	}
 }

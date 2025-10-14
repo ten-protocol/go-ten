@@ -6,22 +6,17 @@ const recoverFunds = async function (): Promise<void> {
     const [deployer] = await ethers.getSigners();
     console.log(`Using signer: ${deployer.address}`);
 
-    // Get the bridge address from environment or fetch from NetworkConfig
-    let bridgeAddress = process.env.BRIDGE_ADDRESS
-  
-    if (!bridgeAddress) {
-        console.log("BRIDGE_ADDRESS not provided, fetching from NetworkConfig...")
-        const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR;
-        if (!networkConfigAddr) {
-            throw new Error("NETWORK_CONFIG_ADDR environment variable is not set");
-        }
+    const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR;
+    if (!networkConfigAddr) {
+        throw new Error("NETWORK_CONFIG_ADDR environment variable is not set");
+    }
     const networkConfig = await ethers.getContractAt('NetworkConfig', networkConfigAddr)
     const addresses = await networkConfig.addresses()
-    bridgeAddress = addresses.l1Bridge
-  }
+    const bridgeAddress = addresses.l1Bridge
+    console.log(`Bridge address: ${bridgeAddress}`);
 
-    // Receiver address - defaults to the deployer if not specified
-    const receiverAddress = process.env.RECEIVER_ADDRESS || deployer.address;
+    // Gnosis sepolia ETH address
+    const receiverAddress = process.env.RECEIVER_ADDRESS || "0xea052c9635f1647a8a199c2315b9a66ce7d1e2a7"
     console.log(`Receiver address: ${receiverAddress}`);
 
     // Get the contract
