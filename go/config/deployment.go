@@ -25,6 +25,9 @@ type L1DeployConfig struct {
 	EtherscanAPIKey   string `mapstructure:"etherscanAPIKey"`   // optional Etherscan API key for contract verification
 	MaxGasGwei        string `mapstructure:"maxGasGwei"`        // maximum network gas price (gwei) - above this we abort
 	CheckGasPrice     string `mapstructure:"checkGasPrice"`     // whether to check maxGasGwei gas price before deployment
+	USDCAddress       string `mapstructure:"usdcAddress"`       // mainnet USDC token address
+	USDTAddress       string `mapstructure:"usdtAddress"`       // mainnet USDT token address
+	WETHAddress       string `mapstructure:"wethAddress"`       // mainnet WETH token address
 }
 
 // L2DeployConfig contains the configuration for the deployment of the L2 contracts

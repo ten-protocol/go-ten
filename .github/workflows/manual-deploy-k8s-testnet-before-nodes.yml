@@ -124,6 +124,9 @@ jobs:
           DEPLOY_L1_ETHERSCANAPIKEY: ${{ secrets.ETHERSCAN_API_KEY }}
           DEPLOY_L1_MAXGASGWEI: ${{ github.event.inputs.max_gas_gwei }}
           DEPLOY_L1_CHECKGASPRICE: ${{ github.event.inputs.testnet_type == 'mainnet' && 'true' || 'false' }}
+          DEPLOY_L1_USDCADDRESS: ${{ vars.USDC_ADDRESS }}
+          DEPLOY_L1_USDTADDRESS: ${{ vars.USDT_ADDRESS }}
+          DEPLOY_L1_WETHADDRESS: ${{ vars.WETH_ADDRESS }}
         run: |
           # Run deployer and capture output
           go run ./testnet/launcher/l1contractdeployer/cmd

@@ -47,6 +47,9 @@ func (n *ContractDeployer) Start() error {
 		"ETHERSCAN_API_KEY":      n.cfg.EtherscanAPIKey,
 		"MAX_GAS_GWEI":           n.cfg.MaxGasGwei,
 		"CHECK_GAS_PRICE":        n.cfg.CheckGasPrice,
+		"USDC_ADDRESS":           n.cfg.USDCAddress,
+		"USDT_ADDRESS":           n.cfg.USDTAddress,
+		"WETH_ADDRESS":           n.cfg.WETHAddress,
 		"NETWORK_JSON": fmt.Sprintf(`
 {
         "layer1" : {

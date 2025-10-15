@@ -11,19 +11,27 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
 // Account specifies the address that's prefunded and the amount it's funded with
 type Account struct {
-	Address gethcommon.Address
-	Amount  *big.Int
+	Address gethcommon.Address `json:"address"`
+	Amount  *big.Int           `json:"amount"`
+}
+
+// Contract specifies an address and its bytecode to be set at genesis
+type Contract struct {
+	Address  gethcommon.Address `json:"address"`
+	Bytecode string             `json:"bytecode"` // hex string with 0x prefix
 }
 
 // Genesis holds a range of prefunded accounts
 type Genesis struct {
-	Accounts []Account
+	Accounts  []Account  `json:"accounts"`
+	Contracts []Contract `json:"contracts"`
 }
 
 // New creates a new Genesis given a json string
@@ -79,6 +87,18 @@ func (g Genesis) applyAllocations(storage storage.Storage) (*state.StateDB, erro
 	// set the accounts funds
 	for _, acc := range g.Accounts {
 		s.SetBalance(acc.Address, uint256.MustFromBig(acc.Amount), tracing.BalanceIncreaseGenesisBalance)
+	}
+
+	// set predeployed contract code
+	for _, c := range g.Contracts {
+		if c.Bytecode == "" {
+			continue
+		}
+		code, err := hexutil.Decode(c.Bytecode)
+		if err != nil {
+			return nil, fmt.Errorf("invalid contract bytecode for %s: %w", c.Address.Hex(), err)
+		}
+		s.SetCode(c.Address, code)
 	}
 
 	return s, nil

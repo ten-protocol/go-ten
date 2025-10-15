@@ -37,6 +37,13 @@ interface IBridge {
         address receiver
     ) external;
 
+    // Special-case receive that instructs the counterparty bridge to deliver native currency
+    // to the receiver (typically used when bridging wrapped native back to its origin chain).
+    function receiveNativeWrapped(
+        address receiver,
+        uint256 amount
+    ) external;
+
     struct ValueTransfer {
         uint256 amount;
         address recipient;
