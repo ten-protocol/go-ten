@@ -25,6 +25,9 @@ import (
 // - note that increasing this value will have to increase the number of cached blocks in the cache_service
 const MovingAverageWindow = 300 // `3600 / 12` - last 1 hour
 
+// FeeMAMaxCacheSize - the maximum number of entries in the fee MA cache
+const FeeMAMaxCacheSize = 50
+
 // L1TxGas - a crude estimation of the cost of publishing an L1 tx
 const L1TxGas = 300_000
 
@@ -52,7 +55,7 @@ type oracle struct {
 
 func NewGasOracle(l1ChainCfg *params.ChainConfig, storage storage.BlockResolver, logger gethlog.Logger) Oracle {
 	cache := gocache.NewCache().
-		WithMaxSize(50).
+		WithMaxSize(FeeMAMaxCacheSize).
 		WithEvictionPolicy(gocache.FirstInFirstOut).
 		WithDefaultTTL(gocache.NoExpiration)
 
