@@ -606,11 +606,6 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		}
 	}
 
-	err = e.gasOracle.SubmitL1Block(ctx, processed.BlockHeader)
-	if err != nil {
-		return nil, nil, fmt.Errorf("could not submit L1 block to gas oracle. Cause: %w", err)
-	}
-
 	return ingestion, rollupMetadataList, nil
 }
 
