@@ -29,6 +29,7 @@ type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
 	DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (bool, error)
 	SignTx(ctx context.Context, user *common.GWUser, sessionKeyAddr gethcommon.Address, input *types.Transaction) (*types.Transaction, error)
+	CreateDefaultUserAndAccount() (*common.GWUser, error)
 }
 
 type skManager struct {
@@ -149,4 +150,39 @@ func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, sessionKeyA
 	m.logger.Debug("Signed transaction with session key", "stxHash", stx.Hash().Hex(), "sessionKey", sessionKeyAddr.Hex())
 
 	return stx, nil
+}
+
+// CreateDefaultUserAndAccount creates a new in-memory user and a corresponding account.
+// Nothing is persisted to storage. Useful for anonymous/public flows.
+func (m *skManager) CreateDefaultUserAndAccount() (*common.GWUser, error) {
+	// generate a fresh viewing key
+	vk, err := crypto.GenerateKey()
+	if err != nil {
+		return nil, err
+	}
+	vkEcies := ecies.ImportECDSA(vk)
+
+	// derive user ID from the viewing key
+	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(vkEcies))
+
+	// build an in-memory GWUser (no persistence)
+	user := &common.GWUser{
+		ID:          userID,
+		Accounts:    make(map[gethcommon.Address]*common.GWAccount),
+		UserKey:     crypto.FromECDSA(vkEcies.ExportECDSA()),
+		SessionKeys: make(map[gethcommon.Address]*common.GWSessionKey),
+	}
+
+	// create an account that signs over the userID
+	sk, err := m.createSK(user)
+	if err != nil {
+		return nil, err
+	}
+
+	// attach the ephemeral account to the in-memory user
+	addr := *sk.Account.Address
+	user.Accounts[addr] = sk.Account
+	user.SessionKeys[addr] = sk
+
+	return user, nil
 }
