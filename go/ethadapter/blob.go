@@ -29,35 +29,36 @@ func MakeSidecar(blobs []*kzg4844.Blob, hasher BlobHasher) (*types.BlobTxSidecar
 	sidecar := &types.BlobTxSidecar{}
 	var blobHashes []gethcommon.Hash
 	for _, blob := range blobs {
-		blobHash, commitment, proof, err := hasher.BlobHash(blob)
+		blobHash, commitment, cellProofs, err := hasher.BlobHash(blob)
 		if err != nil {
 			return nil, nil, err
 		}
 		blobHashes = append(blobHashes, blobHash)
 		sidecar.Blobs = append(sidecar.Blobs, *blob)
 		sidecar.Commitments = append(sidecar.Commitments, commitment)
-		sidecar.Proofs = append(sidecar.Proofs, proof)
+		sidecar.Proofs = append(sidecar.Proofs, cellProofs...)
+		sidecar.Version = types.BlobSidecarVersion1
 	}
 	return sidecar, blobHashes, nil
 }
 
 type BlobHasher interface {
-	BlobHash(blob *kzg4844.Blob) (gethcommon.Hash, kzg4844.Commitment, kzg4844.Proof, error)
+	BlobHash(blob *kzg4844.Blob) (gethcommon.Hash, kzg4844.Commitment, []kzg4844.Proof, error)
 }
 
 type KZGToVersionedHasher struct{}
 
-func (KZGToVersionedHasher) BlobHash(blob *kzg4844.Blob) (gethcommon.Hash, kzg4844.Commitment, kzg4844.Proof, error) {
+func (KZGToVersionedHasher) BlobHash(blob *kzg4844.Blob) (gethcommon.Hash, kzg4844.Commitment, []kzg4844.Proof, error) {
 	commitment, err := kzg4844.BlobToCommitment(blob)
 	if err != nil {
-		return gethcommon.Hash{}, kzg4844.Commitment{}, kzg4844.Proof{}, fmt.Errorf("cannot compute KZG commitment of blob: %w", err)
+		return gethcommon.Hash{}, kzg4844.Commitment{}, []kzg4844.Proof{}, fmt.Errorf("cannot compute KZG commitment of blob: %w", err)
 	}
-	proof, err := kzg4844.ComputeBlobProof(blob, commitment)
+	proofs, err := kzg4844.ComputeCellProofs(blob)
 	if err != nil {
-		return gethcommon.Hash{}, kzg4844.Commitment{}, kzg4844.Proof{}, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob in tx candidate: %w", err)
+		return gethcommon.Hash{}, kzg4844.Commitment{}, []kzg4844.Proof{}, fmt.Errorf("cannot compute KZG proof for fast commitment verification of blob in tx candidate: %w", err)
 	}
 
-	return KZGToVersionedHash(commitment), commitment, proof, nil
+	return KZGToVersionedHash(commitment), commitment, proofs, nil
 }
 
 // EncodeBlobs converts bytes into blobs used for KZG commitment EIP-4844
