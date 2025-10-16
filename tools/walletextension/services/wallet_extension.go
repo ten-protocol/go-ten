@@ -117,7 +117,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 
 	// Initialize a single default user for unauthenticated requests
 	if services.DefaultUser == nil {
-		if user, err := services.SKManager.CreateDefaultUserAndAccount(); err == nil {
+		if user, err := services.SKManager.ReturnDefaultUserAndAccount(); err == nil {
 			services.DefaultUser = user
 		} else {
 			logger.Warn("Failed to create default user", "err", err)
