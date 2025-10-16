@@ -33,6 +33,11 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
+const (
+	eagerFetchHeightKey  = "eager_fetch_height"
+	bulkLoadingThreshold = 10
+)
+
 var (
 	l1BlockTime      = 12 * time.Second
 	_timeoutNoBlocks = 2 * l1BlockTime // after this timeout we assume the subscription to the L1 node is not working
@@ -51,8 +56,10 @@ type DataService struct {
 	blockResolver    storage.BlockResolver
 	l1StartHash      gethcommon.Hash
 
-	running atomic.Bool
-	head    gethcommon.Hash
+	running          atomic.Bool
+	stopChan         chan struct{}
+	eagerFetchHeight atomic.Uint64
+	head             gethcommon.Hash
 }
 
 func NewL1DataService(ethClient ethadapter.EthClient, logger gethlog.Logger, contractRegistry contractlib.ContractRegistryLib, blobResolver BlobResolver, l1StartHash gethcommon.Hash) *DataService {
@@ -60,6 +67,7 @@ func NewL1DataService(ethClient ethadapter.EthClient, logger gethlog.Logger, con
 		blockSubscribers: subscription.NewManager[host.L1BlockHandler](),
 		ethClient:        ethClient,
 		running:          atomic.Bool{},
+		stopChan:         make(chan struct{}),
 		logger:           logger,
 		contractRegistry: contractRegistry,
 		blobResolver:     blobResolver,
@@ -74,14 +82,55 @@ func (r *DataService) SetBlockResolver(br storage.BlockResolver) {
 func (r *DataService) Start() error {
 	r.running.Store(true)
 
+	r.loadEagerFetchHeight()
+
 	// Repository constantly streams new blocks and forwards them to subscribers
 	go r.streamLiveBlocks()
+
+	// Proactively fetch historical blocks to fill gaps
+	go r.eagerFetchBlocks()
+
 	return nil
 }
 
 func (r *DataService) Stop() error {
-	r.running.Store(false)
+	if r.running.CompareAndSwap(true, false) {
+		close(r.stopChan)
+	}
 	return nil
+}
+
+func (r *DataService) loadEagerFetchHeight() {
+	if r.blockResolver == nil {
+		r.logger.Error("blockResolver not set, cannot load eager fetch height")
+		return
+	}
+
+	height, err := r.blockResolver.GetMetadata(eagerFetchHeightKey)
+	if err != nil {
+		startBlock, err := r.ethClient.HeaderByHash(r.l1StartHash)
+		if err != nil {
+			r.logger.Crit("Could not get l1StartHash block for eager fetch height initialization", log.ErrKey, err)
+			return
+		}
+		height = startBlock.Number.Uint64()
+		r.logger.Info("Initialized eager fetch height from l1StartHash", "height", height)
+	} else {
+		r.logger.Info("Loaded eager fetch height from database", "height", height)
+	}
+	r.eagerFetchHeight.Store(height)
+}
+
+func (r *DataService) updateEagerFetchHeight(blockHeight uint64) {
+	current := r.eagerFetchHeight.Load()
+	if blockHeight > current {
+		r.eagerFetchHeight.Store(blockHeight)
+
+		err := r.blockResolver.SetMetadata(eagerFetchHeightKey, blockHeight)
+		if err != nil {
+			r.logger.Debug("Failed to persist eager fetch height", log.ErrKey, err)
+		}
+	}
 }
 
 func (r *DataService) HealthStatus(context.Context) host.HealthStatus {
@@ -473,7 +522,6 @@ func (r *DataService) streamLiveBlocks() {
 		case blockHeader := <-liveStream:
 			r.logger.Info("received block from l1 stream", log.BlockHashKey, blockHeader.Hash(), log.BlockHeightKey, blockHeader.Number)
 
-			// recursively check that the ancestors are available in the host db
 			err := r.fetchAncestors(blockHeader.ParentHash)
 			if err != nil {
 				r.logger.Error("error fetching ancestors", log.ErrKey, err)
@@ -481,8 +529,8 @@ func (r *DataService) streamLiveBlocks() {
 			}
 
 			r.storeBlockHeader(blockHeader)
+			r.updateEagerFetchHeight(blockHeader.Number.Uint64())
 
-			// only notify subscribers (enclave guardians) on the streamed block, because they have their own catch-up mechanism
 			r.head = blockHeader.Hash()
 			for _, handler := range r.blockSubscribers.Subscribers() {
 				go handler.HandleBlock(blockHeader)
@@ -496,21 +544,22 @@ func (r *DataService) streamLiveBlocks() {
 			if liveStream != nil {
 				close(liveStream)
 			}
-			// reset stream to ensure it has not died
 			liveStream, streamSub = r.resetLiveStream()
+
+		case <-r.stopChan:
+			r.logger.Info("block streaming stopped by stop signal")
+			if streamSub != nil {
+				streamSub.Unsubscribe()
+			}
+			if liveStream != nil {
+				close(liveStream)
+			}
+			return
 		}
-	}
-	r.logger.Info("block streaming stopped")
-	if streamSub != nil {
-		streamSub.Unsubscribe()
-	}
-	if liveStream != nil {
-		close(liveStream)
 	}
 }
 
 func (r *DataService) fetchAncestors(blockHash gethcommon.Hash) error {
-	// stop at the first l1 block
 	if blockHash == r.l1StartHash {
 		return nil
 	}
@@ -520,23 +569,90 @@ func (r *DataService) fetchAncestors(blockHash gethcommon.Hash) error {
 		return nil
 	}
 
-	r.logger.Info("`newHeads` block ancestor not found in host db. Fetching from l1", log.BlockHashKey, blockHash)
-
-	// fetch the missing block from the l1 rpc
-	block, err := r.ethClient.HeaderByHash(blockHash)
+	parentBlock, err := r.ethClient.HeaderByHash(blockHash)
 	if err != nil {
 		return fmt.Errorf("error fetching block: %w", err)
 	}
 
-	// recursively check that the ancestors
-	err = r.fetchAncestors(block.ParentHash)
-	if err != nil {
-		return fmt.Errorf("error fetching ancestor: %w", err)
+	eagerHeight := r.eagerFetchHeight.Load()
+	blockHeight := parentBlock.Number.Uint64()
+
+	if blockHeight > eagerHeight {
+		gap := blockHeight - eagerHeight
+		if gap > bulkLoadingThreshold {
+			r.logger.Info("Large gap detected, deferring to eager fetcher",
+				"blockHeight", blockHeight,
+				"eagerFetchHeight", eagerHeight,
+				"gap", gap)
+			return nil
+		}
 	}
 
-	// handle the blocks in the reverse order of the stack - from the oldest to the newest
-	r.storeBlockHeader(block)
+	var blocksToStore []*types.Header
+	currentHash := blockHash
+
+	for currentHash != r.l1StartHash {
+		_, blockErr := r.blockResolver.ReadBlock(&currentHash)
+		if blockErr == nil {
+			break
+		}
+
+		r.logger.Info("`newHeads` block ancestor not found in host db. Fetching from l1", log.BlockHashKey, currentHash)
+
+		block, err := r.ethClient.HeaderByHash(currentHash)
+		if err != nil {
+			return fmt.Errorf("error fetching block: %w", err)
+		}
+
+		blocksToStore = append(blocksToStore, block)
+		currentHash = block.ParentHash
+	}
+
+	for i := len(blocksToStore) - 1; i >= 0; i-- {
+		r.storeBlockHeader(blocksToStore[i])
+		r.updateEagerFetchHeight(blocksToStore[i].Number.Uint64())
+	}
+
 	return nil
+}
+
+func (r *DataService) eagerFetchBlocks() {
+	r.logger.Info("Starting eager L1 block fetcher")
+	defer r.logger.Info("Stopping eager L1 block fetcher")
+
+	for r.running.Load() {
+		select {
+		case <-r.stopChan:
+			return
+		default:
+		}
+
+		height := r.eagerFetchHeight.Load()
+
+		block, err := r.ethClient.HeaderByNumber(big.NewInt(int64(height)))
+		if err != nil {
+			if errors.Is(err, ethereum.NotFound) {
+				select {
+				case <-time.After(5 * time.Second):
+					continue
+				case <-r.stopChan:
+					return
+				}
+			}
+			r.logger.Debug("Failed to fetch block by number", "height", height, log.ErrKey, err)
+			select {
+			case <-time.After(1 * time.Second):
+				continue
+			case <-r.stopChan:
+				return
+			}
+		}
+
+		r.storeBlockHeader(block)
+		r.updateEagerFetchHeight(height + 1)
+
+		time.Sleep(50 * time.Millisecond)
+	}
 }
 
 func (r *DataService) storeBlockHeader(blockHeader *types.Header) {
