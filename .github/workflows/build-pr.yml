@@ -30,6 +30,12 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      # Install jq for JSON processing in eth2network scripts
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
       # Makes sure the binaries for the eth2network are avail for all other tests
       - name: Download eth2network binaries
         run: go test ./... -v -count=1 -run TestEnsureBinariesAreAvail
