@@ -68,10 +68,7 @@ func EnsureBinariesExist() (string, error) {
 	}()
 	go func() {
 		defer wg.Done()
-		//geth-linux-amd64-1.16.4-41714b49.tar.gz
-		//geth-darwin-arm64-1.16.4-41714b49.tar.gz
-		url := fmt.Sprintf("%s/geth-%s-%s-%s-%s.tar.gz", gethURL, runtime.GOOS, runtime.GOARCH, _gethVersion, _gethHash)
-		err := checkOrDownloadBinary(gethFileNameVersion, url, true)
+		err := checkOrDownloadBinary(gethFileNameVersion, fmt.Sprintf("%s/geth-%s-%s-%s-%s.tar.gz", gethURL, runtime.GOOS, runtime.GOARCH, _gethVersion, _gethHash), true)
 		if err != nil {
 			panic(err)
 		}

@@ -13,6 +13,7 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/holiman/uint256"
 )
@@ -80,13 +81,11 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 		if head.ExcessBlobGas == nil {
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
-		//blobBaseFee := eip4844.CalcBlobFee(l1ChainCfg, head)
+		blobBaseFee := eip4844.CalcBlobFee(l1ChainCfg, head)
 		blobMultiplier := calculateRetryMultiplier(_blobPriceMultiplier, retryNumber)
-		blobFeeCapInt := new(big.Int).Mul(big.NewInt(150), big.NewInt(params.GWei)).Uint64()
-		blobFeeCap := uint256.NewInt(blobFeeCapInt)
-		//blobFeeCap := new(uint256.Int).Mul(
-		//	uint256.MustFromBig(blobBaseFee),
-		//	uint256.NewInt(uint64(math.Ceil(blobMultiplier)))) // double base fee with retry multiplier,
+		blobFeeCap := new(uint256.Int).Mul(
+			uint256.MustFromBig(blobBaseFee),
+			uint256.NewInt(uint64(math.Ceil(blobMultiplier)))) // double base fee with retry multiplier,
 
 		// even if we hit the minimum, we should still increase for retries
 		if blobFeeCap.Lt(uint256.NewInt(params.GWei)) {
@@ -95,6 +94,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 				uint256.NewInt(uint64(math.Ceil(blobMultiplier))),
 			)
 		}
+
 		logger.Info("Sending blob tx with gas price", "retry", retryNumber, "nonce", nonce, "blobFeeCap",
 			blobFeeCap, "gasTipCap", gasTipCap, "gasFeeCap", gasFeeCap, "estimatedGas", estimatedGas, "to", to)
 

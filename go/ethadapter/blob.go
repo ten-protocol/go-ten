@@ -24,20 +24,25 @@ const (
 )
 
 // MakeSidecar builds & returns the BlobTxSidecar and corresponding blob hashes from the raw blob
-// data.
+// data with cell proofs for Fulu/Fusaka compatibility (Version1).
 func MakeSidecar(blobs []*kzg4844.Blob, hasher BlobHasher) (*types.BlobTxSidecar, []gethcommon.Hash, error) {
-	sidecar := &types.BlobTxSidecar{}
-	var blobHashes []gethcommon.Hash
-	for _, blob := range blobs {
+	sidecar := &types.BlobTxSidecar{
+		Blobs:       make([]kzg4844.Blob, 0, len(blobs)),
+		Commitments: make([]kzg4844.Commitment, 0, len(blobs)),
+		Proofs:      make([]kzg4844.Proof, 0, len(blobs)*kzg4844.CellProofsPerBlob),
+		Version:     types.BlobSidecarVersion1,
+	}
+	blobHashes := make([]gethcommon.Hash, 0, len(blobs))
+
+	for i, blob := range blobs {
 		blobHash, commitment, cellProofs, err := hasher.BlobHash(blob)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, fmt.Errorf("cannot compute blob hash for blob %d: %w", i, err)
 		}
 		blobHashes = append(blobHashes, blobHash)
 		sidecar.Blobs = append(sidecar.Blobs, *blob)
 		sidecar.Commitments = append(sidecar.Commitments, commitment)
 		sidecar.Proofs = append(sidecar.Proofs, cellProofs...)
-		sidecar.Version = types.BlobSidecarVersion1
 	}
 	return sidecar, blobHashes, nil
 }
