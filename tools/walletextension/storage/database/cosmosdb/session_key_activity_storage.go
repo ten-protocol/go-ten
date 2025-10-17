@@ -105,6 +105,29 @@ func (s *sessionKeyActivityStorageCosmosDB) Save(items []wecommon.SessionKeyActi
 	}
 
 	now := time.Now().UTC().Format(time.RFC3339)
+	// 1) Upsert EMPTY docs for ALL shards to clear stale data
+	for idx := 0; idx < s.shardCount; idx++ {
+		shardID := s.getShardDocumentIDByIndex(idx)
+		dto := sessionKeyActivityDTO{
+			ID:          shardID,
+			Items:       make([]sessionKeyActivityItemDTO, 0),
+			ShardIndex:  idx,
+			LastUpdated: now,
+		}
+		b, err := json.Marshal(dto)
+		if err != nil {
+			return err
+		}
+		if len(b) > twoMBLimitBytes {
+			return fmt.Errorf("session key activity shard %d empty doc exceeds 2MB limit (%d bytes)", idx, len(b))
+		}
+		pk := azcosmos.NewPartitionKeyString(shardID)
+		if _, err := s.container.UpsertItem(ctx, pk, b, nil); err != nil {
+			return err
+		}
+	}
+
+	// 2) Upsert REAL contents for shards that have items
 	for idx, shardItems := range byShard {
 		shardID := s.getShardDocumentIDByIndex(idx)
 		dto := sessionKeyActivityDTO{
