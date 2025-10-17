@@ -54,7 +54,7 @@ jobs:
       - name: Post fork notification to Discord
         if: steps.decide.outputs.should_post == 'true'
         env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
         run: |
           set -euo pipefail
 
