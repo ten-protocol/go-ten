@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -131,4 +132,8 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 		// After successful external operation, delete from tracker
 		_ = s.activityTracker.Delete(c.Addr)
 	}
+
+	// TODO: Now we log all the activities, but later we should store them in the CosmosDB database
+	allActivities := s.activityTracker.ListAll()
+	fmt.Println("Session key activities snapshot", "count", len(allActivities), "items", allActivities)
 }

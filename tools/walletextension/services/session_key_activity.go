@@ -19,6 +19,8 @@ type SessionKeyActivity struct {
 type SessionKeyActivityTracker interface {
 	MarkActive(userID []byte, addr gethcommon.Address)
 	ListOlderThan(cutoff time.Time) []SessionKeyActivity
+	ListAll() []SessionKeyActivity
+	Load(items []SessionKeyActivity)
 	Delete(addr gethcommon.Address) bool
 }
 
@@ -79,6 +81,34 @@ func (t *sessionKeyActivityTracker) ListOlderThan(cutoff time.Time) []SessionKey
 	}
 	t.mu.RUnlock()
 	return result
+}
+
+func (t *sessionKeyActivityTracker) ListAll() []SessionKeyActivity {
+	t.mu.RLock()
+	result := make([]SessionKeyActivity, 0, len(t.byKey))
+	for addr, state := range t.byKey {
+		result = append(result, SessionKeyActivity{Addr: addr, UserID: state.UserID, LastActive: state.LastActive})
+	}
+	t.mu.RUnlock()
+	return result
+}
+
+func (t *sessionKeyActivityTracker) Load(items []SessionKeyActivity) {
+	t.mu.Lock()
+	// Enforce capacity limit by truncating the input slice if necessary
+	if len(items) > t.maxEntries {
+		if t.logger != nil {
+			t.logger.Warn("ReplaceAll truncated due to capacity", "requested", len(items), "capacity", t.maxEntries)
+		}
+		items = items[:t.maxEntries]
+	}
+
+	newMap := make(map[gethcommon.Address]sessionKeyActivityState, len(items))
+	for _, it := range items {
+		newMap[it.Addr] = sessionKeyActivityState{UserID: it.UserID, LastActive: it.LastActive}
+	}
+	t.byKey = newMap
+	t.mu.Unlock()
 }
 
 func (t *sessionKeyActivityTracker) Delete(addr gethcommon.Address) bool {
