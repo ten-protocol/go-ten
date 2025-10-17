@@ -65,7 +65,7 @@ jobs:
 
           # Match any standalone "fork" (case-insensitive)
           if printf '%s\n%s\n' "$title" "$body" | grep -iq '\bfork\b'; then
-            payload=$(jq -n --arg content "Fork mentioned in ${title} release. Please take a look or pay the iron price ${url}" '{content: $content}')
+            payload=$(jq -n --arg content "Fork mentioned in ${title} release. Please take a look or pay the iron price <#945360340613484684> ${url}" '{content: $content}')
             curl -sS -H "Content-Type: application/json" -X POST \
               -d "$payload" "$DISCORD_WEBHOOK_URL" \
               -o /dev/stderr -w "\nHTTP %{http_code}\n"
