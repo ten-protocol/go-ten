@@ -2,14 +2,12 @@ name: [S] Geth Hard Fork Alert
 
 on:
   schedule:
-    # Every day at 09:00 UTC
-    - cron: "0 9 * * *"
+    - cron: "0 9 * * *" # Every day at 09:00 UTC
   workflow_dispatch: {}
 
 jobs:
   check:
     runs-on: ubuntu-latest
-
     steps:
       - name: Fetch latest go-ethereum release
         id: latest
