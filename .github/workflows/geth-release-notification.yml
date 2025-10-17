@@ -1,4 +1,4 @@
-name: Geth Hard Fork Alert
+name: [S] Geth Hard Fork Alert
 
 on:
   schedule:
@@ -39,7 +39,7 @@ jobs:
             ')"
           echo "last_success=$last_success" >> "$GITHUB_OUTPUT"
 
-      - name:  Check if newer than last release
+      - name:  Check if newer than last post
         id: decide
         run: |
           set -euo pipefail
@@ -62,12 +62,12 @@ jobs:
           body="${{ steps.latest.outputs.body }}"
           url="${{ steps.latest.outputs.url }}"
 
-          if printf '%s\n%s\n' "$title" "$body" | grep -iq '\bhard[[:space:]]*fork\b'; then
-            message="Hard fork mentioned in release ${title}! ${url}"
+          if printf '%s\n%s\n' "$title" "$body" | grep -iq '\bfork\b'; then
+            message="Fork mentioned in release ${title}! ${url}"
             payload=$(jq -n --arg content "$message" '{content: $content}')
             curl -sS -H "Content-Type: application/json" -X POST \
               -d "$payload" "$DISCORD_WEBHOOK_URL" \
               -o /dev/stderr -w "\nHTTP %{http_code}\n"
           else
-            echo "No 'hard fork' mention — skipping post."
+            echo "No 'fork' mention — skipping post."
           fi
