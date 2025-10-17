@@ -3,7 +3,7 @@ name: '[S] Geth Hard Fork Alert'
 on:
   schedule:
     - cron: "0 9 * * *" # Every day at 09:00 UTC
-  workflow_dispatch: {}
+  workflow_dispatch:
 
 jobs:
   check:
@@ -50,19 +50,21 @@ jobs:
           echo "should_post=$should_post" >> "$GITHUB_OUTPUT"
           echo "Publish date: $pub | Last run: ${last:-<none>} | Post? $should_post"
 
-      - name: Post hard-fork notification to Discord
+      - name: Post fork notification to Discord
         if: steps.decide.outputs.should_post == 'true'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           set -euo pipefail
-          title="${{ steps.latest.outputs.name }}"
-          body="${{ steps.latest.outputs.body }}"
-          url="${{ steps.latest.outputs.url }}"
 
+          # Read directly from the JSON file created in the earlier step
+          title=$(jq -r '.name // "Geth Release"' latest.json)
+          url=$(jq -r '.html_url' latest.json)
+          body=$(jq -r '.body // ""' latest.json)
+
+          # Match any standalone "fork" (case-insensitive)
           if printf '%s\n%s\n' "$title" "$body" | grep -iq '\bfork\b'; then
-            message="Fork mentioned in release ${title}! ${url}"
-            payload=$(jq -n --arg content "$message" '{content: $content}')
+            payload=$(jq -n --arg content "🔔 Fork mentioned in release ${title}! ${url}" '{content: $content}')
             curl -sS -H "Content-Type: application/json" -X POST \
               -d "$payload" "$DISCORD_WEBHOOK_URL" \
               -o /dev/stderr -w "\nHTTP %{http_code}\n"
