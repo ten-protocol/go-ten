@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  check:
+  check-geth-releases:
     runs-on: self-hosted
-    environment: sepolia
+    environment: development
     steps:
       - name: Fetch latest go-ethereum release
         id: latest
@@ -54,7 +54,7 @@ jobs:
       - name: Post fork notification to Discord
         if: steps.decide.outputs.should_post == 'true'
         env:
-          DISCORD_WEBHOOK_URL: ${{ vars.DISCORD_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           set -euo pipefail
 
@@ -65,7 +65,7 @@ jobs:
 
           # Match any standalone "fork" (case-insensitive)
           if printf '%s\n%s\n' "$title" "$body" | grep -iq '\bfork\b'; then
-            payload=$(jq -n --arg content "🔔 Fork mentioned in release ${title}! ${url}" '{content: $content}')
+            payload=$(jq -n --arg content "Fork mentioned in release ${title}! ${url}. Please take a look" '{content: $content}')
             curl -sS -H "Content-Type: application/json" -X POST \
               -d "$payload" "$DISCORD_WEBHOOK_URL" \
               -o /dev/stderr -w "\nHTTP %{http_code}\n"
