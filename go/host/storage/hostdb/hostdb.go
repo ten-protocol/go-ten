@@ -70,3 +70,25 @@ func (b *dbTransaction) Rollback() error {
 	}
 	return nil
 }
+
+func GetMetadata(db HostDB, key string) (uint64, error) {
+	var value uint64
+	query := "SELECT CAST(val AS INTEGER) FROM config WHERE ky = ?"
+	err := db.GetSQLDB().Get(&value, query, key)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, fmt.Errorf("metadata key %s not found", key)
+		}
+		return 0, fmt.Errorf("failed to get metadata: %w", err)
+	}
+	return value, nil
+}
+
+func SetMetadata(db HostDB, key string, value uint64) error {
+	query := "INSERT OR REPLACE INTO config (ky, val) VALUES (?, ?)"
+	_, err := db.GetSQLDB().Exec(query, key, value)
+	if err != nil {
+		return fmt.Errorf("failed to set metadata: %w", err)
+	}
+	return nil
+}
