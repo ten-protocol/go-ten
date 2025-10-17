@@ -57,3 +57,19 @@ func TestIncorrectSignerDoesNotVerify(t *testing.T) {
 		t.Errorf("transaction used incorrect signer but verified anyway: %v", err)
 	}
 }
+
+func TestZeroChainIDDoesNotPanic(t *testing.T) {
+	privateKey, _ := crypto.GenerateKey()
+	txData := datagenerator.CreateL2TxData()
+	// pre-EIP155, no chain ID
+	signer := types.HomesteadSigner{}
+	signedTx, _ := types.SignTx(types.NewTx(txData), signer, privateKey)
+
+	if signedTx.ChainId() != nil && signedTx.ChainId().Int64() != 0 {
+		t.Fatalf("expected chain ID 0, got %v", signedTx.ChainId())
+	}
+	
+	if _, err := GetExternalTxSigner(signedTx); err == nil {
+		t.Errorf("expected error for transaction with zero chain ID, got nil")
+	}
+}
