@@ -20,8 +20,20 @@ func VerifySignature(chainID int64, tx *types.Transaction) error {
 	return err
 }
 
+// validateChainID checks if the transaction has a valid (non-nil, non-zero) chain ID
+func validateChainID(tx *types.Transaction) error {
+	chainID := tx.ChainId()
+	if chainID == nil || chainID.Int64() == 0 {
+		return fmt.Errorf("transaction cannot have nil or zero chain ID")
+	}
+	return nil
+}
+
 // GetAuthenticatedSender - Get sender and tx nonce from transaction
 func GetAuthenticatedSender(chainID int64, tx *types.Transaction) (*gethcommon.Address, error) {
+	if err := validateChainID(tx); err != nil {
+		return nil, err
+	}
 	if chainID != tx.ChainId().Int64() {
 		return nil, fmt.Errorf("ten chain id does not match tx chain id. Expected %d vs %d", chainID, tx.ChainId().Int64())
 	}
@@ -98,11 +110,10 @@ func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg 
 
 // GetExternalTxSigner returns the address that signed a transaction
 func GetExternalTxSigner(tx *types.Transaction) (gethcommon.Address, error) {
-	chainID := tx.ChainId()
-	if chainID == nil || chainID.Int64() == 0 {
-		return gethcommon.Address{}, fmt.Errorf("cannot get external tx signer for nil or 0 chain ID")
+	if err := validateChainID(tx); err != nil {
+		return gethcommon.Address{}, fmt.Errorf("cannot get external tx signer: %w", err)
 	}
-	from, err := types.Sender(types.LatestSignerForChainID(chainID), tx)
+	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
 	if err != nil {
 		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
 	}
@@ -111,6 +122,10 @@ func GetExternalTxSigner(tx *types.Transaction) (gethcommon.Address, error) {
 }
 
 func GetTxSigner(tx *common.L2PricedTransaction) (gethcommon.Address, error) {
+	if err := validateChainID(tx.Tx); err != nil {
+		return gethcommon.Address{}, err
+	}
+	
 	if tx.SystemDeployer {
 		return common.MaskedSender(gethcommon.BigToAddress(big.NewInt(tx.Tx.ChainId().Int64()))), nil
 	} else if tx.FromSelf {
