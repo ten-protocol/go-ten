@@ -168,9 +168,3 @@ func (s *sessionKeyActivityStorageCosmosDB) shardIndexForAddress(addr gethcommon
 func (s *sessionKeyActivityStorageCosmosDB) getShardDocumentIDByIndex(index int) string {
 	return fmt.Sprintf("%s%d", skShardPrefix, index)
 }
-
-func (s *sessionKeyActivityStorageCosmosDB) getShardIndexFromID(id string) int {
-	var index int
-	fmt.Sscanf(id, skShardPrefix+"%d", &index)
-	return index
-}
