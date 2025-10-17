@@ -32,16 +32,18 @@ type SKManager interface {
 }
 
 type skManager struct {
-	storage storage.UserStorage
-	config  *common.Config
-	logger  gethlog.Logger
+	storage         storage.UserStorage
+	config          *common.Config
+	logger          gethlog.Logger
+	activityTracker SessionKeyActivityTracker
 }
 
-func NewSKManager(storage storage.UserStorage, config *common.Config, logger gethlog.Logger) SKManager {
+func NewSKManager(storage storage.UserStorage, config *common.Config, logger gethlog.Logger, tracker SessionKeyActivityTracker) SKManager {
 	return &skManager{
-		storage: storage,
-		config:  config,
-		logger:  logger,
+		storage:         storage,
+		config:          config,
+		logger:          logger,
+		activityTracker: tracker,
 	}
 }
 
@@ -59,6 +61,11 @@ func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey,
 	err = m.storage.AddSessionKey(user.ID, *sk)
 	if err != nil {
 		return nil, err
+	}
+
+	// Mark activity for the new session key
+	if m.activityTracker != nil && sk != nil && sk.Account != nil && sk.Account.Address != nil {
+		m.activityTracker.MarkActive(user.ID, *sk.Account.Address)
 	}
 	return sk, nil
 }
@@ -147,6 +154,9 @@ func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, sessionKeyA
 	}
 
 	m.logger.Debug("Signed transaction with session key", "stxHash", stx.Hash().Hex(), "sessionKey", sessionKeyAddr.Hex())
+	if m.activityTracker != nil {
+		m.activityTracker.MarkActive(user.ID, sessionKeyAddr)
+	}
 
 	return stx, nil
 }

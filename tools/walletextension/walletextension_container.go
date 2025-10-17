@@ -28,11 +28,12 @@ import (
 )
 
 type Container struct {
-	stopControl     *stopcontrol.StopControl
-	logger          gethlog.Logger
-	rpcServer       node.Server
-	services        *services.Services
-	newHeadsService *subscription.NewHeadsService
+	stopControl                 *stopcontrol.StopControl
+	logger                      gethlog.Logger
+	rpcServer                   node.Server
+	services                    *services.Services
+	newHeadsService             *subscription.NewHeadsService
+	sessionKeyExpirationService *services.SessionKeyExpirationService
 }
 
 func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Container {
@@ -98,6 +99,17 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 
 	stopControl := stopcontrol.New()
 	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, stopControl, version, logger, metricsTracker, &config)
+
+	// Create session key expiration service after services are created
+	sessionKeyExpirationService := services.NewSessionKeyExpirationService(
+		userStorage,
+		logger,
+		stopControl,
+		&config,
+		walletExt.BackendRPC,
+		walletExt.ActivityTracker,
+		walletExt.TxSender,
+	)
 	cfg := &node.RPCConfig{
 		EnableHTTP: true,
 		HTTPPort:   config.WalletExtensionPortHTTP,
@@ -226,11 +238,12 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	})
 
 	return &Container{
-		stopControl:     stopControl,
-		rpcServer:       rpcServer,
-		newHeadsService: walletExt.NewHeadsService,
-		services:        walletExt,
-		logger:          logger,
+		stopControl:                 stopControl,
+		rpcServer:                   rpcServer,
+		newHeadsService:             walletExt.NewHeadsService,
+		services:                    walletExt,
+		sessionKeyExpirationService: sessionKeyExpirationService,
+		logger:                      logger,
 	}
 }
 
