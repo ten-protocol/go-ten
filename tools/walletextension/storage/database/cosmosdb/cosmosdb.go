@@ -296,3 +296,11 @@ func (c *CosmosDB) updateUserWithRetries(ctx context.Context, userID []byte, mut
 	}
 	return errors.New("exceeded max retries, user update failed")
 }
+
+func (c *CosmosDB) StoreSessionKeyActivities(activities []wecommon.SessionKeyActivity) error {
+	return nil
+}
+
+func (c *CosmosDB) GetSessionKeyActivities() ([]wecommon.SessionKeyActivity, error) {
+	return nil, nil
+}

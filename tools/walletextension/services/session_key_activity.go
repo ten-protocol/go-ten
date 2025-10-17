@@ -6,21 +6,15 @@ import (
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 )
-
-// SessionKeyActivity holds last-activity metadata for a session key (public return type)
-type SessionKeyActivity struct {
-	Addr       gethcommon.Address
-	UserID     []byte
-	LastActive time.Time
-}
 
 // SessionKeyActivityTracker exposes a minimal API for tracking activity
 type SessionKeyActivityTracker interface {
 	MarkActive(userID []byte, addr gethcommon.Address)
-	ListOlderThan(cutoff time.Time) []SessionKeyActivity
-	ListAll() []SessionKeyActivity
-	Load(items []SessionKeyActivity)
+	ListOlderThan(cutoff time.Time) []common.SessionKeyActivity
+	ListAll() []common.SessionKeyActivity
+	Load(items []common.SessionKeyActivity)
 	Delete(addr gethcommon.Address) bool
 }
 
@@ -70,30 +64,30 @@ func (t *sessionKeyActivityTracker) MarkActive(userID []byte, addr gethcommon.Ad
 	t.mu.Unlock()
 }
 
-func (t *sessionKeyActivityTracker) ListOlderThan(cutoff time.Time) []SessionKeyActivity {
+func (t *sessionKeyActivityTracker) ListOlderThan(cutoff time.Time) []common.SessionKeyActivity {
 	t.mu.RLock()
 	// preallocate with current size upper bound; filter below
-	result := make([]SessionKeyActivity, 0, len(t.byKey))
+	result := make([]common.SessionKeyActivity, 0, len(t.byKey))
 	for addr, state := range t.byKey {
 		if state.LastActive.Before(cutoff) {
-			result = append(result, SessionKeyActivity{Addr: addr, UserID: state.UserID, LastActive: state.LastActive})
+			result = append(result, common.SessionKeyActivity{Addr: addr, UserID: state.UserID, LastActive: state.LastActive})
 		}
 	}
 	t.mu.RUnlock()
 	return result
 }
 
-func (t *sessionKeyActivityTracker) ListAll() []SessionKeyActivity {
+func (t *sessionKeyActivityTracker) ListAll() []common.SessionKeyActivity {
 	t.mu.RLock()
-	result := make([]SessionKeyActivity, 0, len(t.byKey))
+	result := make([]common.SessionKeyActivity, 0, len(t.byKey))
 	for addr, state := range t.byKey {
-		result = append(result, SessionKeyActivity{Addr: addr, UserID: state.UserID, LastActive: state.LastActive})
+		result = append(result, common.SessionKeyActivity{Addr: addr, UserID: state.UserID, LastActive: state.LastActive})
 	}
 	t.mu.RUnlock()
 	return result
 }
 
-func (t *sessionKeyActivityTracker) Load(items []SessionKeyActivity) {
+func (t *sessionKeyActivityTracker) Load(items []common.SessionKeyActivity) {
 	t.mu.Lock()
 	// Enforce capacity limit by truncating the input slice if necessary
 	if len(items) > t.maxEntries {
