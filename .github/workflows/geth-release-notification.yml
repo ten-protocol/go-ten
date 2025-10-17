@@ -1,4 +1,4 @@
-name: [S] Geth Hard Fork Alert
+name: '[S] Geth Hard Fork Alert'
 
 on:
   schedule:
