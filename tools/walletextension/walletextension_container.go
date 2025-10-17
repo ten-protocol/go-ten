@@ -91,6 +91,13 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		os.Exit(1)
 	}
 
+	// Create session key activity storage (separate from user storage)
+	activityStorage, err := storage.NewSessionKeyActivityStorage(config.DBType, config.DBConnectionURL)
+	if err != nil {
+		logger.Crit("unable to create session key activity storage", log.ErrKey, err)
+		os.Exit(1)
+	}
+
 	// captures version in the env vars
 	version := os.Getenv("OBSCURO_GATEWAY_VERSION")
 	if version == "" {

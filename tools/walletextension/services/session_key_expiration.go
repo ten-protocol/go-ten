@@ -14,6 +14,7 @@ import (
 // SessionKeyExpirationService runs in the background and monitors users
 type SessionKeyExpirationService struct {
 	storage         storage.UserStorage
+	activityStorage storage.SessionKeyActivityStorage
 	logger          gethlog.Logger
 	stopControl     *stopcontrol.StopControl
 	ticker          *time.Ticker
@@ -24,11 +25,12 @@ type SessionKeyExpirationService struct {
 }
 
 // NewSessionKeyExpirationService creates a new session key expiration service
-func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config, backendRPC *BackendRPC, activityTracker SessionKeyActivityTracker, txSender TxSender) *SessionKeyExpirationService {
+func NewSessionKeyExpirationService(storage storage.UserStorage, activityStorage storage.SessionKeyActivityStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config, backendRPC *BackendRPC, activityTracker SessionKeyActivityTracker, txSender TxSender) *SessionKeyExpirationService {
 	logger.Info("Creating session key expiration service", "expirationThreshold", config.SessionKeyExpirationThreshold.String())
 
 	service := &SessionKeyExpirationService{
 		storage:         storage,
+		activityStorage: activityStorage,
 		logger:          logger,
 		stopControl:     stopControl,
 		config:          config,
@@ -62,7 +64,7 @@ func (s *SessionKeyExpirationService) start() {
 	s.ticker = time.NewTicker(interval)
 
 	// load all activities from the database to make them recoverable in case of restart
-	if persisted, err := s.storage.GetSessionKeyActivities(); err != nil {
+	if persisted, err := s.activityStorage.Load(); err != nil {
 		s.logger.Warn("Failed to load persisted session key activities", "error", err)
 	} else if len(persisted) > 0 {
 		loaded := make([]common.SessionKeyActivity, 0, len(persisted))
@@ -150,5 +152,5 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 
 	// store all activities in the database to make them persistent and recoverable in case of restart
 	allActivities := s.activityTracker.ListAll()
-	s.storage.StoreSessionKeyActivities(allActivities)
+	_ = s.activityStorage.Save(allActivities)
 }

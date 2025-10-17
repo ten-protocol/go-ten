@@ -82,11 +82,3 @@ func (s *UserStorageWithCache) GetUser(userID []byte) (*wecommon.GWUser, error) 
 func (s *UserStorageWithCache) GetEncryptionKey() []byte {
 	return s.storage.GetEncryptionKey()
 }
-
-func (s *UserStorageWithCache) StoreSessionKeyActivities(activities []wecommon.SessionKeyActivity) error {
-	return s.storage.StoreSessionKeyActivities(activities)
-}
-
-func (s *UserStorageWithCache) GetSessionKeyActivities() ([]wecommon.SessionKeyActivity, error) {
-	return s.storage.GetSessionKeyActivities()
-}
