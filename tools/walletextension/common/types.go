@@ -47,3 +47,9 @@ func (u GWUser) AllAccounts() map[common.Address]*GWAccount {
 func (u GWUser) GetAllAddresses() []common.Address {
 	return maps.Keys(u.AllAccounts())
 }
+
+type SessionKeyActivity struct {
+	Addr       common.Address
+	UserID     []byte
+	LastActive time.Time
+}

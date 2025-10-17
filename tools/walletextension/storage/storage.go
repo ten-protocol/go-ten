@@ -21,6 +21,8 @@ type UserStorage interface {
 	RemoveSessionKey(userID []byte, sessionKeyAddr *gethcommon.Address) error
 	GetUser(userID []byte) (*common.GWUser, error)
 	GetEncryptionKey() []byte
+	StoreSessionKeyActivities(activities []common.SessionKeyActivity) error
+	GetSessionKeyActivities() ([]common.SessionKeyActivity, error)
 }
 
 func New(dbType, dbConnectionURL, dbPath string, randomKey []byte, logger gethlog.Logger) (UserStorage, error) {

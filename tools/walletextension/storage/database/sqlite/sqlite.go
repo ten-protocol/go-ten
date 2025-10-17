@@ -277,3 +277,13 @@ func createOrLoad(dbPath string) (string, error) {
 
 	return dbPath, nil
 }
+
+func (s *SqliteDB) StoreSessionKeyActivities(activities []wecommon.SessionKeyActivity) error {
+	// Sqlite implementation is non production only and does not store session key activities between restarts
+	return nil
+}
+
+func (s *SqliteDB) GetSessionKeyActivities() ([]wecommon.SessionKeyActivity, error) {
+	// Sqlite implementation is non production only and does not store session key activities between restarts
+	return nil, nil
+}

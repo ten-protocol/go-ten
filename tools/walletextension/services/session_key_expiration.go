@@ -2,11 +2,11 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
@@ -60,6 +60,21 @@ func (s *SessionKeyExpirationService) start() {
 	// Configure interval from config
 	interval := s.config.SessionKeyExpirationInterval
 	s.ticker = time.NewTicker(interval)
+
+	// load all activities from the database to make them recoverable in case of restart
+	if persisted, err := s.storage.GetSessionKeyActivities(); err != nil {
+		s.logger.Warn("Failed to load persisted session key activities", "error", err)
+	} else if len(persisted) > 0 {
+		loaded := make([]common.SessionKeyActivity, 0, len(persisted))
+		for _, a := range persisted {
+			loaded = append(loaded, common.SessionKeyActivity{
+				Addr:       a.Addr,
+				UserID:     a.UserID,
+				LastActive: a.LastActive,
+			})
+		}
+		s.activityTracker.Load(loaded)
+	}
 
 	go func() {
 		defer func() {
@@ -133,7 +148,7 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 		_ = s.activityTracker.Delete(c.Addr)
 	}
 
-	// TODO: Now we log all the activities, but later we should store them in the CosmosDB database
+	// store all activities in the database to make them persistent and recoverable in case of restart
 	allActivities := s.activityTracker.ListAll()
-	fmt.Println("Session key activities snapshot", "count", len(allActivities), "items", allActivities)
+	s.storage.StoreSessionKeyActivities(allActivities)
 }
