@@ -45,6 +45,38 @@ func GetAuthenticatedSender(chainID int64, tx *types.Transaction) (*gethcommon.A
 	return &sender, nil
 }
 
+// GetExternalTxSigner returns the address that signed a transaction
+func GetExternalTxSigner(tx *types.Transaction) (gethcommon.Address, error) {
+	if err := validateChainID(tx); err != nil {
+		return gethcommon.Address{}, fmt.Errorf("cannot get external tx signer: %w", err)
+	}
+	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
+	}
+
+	return from, nil
+}
+
+func GetTxSigner(tx *common.L2PricedTransaction) (gethcommon.Address, error) {
+	if err := validateChainID(tx.Tx); err != nil {
+		return gethcommon.Address{}, err
+	}
+
+	if tx.SystemDeployer {
+		return common.MaskedSender(gethcommon.BigToAddress(big.NewInt(tx.Tx.ChainId().Int64()))), nil
+	} else if tx.FromSelf {
+		return common.MaskedSender(*tx.Tx.To()), nil
+	}
+
+	from, err := types.Sender(types.LatestSignerForChainID(tx.Tx.ChainId()), tx.Tx)
+	if err != nil {
+		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
+	}
+
+	return from, nil
+}
+
 type DurationThresholds struct {
 	High    int64
 	Medium  int64
@@ -106,36 +138,4 @@ func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg 
 	}
 	newArgs := append([]any{log.DurationKey, stopWatch}, args...)
 	f(fmt.Sprintf("Duration::%s::%s", label, msg), newArgs...)
-}
-
-// GetExternalTxSigner returns the address that signed a transaction
-func GetExternalTxSigner(tx *types.Transaction) (gethcommon.Address, error) {
-	if err := validateChainID(tx); err != nil {
-		return gethcommon.Address{}, fmt.Errorf("cannot get external tx signer: %w", err)
-	}
-	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
-	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
-	}
-
-	return from, nil
-}
-
-func GetTxSigner(tx *common.L2PricedTransaction) (gethcommon.Address, error) {
-	if err := validateChainID(tx.Tx); err != nil {
-		return gethcommon.Address{}, err
-	}
-	
-	if tx.SystemDeployer {
-		return common.MaskedSender(gethcommon.BigToAddress(big.NewInt(tx.Tx.ChainId().Int64()))), nil
-	} else if tx.FromSelf {
-		return common.MaskedSender(*tx.Tx.To()), nil
-	}
-
-	from, err := types.Sender(types.LatestSignerForChainID(tx.Tx.ChainId()), tx.Tx)
-	if err != nil {
-		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
-	}
-
-	return from, nil
 }
