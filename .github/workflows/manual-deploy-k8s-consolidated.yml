@@ -1,0 +1,766 @@
+name: '[M] k8s Deploy Consolidated'
+run-name: '[M] Deploy ${{ github.event.inputs.testnet_type }} (${{ github.event.inputs.deployment_strategy }})'
+
+on:
+  workflow_dispatch:
+    inputs:
+      testnet_type:
+        description: 'Target Environment'
+        required: true
+        type: choice
+        options:
+          - 'dev-testnet'
+          - 'uat-testnet'
+          - 'sepolia-testnet'
+          - 'mainnet'
+
+      deployment_strategy:
+        description: 'Deployment Strategy'
+        required: true
+        type: choice
+        options:
+          - 'non-destructive'
+          - 'destructive'
+
+      image_build:
+        description: 'Build & Push Images'
+        required: true
+        type: choice
+        options:
+          - 'yes'
+          - 'no'
+
+      image_tag:
+        description: 'Image Tag (e.g., v1.5.8.0 or leave empty for latest)'
+        required: false
+        type: string
+
+      confirmation:
+        description: 'Type "confirm" if deploying sepolia or mainnet'
+        required: false
+        type: string
+
+      log_level:
+        description: 'Log Level (1-Error to 5-Trace)'
+        required: false
+        type: number
+        default: 3
+
+      max_gas_gwei:
+        description: 'Max gas price in gwei'
+        required: false
+        type: string
+        default: '1.5'
+
+      sync_timeout:
+        description: 'ArgoCD Sync Timeout'
+        required: false
+        type: choice
+        options:
+          - '5m'
+          - '10m'
+          - '15m'
+          - '20m'
+        default: '10m'
+
+      sequencer_node_selector:
+        description: 'Sequencer Node Selector (e.g., aks-sgxpool01-61714098-vmss000004)'
+        required: false
+        type: string
+
+      validator_01_node_selector:
+        description: 'Validator-01 Node Selector (e.g., aks-sgxpool01-61714098-vmss000005)'
+        required: false
+        type: string
+
+      validator_02_node_selector:
+        description: 'Validator-02 Node Selector (e.g., aks-sgxpool02-25481487-vmss000004)'
+        required: false
+        type: string
+
+      gateway_node_selector:
+        description: 'Gateway Node Selector (e.g., aks-pool-25481487-vmss000001)'
+        required: false
+        type: string
+
+      additional_apps_to_delete:
+        description: 'Additional ArgoCD apps to delete (comma-separated, destructive only, e.g., gateway,tools,postgres-client)'
+        required: false
+        type: string
+
+env:
+  REGISTRY: testnetobscuronet.azurecr.io
+  REGISTRY_ORG: obscuronet
+
+jobs:
+  # ============================================================================
+  # VALIDATION & SETUP
+  # ============================================================================
+  validate-inputs:
+    runs-on: ubuntu-latest
+    outputs:
+      TESTNET_SHORT_NAME: ${{ steps.setup.outputs.TESTNET_SHORT_NAME }}
+      ARGOCD_SERVER: ${{ steps.setup.outputs.ARGOCD_SERVER }}
+      IS_DESTRUCTIVE: ${{ steps.setup.outputs.IS_DESTRUCTIVE }}
+      NEEDS_APPROVAL: ${{ steps.setup.outputs.NEEDS_APPROVAL }}
+      CONFIG_PATH: ${{ steps.setup.outputs.CONFIG_PATH }}
+      CHILD_APPS: ${{ steps.setup.outputs.CHILD_APPS }}
+      ADDITIONAL_APPS_TO_DELETE: ${{ steps.setup.outputs.ADDITIONAL_APPS_TO_DELETE }}
+
+    steps:
+      - name: 'Check confirmation for production envs'
+        run: |
+          if [[ ("${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" || "${{ github.event.inputs.testnet_type }}" == "mainnet") && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+            echo "❌ Confirmation field must say 'confirm' to deploy to sepolia or mainnet"
+            exit 1
+          fi
+
+      - name: 'Setup environment variables'
+        id: setup
+        run: |
+          TESTNET_TYPE="${{ github.event.inputs.testnet_type }}"
+
+          # Extract short name
+          if [[ "$TESTNET_TYPE" == "mainnet" ]]; then
+            SHORT_NAME="mainnet"
+          else
+            SHORT_NAME=${TESTNET_TYPE%-testnet}
+          fi
+          echo "TESTNET_SHORT_NAME=$SHORT_NAME" >> $GITHUB_OUTPUT
+
+          # Determine ArgoCD server & config path
+          if [[ "$TESTNET_TYPE" == "mainnet" ]]; then
+            echo "ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER_PROD }}" >> $GITHUB_OUTPUT
+            CONFIG_PATH="prod-argocd-config"
+          else
+            echo "ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER_NONPROD }}" >> $GITHUB_OUTPUT
+            CONFIG_PATH="nonprod-argocd-config"
+          fi
+          echo "CONFIG_PATH=$CONFIG_PATH" >> $GITHUB_OUTPUT
+
+          # Check if destructive
+          if [[ "${{ github.event.inputs.deployment_strategy }}" == "destructive" ]]; then
+            echo "IS_DESTRUCTIVE=true" >> $GITHUB_OUTPUT
+          else
+            echo "IS_DESTRUCTIVE=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Check if approval needed (destructive + sepolia/mainnet)
+          if [[ "${{ github.event.inputs.deployment_strategy }}" == "destructive" && ("$TESTNET_TYPE" == "sepolia-testnet" || "$TESTNET_TYPE" == "mainnet") ]]; then
+            echo "NEEDS_APPROVAL=true" >> $GITHUB_OUTPUT
+          else
+            echo "NEEDS_APPROVAL=false" >> $GITHUB_OUTPUT
+          fi
+
+          # Set child apps per environment (for syncing)
+          case "$TESTNET_TYPE" in
+            dev-testnet)
+              echo "CHILD_APPS=dev-sequencer dev-validator-01 dev-validator-02 dev-gateway dev-tools" >> $GITHUB_OUTPUT
+              ;;
+            uat-testnet)
+              echo "CHILD_APPS=uat-sequencer uat-validator-01 uat-validator-02 uat-gateway uat-tools" >> $GITHUB_OUTPUT
+              ;;
+            sepolia-testnet)
+              echo "CHILD_APPS=sepolia-sequencer sepolia-validator-01 sepolia-validator-02 sepolia-gateway sepolia-gateway-dexynth sepolia-gateway-pentest sepolia-tools" >> $GITHUB_OUTPUT
+              ;;
+            mainnet)
+              echo "CHILD_APPS=mainnet-sequencer mainnet-validator-01 mainnet-validator-02 mainnet-gateway mainnet-postgres-client mainnet-tools" >> $GITHUB_OUTPUT
+              ;;
+          esac
+
+          # Parse additional apps to delete (if provided, destructive only)
+          ADDITIONAL_APPS="${{ github.event.inputs.additional_apps_to_delete }}"
+          if [[ -z "$ADDITIONAL_APPS" ]]; then
+            echo "ADDITIONAL_APPS_TO_DELETE=" >> $GITHUB_OUTPUT
+          else
+            # Convert comma-separated to environment-prefixed list
+            IFS=',' read -ra APPS <<< "$ADDITIONAL_APPS"
+            PREFIXED_APPS=""
+            for app in "${APPS[@]}"; do
+              app=$(echo "$app" | xargs)  # trim whitespace
+              prefixed_app="${SHORT_NAME}-${app}"
+              PREFIXED_APPS="$PREFIXED_APPS $prefixed_app"
+            done
+            echo "ADDITIONAL_APPS_TO_DELETE=$PREFIXED_APPS" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================================================
+  # APPROVAL GATE (only for destructive sepolia/mainnet)
+  # ============================================================================
+  approval:
+    needs: validate-inputs
+    runs-on: ubuntu-latest
+    if: needs.validate-inputs.outputs.NEEDS_APPROVAL == 'true'
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - name: 'Approval granted for destructive deployment'
+        run: |
+          echo "✅ Destructive deployment approved by ${{ github.actor }}"
+          echo "Environment: ${{ github.event.inputs.testnet_type }}"
+          echo "Strategy: destructive"
+
+  # ============================================================================
+  # BUILD & PUSH IMAGES (Optional)
+  # ============================================================================
+  build-images:
+    needs: [validate-inputs, approval]
+    if: |
+      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
+      github.event.inputs.image_build == 'yes'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    outputs:
+      IMAGE_TAG: ${{ steps.get_version.outputs.IMAGE_TAG }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.1
+
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY }}
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Determine image tag (git tag or commit hash)'
+        id: get_version
+        run: |
+          # Use provided tag, or git tag, or commit hash
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          else
+            # Try git tag first, fall back to short commit hash
+            IMAGE_TAG=$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)
+          fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "📦 Image tag: $IMAGE_TAG"
+
+      - name: 'Build and push images'
+        env:
+          IMAGE_TAG: ${{ steps.get_version.outputs.IMAGE_TAG }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          set -e
+
+          images=(
+            "enclave:enclave.Dockerfile"
+            "host:host.Dockerfile"
+            "l1challengeperiod:l1challengeperiod.Dockerfile"
+            "l1contractdeployer:l1contractdeployer.Dockerfile"
+            "l1grantsequencers:l1grantsequencers.Dockerfile"
+            "l2contractdeployer:l2contractdeployer.Dockerfile"
+          )
+
+          for image_info in "${images[@]}"; do
+            IFS=':' read -r image_name dockerfile <<< "$image_info"
+            image_url="${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/$image_name:$IMAGE_TAG"
+            echo "Building $image_url..."
+            DOCKER_BUILDKIT=1 docker build \
+              -t "$image_url" \
+              --build-arg AZURE_TENANT_ID="${{ env.AZURE_TENANT_ID }}" \
+              --build-arg AZURE_SUBSCRIPTION_ID="${{ env.AZURE_SUBSCRIPTION_ID }}" \
+              -f "dockerfiles/$dockerfile" .
+            docker push "$image_url"
+            echo "✅ Pushed $image_url"
+          done
+
+  # ============================================================================
+  # UPDATE TEN-APPS YAML WITH NEW IMAGE TAGS
+  # ============================================================================
+  update-ten-apps-config:
+    needs: [validate-inputs, build-images]
+    if: github.event.inputs.image_build == 'yes'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ten-protocol/ten-apps
+          token: ${{ secrets.DEPLOY_ACTIONS_PAT }}
+          path: ten-apps
+
+      - name: 'Install yq'
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: 'Update image tags and node selectors in ten-apps config'
+        env:
+          IMAGE_TAG: ${{ needs.build-images.outputs.IMAGE_TAG }}
+          CONFIG_PATH: ${{ needs.validate-inputs.outputs.CONFIG_PATH }}
+          SEQUENCER_NODE_SELECTOR: ${{ github.event.inputs.sequencer_node_selector }}
+          VALIDATOR_01_NODE_SELECTOR: ${{ github.event.inputs.validator_01_node_selector }}
+          VALIDATOR_02_NODE_SELECTOR: ${{ github.event.inputs.validator_02_node_selector }}
+          GATEWAY_NODE_SELECTOR: ${{ github.event.inputs.gateway_node_selector }}
+          IS_DESTRUCTIVE: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE }}
+        run: |
+          cd ten-apps
+
+          # Determine the config directory
+          if [[ "${{ github.event.inputs.testnet_type }}" == "mainnet" ]]; then
+            ENV_DIR="${{ env.CONFIG_PATH }}/apps/envs/mainnet/valuesFile"
+          else
+            ENV_DIR="${{ env.CONFIG_PATH }}/apps/envs/${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}/valuesFile"
+          fi
+
+          echo "📝 Updating image tags to: ${{ env.IMAGE_TAG }} in $ENV_DIR"
+
+          # Update all values files with new image tags (for both destructive and non-destructive)
+          for values_file in "$ENV_DIR"/values-*.yaml; do
+            if [ -f "$values_file" ]; then
+              filename=$(basename "$values_file")
+              echo "  Updating $filename..."
+
+              # Update image tags for core images
+              yq eval -i ".enclave.image.tag = \"${{ env.IMAGE_TAG }}\"" "$values_file" 2>/dev/null || true
+              yq eval -i ".enclave02.image.tag = \"${{ env.IMAGE_TAG }}\"" "$values_file" 2>/dev/null || true
+              yq eval -i ".host.image.tag = \"${{ env.IMAGE_TAG }}\"" "$values_file" 2>/dev/null || true
+
+              # For gateway values files
+              yq eval -i ".gateway.image.tag = \"${{ env.IMAGE_TAG }}\"" "$values_file" 2>/dev/null || true
+            fi
+          done
+
+          echo "✅ Image tags updated"
+
+          # ⚠️  NODE SELECTORS ONLY FOR DESTRUCTIVE DEPLOYMENTS
+          if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]]; then
+            echo "🔥 DESTRUCTIVE deployment: Updating node selectors"
+
+            # Update sequencer node selector (if provided)
+            if [[ -n "${{ env.SEQUENCER_NODE_SELECTOR }}" ]]; then
+              echo "📍 Updating sequencer node selector to: ${{ env.SEQUENCER_NODE_SELECTOR }}"
+              seq_file="$ENV_DIR/values-${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-sequencer.yaml"
+              if [ -f "$seq_file" ]; then
+                # Update all three node selector types for sequencer
+                yq eval -i ".enclave.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.SEQUENCER_NODE_SELECTOR }}\"" "$seq_file"
+                yq eval -i ".enclave02.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.SEQUENCER_NODE_SELECTOR }}\"" "$seq_file" 2>/dev/null || true
+                yq eval -i ".host.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.SEQUENCER_NODE_SELECTOR }}\"" "$seq_file"
+                echo "✅ Sequencer node selector updated (enclave + host)"
+              fi
+            fi
+
+            # Update validator-01 node selector (if provided)
+            if [[ -n "${{ env.VALIDATOR_01_NODE_SELECTOR }}" ]]; then
+              echo "📍 Updating validator-01 node selector to: ${{ env.VALIDATOR_01_NODE_SELECTOR }}"
+              val1_file="$ENV_DIR/values-${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-validator-01.yaml"
+              if [ -f "$val1_file" ]; then
+                yq eval -i ".enclave.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_01_NODE_SELECTOR }}\"" "$val1_file"
+                yq eval -i ".enclave02.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_01_NODE_SELECTOR }}\"" "$val1_file" 2>/dev/null || true
+                yq eval -i ".host.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_01_NODE_SELECTOR }}\"" "$val1_file"
+                echo "✅ Validator-01 node selector updated (enclave + host)"
+              fi
+            fi
+
+            # Update validator-02 node selector (if provided)
+            if [[ -n "${{ env.VALIDATOR_02_NODE_SELECTOR }}" ]]; then
+              echo "📍 Updating validator-02 node selector to: ${{ env.VALIDATOR_02_NODE_SELECTOR }}"
+              val2_file="$ENV_DIR/values-${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-validator-02.yaml"
+              if [ -f "$val2_file" ]; then
+                yq eval -i ".enclave.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_02_NODE_SELECTOR }}\"" "$val2_file"
+                yq eval -i ".enclave02.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_02_NODE_SELECTOR }}\"" "$val2_file" 2>/dev/null || true
+                yq eval -i ".host.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_02_NODE_SELECTOR }}\"" "$val2_file"
+                echo "✅ Validator-02 node selector updated (enclave + host)"
+              fi
+            fi
+
+            # Update gateway node selector (if provided)
+            if [[ -n "${{ env.GATEWAY_NODE_SELECTOR }}" ]]; then
+              echo "📍 Updating gateway node selector to: ${{ env.GATEWAY_NODE_SELECTOR }}"
+              gw_file="$ENV_DIR/values-${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-gateway.yaml"
+              if [ -f "$gw_file" ]; then
+                yq eval -i ".gateway.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.GATEWAY_NODE_SELECTOR }}\"" "$gw_file"
+                echo "✅ Gateway node selector updated"
+              fi
+            fi
+          else
+            echo "📌 NON-DESTRUCTIVE deployment: Skipping node selector updates (pods stay on current nodes)"
+          fi
+
+          # Commit changes
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add "$ENV_DIR/values-*.yaml"
+
+          if git diff --cached --quiet; then
+            echo "ℹ️  No changes to commit"
+          else
+            commit_msg="chore: update "
+            [[ "${{ env.IMAGE_TAG }}" != "" ]] && commit_msg+="image tags to ${{ env.IMAGE_TAG }}"
+
+            if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]]; then
+              if [[ -n "${{ env.SEQUENCER_NODE_SELECTOR }}" ]] || [[ -n "${{ env.VALIDATOR_01_NODE_SELECTOR }}" ]] || [[ -n "${{ env.VALIDATOR_02_NODE_SELECTOR }}" ]] || [[ -n "${{ env.GATEWAY_NODE_SELECTOR }}" ]]; then
+                [[ "${{ env.IMAGE_TAG }}" != "" ]] && commit_msg+=" and "
+                commit_msg+="node selectors"
+              fi
+            fi
+
+            commit_msg+=" for ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}"
+
+            git commit -m "$commit_msg"
+            git push
+            echo "✅ Updated and pushed changes to ten-apps"
+          fi
+
+  # ============================================================================
+  # DEPLOY L1 CONTRACTS
+  # ============================================================================
+  deploy-l1-contracts:
+    needs: [validate-inputs, approval, update-ten-apps-config]
+    if: |
+      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success())
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    outputs:
+      NETWORK_CONFIG_ADDR: ${{ steps.deploy.outputs.NETWORK_CONFIG_ADDR }}
+      MSG_BUS_CONTRACT_ADDR: ${{ steps.deploy.outputs.MSG_BUS_CONTRACT_ADDR }}
+      BRIDGE_CONTRACT_ADDR: ${{ steps.deploy.outputs.BRIDGE_CONTRACT_ADDR }}
+      CROSS_CHAIN_ADDR: ${{ steps.deploy.outputs.CROSS_CHAIN_ADDR }}
+      DA_REGISTRY_ADDR: ${{ steps.deploy.outputs.DA_REGISTRY_ADDR }}
+      ENCLAVE_REGISTRY_ADDR: ${{ steps.deploy.outputs.ENCLAVE_REGISTRY_ADDR }}
+      L1_START_HASH: ${{ steps.deploy.outputs.L1_START_HASH }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.1
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY }}
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Deploy L1 Contracts'
+        id: deploy
+        env:
+          DOCKER_API_VERSION: "1.45"
+          DEPLOY_DOCKERIMAGE: ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/l1contractdeployer:${{ needs.build-images.outputs.IMAGE_TAG || 'latest' }}
+          DEPLOY_NETWORKNAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
+          DEPLOY_GITHUBPAT: ${{ secrets.DEPLOY_ACTIONS_PAT }}
+          DEPLOY_OUTPUTENV: ./testnet/.env
+          DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+          DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+          DEPLOY_L1_INITIALSEQADDRESS: ${{ vars.ACCOUNT_ADDR_NODE_0 }}
+          DEPLOY_L1_ETHERSCANAPIKEY: ${{ secrets.ETHERSCAN_API_KEY }}
+          DEPLOY_L1_MAXGASGWEI: ${{ github.event.inputs.max_gas_gwei }}
+          DEPLOY_L1_CHECKGASPRICE: ${{ github.event.inputs.testnet_type == 'mainnet' && 'true' || 'false' }}
+        run: |
+          go run ./testnet/launcher/l1contractdeployer/cmd
+
+          if [ -f ./testnet/.env ]; then
+            source ./testnet/.env
+          fi
+
+          echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_OUTPUT
+          echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
+          echo "BRIDGE_CONTRACT_ADDR=$BRIDGECONTRACTADDR" >> $GITHUB_OUTPUT
+          echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_OUTPUT
+          echo "DA_REGISTRY_ADDR=$DAREGISTRYADDR" >> $GITHUB_OUTPUT
+          echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_OUTPUT
+          echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
+
+      - name: 'Upload L1 deployer logs'
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-l1-artifacts
+          path: deploy-l1-contracts.out
+          retention-days: 2
+
+  # ============================================================================
+  # ARGOCD - DELETE CHILD APPS (Destructive only)
+  # ============================================================================
+  argocd-delete-child-apps:
+    needs: [validate-inputs, approval, deploy-l1-contracts]
+    if: |
+      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
+      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - name: 'Install ArgoCD CLI'
+        run: |
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+
+      - name: 'Delete ArgoCD child applications'
+        env:
+          ARGOCD_SERVER: ${{ needs.validate-inputs.outputs.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
+          DEFAULT_APPS: "sequencer validator-01 validator-02"
+          ADDITIONAL_APPS: ${{ needs.validate-inputs.outputs.ADDITIONAL_APPS_TO_DELETE }}
+        run: |
+          set -e
+
+          echo "🗑️  Deleting ArgoCD child applications for ${{ github.event.inputs.testnet_type }}"
+
+          # Always delete default apps (sequencer, validator-01, validator-02)
+          echo "📌 Default apps to delete: sequencer, validator-01, validator-02"
+          for app_suffix in ${{ env.DEFAULT_APPS }}; do
+            app="${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-${app_suffix}"
+            echo "  Deleting: $app"
+            argocd app delete "$app" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
+            sleep 2
+          done
+
+          # Delete additional apps if specified
+          if [[ -n "${{ env.ADDITIONAL_APPS }}" ]]; then
+            echo "📌 Additional apps to delete: ${{ env.ADDITIONAL_APPS }}"
+            for app in ${{ env.ADDITIONAL_APPS }}; do
+              echo "  Deleting: $app"
+              argocd app delete "$app" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
+              sleep 2
+            done
+          else
+            echo "📌 No additional apps specified"
+          fi
+
+          echo "✅ Child app deletion complete"
+
+  # ============================================================================
+  # ARGOCD - SYNC APPLICATIONS
+  # ============================================================================
+  argocd-sync-apps:
+    needs: [validate-inputs, approval, deploy-l1-contracts, argocd-delete-child-apps]
+    if: |
+      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success())
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    outputs:
+      APPS_SYNCED: ${{ steps.sync.outputs.APPS_SYNCED }}
+
+    steps:
+      - name: 'Install ArgoCD CLI'
+        run: |
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+
+      - name: 'Sync ArgoCD child applications'
+        id: sync
+        env:
+          ARGOCD_SERVER: ${{ needs.validate-inputs.outputs.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
+          CHILD_APPS: ${{ needs.validate-inputs.outputs.CHILD_APPS }}
+          SYNC_TIMEOUT: ${{ github.event.inputs.sync_timeout }}
+        run: |
+          set -e
+
+          echo "🔄 Syncing ArgoCD child applications"
+          echo "Strategy: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && 'destructive (child apps recreated)' || 'non-destructive (sync only)' }}"
+          echo "Timeout: ${{ env.SYNC_TIMEOUT }}"
+
+          sync_failed=false
+
+          for app in ${{ env.CHILD_APPS }}; do
+            echo "Syncing app: $app"
+            if argocd app sync "$app" --wait --timeout "${{ env.SYNC_TIMEOUT }}"; then
+              echo "✅ Synced: $app"
+            else
+              echo "❌ Failed to sync $app"
+              sync_failed=true
+            fi
+            sleep 1
+          done
+
+          if [ "$sync_failed" = true ]; then
+            echo "⚠️  Some apps failed to sync, but continuing..."
+          fi
+
+          echo "APPS_SYNCED=true" >> $GITHUB_OUTPUT
+
+  # ============================================================================
+  # WAIT FOR ARGOCD APPS TO BE HEALTHY
+  # ============================================================================
+  wait-argocd-healthy:
+    needs: [validate-inputs, argocd-sync-apps]
+    if: success()
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - name: 'Install ArgoCD CLI'
+        run: |
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+
+      - name: 'Wait for ArgoCD apps to be healthy'
+        env:
+          ARGOCD_SERVER: ${{ needs.validate-inputs.outputs.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
+          CHILD_APPS: ${{ needs.validate-inputs.outputs.CHILD_APPS }}
+        run: |
+          set -e
+
+          echo "⏳ Waiting for ArgoCD applications to reach healthy state"
+
+          max_attempts=30
+          attempt=1
+
+          for app in ${{ env.CHILD_APPS }}; do
+            echo "Checking health of app: $app"
+            attempt=1
+            while [ $attempt -le $max_attempts ]; do
+              health=$(argocd app get "$app" --refresh --output json | jq -r '.status.health.status // "Unknown"')
+              sync=$(argocd app get "$app" --refresh --output json | jq -r '.status.operationState.phase // "Unknown"')
+
+              echo "  Attempt $attempt/$max_attempts: Health=$health, Sync=$sync"
+
+              if [[ "$health" == "Healthy" ]] && [[ "$sync" != "Running" ]]; then
+                echo "✅ App $app is healthy"
+                break
+              fi
+
+              if [ $attempt -eq $max_attempts ]; then
+                echo "⚠️  App $app did not reach healthy state within timeout"
+              fi
+
+              attempt=$((attempt + 1))
+              sleep 10
+            done
+          done
+
+          echo "✅ Health check complete"
+
+  # ============================================================================
+  # DEPLOY L2 CONTRACTS (Destructive only)
+  # ============================================================================
+  deploy-l2-contracts:
+    needs: [validate-inputs, deploy-l1-contracts, wait-argocd-healthy]
+    if: |
+      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
+      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/checkout@v4
+        with:
+          repository: ten-protocol/ten-apps
+          token: ${{ secrets.DEPLOY_ACTIONS_PAT }}
+          path: cfg
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.1
+
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY }}
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Parse L1 config'
+        id: parse_l1_config
+        env:
+          CONFIG_PATH: ${{ needs.validate-inputs.outputs.CONFIG_PATH }}
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+          # Determine config file
+          if [[ "${{ github.event.inputs.testnet_type }}" == "mainnet" ]]; then
+            CFG="cfg/${{ env.CONFIG_PATH }}/apps/envs/mainnet/valuesFile/l1-values.yaml"
+          else
+            CFG="cfg/${{ env.CONFIG_PATH }}/apps/envs/${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}/valuesFile/l1-values.yaml"
+          fi
+
+          echo "network_config=$(yq -r '.l1Config.networkConfig' "$CFG")" >> $GITHUB_OUTPUT
+          echo "message_bus=$(yq -r '.l1Config.messagebus' "$CFG")" >> $GITHUB_OUTPUT
+          echo "rollup=$(yq -r '.l1Config.rollup' "$CFG")" >> $GITHUB_OUTPUT
+          echo "crosschain=$(yq -r '.l1Config.crosschain' "$CFG")" >> $GITHUB_OUTPUT
+          echo "enclave_registry=$(yq -r '.l1Config.enclaveRegistry' "$CFG")" >> $GITHUB_OUTPUT
+
+      - name: 'Deploy L2 Contracts'
+        env:
+          DOCKER_API_VERSION: "1.45"
+          DEPLOY_DOCKERIMAGE: ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/l2contractdeployer:latest
+          DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
+          DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
+          DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
+          DEPLOY_L2_RPCADDRESS: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-validator-01.ten.xyz
+          DEPLOY_L2_HTTPPORT: 80
+          DEPLOY_L2_WSPORT: 81
+          DEPLOY_L2_FAUCETPREFUND: ${{ vars.FAUCET_INITIAL_FUNDS }}
+          NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ steps.parse_l1_config.outputs.network_config }}
+          NETWORK_L1_CONTRACTS_MESSAGEBUS: ${{ steps.parse_l1_config.outputs.message_bus }}
+          NETWORK_L1_CONTRACTS_ROLLUP: ${{ steps.parse_l1_config.outputs.rollup }}
+          NETWORK_L1_CONTRACTS_CROSSCHAIN: ${{ steps.parse_l1_config.outputs.crosschain }}
+          NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ steps.parse_l1_config.outputs.enclave_registry }}
+          NETWORK_CHAINID: ${{ vars.CHAIN_ID }}
+        run: |
+          go run ./testnet/launcher/l2contractdeployer/cmd
+
+      - name: 'Upload L2 deployer logs'
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-l2-artifacts
+          path: deploy-l2-contracts.out
+          retention-days: 2
+
+  # ============================================================================
+  # POST-DEPLOYMENT NOTIFICATION
+  # ============================================================================
+  post-deployment:
+    needs: [validate-inputs, deploy-l1-contracts, deploy-l2-contracts]
+    if: |
+      always() &&
+      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success())
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 'Deployment summary'
+        run: |
+          echo "✅ Deployment workflow completed"
+          echo "Environment: ${{ github.event.inputs.testnet_type }}"
+          echo "Strategy: ${{ github.event.inputs.deployment_strategy }}"
+          echo "Images built: ${{ github.event.inputs.image_build }}"
+          echo "Actor: ${{ github.actor }}"
+
+      - name: 'Send repository dispatch to ten-test'
+        if: github.event.inputs.testnet_type == 'dev-testnet' || github.event.inputs.testnet_type == 'uat-testnet'
+        run: |
+          event_type=""
+          if [[ "${{ github.event.inputs.testnet_type }}" == "dev-testnet" ]]; then
+            event_type="dev_testnet_deployed"
+          elif [[ "${{ github.event.inputs.testnet_type }}" == "uat-testnet" ]]; then
+            event_type="uat_testnet_deployed"
+          fi
+
+          curl -XPOST \
+            -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
+            -H "Accept: application/vnd.github" \
+            -H "Content-Type: application/json" \
+            https://api.github.com/repos/ten-protocol/ten-test/dispatches \
+            --data "{\"event_type\": \"$event_type\", \"client_payload\": {\"ref\": \"${{ github.ref_name }}\"}}"
