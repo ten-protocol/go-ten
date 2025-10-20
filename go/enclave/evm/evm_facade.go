@@ -164,7 +164,9 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 		// Charge baseFee for this portion only (no tip)
 		if header != nil {
 			// baseFee may be nil/zero in some test configs; the helper guards for that.
-			exec.chargeBaseFeeOnly(s, header, from, visUsed, noBaseFee)
+			if err := exec.chargeBaseFeeOnly(s, header, from, visUsed, noBaseFee); err != nil {
+				return nil, err
+			}
 		}
 
 		contractsWithVisibility[*contractAddress] = cfg
@@ -284,17 +286,24 @@ func createCleanState(s *state.StateDB, msg *gethcore.Message, ethHeader *types.
 	return cleanState
 }
 
-func (exec *evmExecutor) chargeBaseFeeOnly(s *state.StateDB, header *types.Header, payer gethcommon.Address, gasUsed uint64, noBaseFee bool) {
+func (exec *evmExecutor) chargeBaseFeeOnly(s *state.StateDB, header *types.Header, payer gethcommon.Address, gasUsed uint64, noBaseFee bool) error {
 	if gasUsed == 0 || header.BaseFee == nil || header.BaseFee.Sign() == 0 || noBaseFee {
-		return
+		return nil
 	}
 	weiBig := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), header.BaseFee)
 	if weiBig.Sign() <= 0 {
-		return
+		return nil
 	}
 	wei, _ := uint256.FromBig(weiBig)
+
+	// Ensure payer has enough balance to cover the base fee charge
+	if s.GetBalance(payer).Cmp(wei) < 0 {
+		return fmt.Errorf("insufficient balance for baseFee charge: have %s, need %s", s.GetBalance(payer).ToBig().String(), wei.ToBig().String())
+	}
+
 	s.SubBalance(payer, wei, tracing.BalanceDecreaseGasBuy)
 	s.AddBalance(header.Coinbase, wei, tracing.BalanceIncreaseRewardTransactionFee)
+	return nil
 }
 
 // readVisibilityWithCap reserves cap gas from the GasPool, invokes the visibility reader,
