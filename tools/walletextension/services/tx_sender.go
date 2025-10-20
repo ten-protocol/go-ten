@@ -56,6 +56,7 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 
 	// Check if balance is below dust threshold - skip transfer if so
 	if balance.ToInt().Cmp(dustThresholdWei) <= 0 {
+		s.logger.Info("Skipping fund recovery due to low balance (dust)", "sessionKeyAddress", from.Hex(), "balanceWei", balance.ToInt().String(), "dustThresholdWei", dustThresholdWei.String())
 		return gethcommon.Hash{}, nil
 	}
 
@@ -79,6 +80,7 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 	gasCost := new(big.Int).Mul(gasFeeCap, big.NewInt(int64(gasLimit)))
 	amountToSend := new(big.Int).Sub(balance.ToInt(), gasCost)
 	if amountToSend.Sign() <= 0 {
+		s.logger.Warn("Skipping fund recovery: insufficient balance to cover gas", "sessionKeyAddress", from.Hex(), "balanceWei", balance.ToInt().String(), "gasCostWei", gasCost.String())
 		return gethcommon.Hash{}, fmt.Errorf("insufficient balance for gas: balance=%s gasCost=%s", balance.ToInt().String(), gasCost.String())
 	}
 

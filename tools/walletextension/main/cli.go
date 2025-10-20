@@ -102,11 +102,11 @@ const (
 	frontendURLFlagUsage   = "The frontend URL that is allowed to access restricted CORS endpoints. Default: https://uat-gw-testnet.ten.xyz"
 
 	sessionKeyExpirationThresholdFlagName    = "sessionKeyExpirationThreshold"
-	sessionKeyExpirationThresholdFlagDefault = 24 * time.Hour
+	sessionKeyExpirationThresholdFlagDefault = 15 * time.Minute
 	sessionKeyExpirationThresholdFlagUsage   = "Threshold for session key expiration. Session keys older than this duration will be considered expired. Default: 24h"
 
 	sessionKeyExpirationIntervalFlagName    = "sessionKeyExpirationInterval"
-	sessionKeyExpirationIntervalFlagDefault = 2 * time.Hour
+	sessionKeyExpirationIntervalFlagDefault = 1 * time.Minute
 	sessionKeyExpirationIntervalFlagUsage   = "How often the session key expiration service runs. Default: 2h"
 )
 

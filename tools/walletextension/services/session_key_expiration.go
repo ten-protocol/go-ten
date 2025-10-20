@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
@@ -107,14 +108,18 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 	candidates := s.activityTracker.ListOlderThan(cutoff)
 
 	if len(candidates) == 0 {
+		s.logger.Debug("No session keys eligible for expiration at this check", "cutoff", cutoff.UTC().Format(time.RFC3339))
 		return
 	}
 
+	s.logger.Info("Found session keys eligible for expiration", "count", len(candidates), "cutoff", cutoff.UTC().Format(time.RFC3339))
+
 	for _, c := range candidates {
+		s.logger.Debug("Processing expired session key candidate", "sessionKeyAddress", c.Addr.Hex(), "userID", wecommon.HashForLogging(c.UserID), "lastActive", c.LastActive.UTC().Format(time.RFC3339))
 		// Load the user for this session key
 		user, err := s.storage.GetUser(c.UserID)
 		if err != nil || user == nil {
-			s.logger.Error("Failed to load user for session key candidate", "error", err)
+			s.logger.Error("Failed to load user for session key candidate", "error", err, "userID", wecommon.HashForLogging(c.UserID), "sessionKeyAddress", c.Addr.Hex())
 			continue
 		}
 
@@ -122,6 +127,7 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 		if _, ok := user.SessionKeys[c.Addr]; !ok {
 			// The session key may have been deleted; remove from tracker
 			s.activityTracker.Delete(c.Addr)
+			s.logger.Debug("Session key no longer belongs to user, removing from tracker", "sessionKeyAddress", c.Addr.Hex(), "userID", wecommon.HashForLogging(user.ID))
 			continue
 		}
 
@@ -137,7 +143,8 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 			continue
 		}
 
-		_, err = s.txSender.SendAllMinusGasWithSK(context.Background(), user, c.Addr, *firstAccount.Address)
+		s.logger.Info("Recovering funds from expired session key", "sessionKeyAddress", c.Addr.Hex(), "to", firstAccount.Address.Hex(), "userID", wecommon.HashForLogging(user.ID))
+		txHash, err := s.txSender.SendAllMinusGasWithSK(context.Background(), user, c.Addr, *firstAccount.Address)
 		if err != nil {
 			s.logger.Error("Failed to recover funds from expired session key",
 				"error", err,
@@ -145,7 +152,12 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 				"sessionKeyAddress", c.Addr.Hex())
 			continue
 		}
-
+		if (txHash == gethcommon.Hash{}) {
+			// No-op (likely due to dust threshold) - we still remove from tracker to avoid infinite retries
+			s.logger.Info("Skipped fund recovery (no tx sent) for expired session key", "sessionKeyAddress", c.Addr.Hex(), "userID", wecommon.HashForLogging(user.ID))
+		} else {
+			s.logger.Info("Submitted fund recovery tx for expired session key", "txHash", txHash.Hex(), "sessionKeyAddress", c.Addr.Hex(), "userID", wecommon.HashForLogging(user.ID))
+		}
 		// After successful external operation, delete from tracker
 		_ = s.activityTracker.Delete(c.Addr)
 	}
