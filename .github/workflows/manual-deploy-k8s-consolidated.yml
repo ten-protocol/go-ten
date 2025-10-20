@@ -63,23 +63,8 @@ on:
           - '20m'
         default: '10m'
 
-      sequencer_node_selector:
-        description: 'Sequencer Node Selector (e.g., aks-sgxpool01-61714098-vmss000004)'
-        required: false
-        type: string
-
-      validator_01_node_selector:
-        description: 'Validator-01 Node Selector (e.g., aks-sgxpool01-61714098-vmss000005)'
-        required: false
-        type: string
-
-      validator_02_node_selector:
-        description: 'Validator-02 Node Selector (e.g., aks-sgxpool02-25481487-vmss000004)'
-        required: false
-        type: string
-
-      gateway_node_selector:
-        description: 'Gateway Node Selector (e.g., aks-pool-25481487-vmss000001)'
+      node_selectors:
+        description: 'Node Selectors for destructive (format: sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4)'
         required: false
         type: string
 
@@ -296,10 +281,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ needs.build-images.outputs.IMAGE_TAG }}
           CONFIG_PATH: ${{ needs.validate-inputs.outputs.CONFIG_PATH }}
-          SEQUENCER_NODE_SELECTOR: ${{ github.event.inputs.sequencer_node_selector }}
-          VALIDATOR_01_NODE_SELECTOR: ${{ github.event.inputs.validator_01_node_selector }}
-          VALIDATOR_02_NODE_SELECTOR: ${{ github.event.inputs.validator_02_node_selector }}
-          GATEWAY_NODE_SELECTOR: ${{ github.event.inputs.gateway_node_selector }}
+          NODE_SELECTORS_INPUT: ${{ github.event.inputs.node_selectors }}
           IS_DESTRUCTIVE: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE }}
         run: |
           cd ten-apps
@@ -332,57 +314,67 @@ jobs:
           echo "✅ Image tags updated"
 
           # ⚠️  NODE SELECTORS ONLY FOR DESTRUCTIVE DEPLOYMENTS
-          if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]]; then
-            echo "🔥 DESTRUCTIVE deployment: Updating node selectors"
+          if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]] && [[ -n "${{ env.NODE_SELECTORS_INPUT }}" ]]; then
+            echo "🔥 DESTRUCTIVE deployment: Parsing and applying node selectors"
+
+            # Parse node_selectors input (format: sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4)
+            declare -A node_selectors
+            IFS=',' read -ra pairs <<< "${{ env.NODE_SELECTORS_INPUT }}"
+            for pair in "${pairs[@]}"; do
+              key="${pair%%=*}"
+              value="${pair##*=}"
+              node_selectors["$key"]="$value"
+            done
 
             # Update sequencer node selector (if provided)
-            if [[ -n "${{ env.SEQUENCER_NODE_SELECTOR }}" ]]; then
-              echo "📍 Updating sequencer node selector to: ${{ env.SEQUENCER_NODE_SELECTOR }}"
+            if [[ -n "${node_selectors[sequencer]}" ]]; then
+              echo "📍 Updating sequencer node selector to: ${node_selectors[sequencer]}"
               seq_file="$ENV_DIR/values-${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-sequencer.yaml"
               if [ -f "$seq_file" ]; then
-                # Update all three node selector types for sequencer
-                yq eval -i ".enclave.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.SEQUENCER_NODE_SELECTOR }}\"" "$seq_file"
-                yq eval -i ".enclave02.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.SEQUENCER_NODE_SELECTOR }}\"" "$seq_file" 2>/dev/null || true
-                yq eval -i ".host.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.SEQUENCER_NODE_SELECTOR }}\"" "$seq_file"
-                echo "✅ Sequencer node selector updated (enclave + host)"
+                yq eval -i ".enclave.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[sequencer]}\"" "$seq_file"
+                yq eval -i ".enclave02.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[sequencer]}\"" "$seq_file" 2>/dev/null || true
+                yq eval -i ".host.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[sequencer]}\"" "$seq_file"
+                echo "✅ Sequencer node selector updated"
               fi
             fi
 
             # Update validator-01 node selector (if provided)
-            if [[ -n "${{ env.VALIDATOR_01_NODE_SELECTOR }}" ]]; then
-              echo "📍 Updating validator-01 node selector to: ${{ env.VALIDATOR_01_NODE_SELECTOR }}"
+            if [[ -n "${node_selectors[validator-01]}" ]]; then
+              echo "📍 Updating validator-01 node selector to: ${node_selectors[validator-01]}"
               val1_file="$ENV_DIR/values-${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-validator-01.yaml"
               if [ -f "$val1_file" ]; then
-                yq eval -i ".enclave.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_01_NODE_SELECTOR }}\"" "$val1_file"
-                yq eval -i ".enclave02.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_01_NODE_SELECTOR }}\"" "$val1_file" 2>/dev/null || true
-                yq eval -i ".host.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_01_NODE_SELECTOR }}\"" "$val1_file"
-                echo "✅ Validator-01 node selector updated (enclave + host)"
+                yq eval -i ".enclave.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[validator-01]}\"" "$val1_file"
+                yq eval -i ".enclave02.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[validator-01]}\"" "$val1_file" 2>/dev/null || true
+                yq eval -i ".host.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[validator-01]}\"" "$val1_file"
+                echo "✅ Validator-01 node selector updated"
               fi
             fi
 
             # Update validator-02 node selector (if provided)
-            if [[ -n "${{ env.VALIDATOR_02_NODE_SELECTOR }}" ]]; then
-              echo "📍 Updating validator-02 node selector to: ${{ env.VALIDATOR_02_NODE_SELECTOR }}"
+            if [[ -n "${node_selectors[validator-02]}" ]]; then
+              echo "📍 Updating validator-02 node selector to: ${node_selectors[validator-02]}"
               val2_file="$ENV_DIR/values-${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-validator-02.yaml"
               if [ -f "$val2_file" ]; then
-                yq eval -i ".enclave.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_02_NODE_SELECTOR }}\"" "$val2_file"
-                yq eval -i ".enclave02.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_02_NODE_SELECTOR }}\"" "$val2_file" 2>/dev/null || true
-                yq eval -i ".host.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.VALIDATOR_02_NODE_SELECTOR }}\"" "$val2_file"
-                echo "✅ Validator-02 node selector updated (enclave + host)"
+                yq eval -i ".enclave.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[validator-02]}\"" "$val2_file"
+                yq eval -i ".enclave02.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[validator-02]}\"" "$val2_file" 2>/dev/null || true
+                yq eval -i ".host.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[validator-02]}\"" "$val2_file"
+                echo "✅ Validator-02 node selector updated"
               fi
             fi
 
             # Update gateway node selector (if provided)
-            if [[ -n "${{ env.GATEWAY_NODE_SELECTOR }}" ]]; then
-              echo "📍 Updating gateway node selector to: ${{ env.GATEWAY_NODE_SELECTOR }}"
+            if [[ -n "${node_selectors[gateway]}" ]]; then
+              echo "📍 Updating gateway node selector to: ${node_selectors[gateway]}"
               gw_file="$ENV_DIR/values-${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-gateway.yaml"
               if [ -f "$gw_file" ]; then
-                yq eval -i ".gateway.nodeSelector.[\"kubernetes.io/hostname\"] = \"${{ env.GATEWAY_NODE_SELECTOR }}\"" "$gw_file"
+                yq eval -i ".gateway.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[gateway]}\"" "$gw_file"
                 echo "✅ Gateway node selector updated"
               fi
             fi
+          elif [[ "${{ env.IS_DESTRUCTIVE }}" != "true" ]]; then
+            echo "📌 NON-DESTRUCTIVE deployment: Skipping node selector updates"
           else
-            echo "📌 NON-DESTRUCTIVE deployment: Skipping node selector updates (pods stay on current nodes)"
+            echo "ℹ️  No node selectors provided"
           fi
 
           # Commit changes
@@ -396,11 +388,9 @@ jobs:
             commit_msg="chore: update "
             [[ "${{ env.IMAGE_TAG }}" != "" ]] && commit_msg+="image tags to ${{ env.IMAGE_TAG }}"
 
-            if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]]; then
-              if [[ -n "${{ env.SEQUENCER_NODE_SELECTOR }}" ]] || [[ -n "${{ env.VALIDATOR_01_NODE_SELECTOR }}" ]] || [[ -n "${{ env.VALIDATOR_02_NODE_SELECTOR }}" ]] || [[ -n "${{ env.GATEWAY_NODE_SELECTOR }}" ]]; then
-                [[ "${{ env.IMAGE_TAG }}" != "" ]] && commit_msg+=" and "
-                commit_msg+="node selectors"
-              fi
+            if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]] && [[ -n "${{ env.NODE_SELECTORS_INPUT }}" ]]; then
+              [[ "${{ env.IMAGE_TAG }}" != "" ]] && commit_msg+=" and "
+              commit_msg+="node selectors"
             fi
 
             commit_msg+=" for ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}"
