@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	"github.com/jmoiron/sqlx"
