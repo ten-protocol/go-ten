@@ -164,7 +164,7 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 		// Charge baseFee for this portion only (no tip)
 		if header != nil {
 			// baseFee may be nil/zero in some test configs; the helper guards for that.
-			exec.chargeBaseFeeOnly(s, header, from, visUsed)
+			exec.chargeBaseFeeOnly(s, header, from, visUsed, noBaseFee)
 		}
 
 		contractsWithVisibility[*contractAddress] = cfg
@@ -284,8 +284,8 @@ func createCleanState(s *state.StateDB, msg *gethcore.Message, ethHeader *types.
 	return cleanState
 }
 
-func (exec *evmExecutor) chargeBaseFeeOnly(s *state.StateDB, header *types.Header, payer gethcommon.Address, gasUsed uint64) {
-	if gasUsed == 0 || header.BaseFee == nil || header.BaseFee.Sign() == 0 {
+func (exec *evmExecutor) chargeBaseFeeOnly(s *state.StateDB, header *types.Header, payer gethcommon.Address, gasUsed uint64, noBaseFee bool) {
+	if gasUsed == 0 || header.BaseFee == nil || header.BaseFee.Sign() == 0 || noBaseFee {
 		return
 	}
 	weiBig := new(big.Int).Mul(new(big.Int).SetUint64(gasUsed), header.BaseFee)
