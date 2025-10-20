@@ -7,10 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 
-	gethcore "github.com/ethereum/go-ethereum/core"
-	"github.com/ten-protocol/go-ten/go/enclave/evm"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
@@ -83,7 +81,7 @@ type BatchExecutionContext struct {
 	GasPool     *gethcore.GasPool
 
 	EthHeader *types.Header
-	Chain     *evm.TenChainContext
+	Chain     gethcore.ChainContext
 
 	// these properties are calculated during execution
 	ctx           context.Context

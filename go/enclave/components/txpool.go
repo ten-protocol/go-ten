@@ -233,8 +233,8 @@ func (t *TxPool) PendingTransactions(batchTime uint64) map[gethcommon.Address][]
 	}
 	baseFee := currentBlock.BaseFee
 	txs := t.pool.Pending(gethtxpool.PendingFilter{
-		BaseFee:      uint256.NewInt(baseFee.Uint64()),
-		OnlyPlainTxs: true,
+		BaseFee: uint256.NewInt(baseFee.Uint64()),
+		BlobTxs: false,
 	})
 
 	// Filter out transactions that have "Time" greater than batchTime + MaxNegativeTxTimeDeltaMs

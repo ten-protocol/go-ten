@@ -648,14 +648,6 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
 	}
 
-	// todo - VERKLE - comment this
-	trieDB := executor.storage.TrieDB()
-	err = trieDB.Commit(rootHash, false)
-	if err != nil {
-		executor.logger.Error("Failed to commit trieDB", "error", err)
-		return nil, fmt.Errorf("failed to commit trieDB. Cause: %w", err)
-	}
-
 	batch.Header.Root = rootHash
 
 	batch.ResetHash()

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ten-protocol/go-ten/go/enclave/config"
@@ -18,8 +19,8 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
 
-// TenChainContext - basic implementation of the ChainContext needed for the EVM integration
-type TenChainContext struct {
+// tenChainContext - basic implementation of the ChainContext needed for the EVM integration
+type tenChainContext struct {
 	storage             storage.Storage
 	cc                  *params.ChainConfig
 	config              *config.EnclaveConfig
@@ -27,9 +28,9 @@ type TenChainContext struct {
 	logger              gethlog.Logger
 }
 
-// NewTenChainContext returns a new instance of the TenChainContext given a storage ( and logger )
-func NewTenChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config *config.EnclaveConfig, cc *params.ChainConfig, logger gethlog.Logger) *TenChainContext {
-	return &TenChainContext{
+// NewTenChainContext returns a new instance of the tenChainContext given a storage ( and logger )
+func NewTenChainContext(storage storage.Storage, gethEncodingService gethencoding.EncodingService, config *config.EnclaveConfig, cc *params.ChainConfig, logger gethlog.Logger) core.ChainContext {
+	return &tenChainContext{
 		storage:             storage,
 		cc:                  cc,
 		config:              config,
@@ -38,15 +39,15 @@ func NewTenChainContext(storage storage.Storage, gethEncodingService gethencodin
 	}
 }
 
-func (occ *TenChainContext) Engine() consensus.Engine {
+func (occ *tenChainContext) Engine() consensus.Engine {
 	return &NoOpConsensusEngine{logger: occ.logger}
 }
 
-func (occ *TenChainContext) Config() *params.ChainConfig {
+func (occ *tenChainContext) Config() *params.ChainConfig {
 	return occ.cc
 }
 
-func (occ *TenChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header {
+func (occ *tenChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), occ.config.RPCTimeout)
 	defer cancelCtx()
 
@@ -64,4 +65,19 @@ func (occ *TenChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header 
 		return nil
 	}
 	return h
+}
+
+func (occ *tenChainContext) CurrentHeader() *types.Header {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (occ *tenChainContext) GetHeaderByNumber(number uint64) *types.Header {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (occ *tenChainContext) GetHeaderByHash(hash common.Hash) *types.Header {
+	// TODO implement me
+	panic("implement me")
 }

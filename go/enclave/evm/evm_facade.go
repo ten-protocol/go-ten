@@ -30,7 +30,7 @@ import (
 )
 
 type evmExecutor struct {
-	chain            *TenChainContext
+	chain            gethcore.ChainContext
 	cc               *params.ChainConfig
 	config           *enclaveconfig.EnclaveConfig
 	gasEstimationCap uint64
@@ -42,7 +42,7 @@ type evmExecutor struct {
 	logger gethlog.Logger
 }
 
-func NewEVMExecutor(chain *TenChainContext, cc *params.ChainConfig, config *enclaveconfig.EnclaveConfig, gasEstimationCap uint64, storage storage.Storage, gethEncodingService gethencoding.EncodingService, visibilityReader ContractVisibilityReader, logger gethlog.Logger) *evmExecutor {
+func NewEVMExecutor(chain gethcore.ChainContext, cc *params.ChainConfig, config *enclaveconfig.EnclaveConfig, gasEstimationCap uint64, storage storage.Storage, gethEncodingService gethencoding.EncodingService, visibilityReader ContractVisibilityReader, logger gethlog.Logger) *evmExecutor {
 	return &evmExecutor{
 		chain:               chain,
 		cc:                  cc,
@@ -124,7 +124,7 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
 
 	// Compute leftover user gas after the main execution
-	var gasLeft uint64 = actualGasLimit
+	gasLeft := actualGasLimit
 	if receipt.GasUsed > actualGasLimit {
 		// ensure no bugs going overboard with the l1 publishing
 		// or execution before we pick up the leftover gas.
@@ -143,6 +143,9 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 		if err1 != nil {
 			exec.logger.Crit("metered visibility read failed", log.ErrKey, err1, "addr", contractAddress.Hex())
 			return nil, fmt.Errorf("visibility read failed for %s: %w", contractAddress.Hex(), err1)
+		}
+		if noBaseFee {
+			visUsed = 0
 		}
 
 		// Ensure we still respect the user's tx gas limit

@@ -204,3 +204,8 @@ func (sqlDB *enclaveDB) ReadAncients(fn func(reader ethdb.AncientReaderOp) error
 	// non-ancient operations.
 	return fn(sqlDB)
 }
+
+func (sqlDB *enclaveDB) AncientBytes(kind string, id, offset, length uint64) ([]byte, error) {
+	// TODO implement me
+	panic("implement me")
+}
