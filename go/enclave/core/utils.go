@@ -98,7 +98,11 @@ func LogMethodDuration(logger gethlog.Logger, stopWatch *measure.Stopwatch, msg 
 
 // GetExternalTxSigner returns the address that signed a transaction
 func GetExternalTxSigner(tx *types.Transaction) (gethcommon.Address, error) {
-	from, err := types.Sender(types.LatestSignerForChainID(tx.ChainId()), tx)
+	chainID := tx.ChainId()
+	if chainID == nil || chainID.Int64() == 0 {
+		return gethcommon.Address{}, fmt.Errorf("cannot get external tx signer for nil or 0 chain ID")
+	}
+	from, err := types.Sender(types.LatestSignerForChainID(chainID), tx)
 	if err != nil {
 		return gethcommon.Address{}, fmt.Errorf("could not recover sender for transaction. Cause: %w", err)
 	}

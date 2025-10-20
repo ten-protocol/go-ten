@@ -1,0 +1,74 @@
+name: '[S] Geth Hard Fork Alert'
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # Every day at 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check-geth-releases:
+    runs-on: self-hosted
+    environment: development
+    steps:
+      - name: Fetch latest go-ethereum release
+        id: latest
+        run: |
+          set -euo pipefail
+          curl -sSL https://api.github.com/repos/ethereum/go-ethereum/releases/latest > latest.json
+          echo "id=$(jq -r .id latest.json)" >> "$GITHUB_OUTPUT"
+          echo "name=$(jq -r .name latest.json)" >> "$GITHUB_OUTPUT"
+          echo "url=$(jq -r .html_url latest.json)" >> "$GITHUB_OUTPUT"
+          echo "body<<__EOF__" >> "$GITHUB_OUTPUT"
+          jq -r '.body // ""' latest.json >> "$GITHUB_OUTPUT"
+          echo "__EOF__" >> "$GITHUB_OUTPUT"
+
+      - name: Get last successful run timestamp
+        id: lastrun
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          last_success="$(curl -sSL -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?per_page=50" \
+            | jq -r --arg name "${GITHUB_WORKFLOW}" --argjson current ${GITHUB_RUN_ID} '
+                .workflow_runs
+                | map(select(.name == $name and .conclusion == "success" and .id < $current))
+                | sort_by(.run_started_at) | last // empty
+                | .updated_at // empty
+            ')"
+          echo "last_success=$last_success" >> "$GITHUB_OUTPUT"
+
+      - name:  Check if newer than last post
+        id: decide
+        run: |
+          set -euo pipefail
+          pub=$(jq -r .published_at latest.json)
+          last="${{ steps.lastrun.outputs.last_success }}"
+          should_post=false
+          if [ -z "$last" ] || [ "$pub" \> "$last" ]; then
+            should_post=true
+          fi
+          echo "should_post=$should_post" >> "$GITHUB_OUTPUT"
+          echo "Publish date: $pub | Last run: ${last:-<none>} | Post? $should_post"
+
+      - name: Post fork notification to Discord
+        if: steps.decide.outputs.should_post == 'true'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          # Read directly from the JSON file created in the earlier step
+          title=$(jq -r '.name // "Geth Release"' latest.json)
+          url=$(jq -r '.html_url' latest.json)
+          body=$(jq -r '.body // ""' latest.json)
+
+          # Match any standalone "fork" (case-insensitive)
+          if printf '%s\n%s\n' "$title" "$body" | grep -iq '\bfork\b'; then
+            payload=$(jq -n --arg content "Fork mentioned in ${title} release. Please take a look or pay the iron price <#945360340613484684> ${url}" '{content: $content}')
+            curl -sS -H "Content-Type: application/json" -X POST \
+              -d "$payload" "$DISCORD_WEBHOOK_URL" \
+              -o /dev/stderr -w "\nHTTP %{http_code}\n"
+          else
+            echo "No 'fork' mention — skipping post."
+          fi

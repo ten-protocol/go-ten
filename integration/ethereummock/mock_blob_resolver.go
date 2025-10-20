@@ -16,11 +16,11 @@ import (
 
 type MockBlobHasher struct{}
 
-func (MockBlobHasher) BlobHash(blob *kzg4844.Blob) (gethcommon.Hash, kzg4844.Commitment, kzg4844.Proof, error) {
+func (MockBlobHasher) BlobHash(blob *kzg4844.Blob) (gethcommon.Hash, kzg4844.Commitment, []kzg4844.Proof, error) {
 	h := crypto.Keccak256Hash(blob[:])
 	commitment := kzg4844.Commitment{}
 	copy(commitment[:], h.Bytes())
-	return ethadapter.KZGToVersionedHash(commitment), kzg4844.Commitment{}, kzg4844.Proof{}, nil
+	return ethadapter.KZGToVersionedHash(commitment), kzg4844.Commitment{}, []kzg4844.Proof{}, nil
 }
 
 type BlobResolverInMem struct {
