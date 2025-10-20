@@ -109,7 +109,6 @@ func (r *DataService) initEagerFetchHeight() {
 	height, err := r.blockResolver.GetMetadata(eagerFetchHeightKey)
 	if err != nil {
 		if r.l1StartHash == (gethcommon.Hash{}) {
-
 			// note: this is expected in some test scenarios with dummy L1s
 			r.logger.Warn("l1StartHash not set, blocks will be fetched from L1 genesis")
 
@@ -129,7 +128,6 @@ func (r *DataService) initEagerFetchHeight() {
 	}
 	r.eagerFetchHeight.Store(height)
 	r.logger.Info("Loaded eager fetch height from database", "height", height)
-
 }
 
 func (r *DataService) updateEagerFetchHeight(blockHeight uint64) {
