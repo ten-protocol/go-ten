@@ -75,14 +75,6 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 	return NewStorage(backingDB, cachingService, config, chainConfig, logger)
 }
 
-var trieDBConfig = &triedb.Config{
-	Preimages: triedb.HashDefaults.Preimages,
-	IsVerkle:  triedb.HashDefaults.IsVerkle,
-	HashDB: &hashdb.Config{
-		CleanCacheSize: 256 * 1024 * 1024,
-	},
-}
-
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	// Open trie database with provided config
 	trieDB := triedb.NewDatabase(backingDB, triedb.VerkleDefaults)
