@@ -35,7 +35,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 
 	dbName = strings.ToLower(dbName)
 
-	// Open connection to the default postgres database to check if our target DB exists
+	// default postgres database
 	defaultDB, err := sqlx.Open(driverName, dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL server: %v", err)
