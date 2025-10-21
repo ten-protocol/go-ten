@@ -218,17 +218,26 @@ func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	defer r.batchLock.Unlock()
 
 	_, err := r.storage.FetchBatch(batch.Hash())
-	// we found the exact same batch
+	// no error means we found the exact same batch (same hash)
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}
+	// there was an error, it's probably 'not found' but if it is unexpected error then we return it
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("error checking for existing batch by hash: %w", err)
+	}
 
 	_, err = r.storage.FetchBatchBySeqNo(batch.SeqNo().Uint64())
-	// we found a batch with the same seq no, but different hash
+	// no error means we found a batch with the same seq no, but different hash - that is a conflict, do not continue
 	if err == nil {
 		return errutil.ErrConflict
 	}
+	// there was an error, it's probably 'not found' but again we check, if it is an unexpected err then return it
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("error checking for existing batch by seqno: %w", err)
+	}
 
+	// there is no batch with this hash or sequencer number, safe to add it to the database
 	err = r.storage.AddBatch(batch)
 	if err != nil {
 		return fmt.Errorf("could not add batch: %w", err)
