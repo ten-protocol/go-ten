@@ -168,7 +168,7 @@ func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi
 	// can't exceed maxGasCap
 	gasUsed := gasUsedBig.Uint64()
 	if gasUsed > maxGasCap {
-		return 0, nil, nil, fmt.Errorf("%w (cap: %d, tx: %d)", gethcore.ErrGasLimitTooHigh, params.MaxTxGas, gasUsed), nil
+		return 0, nil, nil, fmt.Errorf("estimated execution %w (cap: %d, tx: %d)", gethcore.ErrGasLimitTooHigh, params.MaxTxGas, gasUsed), nil
 	}
 
 	return hexutil.Uint64(gasUsed), nil, feeCap, nil, nil

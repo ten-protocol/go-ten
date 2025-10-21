@@ -1,6 +1,7 @@
 package ethchainadapter
 
 import (
+	"math"
 	"math/big"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -9,17 +10,20 @@ import (
 
 // ChainParams defines the forks of the EVM machine
 // TEN should typically be on the last fork version
-func ChainParams(obscuroChainID *big.Int) *params.ChainConfig {
+func ChainParams(tenChainID *big.Int) *params.ChainConfig {
 	zeroTimestamp := uint64(0)
 
-	// Initialise the database
 	return &params.ChainConfig{
-		ChainID:             obscuroChainID,
-		HomesteadBlock:      gethcommon.Big0,
-		DAOForkBlock:        gethcommon.Big0,
-		EIP150Block:         gethcommon.Big0,
-		EIP155Block:         gethcommon.Big0,
-		EIP158Block:         gethcommon.Big0,
+		ChainID: tenChainID,
+
+		HomesteadBlock: gethcommon.Big0,
+		DAOForkBlock:   nil,
+		DAOForkSupport: false,
+
+		EIP150Block: gethcommon.Big0,
+		EIP155Block: gethcommon.Big0,
+		EIP158Block: gethcommon.Big0,
+
 		ByzantiumBlock:      gethcommon.Big0,
 		ConstantinopleBlock: gethcommon.Big0,
 		PetersburgBlock:     gethcommon.Big0,
@@ -27,11 +31,17 @@ func ChainParams(obscuroChainID *big.Int) *params.ChainConfig {
 		MuirGlacierBlock:    gethcommon.Big0,
 		BerlinBlock:         gethcommon.Big0,
 		LondonBlock:         gethcommon.Big0,
+		ArrowGlacierBlock:   gethcommon.Big0,
+		GrayGlacierBlock:    gethcommon.Big0,
+		MergeNetsplitBlock:  nil,
 
-		CancunTime:   &zeroTimestamp,
 		ShanghaiTime: &zeroTimestamp,
+		CancunTime:   &zeroTimestamp,
 		PragueTime:   &zeroTimestamp,
-		VerkleTime:   &zeroTimestamp,
 		OsakaTime:    &zeroTimestamp,
+		VerkleTime:   &zeroTimestamp,
+
+		EnableVerkleAtGenesis:   true,
+		TerminalTotalDifficulty: big.NewInt(math.MaxInt64),
 	}
 }
