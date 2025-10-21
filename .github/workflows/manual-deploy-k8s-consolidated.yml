@@ -410,12 +410,13 @@ jobs:
           fi
 
   # ============================================================================
-  # DEPLOY L1 CONTRACTS
+  # DEPLOY L1 CONTRACTS (Destructive only)
   # ============================================================================
   deploy-l1-contracts:
     needs: [validate-inputs, approval, update-ten-apps-config]
     if: |
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success())
+      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
+      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -536,12 +537,74 @@ jobs:
           echo "✅ Child app deletion complete"
 
   # ============================================================================
+  # ARGOCD - DELETE DEPLOYMENTS/STS (Non-Destructive only)
+  # ============================================================================
+  argocd-delete-resources:
+    needs: [validate-inputs, approval, update-ten-apps-config]
+    if: |
+      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
+      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'false'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - name: 'Install ArgoCD CLI'
+        run: |
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+
+      - name: 'Delete host and enclave deployments/statefulsets via ArgoCD'
+        env:
+          ARGOCD_SERVER: ${{ needs.validate-inputs.outputs.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
+          TESTNET_SHORT_NAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
+        run: |
+          set -e
+
+          echo "🗑️  Non-destructive deployment: Deleting host and enclave deployments/statefulsets"
+
+          APPS=("sequencer" "validator-01" "validator-02")
+
+          for app_suffix in "${APPS[@]}"; do
+            app="${{ env.TESTNET_SHORT_NAME }}-${app_suffix}"
+            echo "Processing app: $app"
+
+            # Delete host deployment
+            echo "  Deleting host deployment..."
+            argocd app delete-resource "$app" \
+              --kind Deployment \
+              --resource-name "${app}-host" \
+              --all || echo "  ⚠️  Host deployment not found"
+
+            # Delete enclave statefulset
+            echo "  Deleting enclave statefulset..."
+            argocd app delete-resource "$app" \
+              --kind StatefulSet \
+              --resource-name "${app}-enclave" \
+              --all || echo "  ⚠️  Enclave statefulset not found"
+
+            # Delete enclave02 statefulset (if exists)
+            echo "  Deleting enclave02 statefulset..."
+            argocd app delete-resource "$app" \
+              --kind StatefulSet \
+              --resource-name "${app}-enclave02" \
+              --all || echo "  ⚠️  Enclave02 statefulset not found"
+
+            sleep 2
+          done
+
+          echo "✅ Resource deletion complete"
+
+  # ============================================================================
   # ARGOCD - SYNC APPLICATIONS
   # ============================================================================
   argocd-sync-apps:
-    needs: [validate-inputs, approval, deploy-l1-contracts, argocd-delete-child-apps]
+    needs: [validate-inputs, approval, deploy-l1-contracts, argocd-delete-child-apps, argocd-delete-resources]
     if: |
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success())
+      always() &&
+      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
+      (needs.argocd-delete-child-apps.result == 'success' || needs.argocd-delete-child-apps.result == 'skipped') &&
+      (needs.argocd-delete-resources.result == 'success' || needs.argocd-delete-resources.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
