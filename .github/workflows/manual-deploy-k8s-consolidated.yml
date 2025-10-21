@@ -553,8 +553,9 @@ jobs:
   # ARGOCD - DELETE DEPLOYMENTS/STS (Non-Destructive only)
   # ============================================================================
   argocd-delete-resources:
-    needs: [validate-inputs, approval, update-ten-apps-config]
+    needs: [validate-inputs, approval]
     if: |
+      always() &&
       (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'false'
     runs-on: ubuntu-latest
@@ -575,6 +576,7 @@ jobs:
           set -e
 
           echo "🗑️  Non-destructive deployment: Deleting host and enclave deployments/statefulsets"
+          echo "Environment: ${{ env.TESTNET_SHORT_NAME }}"
 
           APPS=("sequencer" "validator-01" "validator-02")
 
