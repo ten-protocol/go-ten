@@ -15,13 +15,11 @@ import (
 	"github.com/lib/pq"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/storage"
-
-	_ "github.com/lib/pq"
 )
 
 const (
 	defaultDatabase  = "postgres"
-	maxDBConnections = 100
+	maxDBConnections = 75 //azure has 100 max connections
 	initFile         = "001_init.sql"
 )
 
@@ -37,35 +35,40 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 
 	dbName = strings.ToLower(dbName)
 
-	db, err := sqlx.Open(driverName, dbURL)
+	// Open connection to the default postgres database to check if our target DB exists
+	defaultDB, err := sqlx.Open(driverName, dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL server: %v", err)
 	}
-	defer db.Close() // Close the connection when done
+	defer defaultDB.Close() // Close the default postgres connection when done
 
-	rows, err := db.Query("SELECT 1 FROM pg_database WHERE datname = $1", dbName)
+	rows, err := defaultDB.Query("SELECT 1 FROM pg_database WHERE datname = $1", dbName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query database existence: %v", err)
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
-		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
+		_, err = defaultDB.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create database %s: %v", dbName, err)
 		}
 	}
 
+	// close the default postgres connection explicitly before opening the target DB
+	defaultDB.Close()
+
 	dbURL = fmt.Sprintf("%s%s", baseURL, dbName)
 
-	db, err = sqlx.Open("postgres", dbURL)
+	// open conneciton to target DB
+	db, err := sqlx.Open("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
 	db.SetMaxOpenConns(maxDBConnections)
-	db.SetMaxIdleConns(maxDBConnections / 2)
+	db.SetMaxIdleConns(maxDBConnections / 3)
 	db.SetConnMaxLifetime(30 * time.Minute)
-	db.SetConnMaxIdleTime(5 * time.Minute)
+	db.SetConnMaxIdleTime(3 * time.Minute)
 
 	// initialise the database with the initial SQL file
 	err = migration.InitialiseDB(db, sqlFiles, initFile)
