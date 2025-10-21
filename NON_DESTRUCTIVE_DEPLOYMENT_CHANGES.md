@@ -60,6 +60,7 @@ Uses ArgoCD CLI command to delete resources without needing kubectl access to th
 
 ```bash
 argocd app delete-resource "$app" \
+  --server "$ARGOCD_SERVER" \
   --kind Deployment \
   --resource-name "${app}-host" \
   --all
@@ -67,9 +68,11 @@ argocd app delete-resource "$app" \
 
 This approach:
 - Works with private clusters (no direct k8s access needed)
-- Uses existing ArgoCD authentication
+- Uses existing ArgoCD authentication via `--server` flag and `ARGOCD_AUTH_TOKEN` env var
 - Properly manages resources tracked by ArgoCD
 - Allows ArgoCD to sync and recreate resources with new image tags
+
+**Note**: The `--server` flag is required on all ArgoCD CLI commands to specify the ArgoCD server address.
 
 ## Benefits
 

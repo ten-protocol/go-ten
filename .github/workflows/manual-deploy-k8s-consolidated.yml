@@ -531,7 +531,7 @@ jobs:
           for app_suffix in ${{ env.DEFAULT_APPS }}; do
             app="${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-${app_suffix}"
             echo "  Deleting: $app"
-            argocd app delete "$app" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
+            argocd app delete "$app" --server "${{ env.ARGOCD_SERVER }}" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
             sleep 2
           done
 
@@ -540,7 +540,7 @@ jobs:
             echo "📌 Additional apps to delete: ${{ env.ADDITIONAL_APPS }}"
             for app in ${{ env.ADDITIONAL_APPS }}; do
               echo "  Deleting: $app"
-              argocd app delete "$app" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
+              argocd app delete "$app" --server "${{ env.ARGOCD_SERVER }}" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
               sleep 2
             done
           else
@@ -587,6 +587,7 @@ jobs:
             # Delete host deployment
             echo "  Deleting host deployment..."
             argocd app delete-resource "$app" \
+              --server "${{ env.ARGOCD_SERVER }}" \
               --kind Deployment \
               --resource-name "${app}-host" \
               --all || echo "  ⚠️  Host deployment not found"
@@ -594,6 +595,7 @@ jobs:
             # Delete enclave statefulset
             echo "  Deleting enclave statefulset..."
             argocd app delete-resource "$app" \
+              --server "${{ env.ARGOCD_SERVER }}" \
               --kind StatefulSet \
               --resource-name "${app}-enclave" \
               --all || echo "  ⚠️  Enclave statefulset not found"
@@ -601,6 +603,7 @@ jobs:
             # Delete enclave02 statefulset (if exists)
             echo "  Deleting enclave02 statefulset..."
             argocd app delete-resource "$app" \
+              --server "${{ env.ARGOCD_SERVER }}" \
               --kind StatefulSet \
               --resource-name "${app}-enclave02" \
               --all || echo "  ⚠️  Enclave02 statefulset not found"
@@ -650,7 +653,7 @@ jobs:
 
           for app in ${{ env.CHILD_APPS }}; do
             echo "Syncing app: $app"
-            if argocd app sync "$app" --wait --timeout "${{ env.SYNC_TIMEOUT }}"; then
+            if argocd app sync "$app" --server "${{ env.ARGOCD_SERVER }}" --wait --timeout "${{ env.SYNC_TIMEOUT }}"; then
               echo "✅ Synced: $app"
             else
               echo "❌ Failed to sync $app"
@@ -697,8 +700,8 @@ jobs:
             echo "Checking health of app: $app"
             attempt=1
             while [ $attempt -le $max_attempts ]; do
-              health=$(argocd app get "$app" --refresh --output json | jq -r '.status.health.status // "Unknown"')
-              sync=$(argocd app get "$app" --refresh --output json | jq -r '.status.operationState.phase // "Unknown"')
+              health=$(argocd app get "$app" --server "${{ env.ARGOCD_SERVER }}" --refresh --output json | jq -r '.status.health.status // "Unknown"')
+              sync=$(argocd app get "$app" --server "${{ env.ARGOCD_SERVER }}" --refresh --output json | jq -r '.status.operationState.phase // "Unknown"')
 
               echo "  Attempt $attempt/$max_attempts: Health=$health, Sync=$sync"
 
