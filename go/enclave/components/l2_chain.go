@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -32,19 +33,11 @@ type tenChain struct {
 
 	logger gethlog.Logger
 
-	Registry BatchRegistry
+	Registry     BatchRegistry
+	statedbMutex *sync.Mutex
 }
 
-func NewChain(
-	storage storage.Storage,
-	config *enclaveconfig.EnclaveConfig,
-	evmFacade evm.EVMFacade,
-	gethEncodingService gethencoding.EncodingService,
-	chainConfig *params.ChainConfig,
-	genesis *genesis.Genesis,
-	logger gethlog.Logger,
-	registry BatchRegistry,
-) TENChain {
+func NewChain(storage storage.Storage, config *enclaveconfig.EnclaveConfig, evmFacade evm.EVMFacade, gethEncodingService gethencoding.EncodingService, chainConfig *params.ChainConfig, genesis *genesis.Genesis, logger gethlog.Logger, registry BatchRegistry, mu *sync.Mutex) TENChain {
 	return &tenChain{
 		storage:             storage,
 		evmFacade:           evmFacade,
@@ -54,6 +47,7 @@ func NewChain(
 		logger:              logger,
 		genesis:             genesis,
 		Registry:            registry,
+		statedbMutex:        mu,
 	}
 }
 
@@ -90,6 +84,11 @@ func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Transac
 			hexutils.BytesToHex(callMsg.Data),
 			batch.Hash(),
 			batch.Header.Root.Hex()))
+	}
+
+	if *blockNumber == gethrpc.LatestBlockNumber {
+		oc.statedbMutex.Lock()
+		defer oc.statedbMutex.Unlock()
 	}
 
 	return oc.evmFacade.ExecuteCall(ctx, callMsg, blockState, batch.Header, isEstimateGas)

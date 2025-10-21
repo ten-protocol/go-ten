@@ -65,27 +65,11 @@ type batchExecutor struct {
 	systemContracts        system.SystemContractCallbacks
 	entropyService         *crypto.EvmEntropyService
 	mempool                *TxPool
-	execMutex              *sync.Mutex
 	batchGasLimit          uint64 // max execution gas allowed in a batch
+	statedbMutex           *sync.Mutex
 }
 
-func NewBatchExecutor(
-	storage storage.Storage,
-	batchRegistry BatchRegistry,
-	evmFacade evm.EVMFacade,
-	config *enclaveconfig.EnclaveConfig,
-	gethEncodingService gethencoding.EncodingService,
-	cc *crosschain.Processors,
-	genesis *genesis.Genesis,
-	gasOracle gas.Oracle,
-	chainConfig *params.ChainConfig,
-	systemContracts system.SystemContractCallbacks,
-	entropyService *crypto.EvmEntropyService,
-	mempool *TxPool,
-	dataCompressionService compression.DataCompressionService,
-	gasPricer *GasPricer,
-	logger gethlog.Logger,
-) BatchExecutor {
+func NewBatchExecutor(storage storage.Storage, batchRegistry BatchRegistry, evmFacade evm.EVMFacade, config *enclaveconfig.EnclaveConfig, gethEncodingService gethencoding.EncodingService, cc *crosschain.Processors, genesis *genesis.Genesis, gasOracle gas.Oracle, chainConfig *params.ChainConfig, systemContracts system.SystemContractCallbacks, entropyService *crypto.EvmEntropyService, mempool *TxPool, dataCompressionService compression.DataCompressionService, gasPricer *GasPricer, logger gethlog.Logger, mu *sync.Mutex) BatchExecutor {
 	if gasPricer == nil {
 		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
 	}
@@ -106,7 +90,7 @@ func NewBatchExecutor(
 		entropyService:         entropyService,
 		mempool:                mempool,
 		dataCompressionService: dataCompressionService,
-		execMutex:              &sync.Mutex{},
+		statedbMutex:           mu,
 	}
 }
 
@@ -120,8 +104,8 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
 
 	// only compute one batch at a time
-	executor.execMutex.Lock()
-	defer executor.execMutex.Unlock()
+	executor.statedbMutex.Lock()
+	defer executor.statedbMutex.Unlock()
 
 	ec.ctx = ctx
 	if err := executor.verifyContext(ec); err != nil {
