@@ -222,11 +222,17 @@ func (r *Repository) AddBatch(batch *common.ExtBatch) error {
 	if err == nil {
 		return errutil.ErrAlreadyExists
 	}
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("error checking for existing batch by hash: %w", err)
+	}
 
 	_, err = r.storage.FetchBatchBySeqNo(batch.SeqNo().Uint64())
 	// we found a batch with the same seq no, but different hash
 	if err == nil {
 		return errutil.ErrConflict
+	}
+	if !errors.Is(err, errutil.ErrNotFound) {
+		return fmt.Errorf("error checking for existing batch by seqno: %w", err)
 	}
 
 	err = r.storage.AddBatch(batch)
