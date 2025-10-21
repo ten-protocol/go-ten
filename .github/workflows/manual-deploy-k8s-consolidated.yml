@@ -2,6 +2,11 @@ name: '[M] k8s Deploy Consolidated'
 run-name: '[M] Deploy ${{ github.event.inputs.testnet_type }} (${{ github.event.inputs.deployment_strategy }})'
 
 on:
+  push:
+    branches:
+      - feat/consolidated-deployment-workflow
+    paths:
+      - '.github/workflows/manual-deploy-k8s-consolidated.yml'
   workflow_dispatch:
     inputs:
       testnet_type:
@@ -88,6 +93,14 @@ jobs:
       ADDITIONAL_APPS_TO_DELETE: ${{ steps.setup.outputs.ADDITIONAL_APPS_TO_DELETE }}
 
     steps:
+      - name: 'Skip if push event'
+        if: github.event_name == 'push'
+        run: |
+          echo "⏭️  Workflow triggered by push event - skipping execution"
+          echo "This is just to register the workflow in GitHub Actions"
+          echo "Please use 'Run workflow' button to execute manually"
+          exit 0
+
       - name: 'Check confirmation for production envs'
         run: |
           if [[ ("${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" || "${{ github.event.inputs.testnet_type }}" == "mainnet") && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
