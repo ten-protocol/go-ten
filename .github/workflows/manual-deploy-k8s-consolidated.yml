@@ -63,13 +63,8 @@ on:
           - '20m'
         default: '10m'
 
-      node_selectors:
-        description: 'Node Selectors for destructive (format: sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4)'
-        required: false
-        type: string
-
-      additional_apps_to_delete:
-        description: 'Additional ArgoCD apps to delete (comma-separated, destructive only, e.g., gateway,tools,postgres-client)'
+      destructive_options:
+        description: 'Destructive deployment options (format: node_selectors=sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4|additional_apps=gateway,tools,postgres-client)'
         required: false
         type: string
 
@@ -153,20 +148,28 @@ jobs:
               ;;
           esac
 
-          # Parse additional apps to delete (if provided, destructive only)
-          ADDITIONAL_APPS="${{ github.event.inputs.additional_apps_to_delete }}"
-          if [[ -z "$ADDITIONAL_APPS" ]]; then
-            echo "ADDITIONAL_APPS_TO_DELETE=" >> $GITHUB_OUTPUT
+          # Parse destructive_options (if provided, destructive only)
+          # Format: node_selectors=sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4|additional_apps=gateway,tools,postgres-client
+          DESTRUCTIVE_OPTS="${{ github.event.inputs.destructive_options }}"
+
+          # Extract additional_apps from destructive_options
+          if [[ "$DESTRUCTIVE_OPTS" =~ additional_apps=([^|]*) ]]; then
+            ADDITIONAL_APPS="${BASH_REMATCH[1]}"
+            if [[ -n "$ADDITIONAL_APPS" ]]; then
+              # Convert comma-separated to environment-prefixed list
+              IFS=',' read -ra APPS <<< "$ADDITIONAL_APPS"
+              PREFIXED_APPS=""
+              for app in "${APPS[@]}"; do
+                app=$(echo "$app" | xargs)  # trim whitespace
+                prefixed_app="${SHORT_NAME}-${app}"
+                PREFIXED_APPS="$PREFIXED_APPS $prefixed_app"
+              done
+              echo "ADDITIONAL_APPS_TO_DELETE=$PREFIXED_APPS" >> $GITHUB_OUTPUT
+            else
+              echo "ADDITIONAL_APPS_TO_DELETE=" >> $GITHUB_OUTPUT
+            fi
           else
-            # Convert comma-separated to environment-prefixed list
-            IFS=',' read -ra APPS <<< "$ADDITIONAL_APPS"
-            PREFIXED_APPS=""
-            for app in "${APPS[@]}"; do
-              app=$(echo "$app" | xargs)  # trim whitespace
-              prefixed_app="${SHORT_NAME}-${app}"
-              PREFIXED_APPS="$PREFIXED_APPS $prefixed_app"
-            done
-            echo "ADDITIONAL_APPS_TO_DELETE=$PREFIXED_APPS" >> $GITHUB_OUTPUT
+            echo "ADDITIONAL_APPS_TO_DELETE=" >> $GITHUB_OUTPUT
           fi
 
   # ============================================================================
@@ -281,7 +284,7 @@ jobs:
         env:
           IMAGE_TAG: ${{ needs.build-images.outputs.IMAGE_TAG }}
           CONFIG_PATH: ${{ needs.validate-inputs.outputs.CONFIG_PATH }}
-          NODE_SELECTORS_INPUT: ${{ github.event.inputs.node_selectors }}
+          DESTRUCTIVE_OPTIONS_INPUT: ${{ github.event.inputs.destructive_options }}
           IS_DESTRUCTIVE: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE }}
         run: |
           cd ten-apps
@@ -314,12 +317,18 @@ jobs:
           echo "✅ Image tags updated"
 
           # ⚠️  NODE SELECTORS ONLY FOR DESTRUCTIVE DEPLOYMENTS
-          if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]] && [[ -n "${{ env.NODE_SELECTORS_INPUT }}" ]]; then
+          # Extract node_selectors from destructive_options
+          NODE_SELECTORS_INPUT=""
+          if [[ "${{ env.DESTRUCTIVE_OPTIONS_INPUT }}" =~ node_selectors=([^|]*) ]]; then
+            NODE_SELECTORS_INPUT="${BASH_REMATCH[1]}"
+          fi
+
+          if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]] && [[ -n "$NODE_SELECTORS_INPUT" ]]; then
             echo "🔥 DESTRUCTIVE deployment: Parsing and applying node selectors"
 
             # Parse node_selectors input (format: sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4)
             declare -A node_selectors
-            IFS=',' read -ra pairs <<< "${{ env.NODE_SELECTORS_INPUT }}"
+            IFS=',' read -ra pairs <<< "$NODE_SELECTORS_INPUT"
             for pair in "${pairs[@]}"; do
               key="${pair%%=*}"
               value="${pair##*=}"
@@ -388,7 +397,7 @@ jobs:
             commit_msg="chore: update "
             [[ "${{ env.IMAGE_TAG }}" != "" ]] && commit_msg+="image tags to ${{ env.IMAGE_TAG }}"
 
-            if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]] && [[ -n "${{ env.NODE_SELECTORS_INPUT }}" ]]; then
+            if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]] && [[ -n "$NODE_SELECTORS_INPUT" ]]; then
               [[ "${{ env.IMAGE_TAG }}" != "" ]] && commit_msg+=" and "
               commit_msg+="node selectors"
             fi
