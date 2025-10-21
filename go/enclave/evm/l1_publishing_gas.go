@@ -46,6 +46,9 @@ func adjustPublishingCostGas(tx *common.L2PricedTransaction, msg *gethcore.Messa
 		// the actual gas limit for execution
 		msg.GasLimit -= l1Gas.Uint64()
 
+		// the gas limit should never be higher than the max tx gas
+		msg.GasLimit = min(msg.GasLimit, params.MaxTxGas)
+
 		// Remove the l1 cost from the sender
 		// and pay it to the coinbase of the batch
 		s.SubBalance(msg.From, uint256.MustFromBig(l1cost), BalanceDecreaseL1Payment)

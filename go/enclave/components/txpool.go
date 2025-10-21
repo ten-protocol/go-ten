@@ -385,7 +385,7 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 	}
 	txArgs.From = &from
 	ge := NewGasEstimator(t.storage, t.batchRegistry, t.tenChain, t.gasOracle, t.gasPricer, t.logger)
-	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, gethrpc.LatestBlockNumber, t.config.GasLocalExecutionCapFlag)
+	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, gethrpc.LatestBlockNumber)
 
 	// if the transaction reverts we let it through
 	if userErr != nil && errors.Is(userErr, vm.ErrExecutionReverted) {

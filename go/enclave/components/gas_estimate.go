@@ -48,7 +48,7 @@ func NewGasEstimator(storage storage.Storage, registry BatchRegistry, chain TENC
 	}
 }
 
-func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber gethrpc.BlockNumber, globalGasCap uint64) (uint64, uint64, error, common.SystemError) {
+func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber gethrpc.BlockNumber) (uint64, uint64, error, common.SystemError) {
 	b, err := ge.registry.GetBatchAtHeight(ctx, blockNumber)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to fetch batch for number %d: %w", blockNumber, err)
@@ -79,7 +79,7 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 	// Notice that unfortunately, some slots might ve considered warm, which skews the estimation.
 	// The single pass will run once at the highest gas cap and return gas used. Not completely reliable,
 	// but is quick.
-	executionGasEstimate, revert, gasPrice, userErr, sysErr := ge.EstimateGasSinglePass(ctx, args, &batchNumber, globalGasCap)
+	executionGasEstimate, revert, gasPrice, userErr, sysErr := ge.EstimateGasSinglePass(ctx, args, &batchNumber)
 	if sysErr != nil {
 		return 0, 0, nil, fmt.Errorf("system error during gas estimation: %w", sysErr)
 	}
@@ -114,8 +114,8 @@ func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.Tran
 // The modifications are an overhead buffer and a 20% increase to account for warm storage slots. This is because the stateDB
 // for the head batch might not be fully clean in terms of the running call. Cold storage slots cost far more than warm ones to
 // read and write.
-func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, estimationBlk *gethrpc.BlockNumber, globalGasCap uint64) (hexutil.Uint64, []byte, *big.Int, error, common.SystemError) {
-	maxGasCap, err := ge.calculateMaxGasCap(ctx, globalGasCap, args.Gas)
+func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi.TransactionArgs, estimationBlk *gethrpc.BlockNumber) (hexutil.Uint64, []byte, *big.Int, error, common.SystemError) {
+	maxGasCap, err := ge.calculateMaxGasCap(ctx, params.MaxTxGas, args.Gas)
 	if err != nil {
 		return 0, nil, nil, nil, err
 	}
@@ -148,7 +148,7 @@ func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi
 			return 0, nil, nil, userErr, nil
 		}
 		// If the gas cap is insufficient, return an appropriate error
-		return 0, nil, nil, fmt.Errorf("gas required exceeds allowance (%d)", globalGasCap), nil
+		return 0, nil, nil, fmt.Errorf("gas required exceeds allowance (%d)", params.MaxTxGas), nil
 	}
 
 	if result == nil {
@@ -164,9 +164,12 @@ func (ge *GasEstimator) EstimateGasSinglePass(ctx context.Context, args *gethapi
 	// Add 33% overhead to the single pass estimation
 	gasUsedBig.Mul(gasUsedBig, big.NewInt(133))
 	gasUsedBig.Div(gasUsedBig, big.NewInt(100))
-	gasUsed := hexutil.Uint64(gasUsedBig.Uint64())
 
-	return gasUsed, nil, feeCap, nil, nil
+	// can't exceed maxGasCap
+	gasUsed := gasUsedBig.Uint64()
+	gasUsed = min(gasUsed, maxGasCap)
+
+	return hexutil.Uint64(gasUsed), nil, feeCap, nil, nil
 }
 
 func (ge *GasEstimator) calculateMaxGasCap(ctx context.Context, gasCap uint64, argsGas *hexutil.Uint64) (uint64, error) {
