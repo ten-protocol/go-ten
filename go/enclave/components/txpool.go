@@ -355,7 +355,12 @@ func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 	// hit at higher fees, but regardless its a pointless check as we also verify manually in validateTotalGas
 	// which uses an estimation that would block the tx if execution is above gas limit.
 	header.GasLimit = ^uint64(0)
-	if err := gethtxpool.ValidateTransaction(tx, header, sig, opts); err != nil {
+	err := gethtxpool.ValidateTransaction(tx, header, sig, opts)
+	if errors.Is(err, core.ErrGasLimitTooHigh) {
+		// allow tx with higher gas because we include l1 costs
+		return nil
+	}
+	if err != nil {
 		return err
 	}
 	return nil

@@ -111,6 +111,10 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 
 	receipt, err := adjustPublishingCostGas(tx, msg, s, header, noBaseFee, func() (*types.Receipt, error) {
 		s.SetTxContext(tx.Tx.Hash(), tCount)
+
+		// the gas limit should never be higher than the max tx gas
+		msg.GasLimit = min(msg.GasLimit, params.MaxTxGas-1)
+
 		return gethcore.ApplyTransactionWithEVM(msg, gp, s, header.Number, header.Hash(), header.Time, tx.Tx, usedGas, evmEnv)
 	})
 	if err != nil {
