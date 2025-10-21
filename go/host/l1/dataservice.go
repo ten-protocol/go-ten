@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
@@ -37,7 +38,7 @@ import (
 const (
 	// minimum gap in block height to trigger eager fetching of historical blocks - 5 blocks should not happen in normal operation
 	_minGapForEagerFetch = 5
-	eagerFetchHeightKey  = "eager_fetch_height"
+	localHeightKey       = "local_fetch_height"
 )
 
 var (
@@ -58,7 +59,7 @@ type DataService struct {
 	blockResolver    storage.BlockResolver
 	l1StartHash      gethcommon.Hash
 
-	eagerFetchHeight atomic.Uint64 // the next block height to eagerly fetch historical blocks from
+	localBlockHeight atomic.Uint64 // the latest block height to eagerly fetch historical blocks from
 	head             gethcommon.Hash
 
 	running       atomic.Bool
@@ -87,7 +88,7 @@ func (r *DataService) Start() error {
 		r.running.Store(false)
 	})
 
-	r.initEagerFetchHeight()
+	r.initFetchLocalBlocksHeight()
 
 	// Repository constantly streams new blocks and forwards them to subscribers
 	go r.streamLiveBlocks()
@@ -100,48 +101,48 @@ func (r *DataService) Stop() error {
 	return nil
 }
 
-func (r *DataService) initEagerFetchHeight() {
-	if r.blockResolver == nil {
-		r.logger.Error("blockResolver not set, cannot load eager fetch height")
-		return
-	}
-
-	height, err := r.blockResolver.GetMetadata(eagerFetchHeightKey)
+func (r *DataService) initFetchLocalBlocksHeight() {
+	localHeight, err := r.blockResolver.GetMetadata(localHeightKey)
 	if err != nil {
+		if !errors.Is(err, errutil.ErrNotFound) {
+			// host has just started up, we should crit for an unexpected db error
+			r.logger.Crit("Unexpected error getting local block height", "err", err)
+		}
+
 		if r.l1StartHash == (gethcommon.Hash{}) {
 			// note: this is expected in some test scenarios with dummy L1s
 			r.logger.Warn("l1StartHash not set, blocks will be fetched from L1 genesis")
 
-			r.updateEagerFetchHeight(1)
+			r.updateLocalHeight(0)
 			return
 		}
 
 		startBlock, err := r.ethClient.HeaderByHash(r.l1StartHash)
 		if err != nil {
-			r.logger.Crit("Could not get l1StartHash block for eager fetch height initialization", log.ErrKey, err, "l1StartHash", r.l1StartHash)
+			r.logger.Crit("Could not get l1StartHash block for local height initialization", log.ErrKey, err, "l1StartHash", r.l1StartHash)
 			return
 		}
-		height = startBlock.Number.Uint64()
-		r.updateEagerFetchHeight(height)
-		r.logger.Info("Initialized eager fetch height from l1StartHash", "height", height)
+		localHeight = startBlock.Number.Uint64() - 1 // record the height before l1StartHash so it fetches from startHash block
+		r.updateLocalHeight(localHeight)
+		r.logger.Info("Initialized local height from l1StartHash", "height", localHeight)
 		return
 	}
-	r.eagerFetchHeight.Store(height)
-	r.logger.Info("Loaded eager fetch height from database", "height", height)
+	r.localBlockHeight.Store(localHeight)
+	r.logger.Info("Loaded local height from database", "height", localHeight)
 }
 
-func (r *DataService) updateEagerFetchHeight(blockHeight uint64) {
-	current := r.eagerFetchHeight.Load()
-	if blockHeight > current {
-		r.eagerFetchHeight.Store(blockHeight)
+func (r *DataService) updateLocalHeight(blockHeight uint64) {
+	prev := r.localBlockHeight.Load()
+	if blockHeight > prev {
+		r.localBlockHeight.Store(blockHeight)
 
-		err := r.blockResolver.SetMetadata(eagerFetchHeightKey, blockHeight)
+		err := r.blockResolver.SetMetadata(localHeightKey, blockHeight)
 		if err != nil {
 			// this is not a disaster if it succeeds on future updates, we just use the in-mem value
-			r.logger.Error("Failed to persist eager fetch height", log.ErrKey, err)
+			r.logger.Error("Failed to persist local height", log.ErrKey, err)
 		}
 	} else {
-		r.logger.Debug("Skipping eager fetch height update for older block", "current", current, "blockHeight", blockHeight)
+		r.logger.Debug("Skipping local height update for older block", "current", prev, "blockHeight", blockHeight)
 	}
 }
 
@@ -537,7 +538,7 @@ func (r *DataService) streamLiveBlocks() {
 		select {
 		case blockHeader := <-liveStream:
 			r.logger.Info("received block from l1 stream", log.BlockHashKey, blockHeader.Hash(), log.BlockHeightKey, blockHeader.Number)
-			if blockHeader.Number.Uint64() > r.eagerFetchHeight.Load()+_minGapForEagerFetch {
+			if blockHeader.Number.Uint64() > r.localBlockHeight.Load()+_minGapForEagerFetch {
 				// catch up historical blocks if we are behind
 				r.eagerFetchBlocksUpTo(blockHeader.Number)
 			}
@@ -549,8 +550,12 @@ func (r *DataService) streamLiveBlocks() {
 				continue
 			}
 
-			r.storeBlockHeader(blockHeader)
-			r.updateEagerFetchHeight(blockHeader.Number.Uint64())
+			err = r.blockResolver.AddBlock(blockHeader)
+			if err != nil {
+				r.logger.Error("error adding block", log.ErrKey, err)
+				continue
+			}
+			r.updateLocalHeight(blockHeader.Number.Uint64())
 
 			// only notify subscribers (enclave guardians) on the streamed block, because they have their own catch-up mechanism
 			r.head = blockHeader.Hash()
@@ -601,25 +606,34 @@ func (r *DataService) fetchAncestors(blockHash gethcommon.Hash) error {
 
 		blocksToStore = append(blocksToStore, b)
 		currentHash = b.ParentHash
+
+		if len(blocksToStore) > _minGapForEagerFetch {
+			r.logger.Warn(fmt.Sprintf("Fetch ancestors is not meant for large historical gaps in block data - "+
+				"has been walking backwards for over %d blocks", _minGapForEagerFetch),
+				"numBlocks", len(blocksToStore))
+		}
 	}
 
 	for i := len(blocksToStore) - 1; i >= 0; i-- {
-		r.storeBlockHeader(blocksToStore[i])
-		r.updateEagerFetchHeight(blocksToStore[i].Number.Uint64())
+		err := r.blockResolver.AddBlock(blocksToStore[i])
+		if err != nil {
+			return fmt.Errorf("failed to add block (%d of %d) to storage: %w", i, len(blocksToStore), err)
+		}
+		r.updateLocalHeight(blocksToStore[i].Number.Uint64())
 	}
 
 	return nil
 }
 
-// eagerFetchBlocksUpTo will fetch historical blocks from L1 starting from eagerFetchHeight until there are no more blocks
+// eagerFetchBlocksUpTo will fetch historical blocks from L1 starting from localBlockHeight until there are no more blocks
 // pass _headBlock to fetch up to the latest head,
 // otherwise this will fetch up to `upToHeight - 1` (to allow for live block to be processed and not re-fetched)
 func (r *DataService) eagerFetchBlocksUpTo(upToHeight *big.Int) {
-	height := r.eagerFetchHeight.Load()
+	height := r.localBlockHeight.Load()
 	r.logger.Info("Starting eager L1 block fetch to catch up", "startingHeight", height)
 
-	for r.running.Load() && (upToHeight.Cmp(_headBlock) == 0 || big.NewInt(int64(height)).Cmp(upToHeight) < 0) {
-		block, err := r.ethClient.HeaderByNumber(big.NewInt(int64(height)))
+	for r.running.Load() && (upToHeight.Cmp(_headBlock) == 0 || big.NewInt(int64(height)).Cmp(upToHeight) <= 0) {
+		block, err := r.ethClient.HeaderByNumber(big.NewInt(int64(height + 1)))
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
 				// no more blocks to fetch
@@ -631,17 +645,13 @@ func (r *DataService) eagerFetchBlocksUpTo(upToHeight *big.Int) {
 			return
 		}
 
-		r.storeBlockHeader(block)
-		height += 1
-		r.updateEagerFetchHeight(height)
-	}
-}
-
-func (r *DataService) storeBlockHeader(blockHeader *types.Header) {
-	err := r.blockResolver.AddBlock(blockHeader)
-	if err != nil {
-		r.logger.Error("Could not add block to host db.", log.ErrKey, err)
-		// todo - handle unexpected errors here
+		err = r.blockResolver.AddBlock(block)
+		if err != nil {
+			r.logger.Warn("Eager fetch block failed", "height", height, log.ErrKey, err)
+			return
+		}
+		height = block.Number.Uint64()
+		r.updateLocalHeight(height)
 	}
 }
 

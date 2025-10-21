@@ -2,9 +2,11 @@ package hostdb
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
@@ -76,8 +78,8 @@ func GetMetadata(db HostDB, key string) (uint64, error) {
 	query := "SELECT CAST(val AS INTEGER) FROM config WHERE ky = ?"
 	err := db.GetSQLDB().Get(&value, query, key)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, fmt.Errorf("metadata key %s not found", key)
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, errutil.ErrNotFound
 		}
 		return 0, fmt.Errorf("failed to get metadata: %w", err)
 	}
