@@ -2,9 +2,11 @@ package hostdb
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 )
@@ -67,6 +69,28 @@ func (b *dbTransaction) Write() error {
 func (b *dbTransaction) Rollback() error {
 	if err := b.Tx.Rollback(); err != nil {
 		return fmt.Errorf("failed to rollback host transaction. Cause: %w", err)
+	}
+	return nil
+}
+
+func GetMetadata(db HostDB, key string) (uint64, error) {
+	var value uint64
+	query := "SELECT CAST(val AS INTEGER) FROM config WHERE ky = ?"
+	err := db.GetSQLDB().Get(&value, query, key)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, errutil.ErrNotFound
+		}
+		return 0, fmt.Errorf("failed to get metadata: %w", err)
+	}
+	return value, nil
+}
+
+func SetMetadata(db HostDB, key string, value uint64) error {
+	query := "INSERT OR REPLACE INTO config (ky, val) VALUES (?, ?)"
+	_, err := db.GetSQLDB().Exec(query, key, value)
+	if err != nil {
+		return fmt.Errorf("failed to set metadata: %w", err)
 	}
 	return nil
 }
