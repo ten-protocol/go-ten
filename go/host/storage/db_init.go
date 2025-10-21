@@ -3,10 +3,12 @@ package storage
 import (
 	"fmt"
 
-	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/jmoiron/sqlx"
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
 	"github.com/ten-protocol/go-ten/go/host/storage/hostdb"
+	"github.com/ten-protocol/go-ten/go/host/storage/init/sqlite"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/jmoiron/sqlx"
 	"github.com/ten-protocol/go-ten/go/host/storage/init/postgres"
 )
 
@@ -20,12 +22,20 @@ func CreateDBFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logger) (host
 	if err = validateDBConf(cfg); err != nil {
 		return nil, err
 	}
-
-	logger.Info(fmt.Sprintf("Preparing Postgres DB connection to %s...", cfg.PostgresDBHost))
-	baseURL := fmt.Sprintf("postgres://WillHester:1866@localhost:5432/")
-	db, err = postgres.CreatePostgresDBConnection(baseURL, dbName, logger)
-	if err != nil {
-		return nil, fmt.Errorf("could not create postresql connection: %w", err)
+	if cfg.UseInMemoryDB {
+		// create sqlite db
+		logger.Info("UseInMemoryDB flag is true, data will not be persisted. Creating in-memory database...")
+		db, err = sqlite.CreateTemporarySQLiteHostDB(dbName, "mode=memory&cache=shared&_foreign_keys=on", logger)
+		if err != nil {
+			return nil, fmt.Errorf("could not create in memory sqlite DB: %w", err)
+		}
+	} else {
+		// create postgres db
+		logger.Info(fmt.Sprintf("Preparing Postgres DB connection to %s...", cfg.PostgresDBHost))
+		db, err = postgres.CreatePostgresDBConnection(cfg.PostgresDBHost, dbName, logger)
+		if err != nil {
+			return nil, fmt.Errorf("could not create postresql connection: %w", err)
+		}
 	}
 
 	// Update historical transaction count from config if it's greater than 0

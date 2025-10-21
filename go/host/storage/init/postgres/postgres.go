@@ -19,7 +19,7 @@ import (
 
 const (
 	defaultDatabase  = "postgres"
-	maxDBConnections = 75 //azure has 100 max connections
+	maxDBConnections = 75 // azure has 100 max connections
 	initFile         = "001_init.sql"
 )
 
