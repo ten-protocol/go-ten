@@ -60,7 +60,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 
 	dbURL = fmt.Sprintf("%s%s", baseURL, dbName)
 
-	// open conneciton to target DB
+	// open connection to target DB
 	db, err := sqlx.Open("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
