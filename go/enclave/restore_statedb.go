@@ -45,7 +45,7 @@ func syncExecutedBatchesWithEVMStateDB(ctx context.Context, storage storage.Stor
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
 func stateDBAvailableForBatch(ctx context.Context, registry components.BatchRegistry, hash common.L2BatchHash) bool {
-	_, _, err := registry.GetBatchState(ctx, gethrpc.BlockNumberOrHash{BlockHash: &hash})
+	_, _, err := registry.GetBatchState(ctx, gethrpc.BlockNumberOrHash{BlockHash: &hash}, true)
 	return err == nil
 }
 

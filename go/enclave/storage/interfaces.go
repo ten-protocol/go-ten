@@ -83,7 +83,7 @@ type BatchResolver interface {
 
 type GethStateDB interface {
 	// CreateStateDB creates a database that can be used to execute transactions
-	CreateStateDB(ctx context.Context, batch *common.BatchHeader) (*state.StateDB, error)
+	CreateStateDB(ctx context.Context, batch *common.BatchHeader, readOnly bool) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
 	EmptyStateDB() (*state.StateDB, error)
 }
@@ -158,6 +158,7 @@ type Storage interface {
 
 	// StateDB - return the underlying state database
 	StateDB() *state.CachingDB
+	StateDBRO() *state.CachingDB
 
 	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
 }

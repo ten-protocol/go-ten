@@ -49,7 +49,7 @@ func NewChain(storage storage.Storage, config *enclaveconfig.EnclaveConfig, evmF
 }
 
 func (oc *tenChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
-	chainState, _, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
+	chainState, _, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber, true)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
@@ -59,7 +59,7 @@ func (oc *tenChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommo
 
 func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
 	// fetch the chain state at given batch
-	blockState, batch, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
+	blockState, batch, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber, true)
 	if err != nil {
 		return nil, nil, err
 	}

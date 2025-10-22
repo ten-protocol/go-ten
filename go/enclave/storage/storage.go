@@ -56,14 +56,16 @@ type AttestedEnclave struct {
 type storageImpl struct {
 	db                     enclavedb.EnclaveDB
 	trieDB                 *triedb.Database
+	trieDBRO               *triedb.Database
 	preparedStatementCache *enclavedb.PreparedStatementCache
 	cachingService         *CacheService
 	eventsStorage          *eventsStorage
 
-	stateCache  *state.CachingDB
-	chainConfig *params.ChainConfig
-	config      *enclaveconfig.EnclaveConfig
-	logger      gethlog.Logger
+	stateCache   *state.CachingDB
+	stateCacheRO *state.CachingDB
+	chainConfig  *params.ChainConfig
+	config       *enclaveconfig.EnclaveConfig
+	logger       gethlog.Logger
 }
 
 func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *CacheService, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
@@ -77,18 +79,21 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	// Open trie database with provided config
 	cfg := triedb.VerkleDefaults
-	cfg.PathDB.StateCleanSize = 0
-	cfg.PathDB.TrieCleanSize = 0
 	trieDB := triedb.NewDatabase(backingDB, cfg)
-
-	// todo - figure out the snapshot tree
 	stateDB := state.NewDatabase(trieDB, nil)
+
+	// create a read-only trie database with provided config
+	// todo to check if there is some cache leak
+	trieDBRO := triedb.NewDatabase(backingDB, cfg)
+	stateDBRO := state.NewDatabase(trieDBRO, nil)
 
 	prepStatementCache := enclavedb.NewStatementCache(backingDB.GetSQLDB(), logger)
 	return &storageImpl{
 		db:                     backingDB,
 		trieDB:                 trieDB,
 		stateCache:             stateDB,
+		trieDBRO:               trieDBRO,
+		stateCacheRO:           stateDBRO,
 		chainConfig:            chainConfig,
 		config:                 config,
 		cachingService:         cachingService,
@@ -106,6 +111,10 @@ func (s *storageImpl) StateDB() *state.CachingDB {
 	return s.stateCache
 }
 
+func (s *storageImpl) StateDBRO() *state.CachingDB {
+	return s.stateCacheRO
+}
+
 func (s *storageImpl) Close() error {
 	head, err := s.FetchHeadBatchHeader(context.Background())
 	if err != nil {
@@ -118,6 +127,7 @@ func (s *storageImpl) Close() error {
 	s.cachingService.Stop()
 	_ = s.preparedStatementCache.Clear()
 	_ = s.trieDB.Close()
+	_ = s.trieDBRO.Close()
 	return s.db.GetSQLDB().Close()
 }
 
@@ -462,7 +472,7 @@ func (s *storageImpl) HealthCheck(ctx context.Context) (bool, error) {
 	//return true, nil
 }
 
-func (s *storageImpl) CreateStateDB(ctx context.Context, batch *common.BatchHeader) (*state.StateDB, error) {
+func (s *storageImpl) CreateStateDB(_ context.Context, batch *common.BatchHeader, readOnly bool) (*state.StateDB, error) {
 	defer s.logDuration("CreateStateDB", measure.NewStopwatch())
 
 	// prefetch
@@ -473,7 +483,11 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batch *common.BatchHead
 	//
 	//statedb, err := state.NewWithReader(batch.Root, s.stateCache, process)
 
-	statedb, err := state.New(batch.Root, s.stateCache)
+	sc := s.stateCache
+	if readOnly {
+		sc = s.stateCacheRO
+	}
+	statedb, err := state.New(batch.Root, sc)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
 	}

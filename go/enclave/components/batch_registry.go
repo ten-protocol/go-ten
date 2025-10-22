@@ -200,33 +200,33 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 	return resultBatches, resultBlocks, nil
 }
 
-func (br *batchRegistry) GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, *common.BatchHeader, error) {
+func (br *batchRegistry) GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash, readOnly bool) (*state.StateDB, *common.BatchHeader, error) {
 	if blockNumberOrHash.BlockHash != nil {
-		return getBatchState(ctx, br.storage, *blockNumberOrHash.BlockHash)
+		return getBatchState(ctx, br.storage, *blockNumberOrHash.BlockHash, readOnly)
 	}
 	if blockNumberOrHash.BlockNumber != nil {
-		return br.GetBatchStateAtHeight(ctx, blockNumberOrHash.BlockNumber)
+		return br.GetBatchStateAtHeight(ctx, blockNumberOrHash.BlockNumber, readOnly)
 	}
 	return nil, nil, fmt.Errorf("block number or block hash does not exist")
 }
 
-func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, *common.BatchHeader, error) {
+func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber, readOnly bool) (*state.StateDB, *common.BatchHeader, error) {
 	// We retrieve the batch of interest.
 	batch, err := br.GetBatchAtHeight(ctx, *blockNumber)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return getBatchState(ctx, br.storage, batch.Hash())
+	return getBatchState(ctx, br.storage, batch.Hash(), readOnly)
 }
 
-func getBatchState(ctx context.Context, storage storage.Storage, batchHash common.L2BatchHash) (*state.StateDB, *common.BatchHeader, error) {
+func getBatchState(ctx context.Context, storage storage.Storage, batchHash common.L2BatchHash, readOnly bool) (*state.StateDB, *common.BatchHeader, error) {
 	b, err := storage.FetchBatchHeader(ctx, batchHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not read batch by hash. Cause: %w", err)
 	}
 
-	blockchainState, err := storage.CreateStateDB(ctx, b)
+	blockchainState, err := storage.CreateStateDB(ctx, b, readOnly)
 	if err != nil {
 		return nil, nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
