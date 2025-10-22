@@ -331,6 +331,7 @@ jobs:
           fi
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "📦 Image tag: $IMAGE_TAG"
+          echo "::set-output name=IMAGE_TAG::$IMAGE_TAG"
 
       - name: 'Build and push obscuro node images'
         env:
@@ -1234,7 +1235,7 @@ jobs:
         shell: bash
         env:
           DOCKER_API_VERSION: "1.45"
-          DEPLOY_DOCKERIMAGE: ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/hardhatdeployer:${{ needs.build-images.outputs.IMAGE_TAG }}
+          DEPLOY_DOCKERIMAGE: ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/hardhatdeployer:${{ needs.build-images.outputs.IMAGE_TAG || github.event.inputs.image_tag || 'latest' }}
           DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
           DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
