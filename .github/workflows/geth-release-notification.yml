@@ -2,7 +2,7 @@ name: '[S] Geth Hard Fork Alert'
 
 on:
   schedule:
-    - cron: "0 9 * * *" # Every day at 09:00 UTC
+    - cron: "0 9 * * *"   # Every day at 09:00 UTC
   workflow_dispatch:
 
 jobs:
@@ -18,47 +18,34 @@ jobs:
           echo "id=$(jq -r .id latest.json)" >> "$GITHUB_OUTPUT"
           echo "name=$(jq -r .name latest.json)" >> "$GITHUB_OUTPUT"
           echo "url=$(jq -r .html_url latest.json)" >> "$GITHUB_OUTPUT"
-          echo "body<<__EOF__" >> "$GITHUB_OUTPUT"
-          jq -r '.body // ""' latest.json >> "$GITHUB_OUTPUT"
-          echo "__EOF__" >> "$GITHUB_OUTPUT"
 
-      - name: Get last successful run timestamp
-        id: lastrun
-        env:
-          GH_TOKEN: ${{ github.token }}
+      # Check release ID using the cache. If cache-hit=true, we've already posted.
+      - name: Check if this release was already notified
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: .release-notify
+          key: geth-release-${{ steps.latest.outputs.id }}
+
+      # Prepare something to store in the cache for this ID (saved automatically if cache was a miss)
+      - name: Prepare cache payload
         run: |
           set -euo pipefail
-          last_success="$(curl -sSL -H "Authorization: Bearer $GH_TOKEN" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runs?per_page=50" \
-            | jq -r --arg name "${GITHUB_WORKFLOW}" --argjson current ${GITHUB_RUN_ID} '
-                .workflow_runs
-                | map(select(.name == $name and .conclusion == "success" and .id < $current))
-                | sort_by(.run_started_at) | last // empty
-                | .updated_at // empty
-            ')"
-          echo "last_success=$last_success" >> "$GITHUB_OUTPUT"
-
-      - name:  Check if newer than last post
-        id: decide
-        run: |
-          set -euo pipefail
-          pub=$(jq -r .published_at latest.json)
-          last="${{ steps.lastrun.outputs.last_success }}"
-          should_post=false
-          if [ -z "$last" ] || [ "$pub" \> "$last" ]; then
-            should_post=true
-          fi
-          echo "should_post=$should_post" >> "$GITHUB_OUTPUT"
-          echo "Publish date: $pub | Last run: ${last:-<none>} | Post? $should_post"
+          mkdir -p .release-notify
+          echo "${{ steps.latest.outputs.id }}" > .release-notify/id
 
       - name: Post fork notification to Discord
-        if: steps.decide.outputs.should_post == 'true'
+        if: steps.cache.outputs.cache-hit != 'true'   # only post if we haven't seen this ID before
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
           set -euo pipefail
 
-          # Read directly from the JSON file created in the earlier step
+          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+            echo "ERROR: DISCORD_WEBHOOK_URL secret is missing or empty."
+            exit 1
+          fi
+
           title=$(jq -r '.name // "Geth Release"' latest.json)
           url=$(jq -r '.html_url' latest.json)
           body=$(jq -r '.body // ""' latest.json)
