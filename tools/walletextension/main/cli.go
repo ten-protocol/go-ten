@@ -103,10 +103,10 @@ const (
 
 	sessionKeyExpirationThresholdFlagName    = "sessionKeyExpirationThreshold"
 	sessionKeyExpirationThresholdFlagDefault = 24 * time.Hour
-	sessionKeyExpirationThresholdFlagUsage   = "Threshold for session key expiration. Session keys older than this duration will be considered expired. Default: 24h"
+	sessionKeyExpirationThresholdFlagUsage   = "Threshold for session key expiration. Session keys older than this duration will be considered expired. If set to 0, session key expiration is disabled. Default: 24h"
 
 	sessionKeyExpirationIntervalFlagName    = "sessionKeyExpirationInterval"
-	sessionKeyExpirationIntervalFlagDefault = 2 * time.Hour
+	sessionKeyExpirationIntervalFlagDefault = 30 * time.Minute
 	sessionKeyExpirationIntervalFlagUsage   = "How often the session key expiration service runs. Default: 2h"
 )
 

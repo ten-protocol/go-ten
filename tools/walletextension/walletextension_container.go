@@ -101,15 +101,20 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, stopControl, version, logger, metricsTracker, &config)
 
 	// Create session key expiration service after services are created
-	sessionKeyExpirationService := services.NewSessionKeyExpirationService(
-		userStorage,
-		logger,
-		stopControl,
-		&config,
-		walletExt.BackendRPC,
-		walletExt.ActivityTracker,
-		walletExt.TxSender,
-	)
+	var sessionKeyExpirationService *services.SessionKeyExpirationService
+	if config.SessionKeyExpirationThreshold > 0 {
+		sessionKeyExpirationService = services.NewSessionKeyExpirationService(
+			userStorage,
+			logger,
+			stopControl,
+			&config,
+			walletExt.BackendRPC,
+			walletExt.ActivityTracker,
+			walletExt.TxSender,
+		)
+	} else {
+		logger.Info("Session key expiration is disabled")
+	}
 	cfg := &node.RPCConfig{
 		EnableHTTP: true,
 		HTTPPort:   config.WalletExtensionPortHTTP,
