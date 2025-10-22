@@ -254,33 +254,66 @@ jobs:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
-          # Build enclave image (with optional HSM)
+          set -e
+          
+          # Enable Docker BuildKit for better caching and parallel builds
+          export DOCKER_BUILDKIT=1
+          export BUILDKIT_PROGRESS=plain
+          
+          echo "🏗️  Building images with tag: ${IMAGE_TAG}"
+          echo "Using Docker BuildKit with layer caching"
+          
+          # Function to build and push in background
+          build_and_push() {
+            local name=$1
+            local dockerfile=$2
+            local extra_args=$3
+            
+            echo "Building ${name}..."
+            docker build \
+              --cache-from ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/${name}:latest \
+              --cache-from ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/${name}:${IMAGE_TAG} \
+              -t ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/${name}:${IMAGE_TAG} \
+              -f ${dockerfile} \
+              ${extra_args} \
+              . 2>&1 | sed "s/^/[${name}] /" &
+          }
+          
+          # Build enclave (with optional HSM)
           if [[ "$USE_HSM" == "yes" ]]; then
-            echo "Building enclave with Azure HSM..."
-            DOCKER_BUILDKIT=1 docker build \
-              -t ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/enclave:${IMAGE_TAG} \
-              --build-arg AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
-              --build-arg AZURE_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}" \
-              -f dockerfiles/enclave.Dockerfile .
+            echo "🔐 Building enclave with Azure HSM..."
+            build_and_push "enclave" "dockerfiles/enclave.Dockerfile" \
+              "--build-arg AZURE_TENANT_ID=${AZURE_TENANT_ID} --build-arg AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}"
           else
-            echo "Building enclave without HSM..."
-            DOCKER_BUILDKIT=1 docker build \
-              -t ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/enclave:${IMAGE_TAG} \
-              -f dockerfiles/enclave.Dockerfile .
+            echo "📦 Building enclave without HSM..."
+            build_and_push "enclave" "dockerfiles/enclave.Dockerfile" ""
           fi
-          docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/enclave:${IMAGE_TAG}
           
-          # Build host image
-          DOCKER_BUILDKIT=1 docker build \
-            -t ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/host:${IMAGE_TAG} \
-            -f dockerfiles/host.Dockerfile .
-          docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/host:${IMAGE_TAG}
+          # Build host and hardhat deployer in parallel
+          build_and_push "host" "dockerfiles/host.Dockerfile" ""
+          build_and_push "hardhatdeployer" "tools/hardhatdeployer/Dockerfile" ""
           
-          # Build L2 hardhat deployer
-          DOCKER_BUILDKIT=1 docker build \
-            -t ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/hardhatdeployer:${IMAGE_TAG} \
-            -f tools/hardhatdeployer/Dockerfile .
-          docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/hardhatdeployer:${IMAGE_TAG}
+          # Wait for all builds to complete
+          echo "⏳ Waiting for all builds to complete..."
+          wait
+          
+          # Check if any build failed
+          if [ $? -ne 0 ]; then
+            echo "❌ One or more builds failed"
+            exit 1
+          fi
+          
+          echo "✅ All builds completed successfully"
+          echo ""
+          echo "📤 Pushing images..."
+          
+          # Push all images in parallel
+          docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/enclave:${IMAGE_TAG} &
+          docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/host:${IMAGE_TAG} &
+          docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/hardhatdeployer:${IMAGE_TAG} &
+          
+          # Wait for all pushes
+          wait
           
           echo "✅ All images built and pushed with tag: ${IMAGE_TAG}"
 
