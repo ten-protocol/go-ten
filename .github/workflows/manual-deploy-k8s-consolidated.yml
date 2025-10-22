@@ -138,16 +138,16 @@ jobs:
           # Set child apps per environment (for syncing)
           case "$TESTNET_TYPE" in
             dev-testnet)
-              echo "CHILD_APPS=dev-sequencer dev-validator-01 dev-validator-02 dev-gateway dev-tools" >> $GITHUB_OUTPUT
+              echo "CHILD_APPS=dev-sequencer dev-validator-01 dev-validator-02 dev-gateway dev-ten-tools" >> $GITHUB_OUTPUT
               ;;
             uat-testnet)
-              echo "CHILD_APPS=uat-sequencer uat-validator-01 uat-validator-02 uat-gateway uat-tools" >> $GITHUB_OUTPUT
+              echo "CHILD_APPS=uat-sequencer uat-validator-01 uat-validator-02 uat-gateway uat-ten-tools" >> $GITHUB_OUTPUT
               ;;
             sepolia-testnet)
-              echo "CHILD_APPS=sepolia-sequencer sepolia-validator-01 sepolia-validator-02 sepolia-gateway sepolia-gateway-dexynth sepolia-gateway-pentest sepolia-tools" >> $GITHUB_OUTPUT
+              echo "CHILD_APPS=sepolia-sequencer sepolia-validator-01 sepolia-validator-02 sepolia-gateway sepolia-gateway-dexynth sepolia-gateway-pentest sepolia-ten-tools" >> $GITHUB_OUTPUT
               ;;
             mainnet)
-              echo "CHILD_APPS=mainnet-sequencer mainnet-validator-01 mainnet-validator-02 mainnet-gateway mainnet-postgres-client mainnet-tools" >> $GITHUB_OUTPUT
+              echo "CHILD_APPS=mainnet-sequencer mainnet-validator-01 mainnet-validator-02 mainnet-gateway mainnet-postgres-client mainnet-ten-tools" >> $GITHUB_OUTPUT
               ;;
           esac
 
