@@ -756,12 +756,12 @@ jobs:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
           CHILD_APPS: ${{ needs.validate-inputs.outputs.CHILD_APPS }}
           SYNC_TIMEOUT: ${{ github.event.inputs.sync_timeout }}
+          IS_DESTRUCTIVE: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE }}
         run: |
           set -e
 
           echo "🔄 Syncing ArgoCD child applications"
-          echo "Strategy: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && 'destructive (child apps recreated)' || 'non-destructive (sync only)' }}"
-          echo "Timeout: ${SYNC_TIMEOUT}"
+          echo "Strategy: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && 'destructive (full app sync with all resources)' || 'non-destructive (only OutOfSync resources)' }}"
           
           # Validate required variables
           if [[ -z "${ARGOCD_SERVER}" ]]; then
@@ -771,26 +771,128 @@ jobs:
 
           sync_failed=false
           failed_apps=""
+          synced_count=0
+          skipped_count=0
+          total_resources_synced=0
 
           for app in ${CHILD_APPS}; do
-            echo "Syncing app: $app"
-            if argocd app sync "$app" --server "${ARGOCD_SERVER}"; then
-              echo "✅ Synced: $app"
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Processing app: $app"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            
+            # Check overall sync status
+            app_status=$(argocd app get "$app" --server "${ARGOCD_SERVER}" -o json)
+            sync_status=$(echo "$app_status" | jq -r '.status.sync.status // "Unknown"')
+            echo "  📊 Overall sync status: $sync_status"
+            
+            if [[ "${IS_DESTRUCTIVE}" == "true" ]]; then
+              # DESTRUCTIVE: Full app sync (will run all sync waves and hooks)
+              echo "  🔥 DESTRUCTIVE MODE: Full app sync (includes sync waves/hooks)"
+              
+              if argocd app sync "$app" --server "${ARGOCD_SERVER}"; then
+                echo "  ✅ Full sync completed: $app"
+                synced_count=$((synced_count + 1))
+              else
+                echo "  ❌ Failed to sync $app"
+                sync_failed=true
+                failed_apps="$failed_apps $app"
+              fi
+              
             else
-              echo "❌ Failed to sync $app"
-              sync_failed=true
-              failed_apps="$failed_apps $app"
+              # NON-DESTRUCTIVE: Only sync OutOfSync resources (skip sync waves/hooks)
+              echo "  📦 NON-DESTRUCTIVE MODE: Syncing only OutOfSync resources"
+              
+              if [[ "$sync_status" == "Synced" ]]; then
+                echo "  ℹ️  App is already in sync, skipping"
+                skipped_count=$((skipped_count + 1))
+                continue
+              fi
+              
+              # Get list of OutOfSync resources
+              echo "  🔍 Finding OutOfSync resources..."
+              out_of_sync_resources=$(echo "$app_status" | jq -r '
+                .status.resources[] | 
+                select(.status == "OutOfSync") | 
+                "\(.kind):\(.namespace)/\(.name)"
+              ')
+              
+              if [[ -z "$out_of_sync_resources" ]]; then
+                echo "  ℹ️  No OutOfSync resources found, skipping"
+                skipped_count=$((skipped_count + 1))
+                continue
+              fi
+              
+              # Count resources
+              resource_count=$(echo "$out_of_sync_resources" | wc -l | tr -d ' ')
+              echo "  📋 Found $resource_count OutOfSync resource(s):"
+              echo "$out_of_sync_resources" | while read resource; do
+                echo "      - $resource"
+              done
+              
+              # Sync each OutOfSync resource individually
+              echo "  🔄 Syncing OutOfSync resources..."
+              resource_sync_failed=false
+              
+              while IFS= read -r resource; do
+                if [[ -n "$resource" ]]; then
+                  echo "      Syncing: $resource"
+                  
+                  # Extract kind and name from the resource string (format: Kind:namespace/name)
+                  kind=$(echo "$resource" | cut -d':' -f1)
+                  namespace_name=$(echo "$resource" | cut -d':' -f2)
+                  namespace=$(echo "$namespace_name" | cut -d'/' -f1)
+                  name=$(echo "$namespace_name" | cut -d'/' -f2)
+                  
+                  # Sync this specific resource only
+                  if argocd app sync "$app" \
+                    --server "${ARGOCD_SERVER}" \
+                    --resource "${kind}:${namespace}/${name}" \
+                    --prune=false 2>&1; then
+                    echo "        ✅ Synced: $resource"
+                    total_resources_synced=$((total_resources_synced + 1))
+                  else
+                    echo "        ⚠️  Failed to sync: $resource"
+                    resource_sync_failed=true
+                  fi
+                fi
+              done <<< "$out_of_sync_resources"
+              
+              if [[ "$resource_sync_failed" == "true" ]]; then
+                echo "  ❌ Some resources failed to sync for $app"
+                sync_failed=true
+                failed_apps="$failed_apps $app"
+              else
+                echo "  ✅ All OutOfSync resources synced for: $app"
+                synced_count=$((synced_count + 1))
+              fi
             fi
+            
             sleep 1
           done
 
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Sync Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "  Strategy: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && 'Destructive' || 'Non-Destructive' }}"
+          echo "  Apps synced: $synced_count"
+          echo "  Apps skipped: $skipped_count (already in sync)"
+          
+          if [[ "${IS_DESTRUCTIVE}" == "false" ]]; then
+            echo "  Resources synced: $total_resources_synced (individual OutOfSync resources)"
+          fi
+          
           if [ "$sync_failed" = true ]; then
+            echo "  Apps failed: $(echo $failed_apps | wc -w)"
+            echo ""
             echo "❌ ERROR: Failed to sync the following apps:${failed_apps}"
             echo "Deployment cannot continue with failed syncs."
             exit 1
           fi
 
-          echo "✅ All apps synced successfully (health will be checked in next job)"
+          echo ""
+          echo "✅ All apps/resources synced successfully (health will be checked in next job)"
           echo "APPS_SYNCED=true" >> $GITHUB_OUTPUT
 
   # ============================================================================
