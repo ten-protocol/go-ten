@@ -83,11 +83,8 @@ jobs:
   # ============================================================================
   validate-inputs:
     runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.testnet_type }}
     outputs:
       TESTNET_SHORT_NAME: ${{ steps.setup.outputs.TESTNET_SHORT_NAME }}
-      ARGOCD_SERVER: ${{ steps.setup.outputs.ARGOCD_SERVER }}
       IS_DESTRUCTIVE: ${{ steps.setup.outputs.IS_DESTRUCTIVE }}
       NEEDS_APPROVAL: ${{ steps.setup.outputs.NEEDS_APPROVAL }}
       CONFIG_PATH: ${{ steps.setup.outputs.CONFIG_PATH }}
@@ -123,24 +120,13 @@ jobs:
           fi
           echo "TESTNET_SHORT_NAME=$SHORT_NAME" >> $GITHUB_OUTPUT
 
-          # Determine ArgoCD server & config path
+          # Determine config path
           if [[ "$TESTNET_TYPE" == "mainnet" ]]; then
-            ARGOCD_SERVER="${{ secrets.ARGOCD_SERVER_PROD }}"
             CONFIG_PATH="prod-argocd-config"
           else
-            ARGOCD_SERVER="${{ secrets.ARGOCD_SERVER_NONPROD }}"
             CONFIG_PATH="nonprod-argocd-config"
           fi
-          
-          echo "ARGOCD_SERVER=$ARGOCD_SERVER" >> $GITHUB_OUTPUT
           echo "CONFIG_PATH=$CONFIG_PATH" >> $GITHUB_OUTPUT
-          
-          # Debug output (without exposing full server address)
-          if [[ -z "$ARGOCD_SERVER" ]]; then
-            echo "⚠️  WARNING: ARGOCD_SERVER is empty!"
-          else
-            echo "✅ ARGOCD_SERVER is set"
-          fi
 
           # Check if destructive
           if [[ "${{ github.event.inputs.deployment_strategy }}" == "destructive" ]]; then
@@ -528,7 +514,7 @@ jobs:
 
       - name: 'Delete ArgoCD child applications'
         env:
-          ARGOCD_SERVER: ${{ needs.validate-inputs.outputs.ARGOCD_SERVER }}
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
           DEFAULT_APPS: "sequencer validator-01 validator-02"
           ADDITIONAL_APPS: ${{ needs.validate-inputs.outputs.ADDITIONAL_APPS_TO_DELETE }}
@@ -581,7 +567,7 @@ jobs:
 
       - name: 'Delete host and enclave deployments/statefulsets via ArgoCD'
         env:
-          ARGOCD_SERVER: ${{ needs.validate-inputs.outputs.ARGOCD_SERVER }}
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
           TESTNET_SHORT_NAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
         run: |
@@ -651,7 +637,7 @@ jobs:
       - name: 'Sync ArgoCD child applications'
         id: sync
         env:
-          ARGOCD_SERVER: ${{ needs.validate-inputs.outputs.ARGOCD_SERVER }}
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
           CHILD_APPS: ${{ needs.validate-inputs.outputs.CHILD_APPS }}
           SYNC_TIMEOUT: ${{ github.event.inputs.sync_timeout }}
@@ -698,7 +684,7 @@ jobs:
 
       - name: 'Wait for ArgoCD apps to be healthy'
         env:
-          ARGOCD_SERVER: ${{ needs.validate-inputs.outputs.ARGOCD_SERVER }}
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
           CHILD_APPS: ${{ needs.validate-inputs.outputs.CHILD_APPS }}
         run: |
