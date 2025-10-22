@@ -106,10 +106,6 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 	cutoff := time.Now().Add(-s.config.SessionKeyExpirationThreshold)
 	candidates := s.activityTracker.ListOlderThan(cutoff)
 
-	if len(candidates) == 0 {
-		return
-	}
-
 	for _, c := range candidates {
 		// Load the user for this session key
 		user, err := s.storage.GetUser(c.UserID)
