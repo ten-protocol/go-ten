@@ -774,7 +774,7 @@ jobs:
 
           for app in ${CHILD_APPS}; do
             echo "Syncing app: $app"
-            if argocd app sync "$app" --server "${ARGOCD_SERVER}" --wait --timeout "${SYNC_TIMEOUT}"; then
+            if argocd app sync "$app" --server "${ARGOCD_SERVER}"; then
               echo "✅ Synced: $app"
             else
               echo "❌ Failed to sync $app"
@@ -790,7 +790,7 @@ jobs:
             exit 1
           fi
 
-          echo "✅ All apps synced successfully"
+          echo "✅ All apps synced successfully (health will be checked in next job)"
           echo "APPS_SYNCED=true" >> $GITHUB_OUTPUT
 
   # ============================================================================
