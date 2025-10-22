@@ -869,10 +869,14 @@ jobs:
               while IFS=$'\t' read -r group kind ns name; do
                 [[ -z "$group" || -z "$kind" || -z "$ns" || -z "$name" ]] && continue
                 echo "  Deleting $group/$kind $ns/$name"
-                if ! argocd app delete-resource "$app" \
+                set +e
+                argocd app delete-resource "$app" \
                   --server "${ARGOCD_SERVER}" --grpc-web \
-                  --resource "${group}:${kind}:${name}" \
-                  --resource-namespace "$ns" 2>&1 | tee /tmp/argocd_output.txt; then
+                  --group "$group" --kind "$kind" \
+                  --namespace "$ns" --resource-name "$name" 2>&1 | tee /tmp/argocd_output.txt
+                ec=${PIPESTATUS[0]}
+                set -e
+                if [[ $ec -ne 0 ]]; then
                   if grep -qi "not[[:space:]-]*found" /tmp/argocd_output.txt; then
                     echo "    Not found (OK)"
                   else
@@ -1038,12 +1042,25 @@ jobs:
                   name=$(echo "$namespace_name" | cut -d'/' -f2)
                   
                   # Sync this specific resource only
-                  if argocd app sync "$app" \
+                  # Newer CLI supports --resource; fallback to per-kind flags if unsupported
+                  set +e
+                  argocd app sync "$app" \
                     --server "${ARGOCD_SERVER}" \
                     --grpc-web \
                     --resource "${group}:${kind}:${name}" \
                     --resource-namespace "${namespace}" \
-                    --prune=false 2>&1; then
+                    --prune=false 2>&1 | tee /tmp/argocd_sync_output.txt
+                  rc=${PIPESTATUS[0]}
+                  set -e
+                  if [[ $rc -ne 0 ]] && grep -qi "unknown flag: --resource" /tmp/argocd_sync_output.txt; then
+                    echo "        ℹ️  CLI lacks --resource; retrying with per-kind flags"
+                    if argocd app sync "$app" \
+                      --server "${ARGOCD_SERVER}" \
+                      --grpc-web \
+                      --kind "$kind" \
+                      --resource-name "$name" \
+                      --resource-namespace "${namespace}" \
+                      --prune=false 2>&1; then
                     echo "        ✅ Synced: $resource"
                     total_resources_synced=$((total_resources_synced + 1))
                   else
