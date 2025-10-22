@@ -882,33 +882,59 @@ jobs:
           sync_failed=false
           failed_apps=""
           synced_count=0
-          skipped_count=0
 
+          echo ""
+          echo "🔄 Starting parallel sync of all child apps..."
+          echo ""
+
+          # Sync all apps in parallel using background jobs
+          pids=()
           for app in ${CHILD_APPS}; do
-            echo ""
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "Processing app: $app"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            
-            # Check overall sync status
-            app_status=$(argocd app get "$app" --server "${ARGOCD_SERVER}" --grpc-web -o json)
-            sync_status=$(echo "$app_status" | jq -r '.status.sync.status // "Unknown"')
-            echo "  📊 Overall sync status: $sync_status"
-            
-            # Always do full app sync (chart handles destructive vs non-destructive via global.destructiveDeployment flag)
-            echo "  🔄 Performing full app sync (chart reads destructiveDeployment flag)"
-            
-            if argocd app sync "$app" --server "${ARGOCD_SERVER}" --grpc-web --prune=false; then
-              echo "  ✅ Sync completed: $app"
-              synced_count=$((synced_count + 1))
-            else
-              echo "  ❌ Failed to sync $app"
-              sync_failed=true
-              failed_apps="$failed_apps $app"
-            fi
-            
-            sleep 1
+            (
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              echo "Processing app: $app"
+              echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+              
+              # Check overall sync status
+              app_status=$(argocd app get "$app" --server "${ARGOCD_SERVER}" --grpc-web -o json)
+              sync_status=$(echo "$app_status" | jq -r '.status.sync.status // "Unknown"')
+              echo "  📊 Overall sync status: $sync_status"
+              
+              # Always do full app sync (chart handles destructive vs non-destructive via global.destructiveDeployment flag)
+              echo "  🔄 Performing full app sync (chart reads destructiveDeployment flag)"
+              
+              if argocd app sync "$app" --server "${ARGOCD_SERVER}" --grpc-web --prune=false; then
+                echo "  ✅ Sync completed: $app"
+                echo "$app" >> /tmp/sync_success.txt
+              else
+                echo "  ❌ Failed to sync $app"
+                echo "$app" >> /tmp/sync_failed.txt
+              fi
+            ) &
+            pids+=($!)
           done
+
+          # Wait for all parallel syncs to complete
+          echo "⏳ Waiting for all parallel syncs to complete..."
+          for pid in "${pids[@]}"; do
+            wait $pid
+          done
+          echo ""
+          echo "✅ All parallel syncs finished"
+          echo ""
+
+          # Check results
+          if [ -f /tmp/sync_success.txt ]; then
+            synced_count=$(wc -l < /tmp/sync_success.txt | tr -d ' ')
+          fi
+          
+          if [ -f /tmp/sync_failed.txt ]; then
+            sync_failed=true
+            failed_apps=$(cat /tmp/sync_failed.txt | tr '\n' ' ')
+          fi
+
+          # Cleanup temp files
+          rm -f /tmp/sync_success.txt /tmp/sync_failed.txt
 
           echo ""
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
