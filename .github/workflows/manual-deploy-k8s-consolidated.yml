@@ -36,9 +36,18 @@ on:
           - 'no'
 
       image_tag:
-        description: 'Image Tag (e.g., v1.5.8.0 or leave empty for latest)'
+        description: 'Image Tag (e.g., v1.5.8.0 or leave empty for auto: git tag or commit hash)'
         required: false
         type: string
+
+      use_azure_hsm:
+        description: 'Use Azure HSM for enclave signing (yes/no)'
+        required: false
+        type: choice
+        options:
+          - 'no'
+          - 'yes'
+        default: 'no'
 
       confirmation:
         description: 'Type "confirm" if deploying sepolia or mainnet'
@@ -202,6 +211,8 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
+    outputs:
+      IMAGE_TAG: ${{ steps.get_tag.outputs.IMAGE_TAG }}
 
     steps:
       - uses: actions/checkout@v4
@@ -210,7 +221,8 @@ jobs:
         with:
           go-version: 1.25.1
 
-      - name: 'Login via Azure CLI'
+      - name: 'Login via Azure CLI (for HSM)'
+        if: github.event.inputs.use_azure_hsm == 'yes'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -222,14 +234,55 @@ jobs:
           username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Build and push obscuro node images'
+      - name: 'Determine image tag'
+        id: get_tag
         run: |
-          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} -f dockerfiles/enclave.Dockerfile  .
-          docker push ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}
-          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_HOST }} -f dockerfiles/host.Dockerfile .
-          docker push ${{ vars.DOCKER_BUILD_TAG_HOST }}
-          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
-          docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+          # Use provided tag, or git tag, or commit hash
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          else
+            # Try git tag first, fall back to short commit hash
+            IMAGE_TAG=$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)
+          fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "📦 Image tag: $IMAGE_TAG"
+
+      - name: 'Build and push obscuro node images'
+        env:
+          IMAGE_TAG: ${{ steps.get_tag.outputs.IMAGE_TAG }}
+          USE_HSM: ${{ github.event.inputs.use_azure_hsm }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          # Build enclave image (with optional HSM)
+          if [[ "$USE_HSM" == "yes" ]]; then
+            echo "Building enclave with Azure HSM..."
+            DOCKER_BUILDKIT=1 docker build \
+              -t ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/enclave:${IMAGE_TAG} \
+              --build-arg AZURE_TENANT_ID="${AZURE_TENANT_ID}" \
+              --build-arg AZURE_SUBSCRIPTION_ID="${AZURE_SUBSCRIPTION_ID}" \
+              -f dockerfiles/enclave.Dockerfile .
+          else
+            echo "Building enclave without HSM..."
+            DOCKER_BUILDKIT=1 docker build \
+              -t ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/enclave:${IMAGE_TAG} \
+              -f dockerfiles/enclave.Dockerfile .
+          fi
+          docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/enclave:${IMAGE_TAG}
+          
+          # Build host image
+          DOCKER_BUILDKIT=1 docker build \
+            -t ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/host:${IMAGE_TAG} \
+            -f dockerfiles/host.Dockerfile .
+          docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/host:${IMAGE_TAG}
+          
+          # Build L2 hardhat deployer
+          DOCKER_BUILDKIT=1 docker build \
+            -t ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/hardhatdeployer:${IMAGE_TAG} \
+            -f tools/hardhatdeployer/Dockerfile .
+          docker push ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/hardhatdeployer:${IMAGE_TAG}
+          
+          echo "✅ All images built and pushed with tag: ${IMAGE_TAG}"
 
   # ============================================================================
   # UPDATE TEN-APPS YAML WITH NEW IMAGE TAGS
@@ -252,8 +305,9 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: 'Update node selectors in ten-apps config (destructive only)'
+      - name: 'Update image tags and node selectors in ten-apps config'
         env:
+          IMAGE_TAG: ${{ needs.build-images.outputs.IMAGE_TAG }}
           CONFIG_PATH: ${{ needs.validate-inputs.outputs.CONFIG_PATH }}
           DESTRUCTIVE_OPTIONS_INPUT: ${{ github.event.inputs.destructive_options }}
           IS_DESTRUCTIVE: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE }}
@@ -266,6 +320,26 @@ jobs:
           else
             ENV_DIR="${{ env.CONFIG_PATH }}/apps/envs/${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}/valuesFile"
           fi
+
+          echo "📝 Updating image tags to: ${IMAGE_TAG} in $ENV_DIR"
+
+          # Update all values files with new image tags
+          for values_file in "$ENV_DIR"/values-*.yaml; do
+            if [ -f "$values_file" ]; then
+              filename=$(basename "$values_file")
+              echo "  Updating $filename..."
+
+              # Update image tags for core images
+              yq eval -i ".enclave.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
+              yq eval -i ".enclave02.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
+              yq eval -i ".host.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
+
+              # For gateway values files
+              yq eval -i ".gateway.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
+            fi
+          done
+
+          echo "✅ Image tags updated"
 
           # ⚠️  NODE SELECTORS ONLY FOR DESTRUCTIVE DEPLOYMENTS
           # Extract node_selectors from destructive_options
