@@ -871,8 +871,8 @@ jobs:
                 echo "  Deleting $group/$kind $ns/$name"
                 if ! argocd app delete-resource "$app" \
                   --server "${ARGOCD_SERVER}" --grpc-web \
-                  --group "$group" --kind "$kind" \
-                  --namespace "$ns" --name "$name" 2>&1 | tee /tmp/argocd_output.txt; then
+                  --resource "${group}:${kind}:${name}" \
+                  --resource-namespace "$ns" 2>&1 | tee /tmp/argocd_output.txt; then
                   if grep -qi "not[[:space:]-]*found" /tmp/argocd_output.txt; then
                     echo "    Not found (OK)"
                   else
