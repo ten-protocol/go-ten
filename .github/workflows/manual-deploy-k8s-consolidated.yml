@@ -451,9 +451,12 @@ jobs:
           username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Deploy L1 Contracts'
-        id: deploy
+      - name: 'Deploy Contracts'
+        id: deployContracts
+        shell: bash
         env:
+          DOCKER_API_VERSION: "1.45"
+          DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
           DEPLOY_NETWORKNAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
           DEPLOY_GITHUBPAT: ${{ secrets.DEPLOY_ACTIONS_PAT }}
           DEPLOY_OUTPUTENV: ./testnet/.env
@@ -494,17 +497,18 @@ jobs:
 
       - name: 'Save L1 deployer container logs'
         # Wait to make sure the logs are available in the container
-        if: always()
+        if: ${{ always() }} # Always run this step to ensure logs are captured even if previous steps fail
         run: |
           sleep 60
-          docker logs `docker ps -aqf "name=hh-l1-deployer"` > deploy-l1-contracts.out 2>&1 || echo "No container logs available"
-
-      - name: 'Upload L1 deployer logs'
-        if: always()
+          docker logs `docker ps -aqf "name=hh-l1-deployer"` > deploy-l1-contracts.out 2>&1
+          
+      - name: 'Upload L1 deployer container logs'
+        if: ${{ always() }} # Always run this step to ensure logs are uploaded even if previous steps fail
         uses: actions/upload-artifact@v4
         with:
           name: deploy-l1-artifacts
-          path: deploy-l1-contracts.out
+          path: |
+            deploy-l1-contracts.out
           retention-days: 2
 
   # ============================================================================
@@ -1083,9 +1087,12 @@ jobs:
           echo "crosschain=$(yq -r '.l1Config.crosschain' "$CFG")" >> $GITHUB_OUTPUT
           echo "enclave_registry=$(yq -r '.l1Config.enclaveRegistry' "$CFG")" >> $GITHUB_OUTPUT
 
-      - name: 'Deploy L2 Contracts'
+      - name: 'Deploy L2 contracts'
         id: deployL2Contracts
+        shell: bash
         env:
+          DOCKER_API_VERSION: "1.45"
+          DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
           DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
           DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
@@ -1100,19 +1107,20 @@ jobs:
           NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ steps.parse_l1_config.outputs.enclave_registry }}
           NETWORK_CHAINID: ${{ vars.CHAIN_ID }}
         run: |
-          go run ./testnet/launcher/l2contractdeployer/cmd
+          go run ./testnet/launcher/l2contractdeployer/cmd \
 
       - name: 'Save L2 deployer container logs'
-        if: always() # Always run this step to ensure logs are captured even if previous steps fail
+        if: ${{ always() }} # Always run this step to ensure logs are captured even if previous steps fail
         run: |
-          docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1 || echo "No container logs available"
+          docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
 
-      - name: 'Upload L2 deployer logs'
-        if: always()
+      - name: 'Upload L2 deployer container logs'
+        if: ${{ always() }} # Always run this step to ensure logs are uploaded even if previous steps fail
         uses: actions/upload-artifact@v4
         with:
           name: deploy-l2-artifacts
-          path: deploy-l2-contracts.out
+          path: |
+            deploy-l2-contracts.out
           retention-days: 2
 
   # ============================================================================
