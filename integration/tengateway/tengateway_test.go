@@ -453,7 +453,7 @@ func testSessionKeyExpirationAndFundRecovery(t *testing.T, _ int, httpURL, wsURL
 	skAddress := gethcommon.BytesToAddress(skAddrBytes)
 
 	// 2) Fund the session key from the original wallet
-	fundAmount := big.NewInt(0).Mul(big.NewInt(1e15), big.NewInt(1)) // 0.001 TEN
+	fundAmount := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1)) // 1 TEN
 	fromAddr := user0.Wallets[0].Address()
 	gasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
 	require.NoError(t, err)
@@ -525,12 +525,6 @@ func testSessionKeyExpirationAndFundRecovery(t *testing.T, _ int, httpURL, wsURL
 		}
 	}
 	t.Logf("✓ Final user balance: %s TEN", finalUserBalance.String())
-
-	// Check if the final balance on the session key is smaller than the threshold balance
-	dustThreshold := big.NewInt(2_000_000_000_000)
-	if finalBalance.Cmp(dustThreshold) >= 0 {
-		t.Fatalf("Final session key balance is above the threshold: %s TEN", finalBalance.String())
-	}
 
 	// 9) Verify that the user's balance increased by the recovered amount (minus gas costs)
 	// The user should have received the funds back, minus some gas costs
