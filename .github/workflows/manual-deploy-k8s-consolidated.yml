@@ -404,13 +404,13 @@ jobs:
           echo "✅ All images built and pushed with tag: ${IMAGE_TAG}"
 
   # ============================================================================
-  # UPDATE TEN-APPS YAML WITH NEW IMAGE TAGS
+  # UPDATE TEN-APPS YAML WITH IMAGE TAGS AND DESTRUCTIVE FLAG
   # ============================================================================
   update-ten-apps-config:
     needs: [validate-inputs, build-images]
     if: |
-      needs.build-images.result == 'success' &&
-      github.event.inputs.image_build == 'yes'
+      always() &&
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -442,24 +442,32 @@ jobs:
             ENV_DIR="${{ env.CONFIG_PATH }}/apps/envs/${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}/valuesFile"
           fi
 
-          echo "📝 Updating image tags to: ${IMAGE_TAG} in $ENV_DIR"
+          # Update image tags if provided
+          if [[ -n "${IMAGE_TAG}" ]]; then
+            echo "📝 Updating image tags to: ${IMAGE_TAG} in $ENV_DIR"
+          else
+            echo "ℹ️  No image tag to update (skipped image build)"
+          fi
+          
           echo "🔧 Setting destructiveDeployment flag to: ${IS_DESTRUCTIVE}"
 
-          # Update all values files with new image tags and destructiveDeployment flag
+          # Update all values files
           for values_file in "$ENV_DIR"/values-*.yaml; do
             if [ -f "$values_file" ]; then
               filename=$(basename "$values_file")
               echo "  Updating $filename..."
 
-              # Update image tags for core images
-              yq eval -i ".enclave.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
-              yq eval -i ".enclave02.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
-              yq eval -i ".host.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
+              # Update image tags for core images (only if IMAGE_TAG is set)
+              if [[ -n "${IMAGE_TAG}" ]]; then
+                yq eval -i ".enclave.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
+                yq eval -i ".enclave02.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
+                yq eval -i ".host.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
 
-              # For gateway values files
-              yq eval -i ".gateway.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
+                # For gateway values files
+                yq eval -i ".gateway.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
+              fi
               
-              # Update destructiveDeployment flag in global section
+              # Always update destructiveDeployment flag in global section
               if [[ "${IS_DESTRUCTIVE}" == "true" ]]; then
                 yq eval -i ".global.destructiveDeployment = true" "$values_file" 2>/dev/null || true
               else
@@ -468,7 +476,11 @@ jobs:
             fi
           done
 
-          echo "✅ Image tags and destructiveDeployment flag updated"
+          if [[ -n "${IMAGE_TAG}" ]]; then
+            echo "✅ Image tags and destructiveDeployment flag updated"
+          else
+            echo "✅ destructiveDeployment flag updated"
+          fi
 
           # ⚠️  NODE SELECTORS ONLY FOR DESTRUCTIVE DEPLOYMENTS
           # Extract node_selectors from destructive_options
@@ -549,13 +561,15 @@ jobs:
             echo "ℹ️  No changes to commit"
           else
             commit_msg="chore: update "
-            [[ "${{ env.IMAGE_TAG }}" != "" ]] && commit_msg+="image tags to ${{ env.IMAGE_TAG }}"
-
-            if [[ "${{ env.IS_DESTRUCTIVE }}" == "true" ]] && [[ -n "$NODE_SELECTORS_INPUT" ]]; then
-              [[ "${{ env.IMAGE_TAG }}" != "" ]] && commit_msg+=" and "
-              commit_msg+="node selectors"
-            fi
-
+            
+            # Build commit message based on what changed
+            changes=()
+            [[ -n "${IMAGE_TAG}" ]] && changes+=("image tags to ${IMAGE_TAG}")
+            [[ "${IS_DESTRUCTIVE}" == "true" ]] && changes+=("destructiveDeployment=true") || changes+=("destructiveDeployment=false")
+            [[ "${IS_DESTRUCTIVE}" == "true" ]] && [[ -n "$NODE_SELECTORS_INPUT" ]] && changes+=("node selectors")
+            
+            # Join changes with comma
+            commit_msg+=$(IFS=", "; echo "${changes[*]}")
             commit_msg+=" for ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}"
 
             git commit -m "$commit_msg"
