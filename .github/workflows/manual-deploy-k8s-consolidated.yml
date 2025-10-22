@@ -903,8 +903,8 @@ jobs:
               # Always do full app sync (chart handles destructive vs non-destructive via global.destructiveDeployment flag)
               echo "  🔄 Performing full app sync (chart reads destructiveDeployment flag)"
               
-              # Run sync - only fail on command failure, not OutOfSync status
-              if argocd app sync "$app" --server "${ARGOCD_SERVER}" --grpc-web --prune=false 2>&1; then
+              # Run sync - only fail on command failure, not OutOfSync status or deleting apps
+              if argocd app sync "$app" --server "${ARGOCD_SERVER}" --grpc-web --prune=false 2>&1 | tee /tmp/sync_output_${app}.txt; then
                 echo "  ✅ Sync command completed: $app"
                 
                 # Check if still OutOfSync (informational only, not a failure)
@@ -918,9 +918,17 @@ jobs:
                 
                 echo "$app" >> /tmp/sync_success.txt
               else
-                echo "  ❌ Sync command failed: $app"
-                echo "$app" >> /tmp/sync_failed.txt
+                # Check if failure is due to app being deleted (not a real failure)
+                if grep -qi "application is deleting\|permission denied" /tmp/sync_output_${app}.txt; then
+                  echo "  ⚠️  App is being deleted or recreated, will sync on next deployment"
+                  echo "$app" >> /tmp/sync_success.txt
+                else
+                  echo "  ❌ Sync command failed: $app"
+                  cat /tmp/sync_output_${app}.txt
+                  echo "$app" >> /tmp/sync_failed.txt
+                fi
               fi
+              rm -f /tmp/sync_output_${app}.txt
             ) &
             pids+=($!)
           done
