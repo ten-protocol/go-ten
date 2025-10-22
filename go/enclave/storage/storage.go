@@ -60,11 +60,10 @@ type storageImpl struct {
 	cachingService         *CacheService
 	eventsStorage          *eventsStorage
 
-	stateCache   *state.CachingDB
-	stateCacheRO *state.CachingDB
-	chainConfig  *params.ChainConfig
-	config       *enclaveconfig.EnclaveConfig
-	logger       gethlog.Logger
+	stateCache  *state.CachingDB
+	chainConfig *params.ChainConfig
+	config      *enclaveconfig.EnclaveConfig
+	logger      gethlog.Logger
 }
 
 func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *CacheService, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
@@ -80,17 +79,11 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	trieDB := triedb.NewDatabase(backingDB, cfg)
 	stateDB := state.NewDatabase(trieDB, nil)
 
-	// create a read-only trie database with provided config
-	// todo to check if there is some cache leak
-	trieDBRO := triedb.NewDatabase(backingDB, cfg)
-	stateDBRO := state.NewDatabase(trieDBRO, nil)
-
 	prepStatementCache := enclavedb.NewStatementCache(backingDB.GetSQLDB(), logger)
 	return &storageImpl{
 		db:                     backingDB,
 		trieDB:                 trieDB,
 		stateCache:             stateDB,
-		stateCacheRO:           stateDBRO,
 		chainConfig:            chainConfig,
 		config:                 config,
 		cachingService:         cachingService,
@@ -106,10 +99,6 @@ func (s *storageImpl) TrieDB() *triedb.Database {
 
 func (s *storageImpl) StateDB() *state.CachingDB {
 	return s.stateCache
-}
-
-func (s *storageImpl) StateDBRO() *state.CachingDB {
-	return s.stateCacheRO
 }
 
 func (s *storageImpl) Close() error {
@@ -479,19 +468,11 @@ func (s *storageImpl) CreateStateDB(_ context.Context, batch *common.BatchHeader
 	//
 	//statedb, err := state.NewWithReader(batch.Root, s.stateCache, process)
 
-	if readOnly {
-		r, err := s.stateCache.Reader(batch.Root)
-		if err != nil {
-			return nil, err
-		}
-		return state.NewWithReader(batch.Root, s.stateCacheRO, r)
-	} else {
-		return state.New(batch.Root, s.stateCache)
+	statedb, err := state.New(batch.Root, s.stateCache)
+	if err != nil {
+		return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
 	}
-	//if err != nil {
-	//	return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
-	//}
-	//return statedb, nil
+	return statedb, nil
 }
 
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {

@@ -69,7 +69,7 @@ type batchExecutor struct {
 	mu                     *sync.Mutex
 }
 
-func NewBatchExecutor(storage storage.Storage, batchRegistry BatchRegistry, evmFacade evm.EVMFacade, config *enclaveconfig.EnclaveConfig, gethEncodingService gethencoding.EncodingService, cc *crosschain.Processors, genesis *genesis.Genesis, gasOracle gas.Oracle, chainConfig *params.ChainConfig, systemContracts system.SystemContractCallbacks, entropyService *crypto.EvmEntropyService, mempool *TxPool, dataCompressionService compression.DataCompressionService, gasPricer *GasPricer, logger gethlog.Logger) BatchExecutor {
+func NewBatchExecutor(storage storage.Storage, batchRegistry BatchRegistry, evmFacade evm.EVMFacade, config *enclaveconfig.EnclaveConfig, gethEncodingService gethencoding.EncodingService, cc *crosschain.Processors, genesis *genesis.Genesis, gasOracle gas.Oracle, chainConfig *params.ChainConfig, systemContracts system.SystemContractCallbacks, entropyService *crypto.EvmEntropyService, mempool *TxPool, dataCompressionService compression.DataCompressionService, gasPricer *GasPricer, logger gethlog.Logger, mutex *sync.Mutex) BatchExecutor {
 	if gasPricer == nil {
 		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
 	}
@@ -90,7 +90,7 @@ func NewBatchExecutor(storage storage.Storage, batchRegistry BatchRegistry, evmF
 		entropyService:         entropyService,
 		mempool:                mempool,
 		dataCompressionService: dataCompressionService,
-		mu:                     &sync.Mutex{},
+		mu:                     mutex,
 	}
 }
 

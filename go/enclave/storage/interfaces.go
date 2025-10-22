@@ -158,7 +158,6 @@ type Storage interface {
 
 	// StateDB - return the underlying state database
 	StateDB() *state.CachingDB
-	StateDBRO() *state.CachingDB
 
 	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
 }
