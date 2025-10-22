@@ -521,6 +521,7 @@ jobs:
           ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
           DEFAULT_APPS: "sequencer validator-01 validator-02"
           ADDITIONAL_APPS: ${{ needs.validate-inputs.outputs.ADDITIONAL_APPS_TO_DELETE }}
+          TESTNET_SHORT_NAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
         run: |
           set -e
 
@@ -528,19 +529,19 @@ jobs:
 
           # Always delete default apps (sequencer, validator-01, validator-02)
           echo "📌 Default apps to delete: sequencer, validator-01, validator-02"
-          for app_suffix in ${{ env.DEFAULT_APPS }}; do
-            app="${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-${app_suffix}"
+          for app_suffix in ${DEFAULT_APPS}; do
+            app="${TESTNET_SHORT_NAME}-${app_suffix}"
             echo "  Deleting: $app"
-            argocd app delete "$app" --server "${{ env.ARGOCD_SERVER }}" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
+            argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
             sleep 2
           done
 
           # Delete additional apps if specified
-          if [[ -n "${{ env.ADDITIONAL_APPS }}" ]]; then
-            echo "📌 Additional apps to delete: ${{ env.ADDITIONAL_APPS }}"
-            for app in ${{ env.ADDITIONAL_APPS }}; do
+          if [[ -n "${ADDITIONAL_APPS}" ]]; then
+            echo "📌 Additional apps to delete: ${ADDITIONAL_APPS}"
+            for app in ${ADDITIONAL_APPS}; do
               echo "  Deleting: $app"
-              argocd app delete "$app" --server "${{ env.ARGOCD_SERVER }}" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
+              argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
               sleep 2
             done
           else
@@ -576,18 +577,19 @@ jobs:
           set -e
 
           echo "🗑️  Non-destructive deployment: Deleting host and enclave deployments/statefulsets"
-          echo "Environment: ${{ env.TESTNET_SHORT_NAME }}"
+          echo "Environment: ${TESTNET_SHORT_NAME}"
+          echo "ArgoCD Server: ${ARGOCD_SERVER}"
 
           APPS=("sequencer" "validator-01" "validator-02")
 
           for app_suffix in "${APPS[@]}"; do
-            app="${{ env.TESTNET_SHORT_NAME }}-${app_suffix}"
+            app="${TESTNET_SHORT_NAME}-${app_suffix}"
             echo "Processing app: $app"
 
             # Delete host deployment
             echo "  Deleting host deployment..."
             argocd app delete-resource "$app" \
-              --server "${{ env.ARGOCD_SERVER }}" \
+              --server "${ARGOCD_SERVER}" \
               --kind Deployment \
               --resource-name "${app}-host" \
               --all || echo "  ⚠️  Host deployment not found"
@@ -595,7 +597,7 @@ jobs:
             # Delete enclave statefulset
             echo "  Deleting enclave statefulset..."
             argocd app delete-resource "$app" \
-              --server "${{ env.ARGOCD_SERVER }}" \
+              --server "${ARGOCD_SERVER}" \
               --kind StatefulSet \
               --resource-name "${app}-enclave" \
               --all || echo "  ⚠️  Enclave statefulset not found"
@@ -603,7 +605,7 @@ jobs:
             # Delete enclave02 statefulset (if exists)
             echo "  Deleting enclave02 statefulset..."
             argocd app delete-resource "$app" \
-              --server "${{ env.ARGOCD_SERVER }}" \
+              --server "${ARGOCD_SERVER}" \
               --kind StatefulSet \
               --resource-name "${app}-enclave02" \
               --all || echo "  ⚠️  Enclave02 statefulset not found"
@@ -647,13 +649,13 @@ jobs:
 
           echo "🔄 Syncing ArgoCD child applications"
           echo "Strategy: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && 'destructive (child apps recreated)' || 'non-destructive (sync only)' }}"
-          echo "Timeout: ${{ env.SYNC_TIMEOUT }}"
+          echo "Timeout: ${SYNC_TIMEOUT}"
 
           sync_failed=false
 
-          for app in ${{ env.CHILD_APPS }}; do
+          for app in ${CHILD_APPS}; do
             echo "Syncing app: $app"
-            if argocd app sync "$app" --server "${{ env.ARGOCD_SERVER }}" --wait --timeout "${{ env.SYNC_TIMEOUT }}"; then
+            if argocd app sync "$app" --server "${ARGOCD_SERVER}" --wait --timeout "${SYNC_TIMEOUT}"; then
               echo "✅ Synced: $app"
             else
               echo "❌ Failed to sync $app"
@@ -696,12 +698,12 @@ jobs:
           max_attempts=30
           attempt=1
 
-          for app in ${{ env.CHILD_APPS }}; do
+          for app in ${CHILD_APPS}; do
             echo "Checking health of app: $app"
             attempt=1
             while [ $attempt -le $max_attempts ]; do
-              health=$(argocd app get "$app" --server "${{ env.ARGOCD_SERVER }}" --refresh --output json | jq -r '.status.health.status // "Unknown"')
-              sync=$(argocd app get "$app" --server "${{ env.ARGOCD_SERVER }}" --refresh --output json | jq -r '.status.operationState.phase // "Unknown"')
+              health=$(argocd app get "$app" --server "${ARGOCD_SERVER}" --refresh --output json | jq -r '.status.health.status // "Unknown"')
+              sync=$(argocd app get "$app" --server "${ARGOCD_SERVER}" --refresh --output json | jq -r '.status.operationState.phase // "Unknown"')
 
               echo "  Attempt $attempt/$max_attempts: Health=$health, Sync=$sync"
 
