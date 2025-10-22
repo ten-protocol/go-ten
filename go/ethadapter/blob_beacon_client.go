@@ -274,9 +274,12 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 		ordered[i] = matched
 	}
 
+	
 	// verify by recomputing commitments and comparing versioned hashes only
 	out := make([]*kzg4844.Blob, len(hashes))
 	for i := range ordered {
+		// the beacon API does not return the cell proofs, so we can't verify them at this point
+		// verifying the calculated commitment matches the expected hash is sufficient for now
 		commitment, err := kzg4844.BlobToCommitment(&ordered[i].Blob)
 		if err != nil {
 			return nil, fmt.Errorf("cannot compute KZG commitment for blob %d: %w", i, err)
