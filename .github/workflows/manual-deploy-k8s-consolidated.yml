@@ -202,8 +202,6 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
-    outputs:
-      IMAGE_TAG: ${{ steps.get_version.outputs.IMAGE_TAG }}
 
     steps:
       - uses: actions/checkout@v4
@@ -212,55 +210,26 @@ jobs:
         with:
           go-version: 1.25.1
 
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
       - name: 'Login to Azure docker registry'
         uses: azure/docker-login@v1
         with:
-          login-server: ${{ env.REGISTRY }}
+          login-server: testnetobscuronet.azurecr.io
           username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
-      - name: 'Determine image tag (git tag or commit hash)'
-        id: get_version
+      - name: 'Build and push obscuro node images'
         run: |
-          # Use provided tag, or git tag, or commit hash
-          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
-            IMAGE_TAG="${{ github.event.inputs.image_tag }}"
-          else
-            # Try git tag first, fall back to short commit hash
-            IMAGE_TAG=$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)
-          fi
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "📦 Image tag: $IMAGE_TAG"
-
-      - name: 'Build and push images'
-        env:
-          IMAGE_TAG: ${{ steps.get_version.outputs.IMAGE_TAG }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-        run: |
-          set -e
-
-          images=(
-            "enclave:enclave.Dockerfile"
-            "host:host.Dockerfile"
-            "l1challengeperiod:l1challengeperiod.Dockerfile"
-            "l1contractdeployer:l1contractdeployer.Dockerfile"
-            "l1grantsequencers:l1grantsequencers.Dockerfile"
-            "l2contractdeployer:l2contractdeployer.Dockerfile"
-          )
-
-          for image_info in "${images[@]}"; do
-            IFS=':' read -r image_name dockerfile <<< "$image_info"
-            image_url="${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/$image_name:$IMAGE_TAG"
-            echo "Building $image_url..."
-            DOCKER_BUILDKIT=1 docker build \
-              -t "$image_url" \
-              --build-arg AZURE_TENANT_ID="${{ env.AZURE_TENANT_ID }}" \
-              --build-arg AZURE_SUBSCRIPTION_ID="${{ env.AZURE_SUBSCRIPTION_ID }}" \
-              -f "dockerfiles/$dockerfile" .
-            docker push "$image_url"
-            echo "✅ Pushed $image_url"
-          done
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }} -f dockerfiles/enclave.Dockerfile  .
+          docker push ${{ vars.DOCKER_BUILD_TAG_ENCLAVE }}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_HOST }} -f dockerfiles/host.Dockerfile .
+          docker push ${{ vars.DOCKER_BUILD_TAG_HOST }}
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
+          docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
 
   # ============================================================================
   # UPDATE TEN-APPS YAML WITH NEW IMAGE TAGS
@@ -283,9 +252,8 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
-      - name: 'Update image tags and node selectors in ten-apps config'
+      - name: 'Update node selectors in ten-apps config (destructive only)'
         env:
-          IMAGE_TAG: ${{ needs.build-images.outputs.IMAGE_TAG }}
           CONFIG_PATH: ${{ needs.validate-inputs.outputs.CONFIG_PATH }}
           DESTRUCTIVE_OPTIONS_INPUT: ${{ github.event.inputs.destructive_options }}
           IS_DESTRUCTIVE: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE }}
@@ -298,26 +266,6 @@ jobs:
           else
             ENV_DIR="${{ env.CONFIG_PATH }}/apps/envs/${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}/valuesFile"
           fi
-
-          echo "📝 Updating image tags to: ${{ env.IMAGE_TAG }} in $ENV_DIR"
-
-          # Update all values files with new image tags (for both destructive and non-destructive)
-          for values_file in "$ENV_DIR"/values-*.yaml; do
-            if [ -f "$values_file" ]; then
-              filename=$(basename "$values_file")
-              echo "  Updating $filename..."
-
-              # Update image tags for core images
-              yq eval -i ".enclave.image.tag = \"${{ env.IMAGE_TAG }}\"" "$values_file" 2>/dev/null || true
-              yq eval -i ".enclave02.image.tag = \"${{ env.IMAGE_TAG }}\"" "$values_file" 2>/dev/null || true
-              yq eval -i ".host.image.tag = \"${{ env.IMAGE_TAG }}\"" "$values_file" 2>/dev/null || true
-
-              # For gateway values files
-              yq eval -i ".gateway.image.tag = \"${{ env.IMAGE_TAG }}\"" "$values_file" 2>/dev/null || true
-            fi
-          done
-
-          echo "✅ Image tags updated"
 
           # ⚠️  NODE SELECTORS ONLY FOR DESTRUCTIVE DEPLOYMENTS
           # Extract node_selectors from destructive_options
