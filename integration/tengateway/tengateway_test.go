@@ -544,6 +544,7 @@ func testSessionKeyFundRecoveryOnDeletion(t *testing.T, _ int, httpURL, wsURL st
 
 	// Check if either confirmed or pending balance increased
 	balanceIncreased := confirmedIncrease.Cmp(big.NewInt(0)) > 0 || pendingIncrease.Cmp(big.NewInt(0)) > 0
+	require.True(t, balanceIncreased, "User balance should have increased due to fund recovery")
 
 	// The test should pass if refund was detected (balance decreased) even if user balance hasn't updated yet
 	require.True(t, refundDetected, "Expected refund transaction to be initiated (session key balance should decrease)")
