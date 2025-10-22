@@ -860,49 +860,29 @@ jobs:
             app="${TESTNET_SHORT_NAME}-${app_suffix}"
             echo "Processing app: $app"
 
-            # Delete host deployment (only ignore NotFound errors)
-            echo "  Deleting host deployment..."
-            if ! argocd app delete-resource "$app" \
-              --server "${ARGOCD_SERVER}" \
-              --kind Deployment \
-              --resource-name "${app}-host" \
-              --all 2>&1 | tee /tmp/argocd_output.txt; then
-              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
-                echo "  ℹ️  Host deployment not found (this is OK)"
-              else
-                echo "  ❌ Failed to delete host deployment"
-                exit 1
-              fi
-            fi
-
-            # Delete enclave statefulset (only ignore NotFound errors)
-            echo "  Deleting enclave statefulset..."
-            if ! argocd app delete-resource "$app" \
-              --server "${ARGOCD_SERVER}" \
-              --kind StatefulSet \
-              --resource-name "${app}-enclave" \
-              --all 2>&1 | tee /tmp/argocd_output.txt; then
-              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
-                echo "  ℹ️  Enclave statefulset not found (this is OK)"
-              else
-                echo "  ❌ Failed to delete enclave statefulset"
-                exit 1
-              fi
-            fi
-
-            # Delete enclave02 statefulset (only ignore NotFound errors)
-            echo "  Deleting enclave02 statefulset..."
-            if ! argocd app delete-resource "$app" \
-              --server "${ARGOCD_SERVER}" \
-              --kind StatefulSet \
-              --resource-name "${app}-enclave02" \
-              --all 2>&1 | tee /tmp/argocd_output.txt; then
-              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
-                echo "  ℹ️  Enclave02 statefulset not found (this is OK)"
-              else
-                echo "  ❌ Failed to delete enclave02 statefulset"
-                exit 1
-              fi
+            # Enumerate all Deployments and StatefulSets in the app and delete them
+            echo "  Enumerating Deployments and StatefulSets..."
+            resources=$(argocd app get "$app" --server "${ARGOCD_SERVER}" --grpc-web -o json | jq -r '.status.resources[] | select(.kind=="Deployment" or .kind=="StatefulSet") | [(.group // "apps"), .kind, .namespace, .name] | @tsv')
+            if [[ -z "$resources" ]]; then
+              echo "  ℹ️  No Deployments/StatefulSets found"
+            else
+              while IFS=$'\t' read -r group kind ns name; do
+                [[ -z "$group" || -z "$kind" || -z "$ns" || -z "$name" ]] && continue
+                echo "  Deleting $group/$kind $ns/$name"
+                if ! argocd app delete-resource "$app" \
+                  --server "${ARGOCD_SERVER}" --grpc-web \
+                  --group "$group" --kind "$kind" \
+                  --namespace "$ns" --name "$name" 2>&1 | tee /tmp/argocd_output.txt; then
+                  if grep -qi "not[[:space:]-]*found" /tmp/argocd_output.txt; then
+                    echo "    Not found (OK)"
+                  else
+                    echo "    ❌ Failed to delete $group/$kind $ns/$name"
+                    exit 1
+                  fi
+                else
+                  echo "    ✅ Deleted"
+                fi
+              done <<< "$resources"
             fi
 
             sleep 2
