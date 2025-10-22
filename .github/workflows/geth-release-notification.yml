@@ -19,7 +19,7 @@ jobs:
           echo "name=$(jq -r .name latest.json)" >> "$GITHUB_OUTPUT"
           echo "url=$(jq -r .html_url latest.json)" >> "$GITHUB_OUTPUT"
 
-      # Check release ID using the cache. If cache-hit=true, we've already posted.
+      # Check release ID using the cache
       - name: Check if this release was already notified
         id: cache
         uses: actions/cache@v4
@@ -27,8 +27,7 @@ jobs:
           path: .release-notify
           key: geth-release-${{ steps.latest.outputs.id }}
 
-      # Prepare something to store in the cache for this ID (saved automatically if cache was a miss)
-      - name: Prepare cache payload
+      - name: Prepare cache dir
         run: |
           set -euo pipefail
           mkdir -p .release-notify
