@@ -1042,26 +1042,13 @@ jobs:
                   name=$(echo "$namespace_name" | cut -d'/' -f2)
                   
                   # Sync this specific resource only
-                  # Newer CLI supports --resource; fallback to per-kind flags if unsupported
-                  set +e
-                  argocd app sync "$app" \
+                  # Legacy CLI doesn't support selective resource sync, do full app sync
+                  echo "        ℹ️  Syncing entire app (legacy CLI limitation)"
+                  if argocd app sync "$app" \
                     --server "${ARGOCD_SERVER}" \
                     --grpc-web \
-                    --resource "${group}:${kind}:${name}" \
-                    --resource-namespace "${namespace}" \
-                    --prune=false 2>&1 | tee /tmp/argocd_sync_output.txt
-                  rc=${PIPESTATUS[0]}
-                  set -e
-                  if [[ $rc -ne 0 ]] && grep -qi "unknown flag: --resource" /tmp/argocd_sync_output.txt; then
-                    echo "        ℹ️  CLI lacks --resource; retrying with per-kind flags"
-                    if argocd app sync "$app" \
-                      --server "${ARGOCD_SERVER}" \
-                      --grpc-web \
-                      --kind "$kind" \
-                      --resource-name "$name" \
-                      --resource-namespace "${namespace}" \
-                      --prune=false 2>&1; then
-                    echo "        ✅ Synced: $resource"
+                    --prune=false 2>&1; then
+                    echo "        ✅ Synced: $resource (via full app sync)"
                     total_resources_synced=$((total_resources_synced + 1))
                   else
                     echo "        ⚠️  Failed to sync: $resource"
