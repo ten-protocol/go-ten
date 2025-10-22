@@ -84,15 +84,15 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 
 	// create a read-only trie database with provided config
 	// todo to check if there is some cache leak
-	trieDBRO := triedb.NewDatabase(backingDB, cfg)
-	stateDBRO := state.NewDatabase(trieDBRO, nil)
+	// trieDBRO := triedb.NewDatabase(backingDB, cfg)
+	stateDBRO := state.NewDatabase(trieDB, nil)
 
 	prepStatementCache := enclavedb.NewStatementCache(backingDB.GetSQLDB(), logger)
 	return &storageImpl{
-		db:                     backingDB,
-		trieDB:                 trieDB,
-		stateCache:             stateDB,
-		trieDBRO:               trieDBRO,
+		db:         backingDB,
+		trieDB:     trieDB,
+		stateCache: stateDB,
+		// trieDBRO:               trieDBRO,
 		stateCacheRO:           stateDBRO,
 		chainConfig:            chainConfig,
 		config:                 config,
@@ -127,7 +127,6 @@ func (s *storageImpl) Close() error {
 	s.cachingService.Stop()
 	_ = s.preparedStatementCache.Clear()
 	_ = s.trieDB.Close()
-	_ = s.trieDBRO.Close()
 	return s.db.GetSQLDB().Close()
 }
 
