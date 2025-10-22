@@ -123,13 +123,22 @@ jobs:
 
           # Determine ArgoCD server & config path
           if [[ "$TESTNET_TYPE" == "mainnet" ]]; then
-            echo "ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER_PROD }}" >> $GITHUB_OUTPUT
+            ARGOCD_SERVER="${{ secrets.ARGOCD_SERVER_PROD }}"
             CONFIG_PATH="prod-argocd-config"
           else
-            echo "ARGOCD_SERVER=${{ secrets.ARGOCD_SERVER_NONPROD }}" >> $GITHUB_OUTPUT
+            ARGOCD_SERVER="${{ secrets.ARGOCD_SERVER_NONPROD }}"
             CONFIG_PATH="nonprod-argocd-config"
           fi
+          
+          echo "ARGOCD_SERVER=$ARGOCD_SERVER" >> $GITHUB_OUTPUT
           echo "CONFIG_PATH=$CONFIG_PATH" >> $GITHUB_OUTPUT
+          
+          # Debug output (without exposing full server address)
+          if [[ -z "$ARGOCD_SERVER" ]]; then
+            echo "⚠️  WARNING: ARGOCD_SERVER is empty!"
+          else
+            echo "✅ ARGOCD_SERVER is set"
+          fi
 
           # Check if destructive
           if [[ "${{ github.event.inputs.deployment_strategy }}" == "destructive" ]]; then
