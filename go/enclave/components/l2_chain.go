@@ -52,7 +52,7 @@ func NewChain(storage storage.Storage, config *enclaveconfig.EnclaveConfig, evmF
 }
 
 func (oc *tenChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommon.Address, blockNumber *gethrpc.BlockNumber) (*hexutil.Big, error) {
-	chainState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
+	chainState, _, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
 		return nil, fmt.Errorf("unable to get blockchain state - %w", err)
 	}
@@ -61,18 +61,19 @@ func (oc *tenChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommo
 }
 
 func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
+	// for the latest block we need to lock the state db
+	if *blockNumber < 0 {
+		oc.statedbMutex.Lock()
+		defer oc.statedbMutex.Unlock()
+	}
+
 	// fetch the chain state at given batch
-	blockState, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
+	blockState, batch, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	batch, err := oc.Registry.GetBatchAtHeight(ctx, *blockNumber)
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to fetch head state batch. Cause: %w", err)
-	}
-
-	callMsg, err := apiArgs.ToMessage(params.MaxTxGas, batch.Header.BaseFee)
+	callMsg, err := apiArgs.ToMessage(params.MaxTxGas, batch.BaseFee)
 	if err != nil {
 		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err), nil
 	}
@@ -83,13 +84,8 @@ func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Transac
 			callMsg.From,
 			hexutils.BytesToHex(callMsg.Data),
 			batch.Hash(),
-			batch.Header.Root.Hex()))
+			batch.Root.Hex()))
 	}
 
-	if *blockNumber == gethrpc.LatestBlockNumber {
-		oc.statedbMutex.Lock()
-		defer oc.statedbMutex.Unlock()
-	}
-
-	return oc.evmFacade.ExecuteCall(ctx, callMsg, blockState, batch.Header, isEstimateGas)
+	return oc.evmFacade.ExecuteCall(ctx, callMsg, blockState, batch, isEstimateGas)
 }

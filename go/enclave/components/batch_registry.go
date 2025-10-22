@@ -200,40 +200,45 @@ func (br *batchRegistry) BatchesAfter(ctx context.Context, batchSeqNo uint64, up
 	return resultBatches, resultBlocks, nil
 }
 
-func (br *batchRegistry) GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, error) {
+func (br *batchRegistry) GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, *common.BatchHeader, error) {
 	if blockNumberOrHash.BlockHash != nil {
 		return getBatchState(ctx, br.storage, *blockNumberOrHash.BlockHash)
 	}
 	if blockNumberOrHash.BlockNumber != nil {
 		return br.GetBatchStateAtHeight(ctx, blockNumberOrHash.BlockNumber)
 	}
-	return nil, fmt.Errorf("block number or block hash does not exist")
+	return nil, nil, fmt.Errorf("block number or block hash does not exist")
 }
 
-func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error) {
+func (br *batchRegistry) GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, *common.BatchHeader, error) {
 	// We retrieve the batch of interest.
 	batch, err := br.GetBatchAtHeight(ctx, *blockNumber)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	return getBatchState(ctx, br.storage, batch.Hash())
 }
 
-func getBatchState(ctx context.Context, storage storage.Storage, batchHash common.L2BatchHash) (*state.StateDB, error) {
-	blockchainState, err := storage.CreateStateDB(ctx, batchHash)
+func getBatchState(ctx context.Context, storage storage.Storage, batchHash common.L2BatchHash) (*state.StateDB, *common.BatchHeader, error) {
+	b, err := storage.FetchBatchHeader(ctx, batchHash)
 	if err != nil {
-		return nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
+		return nil, nil, fmt.Errorf("could not read batch by hash. Cause: %w", err)
+	}
+
+	blockchainState, err := storage.CreateStateDB(ctx, b)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
 
 	if blockchainState == nil {
-		return nil, fmt.Errorf("unable to fetch chain state for batch %s", batchHash.Hex())
+		return nil, nil, fmt.Errorf("unable to fetch chain state for batch %s", batchHash.Hex())
 	}
 
-	return blockchainState, err
+	return blockchainState, b, err
 }
 
-func (br *batchRegistry) GetBatchAtHeight(ctx context.Context, height gethrpc.BlockNumber) (*core.Batch, error) {
+func (br *batchRegistry) GetBatchAtHeight(ctx context.Context, height gethrpc.BlockNumber) (*common.BatchHeader, error) {
 	if br.HeadBatchSeq() == nil {
 		return nil, fmt.Errorf("chain not initialised")
 	}
@@ -260,7 +265,7 @@ func (br *batchRegistry) GetBatchAtHeight(ctx context.Context, height gethrpc.Bl
 		}
 		batch = maybeBatch
 	}
-	return batch, nil
+	return batch.Header, nil
 }
 
 // HealthCheck checks if the last executed batch was more than healthTimeout ago

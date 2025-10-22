@@ -83,7 +83,7 @@ type BatchResolver interface {
 
 type GethStateDB interface {
 	// CreateStateDB creates a database that can be used to execute transactions
-	CreateStateDB(ctx context.Context, hash common.L2BatchHash) (*state.StateDB, error)
+	CreateStateDB(ctx context.Context, batch *common.BatchHeader) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
 	EmptyStateDB() (*state.StateDB, error)
 }

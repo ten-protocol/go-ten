@@ -49,12 +49,11 @@ func NewGasEstimator(storage storage.Storage, registry BatchRegistry, chain TENC
 }
 
 func (ge *GasEstimator) EstimateTotalGas(ctx context.Context, args *gethapi.TransactionArgs, blockNumber gethrpc.BlockNumber) (uint64, uint64, error, common.SystemError) {
-	b, err := ge.registry.GetBatchAtHeight(ctx, blockNumber)
+	batchAtNumber, err := ge.registry.GetBatchAtHeight(ctx, blockNumber)
 	if err != nil {
 		return 0, 0, nil, fmt.Errorf("failed to fetch batch for number %d: %w", blockNumber, err)
 	}
-	batchNumber := gethrpc.BlockNumber(b.Number().Int64())
-	batchAtNumber := b.Header
+	batchNumber := gethrpc.BlockNumber(batchAtNumber.Number.Int64())
 
 	// The message is run through the l1 publishing cost estimation for the current
 	// known head BlockHeader.

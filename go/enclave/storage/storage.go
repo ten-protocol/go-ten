@@ -459,12 +459,8 @@ func (s *storageImpl) HealthCheck(ctx context.Context) (bool, error) {
 	//return true, nil
 }
 
-func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2BatchHash) (*state.StateDB, error) {
+func (s *storageImpl) CreateStateDB(ctx context.Context, batch *common.BatchHeader) (*state.StateDB, error) {
 	defer s.logDuration("CreateStateDB", measure.NewStopwatch())
-	batch, err := s.FetchBatchHeader(ctx, batchHash)
-	if err != nil {
-		return nil, err
-	}
 
 	// prefetch
 	//_, process, err := s.stateCache.ReadersWithCacheStats(batch.Root)
@@ -473,6 +469,7 @@ func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2Batc
 	//}
 	//
 	//statedb, err := state.NewWithReader(batch.Root, s.stateCache, process)
+
 	statedb, err := state.New(batch.Root, s.stateCache)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
