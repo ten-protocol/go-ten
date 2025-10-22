@@ -1135,7 +1135,7 @@ jobs:
         shell: bash
         env:
           DOCKER_API_VERSION: "1.45"
-          DEPLOY_DOCKERIMAGE: ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/hardhatdeployer:${{ needs.build-images.outputs.IMAGE_TAG || github.event.inputs.image_tag || 'latest' }}
+          DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
           DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
           DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
