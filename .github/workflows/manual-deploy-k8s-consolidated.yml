@@ -903,30 +903,55 @@ jobs:
               # Always do full app sync (chart handles destructive vs non-destructive via global.destructiveDeployment flag)
               echo "  🔄 Performing full app sync (chart reads destructiveDeployment flag)"
               
-              # Run sync - only fail on command failure, not OutOfSync status or deleting apps
-              if argocd app sync "$app" --server "${ARGOCD_SERVER}" --grpc-web --prune=false 2>&1 | tee /tmp/sync_output_${app}.txt; then
-                echo "  ✅ Sync command completed: $app"
-                
-                # Check if still OutOfSync (informational only, not a failure)
-                app_status_after=$(argocd app get "$app" --server "${ARGOCD_SERVER}" --grpc-web -o json)
-                sync_status_after=$(echo "$app_status_after" | jq -r '.status.sync.status // "Unknown"')
-                if [[ "$sync_status_after" == "OutOfSync" ]]; then
-                  echo "  ℹ️  App still OutOfSync after sync (may be resource limits, replicas adjusting, etc.)"
-                else
-                  echo "  📊 Sync status after: $sync_status_after"
+              # Run sync with retries if app is being deleted
+              max_retries=5
+              retry_delay=10
+              retry_count=0
+              sync_success=false
+              
+              while [[ $retry_count -lt $max_retries ]]; do
+                if [[ $retry_count -gt 0 ]]; then
+                  echo "  ⏳ Retry $retry_count/$max_retries after ${retry_delay}s..."
+                  sleep $retry_delay
                 fi
                 
+                # Run sync - only fail on command failure, not OutOfSync status
+                if argocd app sync "$app" --server "${ARGOCD_SERVER}" --grpc-web --prune=false 2>&1 | tee /tmp/sync_output_${app}.txt; then
+                  echo "  ✅ Sync command completed: $app"
+                  
+                  # Check if still OutOfSync (informational only, not a failure)
+                  app_status_after=$(argocd app get "$app" --server "${ARGOCD_SERVER}" --grpc-web -o json)
+                  sync_status_after=$(echo "$app_status_after" | jq -r '.status.sync.status // "Unknown"')
+                  if [[ "$sync_status_after" == "OutOfSync" ]]; then
+                    echo "  ℹ️  App still OutOfSync after sync (may be resource limits, replicas adjusting, etc.)"
+                  else
+                    echo "  📊 Sync status after: $sync_status_after"
+                  fi
+                  
+                  sync_success=true
+                  break
+                else
+                  # Check if failure is due to app being deleted (retry)
+                  if grep -qi "application is deleting\|permission denied\|not found" /tmp/sync_output_${app}.txt; then
+                    echo "  ⚠️  App is being deleted/recreated or not found yet"
+                    retry_count=$((retry_count + 1))
+                    if [[ $retry_count -ge $max_retries ]]; then
+                      echo "  ⚠️  Max retries reached, app will sync on next deployment"
+                      sync_success=true  # Don't fail - app is just not ready yet
+                      break
+                    fi
+                  else
+                    echo "  ❌ Sync command failed with real error: $app"
+                    cat /tmp/sync_output_${app}.txt
+                    break
+                  fi
+                fi
+              done
+              
+              if [[ "$sync_success" == "true" ]]; then
                 echo "$app" >> /tmp/sync_success.txt
               else
-                # Check if failure is due to app being deleted (not a real failure)
-                if grep -qi "application is deleting\|permission denied" /tmp/sync_output_${app}.txt; then
-                  echo "  ⚠️  App is being deleted or recreated, will sync on next deployment"
-                  echo "$app" >> /tmp/sync_success.txt
-                else
-                  echo "  ❌ Sync command failed: $app"
-                  cat /tmp/sync_output_${app}.txt
-                  echo "$app" >> /tmp/sync_failed.txt
-                fi
+                echo "$app" >> /tmp/sync_failed.txt
               fi
               rm -f /tmp/sync_output_${app}.txt
             ) &
