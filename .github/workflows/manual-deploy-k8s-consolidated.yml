@@ -512,10 +512,31 @@ jobs:
           curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
 
+      - name: 'Login to ArgoCD'
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
+          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
+        run: |
+          set -e
+          
+          echo "🔐 Logging in to ArgoCD server: ${ARGOCD_SERVER}"
+          
+          if [[ -z "${ARGOCD_SERVER}" ]] || [[ -z "${ARGOCD_USERNAME}" ]] || [[ -z "${ARGOCD_PASSWORD}" ]]; then
+            echo "❌ ERROR: ArgoCD credentials not set!"
+            exit 1
+          fi
+          
+          argocd login "${ARGOCD_SERVER}" \
+            --username "${ARGOCD_USERNAME}" \
+            --password "${ARGOCD_PASSWORD}" \
+            --insecure
+          
+          echo "✅ Successfully logged in to ArgoCD"
+
       - name: 'Delete ArgoCD child applications'
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
           DEFAULT_APPS: "sequencer validator-01 validator-02"
           ADDITIONAL_APPS: ${{ needs.validate-inputs.outputs.ADDITIONAL_APPS_TO_DELETE }}
           TESTNET_SHORT_NAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
@@ -585,10 +606,38 @@ jobs:
           curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
 
+      - name: 'Login to ArgoCD'
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
+          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
+        run: |
+          set -e
+          
+          echo "🔐 Logging in to ArgoCD server: ${ARGOCD_SERVER}"
+          
+          # Validate credentials are set
+          if [[ -z "${ARGOCD_SERVER}" ]]; then
+            echo "❌ ERROR: ARGOCD_SERVER is not set!"
+            exit 1
+          fi
+          
+          if [[ -z "${ARGOCD_USERNAME}" ]] || [[ -z "${ARGOCD_PASSWORD}" ]]; then
+            echo "❌ ERROR: ARGOCD_USERNAME or ARGOCD_PASSWORD is not set!"
+            exit 1
+          fi
+          
+          # Login to ArgoCD
+          argocd login "${ARGOCD_SERVER}" \
+            --username "${ARGOCD_USERNAME}" \
+            --password "${ARGOCD_PASSWORD}" \
+            --insecure
+          
+          echo "✅ Successfully logged in to ArgoCD"
+
       - name: 'Delete host and enclave deployments/statefulsets via ArgoCD'
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
           TESTNET_SHORT_NAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
         run: |
           set -e
@@ -686,11 +735,32 @@ jobs:
           curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
 
+      - name: 'Login to ArgoCD'
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
+          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
+        run: |
+          set -e
+          
+          echo "🔐 Logging in to ArgoCD server: ${ARGOCD_SERVER}"
+          
+          if [[ -z "${ARGOCD_SERVER}" ]] || [[ -z "${ARGOCD_USERNAME}" ]] || [[ -z "${ARGOCD_PASSWORD}" ]]; then
+            echo "❌ ERROR: ArgoCD credentials not set!"
+            exit 1
+          fi
+          
+          argocd login "${ARGOCD_SERVER}" \
+            --username "${ARGOCD_USERNAME}" \
+            --password "${ARGOCD_PASSWORD}" \
+            --insecure
+          
+          echo "✅ Successfully logged in to ArgoCD"
+
       - name: 'Sync ArgoCD child applications'
         id: sync
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
           CHILD_APPS: ${{ needs.validate-inputs.outputs.CHILD_APPS }}
           SYNC_TIMEOUT: ${{ github.event.inputs.sync_timeout }}
         run: |
@@ -745,10 +815,31 @@ jobs:
           curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
           chmod +x /usr/local/bin/argocd
 
+      - name: 'Login to ArgoCD'
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
+          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
+        run: |
+          set -e
+          
+          echo "🔐 Logging in to ArgoCD server: ${ARGOCD_SERVER}"
+          
+          if [[ -z "${ARGOCD_SERVER}" ]] || [[ -z "${ARGOCD_USERNAME}" ]] || [[ -z "${ARGOCD_PASSWORD}" ]]; then
+            echo "❌ ERROR: ArgoCD credentials not set!"
+            exit 1
+          fi
+          
+          argocd login "${ARGOCD_SERVER}" \
+            --username "${ARGOCD_USERNAME}" \
+            --password "${ARGOCD_PASSWORD}" \
+            --insecure
+          
+          echo "✅ Successfully logged in to ArgoCD"
+
       - name: 'Wait for ArgoCD apps to be healthy'
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_TOKEN }}
           CHILD_APPS: ${{ needs.validate-inputs.outputs.CHILD_APPS }}
         run: |
           set -e
