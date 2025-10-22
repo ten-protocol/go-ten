@@ -941,6 +941,7 @@ jobs:
           CHILD_APPS: ${{ needs.validate-inputs.outputs.CHILD_APPS }}
           SYNC_TIMEOUT: ${{ github.event.inputs.sync_timeout }}
           IS_DESTRUCTIVE: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE }}
+          TESTNET_SHORT_NAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
         run: |
           set -e
 
@@ -951,6 +952,13 @@ jobs:
           if [[ -z "${ARGOCD_SERVER}" ]]; then
             echo "❌ ERROR: ARGOCD_SERVER is not set!"
             exit 1
+          fi
+
+          # First, sync parent to propagate config
+          PARENT_APP="ten-${TESTNET_SHORT_NAME}-apps"
+          echo "🔄 Ensuring parent app \"$PARENT_APP\" is synced first"
+          if ! argocd app sync "$PARENT_APP" --server "${ARGOCD_SERVER}" --grpc-web; then
+            echo "⚠️  Parent app sync failed or not necessary; continuing"
           fi
 
           sync_failed=false
@@ -996,9 +1004,9 @@ jobs:
               # Get list of OutOfSync resources
               echo "  🔍 Finding OutOfSync resources..."
               out_of_sync_resources=$(echo "$app_status" | jq -r '
-                .status.resources[] | 
-                select(.status == "OutOfSync") | 
-                "\(.kind):\(.namespace)/\(.name)"
+                .status.resources[] |
+                select(.status == "OutOfSync") |
+                "\(.group // "apps"):\(.kind):\(.namespace)/\(.name)"
               ')
               
               if [[ -z "$out_of_sync_resources" ]]; then
@@ -1022,16 +1030,19 @@ jobs:
                 if [[ -n "$resource" ]]; then
                   echo "      Syncing: $resource"
                   
-                  # Extract kind and name from the resource string (format: Kind:namespace/name)
-                  kind=$(echo "$resource" | cut -d':' -f1)
-                  namespace_name=$(echo "$resource" | cut -d':' -f2)
+                  # Extract group, kind, namespace, name from GROUP:KIND:NAMESPACE/NAME
+                  group=$(echo "$resource" | cut -d':' -f1)
+                  kind=$(echo "$resource" | cut -d':' -f2)
+                  namespace_name=$(echo "$resource" | cut -d':' -f3)
                   namespace=$(echo "$namespace_name" | cut -d'/' -f1)
                   name=$(echo "$namespace_name" | cut -d'/' -f2)
                   
                   # Sync this specific resource only
                   if argocd app sync "$app" \
                     --server "${ARGOCD_SERVER}" \
-                    --resource "${kind}:${namespace}/${name}" \
+                    --grpc-web \
+                    --resource "${group}:${kind}:${name}" \
+                    --resource-namespace "${namespace}" \
                     --prune=false 2>&1; then
                     echo "        ✅ Synced: $resource"
                     total_resources_synced=$((total_resources_synced + 1))
