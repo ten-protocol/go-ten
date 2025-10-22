@@ -257,8 +257,8 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 		return nil, fmt.Errorf("number of hashes and blobSidecars mismatch, %d != %d", len(hashes), len(blobSidecars))
 	}
 
-	// Order sidecars to match requested hashes
-	ordered := make([]*BlobSidecar, len(hashes))
+	// order sidecars to match requested hashes
+	orderedSidecars := make([]*BlobSidecar, len(hashes))
 	for i, hash := range hashes {
 		var matched *BlobSidecar
 		for _, sc := range blobSidecars {
@@ -271,26 +271,34 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 		if matched == nil {
 			return nil, fmt.Errorf("no matching BlobSidecar found for hash %s", hash.Hex())
 		}
-		ordered[i] = matched
+		orderedSidecars[i] = matched
 	}
 
-	
-	// verify by recomputing commitments and comparing versioned hashes only
-	out := make([]*kzg4844.Blob, len(hashes))
-	for i := range ordered {
-		// the beacon API does not return the cell proofs, so we can't verify them at this point
-		// verifying the calculated commitment matches the expected hash is sufficient for now
-		commitment, err := kzg4844.BlobToCommitment(&ordered[i].Blob)
-		if err != nil {
-			return nil, fmt.Errorf("cannot compute KZG commitment for blob %d: %w", i, err)
-		}
-		got := KZGToVersionedHash(commitment)
-		if got != hashes[i] {
-			return nil, fmt.Errorf("recomputed commitment hash %s does not match expected %s for blob %d", got, hashes[i], i)
-		}
-		out[i] = &ordered[i].Blob
+	blobs, err := verifyBlobsMatchHashes(orderedSidecars, hashes)
+	if err != nil {
+		return nil, err
 	}
-	return out, nil
+	return blobs, nil
+}
+
+// verifyBlobsMatchHashes recomputes each blob's commitment and ensures the versioned hash
+// matches the expected hash. Returns blobs in the same order as hashes on success.
+func verifyBlobsMatchHashes(orderedSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
+    blobs := make([]*kzg4844.Blob, len(hashes))
+    for i := range orderedSidecars {
+        // the beacon API does not return the cell proofs, so we can't verify them at this point
+        // verifying the calculated commitment matches the expected hash is sufficient for now
+        commitment, err := kzg4844.BlobToCommitment(&orderedSidecars[i].Blob)
+        if err != nil {
+            return nil, fmt.Errorf("cannot compute KZG commitment for blob %d: %w", i, err)
+        }
+        got := KZGToVersionedHash(commitment)
+        if got != hashes[i] {
+            return nil, fmt.Errorf("recomputed commitment hash %s does not match expected %s for blob %d", got, hashes[i], i)
+        }
+        blobs[i] = &orderedSidecars[i].Blob
+    }
+    return blobs, nil
 }
 
 // MatchSidecarsWithHashes matches the fetched sidecars with the provided hashes.
