@@ -274,68 +274,21 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 		ordered[i] = matched
 	}
 
-	// Decide validation mode by presence of InclusionProof in the fetched response
-	isVersion1 := len(ordered) > 0 && len(ordered[0].InclusionProof) > 0
-
-	// Prepare arrays for validation
-	blobs := make([]kzg4844.Blob, 0, len(ordered))
-	commitments := make([]kzg4844.Commitment, 0, len(ordered))
-	for _, sc := range ordered {
-		blobs = append(blobs, sc.Blob)
-		commitments = append(commitments, kzg4844.Commitment(sc.KZGCommitment))
-	}
-
-	if isVersion1 {
-		// Osaka: verify using cell proofs computed from the blobs
-		proofs := make([]kzg4844.Proof, 0, len(ordered)*kzg4844.CellProofsPerBlob)
-		for i := range ordered {
-			cellProofs, err := kzg4844.ComputeCellProofs(&ordered[i].Blob)
-			if err != nil {
-				return nil, fmt.Errorf("cannot compute cell proofs: %w", err)
-			}
-			proofs = append(proofs, cellProofs...)
-		}
-		if len(proofs) != len(ordered)*kzg4844.CellProofsPerBlob {
-			return nil, fmt.Errorf("invalid number of %d blob proofs expected %d", len(proofs), len(ordered)*kzg4844.CellProofsPerBlob)
-		}
-		if err := kzg4844.VerifyCellProofs(blobs, commitments, proofs); err != nil {
-			return nil, err
-		}
-	} else {
-		// Legacy: verify per-blob using the single proof provided by the endpoint
-		for i := range ordered {
-			if err := kzg4844.VerifyBlobProof(&ordered[i].Blob, commitments[i], kzg4844.Proof(ordered[i].KZGProof)); err != nil {
-				return nil, fmt.Errorf("invalid blob %d: %v", i, err)
-			}
-		}
-	}
-
-	// Return blobs in requested order
+	// verify by recomputing commitments and comparing versioned hashes only
 	out := make([]*kzg4844.Blob, len(hashes))
 	for i := range ordered {
+		commitment, err := kzg4844.BlobToCommitment(&ordered[i].Blob)
+		if err != nil {
+			return nil, fmt.Errorf("cannot compute KZG commitment for blob %d: %w", i, err)
+		}
+		got := KZGToVersionedHash(commitment)
+		if got != hashes[i] {
+			return nil, fmt.Errorf("recomputed commitment hash %s does not match expected %s for blob %d", got, hashes[i], i)
+		}
 		out[i] = &ordered[i].Blob
 	}
 	return out, nil
 }
-
-// func validateBlobSidecarLegacy(sidecar *types.BlobTxSidecar, hashes []gethcommon.Hash) error {
-// 	if len(sidecar.Proofs) != len(hashes) {
-// 		return fmt.Errorf("invalid number of %d blob proofs expected %d", len(sidecar.Proofs), len(hashes))
-// 	}
-// 	for i := range sidecar.Blobs {
-// 		if err := kzg4844.VerifyBlobProof(&sidecar.Blobs[i], sidecar.Commitments[i], sidecar.Proofs[i]); err != nil {
-// 			return fmt.Errorf("invalid blob %d: %v", i, err)
-// 		}
-// 	}
-// 	return nil
-// }
-
-// func validateBlobSidecarOsaka(sidecar *types.BlobTxSidecar, hashes []gethcommon.Hash) error {
-// 	if len(sidecar.Proofs) != len(hashes)*kzg4844.CellProofsPerBlob {
-// 		return fmt.Errorf("invalid number of %d blob proofs expected %d", len(sidecar.Proofs), len(hashes)*kzg4844.CellProofsPerBlob)
-// 	}
-// 	return kzg4844.VerifyCellProofs(sidecar.Blobs, sidecar.Commitments, sidecar.Proofs)
-// }
 
 // MatchSidecarsWithHashes matches the fetched sidecars with the provided hashes.
 func MatchSidecarsWithHashes(fetchedSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([]*BlobSidecar, error) {
