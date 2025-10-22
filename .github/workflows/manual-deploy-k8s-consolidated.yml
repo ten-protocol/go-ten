@@ -321,10 +321,8 @@ jobs:
   # UPDATE TEN-APPS YAML WITH NEW IMAGE TAGS
   # ============================================================================
   update-ten-apps-config:
-    needs: [validate-inputs, approval, build-images]
+    needs: [validate-inputs, build-images]
     if: |
-      always() &&
-      (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
       needs.build-images.result == 'success' &&
       github.event.inputs.image_build == 'yes'
     runs-on: ubuntu-latest
