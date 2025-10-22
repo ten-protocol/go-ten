@@ -185,28 +185,113 @@ jobs:
           fi
 
   # ============================================================================
-  # APPROVAL GATE (only for destructive sepolia/mainnet)
+  # APPROVAL GATE (mandatory for sepolia/mainnet, optional for dev/uat)
+  # Shows deployment summary and happens AFTER build and config update
   # ============================================================================
   approval:
-    needs: validate-inputs
+    needs: [validate-inputs, build-images, update-ten-apps-config]
     runs-on: ubuntu-latest
-    if: needs.validate-inputs.outputs.NEEDS_APPROVAL == 'true'
+    if: |
+      always() &&
+      needs.validate-inputs.outputs.NEEDS_APPROVAL == 'true' &&
+      (needs.update-ten-apps-config.result == 'success' || needs.update-ten-apps-config.result == 'skipped')
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - name: 'Approval granted for destructive deployment'
+      - name: 'Show deployment summary and request approval'
         run: |
-          echo "✅ Destructive deployment approved by ${{ github.actor }}"
-          echo "Environment: ${{ github.event.inputs.testnet_type }}"
-          echo "Strategy: destructive"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🚨 DEPLOYMENT APPROVAL REQUIRED"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "📋 Deployment Summary:"
+          echo "  Environment:         ${{ github.event.inputs.testnet_type }}"
+          echo "  Strategy:            ${{ github.event.inputs.deployment_strategy }}"
+          echo "  Triggered by:        ${{ github.actor }}"
+          echo "  Branch:              ${{ github.ref_name }}"
+          echo ""
+          echo "🐳 Image Build:"
+          if [[ "${{ github.event.inputs.image_build }}" == "yes" ]]; then
+            echo "  Status:              ✅ Built"
+            echo "  Image Tag:           ${{ needs.build-images.outputs.IMAGE_TAG }}"
+            echo "  HSM Signing:         ${{ github.event.inputs.use_azure_hsm == 'yes' && '🔐 Enabled' || '📦 Disabled' }}"
+          else
+            echo "  Status:              ⏭️  Skipped (using existing images)"
+          fi
+          echo ""
+          echo "📝 Config Update:"
+          if [[ "${{ needs.update-ten-apps-config.result }}" == "success" ]]; then
+            echo "  Status:              ✅ Updated ten-apps config"
+            echo "  Commit:              Pushed to ten-protocol/ten-apps"
+          else
+            echo "  Status:              ⏭️  Skipped"
+          fi
+          echo ""
+          if [[ "${{ github.event.inputs.deployment_strategy }}" == "destructive" ]]; then
+            echo "🔥 DESTRUCTIVE Deployment Actions:"
+            echo "  1. Delete child apps (sequencer, validators)"
+            echo "  2. Sync parent app (recreates children)"
+            echo "  3. Deploy L1 contracts"
+            echo "  4. Sync all ArgoCD apps"
+            echo "  5. Deploy L2 contracts"
+            echo ""
+            echo "⚠️  WARNING: This will cause downtime!"
+          else
+            echo "📦 NON-DESTRUCTIVE Deployment Actions:"
+            echo "  1. Delete host deployment and enclave statefulsets"
+            echo "  2. Sync ONLY OutOfSync resources (no sync waves/hooks)"
+            echo "  3. Wait for apps to be healthy"
+            echo ""
+            echo "✅ No L1/L2 contract deployment (minimal disruption)"
+          fi
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Please review and approve to continue"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+  # ============================================================================
+  # REVERT CONFIG IF APPROVAL REJECTED
+  # ============================================================================
+  revert-config-on-rejection:
+    needs: [validate-inputs, build-images, update-ten-apps-config, approval]
+    runs-on: ubuntu-latest
+    if: |
+      always() &&
+      needs.validate-inputs.outputs.NEEDS_APPROVAL == 'true' &&
+      needs.update-ten-apps-config.result == 'success' &&
+      (needs.approval.result == 'cancelled' || needs.approval.result == 'failure')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ten-protocol/ten-apps
+          token: ${{ secrets.DEPLOY_ACTIONS_PAT }}
+          path: ten-apps
+          fetch-depth: 2
+
+      - name: 'Revert ten-apps config changes'
+        env:
+          IMAGE_TAG: ${{ needs.build-images.outputs.IMAGE_TAG }}
+        run: |
+          cd ten-apps
+          
+          echo "❌ Approval was rejected - reverting ten-apps config changes"
+          echo "Image tag that was set: ${IMAGE_TAG}"
+          
+          # Revert the last commit
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git revert --no-edit HEAD
+          git push
+          
+          echo "✅ Reverted config changes in ten-apps"
+          echo "⚠️  Note: Docker images were already built and pushed (not reverted)"
 
   # ============================================================================
   # BUILD & PUSH IMAGES (Optional)
   # ============================================================================
   build-images:
-    needs: [validate-inputs, approval]
+    needs: [validate-inputs]
     if: |
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
       github.event.inputs.image_build == 'yes'
     runs-on: ubuntu-latest
     environment:
