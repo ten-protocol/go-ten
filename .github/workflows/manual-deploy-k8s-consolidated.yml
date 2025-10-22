@@ -83,6 +83,8 @@ jobs:
   # ============================================================================
   validate-inputs:
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
     outputs:
       TESTNET_SHORT_NAME: ${{ steps.setup.outputs.TESTNET_SHORT_NAME }}
       ARGOCD_SERVER: ${{ steps.setup.outputs.ARGOCD_SERVER }}
