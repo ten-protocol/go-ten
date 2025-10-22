@@ -523,13 +523,26 @@ jobs:
           set -e
 
           echo "🗑️  Deleting ArgoCD child applications for ${{ github.event.inputs.testnet_type }}"
+          
+          # Validate required variables
+          if [[ -z "${ARGOCD_SERVER}" ]]; then
+            echo "❌ ERROR: ARGOCD_SERVER is not set!"
+            exit 1
+          fi
 
           # Always delete default apps (sequencer, validator-01, validator-02)
           echo "📌 Default apps to delete: sequencer, validator-01, validator-02"
           for app_suffix in ${DEFAULT_APPS}; do
             app="${TESTNET_SHORT_NAME}-${app_suffix}"
             echo "  Deleting: $app"
-            argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
+            if ! argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes 2>&1 | tee /tmp/argocd_output.txt; then
+              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
+                echo "  ℹ️  App $app not found (this is OK)"
+              else
+                echo "  ❌ Failed to delete app $app"
+                exit 1
+              fi
+            fi
             sleep 2
           done
 
@@ -538,7 +551,14 @@ jobs:
             echo "📌 Additional apps to delete: ${ADDITIONAL_APPS}"
             for app in ${ADDITIONAL_APPS}; do
               echo "  Deleting: $app"
-              argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes || echo "  ⚠️  App $app not found or already deleted"
+              if ! argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes 2>&1 | tee /tmp/argocd_output.txt; then
+                if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
+                  echo "  ℹ️  App $app not found (this is OK)"
+                else
+                  echo "  ❌ Failed to delete app $app"
+                  exit 1
+                fi
+              fi
               sleep 2
             done
           else
@@ -576,6 +596,17 @@ jobs:
           echo "🗑️  Non-destructive deployment: Deleting host and enclave deployments/statefulsets"
           echo "Environment: ${TESTNET_SHORT_NAME}"
           echo "ArgoCD Server: ${ARGOCD_SERVER}"
+          
+          # Validate required variables
+          if [[ -z "${ARGOCD_SERVER}" ]]; then
+            echo "❌ ERROR: ARGOCD_SERVER is not set!"
+            exit 1
+          fi
+          
+          if [[ -z "${TESTNET_SHORT_NAME}" ]]; then
+            echo "❌ ERROR: TESTNET_SHORT_NAME is not set!"
+            exit 1
+          fi
 
           APPS=("sequencer" "validator-01" "validator-02")
 
@@ -583,29 +614,50 @@ jobs:
             app="${TESTNET_SHORT_NAME}-${app_suffix}"
             echo "Processing app: $app"
 
-            # Delete host deployment
+            # Delete host deployment (only ignore NotFound errors)
             echo "  Deleting host deployment..."
-            argocd app delete-resource "$app" \
+            if ! argocd app delete-resource "$app" \
               --server "${ARGOCD_SERVER}" \
               --kind Deployment \
               --resource-name "${app}-host" \
-              --all || echo "  ⚠️  Host deployment not found"
+              --all 2>&1 | tee /tmp/argocd_output.txt; then
+              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
+                echo "  ℹ️  Host deployment not found (this is OK)"
+              else
+                echo "  ❌ Failed to delete host deployment"
+                exit 1
+              fi
+            fi
 
-            # Delete enclave statefulset
+            # Delete enclave statefulset (only ignore NotFound errors)
             echo "  Deleting enclave statefulset..."
-            argocd app delete-resource "$app" \
+            if ! argocd app delete-resource "$app" \
               --server "${ARGOCD_SERVER}" \
               --kind StatefulSet \
               --resource-name "${app}-enclave" \
-              --all || echo "  ⚠️  Enclave statefulset not found"
+              --all 2>&1 | tee /tmp/argocd_output.txt; then
+              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
+                echo "  ℹ️  Enclave statefulset not found (this is OK)"
+              else
+                echo "  ❌ Failed to delete enclave statefulset"
+                exit 1
+              fi
+            fi
 
-            # Delete enclave02 statefulset (if exists)
+            # Delete enclave02 statefulset (only ignore NotFound errors)
             echo "  Deleting enclave02 statefulset..."
-            argocd app delete-resource "$app" \
+            if ! argocd app delete-resource "$app" \
               --server "${ARGOCD_SERVER}" \
               --kind StatefulSet \
               --resource-name "${app}-enclave02" \
-              --all || echo "  ⚠️  Enclave02 statefulset not found"
+              --all 2>&1 | tee /tmp/argocd_output.txt; then
+              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
+                echo "  ℹ️  Enclave02 statefulset not found (this is OK)"
+              else
+                echo "  ❌ Failed to delete enclave02 statefulset"
+                exit 1
+              fi
+            fi
 
             sleep 2
           done
@@ -647,8 +699,15 @@ jobs:
           echo "🔄 Syncing ArgoCD child applications"
           echo "Strategy: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && 'destructive (child apps recreated)' || 'non-destructive (sync only)' }}"
           echo "Timeout: ${SYNC_TIMEOUT}"
+          
+          # Validate required variables
+          if [[ -z "${ARGOCD_SERVER}" ]]; then
+            echo "❌ ERROR: ARGOCD_SERVER is not set!"
+            exit 1
+          fi
 
           sync_failed=false
+          failed_apps=""
 
           for app in ${CHILD_APPS}; do
             echo "Syncing app: $app"
@@ -657,14 +716,18 @@ jobs:
             else
               echo "❌ Failed to sync $app"
               sync_failed=true
+              failed_apps="$failed_apps $app"
             fi
             sleep 1
           done
 
           if [ "$sync_failed" = true ]; then
-            echo "⚠️  Some apps failed to sync, but continuing..."
+            echo "❌ ERROR: Failed to sync the following apps:${failed_apps}"
+            echo "Deployment cannot continue with failed syncs."
+            exit 1
           fi
 
+          echo "✅ All apps synced successfully"
           echo "APPS_SYNCED=true" >> $GITHUB_OUTPUT
 
   # ============================================================================
