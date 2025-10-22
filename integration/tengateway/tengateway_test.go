@@ -435,56 +435,42 @@ func testSessionKeysSendTransaction(t *testing.T, _ int, httpURL, wsURL string, 
 // testSessionKeyFundRecoveryOnDeletion verifies that deleting a session key triggers
 // a refund of (balance - gas) back to the user's primary account.
 func testSessionKeyFundRecoveryOnDeletion(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
-	fmt.Println("=== Starting testSessionKeyFundRecoveryOnDeletion ===")
-
 	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
 	require.NoError(t, err)
-	fmt.Println("✓ Created user with encryption token:", user0.tgClient.UserID())
 
 	// Register the user so we can call the endpoints that require authentication
 	err = user0.RegisterAccounts()
 	require.NoError(t, err)
-	fmt.Println("✓ User accounts registered")
 
 	ctx := context.Background()
 
 	// 1) Create session key via eth_getStorageAt (CQ method 0x...0003)
-	fmt.Println("Step 1: Creating session key...")
 	createSessionKeyAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000003")
 	skAddrBytes, err := user0.HTTPClient.StorageAt(ctx, createSessionKeyAddr, gethcommon.Hash{}, nil)
 	require.NoError(t, err)
 	require.NotEmpty(t, skAddrBytes)
 	skAddress := gethcommon.BytesToAddress(skAddrBytes)
-	fmt.Printf("✓ Session key created: %s\n", skAddress.Hex())
 
 	// 2) Fund the session key from the original wallet (user's first account)
-	fmt.Println("Step 2: Funding session key...")
 	fundAmount := big.NewInt(0).Mul(big.NewInt(1e15), big.NewInt(1)) // 0.001 ETH (reduced amount)
 	fromAddr := user0.Wallets[0].Address()
-	fmt.Printf("Funding from: %s\n", fromAddr.Hex())
-	fmt.Printf("Funding amount: %s\n", fundAmount.String())
 
 	gasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
 	require.NoError(t, err)
-	fmt.Printf("Gas price: %s\n", gasPrice.String())
 
 	gasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: fromAddr, To: &skAddress, Value: fundAmount})
 	require.NoError(t, err)
-	fmt.Printf("Gas limit: %d\n", gasLimit)
 
 	nonce, err := user0.HTTPClient.PendingNonceAt(ctx, fromAddr)
 	require.NoError(t, err)
-	fmt.Printf("Nonce: %d\n", nonce)
 
 	legacy := &types.LegacyTx{Nonce: nonce, To: &skAddress, Value: fundAmount, GasPrice: gasPrice, Gas: gasLimit}
 	signedFundingTx, err := w.SignTransaction(legacy)
 	require.NoError(t, err)
 	err = user0.HTTPClient.SendTransaction(ctx, signedFundingTx)
 	require.NoError(t, err)
-	fmt.Printf("✓ Funding transaction sent: %s\n", signedFundingTx.Hash().Hex())
 
 	// wait for receipt of funding tx
-	fmt.Println("Waiting for funding transaction receipt...")
 	{
 		var rec *types.Receipt
 		for i := 0; i < 10; i++ {
@@ -492,27 +478,21 @@ func testSessionKeyFundRecoveryOnDeletion(t *testing.T, _ int, httpURL, wsURL st
 			if err == nil && rec != nil {
 				break
 			}
-			fmt.Printf("Waiting for receipt... attempt %d\n", i+1)
 			time.Sleep(500 * time.Millisecond)
 		}
 		require.NotNil(t, rec)
 		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
-		fmt.Println("✓ Funding transaction confirmed")
 	}
 
 	// 3) Record pre-deletion balances
-	fmt.Println("Step 3: Recording pre-deletion balances...")
 	skInitialBalance, err := user0.HTTPClient.BalanceAt(ctx, skAddress, nil)
 	require.NoError(t, err)
-	fmt.Printf("Session key initial balance: %s\n", skInitialBalance.String())
 	require.True(t, skInitialBalance.Cmp(big.NewInt(0)) > 0)
 
 	userInitialBalance, err := user0.HTTPClient.BalanceAt(ctx, fromAddr, nil)
 	require.NoError(t, err)
-	fmt.Printf("User initial balance: %s\n", userInitialBalance.String())
 
 	// 4) Delete the session key via getStorageAt (CQ 0x...0004)
-	fmt.Println("Step 4: Deleting session key...")
 	delParamsObj := map[string]string{
 		"sessionKeyAddress": skAddress.Hex(),
 	}
@@ -525,73 +505,48 @@ func testSessionKeyFundRecoveryOnDeletion(t *testing.T, _ int, httpURL, wsURL st
 	require.NoError(t, err)
 	require.Len(t, delResult, 1)
 	require.Equal(t, byte(0x01), delResult[0])
-	fmt.Printf("✓ Session key deleted: %s\n", skAddress.Hex())
 
 	// 5) Wait for refund transaction to be sent and processed
-	fmt.Println("Step 5: Waiting for fund recovery...")
 	var skFinalBalance *big.Int
 	refundDetected := false
 
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 10; i++ {
 		skFinalBalance, err = user0.HTTPClient.BalanceAt(ctx, skAddress, nil)
 		require.NoError(t, err)
-		fmt.Printf("Session key balance check %d: %s\n", i+1, skFinalBalance.String())
 
 		// Check if balance dropped (indicating refund started)
 		if skFinalBalance.Cmp(skInitialBalance) < 0 && !refundDetected {
-			fmt.Println("✓ Refund transaction detected - balance decreased")
 			refundDetected = true
 		}
 
 		if skFinalBalance.Cmp(big.NewInt(0)) == 0 { // fully drained
-			fmt.Println("✓ Session key balance is zero - funds recovered")
 			break
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
 	require.NotNil(t, skFinalBalance)
-	fmt.Printf("Final session key balance: %s\n", skFinalBalance.String())
 
 	// It may not be exactly zero if dust threshold prevented sending, but should be <= initial.
 	require.True(t, skFinalBalance.Cmp(skInitialBalance) <= 0)
 
 	// 6) Add extra sleep to ensure refund transaction is processed
-	fmt.Println("Step 6: Waiting for refund transaction to be processed...")
 	time.Sleep(3 * time.Second)
 
 	// 7) Check both confirmed and pending user balance
-	fmt.Println("Step 7: Checking user balance (confirmed and pending)...")
 	userFinalBalance, err := user0.HTTPClient.BalanceAt(ctx, fromAddr, nil)
 	require.NoError(t, err)
-	fmt.Printf("User confirmed balance: %s\n", userFinalBalance.String())
 
 	userPendingBalance, err := user0.HTTPClient.PendingBalanceAt(ctx, fromAddr)
 	require.NoError(t, err)
-	fmt.Printf("User pending balance: %s\n", userPendingBalance.String())
 
 	confirmedIncrease := big.NewInt(0).Sub(userFinalBalance, userInitialBalance)
 	pendingIncrease := big.NewInt(0).Sub(userPendingBalance, userInitialBalance)
 
-	fmt.Printf("Confirmed balance increase: %s\n", confirmedIncrease.String())
-	fmt.Printf("Pending balance increase: %s\n", pendingIncrease.String())
-
 	// Check if either confirmed or pending balance increased
 	balanceIncreased := confirmedIncrease.Cmp(big.NewInt(0)) > 0 || pendingIncrease.Cmp(big.NewInt(0)) > 0
 
-	if balanceIncreased {
-		fmt.Println("✓ User balance increased (confirmed or pending) - fund recovery successful")
-	} else {
-		fmt.Printf("⚠ User balance did not increase. Refund may still be processing.\n")
-		fmt.Printf("  Initial balance: %s\n", userInitialBalance.String())
-		fmt.Printf("  Confirmed balance: %s\n", userFinalBalance.String())
-		fmt.Printf("  Pending balance: %s\n", userPendingBalance.String())
-		fmt.Printf("  Session key remaining: %s (dust threshold)\n", skFinalBalance.String())
-	}
-
 	// The test should pass if refund was detected (balance decreased) even if user balance hasn't updated yet
 	require.True(t, refundDetected, "Expected refund transaction to be initiated (session key balance should decrease)")
-
-	fmt.Println("=== testSessionKeyFundRecoveryOnDeletion completed successfully ===")
 }
 
 func testSessionKeyExpirationAndFundRecovery(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
