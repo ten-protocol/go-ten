@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
@@ -111,17 +110,14 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	visibilityReader := evm.NewContractVisibilityReader(logger)
 	evmFacade := evm.NewEVMExecutor(chainContext, chainConfig, config, config.GasLocalExecutionCapFlag, storage, gethEncodingService, visibilityReader, logger)
 
-	// todo - protect the block executor from state mutation leak
-	statedbMu := &sync.Mutex{}
-
-	tenChain := components.NewChain(storage, config, evmFacade, gethEncodingService, chainConfig, genesis, logger, batchRegistry, statedbMu)
+	tenChain := components.NewChain(storage, config, evmFacade, gethEncodingService, chainConfig, genesis, logger, batchRegistry)
 
 	mempool, err := components.NewTxPool(batchRegistry.EthChain(), config, tenChain, storage, batchRegistry, blockProcessor, gasOracle, gasPricer, config.MinGasPrice, true, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
 
-	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, evmFacade, config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, gasPricer, logger, statedbMu)
+	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, evmFacade, config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, gasPricer, logger)
 
 	// ensure EVM state data is up-to-date using the persisted batch data
 	err = syncExecutedBatchesWithEVMStateDB(context.Background(), storage, batchRegistry, logger)

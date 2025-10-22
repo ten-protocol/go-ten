@@ -215,8 +215,6 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	gp.SetGas(exec.gasEstimationCap)
 
 	cleanState := createCleanState(s, msg, ethHeader, exec.cc)
-	snapshot := cleanState.Snapshot()
-	defer cleanState.RevertToSnapshot(snapshot) // Always revert after simulation
 
 	blockContext := gethcore.NewEVMBlockContext(ethHeader, exec.chain, nil)
 	// Use hooked state so tracer fires during estimation; otherwise use clean state
