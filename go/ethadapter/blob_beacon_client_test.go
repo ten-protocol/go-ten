@@ -139,7 +139,7 @@ func TestBlobArchiveClient(t *testing.T) {
 }
 
 func TestBlobClient(t *testing.T) {
-	// t.Skipf("For local testing, set the API_KEY in the environment variable and run the test")
+	t.Skipf("For local testing, set the API_KEY in the environment variable and run the test")
 	client := NewBeaconHTTPClient(new(http.Client), "https://lb.drpc.live/eth-beacon-chain-sepolia/{API_KEY}/")
 	var vHashes []gethcommon.Hash
 	ctx := context.Background()
