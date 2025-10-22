@@ -284,21 +284,21 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 // verifyBlobsMatchHashes recomputes each blob's commitment and ensures the versioned hash
 // matches the expected hash. Returns blobs in the same order as hashes on success.
 func verifyBlobsMatchHashes(orderedSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
-    blobs := make([]*kzg4844.Blob, len(hashes))
-    for i := range orderedSidecars {
-        // the beacon API does not return the cell proofs, so we can't verify them at this point
-        // verifying the calculated commitment matches the expected hash is sufficient for now
-        commitment, err := kzg4844.BlobToCommitment(&orderedSidecars[i].Blob)
-        if err != nil {
-            return nil, fmt.Errorf("cannot compute KZG commitment for blob %d: %w", i, err)
-        }
-        got := KZGToVersionedHash(commitment)
-        if got != hashes[i] {
-            return nil, fmt.Errorf("recomputed commitment hash %s does not match expected %s for blob %d", got, hashes[i], i)
-        }
-        blobs[i] = &orderedSidecars[i].Blob
-    }
-    return blobs, nil
+	blobs := make([]*kzg4844.Blob, len(hashes))
+	for i := range orderedSidecars {
+		// the beacon API does not return the cell proofs, so we can't verify them at this point
+		// verifying the calculated commitment matches the expected hash is sufficient for now
+		commitment, err := kzg4844.BlobToCommitment(&orderedSidecars[i].Blob)
+		if err != nil {
+			return nil, fmt.Errorf("cannot compute KZG commitment for blob %d: %w", i, err)
+		}
+		got := KZGToVersionedHash(commitment)
+		if got != hashes[i] {
+			return nil, fmt.Errorf("recomputed commitment hash %s does not match expected %s for blob %d", got, hashes[i], i)
+		}
+		blobs[i] = &orderedSidecars[i].Blob
+	}
+	return blobs, nil
 }
 
 // MatchSidecarsWithHashes matches the fetched sidecars with the provided hashes.

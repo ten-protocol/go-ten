@@ -29,10 +29,12 @@ type BlobSidecar struct {
 	// It's used to prove that the commitment corresponds to the actual blob data
 	KZGProof Bytes48 `json:"kzg_proof"`
 
-	//TODO
+	// SignedBlockHeader is the consensus header (message + proposer BLS signature) for this block
+	// This is currently unused and will be used in the future to verify block inclusion
 	SignedBlockHeader SignedBeaconBlockHeader `json:"signed_block_header"`
 
-	//TODO
+	// InclusionProof is an SSZ Merkle branch proving commitment inclusion under message.body_root (not KZG)
+	// Note this is NOT a KZG proof and cannot be used with VerifyBlobProof/ VerifyCellProofs
 	InclusionProof []Bytes32 `json:"kzg_commitment_inclusion_proof"`
 }
 
