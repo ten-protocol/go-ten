@@ -712,7 +712,7 @@ jobs:
           fi
           
           # Determine parent app name based on environment
-          PARENT_APP="${TESTNET_SHORT_NAME}-testnet"
+          PARENT_APP="ten-${TESTNET_SHORT_NAME}-apps"
           echo "📌 Parent app: $PARENT_APP"
           echo ""
 
@@ -769,7 +769,7 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo "🔄 Syncing parent app: $PARENT_APP"
           
-          if argocd app sync "$PARENT_APP" --server "${ARGOCD_SERVER}"; then
+          if argocd app sync "$PARENT_APP" --server "${ARGOCD_SERVER}" --grpc-web; then
             echo "✅ Parent app synced - child apps should be recreated"
           else
             echo "❌ Failed to sync parent app"
@@ -1234,7 +1234,7 @@ jobs:
         shell: bash
         env:
           DOCKER_API_VERSION: "1.45"
-          DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+          DEPLOY_DOCKERIMAGE: ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/hardhatdeployer:${{ needs.build-images.outputs.IMAGE_TAG }}
           DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
           DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
