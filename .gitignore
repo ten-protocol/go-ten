@@ -84,3 +84,5 @@ contracts/typechain-types/
 contracts/tsconfig.json
 contracts/package-lock.json
 contracts/exported/
+# Workflow design/analysis documentation
+docs/workflows/
