@@ -112,6 +112,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	if config.SessionKeyExpirationThreshold > 0 {
 		sessionKeyExpirationService = services.NewSessionKeyExpirationService(
 			userStorage,
+			activityStorage,
 			logger,
 			stopControl,
 			&config,
