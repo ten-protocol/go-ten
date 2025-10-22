@@ -527,7 +527,7 @@ jobs:
           
           echo "✅ Successfully logged in to ArgoCD"
 
-      - name: 'Delete ArgoCD child applications'
+      - name: 'Delete ArgoCD child applications and sync parent'
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
           DEFAULT_APPS: "sequencer validator-01 validator-02"
@@ -536,50 +536,88 @@ jobs:
         run: |
           set -e
 
-          echo "🗑️  Deleting ArgoCD child applications for ${{ github.event.inputs.testnet_type }}"
+          echo "🔥 DESTRUCTIVE DEPLOYMENT: Delete child apps and sync parent"
+          echo "Environment: ${{ github.event.inputs.testnet_type }}"
+          echo ""
           
           # Validate required variables
           if [[ -z "${ARGOCD_SERVER}" ]]; then
             echo "❌ ERROR: ARGOCD_SERVER is not set!"
             exit 1
           fi
+          
+          # Determine parent app name based on environment
+          PARENT_APP="${TESTNET_SHORT_NAME}-testnet"
+          echo "📌 Parent app: $PARENT_APP"
+          echo ""
 
+          # Step 1: Delete child apps
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "STEP 1: Delete child applications"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
           # Always delete default apps (sequencer, validator-01, validator-02)
-          echo "📌 Default apps to delete: sequencer, validator-01, validator-02"
+          echo "Default apps to delete: sequencer, validator-01, validator-02"
           for app_suffix in ${DEFAULT_APPS}; do
             app="${TESTNET_SHORT_NAME}-${app_suffix}"
-            echo "  Deleting: $app"
+            echo "  🗑️  Deleting: $app"
             if ! argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes 2>&1 | tee /tmp/argocd_output.txt; then
               if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
-                echo "  ℹ️  App $app not found (this is OK)"
+                echo "     ℹ️  App not found (this is OK)"
               else
-                echo "  ❌ Failed to delete app $app"
+                echo "     ❌ Failed to delete app"
                 exit 1
               fi
+            else
+              echo "     ✅ Deleted"
             fi
             sleep 2
           done
 
           # Delete additional apps if specified
           if [[ -n "${ADDITIONAL_APPS}" ]]; then
-            echo "📌 Additional apps to delete: ${ADDITIONAL_APPS}"
+            echo ""
+            echo "Additional apps to delete: ${ADDITIONAL_APPS}"
             for app in ${ADDITIONAL_APPS}; do
-              echo "  Deleting: $app"
+              echo "  🗑️  Deleting: $app"
               if ! argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes 2>&1 | tee /tmp/argocd_output.txt; then
                 if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
-                  echo "  ℹ️  App $app not found (this is OK)"
+                  echo "     ℹ️  App not found (this is OK)"
                 else
-                  echo "  ❌ Failed to delete app $app"
+                  echo "     ❌ Failed to delete app"
                   exit 1
                 fi
+              else
+                echo "     ✅ Deleted"
               fi
               sleep 2
             done
-          else
-            echo "📌 No additional apps specified"
           fi
-
-          echo "✅ Child app deletion complete"
+          
+          echo ""
+          echo "✅ Child apps deleted"
+          echo ""
+          
+          # Step 2: Sync parent app to recreate child apps
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "STEP 2: Sync parent app to recreate children"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🔄 Syncing parent app: $PARENT_APP"
+          
+          if argocd app sync "$PARENT_APP" --server "${ARGOCD_SERVER}"; then
+            echo "✅ Parent app synced - child apps should be recreated"
+          else
+            echo "❌ Failed to sync parent app"
+            exit 1
+          fi
+          
+          echo ""
+          echo "⏳ Waiting 10 seconds for child apps to be created..."
+          sleep 10
+          
+          echo ""
+          echo "✅ Destructive delete and recreate complete"
+          echo "   Child apps will be fully synced in the next job"
 
   # ============================================================================
   # ARGOCD - DELETE DEPLOYMENTS/STS (Non-Destructive only)
