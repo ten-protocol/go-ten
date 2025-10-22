@@ -76,7 +76,10 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	// Open trie database with provided config
-	trieDB := triedb.NewDatabase(backingDB, triedb.VerkleDefaults)
+	cfg := triedb.VerkleDefaults
+	cfg.PathDB.StateCleanSize = 0
+	cfg.PathDB.TrieCleanSize = 0
+	trieDB := triedb.NewDatabase(backingDB, cfg)
 
 	// todo - figure out the snapshot tree
 	stateDB := state.NewDatabase(trieDB, nil)
