@@ -454,8 +454,6 @@ jobs:
       - name: 'Deploy L1 Contracts'
         id: deploy
         env:
-          DOCKER_API_VERSION: "1.45"
-          DEPLOY_DOCKERIMAGE: ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/l1contractdeployer:${{ needs.build-images.outputs.IMAGE_TAG || 'latest' }}
           DEPLOY_NETWORKNAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
           DEPLOY_GITHUBPAT: ${{ secrets.DEPLOY_ACTIONS_PAT }}
           DEPLOY_OUTPUTENV: ./testnet/.env
@@ -466,19 +464,40 @@ jobs:
           DEPLOY_L1_MAXGASGWEI: ${{ github.event.inputs.max_gas_gwei }}
           DEPLOY_L1_CHECKGASPRICE: ${{ github.event.inputs.testnet_type == 'mainnet' && 'true' || 'false' }}
         run: |
+          # Run deployer and capture output
           go run ./testnet/launcher/l1contractdeployer/cmd
-
+          
           if [ -f ./testnet/.env ]; then
             source ./testnet/.env
-          fi
-
+          fi          
+          # Fix variable names and GITHUB_OUTPUT reference
+          echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_ENV
           echo "NETWORK_CONFIG_ADDR=$NETWORKCONFIGADDR" >> $GITHUB_OUTPUT
+          
+          echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_ENV
           echo "MSG_BUS_CONTRACT_ADDR=$MSGBUSCONTRACTADDR" >> $GITHUB_OUTPUT
+          
+          echo "BRIDGE_CONTRACT_ADDR=$BRIDGECONTRACTADDR" >> $GITHUB_ENV
           echo "BRIDGE_CONTRACT_ADDR=$BRIDGECONTRACTADDR" >> $GITHUB_OUTPUT
+          
+          echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_ENV
           echo "CROSS_CHAIN_ADDR=$CROSSCHAINADDR" >> $GITHUB_OUTPUT
+          
+          echo "DA_REGISTRY_ADDR=$DAREGISTRYADDR" >> $GITHUB_ENV
           echo "DA_REGISTRY_ADDR=$DAREGISTRYADDR" >> $GITHUB_OUTPUT
+          
+          echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_ENV
           echo "ENCLAVE_REGISTRY_ADDR=$ENCLAVEREGISTRYADDR" >> $GITHUB_OUTPUT
+          
+          echo "L1_START_HASH=$L1START" >> $GITHUB_ENV
           echo "L1_START_HASH=$L1START" >> $GITHUB_OUTPUT
+
+      - name: 'Save L1 deployer container logs'
+        # Wait to make sure the logs are available in the container
+        if: always()
+        run: |
+          sleep 60
+          docker logs `docker ps -aqf "name=hh-l1-deployer"` > deploy-l1-contracts.out 2>&1 || echo "No container logs available"
 
       - name: 'Upload L1 deployer logs'
         if: always()
@@ -1065,9 +1084,8 @@ jobs:
           echo "enclave_registry=$(yq -r '.l1Config.enclaveRegistry' "$CFG")" >> $GITHUB_OUTPUT
 
       - name: 'Deploy L2 Contracts'
+        id: deployL2Contracts
         env:
-          DOCKER_API_VERSION: "1.45"
-          DEPLOY_DOCKERIMAGE: ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/l2contractdeployer:latest
           DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
           DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
           DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
@@ -1083,6 +1101,11 @@ jobs:
           NETWORK_CHAINID: ${{ vars.CHAIN_ID }}
         run: |
           go run ./testnet/launcher/l2contractdeployer/cmd
+
+      - name: 'Save L2 deployer container logs'
+        if: always() # Always run this step to ensure logs are captured even if previous steps fail
+        run: |
+          docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1 || echo "No container logs available"
 
       - name: 'Upload L2 deployer logs'
         if: always()
