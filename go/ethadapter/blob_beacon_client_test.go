@@ -137,6 +137,19 @@ func TestBlobArchiveClient(t *testing.T) {
 	require.Len(t, resp.Data, 2)
 	require.NotNil(t, client)
 }
+func TestBlobClient(t *testing.T) {
+	//t.Skipf("TODO need to fix this")
+	client := NewBeaconHTTPClient(new(http.Client), "https://lb.drpc.live/eth-beacon-chain-sepolia/AmE588Itskt-qBMhtpniNWUmRYwgroQR8Ln7QrxF2MGT/")
+	vHashes := []gethcommon.Hash{gethcommon.HexToHash("0x01cb96244e1183aa73cb8900d0f6701825ee5be7bd1906d938a397dc43efb4bc")}
+	ctx := context.Background()
+
+	resp, err := client.BeaconBlobSidecars(ctx,
+		8782235, vHashes)
+	require.NoError(t, err)
+
+	require.Len(t, resp.Data, 2)
+	require.NotNil(t, client)
+}
 
 func TestBeaconClientFallback(t *testing.T) {
 	indices := []uint64{5, 7, 2}

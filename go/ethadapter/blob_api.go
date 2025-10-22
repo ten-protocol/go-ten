@@ -28,8 +28,26 @@ type BlobSidecar struct {
 	// without needing the entire blob data
 	// It's used to prove that the commitment corresponds to the actual blob data
 	KZGProof Bytes48 `json:"kzg_proof"`
+
+	//TODO
+	SignedBlockHeader SignedBeaconBlockHeader `json:"signed_block_header"`
+
+	//TODO
+	InclusionProof []Bytes32 `json:"kzg_commitment_inclusion_proof"`
 }
 
+type SignedBeaconBlockHeader struct {
+	Message   BeaconBlockHeader `json:"message"`
+	Signature hexutil.Bytes     `json:"signature"`
+}
+
+type BeaconBlockHeader struct {
+	Slot          Uint64String `json:"slot"`
+	ProposerIndex Uint64String `json:"proposer_index"`
+	ParentRoot    Bytes32      `json:"parent_root"`
+	StateRoot     Bytes32      `json:"state_root"`
+	BodyRoot      Bytes32      `json:"body_root"`
+}
 type APIGetBlobSidecarsResponse struct {
 	Data []*BlobSidecar `json:"data"`
 }
