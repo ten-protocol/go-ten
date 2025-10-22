@@ -895,19 +895,30 @@ jobs:
               echo "Processing app: $app"
               echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
               
-              # Check overall sync status
+              # Check overall sync status before
               app_status=$(argocd app get "$app" --server "${ARGOCD_SERVER}" --grpc-web -o json)
               sync_status=$(echo "$app_status" | jq -r '.status.sync.status // "Unknown"')
-              echo "  📊 Overall sync status: $sync_status"
+              echo "  📊 Sync status before: $sync_status"
               
               # Always do full app sync (chart handles destructive vs non-destructive via global.destructiveDeployment flag)
               echo "  🔄 Performing full app sync (chart reads destructiveDeployment flag)"
               
-              if argocd app sync "$app" --server "${ARGOCD_SERVER}" --grpc-web --prune=false; then
-                echo "  ✅ Sync completed: $app"
+              # Run sync - only fail on command failure, not OutOfSync status
+              if argocd app sync "$app" --server "${ARGOCD_SERVER}" --grpc-web --prune=false 2>&1; then
+                echo "  ✅ Sync command completed: $app"
+                
+                # Check if still OutOfSync (informational only, not a failure)
+                app_status_after=$(argocd app get "$app" --server "${ARGOCD_SERVER}" --grpc-web -o json)
+                sync_status_after=$(echo "$app_status_after" | jq -r '.status.sync.status // "Unknown"')
+                if [[ "$sync_status_after" == "OutOfSync" ]]; then
+                  echo "  ℹ️  App still OutOfSync after sync (may be resource limits, replicas adjusting, etc.)"
+                else
+                  echo "  📊 Sync status after: $sync_status_after"
+                fi
+                
                 echo "$app" >> /tmp/sync_success.txt
               else
-                echo "  ❌ Failed to sync $app"
+                echo "  ❌ Sync command failed: $app"
                 echo "$app" >> /tmp/sync_failed.txt
               fi
             ) &
