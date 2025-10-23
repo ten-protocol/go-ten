@@ -113,6 +113,7 @@ func TestTenGateway(t *testing.T) {
 		"testDifferentMessagesOnRegister":      testDifferentMessagesOnRegister,
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
 		"testQueryAndRpcTokenModes":            testQueryAndRpcTokenModes,
+		"testAuthPublicAccess":                 testAuthPublicAccess,
 
 		"testSessionKeysGetStorageAt":    testSessionKeysGetStorageAt,
 		"testSessionKeysSendTransaction": testSessionKeysSendTransaction,
@@ -1087,6 +1088,78 @@ func testQueryAndRpcTokenModes(t *testing.T, _ int, httpURL, wsURL string, w wal
 	require.NoError(t, err)
 
 	require.Equal(t, 0, balanceQuery.Cmp(balancePath), "balances via query vs path token should match")
+}
+
+func testAuthPublicAccess(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+	user, err := NewGatewayUser([]wallet.Wallet{w}, httpURL, wsURL)
+	require.NoError(t, err)
+	// Register so we have a correct token path
+	require.NoError(t, user.RegisterAccounts())
+
+	// payload for eth_call
+	payload := map[string]any{
+		"jsonrpc": "2.0",
+		"id":      6,
+		"method":  "eth_call",
+		"params": []any{
+			map[string]any{
+				"data": "0x382396ee",
+				"to":   "0x4990728268555284a313294cDF108CeFf516D803",
+			},
+			"latest",
+		},
+	}
+
+	// helper to POST JSON to a URL and return status and body
+	doPost := func(url string, body any) (int, []byte, error) {
+		b, _ := json.Marshal(body)
+		resp, err := http.Post(url, "application/json", bytes.NewReader(b)) //nolint:noctx,gosec
+		if resp != nil && resp.Body != nil {
+			defer resp.Body.Close()
+		}
+		if err != nil {
+			return 0, nil, err
+		}
+		rspBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return resp.StatusCode, nil, err
+		}
+		return resp.StatusCode, rspBody, nil
+	}
+
+	// 1) No token (HTTP path without token param) → should work (DefaultUser)
+	noTokenURL := fmt.Sprintf("%s/v1/", httpURL)
+	status, body, err := doPost(noTokenURL, payload)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, status)
+	// Basic shape check: expect jsonrpc 2.0 in response
+	require.Contains(t, string(body), "\"jsonrpc\":\"2.0\"")
+
+	// 2) Correct authenticated token in URL → should work
+	correctTokenURL := fmt.Sprintf("%s/v1/?token=%s", httpURL, user.tgClient.UserID())
+	status, body, err = doPost(correctTokenURL, payload)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, status)
+	require.Contains(t, string(body), "\"jsonrpc\":\"2.0\"")
+
+	// 3) Wrong token in URL → should return an error
+	wrongTokenURL := fmt.Sprintf("%s/v1/?token=%s", httpURL, "0xdeadbeef")
+	status, body, err = doPost(wrongTokenURL, payload)
+	require.NoError(t, err)
+	// Still 200 OK at transport level, but with JSON-RPC error
+	require.Equal(t, http.StatusOK, status)
+	// Expect error field present in JSON-RPC
+	type jsonrpcResp struct {
+		JSONRPC string          `json:"jsonrpc"`
+		Result  json.RawMessage `json:"result"`
+		Error   *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	var jr jsonrpcResp
+	require.NoError(t, json.Unmarshal(body, &jr))
+	require.NotNil(t, jr.Error)
 }
 
 func makeRequestHTTP(url string, body []byte) []byte {
