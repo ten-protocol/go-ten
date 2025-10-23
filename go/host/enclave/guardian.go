@@ -571,6 +571,8 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 
 			// Even if the enclave already processed the block, persist rollups to host if we have them now.
 			// This covers the case where blob fetching lagged behind enclave processing.
+
+			g.logger.Info("L1 block already processed, trying to store blobs anyway", "block", block.Hash())
 			g.processL1BlockTransactions(block, nil, rollupTxs, g.shouldSyncContracts(*processedData), g.shouldSyncAdditionalContracts(*processedData))
 			nextHeight := big.NewInt(0).Add(block.Number, big.NewInt(1))
 			nextCanonicalBlock, err := g.sl.L1Data().FetchBlockByHeight(nextHeight)
