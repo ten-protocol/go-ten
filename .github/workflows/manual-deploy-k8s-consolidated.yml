@@ -1216,12 +1216,14 @@ jobs:
         if: needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && needs.deploy-l1-contracts.result == 'success'
         run: |
           echo "🚀 Triggering L2 contract deployment workflow..."
+          echo "Branch/Ref: ${{ github.ref_name }}"
+          echo "Testnet: ${{ github.event.inputs.testnet_type }}"
           
           gh workflow run manual-deploy-testnet-l2.yml \
             -f testnet_type=${{ github.event.inputs.testnet_type }} \
             -f log_level=3 \
             --ref ${{ github.ref_name }}
           
-          echo "✅ L2 deployment workflow triggered successfully"
+          echo "✅ L2 deployment workflow triggered on branch: ${{ github.ref_name }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
