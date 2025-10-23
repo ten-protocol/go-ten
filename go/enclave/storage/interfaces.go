@@ -8,8 +8,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
-	"github.com/ethereum/go-ethereum/triedb"
-
 	"github.com/ethereum/go-ethereum/core/state"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -82,8 +80,9 @@ type BatchResolver interface {
 }
 
 type GethStateDB interface {
+	StateAt(root gethcommon.Hash) (*state.StateDB, error)
 	// CreateStateDB creates a database that can be used to execute transactions
-	CreateStateDB(ctx context.Context, batch *common.BatchHeader, readOnly bool) (*state.StateDB, error)
+	CreateStateDB(ctx context.Context, batch *common.BatchHeader) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
 	EmptyStateDB() (*state.StateDB, error)
 }
@@ -152,12 +151,6 @@ type Storage interface {
 
 	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
 	DebugGetLogs(ctx context.Context, from *big.Int, to *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error)
-
-	// TrieDB - return the underlying trie database
-	TrieDB() *triedb.Database
-
-	// StateDB - return the underlying state database
-	StateDB() *state.CachingDB
 
 	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
 }

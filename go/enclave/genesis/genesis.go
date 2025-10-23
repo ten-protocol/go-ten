@@ -51,7 +51,7 @@ func (g Genesis) CommitGenesisState(storage storage.Storage) error {
 	}
 
 	if root != (gethcommon.Hash{}) {
-		if err := storage.TrieDB().Commit(root, true); err != nil {
+		if err := stateDB.Database().TrieDB().Commit(root, true); err != nil {
 			return err
 		}
 	}

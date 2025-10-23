@@ -244,9 +244,6 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		return nil, vmerr, nil
 	}
 
-	cleanState.Finalise(false)
-	cleanState = nil
-
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas
 		exec.logger.Debug(fmt.Sprintf("Error applying msg %v:", msg), log.CtrErrKey, err)

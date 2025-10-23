@@ -129,7 +129,7 @@ func (e *EthChainAdapter) StateAt(root gethcommon.Hash) (*state.StateDB, error) 
 		return nil, nil //nolint:nilnil
 	}
 
-	return state.New(root, e.storage.StateDB())
+	return e.storage.StateAt(root)
 }
 
 func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {

@@ -93,14 +93,6 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	}
 }
 
-func (s *storageImpl) TrieDB() *triedb.Database {
-	return s.stateCache.TrieDB()
-}
-
-func (s *storageImpl) StateDB() *state.CachingDB {
-	return s.stateCache
-}
-
 func (s *storageImpl) Close() error {
 	head, err := s.FetchHeadBatchHeader(context.Background())
 	if err != nil {
@@ -457,31 +449,22 @@ func (s *storageImpl) HealthCheck(ctx context.Context) (bool, error) {
 	//return true, nil
 }
 
-func (s *storageImpl) CreateStateDB(_ context.Context, batch *common.BatchHeader, readOnly bool) (*state.StateDB, error) {
+func (s *storageImpl) CreateStateDB(_ context.Context, batch *common.BatchHeader) (*state.StateDB, error) {
 	defer s.logDuration("CreateStateDB", measure.NewStopwatch())
-
-	// prefetch
-	//_, process, err := s.stateCache.ReadersWithCacheStats(batch.Root)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//statedb, err := state.NewWithReader(batch.Root, s.stateCache, process)
-
-	statedb, err := state.New(batch.Root, s.stateCache)
+	stateAt, err := s.StateAt(batch.Root)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
 	}
-	return statedb, nil
+	return stateAt, nil
 }
 
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	defer s.logDuration("EmptyStateDB", measure.NewStopwatch())
-	statedb, err := state.New(types.EmptyVerkleHash, state.NewDatabase(s.trieDB, nil))
-	if err != nil {
-		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
-	}
-	return statedb, nil
+	return s.StateAt(types.EmptyVerkleHash)
+}
+
+func (s *storageImpl) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
+	return state.New(root, s.stateCache)
 }
 
 func (s *storageImpl) GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error) {
