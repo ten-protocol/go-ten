@@ -15,6 +15,8 @@ func main() {
 			funds.WithL1HTTPURL(cliConfig.l1HTTPURL),
 			funds.WithL1PrivateKey(cliConfig.privateKey),
 			funds.WithDockerImage(cliConfig.dockerImage),
+			funds.WithNetworkConfigAddress(cliConfig.networkConfigAddr),
+			funds.WithReceiverAddress(cliConfig.receiverAddress),
 		),
 	)
 	if err != nil {
