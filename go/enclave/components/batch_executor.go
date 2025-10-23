@@ -689,20 +689,18 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	// and the parent hash. This recomputed batch is then checked against the incoming batch.
 	// If the sequencer has tampered with something the hash will not add up and validation will
 	// produce an error.
-	cb, err := executor.ComputeBatch(ctx, &BatchExecutionContext{
-		BlockPtr:      batch.Header.L1Proof,
-		ParentPtr:     batch.Header.ParentHash,
-		UseMempool:    false,
-		BatchGasLimit: batch.Header.GasLimit,
-		Transactions:  batch.Transactions,
-		AtTime:        batch.Header.Time,
-		ChainConfig:   executor.chainConfig,
-		SequencerNo:   batch.Header.SequencerOrderNo,
-		Creator:       batch.Header.Coinbase,
-		BaseFee:       batch.Header.BaseFee,
-	}, false) // this execution is not used when first producing a batch, we never want to fail for empty batches
+	cb, err := executor.compute(ctx, batch) // this execution is not used when first producing a batch, we never want to fail for empty batches
 	if err != nil {
 		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
+	}
+
+	executor.logger.Warn("Retry executing batch", log.BatchHashKey, batch.Hash())
+	// retry executing
+	if cb.Batch.Hash() != batch.Hash() {
+		cb, err = executor.compute(ctx, batch) // this execution is not used when first producing a batch, we never want to fail for empty batches
+		if err != nil {
+			return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
+		}
 	}
 
 	if cb.Batch.Hash() != batch.Hash() {
@@ -716,6 +714,21 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	}
 
 	return cb.TxExecResults, nil
+}
+
+func (executor *batchExecutor) compute(ctx context.Context, batch *core.Batch) (*ComputedBatch, error) {
+	return executor.ComputeBatch(ctx, &BatchExecutionContext{
+		BlockPtr:      batch.Header.L1Proof,
+		ParentPtr:     batch.Header.ParentHash,
+		UseMempool:    false,
+		BatchGasLimit: batch.Header.GasLimit,
+		Transactions:  batch.Transactions,
+		AtTime:        batch.Header.Time,
+		ChainConfig:   executor.chainConfig,
+		SequencerNo:   batch.Header.SequencerOrderNo,
+		Creator:       batch.Header.Coinbase,
+		BaseFee:       batch.Header.BaseFee,
+	}, false)
 }
 
 func (executor *batchExecutor) CreateGenesisState(
