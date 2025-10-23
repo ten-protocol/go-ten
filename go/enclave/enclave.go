@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"math/big"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
