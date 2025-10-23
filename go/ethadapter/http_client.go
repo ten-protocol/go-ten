@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum"
 )
@@ -41,7 +42,9 @@ func (chc *BaseHTTPClient) Request(ctx context.Context, dest any, reqPath string
 
 	reqURL.RawQuery = reqQuery.Encode()
 
-	chc.logger.Debug("Beacon client GET: %s", "url", reqURL.String())
+    if chc.logger != nil {
+        chc.logger.Debug("Beacon client GET", "url", reqURL.String())
+    }
 
 	headers := http.Header{}
 	headers.Add("Accept", "application/json")

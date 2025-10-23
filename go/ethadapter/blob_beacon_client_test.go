@@ -3,10 +3,11 @@ package ethadapter
 import (
 	"context"
 	"errors"
-	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"math/big"
 	"net/http"
 	"testing"
+
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 
@@ -176,7 +177,7 @@ func TestBeaconClientFallback(t *testing.T) {
 	mockPrimary := &MockBeaconClient{}
 	mockFallback := &MockBlobRetrievalService{}
 
-	client := NewL1BeaconClient(mockPrimary, testlog.Logger(), mockFallback)
+    client := NewL1BeaconClient(mockPrimary, testlog.Logger(), mockFallback)
 
 	mockPrimary.On("BeaconGenesis", ctx).Return(APIGenesisResponse{Data: ReducedGenesisData{GenesisTime: 10}}, nil)
 	mockPrimary.On("ConfigSpec", ctx).Return(APIConfigResponse{Data: ReducedConfigData{SecondsPerSlot: 2}}, nil)

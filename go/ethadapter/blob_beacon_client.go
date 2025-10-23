@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
 	"sync"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -192,9 +193,11 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 	var errs []error
 	for i := 0; i < cl.pool.Len(); i++ {
 		f := cl.pool.Get()
-		resp, err := f.BeaconBlobSidecars(ctx, slot, hashes)
-		if err != nil {
-			cl.logger.Debug("BeaconBlobSidecars request failed, trying the next in the pool: %s", "error", err)
+        resp, err := f.BeaconBlobSidecars(ctx, slot, hashes)
+        if err != nil {
+            if cl.logger != nil {
+                cl.logger.Debug("BeaconBlobSidecars request failed, trying the next in the pool", "error", err)
+            }
 			cl.pool.Next()
 			errs = append(errs, err)
 		} else {
