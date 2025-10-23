@@ -1174,103 +1174,10 @@ jobs:
           echo "✅ Health check complete"
 
   # ============================================================================
-  # DEPLOY L2 CONTRACTS (Destructive only)
-  # ============================================================================
-  deploy-l2-contracts:
-    needs: [validate-inputs, deploy-l1-contracts, wait-argocd-healthy]
-    if: |
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
-      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
-    runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.testnet_type }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/checkout@v4
-        with:
-          repository: ten-protocol/ten-apps
-          token: ${{ secrets.DEPLOY_ACTIONS_PAT }}
-          path: cfg
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version: 1.25.1
-
-      - name: 'Login via Azure CLI'
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: 'Login to Azure docker registry'
-        uses: azure/docker-login@v1
-        with:
-          login-server: ${{ env.REGISTRY }}
-          username: testnetobscuronet
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-
-      - name: 'Parse L1 config'
-        id: parse_l1_config
-        env:
-          CONFIG_PATH: ${{ needs.validate-inputs.outputs.CONFIG_PATH }}
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
-
-          # Determine config file
-          if [[ "${{ github.event.inputs.testnet_type }}" == "mainnet" ]]; then
-            CFG="cfg/${{ env.CONFIG_PATH }}/apps/envs/mainnet/valuesFile/l1-values.yaml"
-          else
-            CFG="cfg/${{ env.CONFIG_PATH }}/apps/envs/${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}/valuesFile/l1-values.yaml"
-          fi
-
-          echo "network_config=$(yq -r '.l1Config.networkConfig' "$CFG")" >> $GITHUB_OUTPUT
-          echo "message_bus=$(yq -r '.l1Config.messagebus' "$CFG")" >> $GITHUB_OUTPUT
-          echo "rollup=$(yq -r '.l1Config.rollup' "$CFG")" >> $GITHUB_OUTPUT
-          echo "crosschain=$(yq -r '.l1Config.crosschain' "$CFG")" >> $GITHUB_OUTPUT
-          echo "enclave_registry=$(yq -r '.l1Config.enclaveRegistry' "$CFG")" >> $GITHUB_OUTPUT
-
-      - name: 'Deploy L2 contracts'
-        id: deployL2Contracts
-        shell: bash
-        env:
-          DOCKER_API_VERSION: "1.45"
-          DEPLOY_DOCKERIMAGE: ${{ env.REGISTRY }}/${{ env.REGISTRY_ORG }}/hardhatdeployer:${{ needs.build-images.outputs.IMAGE_TAG || github.event.inputs.image_tag || 'latest' }}
-          DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
-          DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
-          DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
-          DEPLOY_L2_RPCADDRESS: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-validator-01.ten.xyz
-          DEPLOY_L2_HTTPPORT: 80
-          DEPLOY_L2_WSPORT: 81
-          DEPLOY_L2_FAUCETPREFUND: ${{ vars.FAUCET_INITIAL_FUNDS }}
-          NETWORK_L1_CONTRACTS_NETWORKCONFIG: ${{ steps.parse_l1_config.outputs.network_config }}
-          NETWORK_L1_CONTRACTS_MESSAGEBUS: ${{ steps.parse_l1_config.outputs.message_bus }}
-          NETWORK_L1_CONTRACTS_ROLLUP: ${{ steps.parse_l1_config.outputs.rollup }}
-          NETWORK_L1_CONTRACTS_CROSSCHAIN: ${{ steps.parse_l1_config.outputs.crosschain }}
-          NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ steps.parse_l1_config.outputs.enclave_registry }}
-          NETWORK_CHAINID: ${{ vars.CHAIN_ID }}
-        run: |
-          go run ./testnet/launcher/l2contractdeployer/cmd \
-
-      - name: 'Save L2 deployer container logs'
-        if: ${{ always() }} # Always run this step to ensure logs are captured even if previous steps fail
-        run: |
-          docker logs `docker ps -aqf "name=hh-l2-deployer"` > deploy-l2-contracts.out 2>&1
-
-      - name: 'Upload L2 deployer container logs'
-        if: ${{ always() }} # Always run this step to ensure logs are uploaded even if previous steps fail
-        uses: actions/upload-artifact@v4
-        with:
-          name: deploy-l2-artifacts
-          path: |
-            deploy-l2-contracts.out
-          retention-days: 2
-
-  # ============================================================================
   # POST-DEPLOYMENT NOTIFICATION
   # ============================================================================
   post-deployment:
-    needs: [validate-inputs, deploy-l1-contracts, deploy-l2-contracts]
+    needs: [validate-inputs, deploy-l1-contracts, wait-argocd-healthy]
     if: |
       always() &&
       (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success())
@@ -1304,3 +1211,17 @@ jobs:
             -H "Content-Type: application/json" \
             https://api.github.com/repos/ten-protocol/ten-test/dispatches \
             --data "{\"event_type\": \"$event_type\", \"client_payload\": {\"ref\": \"${{ github.ref_name }}\"}}"
+
+      - name: 'Trigger L2 contract deployment workflow'
+        if: needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && needs.deploy-l1-contracts.result == 'success'
+        run: |
+          echo "🚀 Triggering L2 contract deployment workflow..."
+          
+          gh workflow run manual-deploy-testnet-l2.yml \
+            -f testnet_type=${{ github.event.inputs.testnet_type }} \
+            -f log_level=3 \
+            --ref ${{ github.ref_name }}
+          
+          echo "✅ L2 deployment workflow triggered successfully"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
