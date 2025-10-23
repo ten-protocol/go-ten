@@ -84,7 +84,6 @@ func GetMetadata(db HostDB, key string) (uint64, error) {
 		}
 		return 0, fmt.Errorf("failed to get metadata: %w", err)
 	}
-
 	// we can't cast to integer on postgres so have to convert the raw bytes outside the query
 	s := strings.TrimSpace(string(bytea))
 	v, err := strconv.ParseUint(s, 10, 64)
