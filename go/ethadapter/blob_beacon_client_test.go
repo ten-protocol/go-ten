@@ -3,6 +3,7 @@ package ethadapter
 import (
 	"context"
 	"errors"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"math/big"
 	"net/http"
 	"testing"
@@ -127,7 +128,7 @@ func TestBlobEncodingLarge(t *testing.T) {
 
 func TestBlobArchiveClient(t *testing.T) {
 	t.Skipf("TODO need to fix this")
-	client := NewArchivalHTTPClient(new(http.Client), "https://eth-beacon-chain.drpc.org/rest/")
+	client := NewArchivalHTTPClient(new(http.Client), testlog.Logger(), "https://eth-beacon-chain.drpc.org/rest/")
 	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
 	ctx := context.Background()
 
@@ -140,7 +141,7 @@ func TestBlobArchiveClient(t *testing.T) {
 
 func TestBlobClient(t *testing.T) {
 	t.Skipf("For local testing, set the API_KEY in the environment variable and run the test")
-	client := NewBeaconHTTPClient(new(http.Client), "https://lb.drpc.live/eth-beacon-chain-sepolia/{API_KEY}/")
+	client := NewBeaconHTTPClient(new(http.Client), testlog.Logger(), "https://lb.drpc.live/eth-beacon-chain-sepolia/{API_KEY}/")
 	var vHashes []gethcommon.Hash
 	ctx := context.Background()
 
@@ -175,7 +176,7 @@ func TestBeaconClientFallback(t *testing.T) {
 	mockPrimary := &MockBeaconClient{}
 	mockFallback := &MockBlobRetrievalService{}
 
-	client := NewL1BeaconClient(mockPrimary, mockFallback)
+	client := NewL1BeaconClient(mockPrimary, testlog.Logger(), mockFallback)
 
 	mockPrimary.On("BeaconGenesis", ctx).Return(APIGenesisResponse{Data: ReducedGenesisData{GenesisTime: 10}}, nil)
 	mockPrimary.On("ConfigSpec", ctx).Return(APIConfigResponse{Data: ReducedConfigData{SecondsPerSlot: 2}}, nil)
