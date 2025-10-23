@@ -69,13 +69,15 @@ func TestTenGateway(t *testing.T) {
 		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
 		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
 		LogPath:                        "sys_out",
-		LogLevel:                       3, // info level
+		LogLevel:                       4, // info level
 		DBType:                         "sqlite",
 		TenChainID:                     5443,
 		StoreIncomingTxs:               true,
 		RateLimitUserComputeTime:       0,
 		RateLimitWindow:                1 * time.Second,
 		RateLimitMaxConcurrentRequests: 3,
+		SessionKeyExpirationThreshold:  10 * time.Second,
+		SessionKeyExpirationInterval:   2 * time.Second,
 	}
 
 	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
@@ -114,8 +116,9 @@ func TestTenGateway(t *testing.T) {
 		"testInvokeNonSensitiveMethod":         testInvokeNonSensitiveMethod,
 		"testQueryAndRpcTokenModes":            testQueryAndRpcTokenModes,
 
-		"testSessionKeysGetStorageAt":    testSessionKeysGetStorageAt,
-		"testSessionKeysSendTransaction": testSessionKeysSendTransaction,
+		"testSessionKeysGetStorageAt":             testSessionKeysGetStorageAt,
+		"testSessionKeysSendTransaction":          testSessionKeysSendTransaction,
+		"testSessionKeyExpirationAndFundRecovery": testSessionKeyExpirationAndFundRecovery,
 		// "testRateLimiter":                   testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -426,6 +429,119 @@ func testSessionKeysSendTransaction(t *testing.T, _ int, httpURL, wsURL string, 
 	require.Len(t, delResult, 1)
 	require.Equal(t, byte(0x01), delResult[0])
 	t.Logf("✓ Session key deleted: %s", skAddress.Hex())
+}
+
+func testSessionKeyExpirationAndFundRecovery(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
+
+	// Register the user so we can call the endpoints that require authentication
+	err = user0.RegisterAccounts()
+	require.NoError(t, err)
+
+	// Sanity log to mark test start
+	testlog.Logger().Info("testSessionKeyExpirationAndFundRecovery: started")
+
+	ctx := context.Background()
+
+	// 1) Create session key via eth_getStorageAt (CQ method 0x...0003)
+	createSessionKeyAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000003")
+	skAddrBytes, err := user0.HTTPClient.StorageAt(ctx, createSessionKeyAddr, gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, skAddrBytes)
+	skAddress := gethcommon.BytesToAddress(skAddrBytes)
+
+	// 2) Fund the session key from the original wallet
+	fundAmount := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1)) // 1 TEN
+	fromAddr := user0.Wallets[0].Address()
+	gasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	gasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: fromAddr, To: &skAddress, Value: fundAmount})
+	require.NoError(t, err)
+	nonce, err := user0.HTTPClient.PendingNonceAt(ctx, fromAddr)
+	require.NoError(t, err)
+	legacy := &types.LegacyTx{Nonce: nonce, To: &skAddress, Value: fundAmount, GasPrice: gasPrice, Gas: gasLimit}
+	signedFundingTx, err := w.SignTransaction(legacy)
+	require.NoError(t, err)
+	err = user0.HTTPClient.SendTransaction(ctx, signedFundingTx)
+	require.NoError(t, err)
+
+	// wait for receipt
+	{
+		var rec *types.Receipt
+		for i := 0; i < 30; i++ {
+			rec, err = user0.HTTPClient.TransactionReceipt(ctx, signedFundingTx.Hash())
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
+	}
+	// Session key funded from the user's primary account
+	t.Logf("✓ Session key funded with %s TEN", fundAmount.String())
+
+	// 3) Record initial balances for assertions
+	initialBalance, err := user0.HTTPClient.BalanceAt(ctx, skAddress, nil)
+	require.NoError(t, err)
+	require.Equal(t, fundAmount, initialBalance)
+	t.Logf("✓ Initial session key balance: %s TEN", initialBalance.String())
+
+	// 4) Check initial balance of user's first account
+	initialUserBalance, err := user0.HTTPClient.BalanceAt(ctx, fromAddr, nil)
+	require.NoError(t, err)
+	t.Logf("✓ Initial user balance: %s TEN", initialUserBalance.String())
+
+	// 5) Wait for session key expiration (default is 10 seconds, wait 12 seconds to be safe)
+	t.Logf("⏳ Waiting for session key expiration (12 seconds)...")
+	time.Sleep(12 * time.Second)
+	t.Logf("✓ Session key should now be expired")
+
+	// 6) After expiration, the service should initiate fund recovery
+	finalBalance, err := user0.HTTPClient.BalanceAt(ctx, skAddress, nil)
+	require.NoError(t, err)
+	t.Logf("✓ Final session key balance: %s TEN", finalBalance.String())
+
+	// 7) Poll user's pending balance until it increases (async refund tx inclusion)
+	var finalUserBalance *big.Int
+	{
+		deadline := time.Now().Add(15 * time.Second)
+		for time.Now().Before(deadline) {
+			bal, err := user0.HTTPClient.PendingBalanceAt(ctx, fromAddr)
+			require.NoError(t, err)
+			if bal.Cmp(initialUserBalance) > 0 {
+				finalUserBalance = bal
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		if finalUserBalance == nil {
+			// take one last reading for logging and fail with a clear message
+			bal, _ := user0.HTTPClient.PendingBalanceAt(ctx, fromAddr)
+			t.Logf("Pending balance did not increase within the timeout. last=%s, initial=%s", bal.String(), initialUserBalance.String())
+			require.FailNow(t, "Timed out waiting for recovered funds to reflect in user's pending balance")
+		}
+	}
+	t.Logf("✓ Final user balance: %s TEN", finalUserBalance.String())
+
+	// 9) Verify that the user's balance increased by the recovered amount (minus gas costs)
+	// The user should have received the funds back, minus some gas costs
+	balanceIncrease := big.NewInt(0).Sub(finalUserBalance, initialUserBalance)
+	t.Logf("✓ Balance increase: %s TEN", balanceIncrease.String())
+
+	// The balance increase should be positive (user received funds back)
+	// and should be close to the original fund amount (minus gas costs)
+	require.True(t, balanceIncrease.Cmp(big.NewInt(0)) > 0, "User balance should have increased due to fund recovery")
+
+	// The recovered amount should be at least 90% of the original fund amount
+	// (allowing for gas costs)
+	expectedMinRecovery := big.NewInt(0).Div(big.NewInt(0).Mul(fundAmount, big.NewInt(90)), big.NewInt(100))
+	require.True(t, balanceIncrease.Cmp(expectedMinRecovery) >= 0,
+		"Recovered amount should be at least 90%% of original fund amount")
+
+	t.Logf("✓ Session key expiration and fund recovery test completed successfully!")
 }
 
 func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
@@ -941,7 +1057,17 @@ func testUnsubscribe(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage", "foo", contractReceipt.ContractAddress)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1, len(userLogs))
+	// wait for the first log to arrive (subscription consumes logs asynchronously)
+	{
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			if len(userLogs) >= 1 {
+				break
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		assert.Equal(t, 1, len(userLogs))
+	}
 
 	// Unsubscribe from events
 	subscription.Unsubscribe()
@@ -950,6 +1076,8 @@ func testUnsubscribe(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet
 	_, err = integrationCommon.InteractWithSmartContract(user.HTTPClient, user.Wallets[0], eventsContractABI, "setMessage", "bar", contractReceipt.ContractAddress)
 	require.NoError(t, err)
 
+	// give a short time window to ensure no new logs are received after unsubscribing
+	time.Sleep(1 * time.Second)
 	// check that we are not receiving events after unsubscribing
 	assert.Equal(t, 1, len(userLogs))
 }
