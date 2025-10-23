@@ -697,6 +697,7 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	executor.logger.Warn("Retry executing batch", log.BatchHashKey, batch.Hash())
 	// retry executing
 	if cb.Batch.Hash() != batch.Hash() {
+		executor.storage.CleanStateDB()
 		cb, err = executor.compute(ctx, batch) // this execution is not used when first producing a batch, we never want to fail for empty batches
 		if err != nil {
 			return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
