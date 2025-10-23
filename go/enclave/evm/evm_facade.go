@@ -8,10 +8,9 @@ import (
 	"math/big"
 	_ "unsafe"
 
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
-
-	"github.com/ethereum/go-ethereum/core/tracing"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -244,6 +243,9 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	if vmerr := cleanState.Error(); vmerr != nil {
 		return nil, vmerr, nil
 	}
+
+	cleanState.Finalise(false)
+	cleanState = nil
 
 	if err != nil {
 		// also return the result as the result can be evaluated on some errors like ErrIntrinsicGas

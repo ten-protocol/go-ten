@@ -9,10 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"reflect"
-	"unsafe"
 
-	"github.com/ethereum/go-ethereum/trie/utils"
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	"github.com/jmoiron/sqlx"
@@ -81,14 +78,6 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	cfg := triedb.VerkleDefaults
 	trieDB := triedb.NewDatabase(backingDB, cfg)
 	stateDB := state.NewDatabase(trieDB, nil)
-
-	noPointCache := utils.NewPointCache(0)
-	// Use reflection to access private pointCache field
-	stateDBVal := reflect.ValueOf(stateDB).Elem()
-	if pointCacheField := stateDBVal.FieldByName("pointCache"); pointCacheField.IsValid() {
-		reflect.NewAt(pointCacheField.Type(), unsafe.Pointer(pointCacheField.UnsafeAddr())).
-			Elem().Set(reflect.ValueOf(noPointCache))
-	}
 
 	prepStatementCache := enclavedb.NewStatementCache(backingDB.GetSQLDB(), logger)
 	return &storageImpl{
