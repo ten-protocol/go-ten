@@ -23,9 +23,9 @@ const (
 
 func TestBlobResolver(t *testing.T) {
 	t.Skipf("TODO need to work out new params that will work with a new fallback provider")
-	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://docs-demo.quiknode.pro/")
-	fallback := ethadapter.NewArchivalHTTPClient(new(http.Client), "https://api.ethernow.xyz")
 	logger := log.New()
+	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), logger, "https://docs-demo.quiknode.pro/")
+	fallback := ethadapter.NewArchivalHTTPClient(new(http.Client), logger, "https://api.ethernow.xyz")
 	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, fallback), logger)
 
 	// this will convert to slot 5 which will return 404 from the quicknode api, causing the fallback to be used
@@ -41,11 +41,11 @@ func TestBlobResolver(t *testing.T) {
 // TestSepoliaBlobResolver checks the public node sepolia beacon APIs work as expected
 func TestSepoliaBlobResolver(t *testing.T) {
 	t.Skipf("Test will occasionally not pass due to the time window landing on a block with no blobs")
-	// l1_beacon_url for sepolia
-	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://ethereum-sepolia-beacon-api.publicnode.com")
-	// l1_blob_archive_url for sepolia
-	fallback := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://eth-beacon-chain-sepolia.drpc.org/rest/")
 	logger := log.New()
+	// l1_beacon_url for sepolia
+	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), logger, "https://ethereum-sepolia-beacon-api.publicnode.com")
+	// l1_blob_archive_url for sepolia
+	fallback := ethadapter.NewBeaconHTTPClient(new(http.Client), logger, "https://eth-beacon-chain-sepolia.drpc.org/rest/")
 	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, fallback), logger)
 
 	// this is a moving point in time so we can't compare hashes or be certain there will be blobs in the block
@@ -61,7 +61,8 @@ func TestSepoliaBlobResolver(t *testing.T) {
 // TestBlobResolverErrorHandling tests the retry strategy with different error conditions
 func TestBlobResolverErrorHandling(t *testing.T) {
 	t.Skipf("Test takes a long time to complete and is non-deterministic.")
-	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), "https://ethereum-sepolia-beacon-api.publicnode.com")
+
+	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), log.New(), "https://ethereum-sepolia-beacon-api.publicnode.com")
 
 	blobResolver := NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient), log.New())
 

@@ -58,7 +58,8 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		simParams.NumberOfNodes,
 	)
 
-	contractRegistryLib, err := contractlib.NewContractRegistryLib(simParams.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient(), testlog.Logger())
+	logger := testlog.Logger()
+	contractRegistryLib, err := contractlib.NewContractRegistryLib(simParams.L1TenData.NetworkConfigAddress, *n.gethClients[0].EthClient(), logger)
 	if err != nil {
 		panic(fmt.Sprintf("error creating contract registry. Cause: %s", err))
 	}
@@ -70,7 +71,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		&simParams.L1TenData.EthErc20Address,
 	)
 	beaconURL := fmt.Sprintf("127.0.0.1:%d", simParams.L1BeaconPort)
-	simParams.BlobResolver = l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), beaconURL)), testlog.Logger())
+	simParams.BlobResolver = l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), logger, beaconURL)), logger)
 
 	// get the sequencer Address
 	seqPrivateKey := n.wallets.NodeWallets[0].PrivateKey()

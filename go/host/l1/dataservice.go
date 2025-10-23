@@ -435,11 +435,13 @@ func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, pro
 		r.logger.Error("Error unpacking RollupAdded event", log.ErrKey, err)
 		return err
 	}
+	r.logger.Debug("dataservice - about to fetch blobs")
 	blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash})
 	if err != nil {
-		r.logger.Error(fmt.Sprintf("error while fetching blobs. Cause: %s", err))
+		r.logger.Error(fmt.Sprintf("HERE error while fetching blobs. Cause: %s", err))
 		return err
 	}
+	r.logger.Debug("Fetched rollup blobs", "rollupHash", event.RollupHash, "num blobs", len(blobs))
 	txData.BlobsWithSignature = []common.BlobAndSignature{
 		{
 			Blob:      blobs[0],

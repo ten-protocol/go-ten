@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"net/http"
 	"net/url"
 	"path"
@@ -44,6 +45,7 @@ type L1BeaconClient struct {
 	genesisTime    uint64
 	secondsPerSlot uint64
 	timeToSlotFn   TimeToSlot
+	logger         gethlog.Logger
 }
 
 // TimeToSlot cache the function to avoid recomputing it for every block.
@@ -54,9 +56,9 @@ type BeaconHTTPClient struct {
 	httpClient *BaseHTTPClient
 }
 
-func NewBeaconHTTPClient(client *http.Client, baseURL string) *BeaconHTTPClient {
+func NewBeaconHTTPClient(client *http.Client, logger gethlog.Logger, baseURL string) *BeaconHTTPClient {
 	return &BeaconHTTPClient{
-		httpClient: NewBaseHTTPClient(client, baseURL),
+		httpClient: NewBaseHTTPClient(client, logger, baseURL),
 	}
 }
 
@@ -191,6 +193,7 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 		f := cl.pool.Get()
 		resp, err := f.BeaconBlobSidecars(ctx, slot, hashes)
 		if err != nil {
+			cl.logger.Debug("BeaconBlobSidecars request failed, trying the next in the pool: %s", err)
 			cl.pool.Next()
 			errs = append(errs, err)
 		} else {
@@ -240,7 +243,6 @@ func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashe
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blob sidecars for Block Header %s: %w", b.Hash().Hex(), err)
 	}
-
 	// no hashes were provided, create slice of all hashes from sidecars
 	if len(hashes) == 0 {
 		hashes = make([]gethcommon.Hash, len(blobSidecars))

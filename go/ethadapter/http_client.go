@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"io"
 	"net/http"
 	"net/url"
@@ -15,11 +16,12 @@ import (
 // BaseHTTPClient provides common HTTP functionality for different clients
 type BaseHTTPClient struct {
 	client  *http.Client
+	logger  gethlog.Logger
 	baseURL string
 }
 
-func NewBaseHTTPClient(client *http.Client, baseURL string) *BaseHTTPClient {
-	return &BaseHTTPClient{client: client, baseURL: baseURL}
+func NewBaseHTTPClient(client *http.Client, logger gethlog.Logger, baseURL string) *BaseHTTPClient {
+	return &BaseHTTPClient{client: client, logger: logger, baseURL: baseURL}
 }
 
 func (chc *BaseHTTPClient) Request(ctx context.Context, dest any, reqPath string, reqQuery url.Values) error {
@@ -38,6 +40,8 @@ func (chc *BaseHTTPClient) Request(ctx context.Context, dest any, reqPath string
 	}
 
 	reqURL.RawQuery = reqQuery.Encode()
+
+	chc.logger.Debug("Beacon client GET: %s ", reqURL.String())
 
 	headers := http.Header{}
 	headers.Add("Accept", "application/json")

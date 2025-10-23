@@ -547,6 +547,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
 		return false, nil
 	}
+	g.logger.Debug("Guardian - about to GetTenRelevantTransactions")
 	processedData, err := g.sl.L1Data().GetTenRelevantTransactions(block)
 	if err != nil {
 		g.submitDataLock.Unlock() // lock must be released before returning
@@ -554,6 +555,9 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	}
 
 	rollupTxs := g.getRollupTxs(*processedData)
+	if len(rollupTxs) > 0 {
+		g.logger.Debug("Guardian - found rollup transactions", "numRollups", len(rollupTxs))
+	}
 
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
 
@@ -608,6 +612,7 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 			if len(metadatas) > idx {
 				extMetadata = metadatas[idx]
 			}
+			g.logger.Debug("Guardian - found rollup, about to store on host")
 			err = g.storage.AddRollup(r, &extMetadata, metaData, block)
 		}
 		if err != nil {

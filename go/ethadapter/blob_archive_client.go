@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	gethlog "github.com/ethereum/go-ethereum/log"
 	"net/http"
 	"path"
 	"strings"
@@ -31,9 +32,9 @@ type ArchivalHTTPClient struct {
 	httpClient *BaseHTTPClient
 }
 
-func NewArchivalHTTPClient(client *http.Client, baseURL string) *ArchivalHTTPClient {
+func NewArchivalHTTPClient(client *http.Client, logger gethlog.Logger, baseURL string) *ArchivalHTTPClient {
 	return &ArchivalHTTPClient{
-		httpClient: NewBaseHTTPClient(client, baseURL),
+		httpClient: NewBaseHTTPClient(client, logger, baseURL),
 	}
 }
 
