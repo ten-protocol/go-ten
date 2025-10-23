@@ -3,7 +3,6 @@ package components
 import (
 	"context"
 	"fmt"
-	"sync"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -33,11 +32,10 @@ type tenChain struct {
 
 	logger gethlog.Logger
 
-	Registry  BatchRegistry
-	execMutex *sync.Mutex
+	Registry BatchRegistry
 }
 
-func NewChain(storage storage.Storage, config *enclaveconfig.EnclaveConfig, evmFacade evm.EVMFacade, gethEncodingService gethencoding.EncodingService, chainConfig *params.ChainConfig, genesis *genesis.Genesis, logger gethlog.Logger, registry BatchRegistry, mutex *sync.Mutex) TENChain {
+func NewChain(storage storage.Storage, config *enclaveconfig.EnclaveConfig, evmFacade evm.EVMFacade, gethEncodingService gethencoding.EncodingService, chainConfig *params.ChainConfig, genesis *genesis.Genesis, logger gethlog.Logger, registry BatchRegistry) TENChain {
 	return &tenChain{
 		storage:             storage,
 		evmFacade:           evmFacade,
@@ -47,7 +45,6 @@ func NewChain(storage storage.Storage, config *enclaveconfig.EnclaveConfig, evmF
 		logger:              logger,
 		genesis:             genesis,
 		Registry:            registry,
-		execMutex:           mutex,
 	}
 }
 
@@ -61,9 +58,6 @@ func (oc *tenChain) GetBalanceAtBlock(ctx context.Context, accountAddr gethcommo
 }
 
 func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.TransactionArgs, blockNumber *gethrpc.BlockNumber, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
-	oc.execMutex.Lock()
-	defer oc.execMutex.Unlock()
-
 	// fetch the chain state at given batch
 	blockState, batch, err := oc.Registry.GetBatchStateAtHeight(ctx, blockNumber)
 	if err != nil {
