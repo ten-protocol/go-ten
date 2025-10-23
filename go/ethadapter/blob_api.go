@@ -142,8 +142,3 @@ func KZGToVersionedHash(commitment kzg4844.Commitment) (out common.Hash) {
 	hasher := sha256.New()
 	return kzg4844.CalcBlobHashV1(hasher, &commitment)
 }
-
-// VerifyBlobProof verifies that the given blob and proof corresponds to the given commitment
-func VerifyBlobProof(blob *kzg4844.Blob, commitment kzg4844.Commitment, proof kzg4844.Proof) error {
-	return kzg4844.VerifyBlobProof(blob, commitment, proof)
-}
