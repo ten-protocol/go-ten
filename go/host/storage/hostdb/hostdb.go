@@ -76,7 +76,8 @@ func (b *dbTransaction) Rollback() error {
 func GetMetadata(db HostDB, key string) (uint64, error) {
 	var value uint64
 	query := "SELECT CAST(val AS INTEGER) FROM config WHERE ky = ?"
-	err := db.GetSQLDB().Get(&value, query, key)
+	reboundQuery := db.GetSQLDB().Rebind(query)
+	err := db.GetSQLDB().Get(&value, reboundQuery, key)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, errutil.ErrNotFound
@@ -88,7 +89,8 @@ func GetMetadata(db HostDB, key string) (uint64, error) {
 
 func SetMetadata(db HostDB, key string, value uint64) error {
 	query := "INSERT OR REPLACE INTO config (ky, val) VALUES (?, ?)"
-	_, err := db.GetSQLDB().Exec(query, key, value)
+	reboundQuery := db.GetSQLDB().Rebind(query)
+	_, err := db.GetSQLDB().Exec(reboundQuery, key, value)
 	if err != nil {
 		return fmt.Errorf("failed to set metadata: %w", err)
 	}
