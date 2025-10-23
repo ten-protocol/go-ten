@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -74,17 +76,22 @@ func (b *dbTransaction) Rollback() error {
 }
 
 func GetMetadata(db HostDB, key string) (uint64, error) {
-	var value uint64
-	query := "SELECT CAST(val AS INTEGER) FROM config WHERE ky = ?"
-	reboundQuery := db.GetSQLDB().Rebind(query)
-	err := db.GetSQLDB().Get(&value, reboundQuery, key)
-	if err != nil {
+	var bytea []byte
+	query := db.GetSQLDB().Rebind("SELECT val FROM config WHERE ky = ?")
+	if err := db.GetSQLDB().Get(&bytea, query, key); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, errutil.ErrNotFound
 		}
 		return 0, fmt.Errorf("failed to get metadata: %w", err)
 	}
-	return value, nil
+
+	// we can't cast to integer on postgres so have to convert the raw bytes outside the query
+	s := strings.TrimSpace(string(bytea))
+	v, err := strconv.ParseUint(s, 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("invalid metadata value %q: %w", s, err)
+	}
+	return v, nil
 }
 
 func SetMetadata(db HostDB, key string, value uint64) error {
