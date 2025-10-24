@@ -102,13 +102,16 @@ func (s *storageImpl) closeTrieDB() {
 	if err = s.trieDB.Journal(head.Root); err != nil {
 		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
 	}
-	_ = s.trieDB.Close()
+	err = s.trieDB.Close()
+	if err != nil {
+		s.logger.Error("Failed to close triedb", "err", err)
+	}
 }
 
 func (s *storageImpl) CleanStateDB() {
 	s.closeTrieDB()
 
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(250 * time.Millisecond)
 	cfg := triedb.VerkleDefaults
 	s.trieDB = triedb.NewDatabase(s.db, cfg)
 	s.stateCache = state.NewDatabase(s.trieDB, nil)
