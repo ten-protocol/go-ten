@@ -48,31 +48,27 @@ func (s *storageImpl) AddRollup(rollup *common.ExtRollup, extMetadata *common.Ex
 	_, err := hostdb.GetRollupHeader(s.db, rollup.Header.Hash())
 	if err == nil {
 		// rollup already exists don't error
-		s.logger.Debug("TEST Rollup already exists", "hash", rollup.Header.Hash().Hex(), "blockHash", rollup.Header.CompressionL1Head.Hex())
 		return nil
 	}
 
 	dbtx, err := s.db.NewDBTransaction()
 	if err != nil {
-		s.logger.Debug("TEST1 Rollup DB transaction error", "hash", rollup.Header.Hash().Hex(), "blockHash", rollup.Header.CompressionL1Head.Hex())
 		return err
 	}
 	defer dbtx.Rollback()
 
 	if err := hostdb.AddRollup(dbtx, s.db, rollup, extMetadata, metadata, block); err != nil {
 		if errors.Is(err, errutil.ErrAlreadyExists) {
-			s.logger.Debug("TEST2 Rollup already exists", "hash", rollup.Header.Hash().Hex(), "blockHash", rollup.Header.CompressionL1Head.Hex())
 			return nil
 		}
-		return fmt.Errorf("TEST3 could not add rollup to host. Cause: %w", err)
+		return fmt.Errorf("could not add rollup to host. Cause: %w", err)
 	}
 
 	if err := dbtx.Write(); err != nil {
 		if hostdb.IsRowExistsError(err) {
-			s.logger.Debug("TEST4 Rollup already exists", "hash", rollup.Header.Hash().Hex(), "blockHash", rollup.Header.CompressionL1Head.Hex())
 			return nil
 		}
-		return fmt.Errorf("TEST5 could not commit rollup tx. Cause %w", err)
+		return fmt.Errorf("could not commit rollup tx. Cause %w", err)
 	}
 	return nil
 }

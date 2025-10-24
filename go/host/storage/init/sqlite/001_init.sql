@@ -1,4 +1,4 @@
-create table if not exists git
+create table if not exists config
 (
     ky  varchar(64) primary key,
     val mediumblob NOT NULL

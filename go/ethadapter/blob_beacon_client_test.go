@@ -129,14 +129,14 @@ func TestBlobEncodingLarge(t *testing.T) {
 
 func TestBlobArchiveClient(t *testing.T) {
 	t.Skipf("TODO need to fix this")
-	client := NewArchivalHTTPClient(new(http.Client), testlog.Logger(), "https://eth-beacon-chain.drpc.org/rest/")
-	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
+	client := NewBeaconHTTPClient(new(http.Client), testlog.Logger(), "https://ethereum-sepolia-beacon-api.publicnode.com")
+	vHashes := []gethcommon.Hash{}
 	ctx := context.Background()
 
-	resp, err := client.BeaconBlobSidecars(ctx, 1, vHashes)
+	resp, err := client.BeaconBlobSidecars(ctx, 8782235, vHashes)
 	require.NoError(t, err)
 
-	require.Len(t, resp.Data, 2)
+	require.Len(t, resp.Data, 15)
 	require.NotNil(t, client)
 }
 
@@ -177,7 +177,7 @@ func TestBeaconClientFallback(t *testing.T) {
 	mockPrimary := &MockBeaconClient{}
 	mockFallback := &MockBlobRetrievalService{}
 
-    client := NewL1BeaconClient(mockPrimary, testlog.Logger(), mockFallback)
+	client := NewL1BeaconClient(mockPrimary, mockFallback)
 
 	mockPrimary.On("BeaconGenesis", ctx).Return(APIGenesisResponse{Data: ReducedGenesisData{GenesisTime: 10}}, nil)
 	mockPrimary.On("ConfigSpec", ctx).Return(APIConfigResponse{Data: ReducedConfigData{SecondsPerSlot: 2}}, nil)

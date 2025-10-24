@@ -54,14 +54,12 @@ func (r *beaconBlobResolver) FetchBlobs(ctx context.Context, b *types.Header, ha
 	// try fetching once to get the initial error and set appropriate retry strategy
 	blobs, initialErr := r.beaconClient.FetchBlobs(ctx, b, hashes)
 	if initialErr != nil {
-		r.logger.Warn("BLOBRESOLVER. Initial err: %s", initialErr)
 		err := retry.DoWithCount(func(retryNum int) error {
 			var fetchErr error
 			blobs, fetchErr = r.beaconClient.FetchBlobs(ctx, b, hashes)
 			if fetchErr != nil {
-				//r.logger.Warn("BLOBRESOLVER Error while fetching blobs, will retry",
-				//	"error", fetchErr, "retryNum", retryNum, "blockHash", b.Hash().Hex())
-				r.logger.Warn("BLOBRESOLVER. Fetch err: %s", fetchErr)
+				r.logger.Warn("Error while fetching blobs, will retry",
+					"error", fetchErr, "retryNum", retryNum, "blockHash", b.Hash().Hex())
 			}
 			return fetchErr
 		}, r.getRetryStrategy(initialErr))

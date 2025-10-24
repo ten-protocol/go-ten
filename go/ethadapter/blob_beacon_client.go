@@ -46,7 +46,6 @@ type L1BeaconClient struct {
 	genesisTime    uint64
 	secondsPerSlot uint64
 	timeToSlotFn   TimeToSlot
-	logger         gethlog.Logger
 }
 
 // TimeToSlot cache the function to avoid recomputing it for every block.
@@ -137,12 +136,11 @@ func (p *ClientPool[T]) Next() {
 // NewL1BeaconClient returns a client for making requests to an L1 consensus layer node.
 // Fallbacks are optional clients that will be used for fetching blobs. L1BeaconClient will rotate between
 // the `cl` and the fallbacks whenever a client runs into an error while fetching blobs.
-func NewL1BeaconClient(cl BeaconClient, logger gethlog.Logger, fallbacks ...BlobRetrievalService) *L1BeaconClient {
+func NewL1BeaconClient(cl BeaconClient, fallbacks ...BlobRetrievalService) *L1BeaconClient {
 	cs := append([]BlobRetrievalService{cl}, fallbacks...)
 	return &L1BeaconClient{
-		cl:     cl,
-		pool:   NewClientPool[BlobRetrievalService](cs...),
-		logger: logger,
+		cl:   cl,
+		pool: NewClientPool[BlobRetrievalService](cs...),
 	}
 }
 
@@ -193,11 +191,8 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 	var errs []error
 	for i := 0; i < cl.pool.Len(); i++ {
 		f := cl.pool.Get()
-        resp, err := f.BeaconBlobSidecars(ctx, slot, hashes)
-        if err != nil {
-            if cl.logger != nil {
-                cl.logger.Debug("BeaconBlobSidecars request failed, trying the next in the pool", "error", err)
-            }
+		resp, err := f.BeaconBlobSidecars(ctx, slot, hashes)
+		if err != nil {
 			cl.pool.Next()
 			errs = append(errs, err)
 		} else {

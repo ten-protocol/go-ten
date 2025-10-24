@@ -42,9 +42,7 @@ func (chc *BaseHTTPClient) Request(ctx context.Context, dest any, reqPath string
 
 	reqURL.RawQuery = reqQuery.Encode()
 
-    if chc.logger != nil {
-        chc.logger.Debug("Beacon client GET", "url", reqURL.String())
-    }
+	chc.logger.Debug("Beacon client GET request", "url", reqURL.String(), "query", reqQuery)
 
 	headers := http.Header{}
 	headers.Add("Accept", "application/json")

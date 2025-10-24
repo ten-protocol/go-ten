@@ -547,7 +547,6 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
 		return false, nil
 	}
-	g.logger.Debug("Guardian - about to GetTenRelevantTransactions")
 	processedData, err := g.sl.L1Data().GetTenRelevantTransactions(block)
 	if err != nil {
 		g.submitDataLock.Unlock() // lock must be released before returning
@@ -555,9 +554,6 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	}
 
 	rollupTxs := g.getRollupTxs(*processedData)
-	if len(rollupTxs) > 0 {
-		g.logger.Debug("Guardian - found rollup transactions", "numRollups", len(rollupTxs))
-	}
 
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
 
@@ -568,11 +564,6 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 			// this is most common when we are returning to a previous fork and the enclave has already seen some of the blocks on it
 			// note: logging this because we don't expect it to happen often and would like visibility on that.
 			g.logger.Info("L1 block already processed by enclave, trying the next block", "block", block.Hash())
-
-			// Even if the enclave already processed the block, persist rollups to host if we have them now.
-			// This covers the case where blob fetching lagged behind enclave processing.
-			g.logger.Info("L1 block already processed, trying to store blobs anyway", "block", block.Hash())
-			g.processL1BlockTransactions(block, nil, rollupTxs, g.shouldSyncContracts(*processedData), g.shouldSyncAdditionalContracts(*processedData))
 			nextHeight := big.NewInt(0).Add(block.Number, big.NewInt(1))
 			nextCanonicalBlock, err := g.sl.L1Data().FetchBlockByHeight(nextHeight)
 			if err != nil {
@@ -617,7 +608,6 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 			if len(metadatas) > idx {
 				extMetadata = metadatas[idx]
 			}
-			g.logger.Debug("Guardian - found rollup, about to store on host", "rollupHash", r.Hash().Hex(), "blockHash", block.Hash().Hex(), "blockHeight", block.Number, "metadata", extMetadata)
 			err = g.storage.AddRollup(r, &extMetadata, metaData, block)
 		}
 		if err != nil {

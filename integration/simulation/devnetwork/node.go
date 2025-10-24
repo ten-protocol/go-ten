@@ -182,7 +182,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		panic(fmt.Sprintf("error creating contract registry. Cause: %s", err))
 	}
 
-    blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), hostLogger, fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort)), hostLogger), hostLogger)
+	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), hostLogger, fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort))), hostLogger)
 	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, enclaveClients, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger), blobResolver, contractRegistry)
 }
 

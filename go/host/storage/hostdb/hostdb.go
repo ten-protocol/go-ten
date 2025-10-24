@@ -94,8 +94,8 @@ func GetMetadata(db HostDB, key string) (uint64, error) {
 }
 
 func SetMetadata(db HostDB, key string, value uint64) error {
-    // Use portable upsert syntax compatible with Postgres and SQLite
-    query := "INSERT INTO config (ky, val) VALUES (?, ?) ON CONFLICT(ky) DO UPDATE SET val = EXCLUDED.val"
+	// Use portable upsert syntax compatible with Postgres and SQLite
+	query := "INSERT INTO config (ky, val) VALUES (?, ?) ON CONFLICT(ky) DO UPDATE SET val = EXCLUDED.val"
 	reboundQuery := db.GetSQLDB().Rebind(query)
 	_, err := db.GetSQLDB().Exec(reboundQuery, key, value)
 	if err != nil {

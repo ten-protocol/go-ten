@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
-	gethlog "github.com/ethereum/go-ethereum/log"
 	"net/http"
 	"path"
 	"strings"
+
+	gethlog "github.com/ethereum/go-ethereum/log"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
