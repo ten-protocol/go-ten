@@ -101,9 +101,13 @@ const (
 	frontendURLFlagDefault = "https://uat-gw-testnet.ten.xyz"
 	frontendURLFlagUsage   = "The frontend URL that is allowed to access restricted CORS endpoints. Default: https://uat-gw-testnet.ten.xyz"
 
-	azureHSMModeFlagName    = "azureHSMMode"
-	azureHSMModeFlagDefault = "disabled"
-	azureHSMModeFlagUsage   = "Azure HSM mode: 'disabled', 'backup', 'recovery', or 'both'. Default: disabled"
+	azureHSMBackupEnabledFlagName    = "azureHSMBackupEnabled"
+	azureHSMBackupEnabledFlagDefault = false
+	azureHSMBackupEnabledFlagUsage   = "Enable backup of encryption keys to Azure HSM. Default: false"
+
+	azureHSMRecoveryEnabledFlagName    = "azureHSMRecoveryEnabled"
+	azureHSMRecoveryEnabledFlagDefault = false
+	azureHSMRecoveryEnabledFlagUsage   = "Enable recovery of encryption keys from Azure HSM. Default: false"
 
 	azureHSMURLFlagName    = "azureHSMURL"
 	azureHSMURLFlagDefault = ""
@@ -154,7 +158,8 @@ func parseCLIArgs() wecommon.Config {
 	encryptingCertificateEnabled := flag.Bool(encryptingCertificateEnabledFlagName, encryptingCertificateEnabledFlagDefault, encryptingCertificateEnabledFlagUsage)
 	disableCaching := flag.Bool(disableCachingFlagName, disableCachingFlagDefault, disableCachingFlagUsage)
 	frontendURL := flag.String(frontendURLFlagName, frontendURLFlagDefault, frontendURLFlagUsage)
-	azureHSMMode := flag.String(azureHSMModeFlagName, azureHSMModeFlagDefault, azureHSMModeFlagUsage)
+	azureHSMBackupEnabled := flag.Bool(azureHSMBackupEnabledFlagName, azureHSMBackupEnabledFlagDefault, azureHSMBackupEnabledFlagUsage)
+	azureHSMRecoveryEnabled := flag.Bool(azureHSMRecoveryEnabledFlagName, azureHSMRecoveryEnabledFlagDefault, azureHSMRecoveryEnabledFlagUsage)
 	azureHSMURL := flag.String(azureHSMURLFlagName, azureHSMURLFlagDefault, azureHSMURLFlagUsage)
 	flag.Parse()
 
@@ -181,7 +186,8 @@ func parseCLIArgs() wecommon.Config {
 		EncryptingCertificateEnabled:   *encryptingCertificateEnabled,
 		DisableCaching:                 *disableCaching,
 		FrontendURL:                    *frontendURL,
-		AzureHSMMode:                   *azureHSMMode,
+		AzureHSMBackupEnabled:          *azureHSMBackupEnabled,
+		AzureHSMRecoveryEnabled:        *azureHSMRecoveryEnabled,
 		AzureHSMURL:                    *azureHSMURL,
 	}
 }

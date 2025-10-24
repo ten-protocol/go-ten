@@ -61,13 +61,13 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return nil, nil
 	}
 
-	// Validate HSM configuration if HSM mode is not disabled
-	if config.AzureHSMMode != "" && config.AzureHSMMode != "disabled" {
+	// Validate HSM configuration if HSM features are enabled
+	if config.AzureHSMBackupEnabled || config.AzureHSMRecoveryEnabled {
 		if config.AzureHSMURL == "" {
-			logger.Crit("Azure HSM mode is enabled but HSM URL is not configured")
-			return nil, fmt.Errorf("Azure HSM URL is required when HSM mode is '%s'", config.AzureHSMMode)
+			logger.Crit("Azure HSM features are enabled but HSM URL is not configured")
+			return nil, fmt.Errorf("Azure HSM URL is required when HSM features are enabled")
 		}
-		logger.Info("Azure HSM configuration", "mode", config.AzureHSMMode, "url", config.AzureHSMURL)
+		logger.Info("Azure HSM configuration", "backup_enabled", config.AzureHSMBackupEnabled, "recovery_enabled", config.AzureHSMRecoveryEnabled, "url", config.AzureHSMURL)
 	}
 
 	// Step 1: First try to unseal an existing encryption key
@@ -85,9 +85,9 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return encryptionKey, nil
 	}
 
-	// Step 2: Try to recover from Azure HSM if recovery mode is enabled
-	if config.AzureHSMMode == "recovery" || config.AzureHSMMode == "both" {
-		logger.Info("attempting HSM recovery", "mode", config.AzureHSMMode)
+	// Step 2: Try to recover from Azure HSM if recovery is enabled
+	if config.AzureHSMRecoveryEnabled {
+		logger.Info("attempting HSM recovery")
 		encryptionKey, found, err = recoverKeyFromHSM(config, logger)
 		if err != nil {
 			// HSM recovery failure is not fatal - log warning and continue to generate new key
@@ -142,9 +142,9 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	}
 	logger.Info("sealed new encryption key to local storage")
 
-	// Step 5: Backup to Azure HSM if backup mode is enabled
-	if config.AzureHSMMode == "backup" || config.AzureHSMMode == "both" {
-		logger.Info("backing up key to Azure HSM", "mode", config.AzureHSMMode)
+	// Step 5: Backup to Azure HSM if backup is enabled
+	if config.AzureHSMBackupEnabled {
+		logger.Info("backing up key to Azure HSM")
 		err = backupKeyToHSM(encryptionKey, config, logger)
 		if err != nil {
 			// Backup failure is FATAL - fail completely
