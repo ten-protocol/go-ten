@@ -87,7 +87,7 @@ func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
 	defer cancelCtx()
 	val, err := Get(ctx, sqlDB.sqldb, key)
 
-	trieJournalKey := []byte("TrieJournal")
+	trieJournalKey := []byte("vTrieJournal")
 	if bytes.Equal(key, trieJournalKey) {
 		sqlDB.logger.Debug("TrieJournal ", "key", key, " value", val)
 	}
@@ -105,7 +105,7 @@ func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
 	err := Put(ctx, sqlDB.rwSqldb, key, value)
-	trieJournalKey := []byte("TrieJournal")
+	trieJournalKey := []byte("vTrieJournal")
 	if bytes.Equal(key, trieJournalKey) {
 		sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err)
 	}
