@@ -94,6 +94,14 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 }
 
 func (s *storageImpl) CleanStateDB() {
+	head, err := s.FetchHeadBatchHeader(context.Background())
+	if err != nil {
+		s.logger.Error("Failed to fetch head batch header", "err", err)
+	}
+	if err := s.trieDB.Journal(head.Root); err != nil {
+		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
+	}
+
 	_ = s.trieDB.Close()
 	cfg := triedb.VerkleDefaults
 	s.trieDB = triedb.NewDatabase(s.db, cfg)
