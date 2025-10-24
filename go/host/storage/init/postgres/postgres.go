@@ -107,7 +107,7 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 }
 
 // appendDBNamePreserveQuery appends the database name as a path segment before any existing query string.
-// It preserves query parameters like sslmode and avoids concatenating the name into the query value. This is 
+// It preserves query parameters like sslmode and avoids concatenating the name into the query value. This is
 // needed for running postgres locally.
 func appendDBNamePreserveQuery(base, name string) string {
 	// Split base into path and query components
