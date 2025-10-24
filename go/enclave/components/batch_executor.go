@@ -629,6 +629,12 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("failed creating batch. Cause: %w", err)
 	}
 
+	// for state root mismatch, exit early, before storing the corrupted state
+	resultRoot := ec.stateDB.IntermediateRoot(true)
+	if ec.ExpectedRoot != nil && *ec.ExpectedRoot != resultRoot && ec.SequencerNo.Uint64() > common.L2SysContractGenesisSeqNo+1 {
+		return nil, fmt.Errorf("batch root mismatch for batch seq %d. Expected: %s, actual: %s", ec.currentBatch.SeqNo(), ec.ExpectedRoot, resultRoot)
+	}
+
 	rootHash, err := ec.stateDB.Commit(batch.Number().Uint64(), true, true)
 	if err != nil {
 		return nil, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
@@ -694,16 +700,6 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
 	}
 
-	executor.logger.Warn("Retry executing batch", log.BatchHashKey, batch.Hash())
-	// retry executing
-	if cb.Batch.Hash() != batch.Hash() {
-		executor.storage.CleanStateDB()
-		cb, err = executor.compute(ctx, batch) // this execution is not used when first producing a batch, we never want to fail for empty batches
-		if err != nil {
-			return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
-		}
-	}
-
 	if cb.Batch.Hash() != batch.Hash() {
 		// todo @stefan - generate a validator challenge here and return it
 		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
@@ -729,6 +725,7 @@ func (executor *batchExecutor) compute(ctx context.Context, batch *core.Batch) (
 		SequencerNo:   batch.Header.SequencerOrderNo,
 		Creator:       batch.Header.Coinbase,
 		BaseFee:       batch.Header.BaseFee,
+		ExpectedRoot:  &batch.Header.Root,
 	}, false)
 }
 

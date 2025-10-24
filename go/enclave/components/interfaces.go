@@ -73,12 +73,13 @@ type BatchExecutionContext struct {
 	Transactions  common.L2Transactions
 	BatchGasLimit uint64
 
-	AtTime      uint64
-	Creator     gethcommon.Address
-	ChainConfig *params.ChainConfig
-	SequencerNo *big.Int
-	BaseFee     *big.Int
-	GasPool     *gethcore.GasPool
+	AtTime       uint64
+	Creator      gethcommon.Address
+	ChainConfig  *params.ChainConfig
+	SequencerNo  *big.Int
+	BaseFee      *big.Int
+	GasPool      *gethcore.GasPool
+	ExpectedRoot *gethcommon.Hash
 
 	EthHeader *types.Header
 	Chain     gethcore.ChainContext

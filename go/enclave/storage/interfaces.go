@@ -85,7 +85,6 @@ type GethStateDB interface {
 	CreateStateDB(ctx context.Context, batch *common.BatchHeader) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
 	EmptyStateDB() (*state.StateDB, error)
-	CleanStateDB()
 }
 
 type SharedSecretStorage interface {

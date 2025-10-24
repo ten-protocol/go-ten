@@ -467,12 +467,6 @@ func (s *storageImpl) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
 	return state.New(root, s.stateCache)
 }
 
-func (s *storageImpl) CleanStateDB() {
-	cfg := triedb.VerkleDefaults
-	s.trieDB = triedb.NewDatabase(s.db, cfg)
-	s.stateCache = state.NewDatabase(s.trieDB, nil)
-}
-
 func (s *storageImpl) GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error) {
 	defer s.logDuration("GetTransaction", measure.NewStopwatch())
 	return enclavedb.ReadTransaction(ctx, s.db.GetSQLDB(), txHash)
