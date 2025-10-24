@@ -2,6 +2,7 @@ package keymanager
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -16,6 +17,8 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
 	"github.com/edgelesssys/ego/enclave"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -26,8 +29,9 @@ import (
 )
 
 const (
-	dataDir    = "/data"
-	RSAKeySize = 2048
+	dataDir         = "/data"
+	RSAKeySize      = 2048
+	AzureHSMKeyName = "database-encryption-key" // Hardcoded HSM key name
 )
 
 var encryptionKeyFile = filepath.Join(dataDir, "encryption-key.json")
@@ -46,10 +50,10 @@ type KeyExchangeResponse struct {
 // GetEncryptionKey returns the encryption key for the database
 // - If we use an SQLite database, no encryption key is needed as SQLite typically runs in development or testing environments.
 // - First try to unseal the existing key if there is one
-//
+// - If no existing key and HSM recovery is enabled, try to recover from HSM
 // - If no existing key is available, we look at `encryptionKeySource`, if it is `new` we generate a new one, if it is a URL we attempt to perform key exchange
-//
-// - Finally, we seal the key (and if there was an existing key file that could not be unsealed, we store it as a backup)
+// - Finally, we seal the key locally (and if there was an existing key file that could not be unsealed, we store it as a backup)
+// - If HSM backup is enabled, we backup the key to Azure HSM (and fail if backup fails)
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
 	// check if we are using sqlite database and no encryption key needed
 	if config.DBType == "sqlite" {
@@ -57,7 +61,16 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return nil, nil
 	}
 
-	// First try to unseal an existing encryption key before attempting key exchange
+	// Validate HSM configuration if HSM mode is not disabled
+	if config.AzureHSMMode != "" && config.AzureHSMMode != "disabled" {
+		if config.AzureHSMURL == "" {
+			logger.Crit("Azure HSM mode is enabled but HSM URL is not configured")
+			return nil, fmt.Errorf("Azure HSM URL is required when HSM mode is '%s'", config.AzureHSMMode)
+		}
+		logger.Info("Azure HSM configuration", "mode", config.AzureHSMMode, "url", config.AzureHSMURL)
+	}
+
+	// Step 1: First try to unseal an existing encryption key
 	var encryptionKey []byte
 	var found bool
 	var err error
@@ -72,11 +85,35 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		return encryptionKey, nil
 	}
 
-	// If no existing key is available, we look at `encryptionKeySource`
-	// If no encryptionKeySource is provided, fail since we couldn't unseal an existing key
+	// Step 2: Try to recover from Azure HSM if recovery mode is enabled
+	if config.AzureHSMMode == "recovery" || config.AzureHSMMode == "both" {
+		logger.Info("attempting HSM recovery", "mode", config.AzureHSMMode)
+		encryptionKey, found, err = recoverKeyFromHSM(config, logger)
+		if err != nil {
+			// HSM recovery failure is not fatal - log warning and continue to generate new key
+			logger.Warn("failed to recover key from HSM, will generate new key", "error", err)
+		}
+
+		if found {
+			logger.Info("successfully recovered encryption key from Azure HSM")
+
+			// Seal the recovered key locally
+			err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave, logger)
+			if err != nil {
+				logger.Crit("unable to seal recovered encryption key", log.ErrKey, err)
+				return nil, err
+			}
+			logger.Info("sealed recovered encryption key to local storage")
+
+			return encryptionKey, nil
+		}
+	}
+
+	// Step 3: No existing key found (neither local nor HSM), generate or exchange
+	// If no encryptionKeySource is provided, fail since we couldn't unseal an existing key or recover from HSM
 	if config.EncryptionKeySource == "" {
-		logger.Crit("no sealed encryption key found and no key source provided", log.ErrKey, err)
-		return nil, fmt.Errorf("no sealed encryption key found: %w", err)
+		logger.Crit("no sealed encryption key found, HSM recovery failed/disabled, and no key source provided", log.ErrKey, err)
+		return nil, fmt.Errorf("no sealed encryption key found and no key source provided: %w", err)
 	}
 
 	// If the "new" keyword is used for the encryptionKeySource, generate a new random encryption key
@@ -97,13 +134,25 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		}
 	}
 
-	// Seal the key that we generated / got from the key exchange from another enclave
+	// Step 4: Seal the key locally (that we generated or got from key exchange)
 	err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave, logger)
 	if err != nil {
 		logger.Crit("unable to seal encryption key", log.ErrKey, err)
 		return nil, err
 	}
-	logger.Info("sealed new encryption key")
+	logger.Info("sealed new encryption key to local storage")
+
+	// Step 5: Backup to Azure HSM if backup mode is enabled
+	if config.AzureHSMMode == "backup" || config.AzureHSMMode == "both" {
+		logger.Info("backing up key to Azure HSM", "mode", config.AzureHSMMode)
+		err = backupKeyToHSM(encryptionKey, config, logger)
+		if err != nil {
+			// Backup failure is FATAL - fail completely
+			logger.Crit("failed to backup encryption key to Azure HSM", log.ErrKey, err)
+			return nil, fmt.Errorf("failed to backup encryption key to Azure HSM: %w", err)
+		}
+		logger.Info("successfully backed up encryption key to Azure HSM")
+	}
 
 	return encryptionKey, nil
 }
@@ -382,4 +431,110 @@ func DeserializeAttestationReport(data []byte) (*tencommon.AttestationReport, er
 		return nil, err
 	}
 	return &report, nil
+}
+
+// createHSMClient creates an Azure Managed HSM client using Managed Identity
+func createHSMClient(hsmURL string) (*azkeys.Client, error) {
+	if hsmURL == "" {
+		return nil, fmt.Errorf("HSM URL is empty")
+	}
+
+	// Use DefaultAzureCredential which automatically uses AKS Managed Identity
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Azure credential: %w", err)
+	}
+
+	client, err := azkeys.NewClient(hsmURL, cred, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create HSM client: %w", err)
+	}
+
+	return client, nil
+}
+
+// backupKeyToHSM backs up the encryption key to Azure Managed HSM
+func backupKeyToHSM(key []byte, config common.Config, logger gethlog.Logger) error {
+	logger.Info("backing up encryption key to Azure HSM", "hsm_url", config.AzureHSMURL)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	client, err := createHSMClient(config.AzureHSMURL)
+	if err != nil {
+		return fmt.Errorf("failed to create HSM client: %w", err)
+	}
+
+	// Check if key already exists in HSM
+	_, err = client.GetKey(ctx, AzureHSMKeyName, "", nil)
+	if err == nil {
+		logger.Warn("key already exists in HSM, skipping backup", "key_name", AzureHSMKeyName)
+		return nil
+	}
+
+	// Define key operations
+	encryptOp := azkeys.KeyOperationEncrypt
+	decryptOp := azkeys.KeyOperationDecrypt
+	wrapOp := azkeys.KeyOperationWrapKey
+	unwrapOp := azkeys.KeyOperationUnwrapKey
+	keyOps := []*azkeys.KeyOperation{
+		&encryptOp,
+		&decryptOp,
+		&wrapOp,
+		&unwrapOp,
+	}
+
+	// Import key to HSM
+	keyType := azkeys.KeyTypeOct
+	enabled := true
+	params := azkeys.ImportKeyParameters{
+		Key: &azkeys.JSONWebKey{
+			Kty:    &keyType, // Octet key type for HSM
+			K:      key,      // Use the raw key bytes directly
+			KeyOps: keyOps,
+		},
+		KeyAttributes: &azkeys.KeyAttributes{
+			Enabled: &enabled,
+		},
+	}
+
+	_, err = client.ImportKey(ctx, AzureHSMKeyName, params, nil)
+	if err != nil {
+		return fmt.Errorf("failed to import key to HSM: %w", err)
+	}
+
+	logger.Info("successfully backed up encryption key to Azure HSM", "key_name", AzureHSMKeyName)
+	return nil
+}
+
+// recoverKeyFromHSM recovers the encryption key from Azure Managed HSM
+// Returns (key, found, error)
+func recoverKeyFromHSM(config common.Config, logger gethlog.Logger) ([]byte, bool, error) {
+	logger.Info("attempting to recover encryption key from Azure HSM", "hsm_url", config.AzureHSMURL)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	client, err := createHSMClient(config.AzureHSMURL)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create HSM client: %w", err)
+	}
+
+	// Get the key from HSM
+	resp, err := client.GetKey(ctx, AzureHSMKeyName, "", nil)
+	if err != nil {
+		// Key not found in HSM is not a fatal error during recovery
+		logger.Warn("key not found in HSM", "key_name", AzureHSMKeyName, "error", err)
+		return nil, false, nil
+	}
+
+	if resp.Key.K == nil || len(resp.Key.K) == 0 {
+		return nil, false, fmt.Errorf("key material not available in HSM response")
+	}
+
+	// The key material is already in bytes format
+	key := resp.Key.K
+
+	logger.Info("successfully recovered encryption key from Azure HSM", "key_name", AzureHSMKeyName)
+	return key, true, nil
 }

@@ -100,6 +100,14 @@ const (
 	frontendURLFlagName    = "frontendURL"
 	frontendURLFlagDefault = "https://uat-gw-testnet.ten.xyz"
 	frontendURLFlagUsage   = "The frontend URL that is allowed to access restricted CORS endpoints. Default: https://uat-gw-testnet.ten.xyz"
+
+	azureHSMModeFlagName    = "azureHSMMode"
+	azureHSMModeFlagDefault = "disabled"
+	azureHSMModeFlagUsage   = "Azure HSM mode: 'disabled', 'backup', 'recovery', or 'both'. Default: disabled"
+
+	azureHSMURLFlagName    = "azureHSMURL"
+	azureHSMURLFlagDefault = ""
+	azureHSMURLFlagUsage   = "Azure Managed HSM URL (e.g., https://uat-ten-hsm.managedhsm.azure.net/)"
 )
 
 // getLogLevelInt converts string log level to integer value
@@ -146,6 +154,8 @@ func parseCLIArgs() wecommon.Config {
 	encryptingCertificateEnabled := flag.Bool(encryptingCertificateEnabledFlagName, encryptingCertificateEnabledFlagDefault, encryptingCertificateEnabledFlagUsage)
 	disableCaching := flag.Bool(disableCachingFlagName, disableCachingFlagDefault, disableCachingFlagUsage)
 	frontendURL := flag.String(frontendURLFlagName, frontendURLFlagDefault, frontendURLFlagUsage)
+	azureHSMMode := flag.String(azureHSMModeFlagName, azureHSMModeFlagDefault, azureHSMModeFlagUsage)
+	azureHSMURL := flag.String(azureHSMURLFlagName, azureHSMURLFlagDefault, azureHSMURLFlagUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -171,5 +181,7 @@ func parseCLIArgs() wecommon.Config {
 		EncryptingCertificateEnabled:   *encryptingCertificateEnabled,
 		DisableCaching:                 *disableCaching,
 		FrontendURL:                    *frontendURL,
+		AzureHSMMode:                   *azureHSMMode,
+		AzureHSMURL:                    *azureHSMURL,
 	}
 }

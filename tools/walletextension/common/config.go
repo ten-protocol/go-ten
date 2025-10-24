@@ -32,4 +32,6 @@ type Config struct {
 	EncryptingCertificateEnabled bool
 	DisableCaching               bool
 	FrontendURL                  string // Frontend URL allowed for restrictive CORS
+	AzureHSMMode                 string
+	AzureHSMURL                  string
 }
