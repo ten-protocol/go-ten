@@ -31,8 +31,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 	if baseURL == "" {
 		return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
 	}
-	dbURL := baseURL + defaultDatabase
-
+	dbURL := appendDBNamePreserveQuery(baseURL, defaultDatabase)
 	dbName = strings.ToLower(dbName)
 
 	// default postgres database
@@ -58,7 +57,7 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 	// close the default postgres connection explicitly before opening the target DB
 	defaultDB.Close()
 
-	dbURL = fmt.Sprintf("%s%s", baseURL, dbName)
+	dbURL = appendDBNamePreserveQuery(baseURL, dbName)
 
 	// open connection to target DB
 	db, err := sqlx.Open("postgres", dbURL)
@@ -105,4 +104,23 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 
 	logger.Info("Registered custom PostgreSQL driver with panic handling", "driver_name", driverName)
 	return driverName
+}
+
+// appendDBNamePreserveQuery appends the database name as a path segment before any existing query string.
+// It preserves query parameters like sslmode and avoids concatenating the name into the query value. This is
+// needed for running postgres locally.
+func appendDBNamePreserveQuery(base, name string) string {
+	// Split base into path and query components
+	if idx := strings.Index(base, "?"); idx >= 0 {
+		path := base[:idx]
+		query := base[idx:]
+		if !strings.HasSuffix(path, "/") {
+			path += "/"
+		}
+		return path + name + query
+	}
+	if !strings.HasSuffix(base, "/") {
+		base += "/"
+	}
+	return base + name
 }
