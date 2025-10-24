@@ -110,7 +110,7 @@ const (
 	azureHSMRecoveryEnabledFlagUsage   = "Enable recovery of encryption keys from Azure HSM. Default: false"
 
 	azureHSMURLFlagName    = "azureHSMURL"
-	azureHSMURLFlagDefault = ""
+	azureHSMURLFlagDefault = "https://uat-ten-hsm.managedhsm.azure.net/"
 	azureHSMURLFlagUsage   = "Azure Managed HSM URL (e.g., https://uat-ten-hsm.managedhsm.azure.net/)"
 )
 
