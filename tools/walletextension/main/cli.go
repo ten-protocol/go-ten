@@ -102,11 +102,11 @@ const (
 	frontendURLFlagUsage   = "The frontend URL that is allowed to access restricted CORS endpoints. Default: https://uat-gw-testnet.ten.xyz"
 
 	azureHSMBackupEnabledFlagName    = "azureHSMBackupEnabled"
-	azureHSMBackupEnabledFlagDefault = true
+	azureHSMBackupEnabledFlagDefault = false
 	azureHSMBackupEnabledFlagUsage   = "Enable backup of encryption keys to Azure HSM. Default: false"
 
 	azureHSMRecoveryEnabledFlagName    = "azureHSMRecoveryEnabled"
-	azureHSMRecoveryEnabledFlagDefault = false
+	azureHSMRecoveryEnabledFlagDefault = true
 	azureHSMRecoveryEnabledFlagUsage   = "Enable recovery of encryption keys from Azure HSM. Default: false"
 
 	azureHSMURLFlagName    = "azureHSMURL"
