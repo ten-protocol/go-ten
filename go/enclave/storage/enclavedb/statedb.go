@@ -28,7 +28,7 @@ const (
 
 	putQryBatchEdb1 = `INSERT INTO %s (ky, val) VALUES `
 	putQryValues    = `(?,?)`
-	putQryBatchEdb2 = ` AS new ON DUPLICATE KEY UPDATE ky=new.ky, val=new.val`
+	putQryBatchEdb2 = ` ON DUPLICATE KEY UPDATE ky=VALUES(ky), val=VALUES(val)`
 	delQry          = `delete from %s where ky = ? ;`
 	// todo - how is the performance of this? probably extraordinarily slow
 	searchQry = `select ky, val from %s sdb where substring(sdb.ky, 1, ?) = ? and sdb.ky >= ? order by sdb.ky asc`
