@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/security/keyvault/azkeys"
 	"github.com/edgelesssys/ego/enclave"
@@ -497,6 +498,26 @@ func backupKeyToHSM(key []byte, config common.Config, logger gethlog.Logger) err
 		&unwrapOp,
 	}
 
+	// Create a simple release policy that allows authenticated access
+	releasePolicy := &azkeys.KeyReleasePolicy{
+		ContentType: to.Ptr("application/json; charset=utf-8"),
+		EncodedPolicy: []byte(`{
+		"version": "1.0.0",
+		"anyOf": [
+			{
+				"allOf": [
+					{
+						"claim": "iss",
+						"condition": "equals",
+						"value": "https://sharedeus.eus.attest.azure.net"
+					}
+				],
+				"authority": "https://sharedeus.eus.attest.azure.net"
+			}
+		]
+	}`),
+	}
+
 	// Import key to HSM
 	keyType := azkeys.KeyTypeOctHSM
 	enabled := true
@@ -511,6 +532,7 @@ func backupKeyToHSM(key []byte, config common.Config, logger gethlog.Logger) err
 			Enabled:    &enabled,
 			Exportable: &exportable,
 		},
+		ReleasePolicy: releasePolicy,
 	}
 
 	_, err = client.ImportKey(ctx, AzureHSMKeyName, params, nil)
