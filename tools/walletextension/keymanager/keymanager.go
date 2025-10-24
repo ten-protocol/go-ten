@@ -53,7 +53,7 @@ type KeyExchangeResponse struct {
 // - If no existing key and HSM recovery is enabled, try to recover from HSM
 // - If no existing key is available, we look at `encryptionKeySource`, if it is `new` we generate a new one, if it is a URL we attempt to perform key exchange
 // - Finally, we seal the key locally (and if there was an existing key file that could not be unsealed, we store it as a backup)
-// - If HSM backup is enabled, we backup the key to Azure HSM (and fail if backup fails)
+// - If HSM backup is enabled, we always backup the key to Azure HSM (whether existing or newly generated)
 func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, error) {
 	// check if we are using sqlite database and no encryption key needed
 	if config.DBType == "sqlite" {
@@ -82,6 +82,19 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 
 	if found {
 		logger.Info("successfully unsealed existing encryption key")
+
+		// Always backup to HSM if backup is enabled, even for existing keys
+		if config.AzureHSMBackupEnabled {
+			logger.Info("backing up existing key to Azure HSM")
+			err = backupKeyToHSM(encryptionKey, config, logger)
+			if err != nil {
+				// Backup failure is FATAL - fail completely
+				logger.Crit("failed to backup existing encryption key to Azure HSM", log.ErrKey, err)
+				return nil, fmt.Errorf("failed to backup existing encryption key to Azure HSM: %w", err)
+			}
+			logger.Info("successfully backed up existing encryption key to Azure HSM")
+		}
+
 		return encryptionKey, nil
 	}
 
