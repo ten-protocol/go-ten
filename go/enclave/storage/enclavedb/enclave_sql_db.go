@@ -1,6 +1,7 @@
 package enclavedb
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -84,7 +85,14 @@ func (sqlDB *enclaveDB) Has(key []byte) (bool, error) {
 func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
-	return Get(ctx, sqlDB.sqldb, key)
+	val, err := Get(ctx, sqlDB.sqldb, key)
+
+	trieJournalKey := []byte("TrieJournal")
+	if bytes.Equal(key, trieJournalKey) {
+		sqlDB.logger.Debug("TrieJournal ", "key", key, " value", val)
+	}
+
+	return val, err
 }
 
 func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
@@ -96,7 +104,12 @@ func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
 	}
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
-	return Put(ctx, sqlDB.rwSqldb, key, value)
+	err := Put(ctx, sqlDB.rwSqldb, key, value)
+	trieJournalKey := []byte("TrieJournal")
+	if bytes.Equal(key, trieJournalKey) {
+		sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err)
+	}
+	return err
 }
 
 func (sqlDB *enclaveDB) Delete(key []byte) error {
