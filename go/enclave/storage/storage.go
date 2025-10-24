@@ -93,6 +93,13 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	}
 }
 
+func (s *storageImpl) CleanStateDB() {
+	_ = s.trieDB.Close()
+	cfg := triedb.VerkleDefaults
+	s.trieDB = triedb.NewDatabase(s.db, cfg)
+	s.stateCache = state.NewDatabase(s.trieDB, nil)
+}
+
 func (s *storageImpl) Close() error {
 	head, err := s.FetchHeadBatchHeader(context.Background())
 	if err != nil {
