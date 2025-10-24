@@ -192,22 +192,21 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 	result, rollupMetadata, err := e.ingestL1Block(ctx, blockData)
 	if err != nil {
 		// only critical errors ie duplicate block or signed rollup error are returned so we can continue processing if non-critical
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("CRITICAL ERRROR could not submit L1 block. Cause: %w", err))
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
 	if result.IsFork() {
-		e.logger.Debug("FORK DETECTED ON L1")
 		e.logger.Info(fmt.Sprintf("Detected fork at block %s with height %d", blockHeader.Hash(), blockHeader.Number))
 	}
 
 	err = e.service.OnL1Block(ctx, blockHeader, result)
 	if err != nil {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("ON L1 BLOCK FAILEDcould not submit L1 block. Cause: %w", err))
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
 	err = e.storage.UpdateProcessed(ctx, blockHeader.Hash())
 	if err != nil {
-		return nil, e.rejectBlockErr(ctx, fmt.Errorf("UPDATE PROCESS FAILED could not submit L1 block. Cause: %w", err))
+		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
 	// in phase 1, only if the enclave is a sequencer, it can respond to shared secret requests

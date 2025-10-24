@@ -261,18 +261,18 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 	// order sidecars to match requested hashes
 	orderedSidecars := make([]*BlobSidecar, len(hashes))
 	for i, hash := range hashes {
-		var matched *BlobSidecar
-		for _, sc := range blobSidecars {
-			versionedHash := KZGToVersionedHash(kzg4844.Commitment(sc.KZGCommitment))
+		var matchedSidecar *BlobSidecar
+		for _, sidecar := range blobSidecars {
+			versionedHash := KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
 			if versionedHash == hash {
-				matched = sc
+				matchedSidecar = sidecar
 				break
 			}
 		}
-		if matched == nil {
+		if matchedSidecar == nil {
 			return nil, fmt.Errorf("no matching BlobSidecar found for hash %s", hash.Hex())
 		}
-		orderedSidecars[i] = matched
+		orderedSidecars[i] = matchedSidecar
 	}
 
 	blobs, err := verifyBlobsMatchHashes(orderedSidecars, hashes)
