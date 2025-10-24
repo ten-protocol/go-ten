@@ -108,13 +108,17 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 		for i := range shortKeys {
 			values = append(values, shortKeys[i], shortVals[i])
 		}
-		_, err := tx.ExecContext(ctx, update, values...)
+		res, err := tx.ExecContext(ctx, update, values...)
 		if err != nil {
 			// for some unknown reason, the mysql-panic driver doesn't intercept this error
 			// until we figure out the reason, we'll panic here to bounce the server
 			if errors.Is(err, mysql.ErrInvalidConn) {
 				panic("Invalid connection")
 			}
+			return fmt.Errorf("failed to exec short k/v transaction statement. kv=%v, err=%w", values, err)
+		}
+		nrRows, _ := res.RowsAffected()
+		if nrRows != int64(len(shortKeys)) {
 			return fmt.Errorf("failed to exec short k/v transaction statement. kv=%v, err=%w", values, err)
 		}
 	}
@@ -132,10 +136,15 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 		for i := range longKeys {
 			values = append(values, longKeys[i], longVals[i])
 		}
-		_, err := tx.ExecContext(ctx, update, values...)
+		res, err := tx.ExecContext(ctx, update, values...)
 		if err != nil {
 			return fmt.Errorf("failed to exec long k/v transaction statement. kv=%v, err=%w", values, err)
 		}
+		nrRows, _ := res.RowsAffected()
+		if nrRows != int64(len(longKeys)) {
+			return fmt.Errorf("failed to exec long k/v transaction statement. kv=%v, err=%w", values, err)
+		}
+
 	}
 
 	return nil
