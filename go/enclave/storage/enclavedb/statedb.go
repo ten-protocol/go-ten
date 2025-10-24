@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -18,10 +19,17 @@ const (
 	statedb64 = "statedb64" // the table used for larger keys
 	getQry    = `select sdb.val from %s sdb where sdb.ky = ? ;`
 	// `replace` will perform insert or replace if existing and this syntax works for both sqlite and edgeless db
-	putQry       = `replace into %s (ky, val) values(?, ?);`
-	putQryBatch  = `replace into %s (ky, val) values`
-	putQryValues = `(?,?)`
-	delQry       = `delete from %s where ky = ? ;`
+	putQrySqlite      = `replace into %s (ky, val) values(?, ?);`
+	putQryBatchSqlite = `replace into %s (ky, val) values`
+
+	//	INSERT INTO table_name (column1, column2, ...)
+	// VALUES (value1, value2, ...)
+	// ON DUPLICATE KEY UPDATE column1 = value1, column2 = value2;
+
+	putQryBatchEdb1 = `INSERT INTO %s (ky, val) VALUES `
+	putQryValues    = `(?,?)`
+	putQryBatchEdb2 = ` AS new ON DUPLICATE KEY UPDATE ky=new.ky, val=new.val`
+	delQry          = `delete from %s where ky = ? ;`
 	// todo - how is the performance of this? probably extraordinarily slow
 	searchQry = `select ky, val from %s sdb where substring(sdb.ky, 1, ?) = ? and sdb.ky >= ? order by sdb.ky asc`
 )
@@ -59,15 +67,17 @@ func Get(ctx context.Context, db *sqlx.DB, key []byte) ([]byte, error) {
 }
 
 func Put(ctx context.Context, db *sqlx.DB, key []byte, value []byte) error {
-	res, err := db.ExecContext(ctx, fmt.Sprintf(putQry, getTable(key)), key, value)
+	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
 	}
-	rows, _ := res.RowsAffected()
-	if rows < 1 {
-		return fmt.Errorf("failed to put key-value pair")
+	defer tx.Rollback()
+	err = PutKeyValues(ctx, tx, [][]byte{key}, [][]byte{value})
+	if err != nil {
+		return err
 	}
-	return nil
+	err = tx.Commit()
+	return err
 }
 
 func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte) error {
@@ -93,7 +103,12 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 
 	// Process short keys
 	if len(shortKeys) > 0 {
-		update := fmt.Sprintf(putQryBatch, statedb32) + repeat(putQryValues, ",", len(shortKeys))
+		var update string
+		if isMysql(tx.DriverName()) {
+			update = fmt.Sprintf(putQryBatchEdb1, statedb32) + repeat(putQryValues, ",", len(shortKeys)) + putQryBatchEdb2
+		} else {
+			update = fmt.Sprintf(putQryBatchSqlite, statedb32) + repeat(putQryValues, ",", len(shortKeys))
+		}
 		values := make([]any, 0)
 		for i := range shortKeys {
 			values = append(values, shortKeys[i], shortVals[i])
@@ -111,7 +126,13 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 
 	// Process long keys
 	if len(longKeys) > 0 {
-		update := fmt.Sprintf(putQryBatch, statedb64) + repeat(putQryValues, ",", len(longKeys))
+		var update string
+		if isMysql(tx.DriverName()) {
+			update = fmt.Sprintf(putQryBatchEdb1, statedb64) + repeat(putQryValues, ",", len(longKeys)) + putQryBatchEdb2
+		} else {
+			update = fmt.Sprintf(putQryBatchSqlite, statedb64) + repeat(putQryValues, ",", len(longKeys))
+		}
+
 		values := make([]any, 0)
 		for i := range longKeys {
 			values = append(values, longKeys[i], longVals[i])
@@ -160,4 +181,8 @@ func NewIterator(ctx context.Context, db *sqlx.DB, prefix []byte, start []byte) 
 	return &iterator{
 		rows: rows,
 	}
+}
+
+func isMysql(driverName string) bool {
+	return strings.Index(driverName, "mysql") == 0
 }

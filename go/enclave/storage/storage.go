@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
@@ -111,7 +110,6 @@ func (s *storageImpl) closeTrieDB() {
 func (s *storageImpl) CleanStateDB() {
 	s.closeTrieDB()
 
-	time.Sleep(250 * time.Millisecond)
 	cfg := triedb.VerkleDefaults
 	s.trieDB = triedb.NewDatabase(s.db, cfg)
 	s.stateCache = state.NewDatabase(s.trieDB, nil)
