@@ -498,12 +498,12 @@ func backupKeyToHSM(key []byte, config common.Config, logger gethlog.Logger) err
 	}
 
 	// Import key to HSM
-	keyType := azkeys.KeyTypeOct
+	keyType := azkeys.KeyTypeOctHSM
 	enabled := true
 	params := azkeys.ImportKeyParameters{
 		Key: &azkeys.JSONWebKey{
-			Kty:    &keyType, // Octet key type for HSM
-			K:      key,      // Use the raw key bytes directly
+			Kty:    &keyType,
+			K:      key,
 			KeyOps: keyOps,
 		},
 		KeyAttributes: &azkeys.KeyAttributes{
