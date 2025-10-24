@@ -631,6 +631,11 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 
 	// for state root mismatch, exit early, before storing the corrupted state
 	resultRoot := ec.stateDB.IntermediateRoot(true)
+
+	// todo - remove - used for testing
+	// randNum, _ := rand.Int(rand.Reader, big.NewInt(5))
+	// if ec.ExpectedRoot != nil && randNum.Int64() == 1 && ec.SequencerNo.Uint64() > 200 {
+
 	if ec.ExpectedRoot != nil && *ec.ExpectedRoot != resultRoot && ec.SequencerNo.Uint64() > common.L2SysContractGenesisSeqNo+1 {
 		// kill the enclave so it restarts with a clean state
 		executor.storage.CleanStateDB()

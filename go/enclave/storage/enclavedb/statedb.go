@@ -18,7 +18,7 @@ const (
 	statedb64 = "statedb64" // the table used for larger keys
 	getQry    = `select sdb.val from %s sdb where sdb.ky = ? ;`
 	// `replace` will perform insert or replace if existing and this syntax works for both sqlite and edgeless db
-	putQry       = `replace into %s (ky,  val) values(?,  ?);`
+	putQry       = `replace into %s (ky, val) values(?, ?);`
 	putQryBatch  = `replace into %s (ky, val) values`
 	putQryValues = `(?,?)`
 	delQry       = `delete from %s where ky = ? ;`
@@ -59,8 +59,15 @@ func Get(ctx context.Context, db *sqlx.DB, key []byte) ([]byte, error) {
 }
 
 func Put(ctx context.Context, db *sqlx.DB, key []byte, value []byte) error {
-	_, err := db.ExecContext(ctx, fmt.Sprintf(putQry, getTable(key)), key, value)
-	return err
+	res, err := db.ExecContext(ctx, fmt.Sprintf(putQry, getTable(key)), key, value)
+	if err != nil {
+		return err
+	}
+	rows, _ := res.RowsAffected()
+	if rows < 1 {
+		return fmt.Errorf("failed to put key-value pair")
+	}
+	return nil
 }
 
 func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte) error {

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
@@ -93,33 +94,31 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	}
 }
 
-func (s *storageImpl) CleanStateDB() {
+func (s *storageImpl) closeTrieDB() {
 	head, err := s.FetchHeadBatchHeader(context.Background())
 	if err != nil {
 		s.logger.Error("Failed to fetch head batch header", "err", err)
 	}
-	if err := s.trieDB.Journal(head.Root); err != nil {
+	if err = s.trieDB.Journal(head.Root); err != nil {
 		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
 	}
-
 	_ = s.trieDB.Close()
+}
+
+func (s *storageImpl) CleanStateDB() {
+	s.closeTrieDB()
+
+	time.Sleep(100 * time.Millisecond)
 	cfg := triedb.VerkleDefaults
 	s.trieDB = triedb.NewDatabase(s.db, cfg)
 	s.stateCache = state.NewDatabase(s.trieDB, nil)
 }
 
 func (s *storageImpl) Close() error {
-	head, err := s.FetchHeadBatchHeader(context.Background())
-	if err != nil {
-		s.logger.Error("Failed to fetch head batch header", "err", err)
-	}
-	if err := s.trieDB.Journal(head.Root); err != nil {
-		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
-	}
+	s.closeTrieDB()
 
 	s.cachingService.Stop()
 	_ = s.preparedStatementCache.Clear()
-	_ = s.trieDB.Close()
 	return s.db.GetSQLDB().Close()
 }
 
