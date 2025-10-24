@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net/http"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -137,6 +138,12 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Host.Log.Level = 1
 		tenCfg.Enclave.Log.Level = 1
 		tenCfg.Enclave.RPC.BindAddress = fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)
+
+		// If TEN_TEST_POSTGRES_URL is provided, run hosts against Postgres instead of sqlite for this sim node
+		if url := os.Getenv("TEN_TEST_POSTGRES_URL"); url != "" {
+			tenCfg.Host.DB.UseInMemory = false
+			tenCfg.Host.DB.PostgresHost = url
+		}
 
 		// create the nodes
 		nodes[i] = noderunner.NewInMemNode(tenCfg)
