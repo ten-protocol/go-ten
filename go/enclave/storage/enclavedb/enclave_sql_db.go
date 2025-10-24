@@ -89,7 +89,7 @@ func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
 
 	trieJournalKey := []byte("vTrieJournal")
 	if bytes.Equal(key, trieJournalKey) {
-		sqlDB.logger.Debug("TrieJournal ", "key", key, " value", val)
+		sqlDB.logger.Debug("TrieJournal GET", "key", key, "err", err, " len_val", len(val))
 	}
 
 	return val, err
@@ -107,7 +107,7 @@ func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
 	err := Put(ctx, sqlDB.rwSqldb, key, value)
 	trieJournalKey := []byte("vTrieJournal")
 	if bytes.Equal(key, trieJournalKey) {
-		sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err)
+		sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err, "len_val", len(value))
 	}
 	return err
 }

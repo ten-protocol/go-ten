@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
@@ -102,10 +103,12 @@ func (s *storageImpl) closeTrieDB() {
 	if err = s.trieDB.Journal(head.Root); err != nil {
 		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
 	}
+	time.Sleep(100 * time.Millisecond)
 	err = s.trieDB.Close()
 	if err != nil {
 		s.logger.Error("Failed to close triedb", "err", err)
 	}
+	time.Sleep(100 * time.Millisecond)
 }
 
 func (s *storageImpl) CleanStateDB() {

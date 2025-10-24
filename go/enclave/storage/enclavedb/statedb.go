@@ -17,19 +17,13 @@ import (
 const (
 	statedb32 = "statedb32" // the table used for 32 byte keys - 99.9% of the keys are here
 	statedb64 = "statedb64" // the table used for larger keys
-	getQry    = `select sdb.val from %s sdb where sdb.ky = ? ;`
+	getQry    = `select sdb.val from %s sdb where sdb.ky = ?`
 	// `replace` will perform insert or replace if existing and this syntax works for both sqlite and edgeless db
-	putQrySqlite      = `replace into %s (ky, val) values(?, ?);`
 	putQryBatchSqlite = `replace into %s (ky, val) values`
-
-	//	INSERT INTO table_name (column1, column2, ...)
-	// VALUES (value1, value2, ...)
-	// ON DUPLICATE KEY UPDATE column1 = value1, column2 = value2;
-
-	putQryBatchEdb1 = `INSERT INTO %s (ky, val) VALUES `
-	putQryValues    = `(?,?)`
-	putQryBatchEdb2 = ` ON DUPLICATE KEY UPDATE ky=VALUES(ky), val=VALUES(val)`
-	delQry          = `delete from %s where ky = ? ;`
+	putQryBatchEdb1   = `INSERT INTO %s (ky, val) VALUES `
+	putQryValues      = `(?,?)`
+	putQryBatchEdb2   = ` ON DUPLICATE KEY UPDATE ky=VALUES(ky), val=VALUES(val)`
+	delQry            = `delete from %s where ky = ?`
 	// todo - how is the performance of this? probably extraordinarily slow
 	searchQry = `select ky, val from %s sdb where substring(sdb.ky, 1, ?) = ? and sdb.ky >= ? order by sdb.ky asc`
 )
@@ -55,7 +49,8 @@ func Has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
 func Get(ctx context.Context, db *sqlx.DB, key []byte) ([]byte, error) {
 	var res []byte
 
-	err := db.QueryRowContext(ctx, fmt.Sprintf(getQry, getTable(key)), key).Scan(&res)
+	q := fmt.Sprintf(getQry, getTable(key))
+	err := db.QueryRowContext(ctx, q, key).Scan(&res)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
