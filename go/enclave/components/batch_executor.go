@@ -632,6 +632,8 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 	// for state root mismatch, exit early, before storing the corrupted state
 	resultRoot := ec.stateDB.IntermediateRoot(true)
 	if ec.ExpectedRoot != nil && *ec.ExpectedRoot != resultRoot && ec.SequencerNo.Uint64() > common.L2SysContractGenesisSeqNo+1 {
+		// kill the enclave so it restarts with a clean state
+		executor.logger.Crit(fmt.Sprintf("batch root mismatch for batch seq %d. Expected: %s, actual: %s", ec.currentBatch.SeqNo(), ec.ExpectedRoot, resultRoot))
 		return nil, fmt.Errorf("batch root mismatch for batch seq %d. Expected: %s, actual: %s", ec.currentBatch.SeqNo(), ec.ExpectedRoot, resultRoot)
 	}
 
