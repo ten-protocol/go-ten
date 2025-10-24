@@ -647,6 +647,10 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
 	}
 
+	if err := ec.stateDB.Database().TrieDB().Commit(resultRoot, true); err != nil {
+		executor.logger.Debug("Failed to commit state root", "root", resultRoot, log.ErrKey, err)
+	}
+
 	batch.Header.Root = rootHash
 
 	batch.ResetHash()
