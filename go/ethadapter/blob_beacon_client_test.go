@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -19,11 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common"
-)
-
-const (
-	vHash1 = "0x012b7a6a22399aa9eecd8eda6ec658679e81be21af6ff296116aee205e2218f2"
-	vHash2 = "0x012374e04a848591844b75bc2f500318cf640552379b5e3a1a77bb828620690e"
 )
 
 func TestBlobsFromSidecars(t *testing.T) {
@@ -127,15 +124,38 @@ func TestBlobEncodingLarge(t *testing.T) {
 
 func TestBlobArchiveClient(t *testing.T) {
 	t.Skipf("TODO need to fix this")
-	client := NewArchivalHTTPClient(new(http.Client), "https://eth-beacon-chain.drpc.org/rest/")
-	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
+	client := NewBeaconHTTPClient(new(http.Client), testlog.Logger(), "https://ethereum-sepolia-beacon-api.publicnode.com")
+	vHashes := []gethcommon.Hash{}
 	ctx := context.Background()
 
-	resp, err := client.BeaconBlobSidecars(ctx, 1, vHashes)
+	resp, err := client.BeaconBlobSidecars(ctx, 8782235, vHashes)
 	require.NoError(t, err)
 
-	require.Len(t, resp.Data, 2)
+	require.Len(t, resp.Data, 15)
 	require.NotNil(t, client)
+}
+
+func TestBlobClient(t *testing.T) {
+	t.Skipf("For local testing, set the API_KEY in the environment variable and run the test")
+	client := NewBeaconHTTPClient(new(http.Client), testlog.Logger(), "https://lb.drpc.live/eth-beacon-chain-sepolia/{API_KEY}/")
+	var vHashes []gethcommon.Hash
+	ctx := context.Background()
+
+	resp, err := client.BeaconBlobSidecars(ctx,
+		8782235, vHashes)
+	require.NoError(t, err)
+
+	require.Len(t, resp.Data, 15)
+	require.NotNil(t, client)
+
+	// derive versioned blob hashes from the response and validate with BlobsFromSidecars
+	hashes := make([]gethcommon.Hash, len(resp.Data))
+	for i, sc := range resp.Data {
+		hashes[i] = KZGToVersionedHash(kzg4844.Commitment(sc.KZGCommitment))
+	}
+	blobs, err := BlobsFromSidecars(resp.Data, hashes)
+	require.NoError(t, err)
+	require.Len(t, blobs, len(hashes))
 }
 
 func TestBeaconClientFallback(t *testing.T) {

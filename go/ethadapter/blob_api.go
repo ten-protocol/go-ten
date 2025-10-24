@@ -28,8 +28,28 @@ type BlobSidecar struct {
 	// without needing the entire blob data
 	// It's used to prove that the commitment corresponds to the actual blob data
 	KZGProof Bytes48 `json:"kzg_proof"`
+
+	// SignedBlockHeader is the consensus header (message + proposer BLS signature) for this block
+	// This is currently unused and will be used in the future to verify block inclusion
+	SignedBlockHeader SignedBeaconBlockHeader `json:"signed_block_header"`
+
+	// InclusionProof is an SSZ Merkle branch proving commitment inclusion under message.body_root (not KZG)
+	// Note this is NOT a KZG proof and cannot be used with VerifyBlobProof/ VerifyCellProofs
+	InclusionProof []Bytes32 `json:"kzg_commitment_inclusion_proof"`
 }
 
+type SignedBeaconBlockHeader struct {
+	Message   BeaconBlockHeader `json:"message"`
+	Signature hexutil.Bytes     `json:"signature"`
+}
+
+type BeaconBlockHeader struct {
+	Slot          Uint64String `json:"slot"`
+	ProposerIndex Uint64String `json:"proposer_index"`
+	ParentRoot    Bytes32      `json:"parent_root"`
+	StateRoot     Bytes32      `json:"state_root"`
+	BodyRoot      Bytes32      `json:"body_root"`
+}
 type APIGetBlobSidecarsResponse struct {
 	Data []*BlobSidecar `json:"data"`
 }
@@ -121,9 +141,4 @@ func (b Bytes32) String() string {
 func KZGToVersionedHash(commitment kzg4844.Commitment) (out common.Hash) {
 	hasher := sha256.New()
 	return kzg4844.CalcBlobHashV1(hasher, &commitment)
-}
-
-// VerifyBlobProof verifies that the given blob and proof corresponds to the given commitment
-func VerifyBlobProof(blob *kzg4844.Blob, commitment kzg4844.Commitment, proof kzg4844.Proof) error {
-	return kzg4844.VerifyBlobProof(blob, commitment, proof)
 }
