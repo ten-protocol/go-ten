@@ -31,7 +31,7 @@ import (
 const (
 	dataDir         = "/data"
 	RSAKeySize      = 2048
-	AzureHSMKeyName = "database-encryption-key" // Hardcoded HSM key name
+	AzureHSMKeyName = "gateway-db-encryption-key"
 )
 
 var encryptionKeyFile = filepath.Join(dataDir, "encryption-key.json")
@@ -500,6 +500,7 @@ func backupKeyToHSM(key []byte, config common.Config, logger gethlog.Logger) err
 	// Import key to HSM
 	keyType := azkeys.KeyTypeOctHSM
 	enabled := true
+	exportable := true
 	params := azkeys.ImportKeyParameters{
 		Key: &azkeys.JSONWebKey{
 			Kty:    &keyType,
@@ -507,7 +508,8 @@ func backupKeyToHSM(key []byte, config common.Config, logger gethlog.Logger) err
 			KeyOps: keyOps,
 		},
 		KeyAttributes: &azkeys.KeyAttributes{
-			Enabled: &enabled,
+			Enabled:    &enabled,
+			Exportable: &exportable,
 		},
 	}
 
