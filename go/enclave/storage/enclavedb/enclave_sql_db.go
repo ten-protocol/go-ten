@@ -83,9 +83,9 @@ func (sqlDB *enclaveDB) Has(key []byte) (bool, error) {
 }
 
 func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
-	defer cancelCtx()
-	val, err := Get(ctx, sqlDB.sqldb, key)
+	//ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
+	//defer cancelCtx()
+	val, err := Get(context.Background(), sqlDB.sqldb, key)
 
 	trieJournalKey := []byte("vTrieJournal")
 	if bytes.Equal(key, trieJournalKey) {

@@ -48,28 +48,14 @@ func Has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
 
 func Get(ctx context.Context, db *sqlx.DB, key []byte) ([]byte, error) {
 	var res []byte
-
 	q := fmt.Sprintf(getQry, getTable(key))
-	rows, err := db.QueryxContext(ctx, q, key)
+	err := db.QueryRowxContext(ctx, q, key).Scan(&res)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
 			return nil, errutil.ErrNotFound
 		}
 		return nil, err
-	}
-	defer rows.Close()
-	size := 0
-	for rows.Next() {
-		size++
-		if size > 1 {
-			panic("found multiple rows for key")
-			// return nil, fmt.Errorf("found multiple rows for key %x", key)
-		}
-		err = rows.Scan(&res)
-		if err != nil {
-			return nil, err
-		}
 	}
 	return res, nil
 }
@@ -85,6 +71,18 @@ func Put(ctx context.Context, db *sqlx.DB, key []byte, value []byte) error {
 		return err
 	}
 	err = tx.Commit()
+
+	// DEBUG: Verify immediately after commit with a fresh query
+	var storedVal []byte
+	verifyQuery := fmt.Sprintf(`SELECT val FROM %s WHERE ky = ?`, getTable(key))
+	verifyErr := db.QueryRowContext(ctx, verifyQuery, key).Scan(&storedVal)
+	if verifyErr != nil {
+		return fmt.Errorf("VERIFY FAILED after commit: %w", verifyErr)
+	}
+	if len(storedVal) != len(value) {
+		return fmt.Errorf("VERIFY MISMATCH: stored %d bytes, expected %d bytes", len(storedVal), len(value))
+	}
+
 	return err
 }
 
