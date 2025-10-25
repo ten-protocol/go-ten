@@ -642,6 +642,7 @@ jobs:
   argocd-delete-child-apps:
     needs: [validate-inputs, approval, deploy-l1-contracts]
     if: |
+      always() &&
       (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
       (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
@@ -775,6 +776,7 @@ jobs:
   argocd-sync-apps:
     needs: [validate-inputs, deploy-l1-contracts, argocd-delete-child-apps]
     if: |
+      always() &&
       (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
       (needs.argocd-delete-child-apps.result == 'success' || needs.argocd-delete-child-apps.result == 'skipped')
     runs-on: ubuntu-latest
@@ -969,7 +971,7 @@ jobs:
   # ============================================================================
   wait-argocd-healthy:
     needs: [validate-inputs, argocd-sync-apps]
-    if: success()
+    if: always() && success()
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -1044,6 +1046,7 @@ jobs:
   post-deployment:
     needs: [validate-inputs, wait-argocd-healthy]
     if: |
+      always() &&
       (needs.wait-argocd-healthy.result == 'success' || needs.wait-argocd-healthy.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
