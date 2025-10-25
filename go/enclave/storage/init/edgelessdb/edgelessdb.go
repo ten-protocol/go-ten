@@ -511,6 +511,10 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 				if err != nil {
 					logger.Crit("Failed to set rocksdb_lock_wait_timeout", log.ErrKey, err)
 				}
+				_, err = execer.ExecContext(context.Background(), "SET SESSION max_allowed_packet=67108864", nil)
+				if err != nil {
+					logger.Crit("Failed to set max_allowed_packet", log.ErrKey, err)
+				}
 			}),
 	)
 	return driverName
