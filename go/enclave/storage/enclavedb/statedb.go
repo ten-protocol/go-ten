@@ -50,13 +50,26 @@ func Get(ctx context.Context, db *sqlx.DB, key []byte) ([]byte, error) {
 	var res []byte
 
 	q := fmt.Sprintf(getQry, getTable(key))
-	err := db.QueryRowContext(ctx, q, key).Scan(&res)
+	rows, err := db.QueryxContext(ctx, q, key)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
 			return nil, errutil.ErrNotFound
 		}
 		return nil, err
+	}
+	defer rows.Close()
+	size := 0
+	for rows.Next() {
+		size++
+		if size > 1 {
+			panic("found multiple rows for key")
+			// return nil, fmt.Errorf("found multiple rows for key %x", key)
+		}
+		err = rows.Scan(&res)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return res, nil
 }
