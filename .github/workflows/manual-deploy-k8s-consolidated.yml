@@ -2,11 +2,6 @@ name: '[M] k8s Deploy Consolidated'
 run-name: '[M] Deploy ${{ github.event.inputs.testnet_type }} (${{ github.event.inputs.deployment_strategy }})'
 
 on:
-  push:
-    branches:
-      - feat/consolidated-deployment-workflow
-    paths:
-      - '.github/workflows/manual-deploy-k8s-consolidated.yml'
   workflow_dispatch:
     inputs:
       testnet_type:
@@ -40,47 +35,31 @@ on:
         required: false
         type: string
 
-      use_azure_hsm:
-        description: 'Use Azure HSM for enclave signing (yes/no)'
-        required: false
-        type: choice
-        options:
-          - 'no'
-          - 'yes'
-        default: 'no'
-
       confirmation:
         description: 'Type "confirm" if deploying sepolia or mainnet'
         required: false
         type: string
 
-      log_level:
-        description: 'Log Level (1-Error to 5-Trace)'
-        required: false
-        type: number
-        default: 3
-
-      max_gas_gwei:
-        description: 'Max gas price in gwei'
+      advanced_config:
+        description: 'Advanced options (format: log_level=3,max_gas_gwei=1.5,sync_timeout=10m,use_azure_hsm=no)'
         required: false
         type: string
-        default: '1.5'
+        default: 'log_level=3,max_gas_gwei=1.5,sync_timeout=10m,use_azure_hsm=no'
 
-      sync_timeout:
-        description: 'ArgoCD Sync Timeout'
+      skip_steps:
+        description: 'Skip specific steps for testing (comma-separated: l1-deployment, l2-trigger, image-build, config-update, argocd-delete)'
         required: false
-        type: choice
-        options:
-          - '5m'
-          - '10m'
-          - '15m'
-          - '20m'
-        default: '10m'
+        type: string
+        default: ''
 
       destructive_options:
         description: 'Destructive deployment options (format: node_selectors=sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4|additional_apps=gateway,tools,postgres-client)'
         required: false
         type: string
+
+concurrency:
+  group: ${{ github.event.inputs.testnet_type }}-deployment
+  cancel-in-progress: true
 
 env:
   REGISTRY: testnetobscuronet.azurecr.io
@@ -185,19 +164,29 @@ jobs:
           fi
 
   # ============================================================================
-  # APPROVAL GATE (mandatory for sepolia/mainnet, optional for dev/uat)
-  # Shows deployment summary and happens AFTER build and config update
+  # APPROVAL (mandatory for sepolia/mainnet, skipped for dev/uat)
+  # Runs right after validation to show summary and request approval early
   # ============================================================================
   approval:
-    needs: [validate-inputs, build-images, update-ten-apps-config]
+    needs: [validate-inputs]
     runs-on: ubuntu-latest
-    if: |
-      always() &&
-      needs.validate-inputs.outputs.NEEDS_APPROVAL == 'true' &&
-      (needs.update-ten-apps-config.result == 'success' || needs.update-ten-apps-config.result == 'skipped')
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
+      - uses: actions/checkout@v4
+
+      - name: 'Determine image tag'
+        id: get_tag
+        run: |
+          # Use provided tag, or git tag, or commit hash
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          else
+            # Try git tag first, fall back to short commit hash
+            IMAGE_TAG=$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)
+          fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
       - name: 'Show deployment summary and request approval'
         run: |
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -210,37 +199,33 @@ jobs:
           echo "  Triggered by:        ${{ github.actor }}"
           echo "  Branch:              ${{ github.ref_name }}"
           echo ""
-          echo "🐳 Image Build:"
           if [[ "${{ github.event.inputs.image_build }}" == "yes" ]]; then
-            echo "  Status:              ✅ Built"
-            echo "  Image Tag:           ${{ needs.build-images.outputs.IMAGE_TAG }}"
-            echo "  HSM Signing:         ${{ github.event.inputs.use_azure_hsm == 'yes' && '🔐 Enabled' || '📦 Disabled' }}"
+            echo "🐳 Image Build:       ✅ Will be built"
+            echo "  Image Tag:          ${{ steps.get_tag.outputs.IMAGE_TAG }}"
           else
-            echo "  Status:              ⏭️  Skipped (using existing images)"
-          fi
-          echo ""
-          echo "📝 Config Update:"
-          if [[ "${{ needs.update-ten-apps-config.result }}" == "success" ]]; then
-            echo "  Status:              ✅ Updated ten-apps config"
-            echo "  Commit:              Pushed to ten-protocol/ten-apps"
-          else
-            echo "  Status:              ⏭️  Skipped"
+            echo "🐳 Image Build:       ⏭️  Skipped (using existing images)"
+            echo "  Current Tag:        ${{ steps.get_tag.outputs.IMAGE_TAG }}"
           fi
           echo ""
           if [[ "${{ github.event.inputs.deployment_strategy }}" == "destructive" ]]; then
             echo "🔥 DESTRUCTIVE Deployment Actions:"
-            echo "  1. Delete child apps (sequencer, validators)"
-            echo "  2. Sync parent app (recreates children)"
+            echo "  1. Build & push images (if enabled)"
+            echo "  2. Update ten-apps config"
             echo "  3. Deploy L1 contracts"
-            echo "  4. Sync all ArgoCD apps"
-            echo "  5. Deploy L2 contracts"
+            echo "  4. Delete child apps (sequencer, validators)"
+            echo "  5. Sync parent app (recreates children)"
+            echo "  6. Sync all ArgoCD apps"
+            echo "  7. Wait for apps to be healthy"
+            echo "  8. Auto-trigger L2 deployment"
             echo ""
             echo "⚠️  WARNING: This will cause downtime!"
           else
             echo "📦 NON-DESTRUCTIVE Deployment Actions:"
-            echo "  1. Delete host deployment and enclave statefulsets"
-            echo "  2. Sync ONLY OutOfSync resources (no sync waves/hooks)"
-            echo "  3. Wait for apps to be healthy"
+            echo "  1. Build & push images (if enabled)"
+            echo "  2. Update ten-apps config"
+            echo "  3. Delete host deployment and enclave statefulsets"
+            echo "  4. Sync ONLY OutOfSync resources (no sync waves/hooks)"
+            echo "  5. Wait for apps to be healthy"
             echo ""
             echo "✅ No L1/L2 contract deployment (minimal disruption)"
           fi
@@ -253,13 +238,13 @@ jobs:
   # REVERT CONFIG IF APPROVAL REJECTED
   # ============================================================================
   revert-config-on-rejection:
-    needs: [validate-inputs, build-images, update-ten-apps-config, approval]
+    needs: [validate-inputs, approval, build-images, update-ten-apps-config]
     runs-on: ubuntu-latest
     if: |
       always() &&
       needs.validate-inputs.outputs.NEEDS_APPROVAL == 'true' &&
       needs.update-ten-apps-config.result == 'success' &&
-      (needs.approval.result == 'cancelled' || needs.approval.result == 'failure')
+      needs.approval.result == 'failure'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -292,7 +277,8 @@ jobs:
   build-images:
     needs: [validate-inputs]
     if: |
-      github.event.inputs.image_build == 'yes'
+      github.event.inputs.image_build == 'yes' &&
+      !contains(github.event.inputs.skip_steps, 'image-build')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -306,8 +292,16 @@ jobs:
         with:
           go-version: 1.25.1
 
+      - name: 'Parse advanced config'
+        id: parse_config
+        run: |
+          ADVANCED_CONFIG="${{ github.event.inputs.advanced_config }}"
+          USE_HSM="no"
+          [[ "$ADVANCED_CONFIG" =~ use_azure_hsm=([^ ,]+) ]] && USE_HSM="${BASH_REMATCH[1]}"
+          echo "USE_HSM=$USE_HSM" >> $GITHUB_OUTPUT
+
       - name: 'Login via Azure CLI (for HSM)'
-        if: github.event.inputs.use_azure_hsm == 'yes'
+        if: steps.parse_config.outputs.USE_HSM == 'yes'
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -336,7 +330,7 @@ jobs:
       - name: 'Build and push obscuro node images'
         env:
           IMAGE_TAG: ${{ steps.get_tag.outputs.IMAGE_TAG }}
-          USE_HSM: ${{ github.event.inputs.use_azure_hsm }}
+          USE_HSM: ${{ steps.parse_config.outputs.USE_HSM }}
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
           AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: |
@@ -409,8 +403,8 @@ jobs:
   update-ten-apps-config:
     needs: [validate-inputs, build-images]
     if: |
-      needs.build-images.result == 'success' &&
-      github.event.inputs.image_build == 'yes'
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') &&
+      !contains(github.event.inputs.skip_steps, 'config-update')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -426,9 +420,24 @@ jobs:
           sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
           sudo chmod +x /usr/local/bin/yq
 
+      - uses: actions/checkout@v4
+        if: needs.build-images.result == 'skipped'
+
+      - name: 'Determine IMAGE_TAG if not built'
+        if: needs.build-images.result == 'skipped'
+        id: get_tag
+        run: |
+          # Use provided tag, or git tag, or commit hash (same as build-images)
+          if [ -n "${{ github.event.inputs.image_tag }}" ]; then
+            IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          else
+            IMAGE_TAG=$(git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD)
+          fi
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
       - name: 'Update image tags and node selectors in ten-apps config'
         env:
-          IMAGE_TAG: ${{ needs.build-images.outputs.IMAGE_TAG }}
+          IMAGE_TAG: ${{ needs.build-images.result == 'success' && needs.build-images.outputs.IMAGE_TAG || steps.get_tag.outputs.IMAGE_TAG }}
           CONFIG_PATH: ${{ needs.validate-inputs.outputs.CONFIG_PATH }}
           DESTRUCTIVE_OPTIONS_INPUT: ${{ github.event.inputs.destructive_options }}
           IS_DESTRUCTIVE: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE }}
@@ -444,19 +453,16 @@ jobs:
 
           echo "📝 Updating image tags to: ${IMAGE_TAG} in $ENV_DIR"
 
-          # Update all values files with new image tags
+          # Update all values files with new image tags (host and enclave only)
           for values_file in "$ENV_DIR"/values-*.yaml; do
             if [ -f "$values_file" ]; then
               filename=$(basename "$values_file")
               echo "  Updating $filename..."
 
-              # Update image tags for core images
+              # Update image tags for host and enclave only
               yq eval -i ".enclave.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
               yq eval -i ".enclave02.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
               yq eval -i ".host.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
-
-              # For gateway values files
-              yq eval -i ".gateway.image.tag = \"${IMAGE_TAG}\"" "$values_file" 2>/dev/null || true
             fi
           done
 
@@ -561,8 +567,8 @@ jobs:
   deploy-l1-contracts:
     needs: [validate-inputs, approval, update-ten-apps-config]
     if: |
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
-      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
+      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
+      !contains(github.event.inputs.skip_steps, 'l1-deployment')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -594,6 +600,14 @@ jobs:
           username: testnetobscuronet
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
+      - name: 'Parse advanced config'
+        id: parse_config
+        run: |
+          ADVANCED_CONFIG="${{ github.event.inputs.advanced_config }}"
+          MAX_GAS_GWEI="1.5"
+          [[ "$ADVANCED_CONFIG" =~ max_gas_gwei=([^ ,]+) ]] && MAX_GAS_GWEI="${BASH_REMATCH[1]}"
+          echo "MAX_GAS_GWEI=$MAX_GAS_GWEI" >> $GITHUB_OUTPUT
+
       - name: 'Deploy Contracts'
         id: deployContracts
         shell: bash
@@ -607,7 +621,7 @@ jobs:
           DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
           DEPLOY_L1_INITIALSEQADDRESS: ${{ vars.ACCOUNT_ADDR_NODE_0 }}
           DEPLOY_L1_ETHERSCANAPIKEY: ${{ secrets.ETHERSCAN_API_KEY }}
-          DEPLOY_L1_MAXGASGWEI: ${{ github.event.inputs.max_gas_gwei }}
+          DEPLOY_L1_MAXGASGWEI: ${{ steps.parse_config.outputs.MAX_GAS_GWEI }}
           DEPLOY_L1_CHECKGASPRICE: ${{ github.event.inputs.testnet_type == 'mainnet' && 'true' || 'false' }}
         run: |
           # Run deployer and capture output
@@ -660,8 +674,9 @@ jobs:
   argocd-delete-child-apps:
     needs: [validate-inputs, approval, deploy-l1-contracts]
     if: |
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
-      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
+      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
+      (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
+      !contains(github.event.inputs.skip_steps, 'argocd-delete')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -789,11 +804,10 @@ jobs:
   # ARGOCD - DELETE DEPLOYMENTS/STS (Non-Destructive only)
   # ============================================================================
   argocd-delete-resources:
-    needs: [validate-inputs, approval]
+    needs: [validate-inputs, approval, update-ten-apps-config]
     if: |
-      always() &&
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
-      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'false'
+      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'false' &&
+      !contains(github.event.inputs.skip_steps, 'argocd-delete')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -914,10 +928,8 @@ jobs:
   # ARGOCD - SYNC APPLICATIONS
   # ============================================================================
   argocd-sync-apps:
-    needs: [validate-inputs, approval, deploy-l1-contracts, argocd-delete-child-apps, argocd-delete-resources]
+    needs: [validate-inputs, approval, update-ten-apps-config, deploy-l1-contracts, argocd-delete-child-apps, argocd-delete-resources]
     if: |
-      always() &&
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
       (needs.argocd-delete-child-apps.result == 'success' || needs.argocd-delete-child-apps.result == 'skipped') &&
       (needs.argocd-delete-resources.result == 'success' || needs.argocd-delete-resources.result == 'skipped')
     runs-on: ubuntu-latest
@@ -954,12 +966,20 @@ jobs:
           
           echo "✅ Successfully logged in to ArgoCD"
 
+      - name: 'Parse advanced config'
+        id: parse_config
+        run: |
+          ADVANCED_CONFIG="${{ github.event.inputs.advanced_config }}"
+          SYNC_TIMEOUT="10m"
+          [[ "$ADVANCED_CONFIG" =~ sync_timeout=([^ ,]+) ]] && SYNC_TIMEOUT="${BASH_REMATCH[1]}"
+          echo "SYNC_TIMEOUT=$SYNC_TIMEOUT" >> $GITHUB_OUTPUT
+
       - name: 'Sync ArgoCD child applications'
         id: sync
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
           CHILD_APPS: ${{ needs.validate-inputs.outputs.CHILD_APPS }}
-          SYNC_TIMEOUT: ${{ github.event.inputs.sync_timeout }}
+          SYNC_TIMEOUT: ${{ steps.parse_config.outputs.SYNC_TIMEOUT }}
           IS_DESTRUCTIVE: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE }}
         run: |
           set -e
@@ -1177,10 +1197,9 @@ jobs:
   # POST-DEPLOYMENT NOTIFICATION
   # ============================================================================
   post-deployment:
-    needs: [validate-inputs, deploy-l1-contracts, wait-argocd-healthy]
+    needs: [validate-inputs, approval, update-ten-apps-config, deploy-l1-contracts, wait-argocd-healthy]
     if: |
-      always() &&
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success())
+      (needs.wait-argocd-healthy.result == 'success' || needs.wait-argocd-healthy.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -1212,18 +1231,37 @@ jobs:
             https://api.github.com/repos/ten-protocol/ten-test/dispatches \
             --data "{\"event_type\": \"$event_type\", \"client_payload\": {\"ref\": \"${{ github.ref_name }}\"}}"
 
+      - name: 'Parse advanced config for L2 trigger'
+        id: parse_l2_config
+        run: |
+          ADVANCED_CONFIG="${{ github.event.inputs.advanced_config }}"
+          LOG_LEVEL="3"
+          [[ "$ADVANCED_CONFIG" =~ log_level=([^ ,]+) ]] && LOG_LEVEL="${BASH_REMATCH[1]}"
+          echo "LOG_LEVEL=$LOG_LEVEL" >> $GITHUB_OUTPUT
+
       - name: 'Trigger L2 contract deployment workflow'
-        if: needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && needs.deploy-l1-contracts.result == 'success'
+        if: |
+          needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
+          needs.wait-argocd-healthy.result == 'success' &&
+          !contains(github.event.inputs.skip_steps, 'l2-trigger')
         run: |
           echo "🚀 Triggering L2 contract deployment workflow..."
           echo "Branch/Ref: ${{ github.ref_name }}"
           echo "Testnet: ${{ github.event.inputs.testnet_type }}"
-          
+
           gh workflow run manual-deploy-testnet-l2.yml \
             -f testnet_type=${{ github.event.inputs.testnet_type }} \
-            -f log_level=3 \
+            -f log_level=${{ steps.parse_l2_config.outputs.LOG_LEVEL }} \
             --ref ${{ github.ref_name }}
-          
+
           echo "✅ L2 deployment workflow triggered on branch: ${{ github.ref_name }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 'Display skipped steps'
+        if: github.event.inputs.skip_steps != ''
+        run: |
+          echo "⚠️  TESTING MODE: The following steps were SKIPPED:"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "${{ github.event.inputs.skip_steps }}" | tr ',' '\n' | sed 's/^/  ✋ /'
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
