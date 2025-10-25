@@ -236,43 +236,6 @@ jobs:
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
   # ============================================================================
-  # REVERT CONFIG IF APPROVAL REJECTED
-  # ============================================================================
-  revert-config-on-rejection:
-    needs: [validate-inputs, approval, build-images, update-ten-apps-config]
-    runs-on: ubuntu-latest
-    if: |
-      always() &&
-      needs.validate-inputs.outputs.NEEDS_APPROVAL == 'true' &&
-      needs.update-ten-apps-config.result == 'success' &&
-      needs.approval.result == 'failure'
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: ten-protocol/ten-apps
-          token: ${{ secrets.DEPLOY_ACTIONS_PAT }}
-          path: ten-apps
-          fetch-depth: 2
-
-      - name: 'Revert ten-apps config changes'
-        env:
-          IMAGE_TAG: ${{ needs.build-images.outputs.IMAGE_TAG }}
-        run: |
-          cd ten-apps
-          
-          echo "❌ Approval was rejected - reverting ten-apps config changes"
-          echo "Image tag that was set: ${IMAGE_TAG}"
-          
-          # Revert the last commit
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git revert --no-edit HEAD
-          git push
-          
-          echo "✅ Reverted config changes in ten-apps"
-          echo "⚠️  Note: Docker images were already built and pushed (not reverted)"
-
-  # ============================================================================
   # BUILD & PUSH IMAGES (Optional)
   # ============================================================================
   build-images:
@@ -403,8 +366,8 @@ jobs:
   # UPDATE TEN-APPS YAML WITH NEW IMAGE TAGS
   # ============================================================================
   update-ten-apps-config:
-    needs: [validate-inputs]
-    if: ${{ !contains(github.event.inputs.skip_steps, 'config-update') }}
+    needs: [validate-inputs, build-images]
+    if: ${{ always() && !contains(github.event.inputs.skip_steps, 'config-update') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
