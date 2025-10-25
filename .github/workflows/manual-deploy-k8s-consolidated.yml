@@ -239,9 +239,8 @@ jobs:
   # BUILD & PUSH IMAGES (Optional)
   # ============================================================================
   build-images:
-    needs: [validate-inputs, approval]
+    needs: [validate-inputs]
     if: |
-      (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
       github.event.inputs.image_build == 'yes' &&
       !contains(github.event.inputs.skip_steps, 'image-build')
     runs-on: ubuntu-latest
@@ -532,10 +531,8 @@ jobs:
   # DEPLOY L1 CONTRACTS (Destructive only)
   # ============================================================================
   deploy-l1-contracts:
-    needs: [validate-inputs, approval, update-ten-apps-config]
+    needs: [validate-inputs, update-ten-apps-config]
     if: |
-      always() &&
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
     runs-on: ubuntu-latest
     environment:
@@ -640,10 +637,8 @@ jobs:
   # ARGOCD - DELETE CHILD APPS (Destructive only)
   # ============================================================================
   argocd-delete-child-apps:
-    needs: [validate-inputs, approval, deploy-l1-contracts]
+    needs: [validate-inputs, deploy-l1-contracts]
     if: |
-      always() &&
-      (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
       (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
       !contains(github.event.inputs.skip_steps, 'argocd-delete')
@@ -774,10 +769,8 @@ jobs:
   # ARGOCD - SYNC APPLICATIONS
   # ============================================================================
   argocd-sync-apps:
-    needs: [validate-inputs, deploy-l1-contracts, argocd-delete-child-apps]
+    needs: [validate-inputs, argocd-delete-child-apps]
     if: |
-      always() &&
-      (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
       (needs.argocd-delete-child-apps.result == 'success' || needs.argocd-delete-child-apps.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
@@ -971,7 +964,7 @@ jobs:
   # ============================================================================
   wait-argocd-healthy:
     needs: [validate-inputs, argocd-sync-apps]
-    if: always() && success()
+    if: success()
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -1046,7 +1039,6 @@ jobs:
   post-deployment:
     needs: [validate-inputs, wait-argocd-healthy]
     if: |
-      always() &&
       (needs.wait-argocd-healthy.result == 'success' || needs.wait-argocd-healthy.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
