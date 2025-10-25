@@ -383,11 +383,14 @@ jobs:
 
       - uses: actions/checkout@v4
         if: always()
+        with:
+          path: go-ten
 
       - name: 'Determine IMAGE_TAG if not built'
         if: always()
         id: get_tag
         run: |
+          cd go-ten
           # Use provided tag, or git tag, or commit hash (same as build-images)
           if [ -n "${{ github.event.inputs.image_tag }}" ]; then
             IMAGE_TAG="${{ github.event.inputs.image_tag }}"
