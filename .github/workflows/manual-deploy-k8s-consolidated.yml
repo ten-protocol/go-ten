@@ -534,6 +534,7 @@ jobs:
   deploy-l1-contracts:
     needs: [validate-inputs, approval, update-ten-apps-config]
     if: |
+      always() &&
       (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || success()) &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
     runs-on: ubuntu-latest
