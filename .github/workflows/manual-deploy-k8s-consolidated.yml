@@ -367,7 +367,7 @@ jobs:
   # ============================================================================
   update-ten-apps-config:
     needs: [validate-inputs, build-images]
-    if: ${{ github.event.inputs.image_build == 'yes' && !contains(github.event.inputs.skip_steps, 'config-update') }}
+    if: ${{ always() && !contains(github.event.inputs.skip_steps, 'config-update') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -529,9 +529,10 @@ jobs:
   # DEPLOY L1 CONTRACTS (Destructive only)
   # ============================================================================
   deploy-l1-contracts:
-    needs: [validate-inputs, approval]
+    needs: [validate-inputs, approval, update-ten-apps-config]
     if: |
       (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
+      (needs.update-ten-apps-config.result == 'success' || needs.update-ten-apps-config.result == 'skipped') &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
       !contains(github.event.inputs.skip_steps, 'l1-deployment')
     runs-on: ubuntu-latest
@@ -767,140 +768,14 @@ jobs:
           echo "   Child apps will be fully synced in the next job"
 
   # ============================================================================
-  # ARGOCD - DELETE DEPLOYMENTS/STS (Non-Destructive only)
-  # ============================================================================
-  argocd-delete-resources:
-    needs: [validate-inputs, approval]
-    if: |
-      (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
-      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'false' &&
-      !contains(github.event.inputs.skip_steps, 'argocd-delete')
-    runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.testnet_type }}
-    steps:
-      - name: 'Install ArgoCD CLI'
-        run: |
-          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          chmod +x /usr/local/bin/argocd
-
-      - name: 'Login to ArgoCD'
-        env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
-          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
-        run: |
-          set -e
-          
-          echo "🔐 Logging in to ArgoCD server: ${ARGOCD_SERVER}"
-          
-          # Validate credentials are set
-          if [[ -z "${ARGOCD_SERVER}" ]]; then
-            echo "❌ ERROR: ARGOCD_SERVER is not set!"
-            exit 1
-          fi
-          
-          if [[ -z "${ARGOCD_USERNAME}" ]] || [[ -z "${ARGOCD_PASSWORD}" ]]; then
-            echo "❌ ERROR: ARGOCD_USERNAME or ARGOCD_PASSWORD is not set!"
-            exit 1
-          fi
-          
-          # Login to ArgoCD
-          argocd login "${ARGOCD_SERVER}" \
-            --username "${ARGOCD_USERNAME}" \
-            --password "${ARGOCD_PASSWORD}" \
-            --insecure
-          
-          echo "✅ Successfully logged in to ArgoCD"
-
-      - name: 'Delete host and enclave deployments/statefulsets via ArgoCD'
-        env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          TESTNET_SHORT_NAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
-        run: |
-          set -e
-
-          echo "🗑️  Non-destructive deployment: Deleting host and enclave deployments/statefulsets"
-          echo "Environment: ${TESTNET_SHORT_NAME}"
-          echo "ArgoCD Server: ${ARGOCD_SERVER}"
-          
-          # Validate required variables
-          if [[ -z "${ARGOCD_SERVER}" ]]; then
-            echo "❌ ERROR: ARGOCD_SERVER is not set!"
-            exit 1
-          fi
-          
-          if [[ -z "${TESTNET_SHORT_NAME}" ]]; then
-            echo "❌ ERROR: TESTNET_SHORT_NAME is not set!"
-            exit 1
-          fi
-
-          APPS=("sequencer" "validator-01" "validator-02")
-
-          for app_suffix in "${APPS[@]}"; do
-            app="${TESTNET_SHORT_NAME}-${app_suffix}"
-            echo "Processing app: $app"
-
-            # Delete host deployment (only ignore NotFound errors)
-            echo "  Deleting host deployment..."
-            if ! argocd app delete-resource "$app" \
-              --server "${ARGOCD_SERVER}" \
-              --kind Deployment \
-              --resource-name "${app}-host" \
-              --all 2>&1 | tee /tmp/argocd_output.txt; then
-              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
-                echo "  ℹ️  Host deployment not found (this is OK)"
-              else
-                echo "  ❌ Failed to delete host deployment"
-                exit 1
-              fi
-            fi
-
-            # Delete enclave statefulset (only ignore NotFound errors)
-            echo "  Deleting enclave statefulset..."
-            if ! argocd app delete-resource "$app" \
-              --server "${ARGOCD_SERVER}" \
-              --kind StatefulSet \
-              --resource-name "${app}-enclave" \
-              --all 2>&1 | tee /tmp/argocd_output.txt; then
-              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
-                echo "  ℹ️  Enclave statefulset not found (this is OK)"
-              else
-                echo "  ❌ Failed to delete enclave statefulset"
-                exit 1
-              fi
-            fi
-
-            # Delete enclave02 statefulset (only ignore NotFound errors)
-            echo "  Deleting enclave02 statefulset..."
-            if ! argocd app delete-resource "$app" \
-              --server "${ARGOCD_SERVER}" \
-              --kind StatefulSet \
-              --resource-name "${app}-enclave02" \
-              --all 2>&1 | tee /tmp/argocd_output.txt; then
-              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
-                echo "  ℹ️  Enclave02 statefulset not found (this is OK)"
-              else
-                echo "  ❌ Failed to delete enclave02 statefulset"
-                exit 1
-              fi
-            fi
-
-            sleep 2
-          done
-
-          echo "✅ Resource deletion complete"
-
-  # ============================================================================
   # ARGOCD - SYNC APPLICATIONS
   # ============================================================================
   argocd-sync-apps:
-    needs: [validate-inputs, approval, deploy-l1-contracts, argocd-delete-child-apps, argocd-delete-resources]
+    needs: [validate-inputs, approval, deploy-l1-contracts, argocd-delete-child-apps]
     if: |
       (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
       (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
-      (needs.argocd-delete-child-apps.result == 'success' || needs.argocd-delete-child-apps.result == 'skipped') &&
-      (needs.argocd-delete-resources.result == 'success' || needs.argocd-delete-resources.result == 'skipped')
+      (needs.argocd-delete-child-apps.result == 'success' || needs.argocd-delete-child-apps.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -1166,10 +1041,9 @@ jobs:
   # POST-DEPLOYMENT NOTIFICATION
   # ============================================================================
   post-deployment:
-    needs: [validate-inputs, approval, deploy-l1-contracts, wait-argocd-healthy]
+    needs: [validate-inputs, approval, wait-argocd-healthy]
     if: |
       (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
-      (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
       (needs.wait-argocd-healthy.result == 'success' || needs.wait-argocd-healthy.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
