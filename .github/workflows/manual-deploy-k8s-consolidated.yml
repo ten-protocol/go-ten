@@ -532,9 +532,8 @@ jobs:
   # DEPLOY L1 CONTRACTS (Destructive only)
   # ============================================================================
   deploy-l1-contracts:
-    needs: [validate-inputs, approval, update-ten-apps-config]
+    needs: [validate-inputs, update-ten-apps-config]
     if: |
-      (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
       (needs.update-ten-apps-config.result == 'success' || needs.update-ten-apps-config.result == 'skipped') &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
       !contains(github.event.inputs.skip_steps, 'l1-deployment')
@@ -774,9 +773,8 @@ jobs:
   # ARGOCD - SYNC APPLICATIONS
   # ============================================================================
   argocd-sync-apps:
-    needs: [validate-inputs, approval, deploy-l1-contracts, argocd-delete-child-apps]
+    needs: [validate-inputs, deploy-l1-contracts, argocd-delete-child-apps]
     if: |
-      (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
       (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
       (needs.argocd-delete-child-apps.result == 'success' || needs.argocd-delete-child-apps.result == 'skipped')
     runs-on: ubuntu-latest
@@ -1044,9 +1042,8 @@ jobs:
   # POST-DEPLOYMENT NOTIFICATION
   # ============================================================================
   post-deployment:
-    needs: [validate-inputs, approval, wait-argocd-healthy]
+    needs: [validate-inputs, wait-argocd-healthy]
     if: |
-      (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
       (needs.wait-argocd-healthy.result == 'success' || needs.wait-argocd-healthy.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
