@@ -102,12 +102,16 @@ func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
 	if value == nil {
 		return fmt.Errorf("value cannot be nil. key: %x", key)
 	}
-	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
-	defer cancelCtx()
-	err := Put(ctx, sqlDB.rwSqldb, key, value)
+	// ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
+	// defer cancelCtx()
+	err := Put(context.Background(), sqlDB.rwSqldb, key, value)
 	trieJournalKey := []byte("vTrieJournal")
 	if bytes.Equal(key, trieJournalKey) {
 		sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err, "len_val", len(value))
+		_, err := sqlDB.Get(trieJournalKey)
+		if err != nil {
+			sqlDB.logger.Crit("TrieJournal GET failed", "key", key, "err", err)
+		}
 	}
 	return err
 }
