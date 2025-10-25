@@ -6,7 +6,7 @@ create table if not exists tendb.statedb32
 (
     id  INTEGER AUTO_INCREMENT,
     ky  binary(32) NOT NULL,
-    val mediumblob,
+    val LONGBLOB NOT NULL,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)
 );
