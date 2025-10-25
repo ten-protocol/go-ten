@@ -367,7 +367,7 @@ jobs:
   # ============================================================================
   update-ten-apps-config:
     needs: [validate-inputs, build-images]
-    if: ${{ always() && !contains(github.event.inputs.skip_steps, 'config-update') }}
+    if: ${{ github.event.inputs.image_build == 'yes' && !contains(github.event.inputs.skip_steps, 'config-update') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
