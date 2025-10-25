@@ -81,6 +81,13 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	trieDB := triedb.NewDatabase(backingDB, cfg)
 	stateDB := state.NewDatabase(trieDB, nil)
 
+	var serverVal string
+	err := backingDB.GetSQLDB().QueryRow("SHOW VARIABLES LIKE 'max_allowed_packet'").Scan(new(string), &serverVal)
+	if err != nil {
+		logger.Crit("Failed to retrieve server max_allowed_packet value")
+	}
+	logger.Info("Server max_allowed_packet:", "val", serverVal)
+
 	prepStatementCache := enclavedb.NewStatementCache(backingDB.GetSQLDB(), logger)
 	return &storageImpl{
 		db:                     backingDB,
