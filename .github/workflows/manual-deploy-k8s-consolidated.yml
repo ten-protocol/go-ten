@@ -521,8 +521,11 @@ jobs:
             commit_msg+=" for ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}"
 
             git commit -m "$commit_msg"
-            git push
-            echo "✅ Updated and pushed changes to ten-apps"
+            if git push 2>&1; then
+              echo "✅ Updated and pushed changes to ten-apps"
+            else
+              echo "⚠️  Commit created but push failed (may need write permissions)"
+            fi
           fi
 
   # ============================================================================
