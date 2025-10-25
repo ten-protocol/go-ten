@@ -403,7 +403,7 @@ jobs:
   # UPDATE TEN-APPS YAML WITH NEW IMAGE TAGS
   # ============================================================================
   update-ten-apps-config:
-    needs: [validate-inputs, build-images]
+    needs: [validate-inputs]
     if: ${{ !contains(github.event.inputs.skip_steps, 'config-update') }}
     runs-on: ubuntu-latest
     steps:
