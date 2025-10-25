@@ -571,6 +571,7 @@ jobs:
     needs: [validate-inputs, approval, update-ten-apps-config]
     if: |
       (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
+      (needs.update-ten-apps-config.result == 'success' || needs.update-ten-apps-config.result == 'skipped') &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
       !contains(github.event.inputs.skip_steps, 'l1-deployment')
     runs-on: ubuntu-latest
@@ -812,6 +813,7 @@ jobs:
     needs: [validate-inputs, approval, update-ten-apps-config]
     if: |
       (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
+      (needs.update-ten-apps-config.result == 'success' || needs.update-ten-apps-config.result == 'skipped') &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'false' &&
       !contains(github.event.inputs.skip_steps, 'argocd-delete')
     runs-on: ubuntu-latest
@@ -937,6 +939,8 @@ jobs:
     needs: [validate-inputs, approval, update-ten-apps-config, deploy-l1-contracts, argocd-delete-child-apps, argocd-delete-resources]
     if: |
       (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
+      (needs.update-ten-apps-config.result == 'success' || needs.update-ten-apps-config.result == 'skipped') &&
+      (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
       (needs.argocd-delete-child-apps.result == 'success' || needs.argocd-delete-child-apps.result == 'skipped') &&
       (needs.argocd-delete-resources.result == 'success' || needs.argocd-delete-resources.result == 'skipped')
     runs-on: ubuntu-latest
@@ -1207,6 +1211,8 @@ jobs:
     needs: [validate-inputs, approval, update-ten-apps-config, deploy-l1-contracts, wait-argocd-healthy]
     if: |
       (needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
+      (needs.update-ten-apps-config.result == 'success' || needs.update-ten-apps-config.result == 'skipped') &&
+      (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
       (needs.wait-argocd-healthy.result == 'success' || needs.wait-argocd-healthy.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
