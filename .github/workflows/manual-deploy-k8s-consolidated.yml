@@ -404,9 +404,7 @@ jobs:
   # ============================================================================
   update-ten-apps-config:
     needs: [validate-inputs, build-images]
-    if: |
-      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped') &&
-      !contains(github.event.inputs.skip_steps, 'config-update')
+    if: ${{ !contains(github.event.inputs.skip_steps, 'config-update') }}
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
