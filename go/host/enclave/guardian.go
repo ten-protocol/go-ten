@@ -298,6 +298,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 		g.logger.Debug("Enclave is behind, ignoring batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 		return // ignore batches until we're up-to-date
 	}
+
 	err := g.submitL2Batch(batch)
 	if err != nil {
 		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)

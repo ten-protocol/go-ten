@@ -1,6 +1,7 @@
 package enclavedb
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -82,9 +83,16 @@ func (sqlDB *enclaveDB) Has(key []byte) (bool, error) {
 }
 
 func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
-	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
-	defer cancelCtx()
-	return Get(ctx, sqlDB.sqldb, key)
+	// ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
+	// defer cancelCtx()
+	val, err := Get(context.Background(), sqlDB.sqldb, key)
+
+	trieJournalKey := []byte("vTrieJournal")
+	if bytes.Equal(key, trieJournalKey) {
+		sqlDB.logger.Debug("TrieJournal GET", "key", key, "err", err, " len_val", len(val))
+	}
+
+	return val, err
 }
 
 func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
@@ -94,9 +102,18 @@ func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
 	if value == nil {
 		return fmt.Errorf("value cannot be nil. key: %x", key)
 	}
-	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
-	defer cancelCtx()
-	return Put(ctx, sqlDB.rwSqldb, key, value)
+	// ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
+	// defer cancelCtx()
+	err := Put(context.Background(), sqlDB.rwSqldb, key, value)
+	trieJournalKey := []byte("vTrieJournal")
+	if bytes.Equal(key, trieJournalKey) {
+		sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err, "len_val", len(value))
+		_, err := sqlDB.Get(trieJournalKey)
+		if err != nil {
+			sqlDB.logger.Crit("TrieJournal GET failed", "key", key, "err", err)
+		}
+	}
+	return err
 }
 
 func (sqlDB *enclaveDB) Delete(key []byte) error {
@@ -203,4 +220,9 @@ func (sqlDB *enclaveDB) ReadAncients(fn func(reader ethdb.AncientReaderOp) error
 	// have to explicitly check for that, having an extra clause to do the
 	// non-ancient operations.
 	return fn(sqlDB)
+}
+
+func (sqlDB *enclaveDB) AncientBytes(kind string, id, offset, length uint64) ([]byte, error) {
+	// TODO implement me
+	panic("implement me")
 }

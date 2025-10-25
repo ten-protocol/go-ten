@@ -53,7 +53,7 @@ func EstimateGasExecute(builder *CallBuilder[CallParamsWithBlock, hexutil.Uint64
 	txArgs := builder.Param.callParams
 
 	ge := components.NewGasEstimator(rpc.storage, rpc.registry, rpc.chain, rpc.gasOracle, rpc.gasPricer, rpc.logger)
-	totalCost, _, userErr, sysErr := ge.EstimateTotalGas(builder.ctx, txArgs, *builder.Param.block, rpc.config.GasLocalExecutionCapFlag)
+	totalCost, _, userErr, sysErr := ge.EstimateTotalGas(builder.ctx, txArgs, *builder.Param.block)
 
 	if sysErr != nil {
 		return fmt.Errorf("system error during gas estimation: %w", sysErr)

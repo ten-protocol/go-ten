@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -16,12 +17,13 @@ import (
 const (
 	statedb32 = "statedb32" // the table used for 32 byte keys - 99.9% of the keys are here
 	statedb64 = "statedb64" // the table used for larger keys
-	getQry    = `select sdb.val from %s sdb where sdb.ky = ? ;`
+	getQry    = `select sdb.val from %s sdb where sdb.ky = ?`
 	// `replace` will perform insert or replace if existing and this syntax works for both sqlite and edgeless db
-	putQry       = `replace into %s (ky,  val) values(?,  ?);`
-	putQryBatch  = `replace into %s (ky, val) values`
-	putQryValues = `(?,?)`
-	delQry       = `delete from %s where ky = ? ;`
+	putQryBatchSqlite = `replace into %s (ky, val) values`
+	putQryBatchEdb1   = `INSERT INTO %s (ky, val) VALUES `
+	putQryValues      = `(?,?)`
+	putQryBatchEdb2   = ` ON DUPLICATE KEY UPDATE val=VALUES(val)`
+	delQry            = `delete from %s where ky = ?`
 	// todo - how is the performance of this? probably extraordinarily slow
 	searchQry = `select ky, val from %s sdb where substring(sdb.ky, 1, ?) = ? and sdb.ky >= ? order by sdb.ky asc`
 )
@@ -46,8 +48,8 @@ func Has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
 
 func Get(ctx context.Context, db *sqlx.DB, key []byte) ([]byte, error) {
 	var res []byte
-
-	err := db.QueryRowContext(ctx, fmt.Sprintf(getQry, getTable(key)), key).Scan(&res)
+	q := fmt.Sprintf(getQry, getTable(key))
+	err := db.QueryRowxContext(ctx, q, key).Scan(&res)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// make sure the error is converted to obscuro-wide not found error
@@ -59,7 +61,28 @@ func Get(ctx context.Context, db *sqlx.DB, key []byte) ([]byte, error) {
 }
 
 func Put(ctx context.Context, db *sqlx.DB, key []byte, value []byte) error {
-	_, err := db.ExecContext(ctx, fmt.Sprintf(putQry, getTable(key)), key, value)
+	tx, err := db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	err = PutKeyValues(ctx, tx, [][]byte{key}, [][]byte{value})
+	if err != nil {
+		return err
+	}
+	err = tx.Commit()
+
+	// DEBUG: Verify immediately after commit with a fresh query
+	var storedVal []byte
+	verifyQuery := fmt.Sprintf(`SELECT val FROM %s WHERE ky = ?`, getTable(key))
+	verifyErr := db.QueryRowContext(ctx, verifyQuery, key).Scan(&storedVal)
+	if verifyErr != nil {
+		return fmt.Errorf("VERIFY FAILED after commit: %w", verifyErr)
+	}
+	if len(storedVal) != len(value) {
+		return fmt.Errorf("VERIFY MISMATCH: stored %d bytes, expected %d bytes", len(storedVal), len(value))
+	}
+
 	return err
 }
 
@@ -86,7 +109,12 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 
 	// Process short keys
 	if len(shortKeys) > 0 {
-		update := fmt.Sprintf(putQryBatch, statedb32) + repeat(putQryValues, ",", len(shortKeys))
+		var update string
+		if isMysql(tx.DriverName()) {
+			update = fmt.Sprintf(putQryBatchEdb1, statedb32) + repeat(putQryValues, ",", len(shortKeys)) + putQryBatchEdb2
+		} else {
+			update = fmt.Sprintf(putQryBatchSqlite, statedb32) + repeat(putQryValues, ",", len(shortKeys))
+		}
 		values := make([]any, 0)
 		for i := range shortKeys {
 			values = append(values, shortKeys[i], shortVals[i])
@@ -100,11 +128,21 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 			}
 			return fmt.Errorf("failed to exec short k/v transaction statement. kv=%v, err=%w", values, err)
 		}
+		//nrRows, _ := res.RowsAffected()
+		//if nrRows != int64(len(shortKeys)) {
+		//	return fmt.Errorf("failed to exec short k/v transaction statement. kv=%v, err=%w, explen=%d, affectedlen=%d", values, err, len(longKeys), nrRows)
+		//}
 	}
 
 	// Process long keys
 	if len(longKeys) > 0 {
-		update := fmt.Sprintf(putQryBatch, statedb64) + repeat(putQryValues, ",", len(longKeys))
+		var update string
+		if isMysql(tx.DriverName()) {
+			update = fmt.Sprintf(putQryBatchEdb1, statedb64) + repeat(putQryValues, ",", len(longKeys)) + putQryBatchEdb2
+		} else {
+			update = fmt.Sprintf(putQryBatchSqlite, statedb64) + repeat(putQryValues, ",", len(longKeys))
+		}
+
 		values := make([]any, 0)
 		for i := range longKeys {
 			values = append(values, longKeys[i], longVals[i])
@@ -113,6 +151,10 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 		if err != nil {
 			return fmt.Errorf("failed to exec long k/v transaction statement. kv=%v, err=%w", values, err)
 		}
+		//nrRows, _ := res.RowsAffected()
+		//if nrRows != int64(len(longKeys)) {
+		//	return fmt.Errorf("failed to exec long k/v transaction statement. kv=%v, err=%w, explen=%d, affectedlen=%d", values, err, len(longKeys), nrRows)
+		//}
 	}
 
 	return nil
@@ -153,4 +195,8 @@ func NewIterator(ctx context.Context, db *sqlx.DB, prefix []byte, start []byte) 
 	return &iterator{
 		rows: rows,
 	}
+}
+
+func isMysql(driverName string) bool {
+	return strings.Index(driverName, "mysql") == 0
 }

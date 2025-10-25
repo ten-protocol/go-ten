@@ -1,1 +1,1 @@
-ALTER TABLE tendb.statedb64 MODIFY COLUMN val mediumblob NULL;
+-- ALTER TABLE tendb.statedb64 MODIFY COLUMN val mediumblob NULL;
