@@ -530,10 +530,8 @@ jobs:
   # DEPLOY L1 CONTRACTS (Destructive only)
   # ============================================================================
   deploy-l1-contracts:
-    needs: [validate-inputs, approval, update-ten-apps-config]
-    if: |
-      (needs.validate-inputs.outputs.NEEDS_APPROVAL == 'false' || needs.approval.result == 'success' || needs.approval.result == 'skipped') &&
-      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
+    needs: [validate-inputs, update-ten-apps-config]
+    if: needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
