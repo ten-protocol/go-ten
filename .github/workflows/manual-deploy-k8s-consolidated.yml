@@ -46,12 +46,6 @@ on:
         type: string
         default: 'log_level=3,max_gas_gwei=1.5,sync_timeout=10m,use_azure_hsm=no'
 
-      skip_steps:
-        description: 'Skip specific steps for testing (comma-separated: l1-deployment, l2-trigger, image-build, config-update, argocd-delete)'
-        required: false
-        type: string
-        default: ''
-
       destructive_options:
         description: 'Destructive deployment options (format: node_selectors=sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4|additional_apps=gateway,tools,postgres-client)'
         required: false
@@ -364,7 +358,7 @@ jobs:
   # ============================================================================
   update-ten-apps-config:
     needs: [validate-inputs, build-images]
-    if: ${{ always() && !contains(github.event.inputs.skip_steps, 'config-update') }}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -639,8 +633,7 @@ jobs:
     needs: [validate-inputs, deploy-l1-contracts]
     if: |
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
-      (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped') &&
-      !contains(github.event.inputs.skip_steps, 'argocd-delete')
+      (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -1081,8 +1074,7 @@ jobs:
       - name: 'Trigger L2 contract deployment workflow'
         if: |
           needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
-          needs.wait-argocd-healthy.result == 'success' &&
-          !contains(github.event.inputs.skip_steps, 'l2-trigger')
+          needs.wait-argocd-healthy.result == 'success'
         run: |
           echo "🚀 Triggering L2 contract deployment workflow..."
           echo "Branch/Ref: ${{ github.ref_name }}"
@@ -1096,11 +1088,3 @@ jobs:
           echo "✅ L2 deployment workflow triggered on branch: ${{ github.ref_name }}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 'Display skipped steps'
-        if: github.event.inputs.skip_steps != ''
-        run: |
-          echo "⚠️  TESTING MODE: The following steps were SKIPPED:"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "${{ github.event.inputs.skip_steps }}" | tr ',' '\n' | sed 's/^/  ✋ /'
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
