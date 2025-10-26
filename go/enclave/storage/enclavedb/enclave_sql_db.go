@@ -13,6 +13,8 @@ import (
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 )
 
+var trieJournalKey = []byte("vTrieJournal")
+
 // enclaveDB - Implements the key-value ethdb.Database and also exposes the underlying sql database
 // should not be used directly outside the db package
 type enclaveDB struct {
@@ -83,14 +85,15 @@ func (sqlDB *enclaveDB) Has(key []byte) (bool, error) {
 }
 
 func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
-	// ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
-	// defer cancelCtx()
-	val, err := Get(context.Background(), sqlDB.sqldb, key)
-
-	trieJournalKey := []byte("vTrieJournal")
 	if bytes.Equal(key, trieJournalKey) {
+		val, err := GetJournal(context.Background(), sqlDB.sqldb)
 		sqlDB.logger.Debug("TrieJournal GET", "key", key, "err", err, " len_val", len(val))
+		return val, err
 	}
+
+	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
+	defer cancelCtx()
+	val, err := Get(ctx, sqlDB.sqldb, key)
 
 	return val, err
 }
@@ -102,17 +105,19 @@ func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
 	if value == nil {
 		return fmt.Errorf("value cannot be nil. key: %x", key)
 	}
-	// ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
-	// defer cancelCtx()
-	err := Put(context.Background(), sqlDB.rwSqldb, key, value)
-	trieJournalKey := []byte("vTrieJournal")
+
 	if bytes.Equal(key, trieJournalKey) {
+		err := PutJournal(context.Background(), sqlDB.rwSqldb, value)
 		sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err, "len_val", len(value))
-		_, err := sqlDB.Get(trieJournalKey)
 		if err != nil {
-			sqlDB.logger.Crit("TrieJournal GET failed", "key", key, "err", err)
+			return fmt.Errorf("failed to put trie journal. key: %x, value: %x, err: %w", key, value, err)
 		}
+		return nil
 	}
+
+	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
+	defer cancelCtx()
+	err := Put(ctx, sqlDB.rwSqldb, key, value)
 	return err
 }
 

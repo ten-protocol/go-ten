@@ -25,7 +25,8 @@ const (
 	putQryBatchEdb2   = ` ON DUPLICATE KEY UPDATE val=VALUES(val)`
 	delQry            = `delete from %s where ky = ?`
 	// todo - how is the performance of this? probably extraordinarily slow
-	searchQry = `select ky, val from %s sdb where substring(sdb.ky, 1, ?) = ? and sdb.ky >= ? order by sdb.ky asc`
+	searchQry        = `select ky, val from %s sdb where substring(sdb.ky, 1, ?) = ? and sdb.ky >= ? order by sdb.ky asc`
+	journalChunkSize = 1024 // 1KB chunks
 )
 
 func getTable(key []byte) string {
@@ -44,6 +45,73 @@ func Has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func GetJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) {
+	q := "select val from triedb_journal order by id asc"
+	rows, err := db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []byte
+	rowCount := 0
+
+	for rows.Next() {
+		var val []byte
+		if err := rows.Scan(&val); err != nil {
+			return nil, err
+		}
+		result = append(result, val...)
+		rowCount++
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if rowCount == 0 {
+		// No rows found
+		return nil, errutil.ErrNotFound
+	}
+
+	return result, nil
+}
+
+func PutJournal(ctx context.Context, db *sqlx.DB, value []byte) error {
+	tx, err := db.BeginTxx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction - %w", err)
+	}
+	defer tx.Rollback()
+
+	// Truncate the journal table
+	_, err = tx.ExecContext(ctx, "DELETE FROM triedb_journal")
+	if err != nil {
+		return fmt.Errorf("failed to truncate journal table - %w", err)
+	}
+
+	// Split value into chunks and insert
+	totalLen := len(value)
+	numChunks := (totalLen + journalChunkSize - 1) / journalChunkSize // ceiling division
+
+	for i := 0; i < numChunks; i++ {
+		start := i * journalChunkSize
+		end := start + journalChunkSize
+		if end > totalLen {
+			end = totalLen
+		}
+		chunk := value[start:end]
+
+		// Insert chunk with auto-incrementing id (id column should be AUTO_INCREMENT)
+		_, err = tx.ExecContext(ctx, "INSERT INTO triedb_journal (val) VALUES (?)", chunk)
+		if err != nil {
+			return fmt.Errorf("failed to insert journal chunk %d - %w", i, err)
+		}
+	}
+
+	return tx.Commit()
 }
 
 func Get(ctx context.Context, db *sqlx.DB, key []byte) ([]byte, error) {
@@ -70,20 +138,7 @@ func Put(ctx context.Context, db *sqlx.DB, key []byte, value []byte) error {
 	if err != nil {
 		return err
 	}
-	err = tx.Commit()
-
-	// DEBUG: Verify immediately after commit with a fresh query
-	var storedVal []byte
-	verifyQuery := fmt.Sprintf(`SELECT val FROM %s WHERE ky = ?`, getTable(key))
-	verifyErr := db.QueryRowContext(ctx, verifyQuery, key).Scan(&storedVal)
-	if verifyErr != nil {
-		return fmt.Errorf("VERIFY FAILED after commit: %w", verifyErr)
-	}
-	if len(storedVal) != len(value) {
-		return fmt.Errorf("VERIFY MISMATCH: stored %d bytes, expected %d bytes", len(storedVal), len(value))
-	}
-
-	return err
+	return tx.Commit()
 }
 
 func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte) error {
@@ -128,10 +183,6 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 			}
 			return fmt.Errorf("failed to exec short k/v transaction statement. kv=%v, err=%w", values, err)
 		}
-		//nrRows, _ := res.RowsAffected()
-		//if nrRows != int64(len(shortKeys)) {
-		//	return fmt.Errorf("failed to exec short k/v transaction statement. kv=%v, err=%w, explen=%d, affectedlen=%d", values, err, len(longKeys), nrRows)
-		//}
 	}
 
 	// Process long keys
@@ -151,10 +202,6 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 		if err != nil {
 			return fmt.Errorf("failed to exec long k/v transaction statement. kv=%v, err=%w", values, err)
 		}
-		//nrRows, _ := res.RowsAffected()
-		//if nrRows != int64(len(longKeys)) {
-		//	return fmt.Errorf("failed to exec long k/v transaction statement. kv=%v, err=%w, explen=%d, affectedlen=%d", values, err, len(longKeys), nrRows)
-		//}
 	}
 
 	return nil
