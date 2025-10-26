@@ -702,26 +702,24 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	// and the parent hash. This recomputed batch is then checked against the incoming batch.
 	// If the sequencer has tampered with something the hash will not add up and validation will
 	// produce an error.
-	for {
-		cb, err := executor.compute(ctx, batch) // this execution is not used when first producing a batch, we never want to fail for empty batches
-		if err != nil {
-			executor.logger.Error("Failed to compute batch", log.ErrKey, err)
-			// return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
-			continue
-		}
-
-		if cb.Batch.Hash() != batch.Hash() {
-			// todo @stefan - generate a validator challenge here and return it
-			executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
-			// print out the timestamps of the transactions in the batch
-			for _, txExecResult := range cb.TxExecResults {
-				executor.logger.Error("tx and time", log.TxKey, txExecResult.TxWithSender.Tx.Hash(), "time", txExecResult.TxWithSender.Tx.Time())
-			}
-			return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
-		}
-
-		return cb.TxExecResults, nil
+	cb, err := executor.compute(ctx, batch) // this execution is not used when first producing a batch, we never want to fail for empty batches
+	if err != nil {
+		executor.logger.Error("Failed to compute batch", log.ErrKey, err)
+		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
+		// continue
 	}
+
+	if cb.Batch.Hash() != batch.Hash() {
+		// todo @stefan - generate a validator challenge here and return it
+		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
+		// print out the timestamps of the transactions in the batch
+		for _, txExecResult := range cb.TxExecResults {
+			executor.logger.Error("tx and time", log.TxKey, txExecResult.TxWithSender.Tx.Hash(), "time", txExecResult.TxWithSender.Tx.Time())
+		}
+		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
+	}
+
+	return cb.TxExecResults, nil
 }
 
 func (executor *batchExecutor) compute(ctx context.Context, batch *core.Batch) (*ComputedBatch, error) {

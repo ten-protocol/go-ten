@@ -99,11 +99,11 @@ func (s *storageImpl) closeTrieDB() {
 	if err != nil {
 		s.logger.Error("Failed to fetch head batch header", "err", err)
 	}
-	parent, err := s.FetchBatchHeader(context.Background(), head.ParentHash)
-	if err != nil {
-		s.logger.Error("Failed to fetch  parent head batch header", "err", err)
-	}
-	if err = s.trieDB.Journal(parent.Root); err != nil {
+	//parent, err := s.FetchBatchHeader(context.Background(), head.ParentHash)
+	//if err != nil {
+	//	s.logger.Error("Failed to fetch  parent head batch header", "err", err)
+	//}
+	if err = s.trieDB.Journal(head.Root); err != nil {
 		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
 	}
 	err = s.trieDB.Close()
