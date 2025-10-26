@@ -369,11 +369,11 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: ten-protocol/ten-apps
-          token: ${{ secrets.DEPLOY_ACTIONS_PAT }}
-          path: ten-apps
+      - name: 'Clone ten-apps repo'
+        env:
+          DEPLOY_ACTIONS_PAT: ${{ secrets.DEPLOY_ACTIONS_PAT }}
+        run: |
+          git clone https://${DEPLOY_ACTIONS_PAT}@github.com/ten-protocol/ten-apps.git ten-apps
 
       - name: 'Install yq'
         run: |
@@ -383,7 +383,6 @@ jobs:
       - uses: actions/checkout@v4
         if: always()
         with:
-          token: ${{ github.token }}
           path: go-ten
 
       - name: 'Determine IMAGE_TAG if not built'
