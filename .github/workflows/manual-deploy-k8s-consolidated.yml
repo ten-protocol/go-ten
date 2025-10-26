@@ -239,9 +239,8 @@ jobs:
   # BUILD & PUSH IMAGES (Optional)
   # ============================================================================
   build-images:
-    needs: [validate-inputs]
-    if: |
-      github.event.inputs.image_build == 'yes'
+    needs: [validate-inputs, approval]
+    if: ${{ always() && github.event.inputs.image_build == 'yes' }}
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
