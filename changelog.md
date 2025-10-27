@@ -2,6 +2,30 @@
 ---
 # Ten Testnet Change Log
 
+# Oct 2025-10-27 (v1.7.0)
+* This is an L2 upgrade release meaning state will be persisted across the release.
+* A full list of the PRs merged in this release is as below;
+    * `51988e6d` Add postgres test to ci (#2735)
+    * `25a99319` Upgrade beacon api for fusaka fork (#2729)
+    * `d40b7e4e` Fix metadata integer conversion (#2734)
+    * `3599786c` Fix: remove in line l2 deployment and triggering existing l2 deployment (#2733)
+    * `fbbb1356` Rebind metadata queries (#2732)
+    * `354421cd` Updated base ref (#2730)
+    * `a0efe234` Feat: consolidate deployment workflows with automated argocd setup (#2724)
+    * `0ba30b1b` Fix geth notifications (#2727)
+    * `7ffc6856` Host: eagerly load l1 blocks from l1starthash (#2715)
+    * `b1a4d68e` Tests for zero chain id (#2717)
+    * `6add0801` Fix postgres connection issue (#2725)
+    * `c235a2ed` Enclave: fix unexpected db errs reported as batch conflict (#2726)
+    * `caa159a7` Update geth fork notification script (#2721)
+    * `0e86bce8` Geth hard fork notification workflow (#2719)
+    * `164b3b11` Add check for nil or zero chainid (#2716)
+    * `55573758` Upgrade geth to support cell proofs eip-7594 (#2712)
+    * `98501062` Enclave: always cache ma fees on calculation (#2710)
+    * `9c806f70` Minor: fix sepolia faucet url and add comment for debug noise confusion (#2711)
+    * `1578486d` Suppress noisy tls handshake error logs (#2709)
+    * `e9173b65` Get the token from path in json-rpc (#2704)
+
 # Oct 2025-10-07 (v1.6.0)
 * This is an L2 upgrade release meaning state will be persisted across the release.
 * A full list of the PRs merged in this release is as below;
