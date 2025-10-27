@@ -544,13 +544,13 @@ func (g *Guardian) catchupWithL2() error {
 // todo - @matt - think about removing the TryLock
 func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, error) {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
-	if !g.submitDataLock.TryLock() {
-		g.logger.Debug("Unable to submit block, enclave is busy processing data")
-		return false, nil
-	}
+	//if !g.submitDataLock.TryLock() {
+	//	g.logger.Debug("Unable to submit block, enclave is busy processing data")
+	//	return false, nil
+	//}
 	processedData, err := g.sl.L1Data().GetTenRelevantTransactions(block)
 	if err != nil {
-		g.submitDataLock.Unlock() // lock must be released before returning
+		//g.submitDataLock.Unlock() // lock must be released before returning
 		return false, fmt.Errorf("could not extract ten transaction for block=%s - %w", block.Hash(), err)
 	}
 
@@ -558,7 +558,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 
 	resp, err := g.enclaveClient.SubmitL1Block(context.Background(), processedData)
 
-	g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
+	//g.submitDataLock.Unlock() // lock is only guarding the enclave call, so we can release it now
 	if resp != nil && resp.RejectError != nil {
 		if strings.Contains(resp.RejectError.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
 			// we have already processed this block, let's try the next canonical block
@@ -649,9 +649,9 @@ func (g *Guardian) publishSharedSecretResponses(scrtResponses []*common.Produced
 }
 
 func (g *Guardian) submitL2Batch(batch *common.ExtBatch) error {
-	g.submitDataLock.Lock()
+	//g.submitDataLock.Lock()
 	err := g.enclaveClient.SubmitBatch(context.Background(), batch)
-	g.submitDataLock.Unlock()
+	//g.submitDataLock.Unlock()
 	if err != nil {
 		// something went wrong, return error and let the main loop check status and try again when appropriate
 		return errors.Wrap(err, "could not submit L2 batch to enclave")
