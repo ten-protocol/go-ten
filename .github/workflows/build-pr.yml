@@ -75,7 +75,7 @@ jobs:
         run: go test --failfast -v ./... -count=1 -timeout 15m
 
       # Run tenscan test once against Postgres to validate DB behavior
-      - name: Start Postgres (for sim)
+      - name: Start Postgres
         run: docker run --rm -d --name pg-sim -e POSTGRES_PASSWORD=postgres -p 55432:5432 postgres:16-alpine
 
       - name: Wait for Postgres ready
@@ -88,12 +88,12 @@ jobs:
           done
           echo "Postgres did not become ready in time"; docker logs pg-sim; exit 1
 
-      - name: Run Tenscan against Postgres
+      - name: Run Postgres Test
         env:
           TEN_TEST_POSTGRES_URL: postgres://postgres:postgres@127.0.0.1:55432/?sslmode=disable
         run: go test -v -count=1 -run TestTenscan -timeout 20m ./integration/tenscan
 
-      - name: Stop Postgres (for sim)
+      - name: Stop Postgres
         if: always()
         run: docker rm -f pg-sim || true
       - name: Store simulation logs
