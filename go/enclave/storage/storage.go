@@ -112,13 +112,17 @@ func (s *storageImpl) closeTrieDB() {
 	}
 }
 
-func (s *storageImpl) CleanStateDB() {
-	s.closeTrieDB()
-
-	cfg := triedb.VerkleDefaults
-	cfg.PathDB.JournalDirectory = ""
-	s.trieDB = triedb.NewDatabase(s.db, cfg)
-	s.stateCache = state.NewDatabase(s.trieDB, nil)
+func (s *storageImpl) CleanStateDB(root common.StateRoot) {
+	err := s.trieDB.Recover(root)
+	if err != nil {
+		s.logger.Error("Failed to recover trieDB", "err", err)
+	}
+	//s.closeTrieDB()
+	//
+	//cfg := triedb.VerkleDefaults
+	//cfg.PathDB.JournalDirectory = ""
+	//s.trieDB = triedb.NewDatabase(s.db, cfg)
+	//s.stateCache = state.NewDatabase(s.trieDB, nil)
 }
 
 func (s *storageImpl) Close() error {
