@@ -440,8 +440,8 @@ github.com/supranational/blst v0.3.16-0.20250831170142-f48500c1fdbe h1:nbdqkIGOG
 github.com/supranational/blst v0.3.16-0.20250831170142-f48500c1fdbe/go.mod h1:jZJtfjgudtNl4en1tzwPIV3KjUnQUvG3/j+w+fVonLw=
 github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 h1:epCh84lMvA70Z7CTTCmYQn2CKbY8j86K7/FAIr141uY=
 github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7/go.mod h1:q4W45IWZaF22tdD+VEXcAWRA037jwmWEB5VWYORlTpc=
-github.com/ten-protocol/go-ethereum v0.0.0-20251028125433-8a9901b2d416 h1:CmpXs/q972EPEA7TZreGPJ2Tzd2nWs4ZVzJfm9xZDLA=
-github.com/ten-protocol/go-ethereum v0.0.0-20251028125433-8a9901b2d416/go.mod h1:7H+5GueIhAtyrByVxUeT3DJdGlsSnz59gm5eqnXBItw=
+github.com/ten-protocol/go-ethereum v0.0.0-20251028133758-dd81b9a8c771 h1:ujVTQr0LIvGZe8k5BNz0WLbsxONxb2BIr4jF0D/8QkA=
+github.com/ten-protocol/go-ethereum v0.0.0-20251028133758-dd81b9a8c771/go.mod h1:7H+5GueIhAtyrByVxUeT3DJdGlsSnz59gm5eqnXBItw=
 github.com/tidwall/gjson v1.18.0 h1:FIDeeyB800efLX89e5a8Y0BNH+LOngJyGrIWxG2FKQY=
 github.com/tidwall/gjson v1.18.0/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/match v1.1.1/go.mod h1:eRSPERbgtNPcGhD8UCthc6PmLEQXEWd3PRB5JTxsfmM=
