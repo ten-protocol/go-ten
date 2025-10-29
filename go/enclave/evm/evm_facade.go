@@ -3,12 +3,14 @@ package evm
 // unsafe package imported in order to link to a private function in go-ethereum.
 // This allows us to customize the message generated from a signed transaction and inject custom gas logic.
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
 	_ "unsafe"
 
 	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
@@ -187,9 +189,19 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(exec.logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
-	initBalance := s.GetBalance(msg.From).Uint64()
-	initNonce := s.GetNonce(msg.From)
-	initRoot := s.GetStorageRoot(msg.From)
+	reader, err := s.Database().TrieDB().StateReader(header.Root)
+	if err != nil {
+		exec.logger.Crit("evmf: could not get state reader", log.ErrKey, err)
+		return nil, nil, nil
+	}
+	initAcc, err := reader.Account(crypto.Keccak256Hash(msg.From.Bytes()))
+	if err != nil {
+		exec.logger.Crit("evmf: could not get account", log.ErrKey, err)
+		return nil, nil, nil
+	}
+	initBalance := initAcc.Balance
+	initNonce := initAcc.Nonce
+	initRoot := initAcc.Root
 
 	vmCfg := vm.Config{
 		NoBaseFee: true,
@@ -243,9 +255,14 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 
 	result, err := gethcore.ApplyMessage(vmenv, msg, &gp)
 
-	afterBalance := s.GetBalance(msg.From).Uint64()
-	afterNonce := s.GetNonce(msg.From)
-	afterRoot := s.GetStorageRoot(msg.From)
+	afterAcc, err := reader.Account(crypto.Keccak256Hash(msg.From.Bytes()))
+	if err != nil {
+		exec.logger.Crit("evmf: could not get account", log.ErrKey, err)
+		return nil, nil, nil
+	}
+	afterBalance := afterAcc.Balance
+	afterNonce := afterAcc.Nonce
+	afterRoot := afterAcc.Root
 
 	if afterBalance != initBalance {
 		exec.logger.Error("balance changed", "from", msg.From.Hex(), "initBalance", initBalance, "afterBalance", afterBalance)
@@ -253,7 +270,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	if afterNonce != initNonce {
 		exec.logger.Error("nonce changed", "from", msg.From.Hex(), "initNonce", initNonce, "afterNonce", afterNonce)
 	}
-	if afterRoot != initRoot {
+	if !bytes.Equal(afterRoot, initRoot) {
 		exec.logger.Error("storage root changed", "from", msg.From.Hex(), "initRoot", initRoot, "afterRoot", afterRoot)
 	}
 
