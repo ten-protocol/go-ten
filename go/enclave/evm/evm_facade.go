@@ -187,6 +187,10 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(exec.logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
+	initBalance := s.GetBalance(msg.From).Uint64()
+	initNonce := s.GetNonce(msg.From)
+	initRoot := s.GetStorageRoot(msg.From)
+
 	vmCfg := vm.Config{
 		NoBaseFee: true,
 	}
@@ -238,6 +242,20 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	}()
 
 	result, err := gethcore.ApplyMessage(vmenv, msg, &gp)
+
+	afterBalance := s.GetBalance(msg.From).Uint64()
+	afterNonce := s.GetNonce(msg.From)
+	afterRoot := s.GetStorageRoot(msg.From)
+
+	if afterBalance != initBalance {
+		exec.logger.Error("balance changed", "from", msg.From.Hex(), "initBalance", initBalance, "afterBalance", afterBalance)
+	}
+	if afterNonce != initNonce {
+		exec.logger.Error("nonce changed", "from", msg.From.Hex(), "initNonce", initNonce, "afterNonce", afterNonce)
+	}
+	if afterRoot != initRoot {
+		exec.logger.Error("storage root changed", "from", msg.From.Hex(), "initRoot", initRoot, "afterRoot", afterRoot)
+	}
 
 	// Read the error stored in the database.
 	if vmerr := cleanState.Error(); vmerr != nil {
