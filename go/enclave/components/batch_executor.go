@@ -10,7 +10,6 @@ import (
 
 	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/tracing"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common/compression"
 	"github.com/ten-protocol/go-ten/go/enclave/limiters"
 
@@ -376,25 +375,6 @@ func (executor *batchExecutor) toPricedTx(ec *BatchExecutionContext, tx *common.
 	}, nil
 }
 
-// logSyntheticTxSize logs the per-transaction size contribution for synthetic transactions.
-// It encodes the transaction together with its timestamp delta (same structure used for batch payloads),
-// compresses it with the batch compression service, and logs raw and compressed sizes.
-func (executor *batchExecutor) logSyntheticTxSize(kind string, tx *common.L2Tx, blockTime uint64) {
-	// Build the same envelope used in batch payloads
-	txsWithTs := common.CreateTxsAndTimeStamp([]*common.L2Tx{tx}, blockTime)
-	raw, err := rlp.EncodeToBytes(txsWithTs)
-	if err != nil {
-		executor.logger.Debug("SyntheticTxSize encode error", "kind", kind, log.TxKey, tx.Hash(), log.ErrKey, err)
-		return
-	}
-	compressed, err := executor.dataCompressionService.CompressBatch(raw)
-	if err != nil {
-		executor.logger.Debug("SyntheticTxSize compress error", "kind", kind, log.TxKey, tx.Hash(), log.ErrKey, err)
-		return
-	}
-	executor.logger.Debug("SyntheticTxSize", "kind", kind, log.TxKey, tx.Hash(), "raw_bytes", len(raw), "compressed_bytes", len(compressed))
-}
-
 func (executor *batchExecutor) execBatchTransactions(ec *BatchExecutionContext) error {
 	if ec.UseMempool {
 		return executor.execMempoolTransactions(ec)
@@ -503,6 +483,7 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 	ec.Transactions = results.BatchTransactions()
 	ec.batchTxResults = results
 
+	executor.logger.Debug("Mempool transactions executed", "nrTxs", len(ec.Transactions), "batchNum", ec.currentBatch.SeqNo().Uint64())
 	return nil
 }
 
@@ -515,6 +496,7 @@ func (executor *batchExecutor) executeExistingBatch(ec *BatchExecutionContext) e
 			return fmt.Errorf("unable to transform to priced tx. Cause: %w", err)
 		}
 	}
+	executor.logger.Debug("Existing batch transactions", "nrTxs", len(transactionsToProcess), "batchNum", ec.currentBatch.SeqNo().Uint64())
 	txResults, err := executor.executeTxs(ec, 0, transactionsToProcess, false)
 	if err != nil {
 		return fmt.Errorf("could not process transactions. Cause: %w", err)
@@ -546,8 +528,6 @@ func (executor *batchExecutor) execXChainMessages(ec *BatchExecutionContext) err
 	}
 	xchainTxs := make(common.L2PricedTransactions, 0)
 	for _, xTx := range crossChainTransactions {
-		// Debug: size contribution from synthetic cross-chain txs
-		executor.logSyntheticTxSize("xchain", xTx, ec.AtTime)
 		xchainTxs = append(xchainTxs, &common.L2PricedTransaction{
 			Tx:             xTx,
 			PublishingCost: big.NewInt(0),
@@ -579,9 +559,6 @@ func (executor *batchExecutor) execRegisteredCallbacks(ec *BatchExecutionContext
 	if publicCallbackTx == nil {
 		return nil
 	}
-
-	// Debug: size contribution from synthetic public callback tx
-	executor.logSyntheticTxSize("public_callback", publicCallbackTx, ec.AtTime)
 
 	publicCallbackPricedTxes := common.L2PricedTransactions{
 		&common.L2PricedTransaction{
@@ -641,8 +618,6 @@ func (executor *batchExecutor) execOnBlockEndTx(ec *BatchExecutionContext) error
 	if onBlockTx == nil {
 		return nil
 	}
-	// Debug: size contribution from synthetic on-block-end tx
-	executor.logSyntheticTxSize("on_block_end", onBlockTx, ec.AtTime)
 	onBlockPricedTx := common.L2PricedTransactions{
 		&common.L2PricedTransaction{
 			Tx:             onBlockTx,
