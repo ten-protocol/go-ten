@@ -252,32 +252,6 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	}()
 
 	result, err := gethcore.ApplyMessage(vmenv, msg, &gp)
-
-	reader, err = s.Database().Reader(header.Root)
-	if err != nil {
-		exec.logger.Error("evmf: could not get state reader", log.ErrKey, err)
-		return nil, nil, nil
-	}
-
-	afterAcc, err1 := reader.Account(msg.From)
-	if err1 != nil {
-		exec.logger.Error("evmf: could not get account", log.ErrKey, err)
-		return nil, nil, nil
-	}
-	afterBalance := afterAcc.Balance
-	afterNonce := afterAcc.Nonce
-	afterRoot := afterAcc.Root
-
-	if afterBalance.Uint64() != initBalance.Uint64() {
-		exec.logger.Error("balance changed", "from", msg.From.Hex(), "initBalance", initBalance, "afterBalance", afterBalance)
-	}
-	if afterNonce != initNonce {
-		exec.logger.Error("nonce changed", "from", msg.From.Hex(), "initNonce", initNonce, "afterNonce", afterNonce)
-	}
-	if afterRoot != initRoot {
-		exec.logger.Error("storage root changed", "from", msg.From.Hex(), "initRoot", initRoot, "afterRoot", afterRoot)
-	}
-
 	// Read the error stored in the database.
 	if vmerr := cleanState.Error(); vmerr != nil {
 		return nil, vmerr, nil
@@ -316,6 +290,31 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		}
 		result.UsedGas += extra
 		exec.logger.Debug("estimate: added visibility-read gas", "created", len(createdContracts), "extraGas", extra, "totalUsedGas", result.UsedGas)
+	}
+
+	reader, err = s.Database().Reader(header.Root)
+	if err != nil {
+		exec.logger.Error("evmf: could not get state reader", log.ErrKey, err)
+		return nil, nil, nil
+	}
+
+	afterAcc, err1 := reader.Account(msg.From)
+	if err1 != nil {
+		exec.logger.Error("evmf: could not get account", log.ErrKey, err)
+		return nil, nil, nil
+	}
+	afterBalance := afterAcc.Balance
+	afterNonce := afterAcc.Nonce
+	afterRoot := afterAcc.Root
+
+	if afterBalance.Uint64() != initBalance.Uint64() {
+		exec.logger.Error("balance changed", "from", msg.From.Hex(), "initBalance", initBalance, "afterBalance", afterBalance)
+	}
+	if afterNonce != initNonce {
+		exec.logger.Error("nonce changed", "from", msg.From.Hex(), "initNonce", initNonce, "afterNonce", afterNonce)
+	}
+	if afterRoot != initRoot {
+		exec.logger.Error("storage root changed", "from", msg.From.Hex(), "initRoot", initRoot, "afterRoot", afterRoot)
 	}
 
 	return result, nil, nil
