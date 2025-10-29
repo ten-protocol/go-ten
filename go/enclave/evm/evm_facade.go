@@ -255,8 +255,8 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 
 	result, err := gethcore.ApplyMessage(vmenv, msg, &gp)
 
-	afterAcc, err := reader.Account(crypto.Keccak256Hash(msg.From.Bytes()))
-	if err != nil {
+	afterAcc, err1 := reader.Account(crypto.Keccak256Hash(msg.From.Bytes()))
+	if err1 != nil {
 		exec.logger.Crit("evmf: could not get account", log.ErrKey, err)
 		return nil, nil, nil
 	}
@@ -264,7 +264,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	afterNonce := afterAcc.Nonce
 	afterRoot := afterAcc.Root
 
-	if afterBalance != initBalance {
+	if afterBalance.Uint64() != initBalance.Uint64() {
 		exec.logger.Error("balance changed", "from", msg.From.Hex(), "initBalance", initBalance, "afterBalance", afterBalance)
 	}
 	if afterNonce != initNonce {
