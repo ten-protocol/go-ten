@@ -9,6 +9,7 @@ import (
 	_ "unsafe"
 
 	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
@@ -187,6 +188,7 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(exec.logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
+	var initLenSlot gethcommon.Hash
 	var initslots []gethcommon.Hash
 	if msg.To != nil {
 		reader, err := s.Database().Reader(header.Root)
@@ -194,8 +196,18 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 			exec.logger.Error("evmf: could not get state reader", log.ErrKey, err)
 			return nil, nil, nil
 		}
+		k := gethcommon.Hash{}
+		k.SetBytes(big.NewInt(0).Bytes())
+		slot, err := reader.Storage(*msg.To, k)
+		if err != nil {
+			exec.logger.Error("evmf: could not get account", log.ErrKey, err)
+			return nil, nil, nil
+		}
+		exec.logger.Debug("evmf: initLenSlot", "slot", slot)
+		initLenSlot = slot
 
-		var i = big.NewInt(0)
+		base := crypto.Keccak256(big.NewInt(0).Bytes())
+		var i = big.NewInt(0).SetBytes(base)
 		for {
 			k := gethcommon.Hash{}
 			k.SetBytes(i.Bytes())
@@ -209,6 +221,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 				break
 			}
 			initslots = append(initslots, slot)
+			exec.logger.Debug("evmf: initslot", "slot", slot)
 			i = i.Add(i, big.NewInt(1))
 		}
 	}
@@ -310,8 +323,19 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 			exec.logger.Error("evmf: could not get state reader", log.ErrKey, err)
 			return nil, nil, nil
 		}
+		k := gethcommon.Hash{}
+		k.SetBytes(big.NewInt(0).Bytes())
+		slot, err := reader.Storage(*msg.To, k)
+		if err != nil {
+			exec.logger.Error("evmf: could not get account", log.ErrKey, err)
+			return nil, nil, nil
+		}
+		if slot != initLenSlot {
+			exec.logger.Error("evmf: initLenSlot not equal to slot", log.ErrKey, err, "slot", slot, "initLenSlot", initLenSlot)
+		}
 
-		var i = big.NewInt(0)
+		base := crypto.Keccak256(big.NewInt(0).Bytes())
+		var i = big.NewInt(0).SetBytes(base)
 		for {
 			k := gethcommon.Hash{}
 			k.SetBytes(i.Bytes())
@@ -324,10 +348,8 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 			if slot == (gethcommon.Hash{}) {
 				break
 			}
-			initSlot := initslots[i.Uint64()]
-			if slot != initSlot {
-				exec.logger.Error("evmf: storage slot changed", "slot", i, "initSlot", initSlot, "Slot", slot, "msg.To", msg.To.Hex(), "msg.From", msg.From.Hex())
-				return nil, nil, nil
+			if slot != initslots[i.Uint64()] {
+				exec.logger.Error("evmf: initslot not equal to slot", log.ErrKey, err, "slot", slot, "initslot", initslots[i.Uint64()])
 			}
 			i = i.Add(i, big.NewInt(1))
 		}
