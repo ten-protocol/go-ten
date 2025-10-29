@@ -65,7 +65,7 @@ host:
     blobArchiveURL: "" # URL for L1 blob archive service
     rpcTimeout: 15s
   log:
-    level: 1
+    level: 4
     path: sys_out # path to log file, will log to stdout when empty
   p2p:
     disableP2P: false
@@ -90,7 +90,7 @@ enclave:
     enableDebugNamespace: false
     enableProfiler: false
   log:
-    level: 1
+    level: 4
     path: sys_out
   rpc:
     bindAddress: "0.0.0.0:11000"

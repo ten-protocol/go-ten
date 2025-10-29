@@ -884,7 +884,7 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 		// transactions.Derive messes with the gasUsed field, so we need to set it back
 		txResult.Receipt.GasUsed = gasUsed
 	}
-
+	executor.logger.Debug("Executed transaction", "txHash", tx.Tx.Hash(), "gasUsed", txResult.Receipt.GasUsed, "err", txResult.Err)
 	// use the full entropy as the basis for the next transaction
 	ethHeader.MixDigest = fullEntropy
 	return txResult, nil
