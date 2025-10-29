@@ -206,7 +206,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		exec.logger.Debug("evmf: initLenSlot", "slot", slot)
 		initLenSlot = slot
 
-		base := crypto.Keccak256(big.NewInt(0).Bytes())
+		base := crypto.Keccak256(make([]byte, 32))
 		var i = big.NewInt(0).SetBytes(base)
 		for {
 			k := gethcommon.Hash{}
@@ -222,7 +222,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 			}
 			initslots = append(initslots, slot)
 			exec.logger.Debug("evmf: initslot", "slot", slot)
-			i = i.Add(i, big.NewInt(1))
+			i = new(big.Int).Add(i, big.NewInt(1))
 		}
 	}
 
@@ -334,7 +334,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 			exec.logger.Error("evmf: initLenSlot not equal to slot", log.ErrKey, err, "slot", slot, "initLenSlot", initLenSlot)
 		}
 
-		base := crypto.Keccak256(big.NewInt(0).Bytes())
+		base := crypto.Keccak256(make([]byte, 32))
 		var i = big.NewInt(0).SetBytes(base)
 		for {
 			k := gethcommon.Hash{}
@@ -351,7 +351,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 			if slot != initslots[i.Uint64()] {
 				exec.logger.Error("evmf: initslot not equal to slot", log.ErrKey, err, "slot", slot, "initslot", initslots[i.Uint64()])
 			}
-			i = i.Add(i, big.NewInt(1))
+			i = new(big.Int).Add(i, big.NewInt(1))
 		}
 	}
 
