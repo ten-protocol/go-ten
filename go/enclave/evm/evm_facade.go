@@ -187,19 +187,31 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(exec.logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
-	reader, err := s.Database().Reader(header.Root)
-	if err != nil {
-		exec.logger.Error("evmf: could not get state reader", log.ErrKey, err)
-		return nil, nil, nil
+	var initslots []gethcommon.Hash
+	if msg.To != nil {
+		reader, err := s.Database().Reader(header.Root)
+		if err != nil {
+			exec.logger.Error("evmf: could not get state reader", log.ErrKey, err)
+			return nil, nil, nil
+		}
+
+		var i = big.NewInt(0)
+		for {
+			k := gethcommon.Hash{}
+			k.SetBytes(i.Bytes())
+
+			slot, err := reader.Storage(*msg.To, k)
+			if err != nil {
+				exec.logger.Error("evmf: could not get account", log.ErrKey, err)
+				return nil, nil, nil
+			}
+			if slot == (gethcommon.Hash{}) {
+				break
+			}
+			initslots = append(initslots, slot)
+			i = i.Add(i, big.NewInt(1))
+		}
 	}
-	initAcc, err := reader.Account(msg.From)
-	if err != nil {
-		exec.logger.Error("evmf: could not get account", log.ErrKey, err)
-		return nil, nil, nil
-	}
-	initBalance := initAcc.Balance
-	initNonce := initAcc.Nonce
-	initRoot := initAcc.Root
 
 	vmCfg := vm.Config{
 		NoBaseFee: true,
@@ -292,29 +304,33 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		exec.logger.Debug("estimate: added visibility-read gas", "created", len(createdContracts), "extraGas", extra, "totalUsedGas", result.UsedGas)
 	}
 
-	reader, err = s.Database().Reader(header.Root)
-	if err != nil {
-		exec.logger.Error("evmf: could not get state reader", log.ErrKey, err)
-		return nil, nil, nil
-	}
+	if msg.To != nil {
+		reader, err := s.Database().Reader(header.Root)
+		if err != nil {
+			exec.logger.Error("evmf: could not get state reader", log.ErrKey, err)
+			return nil, nil, nil
+		}
 
-	afterAcc, err1 := reader.Account(msg.From)
-	if err1 != nil {
-		exec.logger.Error("evmf: could not get account", log.ErrKey, err)
-		return nil, nil, nil
-	}
-	afterBalance := afterAcc.Balance
-	afterNonce := afterAcc.Nonce
-	afterRoot := afterAcc.Root
+		var i = big.NewInt(0)
+		for {
+			k := gethcommon.Hash{}
+			k.SetBytes(i.Bytes())
 
-	if afterBalance.Uint64() != initBalance.Uint64() {
-		exec.logger.Error("balance changed", "from", msg.From.Hex(), "initBalance", initBalance, "afterBalance", afterBalance)
-	}
-	if afterNonce != initNonce {
-		exec.logger.Error("nonce changed", "from", msg.From.Hex(), "initNonce", initNonce, "afterNonce", afterNonce)
-	}
-	if afterRoot != initRoot {
-		exec.logger.Error("storage root changed", "from", msg.From.Hex(), "initRoot", initRoot, "afterRoot", afterRoot)
+			slot, err := reader.Storage(*msg.To, k)
+			if err != nil {
+				exec.logger.Error("evmf: could not get account", log.ErrKey, err)
+				return nil, nil, nil
+			}
+			if slot == (gethcommon.Hash{}) {
+				break
+			}
+			initSlot := initslots[i.Uint64()]
+			if slot != initSlot {
+				exec.logger.Error("evmf: storage slot changed", "slot", i, "initSlot", initSlot, "Slot", slot, "msg.To", msg.To.Hex(), "msg.From", msg.From.Hex())
+				return nil, nil, nil
+			}
+			i = i.Add(i, big.NewInt(1))
+		}
 	}
 
 	return result, nil, nil
