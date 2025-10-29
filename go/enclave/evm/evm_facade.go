@@ -211,7 +211,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		// convert baseHash to a big.Int for adding offsets
 		baseBig := new(big.Int).SetBytes(baseHash.Bytes())
 
-		for i := int64(0); i < length; i++ {
+		for i := int64(0); i < max(length, 200); i++ {
 			offset := new(big.Int).Add(baseBig, big.NewInt(i)) // base + i
 			slotKey := gethcommon.BigToHash(offset)            // converts to 32-byte hash key
 			slotVal, err := reader.Storage(*msg.To, slotKey)
