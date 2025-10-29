@@ -221,7 +221,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 				break
 			}
 			initslots = append(initslots, slot)
-			exec.logger.Debug("evmf: initslot", "slot", slot)
+			exec.logger.Debug("evmf: initslot", "slot", slot, "pos", i)
 			i = new(big.Int).Add(i, big.NewInt(1))
 		}
 	}
