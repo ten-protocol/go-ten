@@ -415,6 +415,9 @@ func (e *Service) isRollupRequired(lastSuccessfulRollup time.Time) (bool, uint64
 		e.logger.Debug("Rollup is required", "time_expired", timeExpired, "size_exceeded", sizeExceeded,
 			"last_successful_rollup", lastSuccessfulRollup, "from_batch", fromBatch,
 			"estimated_size", estimatedRunningRollupSize, "max_rollup_size", e.maxRollupSize)
+	} else {
+		e.logger.Debug("Rollup is not required", "time_expired", timeExpired, "size_exceeded", sizeExceeded,
+			"fromBatch", fromBatch, "lastRollup", lastSuccessfulRollup)
 	}
 
 	return rollupRequired, fromBatch

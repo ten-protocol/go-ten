@@ -100,6 +100,8 @@ func AddBatch(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
 		return fmt.Errorf("failed to update historical transaction count: %w", err)
 	}
 
+	db.Logger().Debug("Added batch to host DB", "seqNo", batch.SeqNo().Uint64(), "txCount", len(batch.TxHashes), "txSize", len(batch.EncryptedTxBlob))
+
 	return nil
 }
 

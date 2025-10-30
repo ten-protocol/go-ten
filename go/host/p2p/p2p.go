@@ -455,13 +455,13 @@ func (p *Service) sendBytes(address string, tx []byte) error {
 		defer conn.Close()
 	}
 	if err != nil {
-		p.logger.Debug(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
+		p.logger.Trace(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
 		return err
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
-		p.logger.Debug(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
+		p.logger.Trace(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
 		return err
 	}
 	return nil

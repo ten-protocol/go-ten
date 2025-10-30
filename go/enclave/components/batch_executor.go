@@ -387,7 +387,7 @@ func (executor *batchExecutor) execMempoolTransactions(ec *BatchExecutionContext
 	pendingTransactions := executor.mempool.PendingTransactions(ec.AtTime)
 
 	nrPending, nrQueued := executor.mempool.Stats()
-	executor.logger.Debug(fmt.Sprintf("Mempool pending txs: %d. Queued: %d", nrPending, nrQueued))
+	executor.logger.Debug("Mempool pending txs", "pendingTxs", nrPending, "queuedTxs", nrQueued)
 
 	mempoolTxs := newTransactionsByPriceAndNonce(nil, pendingTransactions, ec.currentBatch.Header.BaseFee)
 
