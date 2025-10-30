@@ -284,7 +284,8 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		exec.logger.Debug("estimate: added visibility-read gas", "created", len(createdContracts), "extraGas", extra, "totalUsedGas", result.UsedGas)
 	}
 
-	trie = s.GetTrie()
+	cleanState.IntermediateRoot(true)
+	trie = cleanState.GetTrie()
 	exec.logger.Debug("trie hash after estimate", "trieHash", trie.Hash().Hex())
 
 	return result, nil, nil
