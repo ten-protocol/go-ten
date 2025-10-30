@@ -143,10 +143,12 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		}
 	}
 
-	if len(ec.currentBatch.Transactions) > 0 {
-		tx := ec.currentBatch.Transactions[0]
+	if len(ec.Transactions) > 0 {
+		tx := ec.Transactions[0]
 		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
-		executor.evmFacade.DumpStateDB("clean", ec.stateDB, *from, *tx.To())
+		if tx.To() != nil {
+			executor.evmFacade.DumpStateDB("clean", ec.stateDB, *from, *tx.To())
+		}
 	}
 
 	// Step 1: execute the transactions included in the batch or pending in the mempool
@@ -154,10 +156,12 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		return nil, err
 	}
 
-	if len(ec.currentBatch.Transactions) > 0 {
-		tx := ec.currentBatch.Transactions[0]
+	if len(ec.Transactions) > 0 {
+		tx := ec.Transactions[0]
 		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
-		executor.evmFacade.DumpStateDB("step1", ec.stateDB, *from, *tx.To())
+		if tx.To() != nil {
+			executor.evmFacade.DumpStateDB("clean", ec.stateDB, *from, *tx.To())
+		}
 	}
 
 	// Step 2: execute the xChain messages
@@ -175,10 +179,12 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		return nil, err
 	}
 
-	if len(ec.currentBatch.Transactions) > 0 {
-		tx := ec.currentBatch.Transactions[0]
+	if len(ec.Transactions) > 0 {
+		tx := ec.Transactions[0]
 		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
-		executor.evmFacade.DumpStateDB("step4", ec.stateDB, *from, *tx.To())
+		if tx.To() != nil {
+			executor.evmFacade.DumpStateDB("clean", ec.stateDB, *from, *tx.To())
+		}
 	}
 
 	// When the `failForEmptyBatch` flag is true, we skip if there is no transaction or xChain tx
@@ -654,7 +660,7 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 	// randNum, _ := rand.Int(rand.Reader, big.NewInt(5))
 	// if ec.ExpectedRoot != nil && randNum.Int64() == 1 && ec.SequencerNo.Uint64() > 200 {
 	if ec.ExpectedRoot != nil && *ec.ExpectedRoot != resultRoot && ec.SequencerNo.Uint64() > common.L2SysContractGenesisSeqNo+1 {
-		tx := ec.currentBatch.Transactions[0]
+		tx := ec.Transactions[0]
 		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
 		executor.evmFacade.DumpStateDB("after mismatch", ec.stateDB, *from, *tx.To())
 		// executor.storage.CleanStateDB(ec.parentBatch.Root)
