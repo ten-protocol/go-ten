@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type PrivateTransactionsQueryResponse struct {
@@ -129,6 +130,7 @@ type TenNetworkInfo struct {
 	L1StartHash               common.Hash
 	PublicSystemContracts     map[string]common.Address
 	AdditionalContracts       []*NamedAddress
+	AttestationReports        []PublicAttestationReport
 }
 
 // NetworkConfigAddresses return type of the addresses function on the NetworkConfig contract
@@ -148,4 +150,11 @@ type NetworkConfigAddresses struct {
 type NamedAddress struct {
 	Name string
 	Addr common.Address
+}
+
+// PublicAttestationReport mirrors AttestationReport but encodes byte slices as hex in JSON
+type PublicAttestationReport struct {
+	Report    hexutil.Bytes  `json:"Report"`
+	PubKey    hexutil.Bytes  `json:"PubKey"`
+	EnclaveID common.Address `json:"EnclaveID"`
 }

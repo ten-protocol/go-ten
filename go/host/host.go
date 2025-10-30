@@ -278,7 +278,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 
 	importantContractAddresses := h.services.L1Publisher().GetImportantContracts()
 
-	return &common.TenNetworkInfo{
+	info := &common.TenNetworkInfo{
 		NetworkConfig:             h.config.NetworkConfigAddress,
 		EnclaveRegistry:           importantContractAddresses.EnclaveRegistry,
 		CrossChain:                importantContractAddresses.CrossChain,
@@ -294,7 +294,17 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		SystemContractsUpgrader:   h.systemContractUpgradeAddress,
 		PublicSystemContracts:     h.publicSystemContracts,
 		AdditionalContracts:       importantContractAddresses.AdditionalContracts,
-	}, nil
+	}
+
+	if att, sysErr := h.EnclaveClient().Attestation(context.Background()); sysErr == nil && att != nil {
+		info.AttestationReports = []common.HexAttestationReport{{
+			Report:    att.Report,
+			PubKey:    att.PubKey,
+			EnclaveID: att.EnclaveID,
+		}}
+	}
+
+	return info, nil
 }
 
 func (h *host) Storage() storage.Storage {

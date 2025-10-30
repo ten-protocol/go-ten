@@ -45,7 +45,22 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	return checksumFormatted(config), nil
+	resp := checksumFormatted(config)
+
+	if att, sysErr := api.host.EnclaveClient().Attestation(context.Background()); sysErr == nil && att != nil {
+		resp.Attestations = []EnclaveAttestation{{
+			EnclaveID: gethcommon.AddressEIP55(att.EnclaveID),
+			PublicKey: att.PubKey,
+			Report:    att.Report,
+		}}
+		resp.AttestationReports = []common.HexAttestationReport{{
+			Report:    att.Report,
+			PubKey:    att.PubKey,
+			EnclaveID: att.EnclaveID,
+		}}
+	}
+
+	return resp, nil
 }
 
 func (api *TenAPI) RpcKey() ([]byte, error) {
@@ -63,6 +78,13 @@ func (api *TenAPI) RpcKey() ([]byte, error) {
 type CrossChainProof struct {
 	Proof hexutil.Bytes
 	Root  gethcommon.Hash
+}
+
+// EnclaveAttestation represents an enclave attestation with hex-encoded fields for RPC
+type EnclaveAttestation struct {
+	EnclaveID gethcommon.AddressEIP55
+	PublicKey hexutil.Bytes
+	Report    hexutil.Bytes
 }
 
 func (api *TenAPI) GetCrossChainProof(_ context.Context, messageType string, crossChainMessage gethcommon.Hash) (CrossChainProof, error) {
@@ -114,6 +136,8 @@ type ChecksumFormattedTenNetworkConfig struct {
 	L1StartHash               gethcommon.Hash
 	PublicSystemContracts     map[string]gethcommon.AddressEIP55
 	AdditionalContracts       []*common.NamedAddress
+	Attestations              []EnclaveAttestation
+	AttestationReports        []common.PublicAttestationReport
 }
 
 func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetworkConfig {
