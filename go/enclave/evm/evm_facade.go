@@ -188,10 +188,9 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(exec.logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
-	trie, err := s.Database().OpenTrie(header.Root)
-	if err != nil {
-		return nil, err, err
-	}
+	s.IntermediateRoot(true)
+
+	trie := s.GetTrie()
 	exec.logger.Debug("trie hash before estimate", "trieHash", trie.Hash().Hex())
 
 	vmCfg := vm.Config{
@@ -285,10 +284,7 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		exec.logger.Debug("estimate: added visibility-read gas", "created", len(createdContracts), "extraGas", extra, "totalUsedGas", result.UsedGas)
 	}
 
-	trie, err = s.Database().OpenTrie(header.Root)
-	if err != nil {
-		return nil, err, err
-	}
+	trie = s.GetTrie()
 	exec.logger.Debug("trie hash after estimate", "trieHash", trie.Hash().Hex())
 
 	return result, nil, nil
@@ -368,8 +364,7 @@ func (exec *evmExecutor) DumpStateDB(label string, s *state.StateDB, from gethco
 	//	return
 	//}
 	//exec.logger.Debug("dump: from account", "label", label, "balance", acc.Balance, "nonce", acc.Nonce, "root", acc.Root)
-	exec.logger.Debug("dump: from account", "label", label, "balance", s.GetBalance(from), "nonce", s.GetNonce(from), "root", s.GetStorageRoot(from))
-	exec.logger.Debug("dump: to account", "label", label, "balance", s.GetBalance(to), "nonce", s.GetNonce(to), "root", s.GetStorageRoot(to))
-
-	exec.logger.Debug("stateRoot", "root", s.IntermediateRoot(true), "label", label)
+	exec.logger.Debug("dump: from account", "label", label, "balance", s.GetBalance(from), "nonce", s.GetNonce(from))
+	exec.logger.Debug("dump: to account", "label", label, "balance", s.GetBalance(to), "nonce", s.GetNonce(to))
+	exec.logger.Debug("dump: stateRoot", "label", label, "root", s.IntermediateRoot(true))
 }
