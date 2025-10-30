@@ -908,6 +908,11 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 		txResult.Receipt.GasUsed = gasUsed
 	}
 
+	from, _ := core.GetAuthenticatedSender(tx.Tx.ChainId().Int64(), tx.Tx)
+	if tx.Tx.To() != nil && from != nil {
+		executor.evmFacade.DumpStateDB(tx.Tx.Hash().String(), ec.stateDB, *from, *tx.Tx.To())
+	}
+
 	// use the full entropy as the basis for the next transaction
 	ethHeader.MixDigest = fullEntropy
 	return txResult, nil

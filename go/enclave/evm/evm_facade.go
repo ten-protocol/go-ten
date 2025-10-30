@@ -359,5 +359,5 @@ func (exec *evmExecutor) DumpStateDB(label string, s *state.StateDB, from gethco
 	exec.logger.Debug("dump: from account", "label", label, "balance", s.GetBalance(from), "nonce", s.GetNonce(from), "root", s.GetStorageRoot(from))
 	exec.logger.Debug("dump: to account", "label", label, "balance", s.GetBalance(to), "nonce", s.GetNonce(to), "root", s.GetStorageRoot(to))
 
-	exec.logger.Debug("stateRoot", s.IntermediateRoot(true), "label", label)
+	exec.logger.Debug("stateRoot", "root", s.IntermediateRoot(true), "label", label)
 }
