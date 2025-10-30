@@ -15,6 +15,7 @@ import (
 type EVMFacade interface {
 	ExecuteTx(tx *common.L2PricedTransaction, s *state.StateDB, header *types.Header, gp *gethcore.GasPool, usedGas *uint64, tCount int, noBaseFee bool) *core.TxExecResult
 	ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError)
+	DumpStateDB(label string, db *state.StateDB, from gethcommon.Address, to gethcommon.Address)
 }
 
 type ContractVisibilityReader interface {

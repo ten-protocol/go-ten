@@ -188,50 +188,6 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(exec.logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
-	var initslots []gethcommon.Hash
-	if msg.To != nil {
-		reader, err := s.Database().Reader(header.Root)
-		if err != nil {
-			exec.logger.Error("evmf: could not get state reader", log.ErrKey, err)
-			return nil, nil, nil
-		}
-		// read length at slot 0
-		lenKey := gethcommon.BigToHash(big.NewInt(0)) // this builds a 32-byte key for slot 0
-		lenSlot, err := reader.Storage(*msg.To, lenKey)
-		if err != nil {
-			exec.logger.Error("evmf: could not get account", "err", err)
-			return nil, nil, nil
-		}
-		length := new(big.Int).SetBytes(lenSlot.Bytes()).Int64()
-		exec.logger.Debug("evmf: initLenSlot", "slot", lenSlot, "length", length)
-
-		// compute base = keccak256(abi.encode(uint256(0))) i.e. keccak256(32-byte zero)
-		baseHash := crypto.Keccak256Hash(make([]byte, 32)) // common.Hash
-
-		// convert baseHash to a big.Int for adding offsets
-		baseBig := new(big.Int).SetBytes(baseHash.Bytes())
-
-		for i := int64(0); i < min(length, 200); i++ {
-			offset := new(big.Int).Add(baseBig, big.NewInt(i)) // base + i
-			slotKey := gethcommon.BigToHash(offset)            // converts to 32-byte hash key
-			slotVal, err := reader.Storage(*msg.To, slotKey)
-			if err != nil {
-				exec.logger.Error("evmf: could not get account", "err", err)
-				return nil, nil, nil
-			}
-
-			// slotVal may be zero (valid), so DON'T treat it as end-of-array
-			initslots = append(initslots, slotVal)
-			exec.logger.Debug("evmf: initslot", "index", i, "slotKey", slotKey, "value", slotVal)
-		}
-
-		// convert each slotVal to a uint256 if you want
-		for idx, h := range initslots {
-			val := new(big.Int).SetBytes(h.Bytes())
-			exec.logger.Debug("evmf: element", "index", idx, "value", val)
-		}
-	}
-
 	vmCfg := vm.Config{
 		NoBaseFee: true,
 	}
@@ -323,43 +279,6 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		exec.logger.Debug("estimate: added visibility-read gas", "created", len(createdContracts), "extraGas", extra, "totalUsedGas", result.UsedGas)
 	}
 
-	if msg.To != nil {
-		reader, err := s.Database().Reader(header.Root)
-		if err != nil {
-			exec.logger.Error("evmf: could not get state reader", log.ErrKey, err)
-			return nil, nil, nil
-		}
-		// read length at slot 0
-		lenKey := gethcommon.BigToHash(big.NewInt(0)) // this builds a 32-byte key for slot 0
-		lenSlot, err := reader.Storage(*msg.To, lenKey)
-		if err != nil {
-			exec.logger.Error("evmf: could not get account", "err", err)
-			return nil, nil, nil
-		}
-		length := new(big.Int).SetBytes(lenSlot.Bytes()).Int64()
-		exec.logger.Debug("evmf: after LenSlot", "slot", lenSlot, "length", length)
-
-		// compute base = keccak256(abi.encode(uint256(0))) i.e. keccak256(32-byte zero)
-		baseHash := crypto.Keccak256Hash(make([]byte, 32)) // common.Hash
-
-		// convert baseHash to a big.Int for adding offsets
-		baseBig := new(big.Int).SetBytes(baseHash.Bytes())
-
-		for i := int64(0); i < min(length, 200); i++ {
-			offset := new(big.Int).Add(baseBig, big.NewInt(i)) // base + i
-			slotKey := gethcommon.BigToHash(offset)            // converts to 32-byte hash key
-			slotVal, err := reader.Storage(*msg.To, slotKey)
-			if err != nil {
-				exec.logger.Error("evmf: could not get account", "err", err)
-				return nil, nil, nil
-			}
-
-			// slotVal may be zero (valid), so DON'T treat it as end-of-array
-			exec.logger.Debug("evmf: after tslot", "index", i, "slotKey", slotKey, "value", slotVal)
-		}
-
-	}
-
 	return result, nil, nil
 }
 
@@ -397,4 +316,43 @@ func (exec *evmExecutor) readVisibilityWithCap(ctx context.Context, evmEnv *vm.E
 		gp.AddGas(cap - used)
 	}
 	return cfg, used, nil
+}
+
+func (exec *evmExecutor) DumpStateDB(label string, s *state.StateDB, from gethcommon.Address, to gethcommon.Address) {
+	reader := s.Reader()
+	// read length at slot 0
+	lenKey := gethcommon.BigToHash(big.NewInt(0)) // this builds a 32-byte key for slot 0
+	lenSlot, err := reader.Storage(to, lenKey)
+	if err != nil {
+		exec.logger.Error("dump: could not get to storage", "err", err)
+		return
+	}
+	length := new(big.Int).SetBytes(lenSlot.Bytes()).Int64()
+	exec.logger.Debug("dump: LenSlot", "label", label, "length", length)
+
+	// compute base = keccak256(abi.encode(uint256(0))) i.e. keccak256(32-byte zero)
+	baseHash := crypto.Keccak256Hash(make([]byte, 32)) // common.Hash
+
+	// convert baseHash to a big.Int for adding offsets
+	baseBig := new(big.Int).SetBytes(baseHash.Bytes())
+
+	for i := int64(0); i < min(length, 200); i++ {
+		offset := new(big.Int).Add(baseBig, big.NewInt(i)) // base + i
+		slotKey := gethcommon.BigToHash(offset)            // converts to 32-byte hash key
+		slotVal, err := reader.Storage(to, slotKey)
+		if err != nil {
+			exec.logger.Error("dump: could not get account", "err", err)
+			return
+		}
+
+		// slotVal may be zero (valid), so DON'T treat it as end-of-array
+		exec.logger.Debug("dump: slot", "label", label, "index", i, "value", slotVal)
+	}
+
+	acc, err := s.Reader().Account(from)
+	if err != nil {
+		exec.logger.Error("dump: could not get from account", "err", err)
+		return
+	}
+	exec.logger.Debug("dump: from account", "label", label, "balance", acc.Balance, "nonce", acc.Nonce, "root", acc.Root)
 }

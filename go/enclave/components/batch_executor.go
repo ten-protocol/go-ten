@@ -143,9 +143,21 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		}
 	}
 
+	if len(ec.currentBatch.Transactions) > 0 {
+		tx := ec.currentBatch.Transactions[0]
+		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
+		executor.evmFacade.DumpStateDB("clean", ec.stateDB, *from, *tx.To())
+	}
+
 	// Step 1: execute the transactions included in the batch or pending in the mempool
 	if err := executor.execBatchTransactions(ec); err != nil {
 		return nil, err
+	}
+
+	if len(ec.currentBatch.Transactions) > 0 {
+		tx := ec.currentBatch.Transactions[0]
+		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
+		executor.evmFacade.DumpStateDB("step1", ec.stateDB, *from, *tx.To())
 	}
 
 	// Step 2: execute the xChain messages
@@ -161,6 +173,12 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 	// Step 4: execute the system contract registered at the end of the block
 	if err := executor.execOnBlockEndTx(ec); err != nil {
 		return nil, err
+	}
+
+	if len(ec.currentBatch.Transactions) > 0 {
+		tx := ec.currentBatch.Transactions[0]
+		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
+		executor.evmFacade.DumpStateDB("step4", ec.stateDB, *from, *tx.To())
 	}
 
 	// When the `failForEmptyBatch` flag is true, we skip if there is no transaction or xChain tx
@@ -636,7 +654,10 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 	// randNum, _ := rand.Int(rand.Reader, big.NewInt(5))
 	// if ec.ExpectedRoot != nil && randNum.Int64() == 1 && ec.SequencerNo.Uint64() > 200 {
 	if ec.ExpectedRoot != nil && *ec.ExpectedRoot != resultRoot && ec.SequencerNo.Uint64() > common.L2SysContractGenesisSeqNo+1 {
-		executor.storage.CleanStateDB(ec.parentBatch.Root)
+		tx := ec.currentBatch.Transactions[0]
+		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
+		executor.evmFacade.DumpStateDB("after mismatch", ec.stateDB, *from, *tx.To())
+		// executor.storage.CleanStateDB(ec.parentBatch.Root)
 		return nil, fmt.Errorf("batch root mismatch for batch seq %d. Expected: %s, actual: %s", ec.currentBatch.SeqNo(), ec.ExpectedRoot, resultRoot)
 	}
 
@@ -700,26 +721,26 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	// and the parent hash. This recomputed batch is then checked against the incoming batch.
 	// If the sequencer has tampered with something the hash will not add up and validation will
 	// produce an error.
-	for {
-		cb, err := executor.compute(ctx, batch) // this execution is not used when first producing a batch, we never want to fail for empty batches
-		if err != nil {
-			executor.logger.Error("Failed to compute batch", log.ErrKey, err)
-			// return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
-			continue
-		}
-
-		if cb.Batch.Hash() != batch.Hash() {
-			// todo @stefan - generate a validator challenge here and return it
-			executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
-			// print out the timestamps of the transactions in the batch
-			for _, txExecResult := range cb.TxExecResults {
-				executor.logger.Error("tx and time", log.TxKey, txExecResult.TxWithSender.Tx.Hash(), "time", txExecResult.TxWithSender.Tx.Time())
-			}
-			return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
-		}
-
-		return cb.TxExecResults, nil
+	// for {
+	cb, err := executor.compute(ctx, batch) // this execution is not used when first producing a batch, we never want to fail for empty batches
+	if err != nil {
+		executor.logger.Error("Failed to compute batch", log.ErrKey, err)
+		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
+		// continue
 	}
+
+	if cb.Batch.Hash() != batch.Hash() {
+		// todo @stefan - generate a validator challenge here and return it
+		executor.logger.Error(fmt.Sprintf("Error validating batch. Calculated: %+v    Incoming: %+v", cb.Batch.Header, batch.Header))
+		// print out the timestamps of the transactions in the batch
+		for _, txExecResult := range cb.TxExecResults {
+			executor.logger.Error("tx and time", log.TxKey, txExecResult.TxWithSender.Tx.Hash(), "time", txExecResult.TxWithSender.Tx.Time())
+		}
+		return nil, fmt.Errorf("batch is in invalid state. Incoming hash: %s  Computed hash: %s", batch.Hash(), cb.Batch.Hash())
+	}
+
+	return cb.TxExecResults, nil
+	//}
 }
 
 func (executor *batchExecutor) compute(ctx context.Context, batch *core.Batch) (*ComputedBatch, error) {
