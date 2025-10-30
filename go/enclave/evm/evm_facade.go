@@ -188,6 +188,12 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message, s *state.StateDB, header *common.BatchHeader, isEstimateGas bool) (*gethcore.ExecutionResult, error, common.SystemError) {
 	defer core.LogMethodDuration(exec.logger, measure.NewStopwatch(), "evm_facade.go:Call()")
 
+	trie, err := s.Database().OpenTrie(header.Root)
+	if err != nil {
+		return nil, err, err
+	}
+	exec.logger.Debug("trie hash before estimate", "trieHash", trie.Hash().Hex())
+
 	vmCfg := vm.Config{
 		NoBaseFee: true,
 	}
@@ -278,6 +284,12 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 		result.UsedGas += extra
 		exec.logger.Debug("estimate: added visibility-read gas", "created", len(createdContracts), "extraGas", extra, "totalUsedGas", result.UsedGas)
 	}
+
+	trie, err = s.Database().OpenTrie(header.Root)
+	if err != nil {
+		return nil, err, err
+	}
+	exec.logger.Debug("trie hash after estimate", "trieHash", trie.Hash().Hex())
 
 	return result, nil, nil
 }
