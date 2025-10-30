@@ -319,14 +319,15 @@ func (exec *evmExecutor) readVisibilityWithCap(ctx context.Context, evmEnv *vm.E
 }
 
 func (exec *evmExecutor) DumpStateDB(label string, s *state.StateDB, from gethcommon.Address, to gethcommon.Address) {
-	reader := s.Reader()
+	// reader := s.Reader()
 	// read length at slot 0
 	lenKey := gethcommon.BigToHash(big.NewInt(0)) // this builds a 32-byte key for slot 0
-	lenSlot, err := reader.Storage(to, lenKey)
-	if err != nil {
-		exec.logger.Error("dump: could not get to storage", "err", err)
-		return
-	}
+	//lenSlot, err := reader.Storage(to, lenKey)
+	//if err != nil {
+	//	exec.logger.Error("dump: could not get to storage", "err", err)
+	//	return
+	//}
+	lenSlot := s.GetState(to, lenKey)
 	length := new(big.Int).SetBytes(lenSlot.Bytes()).Int64()
 	exec.logger.Debug("dump: LenSlot", "label", label, "length", length)
 
@@ -339,20 +340,21 @@ func (exec *evmExecutor) DumpStateDB(label string, s *state.StateDB, from gethco
 	for i := int64(0); i < min(length, 100); i++ {
 		offset := new(big.Int).Add(baseBig, big.NewInt(i)) // base + i
 		slotKey := gethcommon.BigToHash(offset)            // converts to 32-byte hash key
-		slotVal, err := reader.Storage(to, slotKey)
-		if err != nil {
-			exec.logger.Error("dump: could not get account", "err", err)
-			return
-		}
-
+		//slotVal, err := reader.Storage(to, slotKey)
+		//if err != nil {
+		//	exec.logger.Error("dump: could not get account", "err", err)
+		//	return
+		//}
+		slotVal := s.GetState(to, slotKey)
 		// slotVal may be zero (valid), so DON'T treat it as end-of-array
 		exec.logger.Debug("dump: slot", "label", label, "index", i, "value", slotVal)
 	}
 
-	acc, err := s.Reader().Account(from)
-	if err != nil {
-		exec.logger.Error("dump: could not get from account", "err", err)
-		return
-	}
-	exec.logger.Debug("dump: from account", "label", label, "balance", acc.Balance, "nonce", acc.Nonce, "root", acc.Root)
+	//acc, err := reader.Account(from)
+	//if err != nil {
+	//	exec.logger.Error("dump: could not get from account", "err", err)
+	//	return
+	//}
+	//exec.logger.Debug("dump: from account", "label", label, "balance", acc.Balance, "nonce", acc.Nonce, "root", acc.Root)
+	exec.logger.Debug("dump: from account", "label", label, "balance", s.GetBalance(from), "nonce", s.GetNonce(from), "root", s.GetStorageRoot(from))
 }

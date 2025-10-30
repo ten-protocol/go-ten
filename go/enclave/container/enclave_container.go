@@ -40,7 +40,8 @@ func (e *EnclaveContainer) Stop() error {
 
 // NewEnclaveContainerFromConfig wires up the components of the Enclave and its RPC server. Manages their lifecycle/monitors their status
 func NewEnclaveContainerFromConfig(config *enclaveconfig.EnclaveConfig) *EnclaveContainer {
-	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.NodeID)
+	// logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath, log.NodeIDKey, config.NodeID)
+	logger := log.New(log.EnclaveCmp, config.LogLevel, config.LogPath)
 
 	logger.Info(fmt.Sprintf("Building enclave container with config: %+v", config))
 

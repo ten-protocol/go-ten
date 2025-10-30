@@ -160,7 +160,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		tx := ec.Transactions[0]
 		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
 		if tx.To() != nil {
-			executor.evmFacade.DumpStateDB("clean", ec.stateDB, *from, *tx.To())
+			executor.evmFacade.DumpStateDB("step1", ec.stateDB, *from, *tx.To())
 		}
 	}
 
@@ -183,7 +183,7 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		tx := ec.Transactions[0]
 		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
 		if tx.To() != nil {
-			executor.evmFacade.DumpStateDB("clean", ec.stateDB, *from, *tx.To())
+			executor.evmFacade.DumpStateDB("step4", ec.stateDB, *from, *tx.To())
 		}
 	}
 
