@@ -337,18 +337,18 @@ func (exec *evmExecutor) DumpStateDB(label string, s *state.StateDB, from gethco
 	// convert baseHash to a big.Int for adding offsets
 	baseBig := new(big.Int).SetBytes(baseHash.Bytes())
 
-	for i := int64(0); i < min(length, 100); i++ {
-		offset := new(big.Int).Add(baseBig, big.NewInt(i)) // base + i
-		slotKey := gethcommon.BigToHash(offset)            // converts to 32-byte hash key
-		//slotVal, err := reader.Storage(to, slotKey)
-		//if err != nil {
-		//	exec.logger.Error("dump: could not get account", "err", err)
-		//	return
-		//}
-		slotVal := s.GetState(to, slotKey)
-		// slotVal may be zero (valid), so DON'T treat it as end-of-array
-		exec.logger.Debug("dump: slot", "label", label, "index", i, "value", slotVal)
-	}
+	// print the last element of the array
+	i := length - 1
+	offset := new(big.Int).Add(baseBig, big.NewInt(i)) // base + i
+	slotKey := gethcommon.BigToHash(offset)            // converts to 32-byte hash key
+	//slotVal, err := reader.Storage(to, slotKey)
+	//if err != nil {
+	//	exec.logger.Error("dump: could not get account", "err", err)
+	//	return
+	//}
+	slotVal := s.GetState(to, slotKey)
+	// slotVal may be zero (valid), so DON'T treat it as end-of-array
+	exec.logger.Debug("dump: slot", "label", label, "index", i, "value", slotVal)
 
 	//acc, err := reader.Account(from)
 	//if err != nil {
@@ -357,4 +357,7 @@ func (exec *evmExecutor) DumpStateDB(label string, s *state.StateDB, from gethco
 	//}
 	//exec.logger.Debug("dump: from account", "label", label, "balance", acc.Balance, "nonce", acc.Nonce, "root", acc.Root)
 	exec.logger.Debug("dump: from account", "label", label, "balance", s.GetBalance(from), "nonce", s.GetNonce(from), "root", s.GetStorageRoot(from))
+	exec.logger.Debug("dump: to account", "label", label, "balance", s.GetBalance(to), "nonce", s.GetNonce(to), "root", s.GetStorageRoot(to))
+
+	exec.logger.Debug("stateRoot", s.IntermediateRoot(true), "label", label)
 }
