@@ -329,19 +329,25 @@ func (e *Service) managePeriodicRollups() {
 	time.Sleep(e.blockTime)
 
 	for e.running.Load() {
+		loopStart := time.Now()
 		// block time seems a reasonable scaling cadence to check if rollup required, no need to check after every batch
 		time.Sleep(e.blockTime)
 
 		var rollupToPublish *common.CreateRollupResult
 		var err error
 
+		checkStart := time.Now()
 		rollupRequired, fromBatch := e.isRollupRequired(lastSuccessfulRollup)
+		checkDuration := time.Since(checkStart)
 		if !rollupRequired {
 			// the rollup required check contains appropriate logging, so no need to log here
 			continue
 		}
 
+		e.logger.Debug("Starting rollup preparation", "from_batch", fromBatch, "check_duration_ms", checkDuration.Milliseconds())
+
 		// find a client to produce rollup. Skip active sequencer at first, then try active sequencer if needed.
+		prepareStart := time.Now()
 		for _, guardian := range e.enclaveGuardians {
 			if guardian.state.IsEnclaveActiveSequencer() {
 				continue // skip active sequencer for now
@@ -367,13 +373,22 @@ func (e *Service) managePeriodicRollups() {
 				continue // try again later
 			}
 		}
+		prepareDuration := time.Since(prepareStart)
+		e.logger.Debug("Rollup prepared", "prepare_duration_s", prepareDuration.Seconds())
 
 		// this method waits until the receipt is received
+		publishStart := time.Now()
 		err = e.sl.L1Publisher().PublishBlob(*rollupToPublish)
+		publishDuration := time.Since(publishStart)
 		if err != nil {
-			e.logger.Error("Failed to publish rollup ", log.ErrKey, err)
+			e.logger.Error("Failed to publish rollup", "publish_duration_s", publishDuration.Seconds(), log.ErrKey, err)
 			continue // try again later
 		}
+		totalCycleDuration := time.Since(loopStart)
+		e.logger.Info("Rollup cycle completed", 
+			"prepare_duration_s", prepareDuration.Seconds(),
+			"publish_duration_s", publishDuration.Seconds(),
+			"total_cycle_duration_s", totalCycleDuration.Seconds())
 		lastSuccessfulRollup = time.Now()
 	}
 
