@@ -143,26 +143,26 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		}
 	}
 
-	if len(ec.Transactions) > 0 {
-		tx := ec.Transactions[0]
-		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
-		if tx.To() != nil {
-			executor.evmFacade.DumpStateDB("clean", ec.stateDB, *from, *tx.To())
-		}
-	}
+	//if len(ec.Transactions) > 0 {
+	//	tx := ec.Transactions[0]
+	//	from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
+	//	if tx.To() != nil {
+	//		executor.evmFacade.DumpStateDB("clean", ec.stateDB, *from, *tx.To())
+	//	}
+	//}
 
 	// Step 1: execute the transactions included in the batch or pending in the mempool
 	if err := executor.execBatchTransactions(ec); err != nil {
 		return nil, err
 	}
 
-	if len(ec.Transactions) > 0 {
-		tx := ec.Transactions[0]
-		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
-		if tx.To() != nil {
-			executor.evmFacade.DumpStateDB("step1", ec.stateDB, *from, *tx.To())
-		}
-	}
+	//if len(ec.Transactions) > 0 {
+	//	tx := ec.Transactions[0]
+	//	from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
+	//	if tx.To() != nil {
+	//		executor.evmFacade.DumpStateDB("step1", ec.stateDB, *from, *tx.To())
+	//	}
+	//}
 
 	// Step 2: execute the xChain messages
 	if err := executor.execXChainMessages(ec); err != nil {
@@ -179,13 +179,13 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		return nil, err
 	}
 
-	if len(ec.Transactions) > 0 {
-		tx := ec.Transactions[0]
-		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
-		if tx.To() != nil {
-			executor.evmFacade.DumpStateDB("step4", ec.stateDB, *from, *tx.To())
-		}
-	}
+	//if len(ec.Transactions) > 0 {
+	//	tx := ec.Transactions[0]
+	//	from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
+	//	if tx.To() != nil {
+	//		executor.evmFacade.DumpStateDB("step4", ec.stateDB, *from, *tx.To())
+	//	}
+	//}
 
 	// When the `failForEmptyBatch` flag is true, we skip if there is no transaction or xChain tx
 	if failForEmptyBatch && len(ec.batchTxResults) == 0 && len(ec.xChainResults) == 0 {
@@ -908,10 +908,10 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 		txResult.Receipt.GasUsed = gasUsed
 	}
 
-	from, _ := core.GetAuthenticatedSender(tx.Tx.ChainId().Int64(), tx.Tx)
-	if tx.Tx.To() != nil && from != nil {
-		executor.evmFacade.DumpStateDB(tx.Tx.Hash().String(), ec.stateDB, *from, *tx.Tx.To())
-	}
+	//from, _ := core.GetAuthenticatedSender(tx.Tx.ChainId().Int64(), tx.Tx)
+	//if tx.Tx.To() != nil && from != nil {
+	//	executor.evmFacade.DumpStateDB(tx.Tx.Hash().String(), ec.stateDB, *from, *tx.Tx.To())
+	//}
 
 	// use the full entropy as the basis for the next transaction
 	ethHeader.MixDigest = fullEntropy

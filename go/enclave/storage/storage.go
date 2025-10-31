@@ -78,7 +78,6 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	cfg := triedb.VerkleDefaults
 	cfg.PathDB.JournalDirectory = ""
 	cfg.PathDB.NoAsyncFlush = true
-	cfg.PathDB.NoAsyncGeneration = true
 	trieDB := triedb.NewDatabase(backingDB, cfg)
 	stateDB := state.NewDatabase(trieDB, nil)
 

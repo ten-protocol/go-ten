@@ -56,7 +56,7 @@ require (
 	kythe.io v0.0.73
 )
 
-replace github.com/ethereum/go-ethereum v1.16.3-0.20251020081817-cfb311148c52 => github.com/ten-protocol/go-ethereum v0.0.0-20251031143758-3dabc4e42873
+replace github.com/ethereum/go-ethereum v1.16.3-0.20251020081817-cfb311148c52 => github.com/ten-protocol/go-ethereum v0.0.0-20251031171108-cd852837a0be
 
 require (
 	dario.cat/mergo v1.0.2 // indirect
