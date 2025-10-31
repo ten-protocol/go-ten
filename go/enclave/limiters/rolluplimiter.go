@@ -40,8 +40,11 @@ func (rl *rollupLimiter) AcceptBatch(batch *core.Batch) (bool, error) {
 	}
 
 	// Estimate the compressed size - the actual rollup will compress this
-	// Use a conservative 10% compression ratio (same as host estimate)
-	estimatedCompressedSize := uint64(float64(len(txBytes))*0.1) + compressedHeaderSize
+	// The rollup uses CompressRollup with brotli.BestCompression on the combined batch payloads
+	// Based on real data, this achieves ~10-15% of original size for transaction-heavy batches
+	// Use 15% to be conservative and avoid overshooting the blob limit
+	compressionFactor := 0.15
+	estimatedCompressedSize := uint64(float64(len(txBytes))*compressionFactor) + compressedHeaderSize
 
 	accepted := estimatedCompressedSize <= rl.remainingSize
 	
