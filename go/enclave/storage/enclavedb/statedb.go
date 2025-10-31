@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/status-im/keycard-go/hexutils"
 
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
@@ -33,7 +34,11 @@ func getTable(key []byte) string {
 	if len(key) <= 32 {
 		return statedb32
 	}
-	return statedb64
+	if len(key) <= 64 {
+		return statedb64
+	}
+	// it will fail here
+	return "non-existent-table"
 }
 
 func Has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
@@ -156,9 +161,11 @@ func PutKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 		if len(key) <= 32 {
 			shortKeys = append(shortKeys, key)
 			shortVals = append(shortVals, vals[i])
-		} else {
+		} else if len(key) <= 64 {
 			longKeys = append(longKeys, key)
 			longVals = append(longVals, vals[i])
+		} else {
+			return fmt.Errorf("key %s longer than 64 bytes. should not happen", hexutils.BytesToHex(key))
 		}
 	}
 
