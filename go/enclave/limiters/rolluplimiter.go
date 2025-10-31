@@ -3,49 +3,60 @@ package limiters
 import (
 	"fmt"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
 const (
-	// 85% is a very conservative number. It will most likely be 66% in practice.
-	// We can lower it, once we have a mechanism in place to handle batches that don't actually compress to that.
-	txCompressionFactor = 0.85
 	// Based on testing: compressedHeaderSize=4 gives ~17K batches (too conservative)
 	// Target: ~25K batches for better utilization of 90KB limit
 	// Current: 2.06 bytes/batch actual, target estimation: 3.6 bytes/batch
-	// With 0.85 factor: 2.55 + 1.5 = 4.05 bytes/batch ≈ 22,222 batches
 	compressedHeaderSize = 2
 )
 
 type rollupLimiter struct {
 	remainingSize uint64
+	logger        gethlog.Logger
 }
 
-func NewRollupLimiter(size uint64) RollupLimiter {
+func NewRollupLimiter(size uint64, logger gethlog.Logger) RollupLimiter {
 	return &rollupLimiter{
 		remainingSize: size,
+		logger:        logger,
 	}
 }
 
-// todo (@stefan) figure out how to optimize the serialization out of the limiter
+// AcceptBatch estimates the size of a batch's transaction payload to determine if it fits in the rollup
 func (rl *rollupLimiter) AcceptBatch(batch *core.Batch) (bool, error) {
-	// Encode transactions with timestamp deltas, matching the rollup compression format
+	// Encode transactions with timestamp deltas, matching the actual rollup compression format
+	// This gives a realistic size estimate instead of overestimating
 	txsAndTimestamps := common.CreateTxsAndTimeStamp(batch.Transactions, batch.Header.Time)
-	txBytes, err := rlp.EncodeToBytes(txsAndTimestamps)  // <-- FIX: matches actual rollup structure
+	txBytes, err := rlp.EncodeToBytes(txsAndTimestamps)
 	if err != nil {
 		return false, fmt.Errorf("failed to encode batch transactions. Cause: %w", err)
 	}
 
-	// The actual rollup will compress this payload, so we estimate based on the raw size
-	// Note: we don't actually compress here to avoid the CPU cost, but use a realistic estimate
-	// based on the actual encoded size rather than just counting transactions
-	estimatedSize := uint64(len(txBytes)) + compressedHeaderSize
-	if estimatedSize > rl.remainingSize {
+	// Estimate the compressed size - the actual rollup will compress this
+	// Use a conservative 10% compression ratio (same as host estimate)
+	estimatedCompressedSize := uint64(float64(len(txBytes))*0.1) + compressedHeaderSize
+
+	accepted := estimatedCompressedSize <= rl.remainingSize
+	
+	rl.logger.Debug("RollupLimiter AcceptBatch",
+		"batch_seq", batch.SeqNo().Uint64(),
+		"tx_count", len(batch.Transactions),
+		"raw_bytes", len(txBytes),
+		"estimated_compressed", estimatedCompressedSize,
+		"remaining_space", rl.remainingSize,
+		"accepted", accepted)
+
+	if !accepted {
 		return false, nil
 	}
 
-	rl.remainingSize -= estimatedSize
+	rl.remainingSize -= estimatedCompressedSize
 	return true, nil
 }

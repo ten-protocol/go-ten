@@ -301,7 +301,7 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 }
 
 func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.CreateRollupResult, error) {
-	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
+	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize, s.logger)
 
 	currentL1Head, err := s.blockProcessor.GetHead(ctx)
 	if err != nil {
