@@ -3,9 +3,9 @@ package limiters
 import (
 	"fmt"
 
-	"github.com/ten-protocol/go-ten/go/enclave/core"
-
 	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/ten-protocol/go-ten/go/common"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 )
 
 const (
@@ -31,17 +31,21 @@ func NewRollupLimiter(size uint64) RollupLimiter {
 
 // todo (@stefan) figure out how to optimize the serialization out of the limiter
 func (rl *rollupLimiter) AcceptBatch(batch *core.Batch) (bool, error) {
-	encodedData, err := rlp.EncodeToBytes(batch.Transactions)
+	// Encode transactions with timestamp deltas, matching the rollup compression format
+	txsAndTimestamps := common.CreateTxsAndTimeStamp(batch.Transactions, batch.Header.Time)
+	txBytes, err := rlp.EncodeToBytes(txsAndTimestamps)  // <-- FIX: matches actual rollup structure
 	if err != nil {
-		return false, fmt.Errorf("failed to encode data. Cause: %w", err)
+		return false, fmt.Errorf("failed to encode batch transactions. Cause: %w", err)
 	}
 
-	// adjust with a compression factor and add the size of a compressed batch header
-	encodedSize := uint64(float64(len(encodedData))*txCompressionFactor) + compressedHeaderSize
-	if encodedSize > rl.remainingSize {
+	// The actual rollup will compress this payload, so we estimate based on the raw size
+	// Note: we don't actually compress here to avoid the CPU cost, but use a realistic estimate
+	// based on the actual encoded size rather than just counting transactions
+	estimatedSize := uint64(len(txBytes)) + compressedHeaderSize
+	if estimatedSize > rl.remainingSize {
 		return false, nil
 	}
 
-	rl.remainingSize -= encodedSize
+	rl.remainingSize -= estimatedSize
 	return true, nil
 }
