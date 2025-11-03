@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
@@ -35,6 +36,16 @@ type gethRPCClient struct {
 	logger     gethlog.Logger
 	rpcURL     string
 	blockCache *gocache.Cache
+
+	lock                sync.Mutex
+	methodCalls         map[string]int64
+	methodCredits       map[string]int64
+	totalCalls          int64
+	totalCredits        int64
+	seenBlockNumbers    map[string]int64
+	seenLogFilters      map[string]int64
+	duplicateBlockCalls int64
+	duplicateLogCalls   int64
 }
 
 // NewEthClientFromURL instantiates a new ethadapter.EthClient that connects to an ethereum node
@@ -46,13 +57,25 @@ func NewEthClientFromURL(rpcURL string, timeout time.Duration, logger gethlog.Lo
 
 	logger.Trace(fmt.Sprintf("Initialized eth node connection - addr: %s", rpcURL))
 
-	return &gethRPCClient{
-		client:     client,
-		timeout:    timeout,
-		logger:     logger,
-		rpcURL:     rpcURL,
-		blockCache: newFifoCache(_defaultBlockCacheSize, 5*time.Minute),
-	}, nil
+	ethClient := &gethRPCClient{
+		client:              client,
+		timeout:             timeout,
+		logger:              logger,
+		rpcURL:              rpcURL,
+		blockCache:          newFifoCache(_defaultBlockCacheSize, 5*time.Minute),
+		methodCalls:         make(map[string]int64),
+		methodCredits:       make(map[string]int64),
+		totalCalls:          0,
+		totalCredits:        0,
+		seenBlockNumbers:    make(map[string]int64),
+		seenLogFilters:      make(map[string]int64),
+		duplicateBlockCalls: 0,
+		duplicateLogCalls:   0,
+	}
+
+	go ethClient.logStatsLoop()
+
+	return ethClient, nil
 }
 
 func newFifoCache(nrElem int, ttl time.Duration) *gocache.Cache {
@@ -69,10 +92,115 @@ func NewEthClient(ipaddress string, port uint, timeout time.Duration, logger get
 	return NewEthClientFromURL(fmt.Sprintf("ws://%s:%d", ipaddress, port), timeout, logger)
 }
 
+func (e *gethRPCClient) recordAPICall(method string, credits int64) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	e.methodCalls[method]++
+	e.methodCredits[method] += credits
+	e.totalCalls++
+	e.totalCredits += credits
+}
+
+func (e *gethRPCClient) checkDuplicateBlockNumber(blockNum *big.Int) bool {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	key := "nil"
+	if blockNum != nil {
+		key = blockNum.String()
+	}
+
+	if _, seen := e.seenBlockNumbers[key]; seen {
+		e.duplicateBlockCalls++
+		e.seenBlockNumbers[key]++
+		e.logger.Info("Duplicate eth_getBlockByNumber call detected", "blockNumber", key, "totalDuplicates", e.seenBlockNumbers[key])
+		return true
+	}
+
+	e.seenBlockNumbers[key] = 1
+	return false
+}
+
+func (e *gethRPCClient) checkDuplicateLogFilter(q ethereum.FilterQuery) bool {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	fromBlock := "nil"
+	if q.FromBlock != nil {
+		fromBlock = q.FromBlock.String()
+	}
+	toBlock := "nil"
+	if q.ToBlock != nil {
+		toBlock = q.ToBlock.String()
+	}
+
+	blockHashStr := "nil"
+	if q.BlockHash != nil {
+		blockHashStr = q.BlockHash.Hex()
+	}
+
+	addresses := ""
+	for _, addr := range q.Addresses {
+		addresses += addr.Hex() + ","
+	}
+
+	topics := ""
+	for _, topicList := range q.Topics {
+		for _, topic := range topicList {
+			topics += topic.Hex() + ","
+		}
+		topics += ";"
+	}
+
+	key := fmt.Sprintf("from=%s,to=%s,hash=%s,addrs=%s,topics=%s", fromBlock, toBlock, blockHashStr, addresses, topics)
+
+	if _, seen := e.seenLogFilters[key]; seen {
+		e.duplicateLogCalls++
+		e.seenLogFilters[key]++
+		e.logger.Info("Duplicate eth_getLogs call detected", "fromBlock", fromBlock, "toBlock", toBlock, "blockHash", blockHashStr, "addresses", addresses, "totalDuplicates", e.seenLogFilters[key])
+		return true
+	}
+
+	e.seenLogFilters[key] = 1
+	return false
+}
+
+func (e *gethRPCClient) logStatsLoop() {
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		e.lock.Lock()
+		if e.totalCalls == 0 {
+			e.lock.Unlock()
+			continue
+		}
+
+		e.logger.Info("L1 RPC usage summary", "totalCalls", e.totalCalls, "totalCredits", e.totalCredits, "duplicateBlockCalls", e.duplicateBlockCalls, "duplicateLogCalls", e.duplicateLogCalls)
+
+		for method, count := range e.methodCalls {
+			credits := e.methodCredits[method]
+			e.logger.Info("L1 RPC method stats", "method", method, "calls", count, "credits", credits)
+		}
+
+		if e.duplicateBlockCalls > 0 {
+			e.logger.Info("Duplicate block number requests detected", "count", e.duplicateBlockCalls, "uniqueBlocks", len(e.seenBlockNumbers))
+		}
+
+		if e.duplicateLogCalls > 0 {
+			e.logger.Info("Duplicate log filter requests detected", "count", e.duplicateLogCalls, "uniqueFilters", len(e.seenLogFilters))
+		}
+
+		e.lock.Unlock()
+	}
+}
+
 func (e *gethRPCClient) FetchHeadBlock() (*types.Header, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.recordAPICall("eth_getBlockByNumber", 80)
 	return e.client.HeaderByNumber(ctx, nil)
 }
 
@@ -84,6 +212,7 @@ func (e *gethRPCClient) SendTransaction(signedTx *types.Transaction) error {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.recordAPICall("eth_sendRawTransaction", 80)
 	return e.client.SendTransaction(ctx, signedTx)
 }
 
@@ -91,6 +220,7 @@ func (e *gethRPCClient) TransactionReceipt(hash gethcommon.Hash) (*types.Receipt
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.recordAPICall("eth_getTransactionReceipt", 80)
 	return e.client.TransactionReceipt(ctx, hash)
 }
 
@@ -98,6 +228,7 @@ func (e *gethRPCClient) TransactionByHash(hash gethcommon.Hash) (*types.Transact
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.recordAPICall("eth_getTransactionByHash", 80)
 	return e.client.TransactionByHash(ctx, hash)
 }
 
@@ -105,6 +236,7 @@ func (e *gethRPCClient) Nonce(account gethcommon.Address) (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.recordAPICall("eth_getTransactionCount", 80)
 	return e.client.PendingNonceAt(ctx, account)
 }
 
@@ -116,6 +248,7 @@ func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscripti
 	err = retry.Do(func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 		defer cancel()
+		e.recordAPICall("eth_subscribe", 5)
 		sub, err = e.client.SubscribeNewHead(ctx, ch)
 		if err != nil {
 			e.logger.Warn("could not subscribe for new head blocks", log.ErrKey, err)
@@ -135,6 +268,7 @@ func (e *gethRPCClient) BlockNumber() (uint64, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.recordAPICall("eth_blockNumber", 80)
 	return e.client.BlockNumber(ctx)
 }
 
@@ -142,6 +276,8 @@ func (e *gethRPCClient) HeaderByNumber(n *big.Int) (*types.Header, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.checkDuplicateBlockNumber(n)
+	e.recordAPICall("eth_getBlockByNumber", 80)
 	b, err := e.client.BlockByNumber(ctx, n)
 	if err != nil {
 		return nil, err
@@ -163,6 +299,7 @@ func (e *gethRPCClient) HeaderByHash(hash gethcommon.Hash) (*types.Header, error
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.recordAPICall("eth_getBlockByHash", 80)
 	block, err := e.client.BlockByHash(ctx, hash)
 	if err != nil {
 		return nil, err
@@ -175,14 +312,17 @@ func (e *gethRPCClient) BlockByHash(hash gethcommon.Hash) (*types.Block, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.recordAPICall("eth_getBlockByHash", 80)
 	return e.client.BlockByHash(ctx, hash)
 }
 
 func (e *gethRPCClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
+	e.recordAPICall("eth_maxPriorityFeePerGas", 80)
 	return e.client.SuggestGasTipCap(ctx)
 }
 
 func (e *gethRPCClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) (uint64, error) {
+	e.recordAPICall("eth_estimateGas", 300)
 	return e.client.EstimateGas(ctx, msg)
 }
 
@@ -190,6 +330,7 @@ func (e *gethRPCClient) CallContract(msg ethereum.CallMsg) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.recordAPICall("eth_call", 80)
 	return e.client.CallContract(ctx, msg, nil)
 }
 
@@ -201,6 +342,7 @@ func (e *gethRPCClient) BalanceAt(address gethcommon.Address, blockNum *big.Int)
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.recordAPICall("eth_getBalance", 80)
 	return e.client.BalanceAt(ctx, address, blockNum)
 }
 
@@ -208,6 +350,8 @@ func (e *gethRPCClient) GetLogs(q ethereum.FilterQuery) ([]types.Log, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
+	e.checkDuplicateLogFilter(q)
+	e.recordAPICall("eth_getLogs", 255)
 	return e.client.FilterLogs(ctx, q)
 }
 
@@ -249,6 +393,7 @@ func (e *gethRPCClient) ReconnectIfClosed() error {
 func (e *gethRPCClient) Alive() bool {
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
+	e.recordAPICall("eth_blockNumber", 80)
 	_, err := e.client.BlockNumber(ctx)
 	if err != nil {
 		e.logger.Error("Unable to fetch BlockNumber rpc endpoint - client connection is in error state. Cause: %w", err)
