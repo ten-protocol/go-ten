@@ -49,3 +49,14 @@ type BatchRequest struct {
 	Requester string   // The address of the requester, used to direct the response
 	FromSeqNo *big.Int // The requester's view of the current head seq no, or nil if they haven't stored any batches.
 }
+
+// AttestationRequest is used when requesting attestation reports from the sequencer.
+type AttestationRequest struct {
+	Requester  string      // The address of the requester, used to direct the response
+	EnclaveIDs []EnclaveID // The list of enclave IDs to fetch attestations for
+}
+
+// AttestationResponse contains attestation reports from the sequencer's enclaves.
+type AttestationResponse struct {
+	Attestations []AttestationReport
+}

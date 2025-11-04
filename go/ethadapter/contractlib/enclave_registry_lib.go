@@ -2,6 +2,9 @@ package contractlib
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
+	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ten-protocol/go-ten/contracts/generated/NetworkEnclaveRegistry"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -16,18 +19,21 @@ type EnclaveRegistryLib interface {
 	CreateInitializeSecret(tx *common.L1InitializeSecretTx) (types.TxData, error)
 	CreateRequestSecret(tx *common.L1RequestSecretTx) (types.TxData, error)
 	CreateRespondSecret(tx *common.L1RespondSecretTx) (types.TxData, error)
+	GetSequencerAddresses() (map[string]gethcommon.Address, error)
 }
 
 type enclaveRegistryLibImpl struct {
 	addr        *gethcommon.Address
 	contractABI abi.ABI
+	ethClient   *ethclient.Client
 	logger      gethlog.Logger
 }
 
-func NewEnclaveRegistryLib(addr *gethcommon.Address, logger gethlog.Logger) EnclaveRegistryLib {
+func NewEnclaveRegistryLib(addr *gethcommon.Address, ethClient *ethclient.Client, logger gethlog.Logger) EnclaveRegistryLib {
 	return &enclaveRegistryLibImpl{
 		addr:        addr,
 		contractABI: ethadapter.EnclaveRegistryABI,
+		ethClient:   ethClient,
 		logger:      logger,
 	}
 }
@@ -106,6 +112,24 @@ func (n *enclaveRegistryLibImpl) DecodeTx(tx *types.Transaction) (common.L1TenTr
 		return n.unpackInitSecretTx(tx, method, contractCallData)
 	}
 	return nil, nil
+}
+
+func (n *enclaveRegistryLibImpl) GetSequencerAddresses() (map[string]gethcommon.Address, error) {
+	contract, err := NetworkEnclaveRegistry.NewNetworkEnclaveRegistryCaller(*n.addr, &n.ethClient)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create NetworkEnclaveRegistry caller: %w", err)
+	}
+
+	addresses, err := contract.GetSequencerEnclaves(&bind.CallOpts{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to call getSequencerEnclaves(): %w", err)
+	}
+
+	sequencerAddresses := make(map[string]gethcommon.Address)
+	for _, address := range addresses {
+		sequencerAddresses[address.Hex()] = address
+	}
+	return sequencerAddresses, nil
 }
 
 func (n *enclaveRegistryLibImpl) unpackInitSecretTx(tx *types.Transaction, method *abi.Method, contractCallData map[string]interface{}) (*common.L1InitializeSecretTx, error) {

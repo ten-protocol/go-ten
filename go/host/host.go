@@ -296,8 +296,10 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		AdditionalContracts:       importantContractAddresses.AdditionalContracts,
 	}
 
+	h.services.L1Publisher().GetContractRegistry().EnclaveRegistryLib().GetContractAddr()
+
 	if att, sysErr := h.EnclaveClient().Attestation(context.Background()); sysErr == nil && att != nil {
-		info.AttestationReports = []common.HexAttestationReport{{
+		info.AttestationReports = []common.PublicAttestationReport{{
 			Report:    att.Report,
 			PubKey:    att.PubKey,
 			EnclaveID: att.EnclaveID,

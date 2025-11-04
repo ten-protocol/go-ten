@@ -322,6 +322,10 @@ func (p *Publisher) ResyncImportantContracts() error {
 	return nil
 }
 
+func (p *Publisher) GetContractRegistry() contractlib.ContractRegistryLib {
+	return p.contractRegistry
+}
+
 // publishDynamicTxWithRetry will keep trying unless the L1 seems to be unavailable or the tx is otherwise rejected
 // this method is guarded by a lock to ensure that only one transaction is attempted at a time to avoid nonce conflicts
 // todo (@matt) this method should take a context so we can try to cancel if the tx is no longer required

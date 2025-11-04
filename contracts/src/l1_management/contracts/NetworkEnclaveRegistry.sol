@@ -38,6 +38,11 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
     mapping(address sequencerID => bool isSequencer) private sequencerEnclave;
 
     /**
+     * @dev Array tracking all sequencer enclave IDs for enumeration
+     */
+    address[] private sequencerEnclaveList;
+
+    /**
      * @dev The enclaveID of the sequencer host
      */
     address private sequencerHost;
@@ -83,6 +88,7 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
 
         // the enclave that starts the network with this call is implicitly a sequencer so doesn't need adding
         sequencerEnclave[enclaveID] = true;
+        sequencerEnclaveList.push(enclaveID);
         emit NetworkSecretInitialized(enclaveID);
     }
 
@@ -161,7 +167,9 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
     function grantSequencerEnclave(address _addr) external onlyOwner whenNotPaused {
         // require the enclave to be attested already
         require(attested[_addr], "enclaveID not attested");
+        require(!sequencerEnclave[_addr], "already a sequencer");
         sequencerEnclave[_addr] = true;
+        sequencerEnclaveList.push(_addr);
         emit SequencerEnclaveGranted(_addr);
     }
 
@@ -173,6 +181,24 @@ contract NetworkEnclaveRegistry is INetworkEnclaveRegistry, Initializable, Unren
         // require the enclave to be a sequencer already
         require(sequencerEnclave[_addr], "enclaveID not a sequencer");
         delete sequencerEnclave[_addr];
+        
+        // Remove from the list
+        for (uint256 i = 0; i < sequencerEnclaveList.length; i++) {
+            if (sequencerEnclaveList[i] == _addr) {
+                sequencerEnclaveList[i] = sequencerEnclaveList[sequencerEnclaveList.length - 1];
+                sequencerEnclaveList.pop();
+                break;
+            }
+        }
+        
         emit SequencerEnclaveRevoked(_addr);
+    }
+
+    /**
+     * @dev Returns the list of all sequencer enclave IDs
+     * @return address[] Array of sequencer enclave addresses
+     */
+    function getSequencerEnclaves() external view returns (address[] memory) {
+        return sequencerEnclaveList;
     }
 }

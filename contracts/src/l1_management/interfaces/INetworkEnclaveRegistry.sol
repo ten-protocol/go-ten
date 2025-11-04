@@ -100,4 +100,10 @@ interface INetworkEnclaveRegistry {
      * @notice Enclave must currently have sequencer status to be revoked
      */
     function revokeSequencerEnclave(address _addr) external;
+
+    /**
+     * @dev Returns the list of all sequencer enclave IDs
+     * @return address[] Array of addresses that have sequencer permissions
+     */
+    function getSequencerEnclaves() external view returns (address[] memory);
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 
+	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/go/common"
 )
+
+type ContractRegistry = contractlib.ContractRegistryLib
 
 // service names - these are the keys used to register known services with the host
 const (
@@ -118,6 +121,9 @@ type L1Publisher interface {
 	GetImportantContracts() *common.NetworkConfigAddresses
 	// ResyncImportantContracts will fetch the latest important contracts from the network contract amd update the cache
 	ResyncImportantContracts() error
+	
+	// GetContractRegistry returns the contract registry for accessing L1 contracts
+	GetContractRegistry() ContractRegistry
 }
 
 // L2BatchRepository provides an interface for the host to request L2 batch data (live-streaming and historical)

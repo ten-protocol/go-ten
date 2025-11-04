@@ -31,9 +31,11 @@ const (
 	msgTypeBatches
 	msgTypeBatchRequest
 	msgTypeRegisterForBroadcasts
+	msgTypeAttestationRequest
+	msgTypeAttestationResponse
 	// bounds for msgType validation (must update if adding new type)
 	_minMsgType = msgTypeTx
-	_maxMsgType = msgTypeRegisterForBroadcasts
+	_maxMsgType = msgTypeAttestationResponse
 )
 
 var (
@@ -225,6 +227,26 @@ func (p *Service) RequestBatchesFromSequencer(fromSeqNo *big.Int) error {
 	return p.send(msg, p.getSequencer())
 }
 
+// RequestAttestationsFromSequencer requests attestation reports from the sequencer for specific enclave IDs
+func (p *Service) RequestAttestationsFromSequencer(enclaveIDs []common.EnclaveID) error {
+	if p.isSequencer {
+		return errors.New("sequencer cannot request attestations from itself")
+	}
+	
+	attestationRequest := &common.AttestationRequest{
+		Requester:  p.ourPublicAddress,
+		EnclaveIDs: enclaveIDs,
+	}
+	
+	encodedRequest, err := rlp.EncodeToBytes(attestationRequest)
+	if err != nil {
+		return fmt.Errorf("could not encode attestation request using RLP. Cause: %w", err)
+	}
+	
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeAttestationRequest, Contents: encodedRequest}
+	return p.send(msg, p.getSequencer())
+}
+
 func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtBatch) error {
 	if p.isIncomingP2PDisabled {
 		return nil
@@ -365,6 +387,13 @@ func (p *Service) handle(conn net.Conn) {
 		p.peerAddressesMutex.Lock()
 		p.peerAddresses[msg.Sender] = 0
 		p.peerAddressesMutex.Unlock()
+	case msgTypeAttestationRequest:
+		if !p.isSequencer {
+			p.logger.Error("received attestation request from peer, but not a sequencer node")
+			return
+		}
+		// this is an incoming request, p2p service is responsible for finding the response and returning it
+		go p.handleAttestationRequest(msg.Contents)
 	}
 	p.peerTracker.receivedPeerMsg(msg.Sender)
 }
@@ -483,6 +512,33 @@ func (p *Service) handleBatchRequest(encodedBatchRequest common.EncodedBatchRequ
 	for _, requestHandler := range p.batchReqHandlers.Subscribers() {
 		go requestHandler.HandleBatchRequest(batchRequest.Requester, batchRequest.FromSeqNo)
 	}
+}
+
+func (p *Service) handleAttestationRequest(encodedRequest []byte) {
+	var attRequest *common.AttestationRequest
+	err := rlp.DecodeBytes(encodedRequest, &attRequest)
+	if err != nil {
+		p.logger.Warn("unable to decode attestation request received from peer using RLP", log.ErrKey, err)
+		return
+	}
+
+	p.logger.Debug("Received attestation request from peer", "requester", attRequest.Requester, "enclave_ids", len(attRequest.EnclaveIDs))
+	
+	// TODO: Get attestations for the requested enclave IDs from local enclave service
+	// For now this is a placeholder - needs to:
+	// 1. Call enclave service to get attestations for each requested enclave ID
+	// 2. Build AttestationResponse
+	// 3. Send response back to requester
+	go p.respondToAttestationRequest(attRequest.Requester, attRequest.EnclaveIDs)
+}
+
+func (p *Service) respondToAttestationRequest(requesterAddress string, enclaveIDs []common.EnclaveID) {
+	// This will be implemented to fetch local enclave attestations and send them back
+	p.logger.Debug("TODO: Respond to attestation request", "requester", requesterAddress, "requested_enclaves", len(enclaveIDs))
+	// TODO:
+	// 1. For each enclaveID in enclaveIDs, fetch attestation from enclave service
+	// 2. Build AttestationResponse with collected attestations
+	// 3. Encode and send as msgTypeAttestationResponse to requesterAddress
 }
 
 // EnsureSubscribedToSequencer - validators need to register with the sequencer for broadcasts

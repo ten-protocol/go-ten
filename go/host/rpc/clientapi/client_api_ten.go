@@ -53,7 +53,7 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 			PublicKey: att.PubKey,
 			Report:    att.Report,
 		}}
-		resp.AttestationReports = []common.HexAttestationReport{{
+		resp.AttestationReports = []common.PublicAttestationReport{{
 			Report:    att.Report,
 			PubKey:    att.PubKey,
 			EnclaveID: att.EnclaveID,
@@ -73,6 +73,14 @@ func (api *TenAPI) RpcKey() ([]byte, error) {
 		return nil, err
 	}
 	return api.rpcKey, nil
+}
+
+// SequencerEnclaveIDs returns the list of sequencer enclave IDs from the L1 contract
+// Clients can use this to discover which enclaves are sequencers
+func (api *TenAPI) SequencerEnclaveIDs(ctx context.Context) ([]gethcommon.Address, error) {
+	// TODO: Implement after contract bindings are regenerated
+	api.host.TenConfig()L1Publisher().GetContractRegistry().EnclaveRegistryLib().GetSequencerEnclaves()
+	return nil, fmt.Errorf("not implemented - requires contract binding regeneration")
 }
 
 type CrossChainProof struct {

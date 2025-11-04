@@ -54,7 +54,7 @@ func NewEnclaveContainerWithLogger(config *enclaveconfig.EnclaveConfig, logger g
 		logger.Crit("unable to parse obscuro genesis", log.ErrKey, err)
 	}
 
-	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&config.EnclaveRegistryAddress, logger)
+	enclaveRegistryLib := contractlib.NewEnclaveRegistryLib(&config.EnclaveRegistryAddress, nil, logger)
 	dataAvailabilityRegistryLib := contractlib.NewDataAvailabilityRegistryLib(&config.DataAvailabilityRegistryAddress, logger)
 	// we use this construction to avoid passing an eth client in the enclave and fetching the addresses
 	contractRegistryLib := contractlib.NewContractRegistryFromLibs(dataAvailabilityRegistryLib, enclaveRegistryLib, logger)
