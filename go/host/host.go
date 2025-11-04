@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -304,18 +303,18 @@ func (h *host) SequencerAttestations() ([]*common.PublicAttestationReport, error
 		return nil, fmt.Errorf("failed to fetch attestations - %w", err)
 	}
 
-    publicAttestations := make([]*common.PublicAttestationReport, 0, len(attestations))
-    for _, a := range attestations {
-        if a == nil {
-            continue
-        }
-        publicAttestations = append(publicAttestations, &common.PublicAttestationReport{
-            Report:    hexutil.Bytes(a.Report),
-            PubKey:    hexutil.Bytes(a.PubKey),
-            EnclaveID: a.EnclaveID,
-        })
-    }
-    return publicAttestations, nil
+	publicAttestations := make([]*common.PublicAttestationReport, 0, len(attestations))
+	for _, a := range attestations {
+		if a == nil {
+			continue
+		}
+		publicAttestations = append(publicAttestations, &common.PublicAttestationReport{
+			Report:    a.Report,
+			PubKey:    a.PubKey,
+			EnclaveID: a.EnclaveID,
+		})
+	}
+	return publicAttestations, nil
 }
 
 func (h *host) Storage() storage.Storage {

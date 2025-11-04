@@ -345,7 +345,7 @@ func (w *WebServer) getSequencerAttestations(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"item": attestations})
+	c.JSON(http.StatusOK, gin.H{"result": attestations})
 }
 
 func (w *WebServer) search(c *gin.Context) {

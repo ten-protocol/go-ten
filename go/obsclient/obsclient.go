@@ -297,7 +297,7 @@ func (oc *ObsClient) SequencerAttestations() ([]common.PublicAttestationReport, 
 	if err != nil {
 		return nil, err
 	}
-    return result, nil
+	return result, nil
 }
 
 // Search queries the host DB with the provided query string

@@ -161,7 +161,7 @@ func (e *Service) FetchAttestations(ctx context.Context) ([]*common.AttestationR
 	for _, client := range clients {
 		report, err := client.Attestation(ctx)
 		if err != nil {
-			//TODO return error?
+			// TODO return error?
 			e.logger.Error("Could not fetch attestation report.", log.ErrKey, err)
 			continue
 		}
