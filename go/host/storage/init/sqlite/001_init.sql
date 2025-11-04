@@ -70,3 +70,12 @@ create table if not exists transaction_count
 
 insert into transaction_count (id, total)
 values (1, 0) on CONFLICT (id) DO NOTHING;
+
+create table if not exists sequencer_attestation_host
+(
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    enclave_id binary(20) UNIQUE NOT NULL,
+    is_active  boolean           NOT NULL DEFAULT 1
+);
+
+create index IDX_SEQ_ATT_ENCLAVE_ID_HOST on sequencer_attestation_host (enclave_id);

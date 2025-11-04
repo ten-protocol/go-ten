@@ -3,6 +3,7 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -128,6 +129,7 @@ type TenNetworkInfo struct {
 	SystemContractsUpgrader   SystemContractsUpgraderAddress
 	L1StartHash               common.Hash
 	PublicSystemContracts     map[string]common.Address
+	SequencerAttestations     []PublicAttestationReport
 	AdditionalContracts       []*NamedAddress
 }
 
@@ -141,6 +143,7 @@ type NetworkConfigAddresses struct {
 	L2Bridge                 L2BridgeAddress
 	L1CrossChainMessenger    L1CrossChainMessengerAddress
 	L2CrossChainMessenger    L2CrossChainMessengerAddress
+	SequencerAttestations    []PublicAttestationReport
 	AdditionalContracts      []*NamedAddress // Dynamically named additional contracts
 }
 
@@ -148,4 +151,11 @@ type NetworkConfigAddresses struct {
 type NamedAddress struct {
 	Name string
 	Addr common.Address
+}
+
+// PublicAttestationReport mirrors AttestationReport but encodes byte slices as hex in JSON
+type PublicAttestationReport struct {
+	Report    hexutil.Bytes  `json:"Report"`
+	PubKey    hexutil.Bytes  `json:"PubKey"`
+	EnclaveID common.Address `json:"EnclaveID"`
 }

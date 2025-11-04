@@ -155,6 +155,21 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 	return clients
 }
 
+func (e *Service) FetchAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
+	reports := make([]*common.AttestationReport, 0, len(e.enclaveGuardians))
+	clients := e.GetEnclaveClients()
+	for _, client := range clients {
+		report, err := client.Attestation(ctx)
+		if err != nil {
+			//TODO return error?
+			e.logger.Error("Could not fetch attestation report.", log.ErrKey, err)
+			continue
+		}
+		reports = append(reports, report)
+	}
+	return reports, nil
+}
+
 func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 

@@ -582,7 +582,8 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, g.shouldSyncContracts(*processedData), g.shouldSyncAdditionalContracts(*processedData))
+	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, processedData)
+	// g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, processedData, g.shouldSyncContracts(*processedData), g.shouldSyncAdditionalContracts(*processedData))
 
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
 	err = g.publishSharedSecretResponses(resp.ProducedSecretResponses)
@@ -592,7 +593,23 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, syncContracts bool, syncAdditionalContracts bool) {
+func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, processedData *common.ProcessedL1Data) {
+	// handle rollup txs first
+	g.processRollupTransactions(block, metadatas, rollupTxs)
+	// store host side enclave IDs so we can fetch attestations
+	g.processSequencerAttestations(processedData)
+
+	if g.shouldSyncContracts(*processedData) || g.shouldSyncAdditionalContracts(*processedData) {
+		go func() {
+			err := g.sl.L1Publisher().ResyncImportantContracts()
+			if err != nil {
+				g.logger.Error("Could not resync important contracts", log.ErrKey, err)
+			}
+		}()
+	}
+}
+
+func (g *Guardian) processRollupTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx) {
 	for idx, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
@@ -618,14 +635,41 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 			}
 		}
 	}
+}
 
-	if syncContracts || syncAdditionalContracts {
-		go func() {
-			err := g.sl.L1Publisher().ResyncImportantContracts()
+func (g *Guardian) processSequencerAttestations(processedData *common.ProcessedL1Data) {
+	if processedData == nil {
+		return
+	}
+
+	sequencerAddedTxs := processedData.GetEvents(common.SequencerAddedTx)
+	for _, txData := range sequencerAddedTxs {
+		if txData.HasSequencerEnclaveID() {
+			err := g.storage.AddSequencerAttestation(txData.SequencerEnclaveID, true)
 			if err != nil {
-				g.logger.Error("Could not resync important contracts", log.ErrKey, err)
+				g.logger.Error("Failed to store sequencer attestation",
+					"enclaveID", txData.SequencerEnclaveID.Hex(),
+					log.ErrKey, err)
+			} else {
+				g.logger.Info("Stored sequencer enclave as active on host",
+					"enclaveID", txData.SequencerEnclaveID.Hex())
 			}
-		}()
+		}
+	}
+
+	sequencerRevokedTxs := processedData.GetEvents(common.SequencerRevokedTx)
+	for _, txData := range sequencerRevokedTxs {
+		if txData.HasSequencerEnclaveID() {
+			err := g.storage.UpdateSequencerStatus(txData.SequencerEnclaveID, false)
+			if err != nil {
+				g.logger.Error("Failed to update sequencer status to revoked",
+					"enclaveID", txData.SequencerEnclaveID.Hex(),
+					log.ErrKey, err)
+			} else {
+				g.logger.Info("Updated sequencer status to revoked on host",
+					"enclaveID", txData.SequencerEnclaveID.Hex())
+			}
+		}
 	}
 }
 

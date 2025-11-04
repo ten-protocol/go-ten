@@ -173,6 +173,10 @@ func (b *Backend) GetConfig() (*common.TenNetworkInfo, error) {
 	return b.obsClient.GetConfig()
 }
 
+func (b *Backend) SequencerAttestations() ([]common.PublicAttestationReport, error) {
+	return b.obsClient.SequencerAttestations()
+}
+
 func (b *Backend) Search(query string) (*common.SearchResponse, error) {
 	return b.obsClient.Search(query)
 }

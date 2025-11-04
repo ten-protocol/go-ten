@@ -430,6 +430,18 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &configFetchObj)
 	assert.NoError(t, err)
 
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/sequencer/", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type AttestationReportFetch struct {
+		Item []common.PublicAttestationReport `json:"item"`
+	}
+
+	attestationObj := AttestationReportFetch{}
+	err = json.Unmarshal(body, &attestationObj)
+	assert.NoError(t, err)
+
 	err = tenScanContainer.Stop()
 	assert.NoError(t, err)
 }

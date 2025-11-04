@@ -31,6 +31,8 @@ const (
 	msgTypeBatches
 	msgTypeBatchRequest
 	msgTypeRegisterForBroadcasts
+	msgTypeAttestationsRequest
+	msgTypeAttestsationsResponse
 	// bounds for msgType validation (must update if adding new type)
 	_minMsgType = msgTypeTx
 	_maxMsgType = msgTypeRegisterForBroadcasts
@@ -55,6 +57,7 @@ type message struct {
 type p2pServiceLocator interface {
 	L1Publisher() host.L1Publisher
 	L2Repo() host.L2BatchRepository
+	Enclaves() host.EnclaveService
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
@@ -246,6 +249,26 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 	return p.send(msg, requestID)
 }
 
+// RequestAttestationsFromSequencer requests attestation reports from the sequencer for specific enclave IDs
+func (p *Service) RequestAttestationsFromSequencer(enclaveIDs []common.EnclaveID) error {
+	if p.isSequencer {
+		return errors.New("sequencer cannot request attestations from itself")
+	}
+
+	attestationRequest := &common.AttestationRequest{
+		Requester:  p.ourPublicAddress,
+		EnclaveIDs: enclaveIDs,
+	}
+
+	encodedRequest, err := rlp.EncodeToBytes(attestationRequest)
+	if err != nil {
+		return fmt.Errorf("could not encode attestation request using RLP. Cause: %w", err)
+	}
+
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeAttestationsRequest, Contents: encodedRequest}
+	return p.send(msg, p.getSequencer())
+}
+
 // RegisterForBroadcasts - called by validators to register with the sequencer for broadcasts of batch data etc.
 // Validators will call this again if they stop receiving broadcasts for a period of _maxWaitWithoutBroadcast
 // Sequencer will evict validators from the broadcast pool if sending fails _maxPeerFailures times
@@ -365,8 +388,15 @@ func (p *Service) handle(conn net.Conn) {
 		p.peerAddressesMutex.Lock()
 		p.peerAddresses[msg.Sender] = 0
 		p.peerAddressesMutex.Unlock()
+	case msgTypeAttestationsRequest:
+		if !p.isSequencer {
+			p.logger.Error("received attestations request from peer, but not a sequencer node")
+			return
+		}
+		// this is an incoming request, p2p service is responsible for finding the response and returning it
+		go p.handleAttestationRequest(msg.Contents)
+		p.peerTracker.receivedPeerMsg(msg.Sender)
 	}
-	p.peerTracker.receivedPeerMsg(msg.Sender)
 }
 
 // Broadcasts a message to all peers.
@@ -389,7 +419,7 @@ func (p *Service) broadcast(msg message) error {
 		go func() {
 			err := p.sendBytesWithRetry(closureAddr, msgEncoded)
 			if err != nil {
-				p.logger.Debug("Could not send message to peer", "peer", closureAddr, log.ErrKey, err)
+				p.logger.Trace("Could not send message to peer", "peer", closureAddr, log.ErrKey, err)
 
 				// record address failure
 				p.peerAddressesMutex.Lock()
@@ -455,13 +485,13 @@ func (p *Service) sendBytes(address string, tx []byte) error {
 		defer conn.Close()
 	}
 	if err != nil {
-		p.logger.Debug(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
+		p.logger.Trace(fmt.Sprintf("could not connect to peer on address %s", address), log.ErrKey, err)
 		return err
 	}
 
 	_, err = conn.Write(tx)
 	if err != nil {
-		p.logger.Debug(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
+		p.logger.Trace(fmt.Sprintf("could not send message to peer on address %s", address), log.ErrKey, err)
 		return err
 	}
 	return nil
@@ -483,6 +513,67 @@ func (p *Service) handleBatchRequest(encodedBatchRequest common.EncodedBatchRequ
 	for _, requestHandler := range p.batchReqHandlers.Subscribers() {
 		go requestHandler.HandleBatchRequest(batchRequest.Requester, batchRequest.FromSeqNo)
 	}
+}
+
+func (p *Service) handleAttestationRequest(encodedRequest []byte) {
+	var attRequest *common.AttestationRequest
+	err := rlp.DecodeBytes(encodedRequest, &attRequest)
+	if err != nil {
+		p.logger.Error("unable to decode attestation request received from peer using RLP", log.ErrKey, err)
+		return
+	}
+
+	p.logger.Debug("Received attestation request from peer", "requester", attRequest.Requester, "enclave_ids", len(attRequest.EnclaveIDs))
+
+	go p.respondToAttestationRequest(attRequest.Requester, attRequest.EnclaveIDs)
+}
+
+func (p *Service) respondToAttestationRequest(requesterAddress string, enclaveIDs []common.EnclaveID) {
+	// Fetch all attestations from the enclave service
+	allReports, err := p.sl.Enclaves().FetchAttestations(context.Background())
+	if err != nil {
+		p.logger.Error("Failed to fetch attestations from enclave service", log.ErrKey, err)
+		return
+	}
+
+	// Filter attestations to only include the requested enclave IDs
+	requestedEnclaveIDsMap := make(map[common.EnclaveID]bool)
+	for _, id := range enclaveIDs {
+		requestedEnclaveIDsMap[id] = true
+	}
+
+	var matchingAttestations []common.AttestationReport
+	for _, report := range allReports {
+		if requestedEnclaveIDsMap[report.EnclaveID] {
+			matchingAttestations = append(matchingAttestations, *report)
+		}
+	}
+
+	if len(matchingAttestations) == 0 {
+		p.logger.Warn("No matching attestations found for requested enclave IDs", "requester", requesterAddress, "requested", len(enclaveIDs))
+	}
+
+	// Build the attestation response
+	response := &common.AttestationResponse{
+		Attestations: matchingAttestations,
+	}
+
+	// Encode the response
+	encodedResponse, err := rlp.EncodeToBytes(response)
+	if err != nil {
+		p.logger.Error("Failed to encode attestation response using RLP", log.ErrKey, err)
+		return
+	}
+
+	// Send the response back to the requester
+	msg := message{Sender: p.ourPublicAddress, Type: msgTypeAttestsationsResponse, Contents: encodedResponse}
+	err = p.send(msg, requesterAddress)
+	if err != nil {
+		p.logger.Error("Failed to send attestation response to requester", "requester", requesterAddress, log.ErrKey, err)
+		return
+	}
+
+	p.logger.Debug("Sent attestation response to requester", "requester", requesterAddress, "attestations", len(matchingAttestations))
 }
 
 // EnsureSubscribedToSequencer - validators need to register with the sequencer for broadcasts

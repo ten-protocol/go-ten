@@ -13,6 +13,7 @@ type Storage interface {
 	BatchResolver
 	BlockResolver
 	SearchResolver
+	SequencerManager
 	io.Closer
 }
 
@@ -90,4 +91,14 @@ type BlockResolver interface {
 // SearchResolver interface
 type SearchResolver interface {
 	Search(query string) (*common.SearchResponse, error)
+}
+
+// SequencerManager interface for managing sequencer attestations
+type SequencerManager interface {
+	// AddSequencerAttestation stores a sequencer enclave ID
+	AddSequencerAttestation(enclaveID gethcommon.Address, isActive bool) error
+	// UpdateSequencerStatus updates the active status of a sequencer
+	UpdateSequencerStatus(enclaveID gethcommon.Address, isActive bool) error
+	// GetAllActiveSequencers retrieves all active sequencer enclave IDs
+	GetAllActiveSequencers() ([]gethcommon.Address, error)
 }

@@ -16,9 +16,10 @@ const (
 	GasPrice           = "ten_gasPrice"
 	GetCrossChainProof = "ten_getCrossChainProof"
 
-	Health = "ten_health"
-	Config = "ten_config"
-	RPCKey = "ten_rpcKey"
+	Health                = "ten_health"
+	Config                = "ten_config"
+	SequencerAttestations = "ten_sequencer"
+	RPCKey                = "ten_rpcKey"
 
 	StopHost                 = "test_stopHost"
 	SubscribeNamespace       = "ten"

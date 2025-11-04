@@ -57,7 +57,7 @@ type (
 	TransactionPostProcessorAddress = gethcommon.Address
 	SystemContractsUpgraderAddress  = gethcommon.Address
 
-	// Local Obscuro aliases
+	// Local TEN aliases
 	L2BatchHash              = gethcommon.Hash
 	L2RollupHash             = gethcommon.Hash
 	L2TxHash                 = gethcommon.Hash
@@ -161,13 +161,24 @@ type AttestationReport struct {
 	Report      []byte             // the signed bytes of the report which includes some encrypted identifying data
 	PubKey      []byte             // a public key that can be used to send encrypted data back to the TEE securely (should only be used once Report has been verified)
 	EnclaveID   gethcommon.Address // address identifying the owner of the TEE which signed this report, can also be verified from the encrypted Report data
-	HostAddress string             // the IP address on which the host can be contacted by other Obscuro hosts for peer-to-peer communication
+	HostAddress string             // the IP address on which the host can be contacted by other TEN hosts for peer-to-peer communication
 }
 
 type (
 	EncryptedSharedEnclaveSecret []byte
 	EncodedAttestationReport     []byte
 )
+
+// AttestationRequest is used when requesting attestation reports from the sequencer.
+type AttestationRequest struct {
+	Requester  string      // The address of the requester, used to direct the response
+	EnclaveIDs []EnclaveID // The list of enclave IDs to fetch attestations for
+}
+
+// AttestationResponse contains attestation reports from the sequencer's enclaves.
+type AttestationResponse struct {
+	Attestations []AttestationReport
+}
 
 // BlockAndReceipts - a structure that contains a fuller view of a block. It allows iterating over the
 // successful transactions, using the receipts. The receipts are bundled in the host node and thus verification

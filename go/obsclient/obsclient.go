@@ -290,6 +290,16 @@ func (oc *ObsClient) GetConfig() (*common.TenNetworkInfo, error) {
 	return &result, nil
 }
 
+// SequencerAttestations returns the attestation reports for the sequencer
+func (oc *ObsClient) SequencerAttestations() ([]common.PublicAttestationReport, error) {
+	var result []common.PublicAttestationReport
+	err := oc.rpcClient.Call(&result, rpc.SequencerAttestations)
+	if err != nil {
+		return nil, err
+	}
+    return result, nil
+}
+
 // Search queries the host DB with the provided query string
 func (oc *ObsClient) Search(query string) (*common.SearchResponse, error) {
 	var result common.SearchResponse

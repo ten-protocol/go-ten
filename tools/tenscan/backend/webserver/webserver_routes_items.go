@@ -14,6 +14,7 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	// info
 	r.GET("/info/obscuro/", server.getConfig)
 	r.GET("/info/health/", server.getHealthStatus)
+	r.GET("/info/sequencer/", server.getSequencerAttestations)
 
 	// batches
 	r.GET("/items/batches/", server.getBatchListing)
@@ -335,6 +336,16 @@ func (w *WebServer) getConfig(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"item": config})
+}
+
+func (w *WebServer) getSequencerAttestations(c *gin.Context) {
+	attestations, err := w.backend.SequencerAttestations()
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute getConfig request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": attestations})
 }
 
 func (w *WebServer) search(c *gin.Context) {

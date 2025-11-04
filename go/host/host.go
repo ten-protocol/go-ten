@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -295,6 +296,26 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		PublicSystemContracts:     h.publicSystemContracts,
 		AdditionalContracts:       importantContractAddresses.AdditionalContracts,
 	}, nil
+}
+
+func (h *host) SequencerAttestations() ([]*common.PublicAttestationReport, error) {
+	attestations, err := h.services.Enclaves().FetchAttestations(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch attestations - %w", err)
+	}
+
+    publicAttestations := make([]*common.PublicAttestationReport, 0, len(attestations))
+    for _, a := range attestations {
+        if a == nil {
+            continue
+        }
+        publicAttestations = append(publicAttestations, &common.PublicAttestationReport{
+            Report:    hexutil.Bytes(a.Report),
+            PubKey:    hexutil.Bytes(a.PubKey),
+            EnclaveID: a.EnclaveID,
+        })
+    }
+    return publicAttestations, nil
 }
 
 func (h *host) Storage() storage.Storage {

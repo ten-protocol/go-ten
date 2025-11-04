@@ -48,6 +48,14 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 	return checksumFormatted(config), nil
 }
 
+func (api *TenAPI) Sequencer() ([]*common.PublicAttestationReport, error) {
+	attestations, err := api.host.SequencerAttestations()
+	if err != nil {
+		return nil, err
+	}
+	return attestations, nil
+}
+
 func (api *TenAPI) RpcKey() ([]byte, error) {
 	if api.rpcKey != nil {
 		return api.rpcKey, nil
