@@ -298,24 +298,24 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 }
 
 func (h *host) SequencerAttestations() ([]*common.PublicAttestationReport, error) {
-    // request attestations from sequencer via p2p and wait for response
-    attestations, err := h.services.P2P().RequestSequencerAttestations(context.Background())
-    if err != nil {
-        return nil, fmt.Errorf("failed to fetch attestations - %w", err)
-    }
+	// request attestations from sequencer via p2p and wait for response
+	attestations, err := h.services.P2P().RequestSequencerAttestations(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch attestations - %w", err)
+	}
 
-    publicAttestations := make([]*common.PublicAttestationReport, 0, len(attestations))
-    for _, a := range attestations {
-        if a == nil {
-            continue
-        }
-        publicAttestations = append(publicAttestations, &common.PublicAttestationReport{
-            Report:    a.Report,
-            PubKey:    a.PubKey,
-            EnclaveID: a.EnclaveID,
-        })
-    }
-    return publicAttestations, nil
+	publicAttestations := make([]*common.PublicAttestationReport, 0, len(attestations))
+	for _, a := range attestations {
+		if a == nil {
+			continue
+		}
+		publicAttestations = append(publicAttestations, &common.PublicAttestationReport{
+			Report:    a.Report,
+			PubKey:    a.PubKey,
+			EnclaveID: a.EnclaveID,
+		})
+	}
+	return publicAttestations, nil
 }
 
 func (h *host) Storage() storage.Storage {

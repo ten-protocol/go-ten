@@ -47,8 +47,8 @@ type P2P interface {
 	RequestBatchesFromSequencer(fromSeqNo *big.Int) error
 	// RespondToBatchRequest sends the requested batches to the requesting peer
 	RespondToBatchRequest(requestID string, batches []*common.ExtBatch) error
-    // RequestSequencerAttestations requests and waits for attestation reports from the sequencer
-    RequestSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error)
+	// RequestSequencerAttestations requests and waits for attestation reports from the sequencer
+	RequestSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error)
 	// SubscribeForBatches will register a handler to receive new batches from peers, returns unsubscribe func
 	SubscribeForBatches(handler P2PBatchHandler) func()
 	// SubscribeForTx will register a handler to receive new transactions from peers, returns unsubscribe func
