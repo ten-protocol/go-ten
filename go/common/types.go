@@ -177,7 +177,7 @@ type AttestationRequest struct {
 
 // AttestationResponse contains attestation reports from the sequencer's enclaves.
 type AttestationResponse struct {
-	Attestations []AttestationReport
+	Attestations []*AttestationReport
 }
 
 // BlockAndReceipts - a structure that contains a fuller view of a block. It allows iterating over the

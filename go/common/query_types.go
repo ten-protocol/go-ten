@@ -130,7 +130,6 @@ type TenNetworkInfo struct {
 	SystemContractsUpgrader   SystemContractsUpgraderAddress
 	L1StartHash               common.Hash
 	PublicSystemContracts     map[string]common.Address
-	SequencerAttestations     []PublicAttestationReport
 	AdditionalContracts       []*NamedAddress
 }
 
@@ -144,7 +143,6 @@ type NetworkConfigAddresses struct {
 	L2Bridge                 L2BridgeAddress
 	L1CrossChainMessenger    L1CrossChainMessengerAddress
 	L2CrossChainMessenger    L2CrossChainMessengerAddress
-	SequencerAttestations    []PublicAttestationReport
 	AdditionalContracts      []*NamedAddress // Dynamically named additional contracts
 }
 
