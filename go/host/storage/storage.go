@@ -247,50 +247,6 @@ func (s *storageImpl) SetMetadata(key string, value uint64) error {
 	return hostdb.SetMetadata(s.db, key, value)
 }
 
-func (s *storageImpl) AddSequencerAttestation(enclaveID gethcommon.Address, isActive bool) error {
-	dbtx, err := s.db.NewDBTransaction()
-	if err != nil {
-		return fmt.Errorf("could not create DB transaction - %w", err)
-	}
-	defer dbtx.Rollback()
-
-	err = hostdb.AddSequencerAttestation(dbtx.Tx, s.db.GetSQLDB(), enclaveID, isActive)
-	if err != nil {
-		if errors.Is(err, errutil.ErrAlreadyExists) {
-			s.logger.Debug("Sequencer attestation already exists", "enclaveID", enclaveID.Hex())
-			return nil
-		}
-		return fmt.Errorf("could not add sequencer attestation: %w", err)
-	}
-
-	if err := dbtx.Write(); err != nil {
-		return fmt.Errorf("could not commit sequencer attestation tx: %w", err)
-	}
-	return nil
-}
-
-func (s *storageImpl) UpdateSequencerStatus(enclaveID gethcommon.Address, isActive bool) error {
-	dbtx, err := s.db.NewDBTransaction()
-	if err != nil {
-		return fmt.Errorf("could not create DB transaction - %w", err)
-	}
-	defer dbtx.Rollback()
-
-	err = hostdb.UpdateSequencerStatus(dbtx.Tx, s.db.GetSQLDB(), enclaveID, isActive)
-	if err != nil {
-		return fmt.Errorf("could not update sequencer status: %w", err)
-	}
-
-	if err := dbtx.Write(); err != nil {
-		return fmt.Errorf("could not commit sequencer status update tx: %w", err)
-	}
-	return nil
-}
-
-func (s *storageImpl) GetAllActiveSequencers() ([]gethcommon.Address, error) {
-	return hostdb.GetAllActiveSequencers(s.db.GetSQLDB())
-}
-
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }

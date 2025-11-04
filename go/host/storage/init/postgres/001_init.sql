@@ -79,12 +79,3 @@ VALUES (1, 0)
     ON CONFLICT (id)
 DO NOTHING;
 
-CREATE TABLE IF NOT EXISTS sequencer_attestation_host
-(
-    id         SERIAL PRIMARY KEY,
-    enclave_id BYTEA          NOT NULL UNIQUE,
-    is_active  BOOLEAN        NOT NULL DEFAULT TRUE
-);
-
-CREATE INDEX IF NOT EXISTS IDX_SEQ_ATT_ENCLAVE_ID_HOST ON sequencer_attestation_host (enclave_id);
-

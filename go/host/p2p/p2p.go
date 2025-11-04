@@ -255,7 +255,7 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 
 // RequestSequencerAttestations sends an attestation request and waits for the response or context cancellation
 func (p *Service) RequestSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
-	// in sims the sequencer may call this
+	// in sims the sequencer calls this
 	if p.isSequencer {
 		return p.sl.Enclaves().FetchAttestations(ctx)
 	}

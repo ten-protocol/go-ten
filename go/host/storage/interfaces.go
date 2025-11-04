@@ -13,7 +13,6 @@ type Storage interface {
 	BatchResolver
 	BlockResolver
 	SearchResolver
-	SequencerManager
 	io.Closer
 }
 
