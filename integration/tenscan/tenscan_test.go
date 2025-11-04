@@ -435,12 +435,15 @@ func TestTenscan(t *testing.T) {
 	assert.Equal(t, 200, statusCode)
 
 	type AttestationReportFetch struct {
-		Item []common.PublicAttestationReport `json:"item"`
+		Result []common.PublicAttestationReport `json:"result"`
 	}
 
 	attestationObj := AttestationReportFetch{}
 	err = json.Unmarshal(body, &attestationObj)
 	assert.NoError(t, err)
+
+	assert.GreaterOrEqual(t, len(attestationObj.Result), 1)
+	assert.GreaterOrEqual(t, len(attestationObj.Result[0].Report), 11) // this is a mocked report with fixed length
 
 	err = tenScanContainer.Stop()
 	assert.NoError(t, err)
