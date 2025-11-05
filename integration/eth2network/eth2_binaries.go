@@ -18,7 +18,7 @@ import (
 const (
 	_gethVersion  = "1.16.7"
 	_gethHash     = "b9f3a3d"
-	_prysmVersion = "v6.1.2"
+	_prysmVersion = "v6.1.4"
 )
 
 var (
