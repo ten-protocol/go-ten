@@ -27,7 +27,7 @@ do
     esac
 done
 
-ensure_network_and_postgres() {
+start_postgres() {
   echo "check 'node_network' exists"
   docker network create node_network >/dev/null 2>&1 || true
 
@@ -50,7 +50,7 @@ if ${parallel} ;
   then
     echo "Running parallel builds with docker compose"
     ROOT_PATH=$root_path docker compose -f $testnet_path/docker-compose.local.yml build --parallel
-    ensure_network_and_postgres
+    start_postgres
     exit 0
 fi
 
