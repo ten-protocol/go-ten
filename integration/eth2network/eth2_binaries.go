@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	_gethVersion  = "1.16.4"
-	_gethHash     = "41714b49"
+	_gethVersion  = "1.16.7"
+	_gethHash     = "b9f3a3d"
 	_prysmVersion = "v6.1.2"
 )
 
