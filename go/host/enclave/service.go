@@ -155,7 +155,7 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 	return clients
 }
 
-func (e *Service) FetchAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
+func (e *Service) FetchSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
 	reports := make([]*common.AttestationReport, 0, len(e.enclaveGuardians))
 	clients := e.GetEnclaveClients()
 	var allErrors error

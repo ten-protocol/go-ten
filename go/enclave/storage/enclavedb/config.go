@@ -80,3 +80,29 @@ func FetchSequencerEnclaveIDs(ctx context.Context, db *sqlx.DB) ([]common.Enclav
 
 	return enclaveIDs, nil
 }
+
+// FetchValidatorEnclaveIDs returns all enclave IDs that are registered as validators (node_type = 0)
+func FetchValidatorEnclaveIDs(ctx context.Context, db *sqlx.DB) ([]common.EnclaveID, error) {
+    rows, err := db.QueryContext(ctx, attSelectSequencers, common.Validator)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var enclaveIDs []common.EnclaveID
+    for rows.Next() {
+        var idBytes []byte
+        if err := rows.Scan(&idBytes); err != nil {
+            return nil, err
+        }
+        enclaveID := common.EnclaveID{}
+        enclaveID.SetBytes(idBytes)
+        enclaveIDs = append(enclaveIDs, enclaveID)
+    }
+
+    if err = rows.Err(); err != nil {
+        return nil, err
+    }
+
+    return enclaveIDs, nil
+}

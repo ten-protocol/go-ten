@@ -257,7 +257,7 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 func (p *Service) RequestSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
 	// in sims the sequencer calls this
 	if p.isSequencer {
-		return p.sl.Enclaves().FetchAttestations(ctx)
+		return p.sl.Enclaves().FetchSequencerAttestations(ctx)
 	}
 
 	// register a one-shot response channel
@@ -590,7 +590,7 @@ func (p *Service) handleAttestationRequest(encodedRequest []byte) {
 
 func (p *Service) respondToAttestationRequest(requesterAddress string) error {
 	// fetch all attestations from the enclave service
-	attestations, err := p.sl.Enclaves().FetchAttestations(context.Background())
+	attestations, err := p.sl.Enclaves().FetchSequencerAttestations(context.Background())
 	if err != nil {
 		return fmt.Errorf("failed to fetch attestations from enclave service: %w", err)
 	}

@@ -95,11 +95,6 @@ type MockP2P struct {
 	isIncomingP2PDisabled bool
 }
 
-func (n *MockP2P) RequestSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
-	println("MOCKED P2P: RequestSequencerAttestations")
-	return nil, nil
-}
-
 // NewMockP2P returns an instance of a configured L2 Network (no nodes)
 func NewMockP2P(network *MockP2PNetwork, id string, isIncomingP2PDisabled bool) *MockP2P {
 	i := int32(0)

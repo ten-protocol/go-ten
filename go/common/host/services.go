@@ -43,12 +43,12 @@ type P2P interface {
 	BroadcastBatches(batches []*common.ExtBatch) error
 	// SendTxToSequencer sends the encrypted transaction to the sequencer.
 	SendTxToSequencer(tx common.EncryptedTx) error
+
 	// RequestBatchesFromSequencer asynchronously requests batches from the sequencer, from the given sequence number
 	RequestBatchesFromSequencer(fromSeqNo *big.Int) error
 	// RespondToBatchRequest sends the requested batches to the requesting peer
 	RespondToBatchRequest(requestID string, batches []*common.ExtBatch) error
-	// RequestSequencerAttestations requests and waits for attestation reports from the sequencer
-	RequestSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error)
+
 	// SubscribeForBatches will register a handler to receive new batches from peers, returns unsubscribe func
 	SubscribeForBatches(handler P2PBatchHandler) func()
 	// SubscribeForTx will register a handler to receive new transactions from peers, returns unsubscribe func
@@ -162,8 +162,8 @@ type EnclaveService interface {
 	// GetEnclaveClients returns a list of all enclave clients
 	GetEnclaveClients() []common.Enclave
 
-	// FetchAttestations gets all the attestation reports for the guardian enclaves
-	FetchAttestations(ctx context.Context) ([]*common.AttestationReport, error)
+	// FetchSequencerAttestations gets all the attestation reports for the guardian enclaves
+	FetchSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error)
 
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to other hosts on the network (in particular, to the sequencer)
 	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error)

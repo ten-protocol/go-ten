@@ -299,7 +299,7 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 
 func (h *host) SequencerAttestations() ([]*common.PublicAttestationReport, error) {
 	// request attestations from sequencer via p2p and wait for response
-	attestations, err := h.services.P2P().RequestSequencerAttestations(context.Background())
+	attestations, err := h.services.Enclaves().FetchSequencerAttestations(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch attestations - %w", err)
 	}
