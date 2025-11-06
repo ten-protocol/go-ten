@@ -1,8 +1,8 @@
 ### Querying the Postgres DB started by the local testnet
 
-The launcher starts a Postgres container called `pg-ten` on the `node_network` Docker network.
+The launcher starts a Postgres container called `pg-ten`
 
-- Connect with psql inside the running container:
+Connect with psql inside the running container:
 
 ```bash
 docker exec -it pg-ten psql -U postgres -h localhost -d postgres
