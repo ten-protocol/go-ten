@@ -17,7 +17,7 @@ require (
 	github.com/docker/docker v28.4.0+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/edgelesssys/ego v1.8.0
-	github.com/ethereum/go-ethereum v1.16.3-0.20251020081817-cfb311148c52
+	github.com/ethereum/go-ethereum v1.16.7
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-git/go-git/v5 v5.16.2
@@ -56,8 +56,6 @@ require (
 	kythe.io v0.0.73
 )
 
-replace github.com/ethereum/go-ethereum v1.16.3-0.20251020081817-cfb311148c52 => github.com/ten-protocol/go-ethereum v0.0.0-20251031183058-0f942abbfddf
-
 require (
 	dario.cat/mergo v1.0.2 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
@@ -89,7 +87,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/dot v1.9.0 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
-	github.com/ethereum/c-kzg-4844/v2 v2.1.3 // indirect
+	github.com/ethereum/c-kzg-4844/v2 v2.1.5 // indirect
 	github.com/ethereum/go-bigmodexpfix v0.0.0-20250911101455-f9e208c548ab // indirect
 	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect

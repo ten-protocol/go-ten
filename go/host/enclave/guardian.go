@@ -602,7 +602,7 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 
 		metaData, err := g.enclaveClient.GetRollupData(context.Background(), r.Header.Hash())
 		if err != nil {
-			g.logger.Error("Could not fetch rollup metadata from enclave.", log.RollupHashKey, r.Header.Hash(), log.ErrKey, err)
+			g.logger.Warn("Could not fetch rollup metadata from enclave.", log.RollupHashKey, r.Header.Hash(), log.ErrKey, err)
 		} else {
 			// TODO - This is a temporary fix, arrays should always match in practice...
 			extMetadata := common.ExtRollupMetadata{}
@@ -615,7 +615,7 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
 			} else {
-				g.logger.Error("Could not store rollup.", log.ErrKey, err)
+				g.logger.Warn("Could not store rollup.", log.ErrKey, err)
 			}
 		}
 	}

@@ -535,21 +535,11 @@ func (ti *TransactionInjector) newCustomTenWithdrawalTx(amount uint64) types.TxD
 }
 
 func (ti *TransactionInjector) newTx(data []byte, nonce uint64, ercType testcommon.ERC20, client *obsclient.AuthObsClient) types.TxData {
-	price, err := client.GasPrice(ti.ctx)
-	if err != nil {
-		// Fallback to a reasonable gas price if we can't get current price
-		price = big.NewInt(2000000000) // 2 gwei
-	} else {
-		price = new(big.Int).Mul(price, big.NewInt(2))
-	}
-
-	return &types.LegacyTx{
-		Nonce:    nonce,
-		Value:    gethcommon.Big0,
-		Gas:      uint64(10_000_000),
-		GasPrice: price,
-		Data:     data,
-		To:       ti.wallets.Tokens[ercType].L2ContractAddress,
+	return &types.DynamicFeeTx{
+		Nonce: nonce,
+		Value: gethcommon.Big0,
+		Data:  data,
+		To:    ti.wallets.Tokens[ercType].L2ContractAddress,
 	}
 }
 
