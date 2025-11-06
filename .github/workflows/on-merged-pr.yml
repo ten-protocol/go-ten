@@ -12,5 +12,5 @@ jobs:
     steps:
       - name: 'Trigger obscuro-test local testnet tun'
         run: |
-          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "merged_pull_request", "client_payload": { "number": ${{ github.event.number }}, "owner": "${{ github.event.pull_request.user.login }}" } }'
+          curl -XPOST -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" -H "Accept:application/vnd.github" -H "Content-Type:application/json" https://api.github.com/repos/ten-protocol/ten-test/dispatches --data '{ "event_type": "merged_pull_request", "client_payload": { "number": ${{ github.event.number }}, "owner": "${{ github.event.pull_request.user.login }}", "base_branch": "${{ github.event.pull_request.base.ref }}" } }'
          

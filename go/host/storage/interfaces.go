@@ -81,6 +81,10 @@ type BlockResolver interface {
 	FetchRollupBySeqNo(seqNo uint64) (*common.PublicRollup, error)
 	// FetchRollupBatches returns a list of public batch data within a given rollup hash
 	FetchRollupBatches(rollupHash gethcommon.Hash, pagination *common.QueryPagination) (*common.BatchListingResponse, error)
+	// GetMetadata retrieves a metadata value by key
+	GetMetadata(key string) (uint64, error)
+	// SetMetadata stores a metadata value by key
+	SetMetadata(key string, value uint64) error
 }
 
 // SearchResolver interface
