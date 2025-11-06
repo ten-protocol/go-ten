@@ -1,6 +1,6 @@
 ### Querying the Postgres DB started by the local testnet
 
-The build script starts a Postgres container called `pg-ten`
+The launcher starts a Postgres container called `pg-ten` on the `node_network` Docker network.
 
 - Connect with psql inside the running container:
 

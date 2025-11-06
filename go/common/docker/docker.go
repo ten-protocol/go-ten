@@ -266,3 +266,49 @@ func WaitForContainerToFinish(containerID string, timeout time.Duration) error {
 
 	return nil
 }
+
+// ExecInContainer executes a command in a running container and returns an error if it fails
+func ExecInContainer(containerName string, cmd []string) error {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	execConfig := container.ExecOptions{
+		Cmd:          cmd,
+		AttachStdout: false,
+		AttachStderr: false,
+	}
+
+	execID, err := cli.ContainerExecCreate(ctx, containerName, execConfig)
+	if err != nil {
+		return err
+	}
+
+	err = cli.ContainerExecStart(ctx, execID.ID, container.ExecStartOptions{})
+	if err != nil {
+		return err
+	}
+
+	// wait for the exec to finish
+	inspectResp, err := cli.ContainerExecInspect(ctx, execID.ID)
+	if err != nil {
+		return err
+	}
+
+	for inspectResp.Running {
+		time.Sleep(100 * time.Millisecond)
+		inspectResp, err = cli.ContainerExecInspect(ctx, execID.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if inspectResp.ExitCode != 0 {
+		return fmt.Errorf("command exited with code %d", inspectResp.ExitCode)
+	}
+
+	return nil
+}
