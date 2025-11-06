@@ -143,26 +143,10 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 		}
 	}
 
-	//if len(ec.Transactions) > 0 {
-	//	tx := ec.Transactions[0]
-	//	from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
-	//	if tx.To() != nil {
-	//		executor.evmFacade.DumpStateDB("clean", ec.stateDB, *from, *tx.To())
-	//	}
-	//}
-
 	// Step 1: execute the transactions included in the batch or pending in the mempool
 	if err := executor.execBatchTransactions(ec); err != nil {
 		return nil, err
 	}
-
-	//if len(ec.Transactions) > 0 {
-	//	tx := ec.Transactions[0]
-	//	from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
-	//	if tx.To() != nil {
-	//		executor.evmFacade.DumpStateDB("step1", ec.stateDB, *from, *tx.To())
-	//	}
-	//}
 
 	// Step 2: execute the xChain messages
 	if err := executor.execXChainMessages(ec); err != nil {
@@ -178,14 +162,6 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 	if err := executor.execOnBlockEndTx(ec); err != nil {
 		return nil, err
 	}
-
-	//if len(ec.Transactions) > 0 {
-	//	tx := ec.Transactions[0]
-	//	from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
-	//	if tx.To() != nil {
-	//		executor.evmFacade.DumpStateDB("step4", ec.stateDB, *from, *tx.To())
-	//	}
-	//}
 
 	// When the `failForEmptyBatch` flag is true, we skip if there is no transaction or xChain tx
 	if failForEmptyBatch && len(ec.batchTxResults) == 0 && len(ec.xChainResults) == 0 {
@@ -653,17 +629,9 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("failed creating batch. Cause: %w", err)
 	}
 
-	// for state root mismatch, exit early, before storing the corrupted state
 	resultRoot := ec.stateDB.IntermediateRoot(true)
-
-	// todo - remove - used for testing
-	// randNum, _ := rand.Int(rand.Reader, big.NewInt(5))
-	// if ec.ExpectedRoot != nil && randNum.Int64() == 1 && ec.SequencerNo.Uint64() > 200 {
+	// for state root mismatch, exit early, before storing the corrupted state
 	if ec.ExpectedRoot != nil && *ec.ExpectedRoot != resultRoot && ec.SequencerNo.Uint64() > common.L2SysContractGenesisSeqNo+1 {
-		tx := ec.Transactions[0]
-		from, _ := core.GetAuthenticatedSender(tx.ChainId().Int64(), tx)
-		executor.evmFacade.DumpStateDB("after mismatch", ec.stateDB, *from, *tx.To())
-		// executor.storage.CleanStateDB(ec.parentBatch.Root)
 		return nil, fmt.Errorf("batch root mismatch for batch seq %d. Expected: %s, actual: %s", ec.currentBatch.SeqNo(), ec.ExpectedRoot, resultRoot)
 	}
 
@@ -727,12 +695,10 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	// and the parent hash. This recomputed batch is then checked against the incoming batch.
 	// If the sequencer has tampered with something the hash will not add up and validation will
 	// produce an error.
-	// for {
 	cb, err := executor.compute(ctx, batch) // this execution is not used when first producing a batch, we never want to fail for empty batches
 	if err != nil {
 		executor.logger.Error("Failed to compute batch", log.ErrKey, err)
 		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
-		// continue
 	}
 
 	if cb.Batch.Hash() != batch.Hash() {
@@ -746,7 +712,6 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	}
 
 	return cb.TxExecResults, nil
-	//}
 }
 
 func (executor *batchExecutor) compute(ctx context.Context, batch *core.Batch) (*ComputedBatch, error) {
@@ -907,11 +872,6 @@ func (executor *batchExecutor) executeTx(ec *BatchExecutionContext, tx *common.L
 		// transactions.Derive messes with the gasUsed field, so we need to set it back
 		txResult.Receipt.GasUsed = gasUsed
 	}
-
-	//from, _ := core.GetAuthenticatedSender(tx.Tx.ChainId().Int64(), tx.Tx)
-	//if tx.Tx.To() != nil && from != nil {
-	//	executor.evmFacade.DumpStateDB(tx.Tx.Hash().String(), ec.stateDB, *from, *tx.Tx.To())
-	//}
 
 	// use the full entropy as the basis for the next transaction
 	ethHeader.MixDigest = fullEntropy

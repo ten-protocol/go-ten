@@ -100,10 +100,6 @@ func (s *storageImpl) closeTrieDB() {
 	if err != nil {
 		s.logger.Error("Failed to fetch head batch header", "err", err)
 	}
-	//parent, err := s.FetchBatchHeader(context.Background(), head.ParentHash)
-	//if err != nil {
-	//	s.logger.Error("Failed to fetch  parent head batch header", "err", err)
-	//}
 	if err = s.trieDB.Journal(head.Root); err != nil {
 		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
 	}
@@ -111,15 +107,6 @@ func (s *storageImpl) closeTrieDB() {
 	if err != nil {
 		s.logger.Error("Failed to close triedb", "err", err)
 	}
-}
-
-func (s *storageImpl) CleanStateDB(root common.StateRoot) {
-	s.closeTrieDB()
-
-	cfg := triedb.VerkleDefaults
-	cfg.PathDB.JournalDirectory = ""
-	s.trieDB = triedb.NewDatabase(s.db, cfg)
-	s.stateCache = state.NewDatabase(s.trieDB, nil)
 }
 
 func (s *storageImpl) Close() error {

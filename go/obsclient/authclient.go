@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
 	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
@@ -243,21 +242,21 @@ func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxDat
 	if err != nil {
 		panic(err)
 	}
+	// todo - is this the right way to calculate the base fee?
 	baseFee := latestBatch.BaseFee.Uint64() * 2
 
-	//gasLimit, err := ac.EstimateGas(context.Background(), ethereum.CallMsg{
-	//	From:  ac.Address(),
-	//	GasTipCap: big.NewInt(1),
-	//	GasFeeCap: big.NewInt(int64(baseFee)),
-	//	To:    unEstimatedTx.To(),
-	//	Value: unEstimatedTx.Value(),
-	//	Data:  unEstimatedTx.Data(),
-	//})
-	//if err != nil {
-	//	gasLimit = unEstimatedTx.Gas()
-	//}
+	gasLimit, err := ac.EstimateGas(context.Background(), ethereum.CallMsg{
+		From:      ac.Address(),
+		GasTipCap: big.NewInt(1),
+		GasFeeCap: big.NewInt(int64(baseFee)),
+		To:        unEstimatedTx.To(),
+		Value:     unEstimatedTx.Value(),
+		Data:      unEstimatedTx.Data(),
+	})
+	if err != nil {
+		gasLimit = unEstimatedTx.Gas()
+	}
 
-	gasLimit := params.MaxTxGas - 1
 	return &types.DynamicFeeTx{
 		Nonce:     unEstimatedTx.Nonce(),
 		GasTipCap: big.NewInt(1),
