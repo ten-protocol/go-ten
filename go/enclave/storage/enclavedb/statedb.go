@@ -27,7 +27,7 @@ const (
 	delQry            = `delete from %s where ky = ?`
 	// todo - how is the performance of this? probably extraordinarily slow
 	searchQry   = `select ky, val from %s sdb where substring(sdb.ky, 1, ?) = ? and sdb.ky >= ? order by sdb.ky asc`
-	dbChunkSize = 1024 // 1KB chunks
+	dbChunkSize = 32 * 1024 // 10KB chunks
 )
 
 func getTable(key []byte) string {
