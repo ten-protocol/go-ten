@@ -163,14 +163,14 @@ func (ssp *SharedSecretProcessor) verifyAttestationAndEncryptSecret(_ context.Co
 
 // storeAttestation stores the attested keys of other nodes so we can decrypt their rollups
 func (ssp *SharedSecretProcessor) storeAttestation(ctx context.Context, att *common.AttestationReport) error {
-    if att == nil {
-        return fmt.Errorf("attestation is nil")
-    }
-    ssp.logger.Info(fmt.Sprintf("Store attestation. Owner: %s", att.EnclaveID))
+	if att == nil {
+		return fmt.Errorf("attestation is nil")
+	}
+	ssp.logger.Info(fmt.Sprintf("Store attestation. Owner: %s", att.EnclaveID))
 	key, err := gethcrypto.DecompressPubkey(att.PubKey)
 	if err != nil {
 		return fmt.Errorf("failed to parse public key %w", err)
-	}	
+	}
 	err = ssp.storage.StoreNewEnclave(ctx, *att, key)
 	if err != nil {
 		return fmt.Errorf("could not store attested key. Cause: %w", err)
