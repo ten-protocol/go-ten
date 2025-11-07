@@ -48,7 +48,7 @@ func ToCallArg(msg ethereum.CallMsg) interface{} {
 }
 
 func toBlockNumArg(number *big.Int) string {
-	if number == nil {
+	if number == nil || number.Sign() == -1 {
 		return "latest"
 	}
 	return hexutil.EncodeBig(number)
