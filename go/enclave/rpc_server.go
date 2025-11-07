@@ -416,6 +416,27 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 	}, nil
 }
 
+func (s *RPCServer) FetchSequencerAttestations(ctx context.Context, _ *generated.SequencerAttestationRequest) (*generated.SequencerAttestationResponse, error) {
+	reports, sysError := s.enclave.FetchSequencerAttestations(ctx)
+	if sysError != nil {
+		s.logger.Error("Error fetching sequencer attestations", log.ErrKey, sysError)
+		return &generated.SequencerAttestationResponse{SystemError: toRPCError(sysError)}, nil
+	}
+
+	protoReports := make([]*generated.PublicAttestationReportMsg, 0, len(reports))
+	for _, r := range reports {
+		protoReports = append(protoReports, &generated.PublicAttestationReportMsg{
+			EnclaveID: r.EnclaveID.Bytes(),
+			PublicKey: r.PubKey,
+			Report:    r.Report,
+		})
+	}
+
+	return &generated.SequencerAttestationResponse{
+		Reports: protoReports,
+	}, nil
+}
+
 // decodeProcessedData - converts the rlp encoded bytes to processed if possible.
 func (s *RPCServer) decodeProcessedData(encodedData []byte) (*common.ProcessedL1Data, error) {
 	var processed common.ProcessedL1Data

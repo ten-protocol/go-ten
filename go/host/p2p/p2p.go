@@ -31,8 +31,6 @@ const (
 	msgTypeBatches
 	msgTypeBatchRequest
 	msgTypeRegisterForBroadcasts
-	msgTypeAttestationsRequest
-	msgTypeAttestsationsResponse
 	// bounds for msgType validation (must update if adding new type)
 	_minMsgType = msgTypeTx
 	_maxMsgType = msgTypeRegisterForBroadcasts
@@ -57,7 +55,6 @@ type message struct {
 type p2pServiceLocator interface {
 	L1Publisher() host.L1Publisher
 	L2Repo() host.L2BatchRepository
-	Enclaves() host.EnclaveService
 }
 
 // NewSocketP2PLayer - returns the Socket implementation of the P2P
@@ -109,10 +106,6 @@ type Service struct {
 	isIncomingP2PDisabled bool
 	sequencerAddress      string
 	lastReceivedBroadcast time.Time // if this gets stale then validators will re-register for broadcasts
-
-	// attestation request/response coordination (single in-flight request)
-	attestationRespMu sync.Mutex
-	attestationRespCh chan *common.AttestationResponse
 }
 
 func (p *Service) Start() error {
@@ -253,55 +246,6 @@ func (p *Service) RespondToBatchRequest(requestID string, batches []*common.ExtB
 	return p.send(msg, requestID)
 }
 
-// RequestSequencerAttestations sends an attestation request and waits for the response or context cancellation
-func (p *Service) RequestSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
-	// in sims the sequencer calls this
-	if p.isSequencer {
-		return p.sl.Enclaves().FetchSequencerAttestations(ctx)
-	}
-
-	// register a one-shot response channel
-	respCh := make(chan *common.AttestationResponse, 1)
-	p.attestationRespMu.Lock()
-	p.attestationRespCh = respCh
-	p.attestationRespMu.Unlock()
-
-	// build and send request (include enclaveIDs if provided)
-	attestationRequest := &common.AttestationRequest{
-		Requester: p.ourPublicAddress,
-	}
-	encodedRequest, err := rlp.EncodeToBytes(attestationRequest)
-	if err != nil {
-		// cleanup
-		p.attestationRespMu.Lock()
-		p.attestationRespCh = nil
-		p.attestationRespMu.Unlock()
-		return nil, fmt.Errorf("could not encode attestation request using RLP. Cause: %w", err)
-	}
-	msg := message{Sender: p.ourPublicAddress, Type: msgTypeAttestationsRequest, Contents: encodedRequest}
-	if err := p.send(msg, p.getSequencer()); err != nil {
-		// cleanup
-		p.attestationRespMu.Lock()
-		p.attestationRespCh = nil
-		p.attestationRespMu.Unlock()
-		return nil, err
-	}
-
-	// wait for the response or context cancellation
-	select {
-	case <-ctx.Done():
-		p.attestationRespMu.Lock()
-		p.attestationRespCh = nil
-		p.attestationRespMu.Unlock()
-		return nil, ctx.Err()
-	case resp := <-respCh:
-		if resp == nil {
-			return nil, fmt.Errorf("nil attestation response")
-		}
-		return resp.Attestations, nil
-	}
-}
-
 // RegisterForBroadcasts - called by validators to register with the sequencer for broadcasts of batch data etc.
 // Validators will call this again if they stop receiving broadcasts for a period of _maxWaitWithoutBroadcast
 // Sequencer will evict validators from the broadcast pool if sending fails _maxPeerFailures times
@@ -421,36 +365,8 @@ func (p *Service) handle(conn net.Conn) {
 		p.peerAddressesMutex.Lock()
 		p.peerAddresses[msg.Sender] = 0
 		p.peerAddressesMutex.Unlock()
-	case msgTypeAttestationsRequest:
-		if !p.isSequencer {
-			p.logger.Error("received attestations request from peer, but not a sequencer node")
-			return
-		}
-		// this is an incoming request, p2p service is responsible for finding the response and returning it
-		go p.handleAttestationRequest(msg.Contents)
-		p.peerTracker.receivedPeerMsg(msg.Sender)
-	case msgTypeAttestsationsResponse:
-		// this is a response to our previous request, deliver to waiter if any
-		var resp *common.AttestationResponse
-		if err := rlp.DecodeBytes(msg.Contents, &resp); err != nil {
-			p.logger.Warn("unable to decode attestation response received from peer", log.ErrKey, err)
-			return
-		}
-		p.attestationRespMu.Lock()
-		ch := p.attestationRespCh
-		// reset the channel so only one response is processed
-		p.attestationRespCh = nil
-		p.attestationRespMu.Unlock()
-		if ch != nil {
-			select {
-			case ch <- resp:
-			default:
-				p.logger.Debug("attestation response channel full, dropping response")
-			}
-		} else {
-			p.logger.Debug("no attestation waiter present; dropping response")
-		}
 	}
+	p.peerTracker.receivedPeerMsg(msg.Sender)
 }
 
 // Broadcasts a message to all peers.
@@ -567,51 +483,6 @@ func (p *Service) handleBatchRequest(encodedBatchRequest common.EncodedBatchRequ
 	for _, requestHandler := range p.batchReqHandlers.Subscribers() {
 		go requestHandler.HandleBatchRequest(batchRequest.Requester, batchRequest.FromSeqNo)
 	}
-}
-
-func (p *Service) handleAttestationRequest(encodedRequest []byte) {
-	var attRequest *common.AttestationRequest
-	err := rlp.DecodeBytes(encodedRequest, &attRequest)
-	if err != nil {
-		p.logger.Error("unable to decode attestation request received from peer using RLP", log.ErrKey, err)
-		return
-	}
-
-	p.logger.Debug("Received attestation request from peer", "requester", attRequest.Requester, "enclave_ids", len(attRequest.EnclaveIDs))
-
-	go func() {
-		err := p.respondToAttestationRequest(attRequest.Requester)
-		if err != nil {
-			p.logger.Error("failed to respond to attestation request", "requester", attRequest.Requester, log.ErrKey, err)
-			return
-		}
-	}()
-}
-
-func (p *Service) respondToAttestationRequest(requesterAddress string) error {
-	// fetch all attestations from the enclave service
-	attestations, err := p.sl.Enclaves().FetchSequencerAttestations(context.Background())
-	if err != nil {
-		return fmt.Errorf("failed to fetch attestations from enclave service: %w", err)
-	}
-
-	response := &common.AttestationResponse{
-		Attestations: attestations,
-	}
-
-	encodedResponse, err := rlp.EncodeToBytes(response)
-	if err != nil {
-		return fmt.Errorf("failed to encode attestation response using RLP: %w", err)
-	}
-
-	msg := message{Sender: p.ourPublicAddress, Type: msgTypeAttestsationsResponse, Contents: encodedResponse}
-	err = p.send(msg, requesterAddress)
-	if err != nil {
-		return fmt.Errorf("failed to send attestation response to requester %s. Cause: %s", requesterAddress, err)
-	}
-
-	p.logger.Debug("Sent attestation response to requester", "requester", requesterAddress, "attestations", len(attestations))
-	return nil
 }
 
 // EnsureSubscribedToSequencer - validators need to register with the sequencer for broadcasts

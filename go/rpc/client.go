@@ -18,8 +18,8 @@ const (
 
 	Health                = "ten_health"
 	Config                = "ten_config"
-	SequencerAttestations = "ten_sequencer"
 	RPCKey                = "ten_rpcKey"
+	SequencerAttestations = "ten_sequencer"
 
 	StopHost                 = "test_stopHost"
 	SubscribeNamespace       = "ten"

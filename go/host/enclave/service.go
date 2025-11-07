@@ -156,20 +156,9 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 }
 
 func (e *Service) FetchSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
-	reports := make([]*common.AttestationReport, 0, len(e.enclaveGuardians))
-	clients := e.GetEnclaveClients()
-	var allErrors error
-	for _, client := range clients {
-		report, err := client.Attestation(ctx)
-		if err != nil {
-			e.logger.Error("Could not fetch attestation report.", log.ErrKey, err)
-			allErrors = errors.Join(allErrors, err)
-			continue
-		}
-		reports = append(reports, report)
-	}
-	if allErrors != nil {
-		return reports, allErrors
+	reports, err := e.GetEnclaveClient().FetchSequencerAttestations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch sequencer attestations from enclave: %w", err)
 	}
 	return reports, nil
 }
