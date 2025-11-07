@@ -7,13 +7,15 @@ import (
 	"fmt"
 	"math/big"
 
+	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
+	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ten-protocol/go-ten/go/common"
-	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/go/host/rpc/clientapi"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/go/wallet"
@@ -238,33 +240,32 @@ func (ac *AuthObsClient) EstimateGas(ctx context.Context, msg ethereum.CallMsg) 
 
 func (ac *AuthObsClient) EstimateGasAndGasPrice(txData types.TxData) types.TxData {
 	unEstimatedTx := types.NewTx(txData)
-	latestBatch, err := ac.GetBatchHeaderByNumber(nil)
-	if err != nil {
-		panic(err)
-	}
-	// todo - is this the right way to calculate the base fee?
-	baseFee := latestBatch.BaseFee.Uint64() * 2
 
 	gasLimit, err := ac.EstimateGas(context.Background(), ethereum.CallMsg{
-		From:      ac.Address(),
-		GasTipCap: big.NewInt(1),
-		GasFeeCap: big.NewInt(int64(baseFee)),
-		To:        unEstimatedTx.To(),
-		Value:     unEstimatedTx.Value(),
-		Data:      unEstimatedTx.Data(),
+		From:  ac.Address(),
+		To:    unEstimatedTx.To(),
+		Value: unEstimatedTx.Value(),
+		Data:  unEstimatedTx.Data(),
 	})
 	if err != nil {
 		gasLimit = unEstimatedTx.Gas()
 	}
 
-	return &types.DynamicFeeTx{
-		Nonce:     unEstimatedTx.Nonce(),
-		GasTipCap: big.NewInt(1),
-		GasFeeCap: big.NewInt(int64(baseFee)),
-		Gas:       gasLimit,
-		To:        unEstimatedTx.To(),
-		Value:     unEstimatedTx.Value(),
-		Data:      unEstimatedTx.Data(),
+	gasPrice, err := ac.GasPrice(context.Background())
+	if err != nil {
+		// params.InitialBaseFee should be the new standard gas price.
+		// If the gas price is too low, then the gas required to be put in a transaction
+		// becomes astronomical.
+		gasPrice = big.NewInt(params.InitialBaseFee)
+	}
+
+	return &types.LegacyTx{
+		Nonce:    unEstimatedTx.Nonce(),
+		GasPrice: gasPrice,
+		Gas:      gasLimit,
+		To:       unEstimatedTx.To(),
+		Value:    unEstimatedTx.Value(),
+		Data:     unEstimatedTx.Data(),
 	}
 }
 
