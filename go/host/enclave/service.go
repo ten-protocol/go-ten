@@ -155,7 +155,7 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 	return clients
 }
 
-func (e *Service) FetchSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
+func (e *Service) GetSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
 	reports, err := e.GetEnclaveClient().FetchSequencerAttestations(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch sequencer attestations from enclave: %w", err)
