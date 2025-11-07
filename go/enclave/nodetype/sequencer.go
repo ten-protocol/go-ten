@@ -33,11 +33,13 @@ import (
 const RollupDelay = 2 // number of L1 blocks to exclude when creating a rollup. This will minimize compression reorg issues.
 
 type SequencerSettings struct {
-	MaxBatchSize      uint64
-	MaxRollupSize     uint64
-	GasPaymentAddress gethcommon.Address
-	BatchGasLimit     uint64
-	BaseFee           *big.Int
+	MaxBatchSize         uint64
+	MaxRollupSize        uint64
+	GasPaymentAddress    gethcommon.Address
+	BatchGasLimit        uint64
+	BaseFee              *big.Int
+	TxCompressionFactor  float64
+	CompressedHeaderSize uint64
 }
 
 type sequencer struct {
@@ -301,7 +303,7 @@ func (s *sequencer) StoreExecutedBatch(ctx context.Context, batch *core.Batch, t
 }
 
 func (s *sequencer) CreateRollup(ctx context.Context, lastBatchNo uint64) (*common.CreateRollupResult, error) {
-	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize)
+	rollupLimiter := limiters.NewRollupLimiter(s.settings.MaxRollupSize, s.settings.TxCompressionFactor, s.settings.CompressedHeaderSize)
 
 	currentL1Head, err := s.blockProcessor.GetHead(ctx)
 	if err != nil {

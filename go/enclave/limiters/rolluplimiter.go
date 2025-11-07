@@ -20,12 +20,16 @@ const (
 )
 
 type rollupLimiter struct {
-	remainingSize uint64
+	remainingSize        uint64
+	txCompressionFactor  float64
+	compressedHeaderSize uint64
 }
 
-func NewRollupLimiter(size uint64) RollupLimiter {
+func NewRollupLimiter(size uint64, txCompressionFactor float64, compressedHeaderSize uint64) RollupLimiter {
 	return &rollupLimiter{
-		remainingSize: size,
+		remainingSize:        size,
+		txCompressionFactor:  txCompressionFactor,
+		compressedHeaderSize: compressedHeaderSize,
 	}
 }
 
@@ -37,7 +41,7 @@ func (rl *rollupLimiter) AcceptBatch(batch *core.Batch) (bool, error) {
 	}
 
 	// adjust with a compression factor and add the size of a compressed batch header
-	encodedSize := uint64(float64(len(encodedData))*txCompressionFactor) + compressedHeaderSize
+	encodedSize := uint64(float64(len(encodedData))*rl.txCompressionFactor) + rl.compressedHeaderSize
 	if encodedSize > rl.remainingSize {
 		return false, nil
 	}

@@ -44,6 +44,11 @@ type EnclaveConfig struct {
 	// a protocol limit, but a miner imposed limit and it might be hard to find someone
 	// to include a transaction if it goes above it
 	MaxRollupSize uint64
+	// Rollup limiter estimation for reduction of TX sizes during compression
+	LimiterTxCompressionFactor float64
+	// Rollup limiter estimated size of a compressed batch header
+	LimiterCompressedHeaderSize uint64
+
 	// MinGasPrice is the minimum gas price for mining a transaction
 	MinGasPrice *big.Int
 	// A json string that specifies the prefunded addresses at the genesis of the TEN network
@@ -133,9 +138,11 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 		GasBatchExecutionLimit:   tenCfg.Network.Gas.BatchExecutionLimit,
 		GasLocalExecutionCapFlag: tenCfg.Network.Gas.LocalExecutionCap,
 
-		TenGenesis:    tenCfg.Network.GenesisJSON,
-		MaxBatchSize:  tenCfg.Network.Batch.MaxSize,
-		MaxRollupSize: tenCfg.Network.Rollup.MaxSize,
+		TenGenesis:                  tenCfg.Network.GenesisJSON,
+		MaxBatchSize:                tenCfg.Network.Batch.MaxSize,
+		MaxRollupSize:               tenCfg.Network.Rollup.MaxSize,
+		LimiterTxCompressionFactor:  tenCfg.Network.Rollup.TxCompressionFactor,
+		LimiterCompressedHeaderSize: tenCfg.Network.Rollup.CompressedHeaderSize,
 
 		AttestationSignerID:           tenCfg.Enclave.Attestation.SignerID,
 		AttestationEDBSecurityVersion: tenCfg.Enclave.Attestation.EDBSecurityVersion,

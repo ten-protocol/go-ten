@@ -44,10 +44,11 @@ type Service struct {
 	activeSequencerID atomic.Pointer[common.EnclaveID] // atomic pointer for thread safety
 
 	// batch and rollup production config
-	batchInterval  time.Duration
-	rollupInterval time.Duration
-	blockTime      time.Duration
-	maxRollupSize  uint64
+	batchInterval          time.Duration
+	rollupInterval         time.Duration
+	blockTime              time.Duration
+	maxRollupSize          uint64
+	batchCompressionFactor float64
 
 	running         atomic.Bool
 	hostInterrupter *stopcontrol.StopControl
@@ -56,15 +57,16 @@ type Service struct {
 
 func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLocator enclaveServiceLocator, enclaveGuardians []*Guardian, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Service {
 	return &Service{
-		hostData:         hostData,
-		sl:               serviceLocator,
-		enclaveGuardians: enclaveGuardians,
-		batchInterval:    config.BatchInterval,
-		rollupInterval:   config.RollupInterval,
-		blockTime:        config.L1BlockTime,
-		maxRollupSize:    config.MaxRollupSize,
-		hostInterrupter:  interrupter,
-		logger:           logger,
+		hostData:               hostData,
+		sl:                     serviceLocator,
+		enclaveGuardians:       enclaveGuardians,
+		batchInterval:          config.BatchInterval,
+		rollupInterval:         config.RollupInterval,
+		blockTime:              config.L1BlockTime,
+		maxRollupSize:          config.MaxRollupSize,
+		batchCompressionFactor: config.BatchCompressionFactor,
+		hostInterrupter:        interrupter,
+		logger:                 logger,
 	}
 }
 
@@ -317,7 +319,7 @@ func (e *Service) tryPromoteNewSequencer() {
 // This compression factor is based on actual mainnet data showing much better compression
 // for mostly empty batches: 12,770 batches → 23,677 bytes ≈ 2.5% compression ratio
 // Using conservative 10% to allow buffer for variation in batch content
-const batchCompressionFactor = 0.1
+//const batchCompressionFactor = 0.1
 
 // managePeriodicRollups is a background goroutine that periodically produces a rollup
 // where possible it will prefer to use a non-active sequencer enclave to avoid disrupting the production of batches
@@ -402,7 +404,7 @@ func (e *Service) isRollupRequired(lastSuccessfulRollup time.Time) (bool, uint64
 	}
 
 	// adjust the availBatchesSumSize
-	estimatedRunningRollupSize := uint64(float64(availBatchesSumSize) * batchCompressionFactor)
+	estimatedRunningRollupSize := uint64(float64(availBatchesSumSize) * e.batchCompressionFactor)
 
 	// produce and issue rollup when either:
 	// it has passed g.rollupInterval from last lastSuccessfulRollup

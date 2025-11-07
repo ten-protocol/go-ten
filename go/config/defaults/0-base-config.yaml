@@ -13,6 +13,10 @@ network:
     interval: 5s
     maxInterval: 120m # rollups will be produced after this time even if the data blob is not full
     maxSize: 131072 # 128kb - the size of a blob
+    batchCompressionFactor: 0.1 # estimation of how much the batches compress during rollup creation
+    txCompressionFactor: 0.85 # estimation of how much the txs compress during rollup creation
+    compressedHeaderSize: 2 # size of the compressed batch header
+
   gas:
     minBaseFee: 100000000
     minGasPrice: 9999999
