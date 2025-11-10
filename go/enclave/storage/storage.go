@@ -77,7 +77,6 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
 	cfg := triedb.VerkleDefaults
 	cfg.PathDB.JournalDirectory = ""
-	cfg.PathDB.NoAsyncFlush = true
 	trieDB := triedb.NewDatabase(backingDB, cfg)
 	stateDB := state.NewDatabase(trieDB, nil)
 

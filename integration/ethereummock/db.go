@@ -26,16 +26,15 @@ type blockResolverInMem struct {
 }
 
 func (n *blockResolverInMem) IsBlockCanonical(ctx context.Context, blockHash common.L1BlockHash) (bool, error) {
-	// TODO implement me
-	panic("implement me")
+	panic("unexpected usage - method IsBlockCanonical only exists to satisfy interface")
 }
 
 func (n *blockResolverInMem) FetchCanonicaBlockByHeight(_ context.Context, _ *big.Int) (*types.Block, error) {
-	panic("implement me")
+	panic("unexpected usage - method FetchCanonicaBlockByHeight only exists to satisfy interface")
 }
 
 func (n *blockResolverInMem) Proof(_ context.Context, _ *core.Rollup) (*types.Block, error) {
-	panic("implement me")
+	panic("unexpected usage - method Proof only exists to satisfy interface")
 }
 
 func NewResolver() *blockResolverInMem {

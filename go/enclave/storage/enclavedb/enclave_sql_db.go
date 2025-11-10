@@ -228,6 +228,5 @@ func (sqlDB *enclaveDB) ReadAncients(fn func(reader ethdb.AncientReaderOp) error
 }
 
 func (sqlDB *enclaveDB) AncientBytes(kind string, id, offset, length uint64) ([]byte, error) {
-	// TODO implement me
-	panic("implement me")
+	panic("unexpected usage - method AncientBytes only exists to satisfy interface")
 }

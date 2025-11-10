@@ -281,3 +281,48 @@ func (br *batchRegistry) HealthCheck() (bool, error) {
 
 	return true, nil
 }
+
+func (br *batchRegistry) CanExecute(ctx context.Context, batch *common.BatchHeader) (bool, error) {
+	// 1.l1 block exists
+	block, err := br.storage.FetchBlock(ctx, batch.L1Proof)
+	if err != nil && errors.Is(err, errutil.ErrNotFound) {
+		br.logger.Warn("Error fetching block", log.BlockHashKey, batch.L1Proof, log.ErrKey, err)
+		return false, err
+	}
+	br.logger.Trace("l1 block exists", log.BatchSeqNoKey, batch.SequencerOrderNo)
+	// 2. parent was executed
+	parentExecuted, err := br.storage.BatchWasExecuted(ctx, batch.ParentHash)
+	if err != nil {
+		br.logger.Info("Error reading execution status of batch", log.BatchHashKey, batch.ParentHash, log.ErrKey, err)
+		return false, err
+	}
+	br.logger.Trace("parentExecuted", log.BatchSeqNoKey, batch.SequencerOrderNo, "val", parentExecuted)
+
+	return block != nil && parentExecuted, nil
+}
+
+func (br *batchRegistry) ExecuteBatch(ctx context.Context, batchExecutor BatchExecutor, batchHeader *common.BatchHeader) error {
+	txs, err := br.storage.FetchBatchTransactionsBySeq(ctx, batchHeader.SequencerOrderNo.Uint64())
+	if err != nil {
+		return fmt.Errorf("could not get txs for batch %s. Cause: %w", batchHeader.Hash(), err)
+	}
+
+	batch := &core.Batch{
+		Header:       batchHeader,
+		Transactions: txs,
+	}
+
+	txResults, err := batchExecutor.ExecuteBatch(ctx, batch)
+	if err != nil {
+		return fmt.Errorf("could not execute batch %s. Cause: %w", batchHeader.Hash(), err)
+	}
+	err = br.storage.StoreExecutedBatch(ctx, batch, txResults)
+	if err != nil {
+		return fmt.Errorf("could not store executed batch %s. Cause: %w", batchHeader.Hash(), err)
+	}
+	err = br.OnBatchExecuted(batchHeader, txResults)
+	if err != nil {
+		return err
+	}
+	return nil
+}

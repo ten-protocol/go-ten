@@ -68,16 +68,13 @@ func (occ *tenChainContext) GetHeader(hash common.Hash, _ uint64) *types.Header 
 }
 
 func (occ *tenChainContext) CurrentHeader() *types.Header {
-	// TODO implement me
-	panic("implement me")
+	panic("unexpected usage - method CurrentHeader only exists to satisfy interface")
 }
 
 func (occ *tenChainContext) GetHeaderByNumber(number uint64) *types.Header {
-	// TODO implement me
-	panic("implement me")
+	panic("unexpected usage - method GetHeaderByNumber only exists to satisfy interface")
 }
 
 func (occ *tenChainContext) GetHeaderByHash(hash common.Hash) *types.Header {
-	// TODO implement me
-	panic("implement me")
+	panic("unexpected usage - method GetHeaderByHash only exists to satisfy interface")
 }

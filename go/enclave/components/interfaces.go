@@ -152,6 +152,8 @@ type BatchRegistry interface {
 	SubscribeForExecutedBatches(func(*core.Batch, types.Receipts))
 	UnsubscribeFromBatches()
 
+	CanExecute(ctx context.Context, batch *common.BatchHeader) (bool, error)
+	ExecuteBatch(ctx context.Context, batchExecutor BatchExecutor, batchHeader *common.BatchHeader) error
 	OnBatchExecuted(batch *common.BatchHeader, txExecResults []*core.TxExecResult) error
 	OnL1Reorg(*BlockIngestionType)
 
