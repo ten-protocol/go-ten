@@ -3,6 +3,7 @@ package components
 import (
 	"context"
 	"fmt"
+	"math"
 
 	"github.com/ten-protocol/go-ten/go/common"
 
@@ -64,10 +65,16 @@ func (oc *tenChain) ObsCallAtBlock(ctx context.Context, apiArgs *gethapi.Transac
 		return nil, nil, err
 	}
 
-	callMsg, err := apiArgs.ToMessage(params.MaxTxGas, batch.BaseFee)
-	if err != nil {
-		return nil, fmt.Errorf("unable to convert TransactionArgs to Message - %w", err), nil
+	// todo - what should this value be?
+	gasCap := uint64(math.MaxUint32)
+	if isEstimateGas {
+		gasCap = params.MaxTxGas
 	}
+	if err := apiArgs.CallDefaults(gasCap, batch.BaseFee, oc.chainConfig.ChainID); err != nil {
+		return nil, err, nil
+	}
+
+	callMsg := apiArgs.ToMessage(batch.BaseFee, true)
 
 	if oc.logger.Enabled(context.Background(), gethlog.LevelTrace) {
 		oc.logger.Trace("Obs_Call: Successful result", "result", fmt.Sprintf("to=%s, from=%s, data=%s, batch=%s, state=%s",
