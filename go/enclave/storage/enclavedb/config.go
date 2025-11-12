@@ -23,8 +23,8 @@ const (
 	attSelectReports  = "select enclave_id, pub_key, report from attestation where node_type = ?"
 )
 
-func WriteAttestation(ctx context.Context, db *sqlx.Tx, attesation common.AttestationReport, key []byte, nodeType common.NodeType) (sql.Result, error) {
-	return db.ExecContext(ctx, attInsert, attesation.EnclaveID.Bytes(), key, attesation.Report, nodeType)
+func WriteAttestation(ctx context.Context, db *sqlx.Tx, attestation common.AttestationReport, key []byte, nodeType common.NodeType) (sql.Result, error) {
+	return db.ExecContext(ctx, attInsert, attestation.EnclaveID.Bytes(), key, attestation.Report, nodeType)
 }
 
 func UpdateAttestationKey(ctx context.Context, db *sqlx.Tx, enclaveId common.EnclaveID, key []byte) (sql.Result, error) {

@@ -341,7 +341,7 @@ func (w *WebServer) getConfig(c *gin.Context) {
 func (w *WebServer) getSequencerAttestations(c *gin.Context) {
 	attestations, err := w.backend.SequencerAttestations()
 	if err != nil {
-		errorHandler(c, fmt.Errorf("unable to execute getConfig request %w", err), w.logger)
+		errorHandler(c, fmt.Errorf("unable to execute getSequencerAttestations request %w", err), w.logger)
 		return
 	}
 

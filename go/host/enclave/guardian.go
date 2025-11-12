@@ -583,7 +583,6 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
 	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, processedData)
-	// g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, processedData, g.shouldSyncContracts(*processedData), g.shouldSyncAdditionalContracts(*processedData))
 
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
 	err = g.publishSharedSecretResponses(resp.ProducedSecretResponses)
