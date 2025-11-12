@@ -64,7 +64,7 @@ func (api *TenAPI) RpcKey() ([]byte, error) {
 	api.rpcKey, err = api.host.EnclaveClient().RPCEncryptionKey(context.Background())
 	if err != nil {
 		return nil, err
-	} 
+	}
 	return api.rpcKey, nil
 }
 
