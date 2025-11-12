@@ -309,9 +309,10 @@ func (h *host) SequencerAttestations() ([]*common.PublicAttestationReport, error
 			continue
 		}
 		publicAttestations = append(publicAttestations, &common.PublicAttestationReport{
-			Report:    a.Report,
-			PubKey:    a.PubKey,
-			EnclaveID: a.EnclaveID,
+			Report:      a.Report,
+			PubKey:      a.PubKey,
+			EnclaveID:   a.EnclaveID,
+			HostAddress: a.HostAddress,
 		})
 	}
 	return publicAttestations, nil

@@ -154,7 +154,8 @@ type NamedAddress struct {
 
 // PublicAttestationReport mirrors AttestationReport but encodes byte slices as hex in JSON
 type PublicAttestationReport struct {
-	Report    hexutil.Bytes  `json:"Report"`
-	PubKey    hexutil.Bytes  `json:"PubKey"`
-	EnclaveID common.Address `json:"EnclaveID"`
+	Report      hexutil.Bytes  `json:"Report"`
+	PubKey      hexutil.Bytes  `json:"PubKey"`
+	EnclaveID   common.Address `json:"EnclaveID"`
+	HostAddress string         `json:"HostAddress"`
 }
