@@ -55,7 +55,6 @@
     { "fromHost": true, "name": "NETWORK_L1_STARTHASH" },
     { "fromHost": true, "name": "NETWORK_ROLLUP_INTERVAL" },
     { "fromHost": true, "name": "NETWORK_ROLLUP_MAXINTERVAL" },
-    { "fromHost": true, "name": "NETWORK_ROLLUP_BATCHCOMPRESSIONFACTOR" },
     { "fromHost": true, "name": "NETWORK_ROLLUP_TXCOMPRESSIONFACTOR" },
     { "fromHost": true, "name": "NETWORK_SEQUENCER_P2PADDRESS" },
     { "fromHost": true, "name": "NETWORK_SEQUENCER_SYSTEMCONTRACTSUPGRADER" },
