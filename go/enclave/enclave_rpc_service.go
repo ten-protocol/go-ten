@@ -159,3 +159,15 @@ func (e *enclaveRPCService) EnclavePublicConfig(context.Context) (*common.Enclav
 		PublicSystemContracts:           publicContractsMap,
 	}, nil
 }
+
+func (e *enclaveRPCService) FetchSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, common.SystemError) {
+	reports, err := e.storage.FetchSequencerAttestations(ctx)
+	if err != nil {
+		return nil, responses.ToInternalError(fmt.Errorf("failed to fetch sequencer attestations: %w", err))
+	}
+	result := make([]*common.AttestationReport, len(reports))
+	for i := range reports {
+		result[i] = &reports[i]
+	}
+	return result, nil
+}

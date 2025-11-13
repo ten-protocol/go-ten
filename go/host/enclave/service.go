@@ -155,6 +155,14 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 	return clients
 }
 
+func (e *Service) GetSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
+	reports, err := e.GetEnclaveClient().FetchSequencerAttestations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch sequencer attestations from enclave: %w", err)
+	}
+	return reports, nil
+}
+
 func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error) {
 	encryptedTx := common.EncryptedTx(encryptedParams)
 

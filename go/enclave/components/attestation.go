@@ -43,7 +43,7 @@ type EgoAttestationProvider struct {
 	logger            gethlog.Logger
 }
 
-func (e *EgoAttestationProvider) CreateAttestationReport(ctx context.Context, hostAddress string) (*common.AttestationReport, error) {
+func (e *EgoAttestationProvider) CreateAttestationReport(_ context.Context, hostAddress string) (*common.AttestationReport, error) {
 	idHash, err := getIDHash(e.enclaveKeyService.EnclaveID(), e.enclaveKeyService.PublicKeyBytes(), hostAddress)
 	if err != nil {
 		return nil, err

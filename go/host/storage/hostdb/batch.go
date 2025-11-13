@@ -313,13 +313,13 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 }
 
 func EstimateRollupSize(db HostDB, fromSeqNo *big.Int) (uint64, error) {
-	var totalTx uint64
+	var total sql.NullInt64
 	reboundQuery := db.GetSQLDB().Rebind(selectSumBatchSizes)
-	err := db.GetSQLDB().QueryRow(reboundQuery, fromSeqNo.Uint64()).Scan(&totalTx)
+	err := db.GetSQLDB().QueryRow(reboundQuery, fromSeqNo.Uint64()).Scan(&total)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query sum of rollup batches: %w", err)
 	}
-	return totalTx, nil
+	return uint64(total.Int64), nil
 }
 
 func fetchBatchHeader(db HostDB, whereQuery string, args ...any) (*common.BatchHeader, error) {
