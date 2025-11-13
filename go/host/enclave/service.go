@@ -316,11 +316,6 @@ func (e *Service) tryPromoteNewSequencer() {
 	e.activeSequencerID.Store(_noActiveSequencer)
 }
 
-// This compression factor is based on actual mainnet data showing much better compression
-// for mostly empty batches: 12,770 batches → 23,677 bytes ≈ 2.5% compression ratio
-// Using conservative 10% to allow buffer for variation in batch content
-//const batchCompressionFactor = 0.1
-
 // managePeriodicRollups is a background goroutine that periodically produces a rollup
 // where possible it will prefer to use a non-active sequencer enclave to avoid disrupting the production of batches
 // note: this function runs in a separate goroutine for the lifetime of the service
@@ -403,7 +398,9 @@ func (e *Service) isRollupRequired(lastSuccessfulRollup time.Time) (bool, uint64
 		availBatchesSumSize = 0
 	}
 
-	// adjust the availBatchesSumSize
+	// This batch compression factor is based on actual mainnet data showing much better compression
+	// for mostly empty batches: 12,770 batches → 23,677 bytes ≈ 2.5% compression ratio
+	// Using conservative 10% to allow buffer for variation in batch content
 	estimatedRunningRollupSize := uint64(float64(availBatchesSumSize) * e.batchCompressionFactor)
 
 	// produce and issue rollup when either:
