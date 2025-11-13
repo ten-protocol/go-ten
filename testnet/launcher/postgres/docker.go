@@ -47,7 +47,6 @@ func (p *Postgres) IsReady() error {
 		// we can't check for readiness using TCP so exec in
 		return docker.ExecInContainer("pg-ten", []string{"pg_isready", "-U", "postgres", "-h", "localhost"})
 	}, retry.NewTimeoutStrategy(timeout, interval))
-
 	if err != nil {
 		return fmt.Errorf("postgres did not become ready in time: %w", err)
 	}

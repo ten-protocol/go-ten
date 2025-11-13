@@ -86,6 +86,11 @@ type RollupConfig struct {
 	// a protocol limit, but a miner imposed limit and it might be hard to find someone
 	// to include a transaction if it goes above it
 	MaxSize uint64 `mapstructure:"maxSize"`
+	// BatchCompressionFactor is the estimated reduction of batch sizes after they get encrypted. It is used during rollup
+	// size estimation
+	BatchCompressionFactor float64 `mapstructure:"batchCompressionFactor"`
+	// TxCompressionFactor used by the rollup limiter to estimate the size of compressed transactions during rollup creation
+	TxCompressionFactor float64 `mapstructure:"txCompressionFactor"`
 }
 
 // Sequencer contains the configuration for how the L2 sequencer will operate for the Ten network
