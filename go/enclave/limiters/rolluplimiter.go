@@ -9,9 +9,6 @@ import (
 )
 
 const (
-	// 85% is a very conservative number. It will most likely be 66% in practice.
-	// We can lower it, once we have a mechanism in place to handle batches that don't actually compress to that.
-	txCompressionFactor = 0.85
 	// Based on testing: compressedHeaderSize=4 gives ~17K batches (too conservative)
 	// Target: ~25K batches for better utilization of 90KB limit
 	// Current: 2.06 bytes/batch actual, target estimation: 3.6 bytes/batch
@@ -20,16 +17,14 @@ const (
 )
 
 type rollupLimiter struct {
-	remainingSize        uint64
-	txCompressionFactor  float64
-	compressedHeaderSize uint64
+	remainingSize       uint64
+	txCompressionFactor float64
 }
 
-func NewRollupLimiter(size uint64, txCompressionFactor float64, compressedHeaderSize uint64) RollupLimiter {
+func NewRollupLimiter(size uint64, txCompressionFactor float64) RollupLimiter {
 	return &rollupLimiter{
-		remainingSize:        size,
-		txCompressionFactor:  txCompressionFactor,
-		compressedHeaderSize: compressedHeaderSize,
+		remainingSize:       size,
+		txCompressionFactor: txCompressionFactor,
 	}
 }
 
@@ -41,7 +36,7 @@ func (rl *rollupLimiter) AcceptBatch(batch *core.Batch) (bool, error) {
 	}
 
 	// adjust with a compression factor and add the size of a compressed batch header
-	encodedSize := uint64(float64(len(encodedData))*rl.txCompressionFactor) + rl.compressedHeaderSize
+	encodedSize := uint64(float64(len(encodedData))*rl.txCompressionFactor) + compressedHeaderSize
 	if encodedSize > rl.remainingSize {
 		return false, nil
 	}

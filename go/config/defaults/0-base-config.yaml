@@ -15,7 +15,6 @@ network:
     maxSize: 131072 # 128kb - the size of a blob
     batchCompressionFactor: 0.1 # estimation of how much the batches compress during rollup creation
     txCompressionFactor: 0.85 # estimation of how much the txs compress during rollup creation
-    compressedHeaderSize: 2 # size of the compressed batch header
 
   gas:
     minBaseFee: 100000000

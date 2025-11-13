@@ -87,13 +87,12 @@ func NewEnclaveAdminAPI(config *enclaveconfig.EnclaveConfig, storage storage.Sto
 	rollupConsumer := components.NewRollupConsumer(contractRegistry.DARegistryLib(), registry, rollupCompression, storage, logger, sigVerifier)
 
 	seqSettings := nodetype.SequencerSettings{
-		MaxBatchSize:         config.MaxBatchSize,
-		MaxRollupSize:        config.MaxRollupSize,
-		GasPaymentAddress:    config.GasPaymentAddress,
-		BatchGasLimit:        config.GasBatchExecutionLimit,
-		BaseFee:              config.MinBaseFee,
-		TxCompressionFactor:  config.LimiterTxCompressionFactor,
-		CompressedHeaderSize: config.LimiterCompressedHeaderSize,
+		MaxBatchSize:        config.MaxBatchSize,
+		MaxRollupSize:       config.MaxRollupSize,
+		GasPaymentAddress:   config.GasPaymentAddress,
+		BatchGasLimit:       config.GasBatchExecutionLimit,
+		BaseFee:             config.MinBaseFee,
+		TxCompressionFactor: config.LimiterTxCompressionFactor,
 	}
 
 	sequencerService := nodetype.NewSequencer(blockProcessor, batchExecutor, registry, rollupProducer, rollupCompression, gethEncodingService, logger, chainConfig, enclaveKeyService, mempool, storage, dataCompressionService, seqSettings, contractRegistry.DARegistryLib(), config.L1ChainID)

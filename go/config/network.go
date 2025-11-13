@@ -91,8 +91,6 @@ type RollupConfig struct {
 	BatchCompressionFactor float64 `mapstructure:"batchCompressionFactor"`
 	// TxCompressionFactor used by the rollup limiter to estimate the size of compressed transactions during rollup creation
 	TxCompressionFactor float64 `mapstructure:"txCompressionFactor"`
-	// CompressedHeaderSize used by the rollup limiter to estimate the size of a compressed batch header during rollup creation
-	CompressedHeaderSize uint64 `mapstructure:"compressedHeaderSize"`
 }
 
 // Sequencer contains the configuration for how the L2 sequencer will operate for the Ten network
