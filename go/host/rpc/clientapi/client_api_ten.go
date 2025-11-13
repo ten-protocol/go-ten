@@ -48,7 +48,7 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 	return checksumFormatted(config), nil
 }
 
-func (api *TenAPI) Sequencer() ([]*common.PublicAttestationReport, error) {
+func (api *TenAPI) SequencerAttestations() ([]*common.PublicAttestationReport, error) {
 	attestations, err := api.host.SequencerAttestations()
 	if err != nil {
 		return nil, err
