@@ -29,7 +29,7 @@ func NewTenAPI(host host.Host, logger gethlog.Logger) *TenAPI {
 	}
 }
 
-// Version returns the protocol version of the Obscuro network.
+// Version returns the protocol version of the TEN network.
 func (api *TenAPI) Version() string {
 	return fmt.Sprintf("%d", api.host.Config().TenChainID)
 }
