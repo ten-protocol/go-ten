@@ -41,7 +41,7 @@ var NotAuthorisedErr = errors.New("not authorised")
 func GetTransactionReceiptExecute(builder *CallBuilder[gethcommon.Hash, map[string]interface{}], rpc *EncryptionManager) error {
 	txHash := *builder.Param
 	requester := builder.VK.AccountAddress
-	rpc.logger.Trace("Get receipt for ", log.TxKey, txHash, "requester", requester.Hex())
+	rpc.logger.Trace("get receipt for ", log.TxKey, txHash, "requester", requester.Hex())
 
 	// first try the cache for recent transactions
 	result, err := fetchFromCache(builder.ctx, rpc.storage, rpc.cacheService, txHash, requester)

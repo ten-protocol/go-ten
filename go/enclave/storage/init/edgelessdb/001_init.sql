@@ -6,18 +6,25 @@ create table if not exists tendb.statedb32
 (
     id  INTEGER AUTO_INCREMENT,
     ky  binary(32) NOT NULL,
-    val mediumblob NOT NULL,
+    val mediumblob,
     primary key (id),
-    INDEX USING HASH (ky)
+    UNIQUE INDEX USING HASH (ky)
 );
 
 create table if not exists tendb.statedb64
 (
     id  INTEGER AUTO_INCREMENT,
     ky  varbinary(64) NOT NULL,
-    val mediumblob NOT NULL,
+    val mediumblob,
     primary key (id),
-    INDEX USING HASH (ky)
+    UNIQUE INDEX USING HASH (ky)
+);
+
+create table if not exists tendb.triedb_journal
+(
+    id  INTEGER AUTO_INCREMENT,
+    val mediumblob NOT NULL,
+    primary key (id)
 );
 
 create table if not exists tendb.config

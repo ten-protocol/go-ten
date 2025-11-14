@@ -42,16 +42,14 @@ func ToCallArg(msg ethereum.CallMsg) interface{} {
 	if msg.GasPrice != nil {
 		arg["gasPrice"] = (*hexutil.Big)(msg.GasPrice)
 	}
+	arg["blockNumber"] = "latest"
+	arg["nonce"] = hexutil.Uint64(10)
 	return arg
 }
 
 func toBlockNumArg(number *big.Int) string {
-	if number == nil {
+	if number == nil || number.Sign() == -1 {
 		return "latest"
-	}
-	pending := big.NewInt(-1)
-	if number.Cmp(pending) == 0 {
-		return "pending"
 	}
 	return hexutil.EncodeBig(number)
 }

@@ -205,12 +205,16 @@ func (c *inMemTenClient) getBatchByNumber(result interface{}, args []interface{}
 		return fmt.Errorf("arg to %s is of type %T, expected int64", rpc.GetBatchByNumber, args[0])
 	}
 
-	blockNumber, err := hexutil.DecodeUint64(blockNumberHex)
-	if err != nil {
-		return fmt.Errorf("arg to %s could not be decoded from hex. Cause: %w", rpc.GetBatchByNumber, err)
+	blockNumber := gethrpc.LatestBlockNumber
+	if blockNumberHex != "latest" {
+		blockNumberInt, err := hexutil.DecodeUint64(blockNumberHex)
+		if err != nil {
+			return fmt.Errorf("arg to %s could not be decoded from hex. Cause: %w", rpc.GetBatchByNumber, err)
+		}
+		blockNumber = gethrpc.BlockNumber(blockNumberInt)
 	}
 
-	headerMap, err := c.ethAPI.GetBatchByNumber(nil, gethrpc.BlockNumber(blockNumber), false) //nolint:staticcheck
+	headerMap, err := c.ethAPI.GetBatchByNumber(nil, blockNumber, false) //nolint:staticcheck
 	if err != nil {
 		return fmt.Errorf("`%s` call failed. Cause: %w", rpc.GetBatchByNumber, err)
 	}

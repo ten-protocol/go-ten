@@ -298,6 +298,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 		g.logger.Debug("Enclave is behind, ignoring batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 		return // ignore batches until we're up-to-date
 	}
+
 	err := g.submitL2Batch(batch)
 	if err != nil {
 		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
@@ -543,6 +544,7 @@ func (g *Guardian) catchupWithL2() error {
 // todo - @matt - think about removing the TryLock
 func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, error) {
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
+	// todo @matt - do we need to lock here?
 	if !g.submitDataLock.TryLock() {
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
 		return false, nil
@@ -614,7 +616,7 @@ func (g *Guardian) processRollupTransactions(block *types.Header, metadatas []co
 
 		metaData, err := g.enclaveClient.GetRollupData(context.Background(), r.Header.Hash())
 		if err != nil {
-			g.logger.Error("Could not fetch rollup metadata from enclave.", log.RollupHashKey, r.Header.Hash(), log.ErrKey, err)
+			g.logger.Warn("Could not fetch rollup metadata from enclave.", log.RollupHashKey, r.Header.Hash(), log.ErrKey, err)
 		} else {
 			// TODO - This is a temporary fix, arrays should always match in practice...
 			extMetadata := common.ExtRollupMetadata{}
@@ -627,7 +629,7 @@ func (g *Guardian) processRollupTransactions(block *types.Header, metadatas []co
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
 			} else {
-				g.logger.Error("Could not store rollup.", log.ErrKey, err)
+				g.logger.Warn("Could not store rollup.", log.ErrKey, err)
 			}
 		}
 	}

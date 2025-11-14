@@ -120,7 +120,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, evmFacade, config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, gasPricer, logger)
 
 	// ensure EVM state data is up-to-date using the persisted batch data
-	err = syncExecutedBatchesWithEVMStateDB(context.Background(), storage, batchRegistry, logger)
+	err = syncExecutedBatchesWithEVMStateDB(context.Background(), storage, batchRegistry, batchExecutor, logger)
 	if err != nil {
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}

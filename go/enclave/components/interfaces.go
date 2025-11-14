@@ -7,10 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/go/common/gethapi"
 
-	gethcore "github.com/ethereum/go-ethereum/core"
-	"github.com/ten-protocol/go-ten/go/enclave/evm"
-
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	gethcore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
@@ -75,15 +73,16 @@ type BatchExecutionContext struct {
 	Transactions  common.L2Transactions
 	BatchGasLimit uint64
 
-	AtTime      uint64
-	Creator     gethcommon.Address
-	ChainConfig *params.ChainConfig
-	SequencerNo *big.Int
-	BaseFee     *big.Int
-	GasPool     *gethcore.GasPool
+	AtTime       uint64
+	Creator      gethcommon.Address
+	ChainConfig  *params.ChainConfig
+	SequencerNo  *big.Int
+	BaseFee      *big.Int
+	GasPool      *gethcore.GasPool
+	ExpectedRoot *gethcommon.Hash
 
 	EthHeader *types.Header
-	Chain     *evm.TenChainContext
+	Chain     gethcore.ChainContext
 
 	// these properties are calculated during execution
 	ctx           context.Context
@@ -140,19 +139,21 @@ type BatchRegistry interface {
 	BatchesAfter(ctx context.Context, batchSeqNo uint64, upToL1Height uint64, rollupLimiter limiters.RollupLimiter) ([]*core.Batch, []*types.Header, error)
 
 	// GetBatchStateAtHeight - creates a stateDB for the block number
-	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, error)
+	GetBatchStateAtHeight(ctx context.Context, blockNumber *gethrpc.BlockNumber) (*state.StateDB, *common.BatchHeader, error)
 
 	// GetBatchState - creates a stateDB for the block hash
-	GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, error)
+	GetBatchState(ctx context.Context, blockNumberOrHash gethrpc.BlockNumberOrHash) (*state.StateDB, *common.BatchHeader, error)
 
 	// GetBatchAtHeight - same as `GetBatchStateAtHeight`, but instead returns the full batch
 	// rather than its stateDB only.
-	GetBatchAtHeight(ctx context.Context, height gethrpc.BlockNumber) (*core.Batch, error)
+	GetBatchAtHeight(ctx context.Context, height gethrpc.BlockNumber) (*common.BatchHeader, error)
 
 	// SubscribeForExecutedBatches - register a callback for new batches
 	SubscribeForExecutedBatches(func(*core.Batch, types.Receipts))
 	UnsubscribeFromBatches()
 
+	CanExecute(ctx context.Context, batch *common.BatchHeader) (bool, error)
+	ExecuteBatch(ctx context.Context, batchExecutor BatchExecutor, batchHeader *common.BatchHeader) error
 	OnBatchExecuted(batch *common.BatchHeader, txExecResults []*core.TxExecResult) error
 	OnL1Reorg(*BlockIngestionType)
 

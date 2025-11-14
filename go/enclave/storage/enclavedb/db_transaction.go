@@ -86,12 +86,12 @@ func (b *dbTxBatch) writeCtx(ctx context.Context) error {
 		}
 	}
 
-	err = PutKeyValues(ctx, tx, updateKeys, updateValues)
+	err = putKeyValues(ctx, tx, updateKeys, updateValues)
 	if err != nil {
 		return fmt.Errorf("failed to put key/value. Cause %w", err)
 	}
 
-	err = DeleteKeys(ctx, tx, deletes)
+	err = deleteKeys(ctx, tx, deletes)
 	if err != nil {
 		return fmt.Errorf("failed to delete keys. Cause %w", err)
 	}

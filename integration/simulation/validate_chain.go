@@ -559,7 +559,7 @@ func FindNotIncludedL2Txs(ctx context.Context, nodeIdx int, rpcHandles *network.
 }
 
 func getSender(tx *common.L2Tx) gethcommon.Address {
-	from, err := types.Sender(types.NewEIP155Signer(tx.ChainId()), tx)
+	from, err := types.Sender(types.NewPragueSigner(tx.ChainId()), tx)
 	if err != nil {
 		panic(fmt.Errorf("couldn't find sender to verify transaction - %w", err))
 	}

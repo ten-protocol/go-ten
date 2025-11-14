@@ -3,10 +3,12 @@ package gas
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math/big"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
 
 	"github.com/TwiN/gocache/v2"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
@@ -112,6 +114,9 @@ func (o *oracle) calculateMA(ctx context.Context, blockHeight uint64) (*big.Int,
 		}
 		b, err = o.storage.FetchBlock(ctx, b.ParentHash)
 		if err != nil {
+			if !errors.Is(err, errutil.ErrNotFound) {
+				return nil, nil, fmt.Errorf("failed getting block %d: %w", blockHeight, err)
+			}
 			break
 		}
 	}

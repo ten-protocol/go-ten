@@ -8,10 +8,9 @@ import (
 	"math/big"
 	_ "unsafe"
 
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/measure"
-
-	"github.com/ethereum/go-ethereum/core/tracing"
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 
 	"github.com/ethereum/go-ethereum/core/state"
@@ -30,7 +29,7 @@ import (
 )
 
 type evmExecutor struct {
-	chain            *TenChainContext
+	chain            gethcore.ChainContext
 	cc               *params.ChainConfig
 	config           *enclaveconfig.EnclaveConfig
 	gasEstimationCap uint64
@@ -42,7 +41,7 @@ type evmExecutor struct {
 	logger gethlog.Logger
 }
 
-func NewEVMExecutor(chain *TenChainContext, cc *params.ChainConfig, config *enclaveconfig.EnclaveConfig, gasEstimationCap uint64, storage storage.Storage, gethEncodingService gethencoding.EncodingService, visibilityReader ContractVisibilityReader, logger gethlog.Logger) *evmExecutor {
+func NewEVMExecutor(chain gethcore.ChainContext, cc *params.ChainConfig, config *enclaveconfig.EnclaveConfig, gasEstimationCap uint64, storage storage.Storage, gethEncodingService gethencoding.EncodingService, visibilityReader ContractVisibilityReader, logger gethlog.Logger) *evmExecutor {
 	return &evmExecutor{
 		chain:               chain,
 		cc:                  cc,
@@ -111,6 +110,10 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 
 	receipt, err := adjustPublishingCostGas(tx, msg, s, header, noBaseFee, func() (*types.Receipt, error) {
 		s.SetTxContext(tx.Tx.Hash(), tCount)
+
+		// the gas limit should never be higher than the max tx gas
+		msg.GasLimit = min(msg.GasLimit, params.MaxTxGas-1)
+
 		return gethcore.ApplyTransactionWithEVM(msg, gp, s, header.Number, header.Hash(), header.Time, tx.Tx, usedGas, evmEnv)
 	})
 	if err != nil {
@@ -124,7 +127,7 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 	contractsWithVisibility := make(map[gethcommon.Address]*core.ContractVisibilityConfig)
 
 	// Compute leftover user gas after the main execution
-	var gasLeft uint64 = actualGasLimit
+	gasLeft := actualGasLimit
 	if receipt.GasUsed > actualGasLimit {
 		// ensure no bugs going overboard with the l1 publishing
 		// or execution before we pick up the leftover gas.
@@ -143,6 +146,9 @@ func (exec *evmExecutor) execute(tx *common.L2PricedTransaction, from gethcommon
 		if err1 != nil {
 			exec.logger.Crit("metered visibility read failed", log.ErrKey, err1, "addr", contractAddress.Hex())
 			return nil, fmt.Errorf("visibility read failed for %s: %w", contractAddress.Hex(), err1)
+		}
+		if noBaseFee {
+			visUsed = 0
 		}
 
 		// Ensure we still respect the user's tx gas limit
@@ -208,8 +214,6 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	gp.SetGas(exec.gasEstimationCap)
 
 	cleanState := createCleanState(s, msg, ethHeader, exec.cc)
-	snapshot := cleanState.Snapshot()
-	defer cleanState.RevertToSnapshot(snapshot) // Always revert after simulation
 
 	blockContext := gethcore.NewEVMBlockContext(ethHeader, exec.chain, nil)
 	// Use hooked state so tracer fires during estimation; otherwise use clean state
@@ -234,7 +238,6 @@ func (exec *evmExecutor) ExecuteCall(ctx context.Context, msg *gethcore.Message,
 	}()
 
 	result, err := gethcore.ApplyMessage(vmenv, msg, &gp)
-
 	// Read the error stored in the database.
 	if vmerr := cleanState.Error(); vmerr != nil {
 		return nil, vmerr, nil
