@@ -15,6 +15,11 @@ on:
           - 'uat-testnet'
           - 'sepolia-testnet'
           - 'mainnet'
+      network_config_addr:
+        description: 'Network config address'
+        required: true
+        type: string
+        default: ''
 jobs:
   recover-network-funds:
     runs-on: ubuntu-latest
@@ -57,7 +62,7 @@ jobs:
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.L2_HARDHATDEPLOYER_DOCKER_BUILD_TAG }} \
-          -network_config_addr="${{ steps.parse.outputs.network_config }}" 
+          -network_config_addr="${{ github.event.inputs.network_config_addr }}" 
 
       - name: 'Save container logs on failure'
         if: ${{ always() }}
