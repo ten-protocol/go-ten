@@ -7,7 +7,7 @@ import {ERC20PermitUpgradeable} from "@openzeppelin/contracts-upgradeable/token/
 import {ERC20VotesUpgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {NoncesUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/NoncesUpgradeable.sol";
-import {Erc20WithLock} from "Erc20WithLock.sol";
+import {Erc20WithLock} from "./ERC20WithLock.sol";
 
 /// @custom:security-contact security@ten.xyz
 contract Ten is Initializable, Erc20WithLock, ERC20PermitUpgradeable, ERC20VotesUpgradeable {
