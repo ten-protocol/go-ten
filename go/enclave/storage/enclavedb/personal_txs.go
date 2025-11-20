@@ -35,31 +35,31 @@ func CountTransactionsPerAddress(ctx context.Context, stmtCache *PreparedStateme
 	return count, nil
 }
 
-func GetTransactionsPerAddress(ctx context.Context, stmtCache *PreparedStatementCache, address *uint64, pagination *common.QueryPagination, _ bool, _ bool) ([]*core.InternalReceipt, error) {
+func GetTransactionsPerAddress(ctx context.Context, stmtCache *PreparedStatementCache, address *uint64, pagination *common.QueryPagination, _ bool, _ bool) ([]common.PersonalTxReceipt, error) {
 	receipts, err := loadPersonalTxs(ctx, stmtCache, address, pagination)
 	if err != nil {
 		return nil, err
 	}
 
 	// remove duplicates
-	slices.SortFunc(receipts, func(a, b *core.InternalReceipt) int {
-		if a.BlockNumber.Uint64() != b.BlockNumber.Uint64() {
-			return int(a.BlockNumber.Uint64() - b.BlockNumber.Uint64())
+	slices.SortFunc(receipts, func(a, b common.PersonalTxReceipt) int {
+		if a.Receipt.BlockNumber.Uint64() != b.Receipt.BlockNumber.Uint64() {
+			return int(a.Receipt.BlockNumber.Uint64() - b.Receipt.BlockNumber.Uint64())
 		}
-		if a.TransactionIndex != b.TransactionIndex {
-			return int(a.TransactionIndex - b.TransactionIndex)
+		if a.Receipt.TransactionIndex != b.Receipt.TransactionIndex {
+			return int(a.Receipt.TransactionIndex - b.Receipt.TransactionIndex)
 		}
 		return 0
 	})
 
-	receipts = slices.CompactFunc(receipts, func(a, b *core.InternalReceipt) bool {
-		return a.BlockNumber.Uint64() == b.BlockNumber.Uint64() && a.TransactionIndex == b.TransactionIndex
+	receipts = slices.CompactFunc(receipts, func(a, b common.PersonalTxReceipt) bool {
+		return a.Receipt.BlockNumber.Uint64() == b.Receipt.BlockNumber.Uint64() && a.Receipt.TransactionIndex == b.Receipt.TransactionIndex
 	})
 
 	return receipts, nil
 }
 
-func loadPersonalTxs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccountId *uint64, pagination *common.QueryPagination) ([]*core.InternalReceipt, error) {
+func loadPersonalTxs(ctx context.Context, stmtCache *PreparedStatementCache, requestingAccountId *uint64, pagination *common.QueryPagination) ([]common.PersonalTxReceipt, error) {
 	if requestingAccountId == nil {
 		return nil, fmt.Errorf("you have to specify requestingAccount")
 	}
@@ -70,8 +70,8 @@ func loadPersonalTxs(ctx context.Context, stmtCache *PreparedStatementCache, req
 	// apply the pagination directly on the receipts - before fetching all data
 	innerQuery := "SELECT u.id  FROM (" + visibleReceiptsQuery + ") AS u ORDER BY u.id DESC LIMIT ? OFFSET ?"
 
-	// fetch all receipt data only for the requested "Page"
-	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type "
+	// fetch all receipt data only for the requested "Page" - includes timestamp from tx table
+	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type, curr_tx.time "
 	query += " from receipt rec " +
 		"join (" + innerQuery + ") as inner_query on inner_query.id=rec.id " +
 		"join batch b on rec.batch=b.sequence " +
@@ -93,12 +93,12 @@ func loadPersonalTxs(ctx context.Context, stmtCache *PreparedStatementCache, req
 	}
 	defer rows.Close()
 
-	receipts := make([]*core.InternalReceipt, 0)
+	receipts := make([]common.PersonalTxReceipt, 0)
 
 	empty := true
 	for rows.Next() {
 		empty = false
-		r, err := onRowWithReceipt(rows)
+		r, err := onRowWithReceiptAndTimestamp(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -114,26 +114,35 @@ func loadPersonalTxs(ctx context.Context, stmtCache *PreparedStatementCache, req
 	return receipts, nil
 }
 
-func onRowWithReceipt(rows *sql.Rows) (*core.InternalReceipt, error) {
+func onRowWithReceiptAndTimestamp(rows *sql.Rows) (common.PersonalTxReceipt, error) {
 	r := core.InternalReceipt{}
 
 	var txIndex *uint
 	var blockHash, transactionHash *gethcommon.Hash
 	var blockNumber *uint64
-	res := []any{&blockHash, &blockNumber, &transactionHash, &txIndex, &r.PostState, &r.Status, &r.GasUsed, &r.EffectiveGasPrice, &r.CreatedContract, &r.From, &r.To, &r.TxType}
+	var txTimestamp *uint64
+	res := []any{&blockHash, &blockNumber, &transactionHash, &txIndex, &r.PostState, &r.Status, &r.GasUsed, &r.EffectiveGasPrice, &r.CreatedContract, &r.From, &r.To, &r.TxType, &txTimestamp}
 
 	err := rows.Scan(res...)
 	if err != nil {
-		return nil, fmt.Errorf("could not load receipt from db: %w", err)
+		return common.PersonalTxReceipt{}, fmt.Errorf("could not load receipt from db: %w", err)
 	}
 
 	r.BlockHash = *blockHash
 	r.BlockNumber = big.NewInt(int64(*blockNumber))
 	r.TxHash = *transactionHash
 	r.TransactionIndex = *txIndex
-
 	r.Logs = make([]*types.Log, 0)
-	return &r, nil
+
+	timestamp := uint64(0)
+	if txTimestamp != nil {
+		timestamp = *txTimestamp
+	}
+
+	return common.PersonalTxReceipt{
+		Receipt:     r.ToReceipt(),
+		TxTimestamp: timestamp,
+	}, nil
 }
 
 // Create a query that returns all receipt Ids that are visible to an address id

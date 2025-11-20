@@ -13,8 +13,13 @@ import (
 )
 
 type PrivateTransactionsQueryResponse struct {
-	Receipts types.Receipts
+	Receipts []PersonalTxReceipt
 	Total    uint64
+}
+
+type PersonalTxReceipt struct {
+	Receipt     *types.Receipt `json:"receipt"`
+	TxTimestamp uint64         `json:"tx_timestamp"`
 }
 
 type TransactionListingResponse struct {
