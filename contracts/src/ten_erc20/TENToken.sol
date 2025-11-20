@@ -18,7 +18,7 @@ contract Ten is Initializable, Erc20WithLock, ERC20PermitUpgradeable, ERC20Votes
     }
 
     function initialize() public initializer {
-        __ERC20_init("TEN Token", "TEN");
+        __ERC20_init("TEN", "TEN");
         __ERC20Permit_init("TEN");
         __ERC20Votes_init();
         __Ownable_init(msg.sender);
