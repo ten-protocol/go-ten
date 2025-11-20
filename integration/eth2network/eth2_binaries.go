@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -19,6 +20,7 @@ const (
 	_gethVersion  = "1.16.7"
 	_gethHash     = "b9f3a3d9"
 	_prysmVersion = "v7.0.0"
+	MAC           = "darwin"
 )
 
 var (
@@ -68,9 +70,17 @@ func EnsureBinariesExist() (string, error) {
 	}()
 	go func() {
 		defer wg.Done()
-		err := checkOrDownloadBinary(gethFileNameVersion, fmt.Sprintf("%s/geth-%s-%s-%s-%s.tar.gz", gethURL, runtime.GOOS, runtime.GOARCH, _gethVersion, _gethHash), true)
-		if err != nil {
-			panic(err)
+		// darwin binaries aren't available on geth blobstore so we have to use brew
+		if runtime.GOOS == MAC {
+			err := installGethViaBrew()
+			if err != nil {
+				panic(err)
+			}
+		} else {
+			err := checkOrDownloadBinary(gethFileNameVersion, fmt.Sprintf("%s/geth-%s-%s-%s-%s.tar.gz", gethURL, runtime.GOOS, runtime.GOARCH, _gethVersion, _gethHash), true)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}()
 
@@ -139,5 +149,46 @@ func downloadFile(filepath string, url string) error {
 		return err
 	}
 
+	return nil
+}
+
+func installGethViaBrew() error {
+	expectedDir := path.Join(basepath, _eth2BinariesRelPath, gethFileNameVersion)
+	expectedFilePath := path.Join(expectedDir, "geth")
+
+	if fileExists(expectedFilePath) {
+		fmt.Printf("Geth already installed at: %s\n", expectedFilePath)
+		return nil
+	}
+
+	// check if homebrew is installed
+	if _, err := exec.LookPath("brew"); err != nil {
+		return fmt.Errorf("homebrew is not installed. Please install homebrew from https://brew.sh")
+	}
+
+	cmd := exec.Command("brew", "install", "ethereum")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to install geth via homebrew: %w", err)
+	}
+
+	gethPath, err := exec.LookPath("geth")
+	if err != nil {
+		return fmt.Errorf("geth not found after installation: %w", err)
+	}
+
+	// expected directory structure
+	if err := os.MkdirAll(expectedDir, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create directory %s: %w", expectedDir, err)
+	}
+
+	// symlink to the homebrew geth binary
+	fmt.Printf("Creating symlink from %s to %s\n", gethPath, expectedFilePath)
+	if err := os.Symlink(gethPath, expectedFilePath); err != nil {
+		return fmt.Errorf("failed to create symlink: %w", err)
+	}
+
+	fmt.Printf("Successfully installed geth via homebrew at: %s\n", expectedFilePath)
 	return nil
 }
