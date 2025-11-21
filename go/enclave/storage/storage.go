@@ -1054,7 +1054,7 @@ func (s *storageImpl) MarkBatchAsUnexecuted(ctx context.Context, seqNo *big.Int)
 	return dbTx.Commit()
 }
 
-func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *gethcommon.Address, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]*core.InternalReceipt, error) {
+func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *gethcommon.Address, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]common.PersonalTxReceipt, error) {
 	defer s.logDuration("GetTransactionsPerAddress", measure.NewStopwatch())
 	requesterId, err := s.readOrWriteEOAWithTx(ctx, *requester)
 	if err != nil {
