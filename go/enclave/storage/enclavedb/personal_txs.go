@@ -70,7 +70,7 @@ func loadPersonalTxs(ctx context.Context, stmtCache *PreparedStatementCache, req
 	// apply the pagination directly on the receipts - before fetching all data
 	innerQuery := "SELECT u.id  FROM (" + visibleReceiptsQuery + ") AS u ORDER BY u.id DESC LIMIT ? OFFSET ?"
 
-	// fetch all receipt data only for the requested "Page" - includes timestamp from tx table
+	// fetch all receipt data only for the requested "Page"
 	query := "select b.hash, b.height, curr_tx.hash, curr_tx.idx, rec.post_state, rec.status, rec.gas_used, rec.effective_gas_price, rec.created_contract_address, tx_sender.address, tx_contr.address, curr_tx.type, curr_tx.time "
 	query += " from receipt rec " +
 		"join (" + innerQuery + ") as inner_query on inner_query.id=rec.id " +
