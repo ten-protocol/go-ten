@@ -13,7 +13,7 @@ import (
 )
 
 // we write the trie journal to a separate table
-var trieJournalKey = []byte("vTrieJournal")
+var trieJournalKey = []byte("vTrieJournal") //nolint:unused
 
 // enclaveDB - Implements the key-value ethdb.Database and also exposes the underlying sql database
 // should not be used directly outside the db package
