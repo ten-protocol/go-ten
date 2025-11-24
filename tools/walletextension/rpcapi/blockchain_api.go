@@ -324,7 +324,8 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 			argsClone := populateFrom(acct, args)
 			return []any{argsClone, blockNrOrHash, overrides, blockOverrides}
 		},
-		tryAll: true,
+		tryAll:              true,
+		allowWhenNoAccounts: true,
 	}, tenrpc.ERPCCall, args, blockNrOrHash, overrides, blockOverrides)
 	if resp == nil {
 		return nil, err

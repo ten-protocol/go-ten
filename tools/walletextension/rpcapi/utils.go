@@ -54,6 +54,9 @@ type AuthExecCfg struct {
 	adjustArgs func(acct *common.GWAccount) []any
 	cacheCfg   *cache.Cfg
 	timeout    time.Duration
+
+	// Allow executing select read-only RPCs even if the user has no authenticated accounts
+	allowWhenNoAccounts bool
 }
 
 func SendRawTx(ctx context.Context, w *services.Services, input hexutil.Bytes) (gethcommon.Hash, error) {
@@ -122,7 +125,16 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 			return nil, err
 		}
 		if len(candidateAccts) == 0 {
-			return nil, errors.New("illegal access")
+			if !cfg.allowWhenNoAccounts {
+				return nil, errors.New("illegal access")
+			}
+
+			// Use an in-memory temp account cached per user (avoid per-request creation)
+			tmpAccount, err := w.SKManager.GetOrCreateTempAccount(user, 5*time.Minute)
+			if err != nil {
+				return nil, fmt.Errorf("unable to create temp account key for unauthenticated request: %w", err)
+			}
+			candidateAccts = append(candidateAccts, tmpAccount)
 		}
 
 		var rpcErr error
