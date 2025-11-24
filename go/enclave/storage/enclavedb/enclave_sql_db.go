@@ -1,7 +1,6 @@
 package enclavedb
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -88,11 +87,13 @@ func (sqlDB *enclaveDB) Has(key []byte) (bool, error) {
 func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
-	if bytes.Equal(key, trieJournalKey) {
-		val, err := getJournal(ctx, sqlDB.sqldb)
-		sqlDB.logger.Debug("TrieJournal GET", "key", key, "err", err, " len_val", len(val))
-		return val, err
-	}
+
+	// to enable verkle trie, uncomment the following lines
+	//if bytes.Equal(key, trieJournalKey) {
+	//	val, err := getJournal(ctx, sqlDB.sqldb)
+	//	sqlDB.logger.Debug("TrieJournal GET", "key", key, "err", err, " len_val", len(val))
+	//	return val, err
+	//}
 
 	return get(ctx, sqlDB.sqldb, key)
 }
@@ -108,14 +109,15 @@ func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
 
-	if bytes.Equal(key, trieJournalKey) {
-		err := putJournal(ctx, sqlDB.rwSqldb, value)
-		sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err, "len_val", len(value))
-		if err != nil {
-			return fmt.Errorf("failed to put trie journal. key: %x, value: %x, err: %w", key, value, err)
-		}
-		return nil
-	}
+	// to enable verkle trie, uncomment the following lines
+	//if bytes.Equal(key, trieJournalKey) {
+	//	err := putJournal(ctx, sqlDB.rwSqldb, value)
+	//	sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err, "len_val", len(value))
+	//	if err != nil {
+	//		return fmt.Errorf("failed to put trie journal. key: %x, value: %x, err: %w", key, value, err)
+	//	}
+	//	return nil
+	//}
 
 	err := put(ctx, sqlDB.rwSqldb, key, value)
 	return err

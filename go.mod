@@ -46,9 +46,9 @@ require (
 	github.com/tidwall/gjson v1.18.0
 	github.com/valyala/fasthttp v1.68.0
 	gitlab.com/NebulousLabs/fastrand v0.0.0-20181126182046-603482d69e40
-	golang.org/x/crypto v0.43.0
+	golang.org/x/crypto v0.45.0
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
-	golang.org/x/sync v0.17.0
+	golang.org/x/sync v0.18.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -180,15 +180,12 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/arch v0.22.0 // indirect
 	golang.org/x/mod v0.29.0 // indirect
-	golang.org/x/net v0.46.0 // indirect
-	golang.org/x/sys v0.37.0 // indirect
-	golang.org/x/text v0.30.0 // indirect
+	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/tools v0.38.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251103181224-f26f9409b101 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gotest.tools/v3 v3.5.2 // indirect
 )
-
-// temporary until fix applied to go-verkle
-replace github.com/ethereum/go-verkle v0.2.2 => github.com/tudor-malene/go-verkle v0.0.0-20251106114212-caa81a55ee29

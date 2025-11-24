@@ -12,6 +12,8 @@ import (
 // TEN should typically be on the last fork version
 func ChainParams(tenChainID *big.Int) *params.ChainConfig {
 	zeroTimestamp := uint64(0)
+	// the forks with this timestamp are not enabled because the current time is always < MaxUint64
+	maxTimestamp := uint64(math.MaxUint64)
 
 	return &params.ChainConfig{
 		ChainID: tenChainID,
@@ -39,9 +41,9 @@ func ChainParams(tenChainID *big.Int) *params.ChainConfig {
 		CancunTime:   &zeroTimestamp,
 		PragueTime:   &zeroTimestamp,
 		OsakaTime:    &zeroTimestamp,
-		VerkleTime:   &zeroTimestamp,
+		VerkleTime:   &maxTimestamp,
 
-		EnableVerkleAtGenesis:   true,
+		EnableVerkleAtGenesis:   false,
 		TerminalTotalDifficulty: big.NewInt(math.MaxInt64),
 	}
 }

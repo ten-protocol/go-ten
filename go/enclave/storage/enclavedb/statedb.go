@@ -52,6 +52,7 @@ func has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
 	return true, nil
 }
 
+// only useful if implementing verkle trees
 func getJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) {
 	q := "select val from triedb_journal order by id asc"
 	rows, err := db.QueryContext(ctx, q)
@@ -84,6 +85,7 @@ func getJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) {
 	return result, nil
 }
 
+// only useful if implementing verkle trees
 // the journal can be quite large, so we split it into chunks and insert them one by one
 // because edglessdb fails silently when the data is too large
 func putJournal(ctx context.Context, db *sqlx.DB, value []byte) error {

@@ -125,7 +125,11 @@ func (e *EthChainAdapter) GetBlock(_ gethcommon.Hash, number uint64) *gethtypes.
 
 // StateAt returns a state database for a given root hash (generally the head).
 func (e *EthChainAdapter) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
-	if root == gethtypes.EmptyVerkleHash {
+	// to enable verkle trie, uncomment the following lines
+	//if root == gethtypes.EmptyVerkleHash {
+	//	return nil, nil //nolint:nilnil
+	//}
+	if root == gethtypes.EmptyRootHash {
 		return nil, nil //nolint:nilnil
 	}
 
