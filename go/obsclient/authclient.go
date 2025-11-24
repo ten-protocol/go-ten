@@ -310,7 +310,7 @@ func (ac *AuthObsClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error)
 }
 
 // GetPrivateTransactions retrieves the receipts for the specified account (must be registered on this client), returns requested range of receipts and the total number of receipts for that acc
-func (ac *AuthObsClient) GetPrivateTransactions(ctx context.Context, address *gethcommon.Address, pagination common.QueryPagination) (types.Receipts, uint64, error) {
+func (ac *AuthObsClient) GetPrivateTransactions(ctx context.Context, address *gethcommon.Address, pagination common.QueryPagination) ([]common.PersonalTxReceipt, uint64, error) {
 	queryParam := &common.ListPrivateTransactionsQueryParams{
 		Address:    *address,
 		Pagination: pagination,

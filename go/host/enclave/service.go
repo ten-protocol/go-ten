@@ -44,10 +44,11 @@ type Service struct {
 	activeSequencerID atomic.Pointer[common.EnclaveID] // atomic pointer for thread safety
 
 	// batch and rollup production config
-	batchInterval  time.Duration
-	rollupInterval time.Duration
-	blockTime      time.Duration
-	maxRollupSize  uint64
+	batchInterval          time.Duration
+	rollupInterval         time.Duration
+	blockTime              time.Duration
+	maxRollupSize          uint64
+	batchCompressionFactor float64
 
 	running         atomic.Bool
 	hostInterrupter *stopcontrol.StopControl
@@ -56,15 +57,16 @@ type Service struct {
 
 func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLocator enclaveServiceLocator, enclaveGuardians []*Guardian, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Service {
 	return &Service{
-		hostData:         hostData,
-		sl:               serviceLocator,
-		enclaveGuardians: enclaveGuardians,
-		batchInterval:    config.BatchInterval,
-		rollupInterval:   config.RollupInterval,
-		blockTime:        config.L1BlockTime,
-		maxRollupSize:    config.MaxRollupSize,
-		hostInterrupter:  interrupter,
-		logger:           logger,
+		hostData:               hostData,
+		sl:                     serviceLocator,
+		enclaveGuardians:       enclaveGuardians,
+		batchInterval:          config.BatchInterval,
+		rollupInterval:         config.RollupInterval,
+		blockTime:              config.L1BlockTime,
+		maxRollupSize:          config.MaxRollupSize,
+		batchCompressionFactor: config.BatchCompressionFactor,
+		hostInterrupter:        interrupter,
+		logger:                 logger,
 	}
 }
 
@@ -153,6 +155,14 @@ func (e *Service) GetEnclaveClients() []common.Enclave {
 		clients[i] = guardian.enclaveClient
 	}
 	return clients
+}
+
+func (e *Service) GetSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error) {
+	reports, err := e.GetEnclaveClient().FetchSequencerAttestations(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch sequencer attestations from enclave: %w", err)
+	}
+	return reports, nil
 }
 
 func (e *Service) SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error) {
@@ -314,11 +324,6 @@ func (e *Service) tryPromoteNewSequencer() {
 	e.activeSequencerID.Store(_noActiveSequencer)
 }
 
-// This compression factor is based on actual mainnet data showing much better compression
-// for mostly empty batches: 12,770 batches → 23,677 bytes ≈ 2.5% compression ratio
-// Using conservative 10% to allow buffer for variation in batch content
-const batchCompressionFactor = 0.1
-
 // managePeriodicRollups is a background goroutine that periodically produces a rollup
 // where possible it will prefer to use a non-active sequencer enclave to avoid disrupting the production of batches
 // note: this function runs in a separate goroutine for the lifetime of the service
@@ -401,8 +406,10 @@ func (e *Service) isRollupRequired(lastSuccessfulRollup time.Time) (bool, uint64
 		availBatchesSumSize = 0
 	}
 
-	// adjust the availBatchesSumSize
-	estimatedRunningRollupSize := uint64(float64(availBatchesSumSize) * batchCompressionFactor)
+	// This batch compression factor is based on actual mainnet data showing much better compression
+	// for mostly empty batches: 12,770 batches → 23,677 bytes ≈ 2.5% compression ratio
+	// Using conservative 10% to allow buffer for variation in batch content
+	estimatedRunningRollupSize := uint64(float64(availBatchesSumSize) * e.batchCompressionFactor)
 
 	// produce and issue rollup when either:
 	// it has passed g.rollupInterval from last lastSuccessfulRollup

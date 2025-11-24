@@ -221,6 +221,13 @@ func (e *enclaveImpl) EnclavePublicConfig(ctx context.Context) (*common.EnclaveP
 	return e.rpcAPI.EnclavePublicConfig(ctx)
 }
 
+func (e *enclaveImpl) FetchSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, common.SystemError) {
+	if systemError := checkStopping(e.stopControl); systemError != nil {
+		return nil, systemError
+	}
+	return e.rpcAPI.FetchSequencerAttestations(ctx)
+}
+
 func (e *enclaveImpl) EncryptedRPC(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.EnclaveResponse, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError

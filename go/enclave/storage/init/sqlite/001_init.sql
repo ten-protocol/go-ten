@@ -34,6 +34,7 @@ create table if not exists attestation
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     enclave_id binary(20) UNIQUE NOT NULL,
     pub_key    binary(33)        NOT NULL,
+    report     mediumblob        NOT NULL,
     node_type  smallint          NOT NULL
 );
 

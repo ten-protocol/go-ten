@@ -29,7 +29,7 @@ func NewTenAPI(host host.Host, logger gethlog.Logger) *TenAPI {
 	}
 }
 
-// Version returns the protocol version of the Obscuro network.
+// Version returns the protocol version of the TEN network.
 func (api *TenAPI) Version() string {
 	return fmt.Sprintf("%d", api.host.Config().TenChainID)
 }
@@ -46,6 +46,14 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 		return nil, err
 	}
 	return checksumFormatted(config), nil
+}
+
+func (api *TenAPI) SequencerAttestations() ([]*common.PublicAttestationReport, error) {
+	attestations, err := api.host.SequencerAttestations()
+	if err != nil {
+		return nil, err
+	}
+	return attestations, nil
 }
 
 func (api *TenAPI) RpcKey() ([]byte, error) {

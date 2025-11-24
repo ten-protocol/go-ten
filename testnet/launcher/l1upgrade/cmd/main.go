@@ -12,6 +12,7 @@ func main() {
 
 	l1Upgrade, err := l1upgrade.NewUpgradeContracts(
 		l1upgrade.NewUpgradeContractsConfig(
+			l1upgrade.WithUpgradeScript(cliConfig.upgradeScript),
 			l1upgrade.WithL1HTTPURL(cliConfig.l1HTTPURL),
 			l1upgrade.WithPrivateKey(cliConfig.privateKey),
 			l1upgrade.WithDockerImage(cliConfig.dockerImage),
@@ -31,7 +32,7 @@ func main() {
 
 	err = l1Upgrade.WaitForFinish()
 	if err != nil {
-		fmt.Println("unexpected error waiting for l1 upgrade script to finish - %w", err)
+		fmt.Printf("unexpected error waiting for l1 upgrade %s to finish - %s", cliConfig.upgradeScript, err)
 		os.Exit(1)
 	}
 	fmt.Println("L1 upgrades were successfully completed...")

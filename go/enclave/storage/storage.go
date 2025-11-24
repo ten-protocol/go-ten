@@ -504,7 +504,7 @@ func (s *storageImpl) ExistsTransactionReceipt(ctx context.Context, txHash commo
 func (s *storageImpl) GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*AttestedEnclave, error) {
 	defer s.logDuration("GetEnclavePubKey", measure.NewStopwatch())
 	return s.cachingService.ReadEnclavePubKey(ctx, enclaveId, func() (*AttestedEnclave, error) {
-		key, nodeType, err := enclavedb.FetchAttestation(ctx, s.db.GetSQLDB(), enclaveId)
+		key, nodeType, err := enclavedb.FetchPublicKey(ctx, s.db.GetSQLDB(), enclaveId)
 		if err != nil {
 			return nil, fmt.Errorf("could not retrieve attestation key for enclave %s. Cause: %w", enclaveId, err)
 		}
@@ -554,7 +554,7 @@ func (s *storageImpl) StoreNodeType(ctx context.Context, enclaveId common.Enclav
 	return nil
 }
 
-func (s *storageImpl) StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error {
+func (s *storageImpl) StoreNewEnclave(ctx context.Context, attestation common.AttestationReport, key *ecdsa.PublicKey) error {
 	defer s.logDuration("StoreNewEnclave", measure.NewStopwatch())
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
@@ -562,6 +562,7 @@ func (s *storageImpl) StoreNewEnclave(ctx context.Context, enclaveId common.Encl
 	}
 	defer dbTx.Rollback()
 
+	enclaveId := attestation.EnclaveID
 	alreadyExists, err := enclavedb.AttestationExists(ctx, dbTx, enclaveId)
 	if err != nil {
 		return fmt.Errorf("failed to check if attestation exists - %w", err)
@@ -573,7 +574,7 @@ func (s *storageImpl) StoreNewEnclave(ctx context.Context, enclaveId common.Encl
 		s.logger.Warn("Updating existing attestation key", "enclaveId", enclaveId)
 		_, err = enclavedb.UpdateAttestationKey(ctx, dbTx, enclaveId, compressedKey)
 	} else {
-		_, err = enclavedb.WriteAttestation(ctx, dbTx, enclaveId, compressedKey, common.Validator)
+		_, err = enclavedb.WriteAttestation(ctx, dbTx, attestation, compressedKey, common.Validator)
 	}
 	if err != nil {
 		return fmt.Errorf("failed to write/update attestation - %w", err)
@@ -1027,7 +1028,7 @@ func (s *storageImpl) MarkBatchAsUnexecuted(ctx context.Context, seqNo *big.Int)
 	return dbTx.Commit()
 }
 
-func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *gethcommon.Address, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]*core.InternalReceipt, error) {
+func (s *storageImpl) GetTransactionsPerAddress(ctx context.Context, requester *gethcommon.Address, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]common.PersonalTxReceipt, error) {
 	defer s.logDuration("GetTransactionsPerAddress", measure.NewStopwatch())
 	requesterId, err := s.readOrWriteEOAWithTx(ctx, *requester)
 	if err != nil {
@@ -1143,6 +1144,16 @@ func (s *storageImpl) GetSequencerEnclaveIDs(ctx context.Context) ([]common.Encl
 		return nil, fmt.Errorf("failed to read sequencer IDs from cache. Cause: %w", err)
 	}
 	return ids, nil
+}
+
+func (s *storageImpl) FetchSequencerAttestations(ctx context.Context) ([]common.AttestationReport, error) {
+	defer s.logDuration("FetchSequencerAttestations", measure.NewStopwatch())
+
+	reports, err := enclavedb.FetchSequencerAttestations(ctx, s.db.GetSQLDB())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch sequencer attestations from database. Cause: %w", err)
+	}
+	return reports, nil
 }
 
 // NetworkUpgradeStorage implementation
