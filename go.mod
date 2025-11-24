@@ -9,6 +9,7 @@ require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/TwiN/gocache/v2 v2.2.2
 	github.com/andybalholm/brotli v1.2.0
+	github.com/bytedance/gopkg v0.1.3
 	github.com/codeclysm/extract/v3 v3.1.1
 	github.com/containerd/errdefs v1.0.0
 	github.com/deckarep/golang-set/v2 v2.8.0
@@ -65,7 +66,6 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.13.0 // indirect
 	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/bits-and-blooms/bitset v1.24.0 // indirect
-	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.14.1 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

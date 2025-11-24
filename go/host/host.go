@@ -297,6 +297,27 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 	}, nil
 }
 
+func (h *host) SequencerAttestations() ([]*common.PublicAttestationReport, error) {
+	attestations, err := h.services.Enclaves().GetSequencerAttestations(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch attestations - %w", err)
+	}
+
+	publicAttestations := make([]*common.PublicAttestationReport, 0, len(attestations))
+	for _, a := range attestations {
+		if a == nil {
+			continue
+		}
+		publicAttestations = append(publicAttestations, &common.PublicAttestationReport{
+			Report:      a.Report,
+			PubKey:      a.PubKey,
+			EnclaveID:   a.EnclaveID,
+			HostAddress: a.HostAddress,
+		})
+	}
+	return publicAttestations, nil
+}
+
 func (h *host) Storage() storage.Storage {
 	return h.storage
 }

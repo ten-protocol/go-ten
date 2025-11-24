@@ -65,15 +65,26 @@ func StartNewContainer(containerName, image string, cmds []string, ports []int, 
 
 	mountVolumes := make([]mount.Mount, 0, len(volumes))
 	for v, mntTarget := range volumes {
-		vol, err := ensureVolumeExists(cli, v)
-		if err != nil {
-			return "", err
+		// Check if v is an absolute path (bind mount) or a volume name
+		if len(v) > 0 && v[0] == '/' {
+			// Bind mount for absolute paths
+			mountVolumes = append(mountVolumes, mount.Mount{
+				Type:   mount.TypeBind,
+				Source: v,
+				Target: mntTarget,
+			})
+		} else {
+			// Docker volume for volume names
+			vol, err := ensureVolumeExists(cli, v)
+			if err != nil {
+				return "", err
+			}
+			mountVolumes = append(mountVolumes, mount.Mount{
+				Type:   mount.TypeVolume,
+				Source: vol.Name,
+				Target: mntTarget,
+			})
 		}
-		mountVolumes = append(mountVolumes, mount.Mount{
-			Type:   mount.TypeVolume,
-			Source: vol.Name,
-			Target: mntTarget,
-		})
 	}
 
 	// convert env vars
@@ -262,6 +273,52 @@ func WaitForContainerToFinish(containerID string, timeout time.Duration) error {
 		}
 	case <-time.After(timeout):
 		return fmt.Errorf("timeout after %s waiting for container to finish", timeout)
+	}
+
+	return nil
+}
+
+// ExecInContainer executes a command in a running container and returns an error if it fails
+func ExecInContainer(containerName string, cmd []string) error {
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv)
+	if err != nil {
+		return err
+	}
+	defer cli.Close()
+
+	execConfig := container.ExecOptions{
+		Cmd:          cmd,
+		AttachStdout: false,
+		AttachStderr: false,
+	}
+
+	execID, err := cli.ContainerExecCreate(ctx, containerName, execConfig)
+	if err != nil {
+		return err
+	}
+
+	err = cli.ContainerExecStart(ctx, execID.ID, container.ExecStartOptions{})
+	if err != nil {
+		return err
+	}
+
+	// wait for the exec to finish
+	inspectResp, err := cli.ContainerExecInspect(ctx, execID.ID)
+	if err != nil {
+		return err
+	}
+
+	for inspectResp.Running {
+		time.Sleep(100 * time.Millisecond)
+		inspectResp, err = cli.ContainerExecInspect(ctx, execID.ID)
+		if err != nil {
+			return err
+		}
+	}
+
+	if inspectResp.ExitCode != 0 {
+		return fmt.Errorf("command exited with code %d", inspectResp.ExitCode)
 	}
 
 	return nil

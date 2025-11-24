@@ -145,9 +145,9 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 	if err != nil {
 		logger.Crit("could not create contract lib registry.", log.ErrKey, err)
 	}
-	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BeaconUrl)
+	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), logger, cfg.L1BeaconUrl)
 	// we can add more fallback clients as they become available
-	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BlobArchiveUrl)
+	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), logger, cfg.L1BlobArchiveUrl)
 	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback), logger)
 	return NewHostContainer(cfg, services, aggP2P, l1Client, enclaveClients, ethWallet, rpcServer, logger, metricsService, blobResolver, contractRegistry)
 }

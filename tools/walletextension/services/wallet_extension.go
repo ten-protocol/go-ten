@@ -53,6 +53,8 @@ type Services struct {
 	cacheInvalidationCh chan *tencommon.BatchHeader
 	MetricsTracker      metrics.Metrics
 	DefaultUser         *common.GWUser
+	ActivityTracker     SessionKeyActivityTracker
+	TxSender            TxSender
 }
 
 type NewHeadNotifier interface {
@@ -79,6 +81,8 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 
 	rateLimiter := ratelimiter.NewRateLimiter(config.RateLimitUserComputeTime, config.RateLimitWindow, uint32(config.RateLimitMaxConcurrentRequests), logger)
 
+	activityTracker := NewSessionKeyActivityTracker(logger)
+
 	services := Services{
 		HostAddrHTTP:        hostAddrHTTP,
 		HostAddrWS:          hostAddrWS,
@@ -88,13 +92,17 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		version:             version,
 		RPCResponsesCache:   newGatewayCache,
 		BackendRPC:          NewBackendRPC(hostAddrHTTP, hostAddrWS, logger),
-		SKManager:           NewSKManager(storage, config, logger),
+		SKManager:           NewSKManager(storage, config, logger, activityTracker),
 		RateLimiter:         rateLimiter,
 		Config:              config,
 		cacheInvalidationCh: make(chan *tencommon.BatchHeader),
 		MetricsTracker:      metricsTracker,
 		DefaultUser:         nil,
+		ActivityTracker:     activityTracker,
 	}
+
+	// Initialize transaction sender
+	services.TxSender = NewTxSender(services.BackendRPC, services.SKManager, logger)
 
 	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(
 		func() (chan *tencommon.BatchHeader, <-chan error, error) {

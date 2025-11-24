@@ -437,7 +437,7 @@ func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, pro
 	}
 	blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash})
 	if err != nil {
-		r.logger.Error(fmt.Sprintf("error while fetching blobs. Cause: %s", err))
+		r.logger.Error("error while fetching blobs during log processing", "error", err)
 		return err
 	}
 	txData.BlobsWithSignature = []common.BlobAndSignature{
@@ -446,6 +446,7 @@ func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, pro
 			Signature: event.Signature,
 		},
 	}
+	r.logger.Debug("Found rollup blobs", "rollupHash", event.RollupHash, "num blobs", len(blobs), "blockHash", processed.BlockHeader.Hash().Hex())
 	processed.AddEvent(common.RollupTx, txData)
 	return nil
 }

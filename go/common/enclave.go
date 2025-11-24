@@ -134,6 +134,9 @@ type EnclaveClientRPC interface {
 
 	// EnclavePublicConfig returns network data that is known to the enclave but can be shared publicly
 	EnclavePublicConfig(context.Context) (*EnclavePublicConfig, SystemError)
+
+	// FetchSequencerAttestations returns all attestation reports for sequencer enclaves
+	FetchSequencerAttestations(ctx context.Context) ([]*AttestationReport, SystemError)
 }
 
 // Enclave represents the API of the service that runs inside the TEE.

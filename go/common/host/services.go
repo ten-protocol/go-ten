@@ -162,6 +162,9 @@ type EnclaveService interface {
 	// GetEnclaveClients returns a list of all enclave clients
 	GetEnclaveClients() []common.Enclave
 
+	// GetSequencerAttestations returns the attestation reports for the sequencer enclaves
+	GetSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error)
+
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to other hosts on the network (in particular, to the sequencer)
 	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error)
 

@@ -6,8 +6,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/gethencoding"
 )
@@ -56,17 +54,17 @@ func GetPersonalTransactionsExecute(builder *CallBuilder[common.ListPrivateTrans
 
 	if receiptsCount == 0 {
 		builder.ReturnValue = &common.PrivateTransactionsQueryResponse{
-			Receipts: types.Receipts{},
+			Receipts: []common.PersonalTxReceipt{},
 			Total:    0,
 		}
 		return nil
 	}
 
-	internalReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &addr, &builder.Param.Pagination, builder.Param.ShowAllPublicTxs, builder.Param.ShowSyntheticTxs)
+	personalReceipts, err := rpc.storage.GetTransactionsPerAddress(builder.ctx, &addr, &builder.Param.Pagination, builder.Param.ShowAllPublicTxs, builder.Param.ShowSyntheticTxs)
 	if err != nil {
 		if errors.Is(err, errutil.ErrNotFound) {
 			builder.ReturnValue = &common.PrivateTransactionsQueryResponse{
-				Receipts: types.Receipts{},
+				Receipts: []common.PersonalTxReceipt{},
 				Total:    0,
 			}
 			return nil
@@ -74,13 +72,8 @@ func GetPersonalTransactionsExecute(builder *CallBuilder[common.ListPrivateTrans
 		return fmt.Errorf("GetTransactionsPerAddress - %w", err)
 	}
 
-	var receipts types.Receipts
-	for _, receipt := range internalReceipts {
-		receipts = append(receipts, receipt.ToReceipt())
-	}
-
 	builder.ReturnValue = &common.PrivateTransactionsQueryResponse{
-		Receipts: receipts,
+		Receipts: personalReceipts,
 		Total:    receiptsCount,
 	}
 	return nil

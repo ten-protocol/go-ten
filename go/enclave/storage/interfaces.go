@@ -105,9 +105,10 @@ type TransactionStorage interface {
 
 type AttestationStorage interface {
 	GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*AttestedEnclave, error)
-	StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error
+	StoreNewEnclave(ctx context.Context, attestation common.AttestationReport, key *ecdsa.PublicKey) error
 	StoreNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) error
 	GetSequencerEnclaveIDs(ctx context.Context) ([]common.EnclaveID, error)
+	FetchSequencerAttestations(ctx context.Context) ([]common.AttestationReport, error)
 }
 
 type CrossChainMessagesStorage interface {
@@ -165,5 +166,5 @@ type Storage interface {
 type ScanStorage interface {
 	GetContractCount(ctx context.Context) (*big.Int, error)
 	CountTransactionsPerAddress(ctx context.Context, addr *gethcommon.Address, showPublic bool, showSynthetic bool) (uint64, error)
-	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]*core.InternalReceipt, error)
+	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]common.PersonalTxReceipt, error)
 }

@@ -460,7 +460,7 @@ func (g *Guardian) provideSecret() error {
 
 func (g *Guardian) generateAndBroadcastSecret() error {
 	g.logger.Info("Node is genesis node. Publishing secret to L1 enclave registry contract.")
-	// Create the shared secret and submit it to the management contract for storage
+	// Create the shared secret and submit it to the NetworkEnclaveRegistry contract for storage
 	attestation, err := g.enclaveClient.Attestation(context.Background())
 	if err != nil {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
@@ -582,7 +582,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, g.shouldSyncContracts(*processedData), g.shouldSyncAdditionalContracts(*processedData))
+	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, processedData)
 
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
 	err = g.publishSharedSecretResponses(resp.ProducedSecretResponses)
@@ -592,7 +592,20 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, syncContracts bool, syncAdditionalContracts bool) {
+func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, processedData *common.ProcessedL1Data) {
+	// handle rollup txs first
+	g.processRollupTransactions(block, metadatas, rollupTxs)
+	if g.shouldSyncContracts(*processedData) || g.shouldSyncAdditionalContracts(*processedData) {
+		go func() {
+			err := g.sl.L1Publisher().ResyncImportantContracts()
+			if err != nil {
+				g.logger.Error("Could not resync important contracts", log.ErrKey, err)
+			}
+		}()
+	}
+}
+
+func (g *Guardian) processRollupTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx) {
 	for idx, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
@@ -617,15 +630,6 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 				g.logger.Error("Could not store rollup.", log.ErrKey, err)
 			}
 		}
-	}
-
-	if syncContracts || syncAdditionalContracts {
-		go func() {
-			err := g.sl.L1Publisher().ResyncImportantContracts()
-			if err != nil {
-				g.logger.Error("Could not resync important contracts", log.ErrKey, err)
-			}
-		}()
 	}
 }
 
