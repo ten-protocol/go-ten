@@ -25,7 +25,7 @@ type SessionKeyActivityTracker interface {
 type sessionKeyActivityTracker struct {
 	mu    sync.RWMutex
 	byKey map[gethcommon.Address]sessionKeyActivityState
-	// maxEntries bounds memory usage; when full, oldest entry is evicted upon new insert
+	// maxEntries bounds memory usage; when full, new entries are dropped (not tracked)
 	maxEntries int
 	logger     gethlog.Logger
 }

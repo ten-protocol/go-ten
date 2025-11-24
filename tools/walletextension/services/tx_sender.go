@@ -17,9 +17,8 @@ import (
 
 // dustThresholdWei is the minimum balance considered worth recovering from an expired
 // session key. Set in wei for precision.
-// 1_000_000_000_000 wei = 1e12 wei = 1,000 gwei = 0.000001 ETH (~$0.004 at $4,000/ETH)
-// Adjust the USD intuition based on current ETH price.
-var dustThresholdWei = big.NewInt(1_000_000_000_000)
+// 200_000_000_000_000 wei = 2e14 wei = 200,000 gwei = 0.0002 ETH (~$0.56 at $2,800/ETH)
+var dustThresholdWei = big.NewInt(200_000_000_000_000)
 
 // TxSender encapsulates sending ETH value transactions signed by a session key
 type TxSender interface {
@@ -91,9 +90,6 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 	}
 
 	tx := types.NewTx(dynTx)
-	if tx == nil {
-		return gethcommon.Hash{}, fmt.Errorf("failed to create transaction")
-	}
 
 	signedTx, err := s.skManager.SignTx(ctx, user, from, tx)
 	if err != nil {
