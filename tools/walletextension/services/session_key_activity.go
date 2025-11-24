@@ -50,6 +50,7 @@ func NewSessionKeyActivityTracker(logger gethlog.Logger) SessionKeyActivityTrack
 func (t *sessionKeyActivityTracker) MarkActive(userID []byte, addr gethcommon.Address) {
 	now := time.Now()
 	t.mu.Lock()
+	defer t.mu.Unlock()
 	// if the address is already in the map, update the last active time
 	if state, ok := t.byKey[addr]; ok {
 		state.LastActive = now
@@ -65,11 +66,11 @@ func (t *sessionKeyActivityTracker) MarkActive(userID []byte, addr gethcommon.Ad
 			t.byKey[addr] = sessionKeyActivityState{UserID: userID, LastActive: now}
 		}
 	}
-	t.mu.Unlock()
 }
 
 func (t *sessionKeyActivityTracker) ListOlderThan(cutoff time.Time) []SessionKeyActivity {
 	t.mu.RLock()
+	defer t.mu.RUnlock()
 	// preallocate with current size upper bound; filter below
 	result := make([]SessionKeyActivity, 0, len(t.byKey))
 	for addr, state := range t.byKey {
@@ -77,16 +78,15 @@ func (t *sessionKeyActivityTracker) ListOlderThan(cutoff time.Time) []SessionKey
 			result = append(result, SessionKeyActivity{Addr: addr, UserID: state.UserID, LastActive: state.LastActive})
 		}
 	}
-	t.mu.RUnlock()
 	return result
 }
 
 func (t *sessionKeyActivityTracker) Delete(addr gethcommon.Address) bool {
 	t.mu.Lock()
+	defer t.mu.Unlock()
 	_, existed := t.byKey[addr]
 	if existed {
 		delete(t.byKey, addr)
 	}
-	t.mu.Unlock()
 	return existed
 }
