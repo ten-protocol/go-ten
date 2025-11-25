@@ -77,18 +77,19 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 
 var trieDBConfig = &triedb.Config{
 	Preimages: triedb.HashDefaults.Preimages,
-	IsVerkle:  triedb.HashDefaults.IsVerkle,
+	IsVerkle:  false,
 	HashDB: &hashdb.Config{
 		CleanCacheSize: 256 * 1024 * 1024,
 	},
 }
 
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
-	// Open trie database with provided config
-	trieDB := triedb.NewDatabase(backingDB, trieDBConfig)
-	// trieDB := triedb.NewDatabase(backingDB, triedb.VerkleDefaults) - todo VERKLE
+	// to enable verkle trie, uncomment the following lines
+	// cfg := triedb.VerkleDefaults
+	// cfg.PathDB.JournalDirectory = ""
+	// trieDB := triedb.NewDatabase(backingDB, cfg)
 
-	// todo - figure out the snapshot tree
+	trieDB := triedb.NewDatabase(backingDB, trieDBConfig)
 	stateDB := state.NewDatabase(trieDB, nil)
 
 	prepStatementCache := enclavedb.NewStatementCache(backingDB.GetSQLDB(), logger)
@@ -105,27 +106,26 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	}
 }
 
-func (s *storageImpl) TrieDB() *triedb.Database {
-	return s.stateCache.TrieDB()
-}
-
-func (s *storageImpl) StateDB() *state.CachingDB {
-	return s.stateCache
-}
-
-func (s *storageImpl) Close() error {
-	// todo - VERKLE
+func (s *storageImpl) closeTrieDB() {
+	// to enable verkle trie, uncomment the following lines
 	//head, err := s.FetchHeadBatchHeader(context.Background())
 	//if err != nil {
 	//	s.logger.Error("Failed to fetch head batch header", "err", err)
 	//}
-	//if err := s.trieDB.Journal(head.Root); err != nil {
+	//if err = s.trieDB.Journal(head.Root); err != nil {
 	//	s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
 	//}
+	err := s.trieDB.Close()
+	if err != nil {
+		s.logger.Error("Failed to close triedb", "err", err)
+	}
+}
+
+func (s *storageImpl) Close() error {
+	s.closeTrieDB()
 
 	s.cachingService.Stop()
 	_ = s.preparedStatementCache.Clear()
-	_ = s.trieDB.Close()
 	return s.db.GetSQLDB().Close()
 }
 
@@ -470,35 +470,26 @@ func (s *storageImpl) HealthCheck(ctx context.Context) (bool, error) {
 	//return true, nil
 }
 
-func (s *storageImpl) CreateStateDB(ctx context.Context, batchHash common.L2BatchHash) (*state.StateDB, error) {
+func (s *storageImpl) CreateStateDB(_ context.Context, batch *common.BatchHeader) (*state.StateDB, error) {
 	defer s.logDuration("CreateStateDB", measure.NewStopwatch())
-	batch, err := s.FetchBatchHeader(ctx, batchHash)
-	if err != nil {
-		return nil, err
-	}
-
-	// prefetch
-	//_, process, err := s.stateCache.ReadersWithCacheStats(batch.Root)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//statedb, err := state.NewWithReader(batch.Root, s.stateCache, process)
-	statedb, err := state.New(batch.Root, s.stateCache)
+	stateAt, err := s.StateAt(batch.Root)
 	if err != nil {
 		return nil, fmt.Errorf("could not create state DB for batch: %d. Cause: %w", batch.SequencerOrderNo, err)
 	}
-	return statedb, nil
+	return stateAt, nil
 }
 
 func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 	defer s.logDuration("EmptyStateDB", measure.NewStopwatch())
-	// statedb, err := state.New(types.EmptyVerkleHash, state.NewDatabase(s.trieDB, nil)) - todo VERKLE
-	statedb, err := state.New(types.EmptyRootHash, state.NewDatabase(s.trieDB, nil))
-	if err != nil {
-		return nil, fmt.Errorf("could not create state DB. Cause: %w", err)
-	}
-	return statedb, nil
+
+	// to enable verkle trie, uncomment the following lines
+	// return s.StateAt(types.EmptyVerkleHash)
+
+	return s.StateAt(types.EmptyRootHash)
+}
+
+func (s *storageImpl) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
+	return state.New(root, s.stateCache)
 }
 
 func (s *storageImpl) GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error) {

@@ -88,57 +88,20 @@ func (val *validator) ExecuteStoredBatches(ctx context.Context) error {
 		val.logger.Trace("Executing stored batch", log.BatchSeqNoKey, batchHeader.SequencerOrderNo)
 
 		// check batchHeader execution prerequisites
-		canExecute, err := val.executionPrerequisites(ctx, batchHeader)
+		canExecute, err := val.batchRegistry.CanExecute(ctx, batchHeader)
 		if err != nil {
 			return fmt.Errorf("could not determine the execution prerequisites for batchHeader %s. Cause: %w", batchHeader.Hash(), err)
 		}
 		val.logger.Trace("Can execute stored batch", log.BatchSeqNoKey, batchHeader.SequencerOrderNo, "can", canExecute)
 
 		if canExecute {
-			txs, err := val.storage.FetchBatchTransactionsBySeq(ctx, batchHeader.SequencerOrderNo.Uint64())
-			if err != nil {
-				return fmt.Errorf("could not get txs for batch %s. Cause: %w", batchHeader.Hash(), err)
-			}
-
-			batch := &core.Batch{
-				Header:       batchHeader,
-				Transactions: txs,
-			}
-
-			txResults, err := val.batchExecutor.ExecuteBatch(ctx, batch)
+			err = val.batchRegistry.ExecuteBatch(ctx, val.batchExecutor, batchHeader)
 			if err != nil {
 				return fmt.Errorf("could not execute batch %s. Cause: %w", batchHeader.Hash(), err)
-			}
-			err = val.storage.StoreExecutedBatch(ctx, batch, txResults)
-			if err != nil {
-				return fmt.Errorf("could not store executed batch %s. Cause: %w", batchHeader.Hash(), err)
-			}
-			err = val.batchRegistry.OnBatchExecuted(batchHeader, txResults)
-			if err != nil {
-				return err
 			}
 		}
 	}
 	return nil
-}
-
-func (val *validator) executionPrerequisites(ctx context.Context, batch *common.BatchHeader) (bool, error) {
-	// 1.l1 block exists
-	block, err := val.storage.FetchBlock(ctx, batch.L1Proof)
-	if err != nil && errors.Is(err, errutil.ErrNotFound) {
-		val.logger.Warn("Error fetching block", log.BlockHashKey, batch.L1Proof, log.ErrKey, err)
-		return false, err
-	}
-	val.logger.Trace("l1 block exists", log.BatchSeqNoKey, batch.SequencerOrderNo)
-	// 2. parent was executed
-	parentExecuted, err := val.storage.BatchWasExecuted(ctx, batch.ParentHash)
-	if err != nil {
-		val.logger.Info("Error reading execution status of batch", log.BatchHashKey, batch.ParentHash, log.ErrKey, err)
-		return false, err
-	}
-	val.logger.Trace("parentExecuted", log.BatchSeqNoKey, batch.SequencerOrderNo, "val", parentExecuted)
-
-	return block != nil && parentExecuted, nil
 }
 
 func (val *validator) handleGenesis(ctx context.Context, batch *common.BatchHeader) error {

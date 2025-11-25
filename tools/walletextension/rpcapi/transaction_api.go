@@ -124,7 +124,7 @@ func (s *TransactionAPI) SendTransaction(ctx context.Context, args gethapi.Trans
 	if _, exists := user.SessionKeys[fromAddress]; exists {
 		// Use the session key for this transaction
 		// Convert the transaction args to a proper transaction
-		tx := args.ToTransaction()
+		tx := args.ToTransaction(types.DynamicFeeTxType)
 		if tx == nil {
 			return common.Hash{}, errors.New("failed to convert transaction args to transaction")
 		}

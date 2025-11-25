@@ -14,6 +14,12 @@ create table if not exists statedb64
 );
 create index IDX_KY64 on statedb64 (ky);
 
+create table if not exists triedb_journal
+(
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    val mediumblob NOT NULL
+);
+
 create table if not exists config
 (
     ky  varchar(64) primary key,

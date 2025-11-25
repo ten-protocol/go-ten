@@ -274,8 +274,6 @@ func (s *Simulation) prefundTenAccounts() {
 
 	faucetWallet := s.Params.Wallets.L2FaucetWallet
 	faucetClient := s.RPCHandles.TenWalletClient(faucetWallet.Address(), 0) // get sequencer, else errors on submission get swallowed
-	// in memory test needs this to allow head batch to be set
-	time.Sleep(5 * time.Second)
 	nonce := NextNonce(s.ctx, s.RPCHandles, faucetWallet)
 
 	// Give 1000 ether per account - ether is 1e18 so best convert it by code

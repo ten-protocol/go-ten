@@ -65,30 +65,16 @@ type batchExecutor struct {
 	systemContracts        system.SystemContractCallbacks
 	entropyService         *crypto.EvmEntropyService
 	mempool                *TxPool
-	execMutex              *sync.Mutex
 	batchGasLimit          uint64 // max execution gas allowed in a batch
+	mu                     *sync.Mutex
 }
 
-func NewBatchExecutor(
-	storage storage.Storage,
-	batchRegistry BatchRegistry,
-	evmFacade evm.EVMFacade,
-	config *enclaveconfig.EnclaveConfig,
-	gethEncodingService gethencoding.EncodingService,
-	cc *crosschain.Processors,
-	genesis *genesis.Genesis,
-	gasOracle gas.Oracle,
-	chainConfig *params.ChainConfig,
-	systemContracts system.SystemContractCallbacks,
-	entropyService *crypto.EvmEntropyService,
-	mempool *TxPool,
-	dataCompressionService compression.DataCompressionService,
-	gasPricer *GasPricer,
-	logger gethlog.Logger,
-) BatchExecutor {
+func NewBatchExecutor(storage storage.Storage, batchRegistry BatchRegistry, evmFacade evm.EVMFacade, config *enclaveconfig.EnclaveConfig, gethEncodingService gethencoding.EncodingService, cc *crosschain.Processors, genesis *genesis.Genesis, gasOracle gas.Oracle, chainConfig *params.ChainConfig, systemContracts system.SystemContractCallbacks, entropyService *crypto.EvmEntropyService, mempool *TxPool, dataCompressionService compression.DataCompressionService, gasPricer *GasPricer, logger gethlog.Logger) BatchExecutor {
 	if gasPricer == nil {
 		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
 	}
+	mutex := &sync.Mutex{}
+
 	return &batchExecutor{
 		storage:                storage,
 		batchRegistry:          batchRegistry,
@@ -106,7 +92,7 @@ func NewBatchExecutor(
 		entropyService:         entropyService,
 		mempool:                mempool,
 		dataCompressionService: dataCompressionService,
-		execMutex:              &sync.Mutex{},
+		mu:                     mutex,
 	}
 }
 
@@ -120,8 +106,8 @@ func (executor *batchExecutor) ComputeBatch(ctx context.Context, ec *BatchExecut
 	defer core.LogMethodDuration(executor.logger, measure.NewStopwatch(), "Batch context processed")
 
 	// only compute one batch at a time
-	executor.execMutex.Lock()
-	defer executor.execMutex.Unlock()
+	executor.mu.Lock()
+	defer executor.mu.Unlock()
 
 	ec.ctx = ctx
 	if err := executor.verifyContext(ec); err != nil {
@@ -235,7 +221,7 @@ func (executor *batchExecutor) prepareState(ec *BatchExecutionContext) error {
 	ec.BaseFee = executor.gasPricer.CalculateBlockBaseFeeAtHeight(ec.ctx, executor.chainConfig, common.ConvertBatchHeaderToHeader(ec.parentBatch), ec.l1block.Number.Uint64())
 	// Create a new batch based on the provided context
 	ec.currentBatch = core.DeterministicEmptyBatch(ec.parentBatch, ec.l1block, ec.AtTime, ec.SequencerNo, ec.BaseFee, ec.Creator, ec.BatchGasLimit)
-	ec.stateDB, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
+	ec.stateDB, _, err = executor.batchRegistry.GetBatchState(ec.ctx, rpc.BlockNumberOrHash{BlockHash: &ec.currentBatch.Header.ParentHash})
 	if err != nil {
 		return fmt.Errorf("could not create stateDB. Cause: %w", err)
 	}
@@ -643,17 +629,15 @@ func (executor *batchExecutor) execResult(ec *BatchExecutionContext) (*ComputedB
 		return nil, fmt.Errorf("failed creating batch. Cause: %w", err)
 	}
 
+	resultRoot := ec.stateDB.IntermediateRoot(true)
+	// for state root mismatch, exit early, before storing the corrupted state
+	if ec.ExpectedRoot != nil && *ec.ExpectedRoot != resultRoot && ec.SequencerNo.Uint64() > common.L2SysContractGenesisSeqNo+1 {
+		return nil, fmt.Errorf("batch root mismatch for batch seq %d. Expected: %s, actual: %s", ec.currentBatch.SeqNo(), ec.ExpectedRoot, resultRoot)
+	}
+
 	rootHash, err := ec.stateDB.Commit(batch.Number().Uint64(), true, true)
 	if err != nil {
 		return nil, fmt.Errorf("commit failure for batch %d. Cause: %w", ec.currentBatch.SeqNo(), err)
-	}
-
-	// todo - VERKLE - comment this
-	trieDB := executor.storage.TrieDB()
-	err = trieDB.Commit(rootHash, false)
-	if err != nil {
-		executor.logger.Error("Failed to commit trieDB", "error", err)
-		return nil, fmt.Errorf("failed to commit trieDB. Cause: %w", err)
 	}
 
 	batch.Header.Root = rootHash
@@ -711,19 +695,9 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	// and the parent hash. This recomputed batch is then checked against the incoming batch.
 	// If the sequencer has tampered with something the hash will not add up and validation will
 	// produce an error.
-	cb, err := executor.ComputeBatch(ctx, &BatchExecutionContext{
-		BlockPtr:      batch.Header.L1Proof,
-		ParentPtr:     batch.Header.ParentHash,
-		UseMempool:    false,
-		BatchGasLimit: batch.Header.GasLimit,
-		Transactions:  batch.Transactions,
-		AtTime:        batch.Header.Time,
-		ChainConfig:   executor.chainConfig,
-		SequencerNo:   batch.Header.SequencerOrderNo,
-		Creator:       batch.Header.Coinbase,
-		BaseFee:       batch.Header.BaseFee,
-	}, false) // this execution is not used when first producing a batch, we never want to fail for empty batches
+	cb, err := executor.compute(ctx, batch) // this execution is not used when first producing a batch, we never want to fail for empty batches
 	if err != nil {
+		executor.logger.Error("Failed to compute batch", log.ErrKey, err)
 		return nil, fmt.Errorf("failed computing batch %s. Cause: %w", batch.Hash(), err)
 	}
 
@@ -738,6 +712,22 @@ func (executor *batchExecutor) ExecuteBatch(ctx context.Context, batch *core.Bat
 	}
 
 	return cb.TxExecResults, nil
+}
+
+func (executor *batchExecutor) compute(ctx context.Context, batch *core.Batch) (*ComputedBatch, error) {
+	return executor.ComputeBatch(ctx, &BatchExecutionContext{
+		BlockPtr:      batch.Header.L1Proof,
+		ParentPtr:     batch.Header.ParentHash,
+		UseMempool:    false,
+		BatchGasLimit: batch.Header.GasLimit,
+		Transactions:  batch.Transactions,
+		AtTime:        batch.Header.Time,
+		ChainConfig:   executor.chainConfig,
+		SequencerNo:   batch.Header.SequencerOrderNo,
+		Creator:       batch.Header.Coinbase,
+		BaseFee:       batch.Header.BaseFee,
+		ExpectedRoot:  &batch.Header.Root,
+	}, false)
 }
 
 func (executor *batchExecutor) CreateGenesisState(

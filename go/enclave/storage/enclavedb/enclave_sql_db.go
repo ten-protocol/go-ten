@@ -12,6 +12,9 @@ import (
 	enclaveconfig "github.com/ten-protocol/go-ten/go/enclave/config"
 )
 
+// we write the trie journal to a separate table
+var trieJournalKey = []byte("vTrieJournal") //nolint:unused
+
 // enclaveDB - Implements the key-value ethdb.Database and also exposes the underlying sql database
 // should not be used directly outside the db package
 type enclaveDB struct {
@@ -78,13 +81,21 @@ func (sqlDB *enclaveDB) GetSQLDB() *sqlx.DB {
 func (sqlDB *enclaveDB) Has(key []byte) (bool, error) {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
-	return Has(ctx, sqlDB.sqldb, key)
+	return has(ctx, sqlDB.sqldb, key)
 }
 
 func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
-	return Get(ctx, sqlDB.sqldb, key)
+
+	// to enable verkle trie, uncomment the following lines
+	//if bytes.Equal(key, trieJournalKey) {
+	//	val, err := getJournal(ctx, sqlDB.sqldb)
+	//	sqlDB.logger.Debug("TrieJournal GET", "key", key, "err", err, " len_val", len(val))
+	//	return val, err
+	//}
+
+	return get(ctx, sqlDB.sqldb, key)
 }
 
 func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
@@ -94,15 +105,28 @@ func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
 	if value == nil {
 		return fmt.Errorf("value cannot be nil. key: %x", key)
 	}
+
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
-	return Put(ctx, sqlDB.rwSqldb, key, value)
+
+	// to enable verkle trie, uncomment the following lines
+	//if bytes.Equal(key, trieJournalKey) {
+	//	err := putJournal(ctx, sqlDB.rwSqldb, value)
+	//	sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err, "len_val", len(value))
+	//	if err != nil {
+	//		return fmt.Errorf("failed to put trie journal. key: %x, value: %x, err: %w", key, value, err)
+	//	}
+	//	return nil
+	//}
+
+	err := put(ctx, sqlDB.rwSqldb, key, value)
+	return err
 }
 
 func (sqlDB *enclaveDB) Delete(key []byte) error {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
-	return Delete(ctx, sqlDB.rwSqldb, key)
+	return deleteKey(ctx, sqlDB.rwSqldb, key)
 }
 
 func (sqlDB *enclaveDB) Close() error {
@@ -129,7 +153,7 @@ func (sqlDB *enclaveDB) NewBatch() ethdb.Batch {
 
 func (sqlDB *enclaveDB) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
 	// we can't use a timeout context here, because the cleanup function must be called
-	return NewIterator(context.Background(), sqlDB.sqldb, prefix, start)
+	return newIterator(context.Background(), sqlDB.sqldb, prefix, start)
 }
 
 func (sqlDB *enclaveDB) Stat() (string, error) {
@@ -203,4 +227,8 @@ func (sqlDB *enclaveDB) ReadAncients(fn func(reader ethdb.AncientReaderOp) error
 	// have to explicitly check for that, having an extra clause to do the
 	// non-ancient operations.
 	return fn(sqlDB)
+}
+
+func (sqlDB *enclaveDB) AncientBytes(kind string, id, offset, length uint64) ([]byte, error) {
+	panic("unexpected usage - method AncientBytes only exists to satisfy interface")
 }
