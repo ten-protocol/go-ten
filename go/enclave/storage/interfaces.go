@@ -32,6 +32,8 @@ type BlockResolver interface {
 	UpdateProcessed(ctx context.Context, block common.L1BlockHash) error
 	// DeleteDirtyBlocks - deletes all traces of a block that was not finished. Only called at startup.
 	DeleteDirtyBlocks(ctx context.Context) error
+	// DeleteUnprocessedBlock - deletes a specific unprocessed block and its associated data (rollups, messages)
+	DeleteUnprocessedBlock(ctx context.Context, blockHash common.L1BlockHash) error
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
 	IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool
 }
