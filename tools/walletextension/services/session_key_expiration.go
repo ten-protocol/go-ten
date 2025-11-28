@@ -6,6 +6,7 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
+	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
@@ -13,6 +14,7 @@ import (
 // SessionKeyExpirationService runs in the background and monitors users
 type SessionKeyExpirationService struct {
 	storage         storage.UserStorage
+	activityStorage storage.SessionKeyActivityStorage
 	logger          gethlog.Logger
 	stopControl     *stopcontrol.StopControl
 	ticker          *time.Ticker
@@ -23,11 +25,12 @@ type SessionKeyExpirationService struct {
 }
 
 // NewSessionKeyExpirationService creates a new session key expiration service
-func NewSessionKeyExpirationService(storage storage.UserStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config, backendRPC *BackendRPC, activityTracker SessionKeyActivityTracker, txSender TxSender) *SessionKeyExpirationService {
+func NewSessionKeyExpirationService(storage storage.UserStorage, activityStorage storage.SessionKeyActivityStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config, backendRPC *BackendRPC, activityTracker SessionKeyActivityTracker, txSender TxSender) *SessionKeyExpirationService {
 	logger.Info("Creating session key expiration service", "expirationThreshold", config.SessionKeyExpirationThreshold.String())
 
 	service := &SessionKeyExpirationService{
 		storage:         storage,
+		activityStorage: activityStorage,
 		logger:          logger,
 		stopControl:     stopControl,
 		config:          config,
@@ -60,6 +63,21 @@ func (s *SessionKeyExpirationService) start() {
 	interval := s.config.SessionKeyExpirationInterval
 	s.ticker = time.NewTicker(interval)
 
+	// load all activities from the database to make them recoverable in case of restart
+	if persisted, err := s.activityStorage.Load(); err != nil {
+		s.logger.Warn("Failed to load persisted session key activities", "error", err)
+	} else if len(persisted) > 0 {
+		loaded := make([]common.SessionKeyActivity, 0, len(persisted))
+		for _, a := range persisted {
+			loaded = append(loaded, common.SessionKeyActivity{
+				Addr:       a.Addr,
+				UserID:     a.UserID,
+				LastActive: a.LastActive,
+			})
+		}
+		s.activityTracker.Load(loaded)
+	}
+
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
@@ -87,10 +105,6 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 
 	cutoff := time.Now().Add(-s.config.SessionKeyExpirationThreshold)
 	candidates := s.activityTracker.ListOlderThan(cutoff)
-
-	if len(candidates) == 0 {
-		return
-	}
 
 	for _, c := range candidates {
 		// Load the user for this session key
@@ -131,4 +145,8 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 		// After successful external operation, delete from tracker
 		_ = s.activityTracker.Delete(c.Addr)
 	}
+
+	// store all activities in the database to make them persistent and recoverable in case of restart
+	allActivities := s.activityTracker.ListAll()
+	_ = s.activityStorage.Save(allActivities)
 }
