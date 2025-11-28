@@ -77,12 +77,16 @@ func (bp *l1BlockProcessor) Process(ctx context.Context, processed *common.Proce
 		// This requires block to be stored first ... but can permanently fail a block
 		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(ctx, processed.BlockHeader, processed)
 		if err != nil {
-			return nil, errors.New("failed to process cross chain messages")
+			bp.logger.Error("Failed to store cross chain messages", log.ErrKey, err)
+			// revert the block so we can retry
+			return nil, errutil.ErrCriticalCrossChainProcessing
 		}
 
 		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(ctx, processed.BlockHeader, processed)
 		if err != nil {
-			return nil, fmt.Errorf("failed to process cross chain transfers. Cause: %w", err)
+			bp.logger.Error("Failed to store cross chain value transfers", log.ErrKey, err)
+			// revert the block so we can retry
+			return nil, errutil.ErrCriticalCrossChainProcessing
 		}
 	}
 
@@ -180,4 +184,20 @@ func (bp *l1BlockProcessor) GetHead(ctx context.Context) (*types.Header, error) 
 
 func (bp *l1BlockProcessor) GetCrossChainContractAddress() *gethcommon.Address {
 	return bp.crossChainProcessors.Remote.GetBusAddress()
+}
+
+// ResetHead fetches the latest head from storage and resets the in-memory head pointer.
+func (bp *l1BlockProcessor) ResetHead(ctx context.Context) error {
+	var l1BlockHash *common.L1BlockHash
+	head, err := bp.storage.FetchHeadBlock(ctx)
+	if err != nil {
+		// we can't recover from this, the block processor head hash is now out of sync with storage and storage can't be read
+		// note: even if the error is just 'not found' something is wrong, because we should have at least the genesis block before this can be called
+		bp.logger.Crit("Cannot fetch head block", log.ErrKey, err)
+		return err
+	}
+	h := head.Hash()
+	l1BlockHash = &h
+	bp.currentL1Head = l1BlockHash
+	return nil
 }

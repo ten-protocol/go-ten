@@ -192,7 +192,21 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 
 	result, rollupMetadata, err := e.ingestL1Block(ctx, blockData)
 	if err != nil {
-		// only critical errors ie duplicate block or signed rollup error are returned so we can continue processing if non-critical
+		if errorRequiresRevert(err) {
+			// revert the partially processed block so the host can retry
+			err = e.storage.DeleteUnprocessedBlock(ctx, blockData.BlockHeader.Hash())
+			if err != nil {
+				// kill the enclave as this is a serious issue, on restart the enclave will attempt to clean up again
+				e.logger.Crit("failed to cleanup unprocessed block after critical rollup error", log.BlockHashKey, blockData.BlockHeader.Hash(), log.ErrKey, err)
+				return nil, err
+			}
+			err = e.l1BlockProcessor.ResetHead(ctx)
+			if err != nil {
+				// kill the enclave as head block is now out of sync with storage
+				e.logger.Crit("failed to revert L1 head after critical rollup error", log.BlockHashKey, blockData.BlockHeader.Hash(), log.ErrKey, err)
+				return nil, err
+			}
+		}
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
@@ -582,7 +596,8 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	e.logger.Info("Start ingesting block", log.BlockHashKey, processed.BlockHeader.Hash())
 	ingestion, err := e.l1BlockProcessor.Process(ctx, processed)
 	if err != nil {
-		if e.isCriticalError(err) {
+		if errors.Is(err, errutil.ErrBlockAncestorNotFound) || errors.Is(err, errutil.ErrBlockAlreadyProcessed) {
+			// happens during normal operation, no need to spam warnings
 			e.logger.Debug("Did not ingest block", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
 		} else {
 			e.logger.Warn("Failed ingesting block", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
@@ -593,9 +608,13 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 	var rollupMetadataList []common.ExtRollupMetadata
 	if processed.HasEvents(common.RollupTx) {
 		rollupMetadataList, err = e.processRollups(ctx, processed)
-		if err != nil && e.isCriticalError(err) {
-			// only propagate the error if we encounter a critical error on a sequencer signed rollup
-			return nil, nil, err
+		if err != nil {
+			if errors.Is(err, errutil.ErrCriticalRollupProcessing) {
+				// only propagate the error if we encounter a critical error on a sequencer signed rollup
+				return nil, nil, err
+			}
+			// only info level for visibility but could be caused by bad data on L1 for example
+			e.logger.Info("Unable to ingest rollup metadata", log.ErrKey, err)
 		}
 	}
 
@@ -617,6 +636,7 @@ func (e *enclaveAdminService) processRollups(ctx context.Context, processed *com
 
 	// verify and process each rollup one by one
 	for _, rollupTx := range rollupTxs {
+		txHash := rollupTx.Transaction.Hash()
 		extRollup, err := e.rollupConsumer.ExtractAndVerifyRollupData(rollupTx)
 		if err != nil {
 			// this will only be returned once we've verified the sequencer signature
@@ -624,14 +644,14 @@ func (e *enclaveAdminService) processRollups(ctx context.Context, processed *com
 				return nil, err
 			}
 			// anything non-critical we skip the processing
-			e.logger.Error("Error processing rollups from L1 data", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash())
+			e.logger.Error("Error processing rollup from L1 data", log.ErrKey, err, log.BlockHashKey, processed.BlockHeader.Hash(), log.TxKey, txHash)
 			continue
 		}
-		rHash := rollupTx.Transaction.Hash()
-		// prevent the case where someone pushes a blob to the same slot. multiple rollups can be found in a block,
-		// but they must come from unique transactions
-		if txsSeen[rHash] {
-			return nil, fmt.Errorf("multiple rollups from same transaction: %s. Err: %w", rHash, errutil.ErrCriticalRollupProcessing)
+		// multiple rollups in a block is fine, but if they have the same tx hash then it's a duplicate and we will ignore it
+		if txsSeen[txHash] {
+			// log a warning then skip processing it
+			e.logger.Warn("Duplicate rollup tx found in block, skipping duplicate", log.BlockHashKey, processed.BlockHeader.Hash(), log.TxKey, txHash)
+			continue
 		}
 
 		rollupMetadata, err := e.rollupConsumer.ProcessRollup(ctx, extRollup)
@@ -643,7 +663,7 @@ func (e *enclaveAdminService) processRollups(ctx context.Context, processed *com
 		if rollupMetadata != nil {
 			rollupMetadataList = append(rollupMetadataList, *rollupMetadata)
 		}
-		txsSeen[rHash] = true
+		txsSeen[txHash] = true
 	}
 	if len(rollupMetadataList) == 0 {
 		e.logger.Warn("No rollups found in block when rollupTxs present", log.BlockHashKey, processed.BlockHeader.Hash())
@@ -756,9 +776,7 @@ func getSignatureValidator(useInMemDB bool, storage storage.Storage, logger geth
 	return components.NewSignatureValidator(storage, logger)
 }
 
-// isCriticalError returns true if the error should cause block processing to stop
-func (e *enclaveAdminService) isCriticalError(err error) bool {
+func errorRequiresRevert(err error) bool {
 	return errors.Is(err, errutil.ErrCriticalRollupProcessing) ||
-		errors.Is(err, errutil.ErrBlockAncestorNotFound) ||
-		errors.Is(err, errutil.ErrBlockAlreadyProcessed)
+		errors.Is(err, errutil.ErrCriticalCrossChainProcessing)
 }

@@ -50,8 +50,9 @@ type enclaveImpl struct {
 	adminAPI common.EnclaveAdmin
 	rpcAPI   common.EnclaveClientRPC
 
-	stopControl  *stopcontrol.StopControl
-	shutdownFunc func() // function to call when stopping the enclave (e.g. sys exit for docker but not for tests)
+	processingCtx context.Context // context for async data processing tasks that should not be canceled if RPC caller context is canceled
+	stopControl   *stopcontrol.StopControl
+	shutdownFunc  func() // function to call when stopping the enclave (e.g. sys exit for docker but not for tests)
 }
 
 // NewEnclave creates and initializes all the services of the enclave.
@@ -67,12 +68,16 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	// Initialise the database
 	cachingService := storage.NewCacheService(logger, config.UseInMemoryDB)
 	storage := storage.NewStorageFromConfig(config, cachingService, chainConfig, logger)
+	err := storage.DeleteDirtyBlocks(context.Background())
+	if err != nil {
+		logger.Crit("failed to clean dirty blocks", log.ErrKey, err)
+	}
 
 	// attempt to fetch the enclave key from the database
 	// the enclave key is part of the attestation and identifies the current enclave
 	// if this is the first time the enclave starts, it has to generate a new key
 	enclaveKeyService := crypto.NewEnclaveAttestedKeyService(logger)
-	err := loadOrCreateEnclaveKey(storage, enclaveKeyService, logger)
+	err = loadOrCreateEnclaveKey(storage, enclaveKeyService, logger)
 	if err != nil {
 		logger.Crit("Failed to load or create enclave key", log.ErrKey, err)
 	}
@@ -130,23 +135,23 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	// todo (#1474) - make sure the enclave cannot be started in production with WillAttest=false
 	attestationProvider := components.NewAttestationProvider(enclaveKeyService, config.WillAttest, logger)
 
+	processingCtx, cancelProcessingCtx := context.WithCancel(context.Background())
 	// signal to stop the enclave
 	stopControl := stopcontrol.New()
 
 	// shutdownFunc is called after services attempt a graceful shutdown.
 	// For tests, we don't want the process to exit, but in docker we do
-	shutdownFunc := func() {}
+	shutdownFunc := func() {
+		cancelProcessingCtx()
+		logger.Info("enclave shutdown complete")
+	}
 	if config.WillAttest { // using attestation as a signal that this is a production enclave
 		shutdownFunc = func() {
+			cancelProcessingCtx()
 			time.Sleep(1 * time.Second)
 			fmt.Println("enclave shutdown complete")
 			os.Exit(0)
 		}
-	}
-
-	err = storage.DeleteDirtyBlocks(context.Background())
-	if err != nil {
-		logger.Crit("failed to clean dirty blocks", log.ErrKey, err)
 	}
 
 	// these services are directly exposed as the API of the Enclave
@@ -156,11 +161,12 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{
-		initAPI:      initAPI,
-		adminAPI:     adminAPI,
-		rpcAPI:       rpcAPI,
-		stopControl:  stopControl,
-		shutdownFunc: shutdownFunc,
+		initAPI:       initAPI,
+		adminAPI:      adminAPI,
+		rpcAPI:        rpcAPI,
+		processingCtx: processingCtx,
+		stopControl:   stopControl,
+		shutdownFunc:  shutdownFunc,
 	}
 }
 
@@ -297,14 +303,16 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, processed *common.Proce
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.adminAPI.SubmitL1Block(ctx, processed)
+	// pass a background context here as the data processing should not be canceled by the caller disconnecting
+	return e.adminAPI.SubmitL1Block(e.processingCtx, processed)
 }
 
 func (e *enclaveImpl) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return systemError
 	}
-	return e.adminAPI.SubmitBatch(ctx, extBatch)
+	// pass a background context here as the data processing should not be canceled by the caller disconnecting
+	return e.adminAPI.SubmitBatch(e.processingCtx, extBatch)
 }
 
 func (e *enclaveImpl) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) common.SystemError {
