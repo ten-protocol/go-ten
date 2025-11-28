@@ -95,77 +95,139 @@ func (s *sessionKeyActivityStorageCosmosDB) Load() ([]wecommon.SessionKeyActivit
 	return result, nil
 }
 
+// Save performs a full replacement of all stored session key activity data with the provided snapshot.
+// This method uses a two-phase approach to ensure data consistency:
+//
+// Phase 1 (Clear): Writes empty documents to ALL shards to remove any stale or deleted entries.
+//
+//	This ensures that if a session key was deleted from memory, it's also removed from storage.
+//
+// Phase 2 (Write): Writes the actual activity data to shards that contain items.
+//
+//	Items are distributed across shards based on a hash of their address to ensure even distribution.
+//
+// This full replacement strategy is used because:
+//   - The caller provides a complete snapshot of all current activities (from memory)
+//   - We need to ensure deleted entries are removed from storage
+//   - It's simpler and more reliable than tracking incremental changes
+//
+// The method groups items by shard index, clears all shards, then writes data only to shards
+// that contain items. Each shard document is validated against CosmosDB's 2MB size limit.
 func (s *sessionKeyActivityStorageCosmosDB) Save(items []wecommon.SessionKeyActivity) error {
 	ctx := context.Background()
+	timestamp := time.Now().UTC().Format(time.RFC3339)
 
-	// group by shard index
-	byShard := make(map[int][]wecommon.SessionKeyActivity)
-	for _, it := range items {
-		idx := s.shardIndexForAddress(it.Addr)
-		byShard[idx] = append(byShard[idx], it)
+	// Group items by shard index for efficient batch writing.
+	// Each session key address is hashed to determine which shard it belongs to,
+	// ensuring even distribution across all shards.
+	itemsByShardIndex := make(map[int][]wecommon.SessionKeyActivity)
+	for _, item := range items {
+		shardIdx := s.shardIndexForAddress(item.Addr)
+		itemsByShardIndex[shardIdx] = append(itemsByShardIndex[shardIdx], item)
 	}
 
-	now := time.Now().UTC().Format(time.RFC3339)
-	// 1) Upsert EMPTY docs for ALL shards to clear stale data
-	for idx := 0; idx < s.shardCount; idx++ {
-		shardID := s.getShardDocumentIDByIndex(idx)
+	// Phase 1: Clear all shards by writing empty documents.
+	// This removes any stale data from shards that no longer have active items.
+	if err := s.clearAllShards(ctx, timestamp); err != nil {
+		return fmt.Errorf("failed to clear shards: %w", err)
+	}
+
+	// Phase 2: Write actual data to shards that contain items.
+	// Only shards with items are written to, leaving others empty from phase 1.
+	for shardIdx, shardItems := range itemsByShardIndex {
+		if err := s.writeShardData(ctx, shardIdx, shardItems, timestamp); err != nil {
+			return fmt.Errorf("failed to write shard %d: %w", shardIdx, err)
+		}
+	}
+
+	return nil
+}
+
+// clearAllShards writes empty documents to all shards to remove stale data.
+// This is phase 1 of the Save operation, ensuring that deleted session keys
+// are removed from storage. Each empty document includes metadata (ID, ShardIndex, LastUpdated)
+// but no activity items.
+func (s *sessionKeyActivityStorageCosmosDB) clearAllShards(ctx context.Context, timestamp string) error {
+	for shardIdx := 0; shardIdx < s.shardCount; shardIdx++ {
+		shardID := s.getShardDocumentIDByIndex(shardIdx)
 		dto := sessionKeyActivityDTO{
 			ID:          shardID,
 			Items:       make([]sessionKeyActivityItemDTO, 0),
-			ShardIndex:  idx,
-			LastUpdated: now,
+			ShardIndex:  shardIdx,
+			LastUpdated: timestamp,
 		}
-		b, err := json.Marshal(dto)
-		if err != nil {
-			return err
-		}
-		if len(b) > twoMBLimitBytes {
-			return fmt.Errorf("session key activity shard %d empty doc exceeds 2MB limit (%d bytes)", idx, len(b))
-		}
-		pk := azcosmos.NewPartitionKeyString(shardID)
-		if _, err := s.container.UpsertItem(ctx, pk, b, nil); err != nil {
-			return err
-		}
-	}
 
-	// 2) Upsert REAL contents for shards that have items
-	for idx, shardItems := range byShard {
-		shardID := s.getShardDocumentIDByIndex(idx)
-		dto := sessionKeyActivityDTO{
-			ID:          shardID,
-			Items:       make([]sessionKeyActivityItemDTO, 0, len(shardItems)),
-			ShardIndex:  idx,
-			LastUpdated: now,
-		}
-		for _, it := range shardItems {
-			dto.Items = append(dto.Items, sessionKeyActivityItemDTO{
-				Addr:       it.Addr.Bytes(),
-				UserID:     it.UserID,
-				LastActive: it.LastActive,
-			})
-		}
+		// Marshal to JSON and validate size against CosmosDB's 2MB limit
 		b, err := json.Marshal(dto)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to marshal empty shard %d: %w", shardIdx, err)
 		}
 		if len(b) > twoMBLimitBytes {
-			return fmt.Errorf("session key activity shard %d document exceeds 2MB limit (%d bytes)", idx, len(b))
+			return fmt.Errorf("session key activity shard %d empty doc exceeds 2MB limit (%d bytes)", shardIdx, len(b))
 		}
+
+		// Upsert the empty document to clear any existing data in this shard
 		pk := azcosmos.NewPartitionKeyString(shardID)
 		if _, err := s.container.UpsertItem(ctx, pk, b, nil); err != nil {
-			return err
+			return fmt.Errorf("failed to upsert empty shard %d: %w", shardIdx, err)
 		}
 	}
 	return nil
 }
 
-// shardIndexForAddress computes shard index using FNV-32a hash of address bytes
+// writeShardData writes activity items to a specific shard.
+// This is phase 2 of the Save operation, writing actual data to shards that contain items.
+// The method converts session key activities to DTOs and validates the document size
+// against CosmosDB's 2MB limit before writing.
+func (s *sessionKeyActivityStorageCosmosDB) writeShardData(ctx context.Context, shardIdx int, items []wecommon.SessionKeyActivity, timestamp string) error {
+	shardID := s.getShardDocumentIDByIndex(shardIdx)
+	dto := sessionKeyActivityDTO{
+		ID:          shardID,
+		Items:       make([]sessionKeyActivityItemDTO, 0, len(items)),
+		ShardIndex:  shardIdx,
+		LastUpdated: timestamp,
+	}
+
+	// Convert session key activities to DTOs for storage
+	for _, item := range items {
+		dto.Items = append(dto.Items, sessionKeyActivityItemDTO{
+			Addr:       item.Addr.Bytes(),
+			UserID:     item.UserID,
+			LastActive: item.LastActive,
+		})
+	}
+
+	// Marshal to JSON and validate size against CosmosDB's 2MB limit
+	b, err := json.Marshal(dto)
+	if err != nil {
+		return fmt.Errorf("failed to marshal shard %d: %w", shardIdx, err)
+	}
+	if len(b) > twoMBLimitBytes {
+		return fmt.Errorf("session key activity shard %d document exceeds 2MB limit (%d bytes)", shardIdx, len(b))
+	}
+
+	// Upsert the document with actual data
+	pk := azcosmos.NewPartitionKeyString(shardID)
+	if _, err := s.container.UpsertItem(ctx, pk, b, nil); err != nil {
+		return fmt.Errorf("failed to upsert shard %d: %w", shardIdx, err)
+	}
+
+	return nil
+}
+
+// shardIndexForAddress computes the shard index for a given address using FNV-32a hash.
+// The address bytes are hashed and then modulo'd by the shard count to ensure
+// even distribution across all available shards. This deterministic hashing ensures
+// the same address always maps to the same shard.
 func (s *sessionKeyActivityStorageCosmosDB) shardIndexForAddress(addr gethcommon.Address) int {
 	h := fnv.New32a()
 	_, _ = h.Write(addr.Bytes())
 	return int(h.Sum32()) % s.shardCount
 }
 
+// getShardDocumentIDByIndex generates the document ID for a shard given its index.
+// The format is "sk_shard_<index>" (e.g., "sk_shard_0", "sk_shard_1", etc.).
+// This ID is used both as the document ID and partition key in CosmosDB.
 func (s *sessionKeyActivityStorageCosmosDB) getShardDocumentIDByIndex(index int) string {
 	return fmt.Sprintf("%s%d", skShardPrefix, index)
 }
