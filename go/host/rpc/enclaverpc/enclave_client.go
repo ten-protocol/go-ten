@@ -194,6 +194,14 @@ func (c *Client) RPCEncryptionKey(ctx context.Context) ([]byte, common.SystemErr
 }
 
 func (c *Client) SubmitL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
+	blockHash := gethcommon.Hash{}
+	var blockNumber *big.Int
+	if processed != nil && processed.BlockHeader != nil {
+		blockHash = processed.BlockHeader.Hash()
+		blockNumber = processed.BlockHeader.Number
+	}
+	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "SubmitL1Block rpc call", &core.RelaxedThresholds, log.BlockHashKey, blockHash, log.BlockHeightKey, blockNumber)
+
 	var buffer bytes.Buffer
 	if err := processed.BlockHeader.EncodeRLP(&buffer); err != nil {
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
