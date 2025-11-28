@@ -79,11 +79,11 @@ func (t *sessionKeyActivityTracker) ListOlderThan(cutoff time.Time) []common.Ses
 
 func (t *sessionKeyActivityTracker) ListAll() []common.SessionKeyActivity {
 	t.mu.RLock()
+	defer t.mu.RUnlock()
 	result := make([]common.SessionKeyActivity, 0, len(t.byKey))
 	for addr, state := range t.byKey {
 		result = append(result, common.SessionKeyActivity{Addr: addr, UserID: state.UserID, LastActive: state.LastActive})
 	}
-	t.mu.RUnlock()
 	return result
 }
 

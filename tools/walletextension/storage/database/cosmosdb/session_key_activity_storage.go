@@ -2,7 +2,6 @@ package cosmosdb
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
@@ -24,6 +23,12 @@ const (
 	twoMBLimitBytes = 2 * 1024 * 1024
 )
 
+// SessionKeyActivityStorage interface defines the session key activity storage operations
+type SessionKeyActivityStorage interface {
+	Load() ([]wecommon.SessionKeyActivity, error)
+	Save([]wecommon.SessionKeyActivity) error
+}
+
 type sessionKeyActivityStorageCosmosDB struct {
 	client     *azcosmos.Client
 	container  *azcosmos.ContainerClient
@@ -38,12 +43,12 @@ type sessionKeyActivityDTO struct {
 }
 
 type sessionKeyActivityItemDTO struct {
-	Addr       string `json:"addr"`
-	UserIDHex  string `json:"userId"`
-	LastActive string `json:"lastActive"`
+	Addr       []byte    `json:"addr"`       // 20 bytes (common.Address.Bytes())
+	UserID     []byte    `json:"userId"`     // variable length
+	LastActive time.Time `json:"lastActive"` // RFC3339 timestamp
 }
 
-func NewSessionKeyActivityStorage(connectionString string) (*sessionKeyActivityStorageCosmosDB, error) {
+func NewSessionKeyActivityStorage(connectionString string) (SessionKeyActivityStorage, error) {
 	client, err := azcosmos.NewClientFromConnectionString(connectionString, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CosmosDB client: %w", err)
@@ -82,13 +87,9 @@ func (s *sessionKeyActivityStorageCosmosDB) Load() ([]wecommon.SessionKeyActivit
 			return nil, err
 		}
 		for _, it := range dto.Items {
-			addr := gethcommon.HexToAddress(it.Addr)
-			userID, _ := hex.DecodeString(strings.TrimPrefix(it.UserIDHex, "0x"))
-			t, err := time.Parse(time.RFC3339, it.LastActive)
-			if err != nil {
-				continue
-			}
-			result = append(result, wecommon.SessionKeyActivity{Addr: addr, UserID: userID, LastActive: t})
+			addr := gethcommon.BytesToAddress(it.Addr)
+			userID := it.UserID
+			result = append(result, wecommon.SessionKeyActivity{Addr: addr, UserID: userID, LastActive: it.LastActive})
 		}
 	}
 	return result, nil
@@ -138,9 +139,9 @@ func (s *sessionKeyActivityStorageCosmosDB) Save(items []wecommon.SessionKeyActi
 		}
 		for _, it := range shardItems {
 			dto.Items = append(dto.Items, sessionKeyActivityItemDTO{
-				Addr:       it.Addr.Hex(),
-				UserIDHex:  hex.EncodeToString(it.UserID),
-				LastActive: it.LastActive.UTC().Format(time.RFC3339),
+				Addr:       it.Addr.Bytes(),
+				UserID:     it.UserID,
+				LastActive: it.LastActive,
 			})
 		}
 		b, err := json.Marshal(dto)
