@@ -77,14 +77,16 @@ func (bp *l1BlockProcessor) Process(ctx context.Context, processed *common.Proce
 		// This requires block to be stored first ... but can permanently fail a block
 		err = bp.crossChainProcessors.Remote.StoreCrossChainMessages(ctx, processed.BlockHeader, processed)
 		if err != nil {
-			// todo @matt: do we need to revert the block insertion here so we can retry later?
-			return nil, errors.New("failed to process cross chain messages")
+			bp.logger.Error("Failed to store cross chain messages", log.ErrKey, err)
+			// revert the block so we can retry
+			return nil, errutil.ErrCriticalCrossChainProcessing
 		}
 
 		err = bp.crossChainProcessors.Remote.StoreCrossChainValueTransfers(ctx, processed.BlockHeader, processed)
 		if err != nil {
-			// todo @matt: do we need to revert the block insertion here so we can retry later?
-			return nil, fmt.Errorf("failed to process cross chain transfers. Cause: %w", err)
+			bp.logger.Error("Failed to store cross chain value transfers", log.ErrKey, err)
+			// revert the block so we can retry
+			return nil, errutil.ErrCriticalCrossChainProcessing
 		}
 	}
 

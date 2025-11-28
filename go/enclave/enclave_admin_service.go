@@ -192,6 +192,21 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 
 	result, rollupMetadata, err := e.ingestL1Block(ctx, blockData)
 	if err != nil {
+		if errorRequiresRevert(err) {
+			// revert the partially processed block so the host can retry
+			err = e.storage.DeleteUnprocessedBlock(ctx, blockData.BlockHeader.Hash())
+			if err != nil {
+				// kill the enclave as this is a serious issue, on restart the enclave will attempt to clean up again
+				e.logger.Crit("failed to cleanup unprocessed block after critical rollup error", log.BlockHashKey, blockData.BlockHeader.Hash(), log.ErrKey, err)
+				return nil, err
+			}
+			err = e.l1BlockProcessor.ResetHead(ctx)
+			if err != nil {
+				// kill the enclave as head block is now out of sync with storage
+				e.logger.Crit("failed to revert L1 head after critical rollup error", log.BlockHashKey, blockData.BlockHeader.Hash(), log.ErrKey, err)
+				return nil, err
+			}
+		}
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
 
@@ -595,22 +610,11 @@ func (e *enclaveAdminService) ingestL1Block(ctx context.Context, processed *comm
 		rollupMetadataList, err = e.processRollups(ctx, processed)
 		if err != nil {
 			if errors.Is(err, errutil.ErrCriticalRollupProcessing) {
-				// revert the partially processed block so the host can retry
-				err = e.storage.DeleteUnprocessedBlock(ctx, processed.BlockHeader.Hash())
-				if err != nil {
-					// kill the enclave as this is a serious issue, on restart the enclave will attempt to clean up again
-					e.logger.Crit("failed to cleanup unprocessed block after critical rollup error", log.BlockHashKey, processed.BlockHeader.Hash(), log.ErrKey, err)
-					return nil, nil, err
-				}
-				err = e.l1BlockProcessor.ResetHead(ctx)
-				if err != nil {
-					// kill the enclave as head block is now out of sync with storage
-					e.logger.Crit("failed to revert L1 head after critical rollup error", log.BlockHashKey, processed.BlockHeader.Hash(), log.ErrKey, err)
-					return nil, nil, err
-				}
+				// only propagate the error if we encounter a critical error on a sequencer signed rollup
+				return nil, nil, err
 			}
-			// only propagate the error if we encounter a critical error on a sequencer signed rollup
-			return nil, nil, err
+			// only info level for visibility but could be caused by bad data on L1 for example
+			e.logger.Info("Unable to ingest rollup metadata", log.ErrKey, err)
 		}
 	}
 
@@ -770,4 +774,9 @@ func getSignatureValidator(useInMemDB bool, storage storage.Storage, logger geth
 		return ethereummock.NewMockSignatureValidator(), nil
 	}
 	return components.NewSignatureValidator(storage, logger)
+}
+
+func errorRequiresRevert(err error) bool {
+	return errors.Is(err, errutil.ErrCriticalRollupProcessing) ||
+		errors.Is(err, errutil.ErrCriticalCrossChainProcessing)
 }
