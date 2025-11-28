@@ -27,7 +27,9 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 )
 
@@ -543,6 +545,8 @@ func (g *Guardian) catchupWithL2() error {
 // returns false if the block was not processed
 // todo - @matt - think about removing the TryLock
 func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, error) {
+	defer core.LogMethodDuration(g.logger, measure.NewStopwatch(), "Host submitL1Block", &core.RelaxedThresholds, log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
+
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
 	// todo @matt - do we need to lock here?
 	if !g.submitDataLock.TryLock() {
