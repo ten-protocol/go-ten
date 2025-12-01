@@ -41,6 +41,8 @@ type L1BlockProcessor interface {
 	GetHead(context.Context) (*types.Header, error)
 	GetCrossChainContractAddress() *gethcommon.Address
 	HealthCheck() (bool, error)
+	// ResetHead resyncs the in-memory head to the storage head, useful if a block getting processed has to be reverted
+	ResetHead(ctx context.Context) error
 }
 
 // UpgradeManager manages network upgrade events and dispatches them to registered handlers

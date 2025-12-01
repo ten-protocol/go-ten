@@ -370,6 +370,38 @@ func (s *storageImpl) DeleteDirtyBlocks(ctx context.Context) error {
 	return nil
 }
 
+func (s *storageImpl) DeleteUnprocessedBlock(ctx context.Context, blockHash common.L1BlockHash) error {
+	defer s.logDuration("DeleteUnprocessedBlock", measure.NewStopwatch())
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+
+	s.logger.Warn("Deleting unprocessed block due to failed processing", log.BlockHashKey, blockHash)
+
+	// delete rollups associated with this block
+	err = enclavedb.DeleteSpecificUnprocessedRollups(ctx, dbTx, blockHash)
+	if err != nil {
+		return fmt.Errorf("could not delete unprocessed rollups for block. Cause: %w", err)
+	}
+	// delete cross chain messages associated with this block
+	err = enclavedb.DeleteSpecificUnprocessedL1Messages(ctx, dbTx, blockHash)
+	if err != nil {
+		return fmt.Errorf("could not delete unprocessed cross chain messages for block. Cause: %w", err)
+	}
+	// delete the block itself
+	err = enclavedb.DeleteSpecificUnprocessedBlock(ctx, dbTx, blockHash)
+	if err != nil {
+		return fmt.Errorf("could not delete unprocessed block. Cause: %w", err)
+	}
+
+	if err := dbTx.Commit(); err != nil {
+		return fmt.Errorf("could not commit deletion of unprocessed block. Cause: %w", err)
+	}
+	return nil
+}
+
 func (s *storageImpl) FetchBlock(ctx context.Context, blockHash common.L1BlockHash) (*types.Header, error) {
 	defer s.logDuration("FetchBlockHeader", measure.NewStopwatch())
 	return s.cachingService.ReadBlock(ctx, blockHash, func() (*types.Header, error) {

@@ -300,3 +300,30 @@ func DeleteUnProcessedBlock(ctx context.Context, tx *sqlx.Tx) error {
 	_, err := tx.ExecContext(ctx, "delete from block where processed=false")
 	return err
 }
+
+// these methods include the processed check for safety when rolling back failed blocks
+
+func DeleteSpecificUnprocessedBlock(ctx context.Context, tx *sqlx.Tx, blockHash gethcommon.Hash) error {
+	res, err := tx.ExecContext(ctx, "delete from block where hash=? and processed=false", blockHash.Bytes())
+	if err != nil {
+		return err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("no unprocessed block found for hash %s", blockHash.String())
+	}
+	return nil
+}
+
+func DeleteSpecificUnprocessedRollups(ctx context.Context, tx *sqlx.Tx, blockHash gethcommon.Hash) error {
+	_, err := tx.ExecContext(ctx, "delete from rollup where compression_block in (select id from block where hash=? and processed=false)", blockHash.Bytes())
+	return err
+}
+
+func DeleteSpecificUnprocessedL1Messages(ctx context.Context, tx *sqlx.Tx, blockHash gethcommon.Hash) error {
+	_, err := tx.ExecContext(ctx, "delete from l1_msg where block in (select id from block where hash=? and processed=false)", blockHash.Bytes())
+	return err
+}
