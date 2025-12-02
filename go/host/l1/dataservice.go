@@ -285,18 +285,6 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 	return processed, nil
 }
 
-func (r *DataService) getContractLogs(block *types.Header, contractAddr gethcommon.Address) ([]types.Log, error) {
-	blkHash := block.Hash()
-	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{
-		BlockHash: &blkHash,
-		Addresses: []gethcommon.Address{contractAddr},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("unable to fetch logs for contract %s: %w", contractAddr.Hex(), err)
-	}
-	return logs, nil
-}
-
 func (r *DataService) processNetworkUpgradeLog(l types.Log, processed *common.ProcessedL1Data) error {
 	txData, err := r.fetchTxAndReceipt(l.TxHash)
 	if err != nil {
