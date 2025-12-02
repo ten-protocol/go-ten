@@ -165,9 +165,12 @@ func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *we
 		return nil, nil, errors.New("creation of subscriptions is not supported")
 	}
 
-	// todo - we might want to allow access to public logs
+	// Allow unauthenticated subscriptions with the default user
 	if len(subNotifier.UserID) == 0 {
-		return nil, nil, errors.New("illegal access")
+		if api.we.DefaultUser == nil {
+			return nil, nil, errors.New("default user not found")
+		}
+		return subNotifier, api.we.DefaultUser, nil
 	}
 
 	user, err := api.we.Storage.GetUser(subNotifier.UserID)

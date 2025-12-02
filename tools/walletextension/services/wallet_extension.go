@@ -52,6 +52,7 @@ type Services struct {
 	NewHeadsService     *subscriptioncommon.NewHeadsService
 	cacheInvalidationCh chan *tencommon.BatchHeader
 	MetricsTracker      metrics.Metrics
+	DefaultUser         *common.GWUser
 	ActivityTracker     SessionKeyActivityTracker
 	TxSender            TxSender
 }
@@ -96,6 +97,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		Config:              config,
 		cacheInvalidationCh: make(chan *tencommon.BatchHeader),
 		MetricsTracker:      metricsTracker,
+		DefaultUser:         nil,
 		ActivityTracker:     activityTracker,
 	}
 
@@ -121,6 +123,14 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 
 	go _startCacheEviction(&services, logger)
 
+	// Initialize a single default user for unauthenticated requests
+	if services.DefaultUser == nil {
+		if user, err := ReturnDefaultUserAndAccount(config); err == nil {
+			services.DefaultUser = user
+		} else {
+			logger.Warn("Failed to create default user", "err", err)
+		}
+	}
 	return &services
 }
 

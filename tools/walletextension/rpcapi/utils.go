@@ -43,6 +43,7 @@ const (
 )
 
 var ErrRPCNotImplemented = errors.New("rpc endpoint not implemented")
+var ErrAuthenticationTokenMissing = errors.New("authentication token missing")
 
 type AuthExecCfg struct {
 	// these 4 fields specify the account(s) that should make the backend call
@@ -98,19 +99,32 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
 	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
 	requestStartTime := time.Now()
+
+	// get the user from the request
 	user, err := extractUserForRequest(ctx, w)
-	if err != nil {
+
+	switch err {
+	case nil:
+		// proced with the user from the request
+	case ErrAuthenticationTokenMissing:
+		// use the default user for public access
+		user = w.DefaultUser
+	default:
+		// return the error
 		return nil, err
 	}
 
 	w.MetricsTracker.RecordUserActivity(user.ID)
 
-	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
-	if !rateLimitAllowed {
-		services.Audit(w, services.WarnLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
-		return nil, errors.New("rate limit exceeded")
+	// use rate limiting for non-default users
+	if user != w.DefaultUser {
+		rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
+		if !rateLimitAllowed {
+			services.Audit(w, services.WarnLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
+			return nil, errors.New("rate limit exceeded")
+		}
+		defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	}
-	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 
 	cacheArgs := []any{user.ID, method}
 	cacheArgs = append(cacheArgs, args...)
@@ -205,6 +219,9 @@ func extractUserID(ctx context.Context, _ *services.Services) ([]byte, error) {
 	token, ok := ctx.Value(rpc.GWTokenKey{}).(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid authentication token: %s", ctx.Value(rpc.GWTokenKey{}))
+	}
+	if len(strings.TrimSpace(token)) == 0 {
+		return nil, ErrAuthenticationTokenMissing
 	}
 	userID := gethcommon.FromHex(token)
 	if len(userID) != viewingkey.UserIDLength {
