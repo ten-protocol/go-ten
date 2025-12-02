@@ -2,6 +2,24 @@
 ---
 # Ten Testnet Change Log
 
+# Dec 2025-12-02 (v1.8.0)
+* This is an L2 deployment release meaning state will be lost in order to upgrade the network.
+* A full list of the PRs merged in this release is as below;
+    * `83a56421` Host: avoid multiple getlogs calls (#2752)
+    * `f9784fe4` Use default user if existing user is not set for execauth (#2714)
+    * `ccacf477` Session key funds expiration persistence (#2718)
+    * `2cb80593` Enclave: avoid corrupting data when block processing fails (#2749)
+    * `094913f3` Upgrade go-ethereum, move to osaka, misc fixes (#2722)
+    * `4b090cd1` Session key funds expiration (#2677)
+    * `2190d9a4` Add tx timestamp to personal txs (#2748)
+    * `f15b936e` Upgrade geth to 1.16.7 and prysm to 7.0.0 (#2746)
+    * `d3c1791d` Add erc20 (#2747)
+    * `651f22fb` Testnet recover funds (#2685)
+    * `97139144` Make rollup limiter figures configurable (#2744)
+    * `5acb5ec9` Expose sequencer attestation reports to tenscan (#2741)
+    * `980bcfe8` Move postgres docker into launcher  (#2743)
+    * `6b392b5f` Use postgres as host db on local testnet (#2742)
+
 # Oct 2025-10-27 (v1.7.0)
 * This is an L2 upgrade release meaning state will be persisted across the release.
 * A full list of the PRs merged in this release is as below;
