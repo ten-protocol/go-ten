@@ -29,6 +29,7 @@ type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
 	DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (bool, error)
 	SignTx(ctx context.Context, user *common.GWUser, sessionKeyAddr gethcommon.Address, input *types.Transaction) (*types.Transaction, error)
+	SetTxSender(txSender TxSender)
 }
 
 type skManager struct {
@@ -36,6 +37,7 @@ type skManager struct {
 	config          *common.Config
 	logger          gethlog.Logger
 	activityTracker SessionKeyActivityTracker
+	txSender        TxSender
 }
 
 func NewSKManager(storage storage.UserStorage, config *common.Config, logger gethlog.Logger, tracker SessionKeyActivityTracker) SKManager {
@@ -77,6 +79,37 @@ func (m *skManager) DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcom
 
 	if _, exists := user.SessionKeys[sessionKeyAddr]; !exists {
 		return false, fmt.Errorf("session key not found: %s", sessionKeyAddr.Hex())
+	}
+
+	// Expire funds before deletion if txSender is available
+	if m.txSender != nil {
+		// Find the user's primary account (first account registered with the user)
+		var firstAccount *common.GWAccount
+		for _, account := range user.Accounts {
+			firstAccount = account
+			break
+		}
+		if firstAccount != nil && firstAccount.Address != nil {
+			// Attempt to transfer funds from session key to primary account
+			_, err := m.txSender.SendAllMinusGasWithSK(context.Background(), user, sessionKeyAddr, *firstAccount.Address)
+			if err != nil {
+				m.logger.Error("Failed to expire funds from session key before deletion",
+					"error", err,
+					"userID", common.HashForLogging(user.ID),
+					"sessionKeyAddress", sessionKeyAddr.Hex())
+				return false, err // fail deletion if funds expiration fails (we won't be able to recover funds at all)
+			} else {
+				m.logger.Info("Successfully expired funds from session key before deletion",
+					"userID", common.HashForLogging(user.ID),
+					"sessionKeyAddress", sessionKeyAddr.Hex())
+			}
+		} else {
+			m.logger.Error("No primary account found for user, skipping funds expiration",
+				"userID", common.HashForLogging(user.ID),
+				"sessionKeyAddress", sessionKeyAddr.Hex())
+			return false, errors.New("no primary account found for user")
+		}
+
 	}
 
 	err := m.storage.RemoveSessionKey(user.ID, &sessionKeyAddr)
@@ -137,6 +170,11 @@ func (m *skManager) GetSessionKey(user *common.GWUser, sessionKeyAddr gethcommon
 	}
 
 	return sessionKey, nil
+}
+
+// SetTxSender sets the transaction sender for funds expiration
+func (m *skManager) SetTxSender(txSender TxSender) {
+	m.txSender = txSender
 }
 
 func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, sessionKeyAddr gethcommon.Address, tx *types.Transaction) (*types.Transaction, error) {

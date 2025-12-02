@@ -104,6 +104,9 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 	// Initialize transaction sender
 	services.TxSender = NewTxSender(services.BackendRPC, services.SKManager, logger)
 
+	// Wire TxSender to SKManager for funds expiration on session key deletion
+	services.SKManager.SetTxSender(services.TxSender)
+
 	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(
 		func() (chan *tencommon.BatchHeader, <-chan error, error) {
 			logger.Info("Connecting to new heads service...")
