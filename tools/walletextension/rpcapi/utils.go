@@ -42,8 +42,10 @@ const (
 	sendTransactionDuration = 20 * time.Second
 )
 
-var ErrRPCNotImplemented = errors.New("rpc endpoint not implemented")
-var ErrAuthenticationTokenMissing = errors.New("authentication token missing")
+var (
+	ErrRPCNotImplemented          = errors.New("rpc endpoint not implemented")
+	ErrAuthenticationTokenMissing = errors.New("authentication token missing")
+)
 
 type AuthExecCfg struct {
 	// these 4 fields specify the account(s) that should make the backend call
