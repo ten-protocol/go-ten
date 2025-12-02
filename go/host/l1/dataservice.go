@@ -260,20 +260,20 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 			if len(l.Topics) > 0 {
 				switch l.Topics[0] {
 				case ethadapter.UpgradedEventID:
-					processErr = r.processSingleNetworkUpgradeLog(l, processed)
+					processErr = r.processNetworkUpgradeLog(l, processed)
 				case ethadapter.NetworkContractAddressAddedID, ethadapter.AdditionalContractAddressAddedID:
-					processErr = r.processSingleNetworkConfigLog(l, processed)
+					processErr = r.processNetworkConfigLog(l, processed)
 				default:
 					// unknown event, continue
 					r.logger.Debug("Unknown log topic from NetworkConfig", "topic", l.Topics[0], "txHash", l.TxHash)
 				}
 			}
 		case allAddresses.L1MessageBus:
-			processErr = r.processSingleMessageBusLog(l, processed)
+			processErr = r.processMessageBusLog(l, processed)
 		case allAddresses.EnclaveRegistry:
-			processErr = r.processSingleEnclaveRegistryLog(l, processed)
+			processErr = r.processEnclaveRegistryLog(l, processed)
 		case allAddresses.DataAvailabilityRegistry:
-			processErr = r.processSingleRollupLog(l, processed)
+			processErr = r.processRollupLog(l, processed)
 		}
 
 		if processErr != nil {
@@ -297,8 +297,7 @@ func (r *DataService) getContractLogs(block *types.Header, contractAddr gethcomm
 	return logs, nil
 }
 
-// processSingleNetworkUpgradeLog processes a single NetworkUpgrade log
-func (r *DataService) processSingleNetworkUpgradeLog(l types.Log, processed *common.ProcessedL1Data) error {
+func (r *DataService) processNetworkUpgradeLog(l types.Log, processed *common.ProcessedL1Data) error {
 	txData, err := r.fetchTxAndReceipt(l.TxHash)
 	if err != nil {
 		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
@@ -317,8 +316,7 @@ func (r *DataService) processSingleNetworkUpgradeLog(l types.Log, processed *com
 	return nil
 }
 
-// processSingleNetworkConfigLog processes a single NetworkConfig log
-func (r *DataService) processSingleNetworkConfigLog(l types.Log, processed *common.ProcessedL1Data) error {
+func (r *DataService) processNetworkConfigLog(l types.Log, processed *common.ProcessedL1Data) error {
 	txData, err := r.fetchTxAndReceipt(l.TxHash)
 	if err != nil {
 		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
@@ -336,8 +334,7 @@ func (r *DataService) processSingleNetworkConfigLog(l types.Log, processed *comm
 	return nil
 }
 
-// processSingleMessageBusLog processes a single MessageBus log
-func (r *DataService) processSingleMessageBusLog(l types.Log, processed *common.ProcessedL1Data) error {
+func (r *DataService) processMessageBusLog(l types.Log, processed *common.ProcessedL1Data) error {
 	if len(l.Topics) == 0 {
 		r.logger.Error("Log has no topics. Should not happen", "txHash", l.TxHash)
 		return errors.New("log has no topics")
@@ -357,8 +354,7 @@ func (r *DataService) processSingleMessageBusLog(l types.Log, processed *common.
 	return r.processCrossChainLogs(l, txData, processed)
 }
 
-// processSingleEnclaveRegistryLog processes a single EnclaveRegistry log
-func (r *DataService) processSingleEnclaveRegistryLog(l types.Log, processed *common.ProcessedL1Data) error {
+func (r *DataService) processEnclaveRegistryLog(l types.Log, processed *common.ProcessedL1Data) error {
 	if len(l.Topics) == 0 {
 		return nil
 	}
@@ -391,8 +387,7 @@ func (r *DataService) processSingleEnclaveRegistryLog(l types.Log, processed *co
 	return processErr
 }
 
-// processSingleRollupLog processes a single DataAvailabilityRegistry log
-func (r *DataService) processSingleRollupLog(l types.Log, processed *common.ProcessedL1Data) error {
+func (r *DataService) processRollupLog(l types.Log, processed *common.ProcessedL1Data) error {
 	if len(l.Topics) == 0 {
 		return nil
 	}
@@ -408,10 +403,6 @@ func (r *DataService) processSingleRollupLog(l types.Log, processed *common.Proc
 		return err
 	}
 
-	return r.processRollupLog(l, txData, processed)
-}
-
-func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
 	abi, err := DataAvailabilityRegistry.DataAvailabilityRegistryMetaData.GetAbi()
 	if err != nil {
 		r.logger.Error("Error getting DataAvailabilityRegistry ABI", log.ErrKey, err)
