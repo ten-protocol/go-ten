@@ -5,6 +5,7 @@
 # Dec 2025-12-02 (v1.8.0)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
+    * `52819fd0` Block processing duration logging (#2753)
     * `83a56421` Host: avoid multiple getlogs calls (#2752)
     * `f9784fe4` Use default user if existing user is not set for execauth (#2714)
     * `ccacf477` Session key funds expiration persistence (#2718)
