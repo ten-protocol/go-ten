@@ -226,6 +226,7 @@ func (r *DataService) latestCanonAncestor(remote gethcommon.Hash) (*common.Chain
 }
 
 // GetTenRelevantTransactions processes logs in their natural order without grouping by transaction hash.
+// Optimized to make a single eth_getLogs call for all relevant contracts.
 func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.ProcessedL1Data, error) {
 	processed := &common.ProcessedL1Data{
 		BlockHeader: block,
@@ -234,20 +235,51 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 	networkConfigAddress := r.contractRegistry.NetworkConfigLib().GetContractAddr()
 	allAddresses := r.contractRegistry.GetContractAddresses()
 
-	if err := r.processNetworkConfigLogs(block, *networkConfigAddress, processed); err != nil {
-		return nil, err
+	blkHash := block.Hash()
+	contractAddresses := []gethcommon.Address{
+		*networkConfigAddress,
+		allAddresses.L1MessageBus,
+		allAddresses.EnclaveRegistry,
+		allAddresses.DataAvailabilityRegistry,
 	}
-	if err := r.processNetworkUpgradeLogs(block, *networkConfigAddress, processed); err != nil {
-		return nil, err
+
+	allLogs, err := r.ethClient.GetLogs(ethereum.FilterQuery{
+		BlockHash: &blkHash,
+		Addresses: contractAddresses,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("unable to fetch logs for block %s: %w", blkHash.Hex(), err)
 	}
-	if err := r.processMessageBusLogs(block, allAddresses.L1MessageBus, processed); err != nil {
-		return nil, err
-	}
-	if err := r.processEnclaveRegistryLogs(block, allAddresses.EnclaveRegistry, processed); err != nil {
-		return nil, err
-	}
-	if err := r.processRollupLogs(block, allAddresses.DataAvailabilityRegistry, processed); err != nil {
-		return nil, err
+
+	// route logs to appropriate processing functions based on contract address
+	for _, l := range allLogs {
+		var processErr error
+		switch l.Address {
+		case *networkConfigAddress:
+			// both NetworkConfig and NetworkUpgrade logs come from the same contract
+			if len(l.Topics) > 0 {
+				switch l.Topics[0] {
+				case ethadapter.UpgradedEventID:
+					processErr = r.processSingleNetworkUpgradeLog(l, processed)
+				case ethadapter.NetworkContractAddressAddedID, ethadapter.AdditionalContractAddressAddedID:
+					processErr = r.processSingleNetworkConfigLog(l, processed)
+				default:
+					// unknown event, continue
+					r.logger.Debug("Unknown log topic from NetworkConfig", "topic", l.Topics[0], "txHash", l.TxHash)
+				}
+			}
+		case allAddresses.L1MessageBus:
+			processErr = r.processSingleMessageBusLog(l, processed)
+		case allAddresses.EnclaveRegistry:
+			processErr = r.processSingleEnclaveRegistryLog(l, processed)
+		case allAddresses.DataAvailabilityRegistry:
+			processErr = r.processSingleRollupLog(l, processed)
+		}
+
+		if processErr != nil {
+			r.logger.Error("Error processing log", "txHash", l.TxHash, "address", l.Address, "error", processErr)
+			return nil, fmt.Errorf("error processing log: %w", processErr)
+		}
 	}
 
 	return processed, nil
@@ -265,162 +297,118 @@ func (r *DataService) getContractLogs(block *types.Header, contractAddr gethcomm
 	return logs, nil
 }
 
-func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	logs, err := r.getContractLogs(block, contractAddr)
+// processSingleNetworkUpgradeLog processes a single NetworkUpgrade log
+func (r *DataService) processSingleNetworkUpgradeLog(l types.Log, processed *common.ProcessedL1Data) error {
+	txData, err := r.fetchTxAndReceipt(l.TxHash)
 	if err != nil {
+		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 		return err
 	}
 
-	for _, l := range logs {
-		if len(l.Topics) == 0 {
-			r.logger.Error("Log has no topics. Should not happen", "txHash", l.TxHash)
-			return errors.New("log has no topics")
-		}
-		txData, err := r.fetchTxAndReceipt(l.TxHash)
-		if err != nil {
-			r.logger.Error("Error creating transaction data. Should not happen", "txHash", l.TxHash, "error", err)
-			return fmt.Errorf("error creating transaction data. Should not happen: %w", err)
-		}
-		switch l.Topics[0] {
-		case ethadapter.CrossChainEventID:
-			err = r.processCrossChainLogs(l, txData, processed)
-		}
-		if err != nil {
-			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
-			return fmt.Errorf("error processing log: %w", err)
-		}
+	// Convert the log to network upgrade data
+	networkUpgrades, err := events.ConvertLogsToNetworkUpgrades([]types.Log{l}, ethadapter.UpgradedEventName, ethadapter.NetworkConfigABI)
+	if err != nil {
+		r.logger.Error("Error converting logs to network upgrades", "txHash", l.TxHash, "error", err)
+		return fmt.Errorf("error converting logs to network upgrades: %w", err)
+	}
+
+	txData.NetworkUpgrades = networkUpgrades
+	processed.AddEvent(common.NetworkUpgradedTx, txData)
+	return nil
+}
+
+// processSingleNetworkConfigLog processes a single NetworkConfig log
+func (r *DataService) processSingleNetworkConfigLog(l types.Log, processed *common.ProcessedL1Data) error {
+	txData, err := r.fetchTxAndReceipt(l.TxHash)
+	if err != nil {
+		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
+		return err
+	}
+
+	switch l.Topics[0] {
+	case ethadapter.NetworkContractAddressAddedID:
+		processed.AddEvent(common.NetworkContractAddressAddedTx, txData)
+	case ethadapter.AdditionalContractAddressAddedID:
+		processed.AddEvent(common.AdditionalContractAddressAddedTx, txData)
+	default:
+		r.logger.Trace("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
 	}
 	return nil
 }
 
-func (r *DataService) processNetworkUpgradeLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	logs, err := r.getContractLogs(block, contractAddr)
+// processSingleMessageBusLog processes a single MessageBus log
+func (r *DataService) processSingleMessageBusLog(l types.Log, processed *common.ProcessedL1Data) error {
+	if len(l.Topics) == 0 {
+		r.logger.Error("Log has no topics. Should not happen", "txHash", l.TxHash)
+		return errors.New("log has no topics")
+	}
+
+	if l.Topics[0] != ethadapter.CrossChainEventID {
+		// not a cross-chain event, skip
+		return nil
+	}
+
+	txData, err := r.fetchTxAndReceipt(l.TxHash)
 	if err != nil {
-		return err
+		r.logger.Error("Error creating transaction data. Should not happen", "txHash", l.TxHash, "error", err)
+		return fmt.Errorf("error creating transaction data. Should not happen: %w", err)
 	}
 
-	// Filter logs for network upgrade events
-	var upgradeLogs []types.Log
-	for _, l := range logs {
-		if len(l.Topics) > 0 && l.Topics[0] == ethadapter.UpgradedEventID {
-			upgradeLogs = append(upgradeLogs, l)
-		}
-	}
-
-	// Process each upgrade log
-	for _, l := range upgradeLogs {
-		txData, err := r.fetchTxAndReceipt(l.TxHash)
-		if err != nil {
-			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
-			continue
-		}
-
-		// Convert the log to network upgrade data
-		networkUpgrades, err := events.ConvertLogsToNetworkUpgrades([]types.Log{l}, ethadapter.UpgradedEventName, ethadapter.NetworkConfigABI)
-		if err != nil {
-			r.logger.Error("Error converting logs to network upgrades", "txHash", l.TxHash, "error", err)
-			return fmt.Errorf("error converting logs to network upgrades: %w", err)
-		}
-
-		txData.NetworkUpgrades = networkUpgrades
-		processed.AddEvent(common.NetworkUpgradedTx, txData)
-	}
-	return nil
+	return r.processCrossChainLogs(l, txData, processed)
 }
 
-func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	logs, err := r.getContractLogs(block, contractAddr)
+// processSingleEnclaveRegistryLog processes a single EnclaveRegistry log
+func (r *DataService) processSingleEnclaveRegistryLog(l types.Log, processed *common.ProcessedL1Data) error {
+	if len(l.Topics) == 0 {
+		return nil
+	}
+
+	txData, err := r.fetchTxAndReceipt(l.TxHash)
 	if err != nil {
+		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 		return err
 	}
 
-	for _, l := range logs {
-		if len(l.Topics) == 0 {
-			continue
+	var processErr error
+	switch l.Topics[0] {
+	case ethadapter.NetworkSecretInitializedEventID:
+		if processErr = r.processEnclaveRegistrationTx(txData, processed); processErr == nil {
+			processErr = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
 		}
-		txData, err := r.fetchTxAndReceipt(l.TxHash)
-		if err != nil {
-			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
-			continue
-		}
-		switch l.Topics[0] {
-		case ethadapter.NetworkSecretInitializedEventID:
-			if err = r.processEnclaveRegistrationTx(txData, processed); err == nil {
-				err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
-			}
-		case ethadapter.SequencerEnclaveGrantedEventID:
-			err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
-		case ethadapter.SequencerEnclaveRevokedEventID:
-			err = r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
-		case ethadapter.NetworkSecretRequestedID:
-			processed.AddEvent(common.SecretRequestTx, txData)
-		case ethadapter.NetworkSecretRespondedID:
-			processed.AddEvent(common.SecretResponseTx, txData)
-		default:
-			// there are known events that we don't care about here
-			r.logger.Trace("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
-		}
-
-		if err != nil {
-			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
-			return fmt.Errorf("error processing log: %w", err)
-		}
+	case ethadapter.SequencerEnclaveGrantedEventID:
+		processErr = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
+	case ethadapter.SequencerEnclaveRevokedEventID:
+		processErr = r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
+	case ethadapter.NetworkSecretRequestedID:
+		processed.AddEvent(common.SecretRequestTx, txData)
+	case ethadapter.NetworkSecretRespondedID:
+		processed.AddEvent(common.SecretResponseTx, txData)
+	default:
+		// skip over any other events
+		r.logger.Trace("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
 	}
-	return nil
+
+	return processErr
 }
 
-func (r *DataService) processNetworkConfigLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	logs, err := r.getContractLogs(block, contractAddr)
-	if err != nil {
-		return err
+// processSingleRollupLog processes a single DataAvailabilityRegistry log
+func (r *DataService) processSingleRollupLog(l types.Log, processed *common.ProcessedL1Data) error {
+	if len(l.Topics) == 0 {
+		return nil
 	}
-	for _, l := range logs {
-		if len(l.Topics) == 0 {
-			continue
-		}
-		txData, err := r.fetchTxAndReceipt(l.TxHash)
-		if err != nil {
-			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
-			continue
-		}
-		switch l.Topics[0] {
-		case ethadapter.NetworkContractAddressAddedID:
-			processed.AddEvent(common.NetworkContractAddressAddedTx, txData)
-		case ethadapter.AdditionalContractAddressAddedID:
-			processed.AddEvent(common.AdditionalContractAddressAddedTx, txData)
-		default:
-			// there are known events that we don't care about here
-			r.logger.Trace("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
-		}
-	}
-	return nil
-}
 
-func (r *DataService) processRollupLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	rollupLogs, err := r.getContractLogs(block, contractAddr)
+	if l.Topics[0] != ethadapter.RollupAddedID {
+		// not a rollup event, skip
+		return nil
+	}
+
+	txData, err := r.fetchTxAndReceipt(l.TxHash)
 	if err != nil {
+		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 		return err
 	}
 
-	for _, l := range rollupLogs {
-		if len(l.Topics) == 0 {
-			continue
-		}
-		txData, err := r.fetchTxAndReceipt(l.TxHash)
-		if err != nil {
-			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
-			continue
-		}
-		switch l.Topics[0] {
-		case ethadapter.RollupAddedID:
-			err = r.processRollupLog(l, txData, processed)
-		}
-		if err != nil {
-			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
-			return fmt.Errorf("error processing log: %w", err)
-		}
-	}
-	return nil
+	return r.processRollupLog(l, txData, processed)
 }
 
 func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
