@@ -10,6 +10,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 
 	"github.com/ten-protocol/go-ten/go/common/subscription"
@@ -162,7 +164,17 @@ func (r *DataService) Subscribe(handler host.L1BlockHandler) func() {
 
 // FetchNextBlock calculates the next canonical block that should be sent to requester after a given hash.
 // It returns the block and a bool for whether it is the latest known head
-func (r *DataService) FetchNextBlock(remoteHead gethcommon.Hash) (*types.Header, bool, error) {
+func (r *DataService) FetchNextBlock(remoteHead gethcommon.Hash) (blk *types.Header, isLatest bool, err error) {
+	defer func(start *measure.Stopwatch) {
+		var blockHash gethcommon.Hash
+		var blockNumber *big.Int
+		if blk != nil {
+			blockHash = blk.Hash()
+			blockNumber = blk.Number
+		}
+		core.LogMethodDuration(r.logger, start, "FetchNextBlock", &core.RelaxedThresholds, log.BlockHashKey, blockHash, log.BlockHeightKey, blockNumber)
+	}(measure.NewStopwatch())
+
 	if remoteHead == r.head {
 		// remoteHead is the latest known head
 		return nil, false, ErrNoNextBlock
@@ -185,7 +197,7 @@ func (r *DataService) FetchNextBlock(remoteHead gethcommon.Hash) (*types.Header,
 
 	// and send the canonical block at the height after that
 	// (which may be a fork, or it may just be the next on the same branch if we are catching-up)
-	blk, err := r.ethClient.HeaderByNumber(increment(fork.CommonAncestor.Number))
+	blk, err = r.ethClient.HeaderByNumber(increment(fork.CommonAncestor.Number))
 	if err != nil {
 		if errors.Is(err, ethereum.NotFound) {
 			return nil, false, ErrNoNextBlock
@@ -228,6 +240,8 @@ func (r *DataService) latestCanonAncestor(remote gethcommon.Hash) (*common.Chain
 // GetTenRelevantTransactions processes logs in their natural order without grouping by transaction hash.
 // Optimized to make a single eth_getLogs call for all relevant contracts.
 func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.ProcessedL1Data, error) {
+	defer core.LogMethodDuration(r.logger, measure.NewStopwatch(), "GetTenRelevantTransactions", &core.RelaxedThresholds, log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
+
 	processed := &common.ProcessedL1Data{
 		BlockHeader: block,
 		Events:      []common.L1Event{},
