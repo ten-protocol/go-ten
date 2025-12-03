@@ -120,6 +120,7 @@ func TestTenGateway(t *testing.T) {
 		"testSessionKeysGetStorageAt":             testSessionKeysGetStorageAt,
 		"testSessionKeysSendTransaction":          testSessionKeysSendTransaction,
 		"testSessionKeyExpirationAndFundRecovery": testSessionKeyExpirationAndFundRecovery,
+		"testSessionKeyDeletionFundExpiration":    testSessionKeyDeletionFundExpiration,
 		// "testRateLimiter":                   testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -543,6 +544,133 @@ func testSessionKeyExpirationAndFundRecovery(t *testing.T, _ int, httpURL, wsURL
 		"Recovered amount should be at least 90%% of original fund amount")
 
 	t.Logf("✓ Session key expiration and fund recovery test completed successfully!")
+}
+
+func testSessionKeyDeletionFundExpiration(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	testlog.Logger().Info("Created user with encryption token", "t", user0.tgClient.UserID())
+
+	// Register the user so we can call the endpoints that require authentication
+	err = user0.RegisterAccounts()
+	require.NoError(t, err)
+
+	// Sanity log to mark test start
+	testlog.Logger().Info("testSessionKeyDeletionFundExpiration: started")
+
+	ctx := context.Background()
+
+	// 1) Create session key via eth_getStorageAt (CQ method 0x...0003)
+	createSessionKeyAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000003")
+	skAddrBytes, err := user0.HTTPClient.StorageAt(ctx, createSessionKeyAddr, gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, skAddrBytes)
+	skAddress := gethcommon.BytesToAddress(skAddrBytes)
+	t.Logf("✓ Session key created: %s", skAddress.Hex())
+
+	// 2) Fund the session key from the original wallet
+	fundAmount := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(1)) // 1 TEN
+	fromAddr := user0.Wallets[0].Address()
+	gasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	gasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: fromAddr, To: &skAddress, Value: fundAmount})
+	require.NoError(t, err)
+	nonce, err := user0.HTTPClient.PendingNonceAt(ctx, fromAddr)
+	require.NoError(t, err)
+	legacy := &types.LegacyTx{Nonce: nonce, To: &skAddress, Value: fundAmount, GasPrice: gasPrice, Gas: gasLimit}
+	signedFundingTx, err := w.SignTransaction(legacy)
+	require.NoError(t, err)
+	err = user0.HTTPClient.SendTransaction(ctx, signedFundingTx)
+	require.NoError(t, err)
+
+	// wait for receipt
+	{
+		var rec *types.Receipt
+		for i := 0; i < 30; i++ {
+			rec, err = user0.HTTPClient.TransactionReceipt(ctx, signedFundingTx.Hash())
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
+	}
+	t.Logf("✓ Session key funded with %s TEN", fundAmount.String())
+
+	// 3) Record initial balances for assertions
+	initialSKBalance, err := user0.HTTPClient.BalanceAt(ctx, skAddress, nil)
+	require.NoError(t, err)
+	require.Equal(t, fundAmount, initialSKBalance)
+	t.Logf("✓ Initial session key balance: %s TEN", initialSKBalance.String())
+
+	// 4) Check initial balance of user's first account
+	initialUserBalance, err := user0.HTTPClient.BalanceAt(ctx, fromAddr, nil)
+	require.NoError(t, err)
+	t.Logf("✓ Initial user balance: %s TEN", initialUserBalance.String())
+
+	// 5) Delete the session key via getStorageAt (CQ 0x...0004)
+	// This should trigger funds expiration before deletion
+	delParamsObj := map[string]string{
+		"sessionKeyAddress": skAddress.Hex(),
+	}
+	delParamsJSON, err := json.Marshal(delParamsObj)
+	require.NoError(t, err)
+
+	var delResult hexutil.Bytes
+	err = user0.HTTPClient.Client().CallContext(ctx, &delResult, "eth_getStorageAt",
+		"0x0000000000000000000000000000000000000004", string(delParamsJSON), "latest")
+	require.NoError(t, err)
+	require.Len(t, delResult, 1)
+	require.Equal(t, byte(0x01), delResult[0])
+	t.Logf("✓ Session key deleted: %s", skAddress.Hex())
+
+	// 6) Wait a moment for the refund transaction to be submitted
+	time.Sleep(2 * time.Second)
+
+	// 7) Poll user's pending balance until it increases (async refund tx inclusion)
+	var finalUserBalance *big.Int
+	{
+		deadline := time.Now().Add(15 * time.Second)
+		for time.Now().Before(deadline) {
+			bal, err := user0.HTTPClient.PendingBalanceAt(ctx, fromAddr)
+			require.NoError(t, err)
+			if bal.Cmp(initialUserBalance) > 0 {
+				finalUserBalance = bal
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		if finalUserBalance == nil {
+			// take one last reading for logging and fail with a clear message
+			bal, _ := user0.HTTPClient.PendingBalanceAt(ctx, fromAddr)
+			t.Logf("Pending balance did not increase within the timeout. last=%s, initial=%s", bal.String(), initialUserBalance.String())
+			require.FailNow(t, "Timed out waiting for recovered funds to reflect in user's pending balance")
+		}
+	}
+	t.Logf("✓ Final user balance: %s TEN", finalUserBalance.String())
+
+	// 8) Verify that the user's balance increased by the recovered amount (minus gas costs)
+	balanceIncrease := big.NewInt(0).Sub(finalUserBalance, initialUserBalance)
+	t.Logf("✓ Balance increase: %s TEN", balanceIncrease.String())
+
+	// The balance increase should be positive (user received funds back)
+	require.True(t, balanceIncrease.Cmp(big.NewInt(0)) > 0, "User balance should have increased due to fund recovery on deletion")
+
+	// The recovered amount should be at least 90% of the original fund amount
+	// (allowing for gas costs)
+	expectedMinRecovery := big.NewInt(0).Div(big.NewInt(0).Mul(fundAmount, big.NewInt(90)), big.NewInt(100))
+	require.True(t, balanceIncrease.Cmp(expectedMinRecovery) >= 0,
+		"Recovered amount should be at least 90%% of original fund amount")
+
+	// 9) Verify session key balance is now low (funds were transferred out)
+	finalSKBalance, err := user0.HTTPClient.BalanceAt(ctx, skAddress, nil)
+	require.NoError(t, err)
+	t.Logf("✓ Final session key balance: %s TEN", finalSKBalance.String())
+	// Session key balance should be much lower than initial (funds transferred minus gas)
+	require.True(t, finalSKBalance.Cmp(initialSKBalance) < 0, "Session key balance should have decreased after deletion")
+
+	t.Logf("✓ Session key deletion fund expiration test completed successfully!")
 }
 
 func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
