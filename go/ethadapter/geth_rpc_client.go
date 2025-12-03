@@ -30,11 +30,12 @@ const (
 
 // gethRPCClient implements the EthClient interface and allows connection to a real ethereum node
 type gethRPCClient struct {
-	client     *ethclient.Client // the underlying eth rpc client
-	timeout    time.Duration     // the timeout for connecting to, or communicating with, the L1 node
-	logger     gethlog.Logger
-	rpcURL     string
-	blockCache *gocache.Cache
+	client      *ethclient.Client // the underlying eth rpc client
+	timeout     time.Duration     // the timeout for connecting to, or communicating with, the L1 node
+	logger      gethlog.Logger
+	rpcURL      string
+	headerCache *gocache.Cache
+	blockCache  *gocache.Cache
 }
 
 // NewEthClientFromURL instantiates a new ethadapter.EthClient that connects to an ethereum node
@@ -47,11 +48,12 @@ func NewEthClientFromURL(rpcURL string, timeout time.Duration, logger gethlog.Lo
 	logger.Trace(fmt.Sprintf("Initialized eth node connection - addr: %s", rpcURL))
 
 	return &gethRPCClient{
-		client:     client,
-		timeout:    timeout,
-		logger:     logger,
-		rpcURL:     rpcURL,
-		blockCache: newFifoCache(_defaultBlockCacheSize, 5*time.Minute),
+		client:      client,
+		timeout:     timeout,
+		logger:      logger,
+		rpcURL:      rpcURL,
+		headerCache: newFifoCache(_defaultBlockCacheSize, 5*time.Minute),
+		blockCache:  newFifoCache(_defaultBlockCacheSize, 5*time.Minute),
 	}, nil
 }
 
@@ -139,6 +141,12 @@ func (e *gethRPCClient) BlockNumber() (uint64, error) {
 }
 
 func (e *gethRPCClient) HeaderByNumber(n *big.Int) (*types.Header, error) {
+	if n != nil {
+		if header := e.cachedHeaderByNumber(n); header != nil {
+			return header, nil
+		}
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
@@ -146,17 +154,14 @@ func (e *gethRPCClient) HeaderByNumber(n *big.Int) (*types.Header, error) {
 	if err != nil {
 		return nil, err
 	}
-	return b.Header(), nil
+	header := b.Header()
+	e.cacheHeader(header)
+	return header, nil
 }
 
 func (e *gethRPCClient) HeaderByHash(hash gethcommon.Hash) (*types.Header, error) {
-	cachedBlock, found := e.blockCache.Get(hash.Hex())
-	if found {
-		h, ok := cachedBlock.(types.Header)
-		if !ok {
-			return nil, fmt.Errorf("should not happen. could not cast cached block to header")
-		}
-		return &h, nil
+	if header := e.cachedHeaderByHash(hash); header != nil {
+		return header, nil
 	}
 
 	// not in cache, fetch from RPC
@@ -167,15 +172,26 @@ func (e *gethRPCClient) HeaderByHash(hash gethcommon.Hash) (*types.Header, error
 	if err != nil {
 		return nil, err
 	}
-	e.blockCache.Set(hash.Hex(), *block.Header())
-	return block.Header(), nil
+	header := block.Header()
+	e.cacheHeader(header)
+	return header, nil
 }
 
 func (e *gethRPCClient) BlockByHash(hash gethcommon.Hash) (*types.Block, error) {
+	if blk := e.cachedBlockByHash(hash); blk != nil {
+		return blk, nil
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), e.timeout)
 	defer cancel()
 
-	return e.client.BlockByHash(ctx, hash)
+	block, err := e.client.BlockByHash(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+	e.cacheHeader(block.Header())
+	e.cacheBlock(block)
+	return block, nil
 }
 
 func (e *gethRPCClient) SuggestGasTipCap(ctx context.Context) (*big.Int, error) {
@@ -216,6 +232,7 @@ func (e *gethRPCClient) SupportsEventLogs() bool {
 }
 
 func (e *gethRPCClient) Stop() {
+	e.headerCache.StopJanitor()
 	e.blockCache.StopJanitor()
 	e.client.Close()
 }
@@ -270,4 +287,63 @@ func connect(rpcURL string, connectionTimeout time.Duration, logger gethlog.Logg
 	}
 
 	return c, err
+}
+
+func (e *gethRPCClient) cacheHeader(header *types.Header) {
+	if header == nil {
+		return
+	}
+	e.headerCache.Set(headerHashCacheKey(header.Hash()), *header)
+	if header.Number != nil {
+		e.headerCache.Set(headerNumberCacheKey(header.Number), *header)
+	}
+}
+
+func (e *gethRPCClient) cachedHeaderByHash(hash gethcommon.Hash) *types.Header {
+	if cached, found := e.headerCache.Get(headerHashCacheKey(hash)); found {
+		if header, ok := cached.(types.Header); ok {
+			return &header
+		}
+	}
+	return nil
+}
+
+func (e *gethRPCClient) cachedHeaderByNumber(num *big.Int) *types.Header {
+	if num == nil {
+		return nil
+	}
+	if cached, found := e.headerCache.Get(headerNumberCacheKey(num)); found {
+		if h, ok := cached.(types.Header); ok {
+			return &h
+		}
+	}
+	return nil
+}
+
+func (e *gethRPCClient) cacheBlock(block *types.Block) {
+	if block == nil {
+		return
+	}
+	e.blockCache.Set(blockHashCacheKey(block.Hash()), block)
+}
+
+func (e *gethRPCClient) cachedBlockByHash(hash gethcommon.Hash) *types.Block {
+	if cached, found := e.blockCache.Get(blockHashCacheKey(hash)); found {
+		if block, ok := cached.(*types.Block); ok {
+			return block
+		}
+	}
+	return nil
+}
+
+func headerHashCacheKey(hash gethcommon.Hash) string {
+	return "header_hash:" + hash.Hex()
+}
+
+func headerNumberCacheKey(num *big.Int) string {
+	return "header_number:" + num.String()
+}
+
+func blockHashCacheKey(hash gethcommon.Hash) string {
+	return "block_hash:" + hash.Hex()
 }
