@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/hex"
 	"fmt"
+	"reflect"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -44,23 +45,10 @@ func (l LogLevel) String() string {
 func Audit(services *Services, level LogLevel, msg string, params ...any) {
 	safeParams := make([]any, len(params))
 	for i, p := range params {
-		if p == nil {
-			safeParams[i] = "<nil>"
-		} else {
-			safeParams[i] = p
-		}
+		safeParams[i] = safeFormatParam(p)
 	}
 
-	var formattedMsg string
-	// Recover from panics caused by nested nil pointers (e.g., **hexutil.Big) - not nested nil pointers are handled by the safeParams loop above
-	func() {
-		defer func() {
-			if r := recover(); r != nil {
-				formattedMsg = fmt.Sprintf("[audit format error: %v] %s", r, msg)
-			}
-		}()
-		formattedMsg = fmt.Sprintf(msg, safeParams...)
-	}()
+	formattedMsg := fmt.Sprintf(msg, safeParams...)
 
 	switch level {
 	case CriticalLevel:
@@ -78,6 +66,51 @@ func Audit(services *Services, level LogLevel, msg string, params ...any) {
 	default:
 		services.Logger().Info(formattedMsg)
 	}
+}
+
+// safeFormatParam safely formats a parameter, replacing values with nested nil pointers
+// with a safe string representation to prevent segfaults in SGX enclaves
+func safeFormatParam(p any) any {
+	if p == nil {
+		return "<nil>"
+	}
+
+	v := reflect.ValueOf(p)
+	if containsNilPointer(v) {
+		return "<nil>"
+	}
+
+	return p
+}
+
+// containsNilPointer recursively checks if a value contains any nil pointers
+func containsNilPointer(v reflect.Value) bool {
+	switch v.Kind() {
+	case reflect.Ptr, reflect.Interface:
+		if v.IsNil() {
+			return true
+		}
+		return containsNilPointer(v.Elem())
+	case reflect.Struct:
+		for i := 0; i < v.NumField(); i++ {
+			if containsNilPointer(v.Field(i)) {
+				return true
+			}
+		}
+	case reflect.Slice, reflect.Array:
+		for i := 0; i < v.Len(); i++ {
+			if containsNilPointer(v.Index(i)) {
+				return true
+			}
+		}
+	case reflect.Map:
+		for _, key := range v.MapKeys() {
+			if containsNilPointer(v.MapIndex(key)) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ReturnDefaultUserAndAccount creates a new in-memory user and a corresponding account.
