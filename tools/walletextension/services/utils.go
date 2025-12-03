@@ -51,7 +51,16 @@ func Audit(services *Services, level LogLevel, msg string, params ...any) {
 		}
 	}
 
-	formattedMsg := fmt.Sprintf(msg, safeParams...)
+	var formattedMsg string
+	// Recover from panics caused by nested nil pointers (e.g., **hexutil.Big) - not nested nil pointers are handled by the safeParams loop above
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				formattedMsg = fmt.Sprintf("[audit format error: %v] %s", r, msg)
+			}
+		}()
+		formattedMsg = fmt.Sprintf(msg, safeParams...)
+	}()
 
 	switch level {
 	case CriticalLevel:
