@@ -324,13 +324,13 @@ func (e *gethRPCClient) cacheBlock(block *types.Block) {
 	if block == nil {
 		return
 	}
-	e.blockCache.Set(blockHashCacheKey(block.Hash()), *block)
+	e.blockCache.Set(blockHashCacheKey(block.Hash()), block)
 }
 
 func (e *gethRPCClient) cachedBlockByHash(hash gethcommon.Hash) *types.Block {
 	if cached, found := e.blockCache.Get(blockHashCacheKey(hash)); found {
-		if block, ok := cached.(types.Block); ok {
-			return &block
+		if block, ok := cached.(*types.Block); ok {
+			return block
 		}
 	}
 	return nil
