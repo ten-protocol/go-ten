@@ -249,6 +249,22 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 	networkConfigAddress := r.contractRegistry.NetworkConfigLib().GetContractAddr()
 	allAddresses := r.contractRegistry.GetContractAddresses()
 
+	allLogs, err := r.fetchContractLogs(block, networkConfigAddress, allAddresses)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.processAllLogs(allLogs, networkConfigAddress, allAddresses, processed)
+	if err != nil {
+		return nil, err
+	}
+
+	return processed, nil
+}
+
+func (r *DataService) fetchContractLogs(block *types.Header, networkConfigAddress *gethcommon.Address, allAddresses *common.NetworkConfigAddresses) ([]types.Log, error) {
+	defer core.LogMethodDuration(r.logger, measure.NewStopwatch(), "fetchContractLogs", &core.RelaxedThresholds, log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
+
 	blkHash := block.Hash()
 	contractAddresses := []gethcommon.Address{
 		*networkConfigAddress,
@@ -264,6 +280,12 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 	if err != nil {
 		return nil, fmt.Errorf("unable to fetch logs for block %s: %w", blkHash.Hex(), err)
 	}
+
+	return allLogs, nil
+}
+
+func (r *DataService) processAllLogs(allLogs []types.Log, networkConfigAddress *gethcommon.Address, allAddresses *common.NetworkConfigAddresses, processed *common.ProcessedL1Data) error {
+	defer core.LogMethodDuration(r.logger, measure.NewStopwatch(), "processAllLogs", &core.RelaxedThresholds, "numLogs", len(allLogs), log.BlockHashKey, processed.BlockHeader.Hash())
 
 	// route logs to appropriate processing functions based on contract address
 	for _, l := range allLogs {
@@ -292,11 +314,11 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 
 		if processErr != nil {
 			r.logger.Error("Error processing log", "txHash", l.TxHash, "address", l.Address, "error", processErr)
-			return nil, fmt.Errorf("error processing log: %w", processErr)
+			return fmt.Errorf("error processing log: %w", processErr)
 		}
 	}
 
-	return processed, nil
+	return nil
 }
 
 func (r *DataService) processNetworkUpgradeLog(l types.Log, processed *common.ProcessedL1Data) error {
