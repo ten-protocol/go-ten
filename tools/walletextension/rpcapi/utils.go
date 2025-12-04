@@ -71,7 +71,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	if ctx == nil {
 		return nil, errors.New("invalid call. nil Context")
 	}
-	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
+	w.Logger().Debug("RPC start", "method", method, "args", args)
 	requestStartTime := time.Now()
 	cacheArgs := []any{method}
 	cacheArgs = append(cacheArgs, args...)
@@ -90,16 +90,16 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 		})
 	})
 	if err != nil {
-		services.Audit(w, services.ErrorLevel, "RPC call failed. method=%s args=%v error=%+v time=%d", method, args, err, time.Since(requestStartTime).Milliseconds())
+		w.Logger().Error("RPC call failed", "method", method, "args", args, "err", err, "time", time.Since(requestStartTime).Milliseconds())
 		return nil, err
 	}
 
-	services.Audit(w, services.InfoLevel, "RPC call succeeded. method=%s args=%v result=%+v time=%d", method, args, res, time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("RPC call succeeded", "method", method, "args", args, "result", res, "time", time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
-	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
+	w.Logger().Debug("RPC start", "method", method, "args", args)
 	requestStartTime := time.Now()
 
 	// get the user from the request
@@ -122,7 +122,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 	if user != w.DefaultUser {
 		rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
 		if !rateLimitAllowed {
-			services.Audit(w, services.WarnLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
+			w.Logger().Warn("Rate limit exceeded for user", "userID", hexutils.BytesToHex(user.ID))
 			return nil, errors.New("rate limit exceeded")
 		}
 		defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
@@ -179,7 +179,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 		}
 		return nil, rpcErr
 	})
-	services.Audit(w, services.InfoLevel, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(user.ID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", args, "result", SafeGenericToString(res), "err", err, "time", time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
