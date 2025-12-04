@@ -109,8 +109,12 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 	case nil:
 		// proced with the user from the request
 	case ErrAuthenticationTokenMissing:
-		// use the default user for public access
+		// use the default user for public access & return error if not found
 		user = w.DefaultUser
+		if user == nil {
+			w.Logger().Warn("Default user not found")
+			return nil, errors.New("default user not found")
+		}
 	default:
 		// return the error
 		return nil, err
