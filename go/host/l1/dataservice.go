@@ -287,6 +287,9 @@ func (r *DataService) fetchContractLogs(block *types.Header, networkConfigAddres
 func (r *DataService) processAllLogs(allLogs []types.Log, networkConfigAddress *gethcommon.Address, allAddresses *common.NetworkConfigAddresses, processed *common.ProcessedL1Data) error {
 	defer core.LogMethodDuration(r.logger, measure.NewStopwatch(), "processAllLogs", &core.RelaxedThresholds, "numLogs", len(allLogs), log.BlockHashKey, processed.BlockHeader.Hash())
 
+	// tx/receipt data to avoid duplicate RPC calls when multiple logs come from the same transaction
+	txDataCache := make(map[gethcommon.Hash]*common.L1TxData)
+
 	// route logs to appropriate processing functions based on contract address
 	for _, l := range allLogs {
 		var processErr error
@@ -296,20 +299,20 @@ func (r *DataService) processAllLogs(allLogs []types.Log, networkConfigAddress *
 			if len(l.Topics) > 0 {
 				switch l.Topics[0] {
 				case ethadapter.UpgradedEventID:
-					processErr = r.processNetworkUpgradeLog(l, processed)
+					processErr = r.processNetworkUpgradeLog(l, txDataCache, processed)
 				case ethadapter.NetworkContractAddressAddedID, ethadapter.AdditionalContractAddressAddedID:
-					processErr = r.processNetworkConfigLog(l, processed)
+					processErr = r.processNetworkConfigLog(l, txDataCache, processed)
 				default:
 					// unknown event, continue
 					r.logger.Debug("Unknown log topic from NetworkConfig", "topic", l.Topics[0], "txHash", l.TxHash)
 				}
 			}
 		case allAddresses.L1MessageBus:
-			processErr = r.processMessageBusLog(l, processed)
+			processErr = r.processMessageBusLog(l, txDataCache, processed)
 		case allAddresses.EnclaveRegistry:
-			processErr = r.processEnclaveRegistryLog(l, processed)
+			processErr = r.processEnclaveRegistryLog(l, txDataCache, processed)
 		case allAddresses.DataAvailabilityRegistry:
-			processErr = r.processRollupLog(l, processed)
+			processErr = r.processRollupLog(l, txDataCache, processed)
 		}
 
 		if processErr != nil {
@@ -321,8 +324,8 @@ func (r *DataService) processAllLogs(allLogs []types.Log, networkConfigAddress *
 	return nil
 }
 
-func (r *DataService) processNetworkUpgradeLog(l types.Log, processed *common.ProcessedL1Data) error {
-	txData, err := r.fetchTxAndReceipt(l.TxHash)
+func (r *DataService) processNetworkUpgradeLog(l types.Log, txDataCache map[gethcommon.Hash]*common.L1TxData, processed *common.ProcessedL1Data) error {
+	txData, err := r.getCachedTxData(l.TxHash, txDataCache)
 	if err != nil {
 		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 		return err
@@ -340,8 +343,8 @@ func (r *DataService) processNetworkUpgradeLog(l types.Log, processed *common.Pr
 	return nil
 }
 
-func (r *DataService) processNetworkConfigLog(l types.Log, processed *common.ProcessedL1Data) error {
-	txData, err := r.fetchTxAndReceipt(l.TxHash)
+func (r *DataService) processNetworkConfigLog(l types.Log, txDataCache map[gethcommon.Hash]*common.L1TxData, processed *common.ProcessedL1Data) error {
+	txData, err := r.getCachedTxData(l.TxHash, txDataCache)
 	if err != nil {
 		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 		return err
@@ -358,7 +361,7 @@ func (r *DataService) processNetworkConfigLog(l types.Log, processed *common.Pro
 	return nil
 }
 
-func (r *DataService) processMessageBusLog(l types.Log, processed *common.ProcessedL1Data) error {
+func (r *DataService) processMessageBusLog(l types.Log, txDataCache map[gethcommon.Hash]*common.L1TxData, processed *common.ProcessedL1Data) error {
 	if len(l.Topics) == 0 {
 		r.logger.Error("Log has no topics. Should not happen", "txHash", l.TxHash)
 		return errors.New("log has no topics")
@@ -369,7 +372,7 @@ func (r *DataService) processMessageBusLog(l types.Log, processed *common.Proces
 		return nil
 	}
 
-	txData, err := r.fetchTxAndReceipt(l.TxHash)
+	txData, err := r.getCachedTxData(l.TxHash, txDataCache)
 	if err != nil {
 		r.logger.Error("Error creating transaction data. Should not happen", "txHash", l.TxHash, "error", err)
 		return fmt.Errorf("error creating transaction data. Should not happen: %w", err)
@@ -378,12 +381,12 @@ func (r *DataService) processMessageBusLog(l types.Log, processed *common.Proces
 	return r.processCrossChainLogs(l, txData, processed)
 }
 
-func (r *DataService) processEnclaveRegistryLog(l types.Log, processed *common.ProcessedL1Data) error {
+func (r *DataService) processEnclaveRegistryLog(l types.Log, txDataCache map[gethcommon.Hash]*common.L1TxData, processed *common.ProcessedL1Data) error {
 	if len(l.Topics) == 0 {
 		return nil
 	}
 
-	txData, err := r.fetchTxAndReceipt(l.TxHash)
+	txData, err := r.getCachedTxData(l.TxHash, txDataCache)
 	if err != nil {
 		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 		return err
@@ -411,7 +414,7 @@ func (r *DataService) processEnclaveRegistryLog(l types.Log, processed *common.P
 	return processErr
 }
 
-func (r *DataService) processRollupLog(l types.Log, processed *common.ProcessedL1Data) error {
+func (r *DataService) processRollupLog(l types.Log, txDataCache map[gethcommon.Hash]*common.L1TxData, processed *common.ProcessedL1Data) error {
 	if len(l.Topics) == 0 {
 		return nil
 	}
@@ -421,7 +424,7 @@ func (r *DataService) processRollupLog(l types.Log, processed *common.ProcessedL
 		return nil
 	}
 
-	txData, err := r.fetchTxAndReceipt(l.TxHash)
+	txData, err := r.getCachedTxData(l.TxHash, txDataCache)
 	if err != nil {
 		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 		return err
@@ -472,6 +475,21 @@ func (r *DataService) fetchTxAndReceipt(txHash gethcommon.Hash) (*common.L1TxDat
 		CrossChainMessages: common.CrossChainMessages{},
 		ValueTransfers:     common.ValueTransferEvents{},
 	}, nil
+}
+
+// getCachedTxData retrieves transaction data from cache or fetches it if not present
+func (r *DataService) getCachedTxData(txHash gethcommon.Hash, cache map[gethcommon.Hash]*common.L1TxData) (*common.L1TxData, error) {
+	if txData, exists := cache[txHash]; exists {
+		return txData, nil
+	}
+
+	txData, err := r.fetchTxAndReceipt(txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	cache[txHash] = txData
+	return txData, nil
 }
 
 // processCrossChainLogs handles cross-chain message logs
