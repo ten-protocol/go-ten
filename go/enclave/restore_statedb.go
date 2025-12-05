@@ -50,7 +50,7 @@ func stateDBAvailableForBatch(ctx context.Context, registry components.BatchRegi
 }
 
 // markUnexecutedBatches marks the batches for which the statedb is missing as un-executed
-func markUnexecutedBatches(ctx context.Context, storage storage.Storage, registry components.BatchRegistry, batchExecutor components.BatchExecutor, logger gethlog.Logger) error {
+func markUnexecutedBatches(ctx context.Context, storage storage.Storage, registry components.BatchRegistry, _ components.BatchExecutor, _ gethlog.Logger) error {
 	// `currentBatch` variable will eventually be the latest batch for which we are able to produce a StateDB
 	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
 	currentBatch, err := storage.FetchBatchBySeqNo(ctx, registry.HeadBatchSeq().Uint64())
@@ -67,19 +67,21 @@ func markUnexecutedBatches(ctx context.Context, storage storage.Storage, registr
 			// no more parents to check, replaying from genesis
 			break
 		}
-		// execute the batch
-		canExecute, err := registry.CanExecute(ctx, currentBatch.Header)
-		if err != nil {
-			return fmt.Errorf("could not determine the execution prerequisites for batchHeader %s. Cause: %w", currentBatch.Hash(), err)
-		}
-		logger.Trace("Can execute stored batch", log.BatchSeqNoKey, currentBatch.SeqNo(), "can", canExecute)
 
-		if canExecute {
-			err = registry.ExecuteBatch(ctx, batchExecutor, currentBatch.Header)
-			if err != nil {
-				return fmt.Errorf("could not execute batch %s. Cause: %w", currentBatch.Hash(), err)
-			}
-		}
+		/*		// optional - try to execute the batch
+				canExecute, err := registry.CanExecute(ctx, currentBatch.Header)
+				if err != nil {
+					return fmt.Errorf("could not determine the execution prerequisites for batchHeader %s. Cause: %w", currentBatch.Hash(), err)
+				}
+				logger.Trace("Can execute stored batch", log.BatchSeqNoKey, currentBatch.SeqNo(), "can", canExecute)
+
+				if canExecute {
+					err = registry.ExecuteBatch(ctx, batchExecutor, currentBatch.Header)
+					if err != nil {
+						return fmt.Errorf("could not execute batch %s. Cause: %w", currentBatch.Hash(), err)
+					}
+				}
+		*/
 
 		currentBatch, err = storage.FetchBatch(ctx, currentBatch.Header.ParentHash)
 		if err != nil {
