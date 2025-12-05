@@ -145,13 +145,10 @@ func (s *storageImpl) FetchCurrentSequencerNo(ctx context.Context) (*big.Int, er
 
 func (s *storageImpl) FetchBatch(ctx context.Context, hash common.L2BatchHash) (*core.Batch, error) {
 	defer s.logDuration("FetchBatch", measure.NewStopwatch())
-	s.logger.Info("FetchBatch - start", "hash", hash.Hex())
 	seqNo, err := s.fetchSeqNoByHash(ctx, hash)
 	if err != nil {
-		s.logger.Error("FetchBatch - failed to fetch seqNo by hash", log.ErrKey, err)
 		return nil, err
 	}
-	s.logger.Info("FetchBatch - fetched seqNo", "seqNo", seqNo, "seqNoIsNil", seqNo == nil)
 	return s.FetchBatchBySeqNo(ctx, seqNo.Uint64())
 }
 
@@ -217,7 +214,6 @@ func (s *storageImpl) FetchBatchTransactionsBySeq(ctx context.Context, seqNo uin
 
 func (s *storageImpl) FetchBatchByHeight(ctx context.Context, height uint64) (*core.Batch, error) {
 	defer s.logDuration("FetchBatchByHeight", measure.NewStopwatch())
-	s.logger.Info("FetchBatchByHeight - start", "height", height)
 	seqNo, err := s.cachingService.ReadBatchSeqByHeight(ctx, height, func() (*big.Int, error) {
 		batch, err := enclavedb.ReadCanonicalBatchHeaderByHeight(ctx, s.db.GetSQLDB(), height)
 		if err != nil {
@@ -226,10 +222,8 @@ func (s *storageImpl) FetchBatchByHeight(ctx context.Context, height uint64) (*c
 		return batch.SequencerOrderNo, nil
 	})
 	if err != nil {
-		s.logger.Error("FetchBatchByHeight - failed to get seqNo", log.ErrKey, err)
 		return nil, err
 	}
-	s.logger.Info("FetchBatchByHeight - got seqNo, fetching batch", "seqNo", seqNo)
 	return s.FetchBatchBySeqNo(ctx, seqNo.Uint64())
 }
 
@@ -527,14 +521,7 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 }
 
 func (s *storageImpl) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
-	s.logger.Info("storage.StateAt - start", "root", root.Hex())
-	stateDB, err := state.New(root, s.stateCache)
-	if err != nil {
-		s.logger.Error("storage.StateAt - state.New failed", log.ErrKey, err)
-		return nil, err
-	}
-	s.logger.Info("storage.StateAt - state.New succeeded", "stateDBIsNil", stateDB == nil)
-	return stateDB, err
+	return state.New(root, s.stateCache)
 }
 
 func (s *storageImpl) GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error) {
@@ -647,19 +634,14 @@ func (s *storageImpl) StoreNewEnclave(ctx context.Context, attestation common.At
 
 func (s *storageImpl) FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*core.Batch, error) {
 	defer s.logDuration("FetchBatchBySeqNo", measure.NewStopwatch())
-	s.logger.Info("FetchBatchBySeqNo - start", "seqNum", seqNum)
 	h, err := s.FetchBatchHeaderBySeqNo(ctx, seqNum)
 	if err != nil {
-		s.logger.Error("FetchBatchBySeqNo - failed to fetch header", log.ErrKey, err)
 		return nil, err
 	}
-	s.logger.Info("FetchBatchBySeqNo - fetched header", "headerIsNil", h == nil)
 	txs, err := s.FetchBatchTransactionsBySeq(ctx, seqNum)
 	if err != nil {
-		s.logger.Error("FetchBatchBySeqNo - failed to fetch txs", log.ErrKey, err)
 		return nil, err
 	}
-	s.logger.Info("FetchBatchBySeqNo - fetched txs", "txCount", len(txs))
 	return &core.Batch{
 		Header:       h,
 		Transactions: txs,
@@ -668,16 +650,9 @@ func (s *storageImpl) FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*co
 
 func (s *storageImpl) FetchBatchHeaderBySeqNo(ctx context.Context, seqNum uint64) (*common.BatchHeader, error) {
 	defer s.logDuration("FetchBatchHeaderBySeqNo", measure.NewStopwatch())
-	s.logger.Info("FetchBatchHeaderBySeqNo - start", "seqNum", seqNum)
-	header, err := s.cachingService.ReadBatchHeader(ctx, seqNum, func() (*common.BatchHeader, error) {
+	return s.cachingService.ReadBatchHeader(ctx, seqNum, func() (*common.BatchHeader, error) {
 		return enclavedb.ReadBatchHeaderBySeqNo(ctx, s.db.GetSQLDB(), seqNum)
 	})
-	if err != nil {
-		s.logger.Error("FetchBatchHeaderBySeqNo - failed", log.ErrKey, err)
-		return nil, err
-	}
-	s.logger.Info("FetchBatchHeaderBySeqNo - success", "headerIsNil", header == nil)
-	return header, err
 }
 
 func (s *storageImpl) FetchBatchesByBlock(ctx context.Context, block common.L1BlockHash) ([]*common.BatchHeader, error) {
@@ -1089,21 +1064,16 @@ func (s *storageImpl) BatchWasExecuted(ctx context.Context, hash common.L2BatchH
 
 func (s *storageImpl) MarkBatchAsUnexecuted(ctx context.Context, seqNo *big.Int) error {
 	defer s.logDuration("MarkBatchAsUnexecuted", measure.NewStopwatch())
-	s.logger.Info("MarkBatchAsUnexecuted - start", "seqNo", seqNo, "seqNoIsNil", seqNo == nil)
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
-		s.logger.Error("MarkBatchAsUnexecuted - failed to create DB transaction", log.ErrKey, err)
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
 
-	s.logger.Info("MarkBatchAsUnexecuted - calling enclavedb.MarkBatchAsUnexecuted")
 	err = enclavedb.MarkBatchAsUnexecuted(ctx, dbTx, seqNo)
 	if err != nil {
-		s.logger.Error("MarkBatchAsUnexecuted - enclavedb call failed", log.ErrKey, err)
 		return fmt.Errorf("could not mark batch as unexecuted. Cause: %w", err)
 	}
-	s.logger.Info("MarkBatchAsUnexecuted - committing transaction")
 	return dbTx.Commit()
 }
 

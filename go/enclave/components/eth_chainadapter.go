@@ -52,25 +52,20 @@ func (e *EthChainAdapter) Config() *params.ChainConfig {
 
 // CurrentBlock returns the current head of the chain.
 func (e *EthChainAdapter) CurrentBlock() *gethtypes.Header {
-	e.logger.Info("EthChainAdapter.CurrentBlock - start")
 	currentBatchSeqNo := e.batchRegistry.HeadBatchSeq()
-	e.logger.Info("EthChainAdapter.CurrentBlock - got head batch seq", "seqNo", currentBatchSeqNo, "seqNoIsNil", currentBatchSeqNo == nil)
 	if currentBatchSeqNo == nil {
 		return nil
 	}
-	e.logger.Info("EthChainAdapter.CurrentBlock - fetching batch header by seqNo", "seqNo", currentBatchSeqNo.Uint64())
 	currentBatch, err := e.storage.FetchBatchHeaderBySeqNo(context.Background(), currentBatchSeqNo.Uint64())
 	if err != nil {
 		e.logger.Warn("unable to retrieve batch seq no", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
 		return nil
 	}
-	e.logger.Info("EthChainAdapter.CurrentBlock - fetched batch header, creating eth header")
 	batch, err := e.gethEncoding.CreateEthHeaderForBatch(context.Background(), currentBatch)
 	if err != nil {
 		e.logger.Warn("unable to convert batch to eth header ", "currentBatchSeqNo", currentBatchSeqNo, log.ErrKey, err)
 		return nil
 	}
-	e.logger.Info("EthChainAdapter.CurrentBlock - returning header")
 	return batch
 }
 
@@ -93,78 +88,52 @@ func (e *EthChainAdapter) SubscribeChainHeadEvent(ch chan<- gethcore.ChainHeadEv
 
 // GetBlock retrieves a specific block, used during pool resets.
 func (e *EthChainAdapter) GetBlock(_ gethcommon.Hash, number uint64) *gethtypes.Block {
-	e.logger.Info("EthChainAdapter.GetBlock - start", "number", number)
 	var batch *core.Batch
 	ctx, cancelCtx := context.WithTimeout(context.Background(), e.config.RPCTimeout)
 	defer cancelCtx()
 
-	e.logger.Info("EthChainAdapter.GetBlock - getting head batch seq")
-	headBatchSeq := e.batchRegistry.HeadBatchSeq()
-	e.logger.Info("EthChainAdapter.GetBlock - got head batch seq", "seqNo", headBatchSeq, "seqNoIsNil", headBatchSeq == nil)
-	if headBatchSeq == nil {
-		e.logger.Crit("EthChainAdapter.GetBlock - CRITICAL: HeadBatchSeq is nil!")
-	}
-
 	// to avoid a costly select to the db, check whether the batches requested are the last ones which are cached
-	e.logger.Info("EthChainAdapter.GetBlock - fetching head batch by seqNo", "seqNo", headBatchSeq.Uint64())
-	headBatch, err := e.storage.FetchBatchBySeqNo(ctx, headBatchSeq.Uint64())
+	headBatch, err := e.storage.FetchBatchBySeqNo(ctx, e.batchRegistry.HeadBatchSeq().Uint64())
 	if err != nil {
 		e.logger.Error("unable to get head batch", log.ErrKey, err)
 		return nil
 	}
-	e.logger.Info("EthChainAdapter.GetBlock - fetched head batch", "headBatchNumber", headBatch.Number().Uint64())
 	if headBatch.Number().Uint64() == number {
-		e.logger.Info("EthChainAdapter.GetBlock - requested number matches head batch")
 		batch = headBatch
 	} else if headBatch.Number().Uint64()-1 == number {
-		e.logger.Info("EthChainAdapter.GetBlock - requested number is parent of head, fetching parent")
 		batch, err = e.storage.FetchBatch(ctx, headBatch.Header.ParentHash)
 		if err != nil {
 			e.logger.Error("unable to get parent of head batch", log.ErrKey, err, log.BatchHashKey, headBatch.Header.ParentHash)
 			return nil
 		}
-		e.logger.Info("EthChainAdapter.GetBlock - fetched parent batch")
 	} else {
-		e.logger.Info("EthChainAdapter.GetBlock - fetching batch by height", "height", number)
 		batch, err = e.storage.FetchBatchByHeight(ctx, number)
 		if err != nil {
 			e.logger.Error("unable to get batch by height", log.BatchHeightKey, number, log.ErrKey, err)
 			return nil
 		}
-		e.logger.Info("EthChainAdapter.GetBlock - fetched batch by height")
 	}
 
-	e.logger.Info("EthChainAdapter.GetBlock - creating eth block from batch")
 	nfromBatch, err := e.gethEncoding.CreateEthBlockFromBatch(ctx, batch)
 	if err != nil {
 		e.logger.Error("unable to convert batch to eth block", log.ErrKey, err)
 		return nil
 	}
 
-	e.logger.Info("EthChainAdapter.GetBlock - returning block")
 	return nfromBatch
 }
 
 // StateAt returns a state database for a given root hash (generally the head).
 func (e *EthChainAdapter) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
-	e.logger.Info("EthChainAdapter.StateAt - start", "root", root.Hex())
 	// to enable verkle trie, uncomment the following lines
 	//if root == gethtypes.EmptyVerkleHash {
 	//	return nil, nil //nolint:nilnil
 	//}
 	if root == gethtypes.EmptyRootHash {
-		e.logger.Info("EthChainAdapter.StateAt - empty root hash, returning nil")
 		return nil, nil //nolint:nilnil
 	}
 
-	e.logger.Info("EthChainAdapter.StateAt - calling storage.StateAt")
-	stateDB, err := e.storage.StateAt(root)
-	if err != nil {
-		e.logger.Error("EthChainAdapter.StateAt - storage.StateAt failed", log.ErrKey, err)
-		return nil, err
-	}
-	e.logger.Info("EthChainAdapter.StateAt - returning stateDB", "stateDBIsNil", stateDB == nil)
-	return stateDB, err
+	return e.storage.StateAt(root)
 }
 
 func (e *EthChainAdapter) IngestNewBlock(batch *core.Batch) error {
