@@ -16,7 +16,7 @@ import (
 
 // this function looks at the batch chain and makes sure the resulting stateDB snapshots are available, replaying them if needed
 // (if there had been a clean shutdown and all stateDB data was persisted this should do nothing)
-func syncExecutedBatchesWithEVMStateDB(ctx context.Context, storage storage.Storage, registry components.BatchRegistry, batchExecutor components.BatchExecutor, logger gethlog.Logger) error {
+func syncExecutedBatchesWithEVMStateDB(ctx context.Context, storage storage.Storage, registry components.BatchRegistry, logger gethlog.Logger) error {
 	if registry.HeadBatchSeq() == nil {
 		// not initialised yet
 		return nil
@@ -32,7 +32,7 @@ func syncExecutedBatchesWithEVMStateDB(ctx context.Context, storage storage.Stor
 	}
 	if !stateDBAvailableForBatch(ctx, registry, batch.Hash()) {
 		logger.Info("state not available for latest batch after restart - rebuilding stateDB cache from batches")
-		err = markUnexecutedBatches(ctx, storage, registry, batchExecutor, logger)
+		err = markUnexecutedBatches(ctx, storage, registry)
 		if err != nil {
 			return fmt.Errorf("unable to replay batches to restore valid state - %w", err)
 		}
@@ -50,7 +50,7 @@ func stateDBAvailableForBatch(ctx context.Context, registry components.BatchRegi
 }
 
 // markUnexecutedBatches marks the batches for which the statedb is missing as un-executed
-func markUnexecutedBatches(ctx context.Context, storage storage.Storage, registry components.BatchRegistry, _ components.BatchExecutor, _ gethlog.Logger) error {
+func markUnexecutedBatches(ctx context.Context, storage storage.Storage, registry components.BatchRegistry) error {
 	// `currentBatch` variable will eventually be the latest batch for which we are able to produce a StateDB
 	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
 	currentBatch, err := storage.FetchBatchBySeqNo(ctx, registry.HeadBatchSeq().Uint64())
