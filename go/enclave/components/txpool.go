@@ -115,8 +115,13 @@ func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig,
 		logger:           logger,
 	}
 	txp.validateOnly.Store(validateOnly)
-	go txp.start()
 	return txp, nil
+}
+
+// Start begins the tx pool's internal goroutine that waits for batches and initializes the pool.
+// This must be called after state restoration (syncExecutedBatchesWithEVMStateDB) is complete.
+func (t *TxPool) Start() {
+	go t.start()
 }
 
 func (t *TxPool) SetValidateMode(validateOnly bool) {

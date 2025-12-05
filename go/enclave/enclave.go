@@ -130,6 +130,10 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
 
+	// Start the tx pool after state restoration is complete to avoid race conditions
+	// where the pool tries to access state that is being rebuilt by syncExecutedBatchesWithEVMStateDB
+	mempool.Start()
+
 	subscriptionManager := events.NewSubscriptionManager(storage, batchRegistry, config.TenChainID, logger)
 
 	// todo (#1474) - make sure the enclave cannot be started in production with WillAttest=false
