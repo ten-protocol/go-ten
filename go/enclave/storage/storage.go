@@ -145,10 +145,13 @@ func (s *storageImpl) FetchCurrentSequencerNo(ctx context.Context) (*big.Int, er
 
 func (s *storageImpl) FetchBatch(ctx context.Context, hash common.L2BatchHash) (*core.Batch, error) {
 	defer s.logDuration("FetchBatch", measure.NewStopwatch())
+	s.logger.Info("FetchBatch - start", "hash", hash.Hex())
 	seqNo, err := s.fetchSeqNoByHash(ctx, hash)
 	if err != nil {
+		s.logger.Error("FetchBatch - failed to fetch seqNo by hash", log.ErrKey, err)
 		return nil, err
 	}
+	s.logger.Info("FetchBatch - fetched seqNo", "seqNo", seqNo, "seqNoIsNil", seqNo == nil)
 	return s.FetchBatchBySeqNo(ctx, seqNo.Uint64())
 }
 
@@ -634,14 +637,19 @@ func (s *storageImpl) StoreNewEnclave(ctx context.Context, attestation common.At
 
 func (s *storageImpl) FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*core.Batch, error) {
 	defer s.logDuration("FetchBatchBySeqNo", measure.NewStopwatch())
+	s.logger.Info("FetchBatchBySeqNo - start", "seqNum", seqNum)
 	h, err := s.FetchBatchHeaderBySeqNo(ctx, seqNum)
 	if err != nil {
+		s.logger.Error("FetchBatchBySeqNo - failed to fetch header", log.ErrKey, err)
 		return nil, err
 	}
+	s.logger.Info("FetchBatchBySeqNo - fetched header", "headerIsNil", h == nil)
 	txs, err := s.FetchBatchTransactionsBySeq(ctx, seqNum)
 	if err != nil {
+		s.logger.Error("FetchBatchBySeqNo - failed to fetch txs", log.ErrKey, err)
 		return nil, err
 	}
+	s.logger.Info("FetchBatchBySeqNo - fetched txs", "txCount", len(txs))
 	return &core.Batch{
 		Header:       h,
 		Transactions: txs,
@@ -1064,16 +1072,21 @@ func (s *storageImpl) BatchWasExecuted(ctx context.Context, hash common.L2BatchH
 
 func (s *storageImpl) MarkBatchAsUnexecuted(ctx context.Context, seqNo *big.Int) error {
 	defer s.logDuration("MarkBatchAsUnexecuted", measure.NewStopwatch())
+	s.logger.Info("MarkBatchAsUnexecuted - start", "seqNo", seqNo, "seqNoIsNil", seqNo == nil)
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
+		s.logger.Error("MarkBatchAsUnexecuted - failed to create DB transaction", log.ErrKey, err)
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
 
+	s.logger.Info("MarkBatchAsUnexecuted - calling enclavedb.MarkBatchAsUnexecuted")
 	err = enclavedb.MarkBatchAsUnexecuted(ctx, dbTx, seqNo)
 	if err != nil {
+		s.logger.Error("MarkBatchAsUnexecuted - enclavedb call failed", log.ErrKey, err)
 		return fmt.Errorf("could not mark batch as unexecuted. Cause: %w", err)
 	}
+	s.logger.Info("MarkBatchAsUnexecuted - committing transaction")
 	return dbTx.Commit()
 }
 
