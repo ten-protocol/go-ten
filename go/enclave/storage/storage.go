@@ -217,6 +217,7 @@ func (s *storageImpl) FetchBatchTransactionsBySeq(ctx context.Context, seqNo uin
 
 func (s *storageImpl) FetchBatchByHeight(ctx context.Context, height uint64) (*core.Batch, error) {
 	defer s.logDuration("FetchBatchByHeight", measure.NewStopwatch())
+	s.logger.Info("FetchBatchByHeight - start", "height", height)
 	seqNo, err := s.cachingService.ReadBatchSeqByHeight(ctx, height, func() (*big.Int, error) {
 		batch, err := enclavedb.ReadCanonicalBatchHeaderByHeight(ctx, s.db.GetSQLDB(), height)
 		if err != nil {
@@ -225,8 +226,10 @@ func (s *storageImpl) FetchBatchByHeight(ctx context.Context, height uint64) (*c
 		return batch.SequencerOrderNo, nil
 	})
 	if err != nil {
+		s.logger.Error("FetchBatchByHeight - failed to get seqNo", log.ErrKey, err)
 		return nil, err
 	}
+	s.logger.Info("FetchBatchByHeight - got seqNo, fetching batch", "seqNo", seqNo)
 	return s.FetchBatchBySeqNo(ctx, seqNo.Uint64())
 }
 
@@ -524,7 +527,14 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 }
 
 func (s *storageImpl) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
-	return state.New(root, s.stateCache)
+	s.logger.Info("storage.StateAt - start", "root", root.Hex())
+	stateDB, err := state.New(root, s.stateCache)
+	if err != nil {
+		s.logger.Error("storage.StateAt - state.New failed", log.ErrKey, err)
+		return nil, err
+	}
+	s.logger.Info("storage.StateAt - state.New succeeded", "stateDBIsNil", stateDB == nil)
+	return stateDB, err
 }
 
 func (s *storageImpl) GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error) {
@@ -658,9 +668,16 @@ func (s *storageImpl) FetchBatchBySeqNo(ctx context.Context, seqNum uint64) (*co
 
 func (s *storageImpl) FetchBatchHeaderBySeqNo(ctx context.Context, seqNum uint64) (*common.BatchHeader, error) {
 	defer s.logDuration("FetchBatchHeaderBySeqNo", measure.NewStopwatch())
-	return s.cachingService.ReadBatchHeader(ctx, seqNum, func() (*common.BatchHeader, error) {
+	s.logger.Info("FetchBatchHeaderBySeqNo - start", "seqNum", seqNum)
+	header, err := s.cachingService.ReadBatchHeader(ctx, seqNum, func() (*common.BatchHeader, error) {
 		return enclavedb.ReadBatchHeaderBySeqNo(ctx, s.db.GetSQLDB(), seqNum)
 	})
+	if err != nil {
+		s.logger.Error("FetchBatchHeaderBySeqNo - failed", log.ErrKey, err)
+		return nil, err
+	}
+	s.logger.Info("FetchBatchHeaderBySeqNo - success", "headerIsNil", header == nil)
+	return header, err
 }
 
 func (s *storageImpl) FetchBatchesByBlock(ctx context.Context, block common.L1BlockHash) ([]*common.BatchHeader, error) {

@@ -165,10 +165,13 @@ func (t *TxPool) start() {
 
 func (t *TxPool) _startInternalPool() error {
 	t.logger.Info("Starting tx pool")
+	t.logger.Info("_startInternalPool - about to call gethtxpool.New", "gasTip", t.gasTip, "chainIsNil", t.Chain == nil, "legacyPoolIsNil", t.legacyPool == nil)
 	memp, err := gethtxpool.New(t.gasTip.Uint64(), t.Chain, []gethtxpool.SubPool{t.legacyPool})
 	if err != nil {
+		t.logger.Error("_startInternalPool - gethtxpool.New failed", log.ErrKey, err)
 		return fmt.Errorf("unable to init geth tx pool - %w", err)
 	}
+	t.logger.Info("_startInternalPool - gethtxpool.New succeeded")
 	t.logger.Info("Tx pool started")
 
 	t.pool = memp
