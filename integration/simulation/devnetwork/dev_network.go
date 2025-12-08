@@ -137,6 +137,14 @@ func (s *InMemDevNetwork) GetValidatorNode(i int) networktest.NodeOperator {
 	return s.tenValidators[i]
 }
 
+func (s *InMemDevNetwork) NewValidatorNode(config any, wallet wallet.Wallet) networktest.NodeOperator {
+	cfg := config.(*TenConfig)
+	operator := NewInMemNodeOperator(len(s.tenValidators), cfg, common.Validator, s.l1SetupData, s.l1Network.GetClient(0), wallet, s.logger)
+	s.tenValidators = append(s.tenValidators, operator)
+	s.networkWallets.NodeWallets = append(s.networkWallets.NodeWallets, wallet)
+	return operator
+}
+
 func (s *InMemDevNetwork) NumValidators() int {
 	return len(s.tenValidators)
 }

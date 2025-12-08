@@ -3,10 +3,16 @@ package actions
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/simulation/devnetwork"
 )
 
 func StartValidatorEnclave(validatorIdx int) networktest.Action {
@@ -29,6 +35,72 @@ func (s *startValidatorEnclaveAction) Run(ctx context.Context, network networkte
 }
 
 func (s *startValidatorEnclaveAction) Verify(_ context.Context, _ networktest.NetworkConnector) error {
+	return nil
+}
+
+func StartNewValidatorNode(opts ...devnetwork.TenConfigOption) networktest.Action {
+	return &startNewValidatorNodeAction{opts: opts}
+}
+
+type startNewValidatorNodeAction struct {
+	opts []devnetwork.TenConfigOption
+}
+
+func (s *startNewValidatorNodeAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+	// Generate a new wallet for the validator node
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		return ctx, fmt.Errorf("failed to generate private key for new validator: %w", err)
+	}
+
+	nodeWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.EthereumChainID), privateKey, testlog.Logger())
+
+	/*	// Fund the new wallet from the contract owner wallet
+		contractOwner, err := network.GetContractOwnerWallet()
+		if err != nil {
+			return ctx, fmt.Errorf("failed to get contract owner wallet: %w", err)
+		}
+
+		// Transfer some ETH to the new validator wallet for gas fees
+		fundingAmount := big.NewInt(1000000000000000000) // 1 ETH
+		tx, err := contractOwner.SendFunds(ctx, nodeWallet.Address(), fundingAmount)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to fund new validator wallet: %w", err)
+		}
+
+		fmt.Printf("Funding new validator wallet %s with transaction %s\n", nodeWallet.Address().Hex(), tx.Hex())
+
+		// Wait for the funding transaction to be mined
+		time.Sleep(2 * time.Second)
+	*/
+	// Get the current TenConfig from the network
+	devNetwork, ok := network.(*devnetwork.InMemDevNetwork)
+	if !ok {
+		return ctx, fmt.Errorf("network does not support creating new validator nodes")
+	}
+
+	currentConfig := devNetwork.TenConfig()
+	for _, opt := range s.opts {
+		opt(currentConfig)
+	}
+
+	// Create the new validator node
+	newValidator := network.NewValidatorNode(currentConfig, nodeWallet)
+
+	fmt.Printf("Starting new validator node (index: %d)\n", network.NumValidators()-1)
+
+	// Start the new validator node
+	err = newValidator.Start()
+	if err != nil {
+		return ctx, fmt.Errorf("failed to start new validator node: %w", err)
+	}
+
+	fmt.Printf("New validator node started successfully at %s\n", newValidator.HostRPCWSAddress())
+
+	return ctx, nil
+}
+
+func (s *startNewValidatorNodeAction) Verify(_ context.Context, _ networktest.NetworkConnector) error {
 	return nil
 }
 
