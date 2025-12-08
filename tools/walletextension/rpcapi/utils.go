@@ -71,7 +71,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	if ctx == nil {
 		return nil, errors.New("invalid call. nil Context")
 	}
-	w.Logger().Debug("RPC start", "method", method, "args", services.SafeArgsForLogging(args))
+	w.Logger().Debug("RPC start", "method", method, "args", SafeArgsForLogging(args))
 	requestStartTime := time.Now()
 	cacheArgs := []any{method}
 	cacheArgs = append(cacheArgs, args...)
@@ -90,16 +90,16 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 		})
 	})
 	if err != nil {
-		w.Logger().Error("RPC call failed", "method", method, "args", services.SafeArgsForLogging(args), "err", err, "time", time.Since(requestStartTime).Milliseconds())
+		w.Logger().Error("RPC call failed", "method", method, "args", SafeArgsForLogging(args), "err", err, "time", time.Since(requestStartTime).Milliseconds())
 		return nil, err
 	}
 
-	w.Logger().Info("RPC call succeeded", "method", method, "args", services.SafeArgsForLogging(args), "result", services.SafeValueForLogging(res), "time", time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("RPC call succeeded", "method", method, "args", SafeArgsForLogging(args), "result", SafeValueForLogging(res), "time", time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
-	w.Logger().Debug("RPC start", "method", method, "args", services.SafeArgsForLogging(args))
+	w.Logger().Debug("RPC start", "method", method, "args", SafeArgsForLogging(args))
 	requestStartTime := time.Now()
 
 	// get the user from the request
@@ -183,7 +183,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 		}
 		return nil, rpcErr
 	})
-	w.Logger().Info("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", services.SafeArgsForLogging(args), "result", services.SafeValueForLogging(res), "err", err, "time", time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", SafeArgsForLogging(args), "result", SafeValueForLogging(res), "err", err, "time", time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
@@ -278,57 +278,136 @@ func cacheBlockNumber(lastBlock rpc.BlockNumber) cache.Strategy {
 	return cache.LatestBatch
 }
 
-func SafeGenericToString[R any](r *R) string {
-	if r == nil {
-		return "nil"
+// SafeArgsForLogging replaces nil fmt.Stringer pointers in args with "<nil>" to prevent segfaults
+func SafeArgsForLogging(args []any) string {
+	if len(args) == 0 {
+		return "[]"
 	}
-
-	v := reflect.ValueOf(r).Elem()
-	t := v.Type()
-
-	switch v.Kind() {
-	case reflect.Struct:
-		return structToString(v, t)
-	default:
-		return fmt.Sprintf("%v", v.Interface())
+	var b strings.Builder
+	b.WriteByte('[')
+	for i, arg := range args {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		safeStringify(&b, reflect.ValueOf(arg), 0)
 	}
+	b.WriteByte(']')
+	return b.String()
 }
 
-func structToString(v reflect.Value, t reflect.Type) string {
-	var parts []string
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		fieldType := t.Field(i)
-		fieldName := fieldType.Name
+// SafeValueForLogging safely converts a value to a string for logging, handling nil pointers
+func SafeValueForLogging(v any) string {
+	var b strings.Builder
+	safeStringify(&b, reflect.ValueOf(v), 0)
+	return b.String()
+}
 
-		if !fieldType.IsExported() {
-			parts = append(parts, fmt.Sprintf("%s: <unexported>", fieldName))
-			continue
-		}
+const maxDepth = 5
 
-		fieldStr := fmt.Sprintf("%s: ", fieldName)
-
-		switch field.Kind() {
-		case reflect.Ptr:
-			if field.IsNil() {
-				fieldStr += "nil"
-			} else {
-				fieldStr += fmt.Sprintf("%v", field.Elem().Interface())
-			}
-		case reflect.Slice, reflect.Array:
-			if field.Len() > 10 {
-				fieldStr += fmt.Sprintf("%v (length: %d)", field.Slice(0, 10).Interface(), field.Len())
-			} else {
-				fieldStr += fmt.Sprintf("%v", field.Interface())
-			}
-		case reflect.Struct:
-			fieldStr += "{...}" // Avoid recursive calls for nested structs
-		default:
-			fieldStr += fmt.Sprintf("%v", field.Interface())
-		}
-
-		parts = append(parts, fieldStr)
+func safeStringify(b *strings.Builder, rv reflect.Value, depth int) {
+	if depth > maxDepth {
+		b.WriteString("...")
+		return
 	}
 
-	return fmt.Sprintf("%s{%s}", t.Name(), strings.Join(parts, ", "))
+	if !rv.IsValid() {
+		b.WriteString("<nil>")
+		return
+	}
+
+	switch rv.Kind() {
+	case reflect.Interface:
+		if rv.IsZero() {
+			fmt.Fprintf(b, "<%s nil>", rv.Type())
+			return
+		}
+		safeStringify(b, rv.Elem(), depth+1)
+		return
+
+	case reflect.Ptr:
+		if rv.IsNil() {
+			fmt.Fprintf(b, "<%s nil>", rv.Type())
+			return
+		}
+		safeStringify(b, rv.Elem(), depth+1)
+		return
+
+	case reflect.Slice:
+		if rv.IsNil() {
+			fmt.Fprintf(b, "<%s nil>", rv.Type())
+			return
+		}
+		b.WriteByte('[')
+		for i := 0; i < rv.Len() && i < 10; i++ {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			safeStringify(b, rv.Index(i), depth+1)
+		}
+		if rv.Len() > 10 {
+			fmt.Fprintf(b, "...+%d more", rv.Len()-10)
+		}
+		b.WriteByte(']')
+		return
+
+	case reflect.Map:
+		if rv.IsNil() {
+			fmt.Fprintf(b, "<%s nil>", rv.Type())
+			return
+		}
+		b.WriteString("map[")
+		iter := rv.MapRange()
+		count := 0
+		for iter.Next() && count < 5 {
+			if count > 0 {
+				b.WriteString(", ")
+			}
+			safeStringify(b, iter.Key(), depth+1)
+			b.WriteByte(':')
+			safeStringify(b, iter.Value(), depth+1)
+			count++
+		}
+		b.WriteByte(']')
+		return
+
+	case reflect.Struct:
+		b.WriteByte('{')
+		t := rv.Type()
+		for i := 0; i < rv.NumField() && i < 10; i++ {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(t.Field(i).Name)
+			b.WriteByte(':')
+			field := rv.Field(i)
+			if field.CanInterface() {
+				safeStringify(b, field, depth+1)
+			} else {
+				b.WriteString("<unexported>")
+			}
+		}
+		b.WriteByte('}')
+		return
+
+	case reflect.Chan, reflect.Func:
+		if rv.IsNil() {
+			fmt.Fprintf(b, "<%s nil>", rv.Type())
+		} else {
+			fmt.Fprintf(b, "<%s>", rv.Type())
+		}
+		return
+
+	case reflect.String:
+		fmt.Fprintf(b, "%q", rv.String())
+	case reflect.Bool:
+		fmt.Fprintf(b, "%t", rv.Bool())
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		fmt.Fprintf(b, "%d", rv.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		fmt.Fprintf(b, "%d", rv.Uint())
+	case reflect.Float32, reflect.Float64:
+		fmt.Fprintf(b, "%g", rv.Float())
+	default:
+		fmt.Fprintf(b, "<%s>", rv.Type())
+	}
 }
