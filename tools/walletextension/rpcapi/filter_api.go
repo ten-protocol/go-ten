@@ -200,7 +200,7 @@ func (api *FilterAPI) NewFilter(crit common.FilterCriteria) (rpc.ID, error) {
 
 func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) ([]*types.Log, error) {
 	method := rpc2.ERPCGetLogs
-	api.we.Logger().Debug("RPC start", "method", method, "args", ctx)
+	api.we.Logger().Debug("RPC start", "method", method, "args", services.SafeArgsForLogging([]any{crit}))
 	requestStartTime := time.Now()
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
@@ -274,7 +274,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	if err != nil {
 		return nil, err
 	}
-	api.we.Logger().Debug("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", crit, "result", res, "err", err, "time", time.Since(requestStartTime).Milliseconds())
+	api.we.Logger().Debug("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", services.SafeArgsForLogging([]any{crit}), "result", res, "err", err, "time", time.Since(requestStartTime).Milliseconds())
 	return *res, err
 }
 

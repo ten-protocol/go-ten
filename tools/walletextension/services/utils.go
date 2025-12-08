@@ -85,6 +85,12 @@ func SafeArgsForLogging(args []any) string {
 	return b.String()
 }
 
+func SafeValueForLogging(v any) string {
+	var b strings.Builder
+	safeStringify(&b, reflect.ValueOf(v), 0)
+	return b.String()
+}
+
 const maxDepth = 5
 
 func safeStringify(b *strings.Builder, rv reflect.Value, depth int) {

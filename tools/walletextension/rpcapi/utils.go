@@ -71,7 +71,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	if ctx == nil {
 		return nil, errors.New("invalid call. nil Context")
 	}
-	w.Logger().Debug("RPC start", "method", method, "args", args)
+	w.Logger().Debug("RPC start", "method", method, "args", services.SafeArgsForLogging(args))
 	requestStartTime := time.Now()
 	cacheArgs := []any{method}
 	cacheArgs = append(cacheArgs, args...)
@@ -90,16 +90,16 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 		})
 	})
 	if err != nil {
-		w.Logger().Error("RPC call failed", "method", method, "args", args, "err", err, "time", time.Since(requestStartTime).Milliseconds())
+		w.Logger().Error("RPC call failed", "method", method, "args", services.SafeArgsForLogging(args), "err", err, "time", time.Since(requestStartTime).Milliseconds())
 		return nil, err
 	}
 
-	w.Logger().Info("RPC call succeeded", "method", method, "args", args, "result", res, "time", time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("RPC call succeeded", "method", method, "args", services.SafeArgsForLogging(args), "result", services.SafeValueForLogging(res), "time", time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
-	w.Logger().Debug("RPC start", "method", method, "args", args)
+	w.Logger().Debug("RPC start", "method", method, "args", services.SafeArgsForLogging(args))
 	requestStartTime := time.Now()
 
 	// get the user from the request
@@ -183,7 +183,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 		}
 		return nil, rpcErr
 	})
-	w.Logger().Info("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", args, "result", SafeGenericToString(res), "err", err, "time", time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", services.SafeArgsForLogging(args), "result", services.SafeValueForLogging(res), "err", err, "time", time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
