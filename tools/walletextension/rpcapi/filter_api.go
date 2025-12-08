@@ -66,7 +66,7 @@ func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
 }
 
 func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rpc.Subscription, error) {
-	api.we.Logger().Debug("start Logs subscription", "crit", crit)
+	api.we.Logger().Debug("start Logs subscription", "crit", services.SafeValueForLogging(crit))
 	subNotifier, user, err := getUserAndNotifier(ctx, api)
 	if err != nil {
 		api.we.Logger().Debug("Failed to get user and notifier", "err", err)
@@ -274,7 +274,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	if err != nil {
 		return nil, err
 	}
-	api.we.Logger().Debug("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", services.SafeArgsForLogging([]any{crit}), "result", res, "err", err, "time", time.Since(requestStartTime).Milliseconds())
+	api.we.Logger().Debug("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", services.SafeArgsForLogging([]any{crit}), "result", services.SafeValueForLogging(res), "err", err, "time", time.Since(requestStartTime).Milliseconds())
 	return *res, err
 }
 
