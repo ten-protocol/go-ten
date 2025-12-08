@@ -12,11 +12,11 @@ import (
 )
 
 const (
-	sharedSecretLenInBytes = 32
+	SharedSecretLenInBytes = 32
 )
 
 // SharedEnclaveSecret - the entropy
-type SharedEnclaveSecret [sharedSecretLenInBytes]byte
+type SharedEnclaveSecret [SharedSecretLenInBytes]byte
 
 // SharedSecretService provides functionality to encapsulate, generate, extend, and encrypt the shared secret of the TEN network.
 type SharedSecretService struct {
@@ -35,7 +35,7 @@ func (sss *SharedSecretService) GenerateSharedSecret() {
 	sss.mu.Lock()
 	defer sss.mu.Unlock()
 
-	secret, err := generateSecureEntropy(sharedSecretLenInBytes)
+	secret, err := generateSecureEntropy(SharedSecretLenInBytes)
 	if err != nil {
 		sss.logger.Crit("could not generate secret", log.ErrKey, err)
 	}

@@ -222,6 +222,8 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		SystemContractOwner:             gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
 		StoreExecutedTransactions:       true,
 		TenGenesis:                      integrationCommon.TestnetGenesisJSON(),
+		BackupEncryptionKey:             n.config.BackupEncryptionKey,
+		SharedSecret:                    n.config.SharedSecret,
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }

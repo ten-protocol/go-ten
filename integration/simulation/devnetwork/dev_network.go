@@ -141,6 +141,26 @@ func (s *InMemDevNetwork) NumValidators() int {
 	return len(s.tenValidators)
 }
 
+func (s *InMemDevNetwork) TenConfig() *TenConfig {
+	return s.tenConfig
+}
+
+func (s *InMemDevNetwork) L1SetupData() *params.L1TenData {
+	return s.l1SetupData
+}
+
+func (s *InMemDevNetwork) Wallets() *params.SimWallets {
+	return s.networkWallets
+}
+
+func (s *InMemDevNetwork) L1Network() L1Network {
+	return s.l1Network
+}
+
+func (s *InMemDevNetwork) Logger() gethlog.Logger {
+	return s.logger
+}
+
 func (s *InMemDevNetwork) Start() {
 	if s.logger == nil {
 		s.logger = testlog.Logger()

@@ -83,7 +83,22 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	}
 
 	sharedSecretService := crypto.NewSharedSecretService(logger)
-	err = loadSharedSecret(storage, sharedSecretService, logger)
+
+	sharedSecret, err := storage.FetchSecret(context.Background())
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		logger.Crit("Failed to fetch secret", "err", err)
+	}
+
+	if sharedSecret != nil {
+		sharedSecretService.SetSharedSecret(sharedSecret)
+	} else if len(config.SharedSecret) != 0 {
+		// if the shared secret is configured explicitly, use it
+		// this is a breaking glass functionality to allow recovery after an extreme event
+		var configSharedSecret [crypto.SharedSecretLenInBytes]byte
+		copy(configSharedSecret[:], gethcommon.Hex2BytesFixed(config.SharedSecret, crypto.SharedSecretLenInBytes))
+		sharedSecretService.SetSharedSecret((*crypto.SharedEnclaveSecret)(&configSharedSecret))
+	}
+
 	if err != nil {
 		logger.Crit("Failed to load shared secret", log.ErrKey, err)
 	}
@@ -273,6 +288,13 @@ func (e *enclaveImpl) ExportCrossChainData(ctx context.Context, fromSeqNo uint64
 	return e.adminAPI.ExportCrossChainData(ctx, fromSeqNo, toSeqNo)
 }
 
+func (e *enclaveImpl) BackupSharedSecret(ctx context.Context) ([]byte, common.SystemError) {
+	if systemError := checkStopping(e.stopControl); systemError != nil {
+		return nil, systemError
+	}
+	return e.adminAPI.BackupSharedSecret(ctx)
+}
+
 func (e *enclaveImpl) GetBatch(ctx context.Context, hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
@@ -354,17 +376,6 @@ func (e *enclaveImpl) Stop() common.SystemError {
 func checkStopping(s *stopcontrol.StopControl) common.SystemError {
 	if s.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("enclave is stopping"))
-	}
-	return nil
-}
-
-func loadSharedSecret(storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger) error {
-	sharedSecret, err := storage.FetchSecret(context.Background())
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		logger.Crit("Failed to fetch secret", "err", err)
-	}
-	if sharedSecret != nil {
-		sharedSecretService.SetSharedSecret(sharedSecret)
 	}
 	return nil
 }

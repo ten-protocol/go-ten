@@ -174,6 +174,15 @@ func (s *RPCServer) SubmitBatch(ctx context.Context, request *generated.SubmitBa
 	return &generated.SubmitBatchResponse{SystemError: toRPCError(sysError)}, nil
 }
 
+func (s *RPCServer) BackupSharedSecret(ctx context.Context, _ *generated.BackupSharedSecretRequest) (*generated.BackupSharedSecretResponse, error) {
+	encryptedSecret, sysError := s.enclave.BackupSharedSecret(ctx)
+	if sysError != nil {
+		s.logger.Error("Error backing up shared secret", log.ErrKey, sysError)
+		return &generated.BackupSharedSecretResponse{SystemError: toRPCError(sysError)}, nil
+	}
+	return &generated.BackupSharedSecretResponse{Secret: encryptedSecret}, nil
+}
+
 func (s *RPCServer) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
 	// stop the grpcServer on its own goroutine to avoid killing the existing connection
 	go s.grpcServer.GracefulStop()

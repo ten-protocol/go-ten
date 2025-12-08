@@ -535,3 +535,17 @@ func (c *Client) MakeActive() common.SystemError {
 	}
 	return nil
 }
+
+func (c *Client) BackupSharedSecret(ctx context.Context) ([]byte, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.BackupSharedSecret(timeoutCtx, &generated.BackupSharedSecretRequest{})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response != nil && response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+	return response.Secret, nil
+}

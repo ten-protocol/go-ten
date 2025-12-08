@@ -20,6 +20,7 @@ const (
 	Config                = "ten_config"
 	RPCKey                = "ten_rpcKey"
 	SequencerAttestations = "ten_sequencerAttestations"
+	BackupSharedSecret    = "ten_backupSharedSecret"
 
 	StopHost                 = "test_stopHost"
 	SubscribeNamespace       = "ten"

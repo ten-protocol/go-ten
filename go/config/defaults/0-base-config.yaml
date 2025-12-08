@@ -85,6 +85,8 @@ enclave:
   enableAttestation: false
   storeExecutedTransactions: true
   decompressionLimit: "10MB"
+  backupEncryptionKey: "" # public key used for the shared secret backup
+  sharedSecret: "" # provision the shared secret. Note: only for extreme emergencies
   db:
     useInMemory: true
     edgelessDBHost: "" # host address for postgres db when used

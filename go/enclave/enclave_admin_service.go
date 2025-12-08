@@ -368,6 +368,30 @@ func (e *enclaveAdminService) ExportCrossChainData(ctx context.Context, fromSeqN
 	return bundle, nil
 }
 
+func (e *enclaveAdminService) BackupSharedSecret(_ context.Context) ([]byte, common.SystemError) {
+	if !e.sharedSecretService.IsInitialised() {
+		return nil, fmt.Errorf("shared secret is not initialised")
+	}
+
+	backupKeyHex := e.config.BackupEncryptionKey
+	if backupKeyHex == "" {
+		return nil, fmt.Errorf("backup encryption key is not configured")
+	}
+
+	pubKeyBytes := gethcommon.Hex2Bytes(backupKeyHex)
+	if len(pubKeyBytes) == 0 {
+		return nil, fmt.Errorf("invalid backup encryption key format")
+	}
+
+	encryptedSecret, err := e.sharedSecretService.EncryptSecretWithKey(pubKeyBytes)
+	if err != nil {
+		e.logger.Error("Failed to encrypt shared secret for backup", log.ErrKey, err)
+		return nil, err
+	}
+
+	return encryptedSecret, nil
+}
+
 func (e *enclaveAdminService) GetBatch(ctx context.Context, hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
 	batch, err := e.storage.FetchBatch(ctx, hash)
 	if err != nil {
