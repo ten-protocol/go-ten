@@ -200,9 +200,13 @@ func (cs *CacheService) ReadContractAddr(ctx context.Context, addr gethcommon.Ad
 }
 
 func (cs *CacheService) InvalidateContract(dbtx *enclavedb.TxWithHooks, addr gethcommon.Address) {
-	dbtx.OnCommit(func() {
+	f := func() {
 		cs.contractAddressCache.Delete(toString(addr.Bytes()))
-	})
+	}
+	// invalidate for the current tx
+	f()
+	// invalidate for races
+	dbtx.OnCommit(f)
 }
 
 func (cs *CacheService) ReadEventTopic(ctx context.Context, topic []byte, eventTypeId uint64, onCacheMiss func() (*enclavedb.EventTopic, error)) (*enclavedb.EventTopic, error) {
