@@ -15,10 +15,29 @@
     "londonBlock": 0,
     "arrowGlacierBlock": 0,
     "grayGlacierBlock": 0,
-    "shanghaiTime": 1720522149,
-    "cancunTime": 1720522149,
+    "shanghaiTime": 1696000704,
+    "cancunTime": 1707305664,
+    "pragueTime": 1740434112,
+    "osakaTime": 1758896640,
     "terminalTotalDifficulty": 0,
-    "terminalTotalDifficultyPassed": true
+    "terminalTotalDifficultyPassed": true,
+    "blobSchedule": {
+      "cancun": {
+        "target": 3,
+        "max": 6,
+        "baseFeeUpdateFraction": 3338477
+      },
+      "prague": {
+        "target": 6,
+        "max": 9,
+        "baseFeeUpdateFraction": 5007716
+      },
+      "osaka": {
+        "target": 6,
+        "max": 9,
+        "baseFeeUpdateFraction": 5007716
+      }
+    }
   },
   "nonce": "0x0",
   "timestamp": "0x668d15a5",
@@ -72,7 +91,7 @@
   "number": "0x0",
   "gasUsed": "0x0",
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "baseFeePerGas": null,
+  "baseFeePerGas": "0x42110b4f7",
   "excessBlobGas": null,
   "blobGasUsed": null
 }

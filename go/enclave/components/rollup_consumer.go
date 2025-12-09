@@ -72,6 +72,7 @@ func (rc *rollupConsumerImpl) ExtractAndVerifyRollupData(rollupTx *common.L1TxDa
 		return nil, fmt.Errorf("rollup hash verification failed: %w", errutil.ErrCriticalRollupProcessing)
 	}
 
+	rc.logger.Debug("Verified rollup data", log.RollupHashKey, rollup.Hash(), log.BlockHashKey, rollup.Header.CompressionL1Head.Hex())
 	return rollup, nil
 }
 

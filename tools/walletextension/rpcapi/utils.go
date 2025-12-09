@@ -42,7 +42,10 @@ const (
 	sendTransactionDuration = 20 * time.Second
 )
 
-var ErrRPCNotImplemented = errors.New("rpc endpoint not implemented")
+var (
+	ErrRPCNotImplemented          = errors.New("rpc endpoint not implemented")
+	ErrAuthenticationTokenMissing = errors.New("authentication token missing")
+)
 
 type AuthExecCfg struct {
 	// these 4 fields specify the account(s) that should make the backend call
@@ -68,7 +71,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	if ctx == nil {
 		return nil, errors.New("invalid call. nil Context")
 	}
-	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
+	w.Logger().Debug("RPC start", "method", method, "args", args)
 	requestStartTime := time.Now()
 	cacheArgs := []any{method}
 	cacheArgs = append(cacheArgs, args...)
@@ -87,30 +90,47 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 		})
 	})
 	if err != nil {
-		services.Audit(w, services.ErrorLevel, "RPC call failed. method=%s args=%v error=%+v time=%d", method, args, err, time.Since(requestStartTime).Milliseconds())
+		w.Logger().Error("RPC call failed", "method", method, "args", args, "err", err, "time", time.Since(requestStartTime).Milliseconds())
 		return nil, err
 	}
 
-	services.Audit(w, services.InfoLevel, "RPC call succeeded. method=%s args=%v result=%+v time=%d", method, args, res, time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("RPC call succeeded", "method", method, "args", args, "result", res, "time", time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
-	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
+	w.Logger().Debug("RPC start", "method", method, "args", args)
 	requestStartTime := time.Now()
+
+	// get the user from the request
 	user, err := extractUserForRequest(ctx, w)
-	if err != nil {
+
+	switch err {
+	case nil:
+		// proced with the user from the request
+	case ErrAuthenticationTokenMissing:
+		// use the default user for public access & return error if not found
+		user = w.DefaultUser
+		if user == nil {
+			w.Logger().Warn("Default user not found")
+			return nil, errors.New("default user not found")
+		}
+	default:
+		// return the error
 		return nil, err
 	}
 
 	w.MetricsTracker.RecordUserActivity(user.ID)
 
-	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
-	if !rateLimitAllowed {
-		services.Audit(w, services.WarnLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
-		return nil, errors.New("rate limit exceeded")
+	// use rate limiting for non-default users
+	if user != w.DefaultUser {
+		rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
+		if !rateLimitAllowed {
+			w.Logger().Warn("Rate limit exceeded for user", "userID", hexutils.BytesToHex(user.ID))
+			return nil, errors.New("rate limit exceeded")
+		}
+		defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	}
-	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 
 	cacheArgs := []any{user.ID, method}
 	cacheArgs = append(cacheArgs, args...)
@@ -163,7 +183,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 		}
 		return nil, rpcErr
 	})
-	services.Audit(w, services.InfoLevel, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(user.ID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", args, "result", SafeGenericToString(res), "err", err, "time", time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
@@ -205,6 +225,9 @@ func extractUserID(ctx context.Context, _ *services.Services) ([]byte, error) {
 	token, ok := ctx.Value(rpc.GWTokenKey{}).(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid authentication token: %s", ctx.Value(rpc.GWTokenKey{}))
+	}
+	if len(strings.TrimSpace(token)) == 0 {
+		return nil, ErrAuthenticationTokenMissing
 	}
 	userID := gethcommon.FromHex(token)
 	if len(userID) != viewingkey.UserIDLength {

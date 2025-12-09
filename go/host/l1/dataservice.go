@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"github.com/ten-protocol/go-ten/contracts/generated/DataAvailabilityRegistry"
+	"github.com/ten-protocol/go-ten/go/common/errutil"
+	"github.com/ten-protocol/go-ten/go/common/measure"
+	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter/contractlib"
 
@@ -16,6 +19,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
 
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/enclave/crosschain"
 
 	"github.com/ten-protocol/go-ten/go/common/subscription"
@@ -33,10 +37,17 @@ import (
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 )
 
+const (
+	// minimum gap in block height to trigger eager fetching of historical blocks - 5 blocks should not happen in normal operation
+	_minGapForEagerFetch = 5
+	localHeightKey       = "local_fetch_height"
+)
+
 var (
 	l1BlockTime      = 12 * time.Second
 	_timeoutNoBlocks = 2 * l1BlockTime // after this timeout we assume the subscription to the L1 node is not working
 	one              = big.NewInt(1)
+	_headBlock       = big.NewInt(-1) // special value to indicate fetching up to head block (rather than to a target)
 	ErrNoNextBlock   = errors.New("no next block")
 )
 
@@ -45,43 +56,96 @@ type DataService struct {
 	blockSubscribers *subscription.Manager[host.L1BlockHandler]
 	// this eth client should only be used by the repository, the repository may "reconnect" it at any time and don't want to interfere with other processes
 	ethClient        ethadapter.EthClient
-	logger           gethlog.Logger
 	contractRegistry contractlib.ContractRegistryLib
 	blobResolver     BlobResolver
 	blockResolver    storage.BlockResolver
 	l1StartHash      gethcommon.Hash
 
-	running atomic.Bool
-	head    gethcommon.Hash
+	localBlockHeight atomic.Uint64 // the latest block height to eagerly fetch historical blocks from
+	head             gethcommon.Hash
+
+	running       atomic.Bool
+	hostInterrupt *stopcontrol.StopControl
+	logger        gethlog.Logger
 }
 
-func NewL1DataService(ethClient ethadapter.EthClient, logger gethlog.Logger, contractRegistry contractlib.ContractRegistryLib, blobResolver BlobResolver, l1StartHash gethcommon.Hash) *DataService {
+func NewL1DataService(ethClient ethadapter.EthClient, blockResolver storage.BlockResolver, contractRegistry contractlib.ContractRegistryLib, blobResolver BlobResolver, l1StartHash gethcommon.Hash, hostInterrupt *stopcontrol.StopControl, logger gethlog.Logger) *DataService {
 	return &DataService{
 		blockSubscribers: subscription.NewManager[host.L1BlockHandler](),
 		ethClient:        ethClient,
-		running:          atomic.Bool{},
-		logger:           logger,
 		contractRegistry: contractRegistry,
 		blobResolver:     blobResolver,
+		blockResolver:    blockResolver,
 		l1StartHash:      l1StartHash,
+		running:          atomic.Bool{},
+		hostInterrupt:    hostInterrupt,
+		logger:           logger,
 	}
-}
-
-func (r *DataService) SetBlockResolver(br storage.BlockResolver) {
-	r.blockResolver = br
 }
 
 func (r *DataService) Start() error {
 	r.running.Store(true)
+	r.hostInterrupt.OnStop(func() {
+		r.logger.Info("Stopping L1 DataService as host is stopping")
+		r.running.Store(false)
+	})
+
+	r.initFetchLocalBlocksHeight()
 
 	// Repository constantly streams new blocks and forwards them to subscribers
 	go r.streamLiveBlocks()
+
 	return nil
 }
 
 func (r *DataService) Stop() error {
 	r.running.Store(false)
 	return nil
+}
+
+func (r *DataService) initFetchLocalBlocksHeight() {
+	localHeight, err := r.blockResolver.GetMetadata(localHeightKey)
+	if err != nil {
+		if !errors.Is(err, errutil.ErrNotFound) {
+			// host has just started up, we should crit for an unexpected db error
+			r.logger.Crit("Unexpected error getting local block height", "err", err)
+		}
+
+		if r.l1StartHash == (gethcommon.Hash{}) {
+			// note: this is expected in some test scenarios with dummy L1s
+			r.logger.Warn("l1StartHash not set, blocks will be fetched from L1 genesis")
+
+			r.updateLocalHeight(0)
+			return
+		}
+
+		startBlock, err := r.ethClient.HeaderByHash(r.l1StartHash)
+		if err != nil {
+			r.logger.Crit("Could not get l1StartHash block for local height initialization", log.ErrKey, err, "l1StartHash", r.l1StartHash)
+			return
+		}
+		localHeight = startBlock.Number.Uint64() - 1 // record the height before l1StartHash so it fetches from startHash block
+		r.updateLocalHeight(localHeight)
+		r.logger.Info("Initialized local height from l1StartHash", "height", localHeight)
+		return
+	}
+	r.localBlockHeight.Store(localHeight)
+	r.logger.Info("Loaded local height from database", "height", localHeight)
+}
+
+func (r *DataService) updateLocalHeight(blockHeight uint64) {
+	prev := r.localBlockHeight.Load()
+	if blockHeight > prev {
+		r.localBlockHeight.Store(blockHeight)
+
+		err := r.blockResolver.SetMetadata(localHeightKey, blockHeight)
+		if err != nil {
+			// this is not a disaster if it succeeds on future updates, we just use the in-mem value
+			r.logger.Error("Failed to persist local height", log.ErrKey, err)
+		}
+	} else {
+		r.logger.Debug("Skipping local height update for older block", "current", prev, "blockHeight", blockHeight)
+	}
 }
 
 func (r *DataService) HealthStatus(context.Context) host.HealthStatus {
@@ -100,7 +164,17 @@ func (r *DataService) Subscribe(handler host.L1BlockHandler) func() {
 
 // FetchNextBlock calculates the next canonical block that should be sent to requester after a given hash.
 // It returns the block and a bool for whether it is the latest known head
-func (r *DataService) FetchNextBlock(remoteHead gethcommon.Hash) (*types.Header, bool, error) {
+func (r *DataService) FetchNextBlock(remoteHead gethcommon.Hash) (blk *types.Header, isLatest bool, err error) {
+	defer func(start *measure.Stopwatch) {
+		var blockHash gethcommon.Hash
+		var blockNumber *big.Int
+		if blk != nil {
+			blockHash = blk.Hash()
+			blockNumber = blk.Number
+		}
+		core.LogMethodDuration(r.logger, start, "FetchNextBlock", &core.RelaxedThresholds, log.BlockHashKey, blockHash, log.BlockHeightKey, blockNumber)
+	}(measure.NewStopwatch())
+
 	if remoteHead == r.head {
 		// remoteHead is the latest known head
 		return nil, false, ErrNoNextBlock
@@ -123,7 +197,7 @@ func (r *DataService) FetchNextBlock(remoteHead gethcommon.Hash) (*types.Header,
 
 	// and send the canonical block at the height after that
 	// (which may be a fork, or it may just be the next on the same branch if we are catching-up)
-	blk, err := r.ethClient.HeaderByNumber(increment(fork.CommonAncestor.Number))
+	blk, err = r.ethClient.HeaderByNumber(increment(fork.CommonAncestor.Number))
 	if err != nil {
 		if errors.Is(err, ethereum.NotFound) {
 			return nil, false, ErrNoNextBlock
@@ -164,7 +238,10 @@ func (r *DataService) latestCanonAncestor(remote gethcommon.Hash) (*common.Chain
 }
 
 // GetTenRelevantTransactions processes logs in their natural order without grouping by transaction hash.
+// Optimized to make a single eth_getLogs call for all relevant contracts.
 func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.ProcessedL1Data, error) {
+	defer core.LogMethodDuration(r.logger, measure.NewStopwatch(), "GetTenRelevantTransactions", &core.RelaxedThresholds, log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
+
 	processed := &common.ProcessedL1Data{
 		BlockHeader: block,
 		Events:      []common.L1Event{},
@@ -172,196 +249,187 @@ func (r *DataService) GetTenRelevantTransactions(block *types.Header) (*common.P
 	networkConfigAddress := r.contractRegistry.NetworkConfigLib().GetContractAddr()
 	allAddresses := r.contractRegistry.GetContractAddresses()
 
-	if err := r.processNetworkConfigLogs(block, *networkConfigAddress, processed); err != nil {
+	allLogs, err := r.fetchContractLogs(block, networkConfigAddress, allAddresses)
+	if err != nil {
 		return nil, err
 	}
-	if err := r.processNetworkUpgradeLogs(block, *networkConfigAddress, processed); err != nil {
-		return nil, err
-	}
-	if err := r.processMessageBusLogs(block, allAddresses.L1MessageBus, processed); err != nil {
-		return nil, err
-	}
-	if err := r.processEnclaveRegistryLogs(block, allAddresses.EnclaveRegistry, processed); err != nil {
-		return nil, err
-	}
-	if err := r.processRollupLogs(block, allAddresses.DataAvailabilityRegistry, processed); err != nil {
+
+	err = r.processAllLogs(allLogs, networkConfigAddress, allAddresses, processed)
+	if err != nil {
 		return nil, err
 	}
 
 	return processed, nil
 }
 
-func (r *DataService) getContractLogs(block *types.Header, contractAddr gethcommon.Address) ([]types.Log, error) {
+func (r *DataService) fetchContractLogs(block *types.Header, networkConfigAddress *gethcommon.Address, allAddresses *common.NetworkConfigAddresses) ([]types.Log, error) {
+	defer core.LogMethodDuration(r.logger, measure.NewStopwatch(), "fetchContractLogs", &core.RelaxedThresholds, log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
+
 	blkHash := block.Hash()
-	logs, err := r.ethClient.GetLogs(ethereum.FilterQuery{
+	contractAddresses := []gethcommon.Address{
+		*networkConfigAddress,
+		allAddresses.L1MessageBus,
+		allAddresses.EnclaveRegistry,
+		allAddresses.DataAvailabilityRegistry,
+	}
+
+	allLogs, err := r.ethClient.GetLogs(ethereum.FilterQuery{
 		BlockHash: &blkHash,
-		Addresses: []gethcommon.Address{contractAddr},
+		Addresses: contractAddresses,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("unable to fetch logs for contract %s: %w", contractAddr.Hex(), err)
+		return nil, fmt.Errorf("unable to fetch logs for block %s: %w", blkHash.Hex(), err)
 	}
-	return logs, nil
+
+	return allLogs, nil
 }
 
-func (r *DataService) processMessageBusLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	logs, err := r.getContractLogs(block, contractAddr)
-	if err != nil {
-		return err
-	}
+func (r *DataService) processAllLogs(allLogs []types.Log, networkConfigAddress *gethcommon.Address, allAddresses *common.NetworkConfigAddresses, processed *common.ProcessedL1Data) error {
+	defer core.LogMethodDuration(r.logger, measure.NewStopwatch(), "processAllLogs", &core.RelaxedThresholds, "numLogs", len(allLogs), log.BlockHashKey, processed.BlockHeader.Hash())
 
-	for _, l := range logs {
-		if len(l.Topics) == 0 {
-			r.logger.Error("Log has no topics. Should not happen", "txHash", l.TxHash)
-			return errors.New("log has no topics")
-		}
-		txData, err := r.fetchTxAndReceipt(l.TxHash)
-		if err != nil {
-			r.logger.Error("Error creating transaction data. Should not happen", "txHash", l.TxHash, "error", err)
-			return fmt.Errorf("error creating transaction data. Should not happen: %w", err)
-		}
-		switch l.Topics[0] {
-		case ethadapter.CrossChainEventID:
-			err = r.processCrossChainLogs(l, txData, processed)
-		}
-		if err != nil {
-			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
-			return fmt.Errorf("error processing log: %w", err)
-		}
-	}
-	return nil
-}
+	// tx/receipt data to avoid duplicate RPC calls when multiple logs come from the same transaction
+	txDataCache := make(map[gethcommon.Hash]*common.L1TxData)
 
-func (r *DataService) processNetworkUpgradeLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	logs, err := r.getContractLogs(block, contractAddr)
-	if err != nil {
-		return err
-	}
-
-	// Filter logs for network upgrade events
-	var upgradeLogs []types.Log
-	for _, l := range logs {
-		if len(l.Topics) > 0 && l.Topics[0] == ethadapter.UpgradedEventID {
-			upgradeLogs = append(upgradeLogs, l)
-		}
-	}
-
-	// Process each upgrade log
-	for _, l := range upgradeLogs {
-		txData, err := r.fetchTxAndReceipt(l.TxHash)
-		if err != nil {
-			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
-			continue
-		}
-
-		// Convert the log to network upgrade data
-		networkUpgrades, err := events.ConvertLogsToNetworkUpgrades([]types.Log{l}, ethadapter.UpgradedEventName, ethadapter.NetworkConfigABI)
-		if err != nil {
-			r.logger.Error("Error converting logs to network upgrades", "txHash", l.TxHash, "error", err)
-			return fmt.Errorf("error converting logs to network upgrades: %w", err)
-		}
-
-		txData.NetworkUpgrades = networkUpgrades
-		processed.AddEvent(common.NetworkUpgradedTx, txData)
-	}
-	return nil
-}
-
-func (r *DataService) processEnclaveRegistryLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	logs, err := r.getContractLogs(block, contractAddr)
-	if err != nil {
-		return err
-	}
-
-	for _, l := range logs {
-		if len(l.Topics) == 0 {
-			continue
-		}
-		txData, err := r.fetchTxAndReceipt(l.TxHash)
-		if err != nil {
-			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
-			continue
-		}
-		switch l.Topics[0] {
-		case ethadapter.NetworkSecretInitializedEventID:
-			if err = r.processEnclaveRegistrationTx(txData, processed); err == nil {
-				err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
+	// route logs to appropriate processing functions based on contract address
+	for _, l := range allLogs {
+		var processErr error
+		switch l.Address {
+		case *networkConfigAddress:
+			// both NetworkConfig and NetworkUpgrade logs come from the same contract
+			if len(l.Topics) > 0 {
+				switch l.Topics[0] {
+				case ethadapter.UpgradedEventID:
+					processErr = r.processNetworkUpgradeLog(l, txDataCache, processed)
+				case ethadapter.NetworkContractAddressAddedID, ethadapter.AdditionalContractAddressAddedID:
+					processErr = r.processNetworkConfigLog(l, txDataCache, processed)
+				default:
+					// unknown event, continue
+					r.logger.Debug("Unknown log topic from NetworkConfig", "topic", l.Topics[0], "txHash", l.TxHash)
+				}
 			}
-		case ethadapter.SequencerEnclaveGrantedEventID:
-			err = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
-		case ethadapter.SequencerEnclaveRevokedEventID:
-			err = r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
-		case ethadapter.NetworkSecretRequestedID:
-			processed.AddEvent(common.SecretRequestTx, txData)
-		case ethadapter.NetworkSecretRespondedID:
-			processed.AddEvent(common.SecretResponseTx, txData)
-		default:
-			// there are known events that we don't care about here
-			r.logger.Trace("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
+		case allAddresses.L1MessageBus:
+			processErr = r.processMessageBusLog(l, txDataCache, processed)
+		case allAddresses.EnclaveRegistry:
+			processErr = r.processEnclaveRegistryLog(l, txDataCache, processed)
+		case allAddresses.DataAvailabilityRegistry:
+			processErr = r.processRollupLog(l, txDataCache, processed)
 		}
 
-		if err != nil {
-			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
-			return fmt.Errorf("error processing log: %w", err)
+		if processErr != nil {
+			r.logger.Error("Error processing log", "txHash", l.TxHash, "address", l.Address, "error", processErr)
+			return fmt.Errorf("error processing log: %w", processErr)
 		}
 	}
+
 	return nil
 }
 
-func (r *DataService) processNetworkConfigLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	logs, err := r.getContractLogs(block, contractAddr)
+func (r *DataService) processNetworkUpgradeLog(l types.Log, txDataCache map[gethcommon.Hash]*common.L1TxData, processed *common.ProcessedL1Data) error {
+	txData, err := r.getCachedTxData(l.TxHash, txDataCache)
 	if err != nil {
-		return err
-	}
-	for _, l := range logs {
-		if len(l.Topics) == 0 {
-			continue
-		}
-		txData, err := r.fetchTxAndReceipt(l.TxHash)
-		if err != nil {
-			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
-			continue
-		}
-		switch l.Topics[0] {
-		case ethadapter.NetworkContractAddressAddedID:
-			processed.AddEvent(common.NetworkContractAddressAddedTx, txData)
-		case ethadapter.AdditionalContractAddressAddedID:
-			processed.AddEvent(common.AdditionalContractAddressAddedTx, txData)
-		default:
-			// there are known events that we don't care about here
-			r.logger.Trace("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
-		}
-	}
-	return nil
-}
-
-func (r *DataService) processRollupLogs(block *types.Header, contractAddr gethcommon.Address, processed *common.ProcessedL1Data) error {
-	rollupLogs, err := r.getContractLogs(block, contractAddr)
-	if err != nil {
+		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
 		return err
 	}
 
-	for _, l := range rollupLogs {
-		if len(l.Topics) == 0 {
-			continue
-		}
-		txData, err := r.fetchTxAndReceipt(l.TxHash)
-		if err != nil {
-			r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
-			continue
-		}
-		switch l.Topics[0] {
-		case ethadapter.RollupAddedID:
-			err = r.processRollupLog(l, txData, processed)
-		}
-		if err != nil {
-			r.logger.Error("Error processing log", "txHash", l.TxHash, "error", err)
-			return fmt.Errorf("error processing log: %w", err)
-		}
+	// Convert the log to network upgrade data
+	networkUpgrades, err := events.ConvertLogsToNetworkUpgrades([]types.Log{l}, ethadapter.UpgradedEventName, ethadapter.NetworkConfigABI)
+	if err != nil {
+		r.logger.Error("Error converting logs to network upgrades", "txHash", l.TxHash, "error", err)
+		return fmt.Errorf("error converting logs to network upgrades: %w", err)
+	}
+
+	txData.NetworkUpgrades = networkUpgrades
+	processed.AddEvent(common.NetworkUpgradedTx, txData)
+	return nil
+}
+
+func (r *DataService) processNetworkConfigLog(l types.Log, txDataCache map[gethcommon.Hash]*common.L1TxData, processed *common.ProcessedL1Data) error {
+	txData, err := r.getCachedTxData(l.TxHash, txDataCache)
+	if err != nil {
+		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
+		return err
+	}
+
+	switch l.Topics[0] {
+	case ethadapter.NetworkContractAddressAddedID:
+		processed.AddEvent(common.NetworkContractAddressAddedTx, txData)
+	case ethadapter.AdditionalContractAddressAddedID:
+		processed.AddEvent(common.AdditionalContractAddressAddedTx, txData)
+	default:
+		r.logger.Trace("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
 	}
 	return nil
 }
 
-func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, processed *common.ProcessedL1Data) error {
+func (r *DataService) processMessageBusLog(l types.Log, txDataCache map[gethcommon.Hash]*common.L1TxData, processed *common.ProcessedL1Data) error {
+	if len(l.Topics) == 0 {
+		r.logger.Error("Log has no topics. Should not happen", "txHash", l.TxHash)
+		return errors.New("log has no topics")
+	}
+
+	if l.Topics[0] != ethadapter.CrossChainEventID {
+		// not a cross-chain event, skip
+		return nil
+	}
+
+	txData, err := r.getCachedTxData(l.TxHash, txDataCache)
+	if err != nil {
+		r.logger.Error("Error creating transaction data. Should not happen", "txHash", l.TxHash, "error", err)
+		return fmt.Errorf("error creating transaction data. Should not happen: %w", err)
+	}
+
+	return r.processCrossChainLogs(l, txData, processed)
+}
+
+func (r *DataService) processEnclaveRegistryLog(l types.Log, txDataCache map[gethcommon.Hash]*common.L1TxData, processed *common.ProcessedL1Data) error {
+	if len(l.Topics) == 0 {
+		return nil
+	}
+
+	txData, err := r.getCachedTxData(l.TxHash, txDataCache)
+	if err != nil {
+		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
+		return err
+	}
+
+	var processErr error
+	switch l.Topics[0] {
+	case ethadapter.NetworkSecretInitializedEventID:
+		if processErr = r.processEnclaveRegistrationTx(txData, processed); processErr == nil {
+			processErr = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
+		}
+	case ethadapter.SequencerEnclaveGrantedEventID:
+		processErr = r.processSequencerLogs(l, txData, processed, common.SequencerAddedTx)
+	case ethadapter.SequencerEnclaveRevokedEventID:
+		processErr = r.processSequencerLogs(l, txData, processed, common.SequencerRevokedTx)
+	case ethadapter.NetworkSecretRequestedID:
+		processed.AddEvent(common.SecretRequestTx, txData)
+	case ethadapter.NetworkSecretRespondedID:
+		processed.AddEvent(common.SecretResponseTx, txData)
+	default:
+		// skip over any other events
+		r.logger.Trace("Unknown log topic", "topic", l.Topics[0], "txHash", l.TxHash)
+	}
+
+	return processErr
+}
+
+func (r *DataService) processRollupLog(l types.Log, txDataCache map[gethcommon.Hash]*common.L1TxData, processed *common.ProcessedL1Data) error {
+	if len(l.Topics) == 0 {
+		return nil
+	}
+
+	if l.Topics[0] != ethadapter.RollupAddedID {
+		// not a rollup event, skip
+		return nil
+	}
+
+	txData, err := r.getCachedTxData(l.TxHash, txDataCache)
+	if err != nil {
+		r.logger.Error("Error creating transaction data", "txHash", l.TxHash, "error", err)
+		return err
+	}
+
 	abi, err := DataAvailabilityRegistry.DataAvailabilityRegistryMetaData.GetAbi()
 	if err != nil {
 		r.logger.Error("Error getting DataAvailabilityRegistry ABI", log.ErrKey, err)
@@ -375,7 +443,7 @@ func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, pro
 	}
 	blobs, err := r.blobResolver.FetchBlobs(context.Background(), processed.BlockHeader, []gethcommon.Hash{event.RollupHash})
 	if err != nil {
-		r.logger.Error(fmt.Sprintf("error while fetching blobs. Cause: %s", err))
+		r.logger.Error("error while fetching blobs during log processing", "error", err)
 		return err
 	}
 	txData.BlobsWithSignature = []common.BlobAndSignature{
@@ -384,6 +452,7 @@ func (r *DataService) processRollupLog(l types.Log, txData *common.L1TxData, pro
 			Signature: event.Signature,
 		},
 	}
+	r.logger.Debug("Found rollup blobs", "rollupHash", event.RollupHash, "num blobs", len(blobs), "blockHash", processed.BlockHeader.Hash().Hex())
 	processed.AddEvent(common.RollupTx, txData)
 	return nil
 }
@@ -406,6 +475,21 @@ func (r *DataService) fetchTxAndReceipt(txHash gethcommon.Hash) (*common.L1TxDat
 		CrossChainMessages: common.CrossChainMessages{},
 		ValueTransfers:     common.ValueTransferEvents{},
 	}, nil
+}
+
+// getCachedTxData retrieves transaction data from cache or fetches it if not present
+func (r *DataService) getCachedTxData(txHash gethcommon.Hash, cache map[gethcommon.Hash]*common.L1TxData) (*common.L1TxData, error) {
+	if txData, exists := cache[txHash]; exists {
+		return txData, nil
+	}
+
+	txData, err := r.fetchTxAndReceipt(txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	cache[txHash] = txData
+	return txData, nil
 }
 
 // processCrossChainLogs handles cross-chain message logs
@@ -466,21 +550,34 @@ func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, proc
 
 // stream blocks from L1 as they arrive and forward them to subscribers, no guarantee of perfect ordering or that there won't be gaps.
 // If streaming is interrupted it will carry on from latest, it won't try to replay missed blocks.
+// Initially, and when it detects a gap, it will eagerly fetch historical blocks to catch up.
 func (r *DataService) streamLiveBlocks() {
+	// initial catch-up of all historical blocks before starting live streaming
+	r.eagerFetchBlocksUpTo(_headBlock)
+
 	liveStream, streamSub := r.resetLiveStream()
 	for r.running.Load() {
 		select {
 		case blockHeader := <-liveStream:
 			r.logger.Info("received block from l1 stream", log.BlockHashKey, blockHeader.Hash(), log.BlockHeightKey, blockHeader.Number)
+			if blockHeader.Number.Uint64() > r.localBlockHeight.Load()+_minGapForEagerFetch {
+				// catch up historical blocks if we are behind
+				r.eagerFetchBlocksUpTo(blockHeader.Number)
+			}
 
-			// recursively check that the ancestors are available in the host db
+			// check that the block's ancestors are available in the host db
 			err := r.fetchAncestors(blockHeader.ParentHash)
 			if err != nil {
 				r.logger.Error("error fetching ancestors", log.ErrKey, err)
 				continue
 			}
 
-			r.storeBlockHeader(blockHeader)
+			err = r.blockResolver.AddBlock(blockHeader)
+			if err != nil {
+				r.logger.Error("error adding block", log.ErrKey, err)
+				continue
+			}
+			r.updateLocalHeight(blockHeader.Number.Uint64())
 
 			// only notify subscribers (enclave guardians) on the streamed block, because they have their own catch-up mechanism
 			r.head = blockHeader.Hash()
@@ -496,54 +593,87 @@ func (r *DataService) streamLiveBlocks() {
 			if liveStream != nil {
 				close(liveStream)
 			}
-			// reset stream to ensure it has not died
 			liveStream, streamSub = r.resetLiveStream()
+
+		case <-r.hostInterrupt.Done():
+			r.logger.Info("block streaming stopped by stop signal")
+			if streamSub != nil {
+				streamSub.Unsubscribe()
+			}
+			if liveStream != nil {
+				close(liveStream)
+			}
+			return
 		}
-	}
-	r.logger.Info("block streaming stopped")
-	if streamSub != nil {
-		streamSub.Unsubscribe()
-	}
-	if liveStream != nil {
-		close(liveStream)
 	}
 }
 
 func (r *DataService) fetchAncestors(blockHash gethcommon.Hash) error {
-	// stop at the first l1 block
-	if blockHash == r.l1StartHash {
-		return nil
+	var blocksToStore []*types.Header // accumulate ancestor blocks to store in order if they are missing
+	currentHash := blockHash
+
+	// walk back ancestors until we find one in the host db (or reach l1StartHash)
+	for currentHash != r.l1StartHash {
+		_, blockErr := r.blockResolver.ReadBlock(&currentHash)
+		if blockErr == nil {
+			break
+		}
+
+		r.logger.Info("`newHeads` block ancestor not found in host db. Fetching from l1", log.BlockHashKey, currentHash)
+
+		b, err := r.ethClient.HeaderByHash(currentHash)
+		if err != nil {
+			return fmt.Errorf("error fetching block: %w", err)
+		}
+
+		blocksToStore = append(blocksToStore, b)
+		currentHash = b.ParentHash
+
+		if len(blocksToStore) > _minGapForEagerFetch {
+			r.logger.Warn(fmt.Sprintf("Fetch ancestors is not meant for large historical gaps in block data - "+
+				"has been walking backwards for over %d blocks", _minGapForEagerFetch),
+				"numBlocks", len(blocksToStore))
+		}
 	}
 
-	_, err := r.blockResolver.ReadBlock(&blockHash)
-	if err == nil {
-		return nil
+	for i := len(blocksToStore) - 1; i >= 0; i-- {
+		err := r.blockResolver.AddBlock(blocksToStore[i])
+		if err != nil {
+			return fmt.Errorf("failed to add block (%d of %d) to storage: %w", i, len(blocksToStore), err)
+		}
+		r.updateLocalHeight(blocksToStore[i].Number.Uint64())
 	}
 
-	r.logger.Info("`newHeads` block ancestor not found in host db. Fetching from l1", log.BlockHashKey, blockHash)
-
-	// fetch the missing block from the l1 rpc
-	block, err := r.ethClient.HeaderByHash(blockHash)
-	if err != nil {
-		return fmt.Errorf("error fetching block: %w", err)
-	}
-
-	// recursively check that the ancestors
-	err = r.fetchAncestors(block.ParentHash)
-	if err != nil {
-		return fmt.Errorf("error fetching ancestor: %w", err)
-	}
-
-	// handle the blocks in the reverse order of the stack - from the oldest to the newest
-	r.storeBlockHeader(block)
 	return nil
 }
 
-func (r *DataService) storeBlockHeader(blockHeader *types.Header) {
-	err := r.blockResolver.AddBlock(blockHeader)
-	if err != nil {
-		r.logger.Error("Could not add block to host db.", log.ErrKey, err)
-		// todo - handle unexpected errors here
+// eagerFetchBlocksUpTo will fetch historical blocks from L1 starting from localBlockHeight until there are no more blocks
+// pass _headBlock to fetch up to the latest head,
+// otherwise this will fetch up to `upToHeight - 1` (to allow for live block to be processed and not re-fetched)
+func (r *DataService) eagerFetchBlocksUpTo(upToHeight *big.Int) {
+	height := r.localBlockHeight.Load()
+	r.logger.Info("Starting eager L1 block fetch to catch up", "startingHeight", height)
+
+	for r.running.Load() && (upToHeight.Cmp(_headBlock) == 0 || big.NewInt(int64(height)).Cmp(upToHeight) <= 0) {
+		block, err := r.ethClient.HeaderByNumber(big.NewInt(int64(height + 1)))
+		if err != nil {
+			if errors.Is(err, ethereum.NotFound) {
+				// no more blocks to fetch
+				r.logger.Info("Eager fetch caught up to latest L1 block", "height", height)
+				return
+			}
+			r.logger.Warn("Eager fetch block by number failed", "height", height, log.ErrKey, err)
+			// abandon for now, retry will be triggered by L1 block arrival
+			return
+		}
+
+		err = r.blockResolver.AddBlock(block)
+		if err != nil {
+			r.logger.Warn("Eager fetch block failed", "height", height, log.ErrKey, err)
+			return
+		}
+		height = block.Number.Uint64()
+		r.updateLocalHeight(height)
 	}
 }
 

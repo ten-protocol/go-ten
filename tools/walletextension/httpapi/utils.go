@@ -19,9 +19,7 @@ func getQueryParameter(params map[string]string, selectedParameter string) (stri
 	return value, nil
 }
 
-// getUserID returns userID from query params / url of the URL
-// it always first tries to get userID from a query parameter `u` or `token` (`u` parameter will become deprecated)
-// if it fails to get userID from a query parameter it tries to get it from the URL and it needs position as the second parameter
+// getUserID returns userID from query params (it is always used by the REST API methods and never by the JSON-RPC API methods where token can be extracted also from the request URL)
 func getUserID(conn UserConn) ([]byte, error) {
 	// try getting userID (`token`) from query parameters and return it if successful
 	userID, err := getQueryParameter(conn.ReadRequestParams(), common.EncryptedTokenQueryParameter)

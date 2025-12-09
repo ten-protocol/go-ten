@@ -52,6 +52,9 @@ type Services struct {
 	NewHeadsService     *subscriptioncommon.NewHeadsService
 	cacheInvalidationCh chan *tencommon.BatchHeader
 	MetricsTracker      metrics.Metrics
+	DefaultUser         *common.GWUser
+	ActivityTracker     SessionKeyActivityTracker
+	TxSender            TxSender
 }
 
 type NewHeadNotifier interface {
@@ -84,6 +87,8 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 
 	rateLimiter := ratelimiter.NewRateLimiter(config.RateLimitUserComputeTime, config.RateLimitWindow, uint32(config.RateLimitMaxConcurrentRequests), logger)
 
+	activityTracker := NewSessionKeyActivityTracker(logger)
+
 	services := Services{
 		HostAddrHTTP:        hostAddrHTTP,
 		HostAddrWS:          hostAddrWS,
@@ -93,12 +98,17 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		version:             version,
 		RPCResponsesCache:   newGatewayCache,
 		BackendRPC:          NewBackendRPC(hostAddrHTTP, hostAddrWS, logger),
-		SKManager:           NewSKManager(storage, config, logger),
+		SKManager:           NewSKManager(storage, config, logger, activityTracker),
 		RateLimiter:         rateLimiter,
 		Config:              config,
 		cacheInvalidationCh: make(chan *tencommon.BatchHeader),
 		MetricsTracker:      metricsTracker,
+		DefaultUser:         nil,
+		ActivityTracker:     activityTracker,
 	}
+
+	// Initialize transaction sender
+	services.TxSender = NewTxSender(services.BackendRPC, services.SKManager, logger)
 
 	services.NewHeadsService = subscriptioncommon.NewNewHeadsService(
 		func() (chan *tencommon.BatchHeader, <-chan error, error) {
@@ -118,6 +128,15 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		})
 
 	go _startCacheEviction(&services, logger)
+
+	// Initialize a single default user for unauthenticated requests
+	if services.DefaultUser == nil {
+		if user, err := ReturnDefaultUserAndAccount(config); err == nil {
+			services.DefaultUser = user
+		} else {
+			logger.Warn("Failed to create default user", "err", err)
+		}
+	}
 	return &services
 }
 
@@ -193,7 +212,7 @@ func (w *Services) Logger() gethlog.Logger {
 
 // GenerateAndStoreNewUser generates new key-pair and userID, stores it in the database and returns hex encoded userID and error
 func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
-	Audit(w, DebugLevel, "Generating and storing new user")
+	w.Logger().Debug("Generating and storing new user")
 	requestStartTime := time.Now()
 	// generate new key-pair
 	viewingKeyPrivate, err := crypto.GenerateKey()
@@ -214,14 +233,14 @@ func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
 
 	requestEndTime := time.Now()
 	duration := requestEndTime.Sub(requestStartTime)
-	Audit(w, InfoLevel, "Storing new userID: %s, duration: %d ", common.HashForLogging(userID), duration.Milliseconds())
+	w.Logger().Info("Storing new userID", "userID", common.HashForLogging(userID), "duration", duration.Milliseconds())
 	return userID, nil
 }
 
 // AddAddressToUser checks if a message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
 func (w *Services) AddAddressToUser(userID []byte, address string, signature []byte, signatureType viewingkey.SignatureType) error {
 	w.MetricsTracker.RecordUserActivity(userID)
-	Audit(w, DebugLevel, "Adding address to user: %s, address: %s", common.HashForLogging(userID), address)
+	w.Logger().Debug("Adding address to user", "userID", common.HashForLogging(userID), "address", address)
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
 
@@ -243,7 +262,7 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 	}
 
 	if recoveredAddress.Hex() != addressFromMessage.Hex() {
-		Audit(w, WarnLevel, "Invalid signature for address: %s, recovered: %s", addressFromMessage.Hex(), recoveredAddress.Hex())
+		w.Logger().Warn("Invalid signature for address", "address", addressFromMessage.Hex(), "recovered", recoveredAddress.Hex())
 		return errors.New("invalid request. Signature doesn't match address")
 	}
 
@@ -255,14 +274,14 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 	}
 	w.MetricsTracker.RecordAccountRegistered()
 
-	Audit(w, InfoLevel, "Storing new address for user: %s, address: %s, duration: %d ", hexutils.BytesToHex(userID), address, time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("Storing new address for user", "userID", hexutils.BytesToHex(userID), "address", address, "duration", time.Since(requestStartTime).Milliseconds())
 	return nil
 }
 
 // UserHasAccount checks if provided account exist in the database for given userID
 func (w *Services) UserHasAccount(userID []byte, address string) (bool, error) {
 	w.MetricsTracker.RecordUserActivity(userID)
-	Audit(w, DebugLevel, "Checking if user has account: %s, address: %s", common.HashForLogging(userID), address)
+	w.Logger().Debug("Checking if user has account", "userID", common.HashForLogging(userID), "address", address)
 	addressBytes, err := hex.DecodeString(address[2:]) // remove 0x prefix from address
 	if err != nil {
 		w.Logger().Error(fmt.Errorf("error decoding string (%s), %w", address[2:], err).Error())
@@ -289,7 +308,7 @@ func (w *Services) UserHasAccount(userID []byte, address string) (bool, error) {
 }
 
 func (w *Services) UserExists(userID []byte) bool {
-	Audit(w, DebugLevel, "Checking if user exists: %s", userID)
+	w.Logger().Debug("Checking if user exists", "userID", userID)
 	// Check if user exists and don't log error if user doesn't exist, because we expect this to happen in case of
 	// user revoking encryption token or using different testnet.
 	// todo add a counter here in the future
@@ -306,7 +325,7 @@ func (w *Services) Version() string {
 }
 
 func (w *Services) GetTenNodeHealthStatus() (bool, error) {
-	Audit(w, DebugLevel, "Getting TEN node health status")
+	w.Logger().Debug("Getting TEN node health status")
 	res, err := WithPlainRPCConnection[bool](context.Background(), w.BackendRPC, func(client *gethrpc.Client) (*bool, error) {
 		res, err := obsclient.NewObsClient(client).Health()
 		return &res.OverallHealth, err
@@ -318,7 +337,7 @@ func (w *Services) GetTenNodeHealthStatus() (bool, error) {
 }
 
 func (w *Services) GetTenNetworkConfig() (tencommon.TenNetworkInfo, error) {
-	Audit(w, DebugLevel, "Getting TEN network config")
+	w.Logger().Debug("Getting TEN network config")
 	res, err := WithPlainRPCConnection[tencommon.TenNetworkInfo](context.Background(), w.BackendRPC, func(client *gethrpc.Client) (*tencommon.TenNetworkInfo, error) {
 		return obsclient.NewObsClient(client).GetConfig()
 	})
@@ -329,7 +348,7 @@ func (w *Services) GetTenNetworkConfig() (tencommon.TenNetworkInfo, error) {
 }
 
 func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlice []string) (string, error) {
-	Audit(w, DebugLevel, "Generating user message to sign")
+	w.Logger().Debug("Generating user message to sign")
 	// Check if the formats are valid
 	for _, format := range formatsSlice {
 		if _, exists := viewingkey.SignatureTypeMap[format]; !exists {

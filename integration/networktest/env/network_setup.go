@@ -22,7 +22,7 @@ func SepoliaTestnet(opts ...TestnetEnvOption) networktest.Environment {
 	connector := newTestnetConnector(
 		"http://erpc.sepolia-testnet.ten.xyz:80", // this is actually a validator...
 		[]string{"http://erpc.sepolia-testnet.ten.xyz:80"},
-		"http://sepolia-testnet-faucet.uksouth.azurecontainer.io/fund/eth",
+		"https://sepolia-faucet.ten.xyz/fund/eth",
 		"wss://ethereum-sepolia-rpc.publicnode.com",
 		"https://testnet.ten.xyz",  //"https://rpc.dexynth-gateway.ten.xyz",
 		"wss://testnet.ten.xyz:81", // "wss://rpc.dexynth-gateway.ten.xyz:81",

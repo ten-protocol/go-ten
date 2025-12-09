@@ -23,6 +23,9 @@ RUN go mod download
 # Build stage for building the eth2 network runners. Will run in parallel and block on COPY if the build-geth-binary stage has not completed.
 FROM get-dependencies as build-geth-network
 
+# Install jq for JSON processing in start-pos-network.sh
+RUN apt-get update && apt-get install -y jq && rm -rf /var/lib/apt/lists/*
+
 # Create logs directory
 RUN mkdir -p /home/obscuro/logs
 

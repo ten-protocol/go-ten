@@ -32,6 +32,9 @@ type Host interface {
 	// TenConfig returns the info of the Obscuro network
 	TenConfig() (*common.TenNetworkInfo, error)
 
+	// SequencerAttestations returns the attestation reports for the sequencer enclaves
+	SequencerAttestations() ([]*common.PublicAttestationReport, error)
+
 	// NewHeadsChan returns live batch headers
 	// Note - do not use directly. This is meant only for the NewHeadsManager, which multiplexes the headers
 	NewHeadsChan() chan *common.BatchHeader

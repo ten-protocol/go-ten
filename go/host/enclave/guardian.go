@@ -27,7 +27,9 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 	"github.com/ten-protocol/go-ten/go/common/host"
 	"github.com/ten-protocol/go-ten/go/common/log"
+	"github.com/ten-protocol/go-ten/go/common/measure"
 	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/enclave/core"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 )
 
@@ -298,6 +300,7 @@ func (g *Guardian) HandleBatch(batch *common.ExtBatch) {
 		g.logger.Debug("Enclave is behind, ignoring batch", log.BatchSeqNoKey, batch.Header.SequencerOrderNo)
 		return // ignore batches until we're up-to-date
 	}
+
 	err := g.submitL2Batch(batch)
 	if err != nil {
 		g.logger.Error("Error submitting batch to enclave", log.ErrKey, err)
@@ -460,7 +463,7 @@ func (g *Guardian) provideSecret() error {
 
 func (g *Guardian) generateAndBroadcastSecret() error {
 	g.logger.Info("Node is genesis node. Publishing secret to L1 enclave registry contract.")
-	// Create the shared secret and submit it to the management contract for storage
+	// Create the shared secret and submit it to the NetworkEnclaveRegistry contract for storage
 	attestation, err := g.enclaveClient.Attestation(context.Background())
 	if err != nil {
 		return fmt.Errorf("could not retrieve attestation from enclave. Cause: %w", err)
@@ -542,7 +545,10 @@ func (g *Guardian) catchupWithL2() error {
 // returns false if the block was not processed
 // todo - @matt - think about removing the TryLock
 func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, error) {
+	defer core.LogMethodDuration(g.logger, measure.NewStopwatch(), "Host submitL1Block", &core.RelaxedThresholds, log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
+
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
+	// todo @matt - do we need to lock here?
 	if !g.submitDataLock.TryLock() {
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
 		return false, nil
@@ -582,7 +588,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 
 	// successfully processed block, update the state
 	g.state.OnProcessedBlock(block.Hash())
-	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, g.shouldSyncContracts(*processedData), g.shouldSyncAdditionalContracts(*processedData))
+	g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, processedData)
 
 	// todo: make sure this doesn't respond to old requests (once we have a proper protocol for that)
 	err = g.publishSharedSecretResponses(resp.ProducedSecretResponses)
@@ -592,7 +598,20 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	return true, nil
 }
 
-func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, syncContracts bool, syncAdditionalContracts bool) {
+func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, processedData *common.ProcessedL1Data) {
+	// handle rollup txs first
+	g.processRollupTransactions(block, metadatas, rollupTxs)
+	if g.shouldSyncContracts(*processedData) || g.shouldSyncAdditionalContracts(*processedData) {
+		go func() {
+			err := g.sl.L1Publisher().ResyncImportantContracts()
+			if err != nil {
+				g.logger.Error("Could not resync important contracts", log.ErrKey, err)
+			}
+		}()
+	}
+}
+
+func (g *Guardian) processRollupTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx) {
 	for idx, rollup := range rollupTxs {
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
@@ -601,7 +620,7 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 
 		metaData, err := g.enclaveClient.GetRollupData(context.Background(), r.Header.Hash())
 		if err != nil {
-			g.logger.Error("Could not fetch rollup metadata from enclave.", log.RollupHashKey, r.Header.Hash(), log.ErrKey, err)
+			g.logger.Warn("Could not fetch rollup metadata from enclave.", log.RollupHashKey, r.Header.Hash(), log.ErrKey, err)
 		} else {
 			// TODO - This is a temporary fix, arrays should always match in practice...
 			extMetadata := common.ExtRollupMetadata{}
@@ -614,18 +633,9 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 			if errors.Is(err, errutil.ErrAlreadyExists) {
 				g.logger.Info("Rollup already stored", log.RollupHashKey, r.Hash())
 			} else {
-				g.logger.Error("Could not store rollup.", log.ErrKey, err)
+				g.logger.Warn("Could not store rollup.", log.ErrKey, err)
 			}
 		}
-	}
-
-	if syncContracts || syncAdditionalContracts {
-		go func() {
-			err := g.sl.L1Publisher().ResyncImportantContracts()
-			if err != nil {
-				g.logger.Error("Could not resync important contracts", log.ErrKey, err)
-			}
-		}()
 	}
 }
 

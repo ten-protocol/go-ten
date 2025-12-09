@@ -298,16 +298,27 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 		return nil, fmt.Errorf("could not retrieve block. Cause: %w", err)
 	}
 
+	// build a map of requested addresses for filtering
+	requestedAddrs := make(map[gethcommon.Address]bool)
+	if len(fq.Addresses) > 0 {
+		for _, addr := range fq.Addresses {
+			requestedAddrs[addr] = true
+		}
+	}
+
 	for _, tx := range blk.Transactions() {
 		if tx.To() == nil {
 			continue
 		}
 
-		// map transaction types to their corresponding event topics
+		// map transaction types to their corresponding event topics and contract addresses
 		var topic gethcommon.Hash
 		var data []byte
+		var logAddress gethcommon.Address
+
 		switch tx.To().Hex() {
 		case RollupTxAddr.Hex():
+			logAddress = RollupTxAddr // DataAvailabilityRegistry
 			topic = ethadapter.RollupAddedID
 			blobHashes := tx.BlobHashes()
 			if len(blobHashes) > 0 {
@@ -330,16 +341,26 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 				copy(data[96:], signature)
 			}
 		case MessageBusAddr.Hex():
+			logAddress = MessageBusAddr
 			topic = ethadapter.CrossChainEventID
 		case DepositTxAddr.Hex():
+			logAddress = DepositTxAddr
 			topic = ethadapter.ValueTransferEventID
 		case RespondSecretTxAddr.Hex():
+			// map to EnclaveRegistry address
+			logAddress = RespondSecretTxAddr
 			topic = ethadapter.NetworkSecretRespondedID
 		case RequestSecretTxAddr.Hex():
+			// map to EnclaveRegistry address
+			logAddress = RespondSecretTxAddr
 			topic = ethadapter.NetworkSecretRequestedID
 		case InitializeSecretTxAddr.Hex():
+			// map to EnclaveRegistry address
+			logAddress = RespondSecretTxAddr
 			topic = ethadapter.NetworkSecretInitializedEventID
 		case GrantSeqTxAddr.Hex():
+			// map to EnclaveRegistry address
+			logAddress = RespondSecretTxAddr
 			topic = ethadapter.SequencerEnclaveGrantedEventID
 			// enclave ID address, padded out to 32 bytes to match standard eth fields
 			data = make([]byte, 32)
@@ -348,8 +369,13 @@ func (m *Node) GetLogs(fq ethereum.FilterQuery) ([]types.Log, error) {
 			continue
 		}
 
+		// filter by requested addresses if provided
+		if len(requestedAddrs) > 0 && !requestedAddrs[logAddress] {
+			continue
+		}
+
 		dummyLog := types.Log{
-			Address:     *tx.To(),
+			Address:     logAddress,
 			BlockHash:   blk.Hash(),
 			TxHash:      tx.Hash(),
 			Topics:      []gethcommon.Hash{topic},

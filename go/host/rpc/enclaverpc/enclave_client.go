@@ -194,6 +194,14 @@ func (c *Client) RPCEncryptionKey(ctx context.Context) ([]byte, common.SystemErr
 }
 
 func (c *Client) SubmitL1Block(ctx context.Context, processed *common.ProcessedL1Data) (*common.BlockSubmissionResponse, common.SystemError) {
+	blockHash := gethcommon.Hash{}
+	var blockNumber *big.Int
+	if processed != nil && processed.BlockHeader != nil {
+		blockHash = processed.BlockHeader.Hash()
+		blockNumber = processed.BlockHeader.Number
+	}
+	defer core.LogMethodDuration(c.logger, measure.NewStopwatch(), "SubmitL1Block rpc call", &core.RelaxedThresholds, log.BlockHashKey, blockHash, log.BlockHeightKey, blockNumber)
+
 	var buffer bytes.Buffer
 	if err := processed.BlockHeader.EncodeRLP(&buffer); err != nil {
 		return nil, fmt.Errorf("could not encode block. Cause: %w", err)
@@ -489,6 +497,32 @@ func (c *Client) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublic
 		SystemContractsUpgrader:         gethcommon.BytesToAddress(response.SystemContractsUpgraderAddress),
 		PublicSystemContracts:           publicSystemContracts,
 	}, nil
+}
+
+func (c *Client) FetchSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.FetchSequencerAttestations(timeoutCtx, &generated.SequencerAttestationRequest{})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response == nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("nil response from enclave"))
+	}
+	if response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	reports := make([]*common.AttestationReport, 0, len(response.Reports))
+	for _, r := range response.Reports {
+		reports = append(reports, &common.AttestationReport{
+			EnclaveID: gethcommon.BytesToAddress(r.EnclaveID),
+			PubKey:    r.PublicKey,
+			Report:    r.Report,
+		})
+	}
+	return reports, nil
 }
 
 func (c *Client) MakeActive() common.SystemError {

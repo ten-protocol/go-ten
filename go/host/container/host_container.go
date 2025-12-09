@@ -145,18 +145,17 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 	if err != nil {
 		logger.Crit("could not create contract lib registry.", log.ErrKey, err)
 	}
-	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BeaconUrl)
+	beaconClient := ethadapter.NewBeaconHTTPClient(new(http.Client), logger, cfg.L1BeaconUrl)
 	// we can add more fallback clients as they become available
-	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), cfg.L1BlobArchiveUrl)
+	beaconFallback := ethadapter.NewBeaconHTTPClient(new(http.Client), logger, cfg.L1BlobArchiveUrl)
 	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(beaconClient, beaconFallback), logger)
-	l1Data := l1.NewL1DataService(l1Client, logger, contractRegistry, blobResolver, cfg.L1StartHash)
-	return NewHostContainer(cfg, services, aggP2P, l1Client, l1Data, enclaveClients, ethWallet, rpcServer, logger, metricsService, blobResolver, contractRegistry)
+	return NewHostContainer(cfg, services, aggP2P, l1Client, enclaveClients, ethWallet, rpcServer, logger, metricsService, blobResolver, contractRegistry)
 }
 
 // NewHostContainer builds a host container with dependency injection rather than from config.
 // Useful for testing etc. (want to be able to pass in logger, and also have option to mock out dependencies)
-func NewHostContainer(cfg *hostconfig.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service, blobResolver l1.BlobResolver, contractRegistry contractlib.ContractRegistryLib) *HostContainer {
-	h := host.NewHost(cfg, services, p2p, l1Client, l1Repo, enclaveClients, hostWallet, contractRegistry, logger, metricsService.Registry(), blobResolver)
+func NewHostContainer(cfg *hostconfig.HostConfig, services *host.ServicesRegistry, p2p hostcommon.P2PHostService, l1Client ethadapter.EthClient, enclaveClients []common.Enclave, hostWallet wallet.Wallet, rpcServer node.Server, logger gethlog.Logger, metricsService *metrics.Service, blobResolver l1.BlobResolver, contractRegistry contractlib.ContractRegistryLib) *HostContainer {
+	h := host.NewHost(cfg, services, p2p, l1Client, enclaveClients, hostWallet, contractRegistry, logger, metricsService.Registry(), blobResolver)
 
 	hostContainer := &HostContainer{
 		host:           h,

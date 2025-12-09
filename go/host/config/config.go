@@ -36,6 +36,8 @@ type HostConfig struct {
 	RollupInterval time.Duration
 	// MaxRollupSize is the max size of the rollup
 	MaxRollupSize uint64
+	// BatchCompressionFactor estimation used to estimate size of rollups
+	BatchCompressionFactor float64
 	// The expected time between blocks on the L1 network
 	L1BlockTime time.Duration
 	// Delay for retrying rollups to handle blob gas spikes
@@ -133,11 +135,12 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		SequencerP2PAddress:  tenCfg.Network.Sequencer.P2PAddress,
 		NetworkConfigAddress: tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
 
-		BatchInterval:      tenCfg.Network.Batch.Interval,
-		MaxBatchInterval:   tenCfg.Network.Batch.MaxInterval,
-		RollupInterval:     tenCfg.Network.Rollup.Interval,
-		MaxRollupSize:      tenCfg.Network.Rollup.MaxSize,
-		CrossChainInterval: tenCfg.Network.CrossChain.Interval,
+		BatchInterval:          tenCfg.Network.Batch.Interval,
+		MaxBatchInterval:       tenCfg.Network.Batch.MaxInterval,
+		RollupInterval:         tenCfg.Network.Rollup.Interval,
+		MaxRollupSize:          tenCfg.Network.Rollup.MaxSize,
+		BatchCompressionFactor: tenCfg.Network.Rollup.BatchCompressionFactor,
+		CrossChainInterval:     tenCfg.Network.CrossChain.Interval,
 
 		LogLevel: tenCfg.Host.Log.Level,
 		LogPath:  tenCfg.Host.Log.Path,

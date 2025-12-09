@@ -83,17 +83,20 @@ func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig,
 		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
 	}
 	txPoolConfig := legacypool.Config{
-		Locals:       nil,
-		NoLocals:     false,
-		Journal:      "",
-		Rejournal:    0,
-		PriceLimit:   legacypool.DefaultConfig.PriceLimit,
-		PriceBump:    legacypool.DefaultConfig.PriceBump,
-		AccountSlots: 32,
-		GlobalSlots:  (4096 + 1024) * 2,
-		AccountQueue: 2048,
-		GlobalQueue:  2048 * 4,
-		Lifetime:     legacypool.DefaultConfig.Lifetime,
+		Locals:    nil,
+		NoLocals:  false,
+		Journal:   "",
+		Rejournal: 0,
+
+		PriceLimit: legacypool.DefaultConfig.PriceLimit,
+		PriceBump:  legacypool.DefaultConfig.PriceBump,
+
+		AccountSlots: legacypool.DefaultConfig.AccountSlots * 2, // 32,
+		GlobalSlots:  legacypool.DefaultConfig.GlobalSlots * 2,  // (4096 + 1024) * 2,
+		AccountQueue: legacypool.DefaultConfig.AccountQueue * 4, // 64*4,
+		GlobalQueue:  legacypool.DefaultConfig.GlobalQueue * 4,  // 1024 * 4,
+
+		Lifetime: legacypool.DefaultConfig.Lifetime,
 	}
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
 
@@ -233,8 +236,8 @@ func (t *TxPool) PendingTransactions(batchTime uint64) map[gethcommon.Address][]
 	}
 	baseFee := currentBlock.BaseFee
 	txs := t.pool.Pending(gethtxpool.PendingFilter{
-		BaseFee:      uint256.NewInt(baseFee.Uint64()),
-		OnlyPlainTxs: true,
+		BaseFee: uint256.NewInt(baseFee.Uint64()),
+		BlobTxs: false,
 	})
 
 	// Filter out transactions that have "Time" greater than batchTime + MaxNegativeTxTimeDeltaMs
@@ -355,7 +358,12 @@ func (t *TxPool) validateTxBasics(tx *types.Transaction, local bool) error {
 	// hit at higher fees, but regardless its a pointless check as we also verify manually in validateTotalGas
 	// which uses an estimation that would block the tx if execution is above gas limit.
 	header.GasLimit = ^uint64(0)
-	if err := gethtxpool.ValidateTransaction(tx, header, sig, opts); err != nil {
+	err := gethtxpool.ValidateTransaction(tx, header, sig, opts)
+	if errors.Is(err, core.ErrGasLimitTooHigh) {
+		// allow tx with higher gas because we include l1 costs
+		return nil
+	}
+	if err != nil {
 		return err
 	}
 	return nil
@@ -385,7 +393,7 @@ func (t *TxPool) validateTotalGas(tx *common.L2Tx) (error, error) {
 	}
 	txArgs.From = &from
 	ge := NewGasEstimator(t.storage, t.batchRegistry, t.tenChain, t.gasOracle, t.gasPricer, t.logger)
-	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, gethrpc.LatestBlockNumber, t.config.GasLocalExecutionCapFlag)
+	leastGas, publishingGas, userErr, sysErr := ge.EstimateTotalGas(context.Background(), &txArgs, gethrpc.LatestBlockNumber)
 
 	// if the transaction reverts we let it through
 	if userErr != nil && errors.Is(userErr, vm.ErrExecutionReverted) {

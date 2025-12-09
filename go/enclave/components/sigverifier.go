@@ -68,6 +68,7 @@ func (sigChecker *SignatureValidator) verifyForSequencer(seqID common.EnclaveID,
 
 	err = signature.VerifySignature(attestedEnclave.PubKey, hash.Bytes(), sig)
 	if err != nil {
+		// this is only debug level as we loop through all sequencers and expect to see this error often in HA setup
 		sigChecker.logger.Debug("Could not verify signature", "sequencerID", seqID, log.ErrKey, err)
 		return fmt.Errorf("could not verify the signature of batch or rollup %s against the stored sequencer enclave key: %s", hash.Hex(), seqID.Hex())
 	}

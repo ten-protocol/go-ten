@@ -1,4 +1,4 @@
-package faucet
+package tenscan
 
 import (
 	"context"
@@ -429,6 +429,21 @@ func TestTenscan(t *testing.T) {
 	configFetchObj := configFetch{}
 	err = json.Unmarshal(body, &configFetchObj)
 	assert.NoError(t, err)
+
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/info/sequencer/", serverAddress))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, statusCode)
+
+	type AttestationReportFetch struct {
+		Result []common.PublicAttestationReport `json:"result"`
+	}
+
+	attestationObj := AttestationReportFetch{}
+	err = json.Unmarshal(body, &attestationObj)
+	assert.NoError(t, err)
+
+	assert.GreaterOrEqual(t, len(attestationObj.Result), 1)
+	assert.GreaterOrEqual(t, len(attestationObj.Result[0].Report), 11) // this is a mocked report with fixed length
 
 	err = tenScanContainer.Stop()
 	assert.NoError(t, err)
