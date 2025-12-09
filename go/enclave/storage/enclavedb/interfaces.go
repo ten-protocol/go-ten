@@ -11,6 +11,25 @@ import (
 	"github.com/ethereum/go-ethereum/ethdb"
 )
 
+type TxWithHooks struct {
+	*sqlx.Tx
+	onCommit []func()
+}
+
+func (t *TxWithHooks) OnCommit(f func()) {
+	t.onCommit = append(t.onCommit, f)
+}
+
+func (t *TxWithHooks) Commit() error {
+	if err := t.Tx.Commit(); err != nil {
+		return err
+	}
+	for _, f := range t.onCommit {
+		f()
+	}
+	return nil
+}
+
 // EnclaveDB - An abstraction that implements the `ethdb.Database` on top of SQL, and also exposes underling sql primitives.
 // Note: This might not be the best approach.
 // Todo - consider a few design alternatives:
@@ -19,6 +38,7 @@ type EnclaveDB interface {
 	ethdb.Database
 	GetSQLDB() *sqlx.DB
 	NewDBTransaction(ctx context.Context) (*sqlx.Tx, error)
+	NewHookedDBTransaction(ctx context.Context) (*TxWithHooks, error)
 }
 
 // Contract - maps to the “contract“ table

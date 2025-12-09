@@ -144,6 +144,14 @@ func (sqlDB *enclaveDB) NewDBTransaction(ctx context.Context) (*sqlx.Tx, error) 
 	return tx, nil
 }
 
+func (sqlDB *enclaveDB) NewHookedDBTransaction(ctx context.Context) (*TxWithHooks, error) {
+	tx, err := sqlDB.rwSqldb.Beginx()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create db transaction - %w", err)
+	}
+	return &TxWithHooks{Tx: tx}, nil
+}
+
 func (sqlDB *enclaveDB) NewBatch() ethdb.Batch {
 	return &dbTxBatch{
 		timeout: sqlDB.config.RPCTimeout,
