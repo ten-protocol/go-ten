@@ -302,7 +302,16 @@ func SafeValueForLogging(v any) string {
 	return b.String()
 }
 
-const maxDepth = 5
+const (
+	// maxDepth limits the recursion depth when stringifying nested structures to prevent infinite loops
+	maxDepth = 5
+	// maxSliceElements limits the number of slice elements to log before truncating with "...+X more"
+	maxSliceElements = 10
+	// maxMapEntries limits the number of map key-value pairs to log before truncating
+	maxMapEntries = 5
+	// maxStructFields limits the number of struct fields to log before truncating
+	maxStructFields = 10
+)
 
 func safeStringify(b *strings.Builder, rv reflect.Value, depth int) {
 	if depth > maxDepth {
@@ -338,14 +347,14 @@ func safeStringify(b *strings.Builder, rv reflect.Value, depth int) {
 			return
 		}
 		b.WriteByte('[')
-		for i := 0; i < rv.Len() && i < 10; i++ {
+		for i := 0; i < rv.Len() && i < maxSliceElements; i++ {
 			if i > 0 {
 				b.WriteString(", ")
 			}
 			safeStringify(b, rv.Index(i), depth+1)
 		}
-		if rv.Len() > 10 {
-			fmt.Fprintf(b, "...+%d more", rv.Len()-10)
+		if rv.Len() > maxSliceElements {
+			fmt.Fprintf(b, "...+%d more", rv.Len()-maxSliceElements)
 		}
 		b.WriteByte(']')
 		return
@@ -358,7 +367,7 @@ func safeStringify(b *strings.Builder, rv reflect.Value, depth int) {
 		b.WriteString("map[")
 		iter := rv.MapRange()
 		count := 0
-		for iter.Next() && count < 5 {
+		for iter.Next() && count < maxMapEntries {
 			if count > 0 {
 				b.WriteString(", ")
 			}
@@ -373,7 +382,7 @@ func safeStringify(b *strings.Builder, rv reflect.Value, depth int) {
 	case reflect.Struct:
 		b.WriteByte('{')
 		t := rv.Type()
-		for i := 0; i < rv.NumField() && i < 10; i++ {
+		for i := 0; i < rv.NumField() && i < maxStructFields; i++ {
 			if i > 0 {
 				b.WriteString(", ")
 			}
