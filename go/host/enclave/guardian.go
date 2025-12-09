@@ -585,7 +585,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) error {
 				// check if the block doesn't exist yet (NotFound) vs a real error
 				if errors.Is(err, ethereum.NotFound) {
 					// This is very common, when the next block hasn't been produced yet on L1
-					// return false (not processed) with no error, so the caller will retry without logging a warning
+					// return with no error, so the caller will retry without logging a warning
 					g.logger.Debug("Next block not yet available after skipping already-processed block, will retry",
 						"skippedBlock", block.Hash(), "nextHeight", nextHeight)
 					return nil
