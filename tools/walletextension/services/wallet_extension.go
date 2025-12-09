@@ -64,6 +64,12 @@ type NewHeadNotifier interface {
 // number of rpc responses to cache
 const rpcResponseCacheSize = 1_000_000
 
+// Maximum number of accounts allowed per user
+const MaxAccountsPerUser = 100
+
+// ErrMaxAccountsPerUserReached indicates a user has reached the allowed account limit
+var ErrMaxAccountsPerUserReached = errors.New("maximum number of accounts per user reached")
+
 func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserStorage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, metricsTracker metrics.Metrics, config *common.Config) *Services {
 	var newGatewayCache cache.Cache
 	var err error
@@ -237,6 +243,18 @@ func (w *Services) AddAddressToUser(userID []byte, address string, signature []b
 	w.Logger().Debug("Adding address to user", "userID", common.HashForLogging(userID), "address", address)
 	requestStartTime := time.Now()
 	addressFromMessage := gethcommon.HexToAddress(address)
+
+	// Get current user to check account count
+	user, err := w.Storage.GetUser(userID)
+	if err != nil {
+		return fmt.Errorf("error getting user: %w", err)
+	}
+
+	// Check if user has reached the maximum number of accounts
+	if len(user.Accounts) >= MaxAccountsPerUser {
+		return fmt.Errorf("%w", ErrMaxAccountsPerUserReached)
+	}
+
 	// check if a message was signed by the correct address and if the signature is valid
 	recoveredAddress, err := viewingkey.CheckSignature(userID, signature, int64(w.Config.TenChainID), signatureType)
 	if err != nil {
