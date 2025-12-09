@@ -97,10 +97,7 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 		var configSharedSecret [crypto.SharedSecretLenInBytes]byte
 		copy(configSharedSecret[:], gethcommon.Hex2BytesFixed(config.SharedSecret, crypto.SharedSecretLenInBytes))
 		sharedSecretService.SetSharedSecret((*crypto.SharedEnclaveSecret)(&configSharedSecret))
-	}
-
-	if err != nil {
-		logger.Crit("Failed to load shared secret", log.ErrKey, err)
+		logger.Info("Started node with configured shared secret")
 	}
 
 	daEncryptionService := crypto.NewDAEncryptionService(sharedSecretService, logger)

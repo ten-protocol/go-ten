@@ -139,7 +139,10 @@ func (s *InMemDevNetwork) GetValidatorNode(i int) networktest.NodeOperator {
 
 func (s *InMemDevNetwork) NewValidatorNode(config any, wallet wallet.Wallet) networktest.NodeOperator {
 	cfg := config.(*TenConfig)
-	operator := NewInMemNodeOperator(len(s.tenValidators), cfg, common.Validator, s.l1SetupData, s.l1Network.GetClient(0), wallet, s.logger)
+	// operatorIdx must account for sequencer (index 0) + all existing validators
+	// so we use 1 + len(s.tenValidators) to get the next available index
+	operatorIdx := 1 + len(s.tenValidators)
+	operator := NewInMemNodeOperator(operatorIdx, cfg, common.Validator, s.l1SetupData, s.l1Network.GetClient(0), wallet, s.logger)
 	s.tenValidators = append(s.tenValidators, operator)
 	s.networkWallets.NodeWallets = append(s.networkWallets.NodeWallets, wallet)
 	return operator

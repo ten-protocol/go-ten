@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"reflect"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -38,12 +39,12 @@ func (s *startValidatorEnclaveAction) Verify(_ context.Context, _ networktest.Ne
 	return nil
 }
 
-func StartNewValidatorNode(opts ...devnetwork.TenConfigOption) networktest.Action {
-	return &startNewValidatorNodeAction{opts: opts}
+func StartNewValidatorNode(newConfigs ...string) networktest.Action {
+	return &startNewValidatorNodeAction{newConfigs: newConfigs}
 }
 
 type startNewValidatorNodeAction struct {
-	opts []devnetwork.TenConfigOption
+	newConfigs []string
 }
 
 func (s *startNewValidatorNodeAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
@@ -79,13 +80,31 @@ func (s *startNewValidatorNodeAction) Run(ctx context.Context, network networkte
 		return ctx, fmt.Errorf("network does not support creating new validator nodes")
 	}
 
+	// Create a copy of the config to avoid modifying the shared config
 	currentConfig := devNetwork.TenConfig()
-	for _, opt := range s.opts {
-		opt(currentConfig)
+	newConfig := *currentConfig
+	for _, config := range s.newConfigs {
+		val := ctx.Value(config)
+		if val == nil {
+			continue
+		}
+
+		// Use reflection to set the field on newConfig
+		configValue := reflect.ValueOf(&newConfig).Elem()
+		field := configValue.FieldByName(config)
+
+		if field.IsValid() && field.CanSet() {
+			valReflect := reflect.ValueOf(val)
+			if field.Type() == valReflect.Type() {
+				field.Set(valReflect)
+			} else if valReflect.Type().ConvertibleTo(field.Type()) {
+				field.Set(valReflect.Convert(field.Type()))
+			}
+		}
 	}
 
 	// Create the new validator node
-	newValidator := network.NewValidatorNode(currentConfig, nodeWallet)
+	newValidator := network.NewValidatorNode(&newConfig, nodeWallet)
 
 	fmt.Printf("Starting new validator node (index: %d)\n", network.NumValidators()-1)
 
