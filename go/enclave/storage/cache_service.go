@@ -199,8 +199,10 @@ func (cs *CacheService) ReadContractAddr(ctx context.Context, addr gethcommon.Ad
 	return getCachedValue(ctx, cs.contractAddressCache, cs.logger, addr.Bytes(), onCacheMiss, true)
 }
 
-func (cs *CacheService) InvalidateContract(addr gethcommon.Address) {
-	cs.contractAddressCache.Delete(toString(addr.Bytes()))
+func (cs *CacheService) InvalidateContract(dbtx *enclavedb.TxWithHooks, addr gethcommon.Address) {
+	dbtx.OnCommit(func() {
+		cs.contractAddressCache.Delete(toString(addr.Bytes()))
+	})
 }
 
 func (cs *CacheService) ReadEventTopic(ctx context.Context, topic []byte, eventTypeId uint64, onCacheMiss func() (*enclavedb.EventTopic, error)) (*enclavedb.EventTopic, error) {

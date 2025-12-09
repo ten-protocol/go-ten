@@ -787,25 +787,25 @@ func (s *storageImpl) StoreExecutedBatch(ctx context.Context, batch *core.Batch,
 
 	s.logger.Trace("storing executed batch", log.BatchHashKey, batch.Hash(), log.BatchSeqNoKey, batch.Header.SequencerOrderNo, "receipts", len(results))
 
-	dbTx, err := s.db.NewDBTransaction(ctx)
+	dbTx, err := s.db.NewHookedDBTransaction(ctx)
 	if err != nil {
 		return fmt.Errorf("could not create DB transaction - %w", err)
 	}
 	defer dbTx.Rollback()
 
-	if err := enclavedb.MarkBatchExecuted(ctx, dbTx, batch.Header.SequencerOrderNo); err != nil {
+	if err := enclavedb.MarkBatchExecuted(ctx, dbTx.Tx, batch.Header.SequencerOrderNo); err != nil {
 		return fmt.Errorf("could not set the executed flag. Cause: %w", err)
 	}
 
 	// store the synthetic transactions
 	syntheticTxs := results.SyntheticTransactions().ToTransactionsWithSenders()
 
-	senders, toContracts, toEoas, err := s.handleTxSendersAndReceivers(ctx, syntheticTxs, dbTx)
+	senders, toContracts, toEoas, err := s.handleTxSendersAndReceivers(ctx, syntheticTxs, dbTx.Tx)
 	if err != nil {
 		return fmt.Errorf("could not handle synthetic txs senders and receivers. Cause: %w", err)
 	}
 
-	if err := enclavedb.WriteTransactions(ctx, dbTx, syntheticTxs, batch.Header.Number.Uint64(), true, senders, toContracts, toEoas, len(batch.Transactions)); err != nil {
+	if err := enclavedb.WriteTransactions(ctx, dbTx.Tx, syntheticTxs, batch.Header.Number.Uint64(), true, senders, toContracts, toEoas, len(batch.Transactions)); err != nil {
 		return fmt.Errorf("could not write synthetic txs. Cause: %w", err)
 	}
 

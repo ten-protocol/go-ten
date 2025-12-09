@@ -41,25 +41,21 @@ type batchRegistry struct {
 }
 
 func NewBatchRegistry(storage storage.Storage, config *enclaveconfig.EnclaveConfig, gethEncodingService gethencoding.EncodingService, logger gethlog.Logger) BatchRegistry {
-	var headBatchSeq *big.Int
-	headBatch, err := storage.FetchHeadBatchHeader(context.Background())
+	// ensure EVM state data is up-to-date using the persisted batch data
+	headBatch, err := syncExecutedBatchesWithEVMStateDB(context.Background(), storage, logger)
 	if err != nil {
-		if errors.Is(err, errutil.ErrNotFound) {
-			headBatchSeq = nil
-		} else {
-			logger.Crit("Could not create batch registry", log.ErrKey, err)
-			return nil
-		}
-	} else {
-		headBatchSeq = headBatch.SequencerOrderNo
+		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
 	}
+
 	br := &batchRegistry{
 		storage:           storage,
 		logger:            logger,
 		healthTimeout:     time.Minute,
 		lastExecutedBatch: async.NewAsyncTimestamp(time.Now().Add(-time.Minute)),
 	}
-	br.headBatchSeq.Store(headBatchSeq)
+	if headBatch != nil {
+		br.headBatchSeq.Store(headBatch.SequencerOrderNo)
+	}
 
 	br.ethChainAdapter = NewEthChainAdapter(big.NewInt(config.TenChainID), br, storage, gethEncodingService, config, logger)
 	return br
