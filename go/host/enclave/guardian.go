@@ -16,6 +16,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
+	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
@@ -510,9 +511,15 @@ func (g *Guardian) catchupWithL1() error {
 			}
 			return errors.Wrap(err, "could not fetch next L1 block")
 		}
-		_, err = g.submitL1Block(l1Block, isLatest)
+		submitted, err := g.submitL1Block(l1Block, isLatest)
 		if err != nil {
 			return err
+		}
+		if !submitted {
+			// block was not processed (probably because next block wasn't available yet), exit and try again later
+			// note: this is at info level because we want visibility if it happens, it is not expected in normal operation
+			g.logger.Info("L1 block was not processed, will retry later", log.BlockHashKey, l1Block.Hash(), log.BlockHeightKey, l1Block.Number)
+			return nil
 		}
 	}
 	return nil
@@ -573,7 +580,15 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 			nextHeight := big.NewInt(0).Add(block.Number, big.NewInt(1))
 			nextCanonicalBlock, err := g.sl.L1Data().FetchBlockByHeight(nextHeight)
 			if err != nil {
-				return false, fmt.Errorf("failed to fetch next block after forking block=%s: %w", block.Hash(), err)
+				// check if the block doesn't exist yet (NotFound) vs a real error
+				if errors.Is(err, ethereum.NotFound) {
+					// This is very common, when the next block hasn't been produced yet on L1
+					// return false (not processed) with no error, so the caller will retry without logging a warning
+					g.logger.Debug("Next block not yet available after skipping already-processed block, will retry",
+						"skippedBlock", block.Hash(), "nextHeight", nextHeight)
+					return false, nil
+				}
+				return false, fmt.Errorf("failed to fetch block at height %s after skipping already-processed block %s: %w", nextHeight, block.Hash(), err)
 			}
 			return g.submitL1Block(nextCanonicalBlock, isLatest)
 		}
