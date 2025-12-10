@@ -31,7 +31,8 @@ type BlobSidecar struct {
 }
 
 type APIGetBlobSidecarsResponse struct {
-	Data []*BlobSidecar `json:"data"`
+	Version string         `json:"version"`
+	Data    []*BlobSidecar `json:"data"`
 }
 
 type ReducedGenesisData struct {

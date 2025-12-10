@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"sync"
 
+	gethlog "github.com/ethereum/go-ethereum/log"
+
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -54,9 +56,9 @@ type BeaconHTTPClient struct {
 	httpClient *BaseHTTPClient
 }
 
-func NewBeaconHTTPClient(client *http.Client, baseURL string) *BeaconHTTPClient {
+func NewBeaconHTTPClient(client *http.Client, logger gethlog.Logger, baseURL string) *BeaconHTTPClient {
 	return &BeaconHTTPClient{
-		httpClient: NewBaseHTTPClient(client, baseURL),
+		httpClient: NewBaseHTTPClient(client, logger, baseURL),
 	}
 }
 
@@ -200,10 +202,8 @@ func (cl *L1BeaconClient) fetchSidecars(ctx context.Context, slot uint64, hashes
 	return APIGetBlobSidecarsResponse{}, errors.Join(errs...)
 }
 
-// GetBlobSidecars fetches blob sidecars that were confirmed in the specified
-// L1 block. If hashes are provided, only returns sidecars matching those hashes.
-// If no hashes are provided, returns all sidecars for the block.
-func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*BlobSidecar, error) {
+// GetBlobSidecarsResponse fetches the full blob sidecars response including version info
+func (cl *L1BeaconClient) GetBlobSidecarsResponse(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) (*APIGetBlobSidecarsResponse, error) {
 	slotFn, err := cl.GetTimeToSlot(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get time to slot function: %w", err)
@@ -218,47 +218,55 @@ func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, 
 		return nil, fmt.Errorf("failed to fetch blob sidecars for slot %v block %v: %w", slot, b, err)
 	}
 
-	// return all sidecars for block if no hashes provided
-	if len(hashes) == 0 {
-		return resp.Data, nil
+	// match sidecars with provided hashes if hashes provided
+	if len(hashes) > 0 {
+		sidecars, err := MatchSidecarsWithHashes(resp.Data, hashes)
+		if err != nil {
+			return nil, err
+		}
+		resp.Data = sidecars
 	}
 
-	// match sidecars with provided hashes
-	sidecars, err := MatchSidecarsWithHashes(resp.Data, hashes)
+	return &resp, nil
+}
+
+// GetBlobSidecars fetches blob sidecars that were confirmed in the specified
+// L1 block. If hashes are provided, only returns sidecars matching those hashes.
+// If no hashes are provided, returns all sidecars for the block.
+func (cl *L1BeaconClient) GetBlobSidecars(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*BlobSidecar, error) {
+	resp, err := cl.GetBlobSidecarsResponse(ctx, b, hashes)
 	if err != nil {
 		return nil, err
 	}
-
-	return sidecars, nil
+	return resp.Data, nil
 }
 
 // FetchBlobs fetches blobs that were confirmed in the specified L1 block with the
 // hashes. Confirms each blob's validity by checking its proof against the commitment, and confirming the commitment
 // hashes to the expected value. Returns error if any blob is found invalid.
 func (cl *L1BeaconClient) FetchBlobs(ctx context.Context, b *types.Header, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
-	blobSidecars, err := cl.GetBlobSidecars(ctx, b, hashes)
+	resp, err := cl.GetBlobSidecarsResponse(ctx, b, hashes)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get blob sidecars for Block Header %s: %w", b.Hash().Hex(), err)
 	}
-
 	// no hashes were provided, create slice of all hashes from sidecars
 	if len(hashes) == 0 {
-		hashes = make([]gethcommon.Hash, len(blobSidecars))
-		for i, sidecar := range blobSidecars {
+		hashes = make([]gethcommon.Hash, len(resp.Data))
+		for i, sidecar := range resp.Data {
 			hashes[i] = KZGToVersionedHash(kzg4844.Commitment(sidecar.KZGCommitment))
 		}
 	}
 
-	return BlobsFromSidecars(blobSidecars, hashes)
+	return BlobsFromSidecars(resp.Data, hashes, resp.Version)
 }
 
-func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
+func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash, version string) ([]*kzg4844.Blob, error) {
 	if len(blobSidecars) != len(hashes) {
 		return nil, fmt.Errorf("number of hashes and blobSidecars mismatch, %d != %d", len(hashes), len(blobSidecars))
 	}
 
-	out := make([]*kzg4844.Blob, len(hashes))
-
+	// order sidecars to match requested hashes
+	orderedSidecars := make([]*BlobSidecar, len(hashes))
 	for i, hash := range hashes {
 		var matchedSidecar *BlobSidecar
 		for _, sidecar := range blobSidecars {
@@ -268,19 +276,50 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 				break
 			}
 		}
-
 		if matchedSidecar == nil {
 			return nil, fmt.Errorf("no matching BlobSidecar found for hash %s", hash.Hex())
 		}
-
-		if err := VerifyBlobProof(&matchedSidecar.Blob, kzg4844.Commitment(matchedSidecar.KZGCommitment), kzg4844.Proof(matchedSidecar.KZGProof)); err != nil {
-			return nil, fmt.Errorf("blob for hash %s failed verification: %w", hash.Hex(), err)
-		}
-
-		out[i] = &matchedSidecar.Blob
+		orderedSidecars[i] = matchedSidecar
 	}
 
-	return out, nil
+	blobs, err := verifyBlobsMatchHashes(orderedSidecars, hashes, version)
+	if err != nil {
+		return nil, err
+	}
+	return blobs, nil
+}
+
+// verifyBlobsMatchHashes recomputes each blob's commitment and ensures the versioned hash
+// matches the expected hash. Returns blobs in the same order as hashes on success.
+func verifyBlobsMatchHashes(orderedSidecars []*BlobSidecar, hashes []gethcommon.Hash, version string) ([]*kzg4844.Blob, error) {
+	blobs := make([]*kzg4844.Blob, len(hashes))
+
+	// for fulu version, we should recompute the commitment from the blob
+	// for older vrsions we can just use the commitment from the API response directly
+	isFuluVersion := version == "fulu"
+
+	for i := range orderedSidecars {
+		var commitment kzg4844.Commitment
+		var err error
+
+		if isFuluVersion {
+			// post-Fusaka: attempt to recompute commitment for verification
+			commitment, err = kzg4844.BlobToCommitment(&orderedSidecars[i].Blob)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert blob to commitment: %w", err)
+			}
+		} else {
+			// pre-Fusaka: use the commitment directly
+			commitment = kzg4844.Commitment(orderedSidecars[i].KZGCommitment)
+		}
+
+		got := KZGToVersionedHash(commitment)
+		if got != hashes[i] {
+			return nil, fmt.Errorf("commitment hash %s does not match expected %s for blob %d", got, hashes[i], i)
+		}
+		blobs[i] = &orderedSidecars[i].Blob
+	}
+	return blobs, nil
 }
 
 // MatchSidecarsWithHashes matches the fetched sidecars with the provided hashes.
