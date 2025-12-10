@@ -90,8 +90,25 @@ func TestBackupSharedSecret(t *testing.T) {
 				return context.WithValue(ctx, "SharedSecret", hexutils.BytesToHex(decryptedSecret)), nil
 			}),
 
+			actions.SleepAction(4*time.Second),
+
+			// stop all nodes
+			actions.StopSequencerHost(),
+			actions.StopSequencerEnclave(0),
+			actions.StopValidatorEnclave(0),
+			actions.StopValidatorEnclave(1),
+			actions.StopValidatorEnclave(2),
+			actions.StopValidatorHost(0),
+			actions.StopValidatorHost(1),
+			actions.StopValidatorHost(2),
+
+			// wait for nodes to stop
+			actions.SleepAction(4*time.Second),
+
+			// start a brand new node with the shared secret configured
 			actions.StartNewValidatorNode("SharedSecret"),
 			actions.WaitForValidatorHealthCheck(devnetwork.DefaultTenConfig().InitNumValidators, 10*time.Second),
+			actions.SleepAction(4*time.Second),
 			actions.VerifyOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) error {
 				newValidator := network.GetValidatorNode(devnetwork.DefaultTenConfig().InitNumValidators)
 				client, err := gethrpc.Dial(newValidator.HostRPCHTTPAddress())

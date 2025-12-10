@@ -48,6 +48,7 @@ const _multiEnclaveOffset = 10
 // Note: InMemNodeOperator will panic when things go wrong, we want to fail fast in sims and avoid verbose error handling in usage
 type InMemNodeOperator struct {
 	operatorIdx int
+	stoppedHost bool
 	config      *TenConfig
 	nodeType    common.NodeType
 	l1Data      *params.L1TenData
@@ -61,6 +62,10 @@ type InMemNodeOperator struct {
 }
 
 func (n *InMemNodeOperator) StopHost() error {
+	if n.stoppedHost {
+		return nil
+	}
+	n.stoppedHost = true
 	err := n.host.Stop()
 	if err != nil {
 		return fmt.Errorf("unable to stop host - %w", err)
@@ -100,6 +105,7 @@ func (n *InMemNodeOperator) StartHost() error {
 			panic(err)
 		}
 	}()
+	n.stoppedHost = false
 	return nil
 }
 
@@ -230,12 +236,14 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 
 func (n *InMemNodeOperator) Stop() error {
 	errs := make([]error, 0) // collect errors to return after attempting all stops
-	err := n.host.Stop()
-	if err != nil {
-		errs = append(errs, fmt.Errorf("failed to stop host - %w", err))
+	if !n.stoppedHost {
+		err := n.host.Stop()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to stop host - %w", err))
+		}
 	}
 	for i := 0; i < len(n.enclaves); i++ {
-		err = n.enclaves[i].Stop()
+		err := n.enclaves[i].Stop()
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to stop enclave[%d] - %w", i, err))
 		}
