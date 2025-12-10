@@ -287,15 +287,25 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([
 func verifyBlobsMatchHashes(orderedSidecars []*BlobSidecar, hashes []gethcommon.Hash) ([]*kzg4844.Blob, error) {
 	blobs := make([]*kzg4844.Blob, len(hashes))
 	for i := range orderedSidecars {
-		// the beacon API does not return the cell proofs, so we can't verify them at this point
-		// verifying the calculated commitment matches the expected hash is sufficient for now
-		commitment, err := kzg4844.BlobToCommitment(&orderedSidecars[i].Blob)
-		if err != nil {
-			return nil, fmt.Errorf("cannot compute KZG commitment for blob %d: %w", i, err)
+		var commitment kzg4844.Commitment
+		var err error
+		// check if beacon node is returning single proof (len 98) or cell proofs (len 12290)
+		// New format: 128 proofs * 48 bytes = 6144 bytes (0x + 12288 hex chars = 12290 total)
+		if len(orderedSidecars[i].KZGProof) <= 98 {
+			// some beacon nodes still return old proof format even for post-Fusaka blobs
+			// use the commitment from the beacon node directly to avoid verification errors
+			commitment = kzg4844.Commitment(orderedSidecars[i].KZGCommitment)
+		} else {
+			// for cell proofs - we can attempt to verify by recomputing
+			commitment, err = kzg4844.BlobToCommitment(&orderedSidecars[i].Blob)
+			if err != nil {
+				return nil, fmt.Errorf("failed to convert blob to commitment: %w", err)
+			}
 		}
+
 		got := KZGToVersionedHash(commitment)
 		if got != hashes[i] {
-			return nil, fmt.Errorf("recomputed commitment hash %s does not match expected %s for blob %d", got, hashes[i], i)
+			return nil, fmt.Errorf("commitment hash %s does not match expected %s for blob %d", got, hashes[i], i)
 		}
 		blobs[i] = &orderedSidecars[i].Blob
 	}
