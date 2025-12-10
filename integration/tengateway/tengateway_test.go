@@ -490,6 +490,50 @@ func testSessionKeyExpirationAndFundRecovery(t *testing.T, _ int, httpURL, wsURL
 	require.Equal(t, fundAmount, initialBalance)
 	t.Logf("✓ Initial session key balance: %s TEN", initialBalance.String())
 
+	// 3.1) Send a small transaction from the session key to the user's account to simulate real activity
+	// Send 5% of funds back to owner's account using eth_sendTransaction (same mechanism as dapps use)
+	returnAmount := big.NewInt(0).Div(fundAmount, big.NewInt(20)) // 5% of fundAmount
+	skGasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	skGasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: skAddress, To: &fromAddr, Value: returnAmount})
+	require.NoError(t, err)
+	skNonce, err := user0.HTTPClient.PendingNonceAt(ctx, skAddress)
+	require.NoError(t, err)
+
+	// Send transaction using eth_sendTransaction (simple call like dapps would make)
+	var activityTxHash gethcommon.Hash
+	err = user0.HTTPClient.Client().CallContext(ctx, &activityTxHash, "eth_sendTransaction", map[string]interface{}{
+		"from":     skAddress.Hex(),
+		"to":       fromAddr.Hex(),
+		"value":    fmt.Sprintf("0x%x", returnAmount),
+		"gas":      fmt.Sprintf("0x%x", skGasLimit),
+		"gasPrice": fmt.Sprintf("0x%x", skGasPrice),
+		"nonce":    fmt.Sprintf("0x%x", skNonce),
+	})
+	require.NoError(t, err)
+	require.NotEqual(t, gethcommon.Hash{}, activityTxHash)
+	t.Logf("✓ Activity transaction sent via eth_sendTransaction: %s", activityTxHash.Hex())
+
+	// Wait for receipt to confirm the transaction
+	{
+		var rec *types.Receipt
+		for i := 0; i < 30; i++ {
+			rec, err = user0.HTTPClient.TransactionReceipt(ctx, activityTxHash)
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
+	}
+	t.Logf("✓ Activity transaction confirmed: %s TEN sent from session key (5%% of funds)", returnAmount.String())
+
+	// Print the session key's balance again after activity transaction but before session key expiry
+	balanceAfterActivity, err := user0.HTTPClient.BalanceAt(ctx, skAddress, nil)
+	require.NoError(t, err)
+	t.Logf("✓ Session key balance after activity: %s TEN", balanceAfterActivity.String())
+
 	// 4) Check initial balance of user's first account
 	initialUserBalance, err := user0.HTTPClient.BalanceAt(ctx, fromAddr, nil)
 	require.NoError(t, err)
