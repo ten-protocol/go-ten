@@ -109,7 +109,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 
 	// Initialize transaction sender
 	services.TxSender = NewTxSender(services.BackendRPC, services.SKManager, logger)
-	
+
 	// Set TxSender on SKManager to enable fund recovery on session key deletion
 	services.SKManager.SetTxSender(services.TxSender)
 
