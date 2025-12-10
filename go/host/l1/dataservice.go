@@ -430,7 +430,7 @@ func (r *DataService) processRollupLog(l types.Log, txDataCache map[gethcommon.H
 		return err
 	}
 
-	// check the blobs are not zerohash 
+	// check the blobs are not zerohash
 	blobHashes := txData.Transaction.BlobHashes()
 	if len(blobHashes) == 0 {
 		r.logger.Error("RollupAdded event from transaction without blobs, something went wrong", "txHash", l.TxHash)

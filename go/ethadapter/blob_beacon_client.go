@@ -293,15 +293,15 @@ func BlobsFromSidecars(blobSidecars []*BlobSidecar, hashes []gethcommon.Hash, ve
 // matches the expected hash. Returns blobs in the same order as hashes on success.
 func verifyBlobsMatchHashes(orderedSidecars []*BlobSidecar, hashes []gethcommon.Hash, version string) ([]*kzg4844.Blob, error) {
 	blobs := make([]*kzg4844.Blob, len(hashes))
-	
+
 	// for fulu version, we should recompute the commitment from the blob
-	//for older vrsions we can just use the commitment from the API response directly
+	// for older vrsions we can just use the commitment from the API response directly
 	isFuluVersion := version == "fulu"
-	
+
 	for i := range orderedSidecars {
 		var commitment kzg4844.Commitment
 		var err error
-		
+
 		if isFuluVersion {
 			// post-Fusaka: attempt to recompute commitment for verification
 			commitment, err = kzg4844.BlobToCommitment(&orderedSidecars[i].Blob)

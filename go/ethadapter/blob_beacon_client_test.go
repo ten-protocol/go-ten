@@ -136,16 +136,15 @@ func TestBlobArchiveClient(t *testing.T) {
 }
 
 func TestBlobClient(t *testing.T) {
-	t.Skipf("For local testing, set the API_KEY in the environment variable and run the test")
-	client := NewBeaconHTTPClient(new(http.Client), testlog.Logger(), "https://lb.drpc.live/eth-beacon-chain-sepolia/{API_KEY}/")
+	client := NewBeaconHTTPClient(new(http.Client), testlog.Logger(), "https://ethereum-sepolia-beacon-api.publicnode.com")
 	var vHashes []gethcommon.Hash
 	ctx := context.Background()
 
 	resp, err := client.BeaconBlobSidecars(ctx,
-		8782235, vHashes)
+		9133064, vHashes)
 	require.NoError(t, err)
 
-	require.Len(t, resp.Data, 15)
+	require.Len(t, resp.Data, 3)
 	require.NotNil(t, client)
 
 	// derive versioned blob hashes from the response and validate with BlobsFromSidecars
