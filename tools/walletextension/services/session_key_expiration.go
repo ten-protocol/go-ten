@@ -104,8 +104,13 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 
 	cutoff := time.Now().Add(-s.config.SessionKeyExpirationThreshold)
 	candidates := s.activityTracker.ListOlderThan(cutoff)
+	s.logger.Info("Session key expiration check", "cutoff", cutoff, "candidatesFound", len(candidates))
 
 	for _, c := range candidates {
+		s.logger.Info("Processing expired session key candidate",
+			"sessionKeyAddress", c.Addr.Hex(),
+			"lastActive", c.LastActive,
+			"timeSinceLastActive", time.Since(c.LastActive))
 		// Load the user for this session key
 		user, err := s.storage.GetUser(c.UserID)
 		if err != nil || user == nil {
@@ -127,7 +132,10 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 			continue
 		}
 
-		_, err = s.txSender.SendAllMinusGasWithSK(context.Background(), user, c.Addr, *firstAccount.Address)
+		s.logger.Info("Attempting to recover funds from expired session key",
+			"sessionKeyAddress", c.Addr.Hex(),
+			"toAccount", firstAccount.Address.Hex())
+		txHash, err := s.txSender.SendAllMinusGasWithSK(context.Background(), user, c.Addr, *firstAccount.Address)
 		if err != nil {
 			s.logger.Error("Failed to recover funds from expired session key",
 				"error", err,
@@ -135,6 +143,10 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 				"sessionKeyAddress", c.Addr.Hex())
 			continue
 		}
+
+		s.logger.Info("Successfully initiated fund recovery transaction",
+			"sessionKeyAddress", c.Addr.Hex(),
+			"txHash", txHash.Hex())
 
 		// After successful external operation, delete from tracker
 		_ = s.activityTracker.Delete(c.Addr)
