@@ -36,12 +36,12 @@ func TestBlobsFromSidecars(t *testing.T) {
 
 	// too few sidecars should error
 	sidecars := []*BlobSidecar{sidecar0, sidecar1}
-	_, err := BlobsFromSidecars(sidecars, hashes)
+	_, err := BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.Error(t, err)
 
 	// correct order should work
 	sidecars = []*BlobSidecar{sidecar0, sidecar1, sidecar2}
-	blobs, err := BlobsFromSidecars(sidecars, hashes)
+	blobs, err := BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.NoError(t, err)
 	for i := range blobs {
 		require.Equal(t, byte(indices[i]), blobs[i][0])
@@ -50,25 +50,25 @@ func TestBlobsFromSidecars(t *testing.T) {
 	badProof := *sidecar0
 	badProof.KZGProof[11]++
 	sidecars[1] = &badProof
-	_, err = BlobsFromSidecars(sidecars, hashes)
+	_, err = BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.Error(t, err)
 
 	badCommitment := *sidecar0
 	badCommitment.KZGCommitment[13]++
 	sidecars[1] = &badCommitment
-	_, err = BlobsFromSidecars(sidecars, hashes)
+	_, err = BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.Error(t, err)
 
 	sidecars[1] = sidecar0
 	hashes[2][17]++
-	_, err = BlobsFromSidecars(sidecars, hashes)
+	_, err = BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.Error(t, err)
 }
 
 func TestEmptyBlobSidecars(t *testing.T) {
 	var hashes []gethcommon.Hash
 	var sidecars []*BlobSidecar
-	blobs, err := BlobsFromSidecars(sidecars, hashes)
+	blobs, err := BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.NoError(t, err)
 	require.Empty(t, blobs, "blobs should be empty when no sidecars are provided")
 }
@@ -136,16 +136,15 @@ func TestBlobArchiveClient(t *testing.T) {
 }
 
 func TestBlobClient(t *testing.T) {
-	t.Skipf("For local testing, set the API_KEY in the environment variable and run the test")
-	client := NewBeaconHTTPClient(new(http.Client), testlog.Logger(), "https://lb.drpc.live/eth-beacon-chain-sepolia/{API_KEY}/")
+	client := NewBeaconHTTPClient(new(http.Client), testlog.Logger(), "https://ethereum-sepolia-beacon-api.publicnode.com")
 	var vHashes []gethcommon.Hash
 	ctx := context.Background()
 
 	resp, err := client.BeaconBlobSidecars(ctx,
-		8782235, vHashes)
+		9133064, vHashes)
 	require.NoError(t, err)
 
-	require.Len(t, resp.Data, 15)
+	require.Len(t, resp.Data, 3)
 	require.NotNil(t, client)
 
 	// derive versioned blob hashes from the response and validate with BlobsFromSidecars
@@ -153,7 +152,7 @@ func TestBlobClient(t *testing.T) {
 	for i, sc := range resp.Data {
 		hashes[i] = KZGToVersionedHash(kzg4844.Commitment(sc.KZGCommitment))
 	}
-	blobs, err := BlobsFromSidecars(resp.Data, hashes)
+	blobs, err := BlobsFromSidecars(resp.Data, hashes, resp.Version)
 	require.NoError(t, err)
 	require.Len(t, blobs, len(hashes))
 }
