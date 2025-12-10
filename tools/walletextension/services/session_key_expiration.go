@@ -6,7 +6,6 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
@@ -67,9 +66,9 @@ func (s *SessionKeyExpirationService) start() {
 	if persisted, err := s.activityStorage.Load(); err != nil {
 		s.logger.Warn("Failed to load persisted session key activities", "error", err)
 	} else if len(persisted) > 0 {
-		loaded := make([]common.SessionKeyActivity, 0, len(persisted))
+		loaded := make([]wecommon.SessionKeyActivity, 0, len(persisted))
 		for _, a := range persisted {
-			loaded = append(loaded, common.SessionKeyActivity{
+			loaded = append(loaded, wecommon.SessionKeyActivity{
 				Addr:       a.Addr,
 				UserID:     a.UserID,
 				LastActive: a.LastActive,
@@ -122,14 +121,9 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 		}
 
 		// Transfer funds to user's primary account using TxSender (sends all minus gas)
-		// Find the first account registered with the user - we will send funds to this account
-		var firstAccount *wecommon.GWAccount
-		for _, account := range user.Accounts {
-			firstAccount = account
-			break
-		}
-		if firstAccount == nil || firstAccount.Address == nil {
-			s.logger.Error("No primary account found for user", "userID", wecommon.HashForLogging(user.ID))
+		firstAccount, err := user.GetFirstAccount()
+		if err != nil {
+			s.logger.Error("No primary account found for user", "error", err, "userID", wecommon.HashForLogging(user.ID))
 			continue
 		}
 
