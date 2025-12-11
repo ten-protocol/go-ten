@@ -75,7 +75,7 @@ func NewSessionKeyActivityStorage(connectionString string, encryptionKey []byte)
 
 	return &sessionKeyActivityStorageCosmosDB{
 		client:     client,
-		container: container,
+		container:  container,
 		shardCount: DEFAULT_SK_SHARD_COUNT,
 		encryptor:  *encryptor,
 	}, nil
