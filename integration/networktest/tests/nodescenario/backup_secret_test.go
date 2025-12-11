@@ -23,7 +23,7 @@ import (
 // decrypts the result to verify it's valid, and then starts a new node with the backed up secret
 // to verify that the secret can be successfully provisioned to a new node
 func TestBackupSharedSecret(t *testing.T) {
-	// networktest.TestOnlyRunsInIDE(t)
+	networktest.TestOnlyRunsInIDE(t)
 
 	// Generate a new ECDSA key pair for the backup encryption
 	backupPrivateKey, err := crypto.GenerateKey()
