@@ -4,13 +4,16 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 	"testing"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/status-im/keycard-go/hexutils"
+	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/go/rpc"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/networktest"
 	"github.com/ten-protocol/go-ten/integration/networktest/actions"
 	"github.com/ten-protocol/go-ten/integration/networktest/env"
@@ -106,28 +109,43 @@ func TestBackupSharedSecret(t *testing.T) {
 			actions.SleepAction(4*time.Second),
 
 			// start a brand new node with the shared secret configured
-			actions.StartNewValidatorNode("SharedSecret"),
+			actions.StartNewValidatorNode(actions.ApplySharedSecretFromContext()),
 			actions.WaitForValidatorHealthCheck(devnetwork.DefaultTenConfig().InitNumValidators, 10*time.Second),
-			actions.SleepAction(4*time.Second),
+			actions.SleepAction(20*time.Second),
 			actions.VerifyOnlyAction(func(ctx context.Context, network networktest.NetworkConnector) error {
+				// Get the first test user's address and check their balance
+				user, err := actions.FetchTestUser(ctx, 0)
+				if err != nil {
+					return fmt.Errorf("failed to fetch test user: %w", err)
+				}
 				newValidator := network.GetValidatorNode(devnetwork.DefaultTenConfig().InitNumValidators)
-				client, err := gethrpc.Dial(newValidator.HostRPCHTTPAddress())
+				client, err := obsclient.DialWithAuth(newValidator.HostRPCHTTPAddress(), user.Wallet(), testlog.Logger())
 				if err != nil {
 					return fmt.Errorf("failed to connect to RPC: %w", err)
 				}
 				defer client.Close()
-				// todo - optional
-				// Get the first test user's address and check their balance
-				//user, err := actions.FetchTestUser(ctx, 0)
-				//if err != nil {
-				//	return fmt.Errorf("failed to fetch test user: %w", err)
-				//}
-				//var balance string
-				//err = client.CallContext(ctx, &balance, "eth_getBalance", user.Wallet().Address().Hex(), "latest")
-				//if err != nil {
-				//	return fmt.Errorf("failed to get balance for test user: %w", err)
-				//}
-				//t.Logf("Test user balance: %s", balance)
+
+				// verify the node has a non-zero block height
+				height, err := client.BatchNumber()
+				if err != nil {
+					return fmt.Errorf("failed to get batch number: %w", err)
+				}
+				t.Logf("New validator block height: %d", height)
+				if height == 0 {
+					return fmt.Errorf("expected non-zero block height on new validator")
+				}
+
+				// verify the chain state is accessible (funded user wallet has non-zero balance)
+				balance, err := client.BalanceAt(ctx, nil)
+				if err != nil {
+					return fmt.Errorf("failed to get balance: %w", err)
+				}
+				t.Logf("Test user balance on new validator: %s", balance.String())
+				if balance.Cmp(big.NewInt(0)) == 0 {
+					return fmt.Errorf("expected non-zero balance for test user on new validator")
+				}
+
+				t.Logf("Backup shared secret successfully provisioned to new node and verified")
 				return nil
 			}),
 		),
