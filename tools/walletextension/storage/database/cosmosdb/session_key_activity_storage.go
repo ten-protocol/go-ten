@@ -11,6 +11,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/walletextension/encryption"
 )
 
 const (
@@ -33,6 +34,7 @@ type sessionKeyActivityStorageCosmosDB struct {
 	client     *azcosmos.Client
 	container  *azcosmos.ContainerClient
 	shardCount int
+	encryptor  encryption.Encryptor
 }
 
 type sessionKeyActivityDTO struct {
@@ -48,7 +50,13 @@ type sessionKeyActivityItemDTO struct {
 	LastActive time.Time `json:"lastActive"` // RFC3339 timestamp
 }
 
-func NewSessionKeyActivityStorage(connectionString string) (SessionKeyActivityStorage, error) {
+func NewSessionKeyActivityStorage(connectionString string, encryptionKey []byte) (SessionKeyActivityStorage, error) {
+	// Create encryptor
+	encryptor, err := encryption.NewEncryptor(encryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create encryptor: %w", err)
+	}
+
 	client, err := azcosmos.NewClientFromConnectionString(connectionString, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create CosmosDB client: %w", err)
@@ -65,7 +73,12 @@ func NewSessionKeyActivityStorage(connectionString string) (SessionKeyActivitySt
 		return nil, fmt.Errorf("failed to get session key activities container: %w", err)
 	}
 
-	return &sessionKeyActivityStorageCosmosDB{client: client, container: container, shardCount: DEFAULT_SK_SHARD_COUNT}, nil
+	return &sessionKeyActivityStorageCosmosDB{
+		client:     client,
+		container: container,
+		shardCount: DEFAULT_SK_SHARD_COUNT,
+		encryptor:  *encryptor,
+	}, nil
 }
 
 func (s *sessionKeyActivityStorageCosmosDB) Load() ([]wecommon.SessionKeyActivity, error) {
@@ -82,10 +95,25 @@ func (s *sessionKeyActivityStorageCosmosDB) Load() ([]wecommon.SessionKeyActivit
 			}
 			return nil, err
 		}
-		var dto sessionKeyActivityDTO
-		if err := json.Unmarshal(resp.Value, &dto); err != nil {
-			return nil, err
+
+		// Unmarshal into EncryptedDocument
+		var doc EncryptedDocument
+		if err := json.Unmarshal(resp.Value, &doc); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal document: %w", err)
 		}
+
+		// Decrypt the data
+		data, err := s.encryptor.Decrypt(doc.Data)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decrypt data: %w", err)
+		}
+
+		// Unmarshal decrypted JSON into DTO
+		var dto sessionKeyActivityDTO
+		if err := json.Unmarshal(data, &dto); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal session key activity data: %w", err)
+		}
+
 		for _, it := range dto.Items {
 			addr := gethcommon.BytesToAddress(it.Addr)
 			userID := it.UserID
@@ -157,10 +185,28 @@ func (s *sessionKeyActivityStorageCosmosDB) clearAllShards(ctx context.Context, 
 			LastUpdated: timestamp,
 		}
 
-		// Marshal to JSON and validate size against CosmosDB's 2MB limit
-		b, err := json.Marshal(dto)
+		// Marshal to JSON
+		dtoJSON, err := json.Marshal(dto)
 		if err != nil {
 			return fmt.Errorf("failed to marshal empty shard %d: %w", shardIdx, err)
+		}
+
+		// Encrypt the data
+		ciphertext, err := s.encryptor.Encrypt(dtoJSON)
+		if err != nil {
+			return fmt.Errorf("failed to encrypt empty shard %d: %w", shardIdx, err)
+		}
+
+		// Create EncryptedDocument
+		doc := EncryptedDocument{
+			ID:   shardID,
+			Data: ciphertext,
+		}
+
+		// Marshal EncryptedDocument to JSON and validate size against CosmosDB's 2MB limit
+		b, err := json.Marshal(doc)
+		if err != nil {
+			return fmt.Errorf("failed to marshal encrypted document for empty shard %d: %w", shardIdx, err)
 		}
 		if len(b) > twoMBLimitBytes {
 			return fmt.Errorf("session key activity shard %d empty doc exceeds 2MB limit (%d bytes)", shardIdx, len(b))
@@ -197,10 +243,28 @@ func (s *sessionKeyActivityStorageCosmosDB) writeShardData(ctx context.Context, 
 		})
 	}
 
-	// Marshal to JSON and validate size against CosmosDB's 2MB limit
-	b, err := json.Marshal(dto)
+	// Marshal to JSON
+	dtoJSON, err := json.Marshal(dto)
 	if err != nil {
 		return fmt.Errorf("failed to marshal shard %d: %w", shardIdx, err)
+	}
+
+	// Encrypt the data
+	ciphertext, err := s.encryptor.Encrypt(dtoJSON)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt shard %d: %w", shardIdx, err)
+	}
+
+	// Create EncryptedDocument
+	doc := EncryptedDocument{
+		ID:   shardID,
+		Data: ciphertext,
+	}
+
+	// Marshal EncryptedDocument to JSON and validate size against CosmosDB's 2MB limit
+	b, err := json.Marshal(doc)
+	if err != nil {
+		return fmt.Errorf("failed to marshal encrypted document for shard %d: %w", shardIdx, err)
 	}
 	if len(b) > twoMBLimitBytes {
 		return fmt.Errorf("session key activity shard %d document exceeds 2MB limit (%d bytes)", shardIdx, len(b))
