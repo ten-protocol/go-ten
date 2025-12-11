@@ -51,7 +51,8 @@ type BeaconBlockHeader struct {
 	BodyRoot      Bytes32      `json:"body_root"`
 }
 type APIGetBlobSidecarsResponse struct {
-	Data []*BlobSidecar `json:"data"`
+	Version string         `json:"version"`
+	Data    []*BlobSidecar `json:"data"`
 }
 
 type ReducedGenesisData struct {

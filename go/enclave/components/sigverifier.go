@@ -72,6 +72,7 @@ func (sigChecker *SignatureValidator) verifyForSequencer(seqID common.EnclaveID,
 		sigChecker.logger.Debug("Could not verify signature", "sequencerID", seqID, log.ErrKey, err)
 		return fmt.Errorf("could not verify the signature of batch or rollup %s against the stored sequencer enclave key: %s", hash.Hex(), seqID.Hex())
 	}
+	sigChecker.logger.Debug("Sequencer signature verified", "sequencerID", seqID, log.ErrKey, err)
 
 	return nil
 }

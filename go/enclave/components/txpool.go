@@ -83,17 +83,20 @@ func NewTxPool(blockchain *EthChainAdapter, config *enclaveconfig.EnclaveConfig,
 		logger.Crit("gasPricer cannot be nil - this indicates a critical initialization failure")
 	}
 	txPoolConfig := legacypool.Config{
-		Locals:       nil,
-		NoLocals:     false,
-		Journal:      "",
-		Rejournal:    0,
-		PriceLimit:   legacypool.DefaultConfig.PriceLimit,
-		PriceBump:    legacypool.DefaultConfig.PriceBump,
-		AccountSlots: 32,
-		GlobalSlots:  (4096 + 1024) * 2,
-		AccountQueue: 2048,
-		GlobalQueue:  2048 * 4,
-		Lifetime:     legacypool.DefaultConfig.Lifetime,
+		Locals:    nil,
+		NoLocals:  false,
+		Journal:   "",
+		Rejournal: 0,
+
+		PriceLimit: legacypool.DefaultConfig.PriceLimit,
+		PriceBump:  legacypool.DefaultConfig.PriceBump,
+
+		AccountSlots: legacypool.DefaultConfig.AccountSlots * 2, // 32,
+		GlobalSlots:  legacypool.DefaultConfig.GlobalSlots * 2,  // (4096 + 1024) * 2,
+		AccountQueue: legacypool.DefaultConfig.AccountQueue * 4, // 64*4,
+		GlobalQueue:  legacypool.DefaultConfig.GlobalQueue * 4,  // 1024 * 4,
+
+		Lifetime: legacypool.DefaultConfig.Lifetime,
 	}
 	legacyPool := legacypool.New(txPoolConfig, blockchain)
 

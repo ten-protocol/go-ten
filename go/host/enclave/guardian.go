@@ -16,6 +16,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 
+	"github.com/ethereum/go-ethereum"
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/ten-protocol/go-ten/go/common/gethutil"
@@ -42,6 +43,10 @@ const (
 
 	// when we have submitted request to L1 for the secret, how long do we wait for an answer before we retry
 	_maxWaitForSecretResponse = 2 * time.Minute
+)
+
+var (
+	errEnclaveBusy = errors.New("enclave busy processing another request")
 )
 
 // This private interface enforces the services that the guardian depends on
@@ -273,7 +278,7 @@ func (g *Guardian) HandleBlock(block *types.Header) {
 		// the enclave is still catching up with the L1 chain, it won't be able to process this new head block yet so return
 		return
 	}
-	_, err := g.submitL1Block(block, true)
+	err := g.submitL1Block(block, true)
 	if err != nil {
 		g.logger.Warn("failure processing L1 block", log.ErrKey, err)
 	}
@@ -510,8 +515,12 @@ func (g *Guardian) catchupWithL1() error {
 			}
 			return errors.Wrap(err, "could not fetch next L1 block")
 		}
-		_, err = g.submitL1Block(l1Block, isLatest)
+		err = g.submitL1Block(l1Block, isLatest)
 		if err != nil {
+			if errors.Is(err, errEnclaveBusy) {
+				// enclave is busy processing, try again
+				continue
+			}
 			return err
 		}
 	}
@@ -544,19 +553,19 @@ func (g *Guardian) catchupWithL2() error {
 
 // returns false if the block was not processed
 // todo - @matt - think about removing the TryLock
-func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, error) {
+func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) error {
 	defer core.LogMethodDuration(g.logger, measure.NewStopwatch(), "Host submitL1Block", &core.RelaxedThresholds, log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
 
 	g.logger.Trace("submitting L1 block", log.BlockHashKey, block.Hash(), log.BlockHeightKey, block.Number)
 	// todo @matt - do we need to lock here?
 	if !g.submitDataLock.TryLock() {
 		g.logger.Debug("Unable to submit block, enclave is busy processing data")
-		return false, nil
+		return errEnclaveBusy
 	}
 	processedData, err := g.sl.L1Data().GetTenRelevantTransactions(block)
 	if err != nil {
 		g.submitDataLock.Unlock() // lock must be released before returning
-		return false, fmt.Errorf("could not extract ten transaction for block=%s - %w", block.Hash(), err)
+		return fmt.Errorf("could not extract ten transaction for block=%s - %w", block.Hash(), err)
 	}
 
 	rollupTxs := g.getRollupTxs(*processedData)
@@ -567,23 +576,31 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	if resp != nil && resp.RejectError != nil {
 		if strings.Contains(resp.RejectError.Error(), errutil.ErrBlockAlreadyProcessed.Error()) {
 			// we have already processed this block, let's try the next canonical block
-			// this is most common when we are returning to a previous fork and the enclave has already seen some of the blocks on it
+			// this can happen when we are returning to a previous fork and the enclave has already seen some of the blocks on it
 			// note: logging this because we don't expect it to happen often and would like visibility on that.
 			g.logger.Info("L1 block already processed by enclave, trying the next block", "block", block.Hash())
 			nextHeight := big.NewInt(0).Add(block.Number, big.NewInt(1))
 			nextCanonicalBlock, err := g.sl.L1Data().FetchBlockByHeight(nextHeight)
 			if err != nil {
-				return false, fmt.Errorf("failed to fetch next block after forking block=%s: %w", block.Hash(), err)
+				// check if the block doesn't exist yet (NotFound) vs a real error
+				if errors.Is(err, ethereum.NotFound) {
+					// This is very common, when the next block hasn't been produced yet on L1
+					// return with no error, so the caller will retry without logging a warning
+					g.logger.Debug("Next block not yet available after skipping already-processed block, will retry",
+						"skippedBlock", block.Hash(), "nextHeight", nextHeight)
+					return nil
+				}
+				return fmt.Errorf("failed to fetch block at height %s after skipping already-processed block %s: %w", nextHeight, block.Hash(), err)
 			}
 			return g.submitL1Block(nextCanonicalBlock, isLatest)
 		}
 		// something went wrong, return error and let the main loop check status and try again when appropriate
-		return false, errors.Wrap(err, "could not submit L1 block to enclave")
+		return errors.Wrap(err, "could not submit L1 block to enclave")
 	}
 
 	if err != nil {
 		// something went wrong, return error and let the main loop check status and try again when appropriate
-		return false, errors.Wrap(err, "could not submit L1 block to enclave")
+		return errors.Wrap(err, "could not submit L1 block to enclave")
 	}
 
 	// successfully processed block, update the state
@@ -595,7 +612,7 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) (bool, erro
 	if err != nil {
 		g.logger.Error("Failed to publish response to secret request", log.ErrKey, err)
 	}
-	return true, nil
+	return nil
 }
 
 func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx, processedData *common.ProcessedL1Data) {
