@@ -120,6 +120,7 @@ func TestTenGateway(t *testing.T) {
 		"testSessionKeysGetStorageAt":             testSessionKeysGetStorageAt,
 		"testSessionKeysSendTransaction":          testSessionKeysSendTransaction,
 		"testSessionKeyExpirationAndFundRecovery": testSessionKeyExpirationAndFundRecovery,
+		"testSessionKeyDeletionAndFundRecovery":   testSessionKeyDeletionAndFundRecovery,
 		// "testRateLimiter":                   testRateLimiter,
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -601,6 +602,265 @@ func testSessionKeyExpirationAndFundRecovery(t *testing.T, _ int, httpURL, wsURL
 		formatWeiToETH(balanceAfterActivity),
 		formatWeiToETH(finalBalance))
 	t.Logf("✓ Session key expiration and fund recovery test completed successfully!")
+}
+
+func testSessionKeyDeletionAndFundRecovery(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
+	// Create a new user with random wallets to avoid interference from other tests
+	user1, err := NewGatewayUser([]wallet.Wallet{datagenerator.RandomWallet(integration.TenChainID), datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	testlog.Logger().Info("Created user with encryption token", "t", user1.tgClient.UserID())
+
+	// Register the user so we can call the endpoints that require authentication
+	err = user1.RegisterAccounts()
+	require.NoError(t, err)
+
+	// Create a helper user with the prefunded wallet to fund user1's account
+	user0, err := NewGatewayUser([]wallet.Wallet{w, datagenerator.RandomWallet(integration.TenChainID)}, httpURL, wsURL)
+	require.NoError(t, err)
+	err = user0.RegisterAccounts()
+	require.NoError(t, err)
+
+	// Sanity log to mark test start
+	testlog.Logger().Info("testSessionKeyDeletionAndFundRecovery: started")
+
+	ctx := context.Background()
+
+	// Fund user1's account from the prefunded wallet so they can fund the session key
+	fundUserAmount := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(15)) // 15 TEN
+	toAddr := user1.Wallets[0].Address()
+	fundGasPrice, err := user0.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	fundGasLimit, err := user0.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: user0.Wallets[0].Address(), To: &toAddr, Value: fundUserAmount})
+	require.NoError(t, err)
+	fundNonce, err := user0.HTTPClient.PendingNonceAt(ctx, user0.Wallets[0].Address())
+	require.NoError(t, err)
+	fundLegacy := &types.LegacyTx{Nonce: fundNonce, To: &toAddr, Value: fundUserAmount, GasPrice: fundGasPrice, Gas: fundGasLimit}
+	fundSignedTx, err := user0.Wallets[0].SignTransaction(fundLegacy)
+	require.NoError(t, err)
+	err = user0.HTTPClient.SendTransaction(ctx, fundSignedTx)
+	require.NoError(t, err)
+
+	// wait for receipt
+	{
+		var rec *types.Receipt
+		for i := 0; i < 30; i++ {
+			rec, err = user0.HTTPClient.TransactionReceipt(ctx, fundSignedTx.Hash())
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
+	}
+	t.Logf("✓ Funded user1 account with %s TEN", formatWeiToETH(fundUserAmount))
+
+	// Wait a bit for the transaction to be processed
+	time.Sleep(1 * time.Second)
+
+	// 1) Create session key via eth_getStorageAt (CQ method 0x...0003)
+	createSessionKeyAddr := gethcommon.HexToAddress("0x0000000000000000000000000000000000000003")
+	skAddrBytes, err := user1.HTTPClient.StorageAt(ctx, createSessionKeyAddr, gethcommon.Hash{}, nil)
+	require.NoError(t, err)
+	require.NotEmpty(t, skAddrBytes)
+	skAddress := gethcommon.BytesToAddress(skAddrBytes)
+	fromAddr := user1.Wallets[0].Address()
+
+	// Check initial balance of user1's first account
+	initialUserBalance, err := user1.HTTPClient.BalanceAt(ctx, fromAddr, nil)
+	require.NoError(t, err)
+	t.Logf("✓ Initial user1 balance: %s TEN", formatWeiToETH(initialUserBalance))
+
+	// 2) Fund the session key from user1's wallet
+	fundAmount := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(10)) // 10 TEN
+	gasPrice, err := user1.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	gasLimit, err := user1.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: fromAddr, To: &skAddress, Value: fundAmount})
+	require.NoError(t, err)
+	nonce, err := user1.HTTPClient.PendingNonceAt(ctx, fromAddr)
+	require.NoError(t, err)
+	legacy := &types.LegacyTx{Nonce: nonce, To: &skAddress, Value: fundAmount, GasPrice: gasPrice, Gas: gasLimit}
+	signedFundingTx, err := user1.Wallets[0].SignTransaction(legacy)
+	require.NoError(t, err)
+	err = user1.HTTPClient.SendTransaction(ctx, signedFundingTx)
+	require.NoError(t, err)
+
+	// wait for receipt
+	{
+		var rec *types.Receipt
+		for i := 0; i < 30; i++ {
+			rec, err = user1.HTTPClient.TransactionReceipt(ctx, signedFundingTx.Hash())
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
+	}
+	t.Logf("✓ Session key funded with %s TEN", formatWeiToETH(fundAmount))
+
+	// 3) Record initial balances for assertions
+	initialBalance, err := user1.HTTPClient.BalanceAt(ctx, skAddress, nil)
+	require.NoError(t, err)
+	require.Equal(t, fundAmount, initialBalance)
+	t.Logf("✓ Initial session key balance: %s TEN", formatWeiToETH(initialBalance))
+
+	// 3.1) Send a small transaction from the session key to the user's account to simulate real activity
+	// Send 5% of funds back to owner's account using eth_sendTransaction (same mechanism as dapps use)
+	returnAmount := big.NewInt(0).Div(fundAmount, big.NewInt(20)) // 5% of fundAmount
+	skGasPrice, err := user1.HTTPClient.SuggestGasPrice(ctx)
+	require.NoError(t, err)
+	skGasLimit, err := user1.HTTPClient.EstimateGas(ctx, ethereum.CallMsg{From: skAddress, To: &fromAddr, Value: returnAmount})
+	require.NoError(t, err)
+	skNonce, err := user1.HTTPClient.PendingNonceAt(ctx, skAddress)
+	require.NoError(t, err)
+
+	// Send transaction using eth_sendTransaction (simple call like dapps would make)
+	var activityTxHash gethcommon.Hash
+	err = user1.HTTPClient.Client().CallContext(ctx, &activityTxHash, "eth_sendTransaction", map[string]interface{}{
+		"from":     skAddress.Hex(),
+		"to":       fromAddr.Hex(),
+		"value":    hexutil.EncodeBig(returnAmount),
+		"gas":      fmt.Sprintf("0x%x", skGasLimit),
+		"gasPrice": fmt.Sprintf("0x%x", skGasPrice),
+		"nonce":    fmt.Sprintf("0x%x", skNonce),
+	})
+	require.NoError(t, err)
+	require.NotEqual(t, gethcommon.Hash{}, activityTxHash)
+	t.Logf("✓ Activity transaction sent via eth_sendTransaction: %s", activityTxHash.Hex())
+
+	// Wait for receipt to confirm the transaction
+	{
+		var rec *types.Receipt
+		for i := 0; i < 30; i++ {
+			rec, err = user1.HTTPClient.TransactionReceipt(ctx, activityTxHash)
+			if err == nil && rec != nil {
+				break
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+		require.NotNil(t, rec)
+		require.Equal(t, types.ReceiptStatusSuccessful, rec.Status)
+	}
+	t.Logf("✓ Activity transaction confirmed: %s TEN sent from session key (5%% of funds)", formatWeiToETH(returnAmount))
+
+	// Print the session key's balance after activity transaction but before deletion
+	balanceAfterActivity, err := user1.HTTPClient.BalanceAt(ctx, skAddress, nil)
+	require.NoError(t, err)
+	t.Logf("✓ Session key balance after activity: %s TEN", formatWeiToETH(balanceAfterActivity))
+
+	// Record user's balance before deletion (to verify recovery later)
+	balanceBeforeDeletion, err := user1.HTTPClient.BalanceAt(ctx, fromAddr, nil)
+	require.NoError(t, err)
+	t.Logf("✓ User1 balance before deletion: %s TEN", formatWeiToETH(balanceBeforeDeletion))
+
+	// 4) Delete the session key via getStorageAt (CQ 0x...0004)
+	delParamsObj := map[string]string{
+		"sessionKeyAddress": skAddress.Hex(),
+	}
+	delParamsJSON, err := json.Marshal(delParamsObj)
+	require.NoError(t, err)
+
+	var delResult hexutil.Bytes
+	err = user1.HTTPClient.Client().CallContext(ctx, &delResult, "eth_getStorageAt",
+		"0x0000000000000000000000000000000000000004", string(delParamsJSON), "latest")
+	require.NoError(t, err)
+	require.Len(t, delResult, 1)
+	require.Equal(t, byte(0x01), delResult[0])
+	t.Logf("✓ Session key deleted: %s", skAddress.Hex())
+
+	// 5) Wait for fund recovery to be processed (poll until balance changes or timeout)
+	t.Logf("⏳ Waiting for fund recovery to be processed...")
+	var finalBalance *big.Int
+	var finalUserBalance *big.Int
+	recoveryTimeout := 30 * time.Second
+	recoveryStart := time.Now()
+	for time.Since(recoveryStart) < recoveryTimeout {
+		time.Sleep(2 * time.Second)
+
+		// Check session key balance
+		finalBalance, err = user1.HTTPClient.BalanceAt(ctx, skAddress, nil)
+		require.NoError(t, err)
+
+		// Check user balance
+		finalUserBalance, err = user1.HTTPClient.BalanceAt(ctx, fromAddr, nil)
+		require.NoError(t, err)
+
+		// Check if funds were recovered (user balance should increase)
+		recoveredAmount := big.NewInt(0).Sub(balanceAfterActivity, finalBalance)
+		userBalanceIncrease := big.NewInt(0).Sub(finalUserBalance, balanceBeforeDeletion)
+
+		// If significant recovery happened (more than 90% of what should be recovered), consider it done
+		expectedRecovery := big.NewInt(0).Div(big.NewInt(0).Mul(balanceAfterActivity, big.NewInt(90)), big.NewInt(100))
+		if recoveredAmount.Cmp(expectedRecovery) >= 0 {
+			t.Logf("✓ Fund recovery detected: %s TEN recovered from session key, user balance increased by %s TEN",
+				formatWeiToETH(recoveredAmount), formatWeiToETH(userBalanceIncrease))
+			break
+		}
+	}
+	t.Logf("✓ Final session key balance: %s TEN", formatWeiToETH(finalBalance))
+	t.Logf("✓ Final user1 balance: %s TEN", formatWeiToETH(finalUserBalance))
+
+	// 8) Verify fund recovery: Check that more than 95% of funds are recovered and less than funded amount remains on session key
+	// Calculate how much was recovered from the session key (balance after activity minus final balance)
+	recoveredAmount := big.NewInt(0).Sub(balanceAfterActivity, finalBalance)
+	t.Logf("✓ Amount recovered from session key: %s TEN (from %s TEN to %s TEN)",
+		formatWeiToETH(recoveredAmount), formatWeiToETH(balanceAfterActivity), formatWeiToETH(finalBalance))
+
+	// Calculate how much the user's balance increased
+	userBalanceIncrease := big.NewInt(0).Sub(finalUserBalance, balanceBeforeDeletion)
+	t.Logf("✓ User balance increased by: %s TEN (from %s TEN to %s TEN)",
+		formatWeiToETH(userBalanceIncrease), formatWeiToETH(balanceBeforeDeletion), formatWeiToETH(finalUserBalance))
+
+	// Calculate 95% of the balance after activity (what was available to recover)
+	ninetyFivePercent := big.NewInt(0).Div(big.NewInt(0).Mul(balanceAfterActivity, big.NewInt(95)), big.NewInt(100))
+
+	// Check 1: More than 95% of funds should be recovered from session key
+	if recoveredAmount.Cmp(ninetyFivePercent) < 0 {
+		t.Errorf("Fund recovery failed: Only %s TEN recovered from session key (expected at least %s TEN, which is 95%% of %s TEN that was available)",
+			formatWeiToETH(recoveredAmount), formatWeiToETH(ninetyFivePercent), formatWeiToETH(balanceAfterActivity))
+		t.FailNow()
+	}
+
+	// Check 2: Less than the funded amount should remain on session key
+	if finalBalance.Cmp(fundAmount) >= 0 {
+		t.Errorf("Fund recovery failed: Session key still has %s TEN (expected less than %s TEN)",
+			formatWeiToETH(finalBalance), formatWeiToETH(fundAmount))
+		t.FailNow()
+	}
+
+	// Check 3: User's balance should have increased by at least 90% of the recovered amount (accounting for gas fees)
+	// Gas fees will reduce the amount the user receives, so we check for at least 90% of recovered amount
+	minExpectedIncrease := big.NewInt(0).Div(big.NewInt(0).Mul(recoveredAmount, big.NewInt(90)), big.NewInt(100))
+	if userBalanceIncrease.Cmp(minExpectedIncrease) < 0 {
+		t.Errorf("Fund recovery failed: User balance only increased by %s TEN (expected at least %s TEN, which is 90%% of %s TEN recovered, accounting for gas fees)",
+			formatWeiToETH(userBalanceIncrease), formatWeiToETH(minExpectedIncrease), formatWeiToETH(recoveredAmount))
+		t.FailNow()
+	}
+
+	// Calculate recovery percentage
+	recoveryPercent := new(big.Float).Quo(
+		new(big.Float).SetInt(recoveredAmount),
+		new(big.Float).SetInt(balanceAfterActivity),
+	)
+	recoveryPercent.Mul(recoveryPercent, big.NewFloat(100))
+	recoveryPercentFloat, _ := recoveryPercent.Float64()
+
+	t.Logf("✓ Fund recovery verified: %s TEN recovered (%.2f%% of %s TEN available), %s TEN remaining on session key",
+		formatWeiToETH(recoveredAmount),
+		recoveryPercentFloat,
+		formatWeiToETH(balanceAfterActivity),
+		formatWeiToETH(finalBalance))
+	userRecoveryPercent := new(big.Float).Quo(
+		new(big.Float).SetInt(userBalanceIncrease),
+		new(big.Float).SetInt(recoveredAmount),
+	)
+	userRecoveryPercent.Mul(userRecoveryPercent, big.NewFloat(100))
+	userRecoveryPercentFloat, _ := userRecoveryPercent.Float64()
+	t.Logf("✓ User received %s TEN from recovery (%.2f%% of recovered amount)",
+		formatWeiToETH(userBalanceIncrease), userRecoveryPercentFloat)
+	t.Logf("✓ Session key deletion and fund recovery test completed successfully!")
 }
 
 func testNewHeadsSubscription(t *testing.T, _ int, httpURL, wsURL string, w wallet.Wallet) {
