@@ -74,6 +74,14 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 		return gethcommon.Hash{}, err
 	}
 
+	// Get the pending nonce for the session key (to account for any pending transactions)
+	var nonce hexutil.Uint64
+	if err := s.withSK(ctx, user, from, func(ctx context.Context, rpcClient *tenrpc.EncRPCClient) error {
+		return rpcClient.CallContext(ctx, &nonce, tencommonrpc.ERPCGetTransactionCount, from, blockNrOrHash)
+	}); err != nil {
+		return gethcommon.Hash{}, fmt.Errorf("failed to get nonce via RPC: %w", err)
+	}
+
 	// Use GasFeeCap for a conservative ceiling of potential cost
 	gasCost := new(big.Int).Mul(gasFeeCap, big.NewInt(int64(gasLimit)))
 	amountToSend := new(big.Int).Sub(balance.ToInt(), gasCost)
@@ -82,6 +90,7 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 	}
 
 	dynTx := &types.DynamicFeeTx{
+		Nonce:     uint64(nonce),
 		To:        &to,
 		Value:     amountToSend,
 		Gas:       gasLimit,
