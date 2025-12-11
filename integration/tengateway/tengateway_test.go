@@ -562,24 +562,44 @@ func testSessionKeyExpirationAndFundRecovery(t *testing.T, _ int, httpURL, wsURL
 	// 7) Check the user's balance
 	finalUserBalance, err := user0.HTTPClient.BalanceAt(ctx, fromAddr, nil)
 	require.NoError(t, err)
-
 	t.Logf("✓ Final user balance: %s TEN", formatWeiToETH(finalUserBalance))
 
-	// // 9) Verify that the user's balance increased by the recovered amount (minus gas costs)
-	// // The user should have received the funds back, minus some gas costs
-	// balanceIncrease := big.NewInt(0).Sub(finalUserBalance, initialUserBalance)
-	// t.Logf("✓ Balance increase: %s TEN", balanceIncrease.String())
+	// 8) Verify fund recovery: Check that more than 95% of funds are recovered and less than funded amount remains on session key
+	// Calculate how much was recovered from the session key (balance after activity minus final balance)
+	recoveredAmount := big.NewInt(0).Sub(balanceAfterActivity, finalBalance)
+	t.Logf("✓ Amount recovered from session key: %s TEN (from %s TEN to %s TEN)",
+		formatWeiToETH(recoveredAmount), formatWeiToETH(balanceAfterActivity), formatWeiToETH(finalBalance))
 
-	// // The balance increase should be positive (user received funds back)
-	// // and should be close to the original fund amount (minus gas costs)
-	// require.True(t, balanceIncrease.Cmp(big.NewInt(0)) > 0, "User balance should have increased due to fund recovery")
+	// Calculate 95% of the balance after activity (what was available to recover)
+	ninetyFivePercent := big.NewInt(0).Div(big.NewInt(0).Mul(balanceAfterActivity, big.NewInt(95)), big.NewInt(100))
 
-	// // The recovered amount should be at least 90% of the original fund amount
-	// // (allowing for gas costs)
-	// expectedMinRecovery := big.NewInt(0).Div(big.NewInt(0).Mul(fundAmount, big.NewInt(90)), big.NewInt(100))
-	// require.True(t, balanceIncrease.Cmp(expectedMinRecovery) >= 0,
-	// 	"Recovered amount should be at least 90%% of original fund amount")
+	// Check 1: More than 95% of funds should be recovered from session key
+	if recoveredAmount.Cmp(ninetyFivePercent) < 0 {
+		t.Errorf("Fund recovery failed: Only %s TEN recovered from session key (expected at least %s TEN, which is 95%% of %s TEN that was available)",
+			formatWeiToETH(recoveredAmount), formatWeiToETH(ninetyFivePercent), formatWeiToETH(balanceAfterActivity))
+		t.FailNow()
+	}
 
+	// Check 2: Less than the funded amount should remain on session key
+	if finalBalance.Cmp(fundAmount) >= 0 {
+		t.Errorf("Fund recovery failed: Session key still has %s TEN (expected less than %s TEN)",
+			formatWeiToETH(finalBalance), formatWeiToETH(fundAmount))
+		t.FailNow()
+	}
+
+	// Calculate recovery percentage
+	recoveryPercent := new(big.Float).Quo(
+		new(big.Float).SetInt(recoveredAmount),
+		new(big.Float).SetInt(balanceAfterActivity),
+	)
+	recoveryPercent.Mul(recoveryPercent, big.NewFloat(100))
+	recoveryPercentFloat, _ := recoveryPercent.Float64()
+
+	t.Logf("✓ Fund recovery verified: %s TEN recovered (%.2f%% of %s TEN available), %s TEN remaining on session key",
+		formatWeiToETH(recoveredAmount),
+		recoveryPercentFloat,
+		formatWeiToETH(balanceAfterActivity),
+		formatWeiToETH(finalBalance))
 	t.Logf("✓ Session key expiration and fund recovery test completed successfully!")
 }
 
