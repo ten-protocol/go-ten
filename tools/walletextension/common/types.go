@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto/ecies"
@@ -46,6 +47,26 @@ func (u GWUser) AllAccounts() map[common.Address]*GWAccount {
 
 func (u GWUser) GetAllAddresses() []common.Address {
 	return maps.Keys(u.AllAccounts())
+}
+
+// GetFirstAccount returns the first account from the user's Accounts map.
+// Returns an error if the user has no accounts or if the account has no address.
+func (u *GWUser) GetFirstAccount() (*GWAccount, error) {
+	if len(u.Accounts) == 0 {
+		return nil, fmt.Errorf("user has no accounts")
+	}
+
+	for _, account := range u.Accounts {
+		if account == nil {
+			continue
+		}
+		if account.Address == nil {
+			return nil, fmt.Errorf("account has no address")
+		}
+		return account, nil
+	}
+
+	return nil, fmt.Errorf("no valid account found")
 }
 
 type SessionKeyActivity struct {
