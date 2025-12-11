@@ -92,7 +92,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	// Create session key activity storage (separate from user storage)
-	activityStorage, err := storage.NewSessionKeyActivityStorage(config.DBType, config.DBConnectionURL)
+	activityStorage, err := storage.NewSessionKeyActivityStorage(config.DBType, config.DBConnectionURL, encryptionKey)
 	if err != nil {
 		logger.Crit("unable to create session key activity storage", log.ErrKey, err)
 		os.Exit(1)
