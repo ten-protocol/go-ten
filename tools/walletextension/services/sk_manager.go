@@ -97,11 +97,11 @@ func (m *skManager) DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcom
 					"userID", common.HashForLogging(user.ID),
 					"sessionKeyAddress", sessionKeyAddr.Hex())
 				return false, err // fail deletion if funds transfer fails - we won't be able to recover funds after deletion
-			} else {
-				m.logger.Info("Successfully transferred funds from session key before deletion",
-					"userID", common.HashForLogging(user.ID),
-					"sessionKeyAddress", sessionKeyAddr.Hex())
 			}
+			m.logger.Info("Successfully transferred funds from session key before deletion",
+				"userID", common.HashForLogging(user.ID),
+				"sessionKeyAddress", sessionKeyAddr.Hex())
+
 		}
 	}
 
