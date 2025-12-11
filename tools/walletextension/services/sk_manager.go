@@ -101,7 +101,6 @@ func (m *skManager) DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcom
 			m.logger.Info("Successfully transferred funds from session key before deletion",
 				"userID", common.HashForLogging(user.ID),
 				"sessionKeyAddress", sessionKeyAddr.Hex())
-
 		}
 	}
 
