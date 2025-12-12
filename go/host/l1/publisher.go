@@ -355,7 +355,7 @@ func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData) error {
 }
 
 func (p *Publisher) publishBlobTxWithRetry(tx types.TxData) error {
-	const maxRetries = 5
+	const maxRetries = 10 // increased from 5 to handle higher gas price scenarios
 
 	p.sendingLock.Lock()
 	defer p.sendingLock.Unlock()
