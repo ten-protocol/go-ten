@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/triedb/hashdb"
+	"github.com/ethereum/go-ethereum/triedb/pathdb"
 	"github.com/ten-protocol/go-ten/go/common/storage"
 
 	"github.com/jmoiron/sqlx"
@@ -75,18 +75,16 @@ func NewStorageFromConfig(config *enclaveconfig.EnclaveConfig, cachingService *C
 	return NewStorage(backingDB, cachingService, config, chainConfig, logger)
 }
 
-var trieDBConfig = &triedb.Config{
-	Preimages: triedb.HashDefaults.Preimages,
-	IsVerkle:  false,
-	HashDB: &hashdb.Config{
-		CleanCacheSize: 256 * 1024 * 1024,
-	},
-}
-
 func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, config *enclaveconfig.EnclaveConfig, chainConfig *params.ChainConfig, logger gethlog.Logger) Storage {
+	trieDBConfig := &triedb.Config{
+		Preimages: false,
+		IsVerkle:  false,
+		PathDB:    pathdb.Defaults,
+	}
+	trieDBConfig.PathDB.JournalDirectory = ""
+
 	// to enable verkle trie, uncomment the following lines
 	// cfg := triedb.VerkleDefaults
-	// cfg.PathDB.JournalDirectory = ""
 	// trieDB := triedb.NewDatabase(backingDB, cfg)
 
 	trieDB := triedb.NewDatabase(backingDB, trieDBConfig)
@@ -108,14 +106,14 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 
 func (s *storageImpl) closeTrieDB() {
 	// to enable verkle trie, uncomment the following lines
-	//head, err := s.FetchHeadBatchHeader(context.Background())
-	//if err != nil {
-	//	s.logger.Error("Failed to fetch head batch header", "err", err)
-	//}
-	//if err = s.trieDB.Journal(head.Root); err != nil {
-	//	s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
-	//}
-	err := s.trieDB.Close()
+	head, err := s.FetchHeadBatchHeader(context.Background())
+	if err != nil {
+		s.logger.Error("Failed to fetch head batch header", "err", err)
+	}
+	if err = s.trieDB.Journal(head.Root); err != nil {
+		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
+	}
+	err = s.trieDB.Close()
 	if err != nil {
 		s.logger.Error("Failed to close triedb", "err", err)
 	}

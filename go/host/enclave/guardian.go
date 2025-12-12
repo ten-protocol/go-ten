@@ -45,9 +45,7 @@ const (
 	_maxWaitForSecretResponse = 2 * time.Minute
 )
 
-var (
-	errEnclaveBusy = errors.New("enclave busy processing another request")
-)
+var errEnclaveBusy = errors.New("enclave busy processing another request")
 
 // This private interface enforces the services that the guardian depends on
 type guardianServiceLocator interface {
