@@ -90,10 +90,16 @@ func TestBackupSharedSecret(t *testing.T) {
 					return ctx, fmt.Errorf("decrypted secret has unexpected length: expected %d, got %d", expectedSecretLength, len(decryptedSecret))
 				}
 
+				// verify the node has a non-zero block height
+				var height uint64
+				err = client.CallContext(ctx, &height, rpc.BatchNumber)
+
+				t.Logf("Old validator block height: %d", height)
+
 				return context.WithValue(ctx, "SharedSecret", hexutils.BytesToHex(decryptedSecret)), nil
 			}),
 
-			actions.SleepAction(4*time.Second),
+			actions.SleepAction(15*time.Second),
 
 			// stop all nodes
 			actions.StopSequencerHost(),
