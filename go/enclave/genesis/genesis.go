@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/holiman/uint256"
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
@@ -50,7 +51,7 @@ func (g Genesis) CommitGenesisState(storage storage.Storage) error {
 		return err
 	}
 
-	if root != (gethcommon.Hash{}) {
+	if root != types.EmptyRootHash {
 		if err := stateDB.Database().TrieDB().Commit(root, true); err != nil {
 			return err
 		}

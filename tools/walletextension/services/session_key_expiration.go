@@ -6,7 +6,6 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
 )
@@ -67,9 +66,9 @@ func (s *SessionKeyExpirationService) start() {
 	if persisted, err := s.activityStorage.Load(); err != nil {
 		s.logger.Warn("Failed to load persisted session key activities", "error", err)
 	} else if len(persisted) > 0 {
-		loaded := make([]common.SessionKeyActivity, 0, len(persisted))
+		loaded := make([]wecommon.SessionKeyActivity, 0, len(persisted))
 		for _, a := range persisted {
-			loaded = append(loaded, common.SessionKeyActivity{
+			loaded = append(loaded, wecommon.SessionKeyActivity{
 				Addr:       a.Addr,
 				UserID:     a.UserID,
 				LastActive: a.LastActive,
@@ -105,8 +104,13 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 
 	cutoff := time.Now().Add(-s.config.SessionKeyExpirationThreshold)
 	candidates := s.activityTracker.ListOlderThan(cutoff)
+	s.logger.Info("Session key expiration check", "cutoff", cutoff, "candidatesFound", len(candidates))
 
 	for _, c := range candidates {
+		s.logger.Info("Processing expired session key candidate",
+			"sessionKeyAddress", c.Addr.Hex(),
+			"lastActive", c.LastActive,
+			"timeSinceLastActive", time.Since(c.LastActive))
 		// Load the user for this session key
 		user, err := s.storage.GetUser(c.UserID)
 		if err != nil || user == nil {
@@ -122,18 +126,16 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 		}
 
 		// Transfer funds to user's primary account using TxSender (sends all minus gas)
-		// Find the first account registered with the user - we will send funds to this account
-		var firstAccount *wecommon.GWAccount
-		for _, account := range user.Accounts {
-			firstAccount = account
-			break
-		}
-		if firstAccount == nil || firstAccount.Address == nil {
-			s.logger.Error("No primary account found for user", "userID", wecommon.HashForLogging(user.ID))
+		firstAccount, err := user.GetFirstAccount()
+		if err != nil {
+			s.logger.Error("No primary account found for user", "error", err, "userID", wecommon.HashForLogging(user.ID))
 			continue
 		}
 
-		_, err = s.txSender.SendAllMinusGasWithSK(context.Background(), user, c.Addr, *firstAccount.Address)
+		s.logger.Info("Attempting to recover funds from expired session key",
+			"sessionKeyAddress", c.Addr.Hex(),
+			"toAccount", firstAccount.Address.Hex())
+		txHash, err := s.txSender.SendAllMinusGasWithSK(context.Background(), user, c.Addr, *firstAccount.Address)
 		if err != nil {
 			s.logger.Error("Failed to recover funds from expired session key",
 				"error", err,
@@ -141,6 +143,10 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 				"sessionKeyAddress", c.Addr.Hex())
 			continue
 		}
+
+		s.logger.Info("Successfully initiated fund recovery transaction",
+			"sessionKeyAddress", c.Addr.Hex(),
+			"txHash", txHash.Hex())
 
 		// After successful external operation, delete from tracker
 		_ = s.activityTracker.Delete(c.Addr)

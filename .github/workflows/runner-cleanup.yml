@@ -38,3 +38,8 @@ jobs:
           printf ' - %s\n' "${TO_DELETE[@]}"
 
           sudo -n rm -rf -- "${TO_DELETE[@]}"
+      - name: 'Clean the docker folder'
+        run: |
+          sudo systemctl stop docker
+          sudo rm -rf /var/lib/docker/
+          sudo systemctl start docker
