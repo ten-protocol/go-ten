@@ -10,10 +10,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/ten-protocol/go-ten/go/wallet"
-
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ten-protocol/go-ten/go/wallet"
 	"github.com/ten-protocol/go-ten/integration/networktest/userwallet"
 
 	"github.com/ten-protocol/go-ten/go/ethadapter"
@@ -118,6 +117,10 @@ func (t *testnetConnector) GetSequencerNode() networktest.NodeOperator {
 }
 
 func (t *testnetConnector) GetValidatorNode(_ int) networktest.NodeOperator {
+	panic("node operators cannot be accessed for testnets")
+}
+
+func (t *testnetConnector) NewValidatorNode(_ any, _ wallet.Wallet) networktest.NodeOperator {
 	panic("node operators cannot be accessed for testnets")
 }
 

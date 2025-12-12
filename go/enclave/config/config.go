@@ -93,6 +93,10 @@ type EnclaveConfig struct {
 	AttestationEDBSecurityVersion uint
 	AttestationSignerID           string
 	AttestationEDBProductID       uint16
+	// BackupEncryptionKey is a public key used for the shared secret backup encryption
+	BackupEncryptionKey string
+	// SharedSecret - emergency "break the glass" way to provision a new enclave with a shared secret
+	SharedSecret string
 }
 
 func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
@@ -144,5 +148,7 @@ func EnclaveConfigFromTenConfig(tenCfg *config.TenConfig) *EnclaveConfig {
 		AttestationSignerID:           tenCfg.Enclave.Attestation.SignerID,
 		AttestationEDBSecurityVersion: tenCfg.Enclave.Attestation.EDBSecurityVersion,
 		AttestationEDBProductID:       tenCfg.Enclave.Attestation.EDBProductID,
+		BackupEncryptionKey:           tenCfg.Enclave.BackupEncryptionKey,
+		SharedSecret:                  tenCfg.Enclave.SharedSecret,
 	}
 }

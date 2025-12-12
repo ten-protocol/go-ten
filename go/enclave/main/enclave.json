@@ -30,6 +30,8 @@
     { "fromHost": true, "name": "ENCLAVE_LOG_PATH" },
     { "fromHost": true, "name": "ENCLAVE_RPC_BINDADDRESS" },
     { "fromHost": true, "name": "ENCLAVE_RPC_TIMEOUT" },
+    { "fromHost": true, "name": "ENCLAVE_BACKUPENCRYPTIONKEY" },
+    { "fromHost": true, "name": "ENCLAVE_SHAREDSECRET" },
     { "fromHost": true, "name": "ENCLAVE_ATTESTATION_SIGNERID" },
     { "fromHost": true, "name": "ENCLAVE_ATTESTATION_EDBSECURITYVERSION" },
     { "fromHost": true, "name": "ENCLAVE_ATTESTATION_EDBPRODUCTID" },

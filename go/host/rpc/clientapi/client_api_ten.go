@@ -105,6 +105,16 @@ func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.Encr
 	return *enclaveResponse, nil
 }
 
+// BackupSharedSecret - used during the initial phase to allow the ultimate way to recover a network
+func (api *TenAPI) BackupSharedSecret(ctx context.Context) (hexutil.Bytes, error) {
+	encryptedSecret, err := api.host.EnclaveClient().BackupSharedSecret(ctx)
+	if err != nil {
+		api.logger.Error("Error backing up shared secret", log.ErrKey, err)
+		return nil, err
+	}
+	return encryptedSecret, nil
+}
+
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
 type ChecksumFormattedTenNetworkConfig struct {
 	NetworkConfig             gethcommon.AddressEIP55

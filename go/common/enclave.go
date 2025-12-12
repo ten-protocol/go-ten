@@ -105,6 +105,9 @@ type EnclaveAdmin interface {
 
 	ExportCrossChainData(context.Context, uint64, uint64) (*ExtCrossChainBundle, SystemError)
 
+	// BackupSharedSecret returns the backup encryption key
+	BackupSharedSecret(context.Context) ([]byte, SystemError)
+
 	// Stop gracefully stops the enclave
 	Stop() SystemError
 	// StopClient stops the enclave client if one exists - only implemented by the RPC layer

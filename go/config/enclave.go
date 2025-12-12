@@ -10,6 +10,10 @@ type EnclaveConfig struct {
 	EnableAttestation         bool   `mapstructure:"enableAttestation"`
 	StoreExecutedTransactions bool   `mapstructure:"storeExecutedTransactions"`
 	DecompressionLimit        string `mapstructure:"decompressionLimit"`
+	// BackupEncryptionKey is a public key used for backup encryption
+	BackupEncryptionKey string `mapstructure:"backupEncryptionKey"`
+	// SharedSecret is a byte array in hex
+	SharedSecret string `mapstructure:"sharedSecret"`
 
 	Attestation *AttestationConstraints `mapstructure:"attestation"`
 	DB          *EnclaveDB              `mapstructure:"db"`

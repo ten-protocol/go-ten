@@ -31,6 +31,7 @@ service EnclaveProto {
   rpc EnclavePublicConfig(EnclavePublicConfigRequest) returns (EnclavePublicConfigResponse) {}
   rpc MakeActive(MakeActiveRequest) returns (MakeActiveResponse) {}
   rpc FetchSequencerAttestations(SequencerAttestationRequest) returns (SequencerAttestationResponse) {}
+  rpc BackupSharedSecret(BackupSharedSecretRequest) returns (BackupSharedSecretResponse) {}
 }
 
 message EnclavePublicConfigRequest {}
@@ -355,4 +356,11 @@ message WithdrawalMsg {
 
 message BlobMsg {
   bytes blob = 1;
+}
+
+message BackupSharedSecretRequest {}
+
+message BackupSharedSecretResponse {
+  bytes secret = 1;
+  SystemError systemError = 2;
 }

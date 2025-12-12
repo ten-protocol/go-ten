@@ -3,10 +3,16 @@ package actions
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"time"
 
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ten-protocol/go-ten/go/common/retry"
+	"github.com/ten-protocol/go-ten/go/wallet"
+	"github.com/ten-protocol/go-ten/integration"
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/networktest"
+	"github.com/ten-protocol/go-ten/integration/simulation/devnetwork"
 )
 
 func StartValidatorEnclave(validatorIdx int) networktest.Action {
@@ -29,6 +35,91 @@ func (s *startValidatorEnclaveAction) Run(ctx context.Context, network networkte
 }
 
 func (s *startValidatorEnclaveAction) Verify(_ context.Context, _ networktest.NetworkConnector) error {
+	return nil
+}
+
+// ConfigApplier is a function that can read from context and apply config changes
+// This allows config to be determined dynamically at runtime based on previous test steps
+type ConfigApplier func(ctx context.Context, cfg *devnetwork.TenConfig)
+
+// ApplySharedSecretFromContext creates a ConfigApplier that reads SharedSecret from context
+// and applies it to the config. This is useful for tests that need to retrieve the shared
+// secret dynamically during test execution (e.g., from a backup) and pass it to a new node.
+func ApplySharedSecretFromContext() ConfigApplier {
+	return func(ctx context.Context, cfg *devnetwork.TenConfig) {
+		if secret := ctx.Value("SharedSecret"); secret != nil {
+			cfg.SharedSecret = secret.(string)
+		}
+	}
+}
+
+func StartNewValidatorNode(configAppliers ...ConfigApplier) networktest.Action {
+	return &startNewValidatorNodeAction{configAppliers: configAppliers}
+}
+
+type startNewValidatorNodeAction struct {
+	configAppliers []ConfigApplier
+}
+
+func (s *startNewValidatorNodeAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
+	// Generate a new wallet for the validator node
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		return ctx, fmt.Errorf("failed to generate private key for new validator: %w", err)
+	}
+
+	nodeWallet := wallet.NewInMemoryWalletFromPK(big.NewInt(integration.EthereumChainID), privateKey, testlog.Logger())
+
+	/*	// Fund the new wallet from the contract owner wallet
+		contractOwner, err := network.GetContractOwnerWallet()
+		if err != nil {
+			return ctx, fmt.Errorf("failed to get contract owner wallet: %w", err)
+		}
+
+		// Transfer some ETH to the new validator wallet for gas fees
+		fundingAmount := big.NewInt(1000000000000000000) // 1 ETH
+		tx, err := contractOwner.SendFunds(ctx, nodeWallet.Address(), fundingAmount)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to fund new validator wallet: %w", err)
+		}
+
+		fmt.Printf("Funding new validator wallet %s with transaction %s\n", nodeWallet.Address().Hex(), tx.Hex())
+
+		// Wait for the funding transaction to be mined
+		time.Sleep(2 * time.Second)
+	*/
+	// Get the current TenConfig from the network
+	devNetwork, ok := network.(*devnetwork.InMemDevNetwork)
+	if !ok {
+		return ctx, fmt.Errorf("network does not support creating new validator nodes")
+	}
+
+	// Create a copy of the config to avoid modifying the shared config
+	currentConfig := devNetwork.TenConfig()
+	newConfig := *currentConfig
+
+	// Apply each config applier function - they can read from context and modify config
+	for _, applier := range s.configAppliers {
+		applier(ctx, &newConfig)
+	}
+
+	// Create the new validator node
+	newValidator := network.NewValidatorNode(&newConfig, nodeWallet)
+
+	fmt.Printf("Starting new validator node (index: %d)\n", network.NumValidators()-1)
+
+	// Start the new validator node
+	err = newValidator.Start()
+	if err != nil {
+		return ctx, fmt.Errorf("failed to start new validator node: %w", err)
+	}
+
+	fmt.Printf("New validator node started successfully at %s\n", newValidator.HostRPCWSAddress())
+
+	return ctx, nil
+}
+
+func (s *startNewValidatorNodeAction) Verify(_ context.Context, _ networktest.NetworkConnector) error {
 	return nil
 }
 
