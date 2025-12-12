@@ -49,7 +49,7 @@ create index IDX_STATEDB33_CODE on statedb33_code (ky);
 create table if not exists statedb33_snapshot_storage
 (
     id  INTEGER PRIMARY KEY AUTOINCREMENT,
-    ky  binary(34) UNIQUE NOT NULL,
+    ky  binary(33) UNIQUE NOT NULL,
     val mediumblob
 );
 create index IDX_STATEDB33_SNAPSHOT_STORAGE on statedb33_snapshot_storage (ky);
