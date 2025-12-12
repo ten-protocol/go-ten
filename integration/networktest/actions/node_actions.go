@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"reflect"
 	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
@@ -39,12 +38,27 @@ func (s *startValidatorEnclaveAction) Verify(_ context.Context, _ networktest.Ne
 	return nil
 }
 
-func StartNewValidatorNode(newConfigs ...string) networktest.Action {
-	return &startNewValidatorNodeAction{newConfigs: newConfigs}
+// ConfigApplier is a function that can read from context and apply config changes
+// This allows config to be determined dynamically at runtime based on previous test steps
+type ConfigApplier func(ctx context.Context, cfg *devnetwork.TenConfig)
+
+// ApplySharedSecretFromContext creates a ConfigApplier that reads SharedSecret from context
+// and applies it to the config. This is useful for tests that need to retrieve the shared
+// secret dynamically during test execution (e.g., from a backup) and pass it to a new node.
+func ApplySharedSecretFromContext() ConfigApplier {
+	return func(ctx context.Context, cfg *devnetwork.TenConfig) {
+		if secret := ctx.Value("SharedSecret"); secret != nil {
+			cfg.SharedSecret = secret.(string)
+		}
+	}
+}
+
+func StartNewValidatorNode(configAppliers ...ConfigApplier) networktest.Action {
+	return &startNewValidatorNodeAction{configAppliers: configAppliers}
 }
 
 type startNewValidatorNodeAction struct {
-	newConfigs []string
+	configAppliers []ConfigApplier
 }
 
 func (s *startNewValidatorNodeAction) Run(ctx context.Context, network networktest.NetworkConnector) (context.Context, error) {
@@ -83,24 +97,10 @@ func (s *startNewValidatorNodeAction) Run(ctx context.Context, network networkte
 	// Create a copy of the config to avoid modifying the shared config
 	currentConfig := devNetwork.TenConfig()
 	newConfig := *currentConfig
-	for _, config := range s.newConfigs {
-		val := ctx.Value(config)
-		if val == nil {
-			continue
-		}
 
-		// Use reflection to set the field on newConfig
-		configValue := reflect.ValueOf(&newConfig).Elem()
-		field := configValue.FieldByName(config)
-
-		if field.IsValid() && field.CanSet() {
-			valReflect := reflect.ValueOf(val)
-			if field.Type() == valReflect.Type() {
-				field.Set(valReflect)
-			} else if valReflect.Type().ConvertibleTo(field.Type()) {
-				field.Set(valReflect.Convert(field.Type()))
-			}
-		}
+	// Apply each config applier function - they can read from context and modify config
+	for _, applier := range s.configAppliers {
+		applier(ctx, &newConfig)
 	}
 
 	// Create the new validator node
