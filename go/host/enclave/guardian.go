@@ -579,6 +579,13 @@ func (g *Guardian) submitL1Block(block *types.Header, isLatest bool) error {
 			// this can happen when we are returning to a previous fork and the enclave has already seen some of the blocks on it
 			// note: logging this because we don't expect it to happen often and would like visibility on that.
 			g.logger.Info("L1 block already processed by enclave, trying the next block", "block", block.Hash())
+
+			// even though the enclave already processed, we need to store rollup metadata in host DB
+			if len(rollupTxs) > 0 && resp != nil && len(resp.RollupMetadata) > 0 {
+				g.logger.Info("Storing rollup metadata for already-processed block", "block", block.Hash(), "numRollups", len(rollupTxs))
+				g.processL1BlockTransactions(block, resp.RollupMetadata, rollupTxs, processedData)
+			}
+
 			nextHeight := big.NewInt(0).Add(block.Number, big.NewInt(1))
 			nextCanonicalBlock, err := g.sl.L1Data().FetchBlockByHeight(nextHeight)
 			if err != nil {
