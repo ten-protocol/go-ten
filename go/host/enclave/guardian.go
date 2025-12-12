@@ -629,13 +629,18 @@ func (g *Guardian) processL1BlockTransactions(block *types.Header, metadatas []c
 }
 
 func (g *Guardian) processRollupTransactions(block *types.Header, metadatas []common.ExtRollupMetadata, rollupTxs []*common.L1RollupTx) {
+	g.logger.Debug("processRollupTransactions called", "block", block.Hash(), "numRollupTxs", len(rollupTxs), "numMetadatas", len(metadatas))
 	for idx, rollup := range rollupTxs {
+		g.logger.Debug("Processing rollup", "idx", idx)
 		r, err := common.DecodeRollup(rollup.Rollup)
 		if err != nil {
 			g.logger.Error("Could not decode rollup.", log.ErrKey, err)
+			continue
 		}
+		g.logger.Debug("Decoded rollup successfully", "rollupHash", r.Hash())
 
 		metaData, err := g.enclaveClient.GetRollupData(context.Background(), r.Header.Hash())
+		g.logger.Debug("GetRollupData called", "rollupHash", r.Header.Hash(), "err", err)
 		if err != nil {
 			g.logger.Warn("Could not fetch rollup metadata from enclave.", log.RollupHashKey, r.Header.Hash(), log.ErrKey, err)
 		} else {
@@ -644,7 +649,9 @@ func (g *Guardian) processRollupTransactions(block *types.Header, metadatas []co
 			if len(metadatas) > idx {
 				extMetadata = metadatas[idx]
 			}
+			g.logger.Debug("About to call AddRollup", "rollupHash", r.Hash(), "blockHash", block.Hash())
 			err = g.storage.AddRollup(r, &extMetadata, metaData, block)
+			g.logger.Debug("AddRollup returned", "rollupHash", r.Hash(), "err", err)
 		}
 		if err != nil {
 			if errors.Is(err, errutil.ErrAlreadyExists) {
@@ -652,6 +659,8 @@ func (g *Guardian) processRollupTransactions(block *types.Header, metadatas []co
 			} else {
 				g.logger.Warn("Could not store rollup.", log.ErrKey, err)
 			}
+		} else {
+			g.logger.Debug("Rollup stored successfully!", "rollupHash", r.Hash())
 		}
 	}
 }
@@ -755,8 +764,11 @@ func (g *Guardian) streamEnclaveData() {
 
 func (g *Guardian) getRollupTxs(processed common.ProcessedL1Data) []*common.L1RollupTx {
 	rollupTxs := make([]*common.L1RollupTx, 0)
+	events := processed.GetEvents(common.RollupTx)
+	g.logger.Debug("getRollupTxs called", "numEvents", len(events))
 
-	for _, txData := range processed.GetEvents(common.RollupTx) {
+	for idx, txData := range events {
+		g.logger.Debug("Processing rollup event", "idx", idx, "numBlobs", len(txData.BlobsWithSignature))
 		encodedRlp, err := ethadapter.DecodeBlobs(txData.BlobsWithSignature.ToBlobs())
 		if err != nil {
 			g.logger.Crit("could not decode blobs.", log.ErrKey, err)
@@ -767,8 +779,10 @@ func (g *Guardian) getRollupTxs(processed common.ProcessedL1Data) []*common.L1Ro
 			Rollup: encodedRlp,
 		}
 		rollupTxs = append(rollupTxs, rlp)
+		g.logger.Debug("Successfully added rollup tx", "idx", idx)
 	}
 
+	g.logger.Debug("getRollupTxs returning", "numRollupTxs", len(rollupTxs))
 	return rollupTxs
 }
 
