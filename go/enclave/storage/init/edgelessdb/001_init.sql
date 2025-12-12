@@ -11,6 +11,78 @@ create table if not exists tendb.statedb32
     UNIQUE INDEX USING HASH (ky)
 );
 
+create table if not exists tendb.statedb33
+(
+    id  INTEGER AUTO_INCREMENT,
+    ky  binary(33) NOT NULL,
+    val mediumblob,
+    primary key (id),
+    UNIQUE INDEX USING HASH (ky)
+);
+
+create table if not exists tendb.statedb33_trie_node_account
+(
+    id  INTEGER AUTO_INCREMENT,
+    ky  binary(33) NOT NULL,
+    val mediumblob,
+    primary key (id),
+    UNIQUE INDEX USING HASH (ky)
+);
+
+create table if not exists tendb.statedb33_trie_node_storage
+(
+    id  INTEGER AUTO_INCREMENT,
+    ky  binary(33) NOT NULL,
+    val mediumblob,
+    primary key (id),
+    UNIQUE INDEX USING HASH (ky)
+);
+
+create table if not exists tendb.statedb33_state_id
+(
+    id  INTEGER AUTO_INCREMENT,
+    ky  binary(33) NOT NULL,
+    val mediumblob,
+    primary key (id),
+    UNIQUE INDEX USING HASH (ky)
+);
+
+create table if not exists tendb.statedb33_code
+(
+    id  INTEGER AUTO_INCREMENT,
+    ky  binary(33) NOT NULL,
+    val mediumblob,
+    primary key (id),
+    UNIQUE INDEX USING HASH (ky)
+);
+
+create table if not exists tendb.statedb33_snapshot_storage
+(
+    id  INTEGER AUTO_INCREMENT,
+    ky  binary(33) NOT NULL,
+    val mediumblob,
+    primary key (id),
+    UNIQUE INDEX USING HASH (ky)
+);
+
+create table if not exists tendb.statedb33_snapshot_account
+(
+    id  INTEGER AUTO_INCREMENT,
+    ky  binary(33) NOT NULL,
+    val mediumblob,
+    primary key (id),
+    UNIQUE INDEX USING HASH (ky)
+);
+
+create table if not exists tendb.statedb34
+(
+    id  INTEGER AUTO_INCREMENT,
+    ky  binary(34) NOT NULL,
+    val mediumblob,
+    primary key (id),
+    UNIQUE INDEX USING HASH (ky)
+);
+
 create table if not exists tendb.statedb64
 (
     id  INTEGER AUTO_INCREMENT,

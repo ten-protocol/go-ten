@@ -7,18 +7,15 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/core/rawdb"
+	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	"github.com/status-im/keycard-go/hexutils"
-
-	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ten-protocol/go-ten/go/common/errutil"
 )
 
 const (
-	statedb32 = "statedb32" // the table used for 32 byte keys - 99.9% of the keys are here
-	statedb64 = "statedb64" // the table used for larger keys
-	getQry    = `select sdb.val from %s sdb where sdb.ky = ?`
+	getQry = `select sdb.val from %s sdb where sdb.ky = ?`
 	// `replace` will perform insert or replace if existing and this syntax works for both sqlite and edgeless db
 	putQryBatchSqlite = `replace into %s (ky, val) values`
 	putQryBatchEdb1   = `INSERT INTO %s (ky, val) VALUES `
@@ -30,15 +27,39 @@ const (
 	dbChunkSize = 32 * 1024 // 32 KB chunks
 )
 
+var stateIDPrefix = []byte("L")
+
+// routes the table based on the key length and prefix
+// mirrors the prefixes used by go-ethereum
 func getTable(key []byte) string {
-	if len(key) <= 32 {
-		return statedb32
+	switch {
+	case len(key) <= 32:
+		return "statedb32"
+	case len(key) == 33:
+		switch key[0] {
+		case rawdb.TrieNodeAccountPrefix[0]:
+			return "statedb33_trie_node_account"
+		case rawdb.TrieNodeStoragePrefix[0]:
+			return "statedb33_trie_node_storage"
+		case stateIDPrefix[0]:
+			return "statedb33_state_id"
+		case rawdb.SnapshotAccountPrefix[0]:
+			return "statedb33_snapshot_account"
+		case rawdb.SnapshotStoragePrefix[0]:
+			return "statedb33_snapshot_storage"
+		case rawdb.CodePrefix[0]:
+			return "statedb33_code"
+		default:
+			return "statedb33"
+		}
+	case len(key) == 34:
+		return "statedb34"
+	case len(key) <= 64:
+		return "statedb64"
+	default:
+		// it will fail here
+		return "non-existent-table"
 	}
-	if len(key) <= 64 {
-		return statedb64
-	}
-	// it will fail here
-	return "non-existent-table"
 }
 
 func has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
@@ -52,7 +73,6 @@ func has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
 	return true, nil
 }
 
-// only useful if implementing verkle trees
 func getJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) { //nolint:unused
 	q := "select val from triedb_journal order by id asc"
 	rows, err := db.QueryContext(ctx, q)
@@ -85,7 +105,6 @@ func getJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) { //nolint:unu
 	return result, nil
 }
 
-// only useful if implementing verkle trees
 // the journal can be quite large, so we split it into chunks and insert them one by one
 // because edglessdb fails silently when the data is too large
 func putJournal(ctx context.Context, db *sqlx.DB, value []byte) error { //nolint:unused
@@ -169,32 +188,22 @@ func putKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 		}
 	}
 
-	shortKeys := make([][]byte, 0)
-	shortVals := make([][]byte, 0)
-	longKeys := make([][]byte, 0)
-	longVals := make([][]byte, 0)
+	// Group keys and values by table name, using getTable for routing.
+	groupedKeys := make(map[string][][]byte)
+	groupedVals := make(map[string][][]byte)
 
-	// Split keys and values based on key length
 	for i, key := range keys {
-		if len(key) <= 32 {
-			shortKeys = append(shortKeys, key)
-			shortVals = append(shortVals, vals[i])
-		} else if len(key) <= 64 {
-			longKeys = append(longKeys, key)
-			longVals = append(longVals, vals[i])
-		} else {
-			return fmt.Errorf("key %s longer than 64 bytes. should not happen", hexutils.BytesToHex(key))
+		tableName := getTable(key)
+		groupedKeys[tableName] = append(groupedKeys[tableName], key)
+		groupedVals[tableName] = append(groupedVals[tableName], vals[i])
+	}
+
+	// Insert into each table we have accumulated keys for.
+	for table, tKeys := range groupedKeys {
+		tVals := groupedVals[table]
+		if err := insertIntoTable(ctx, tx, table, tKeys, tVals); err != nil {
+			return err
 		}
-	}
-
-	err := insertIntoTable(ctx, tx, statedb32, shortKeys, shortVals)
-	if err != nil {
-		return err
-	}
-
-	err = insertIntoTable(ctx, tx, statedb64, longKeys, longVals)
-	if err != nil {
-		return err
 	}
 
 	return nil

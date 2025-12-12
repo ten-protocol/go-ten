@@ -1,6 +1,7 @@
 package enclavedb
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -13,7 +14,7 @@ import (
 )
 
 // we write the trie journal to a separate table
-var trieJournalKey = []byte("vTrieJournal") //nolint:unused
+var trieJournalKey = []byte("TrieJournal") //nolint:unused
 
 // enclaveDB - Implements the key-value ethdb.Database and also exposes the underlying sql database
 // should not be used directly outside the db package
@@ -88,12 +89,11 @@ func (sqlDB *enclaveDB) Get(key []byte) ([]byte, error) {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
 
-	// to enable verkle trie, uncomment the following lines
-	//if bytes.Equal(key, trieJournalKey) {
-	//	val, err := getJournal(ctx, sqlDB.sqldb)
-	//	sqlDB.logger.Debug("TrieJournal GET", "key", key, "err", err, " len_val", len(val))
-	//	return val, err
-	//}
+	if bytes.Equal(key, trieJournalKey) {
+		val, err := getJournal(ctx, sqlDB.sqldb)
+		sqlDB.logger.Debug("TrieJournal GET", "key", key, "err", err, " len_val", len(val))
+		return val, err
+	}
 
 	return get(ctx, sqlDB.sqldb, key)
 }
@@ -109,15 +109,14 @@ func (sqlDB *enclaveDB) Put(key []byte, value []byte) error {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), sqlDB.config.RPCTimeout)
 	defer cancelCtx()
 
-	// to enable verkle trie, uncomment the following lines
-	//if bytes.Equal(key, trieJournalKey) {
-	//	err := putJournal(ctx, sqlDB.rwSqldb, value)
-	//	sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err, "len_val", len(value))
-	//	if err != nil {
-	//		return fmt.Errorf("failed to put trie journal. key: %x, value: %x, err: %w", key, value, err)
-	//	}
-	//	return nil
-	//}
+	if bytes.Equal(key, trieJournalKey) {
+		err := putJournal(ctx, sqlDB.rwSqldb, value)
+		sqlDB.logger.Debug("TrieJournal PUT", "key", key, "err", err, "len_val", len(value))
+		if err != nil {
+			return fmt.Errorf("failed to put trie journal. key: %x, value: %x, err: %w", key, value, err)
+		}
+		return nil
+	}
 
 	err := put(ctx, sqlDB.rwSqldb, key, value)
 	return err
