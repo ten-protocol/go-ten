@@ -100,8 +100,8 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
-	hostServices.RegisterService(hostcommon.P2PName, p2p)
-	hostServices.RegisterService(hostcommon.L1DataServiceName, l1Repo)
+	hostServices.RegisterService(hostcommon.P2PName, p2p, 70)
+	hostServices.RegisterService(hostcommon.L1DataServiceName, l1Repo, 20)
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
 	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
 	retryIntervalForBlobReceipt := config.L1RollupRetryDelay
@@ -122,10 +122,10 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		l1ChainCfg,
 	)
 
-	hostServices.RegisterService(hostcommon.L1PublisherName, l1Publisher)
-	hostServices.RegisterService(hostcommon.L2BatchRepositoryName, l2Repo)
-	hostServices.RegisterService(hostcommon.EnclaveServiceName, enclService)
-	hostServices.RegisterService(hostcommon.LogSubscriptionServiceName, subsService)
+	hostServices.RegisterService(hostcommon.L1PublisherName, l1Publisher, 50)
+	hostServices.RegisterService(hostcommon.L2BatchRepositoryName, l2Repo, 10)
+	hostServices.RegisterService(hostcommon.EnclaveServiceName, enclService, 30)
+	hostServices.RegisterService(hostcommon.LogSubscriptionServiceName, subsService, 40)
 
 	var prof *profiler.Profiler
 	if config.ProfilerEnabled {
@@ -151,11 +151,9 @@ func (h *host) Start() error {
 	h.validateConfig()
 
 	// start all registered services
-	for name, service := range h.services.All() {
-		err := service.Start()
-		if err != nil {
-			return fmt.Errorf("could not start service=%s: %w", name, err)
-		}
+	err := h.services.Start()
+	if err != nil {
+		return fmt.Errorf("could not start services. Cause: %w", err)
 	}
 
 	tomlConfig, err := toml.Marshal(h.config)
@@ -203,10 +201,9 @@ func (h *host) Stop() error {
 	h.logger.Info("Host received a stop command. Attempting shutdown...")
 
 	// stop all registered services
-	for name, service := range h.services.All() {
-		if err := service.Stop(); err != nil {
-			h.logger.Error("Failed to stop service", "service", name, log.ErrKey, err)
-		}
+	err := h.services.Stop()
+	if err != nil {
+		h.logger.Error("Failed to stop services", log.ErrKey, err)
 	}
 
 	if err := h.storage.Close(); err != nil {
