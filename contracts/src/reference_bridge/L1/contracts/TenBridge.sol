@@ -10,7 +10,13 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import "../../../common/PausableWithRoles.sol";
+import "../../common/IBridge.sol";
 
+
+// Minimal WETH interface used only for unwrapping
+interface IWETH {
+    function withdraw(uint256 wad) external;
+}
 // This is the Ethereum side of the Obscuro Bridge.
 // End-users can interact with it to transfer ERC20 tokens and native eth to the Layer 2 Obscuro.
 contract TenBridge is
@@ -35,6 +41,7 @@ contract TenBridge is
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     address public remoteBridgeAddress;
+    address public weth;
 
     function initialize(address messenger, address _owner) public initializer {
         require(messenger != address(0), "Messenger cannot be 0x0");
@@ -96,6 +103,11 @@ contract TenBridge is
         remoteBridgeAddress = bridge;
     }
 
+    function setWeth(address _weth) external onlyRole(ADMIN_ROLE) whenNotPaused {
+        require(_weth != address(0), "WETH cannot be 0x0");
+        weth = _weth;
+    }
+
     // This cross chain message is specialized and will result in automatic increase
     // of balance on the other side.
     function sendNative(address receiver) external payable override whenNotPaused {
@@ -124,6 +136,21 @@ contract TenBridge is
             amount
         );
 
+        if (asset == weth) {
+            // Unwrap WETH to native ETH, then send native and also notify L2 via receiveNativeWrapped
+            IWETH(weth).withdraw(amount);
+            // Send native value to L2 so the receiver's L2 native balance increases
+            this.sendNative{value: amount}(remoteBridgeAddress);
+            // Also queue an explicit notification on L2 bridge
+            bytes memory nativeWrappedNotice = abi.encodeWithSelector(
+                IBridge.receiveNativeWrapped.selector,
+                receiver,
+                amount
+            );
+            queueMessage(remoteBridgeAddress, nativeWrappedNotice, uint32(Topics.TRANSFER), 0, 0, 0);
+            return;
+        }
+
         bytes memory data = abi.encodeWithSelector(
             IBridge.receiveAssets.selector,
             asset,
@@ -145,6 +172,10 @@ contract TenBridge is
         } else {
             revert("Attempting to withdraw unknown asset.");
         }
+    }
+
+    function receiveNativeWrapped(address receiver, uint256 amount) external onlyCrossChainSender(remoteBridgeAddress) whenNotPaused {
+        _receiveNative(receiver, amount);
     }
 
     function _receiveTokens(
