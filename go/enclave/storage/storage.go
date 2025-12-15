@@ -82,6 +82,8 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 		PathDB:    pathdb.Defaults,
 	}
 	trieDBConfig.PathDB.JournalDirectory = ""
+	// use a much smaller buffer than go-ethereum (64 MB) to trigger more frequent db writes
+	trieDBConfig.PathDB.WriteBufferSize = 512 * 1024
 
 	// to enable verkle trie, uncomment the following lines
 	// cfg := triedb.VerkleDefaults
