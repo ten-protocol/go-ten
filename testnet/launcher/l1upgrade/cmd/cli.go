@@ -6,6 +6,7 @@ import (
 
 // L1UpgradeContractsConfigCLI represents the configurations needed to upgrade L1 contracts over CLI
 type L1UpgradeContractsConfigCLI struct {
+	upgradeScript     string
 	l1HTTPURL         string
 	privateKey        string
 	networkConfigAddr string
@@ -17,12 +18,14 @@ func ParseConfigCLI() *L1UpgradeContractsConfigCLI {
 	cfg := &L1UpgradeContractsConfigCLI{}
 	flagUsageMap := getFlagUsageMap()
 
+	upgradeScript := flag.String(upgradeScriptFlag, "", flagUsageMap[upgradeScriptFlag])
 	l1HTTPURL := flag.String(l1HTTPURLFlag, "http://eth2network:8025", flagUsageMap[l1HTTPURLFlag])
 	privateKey := flag.String(privateKeyFlag, "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb", flagUsageMap[privateKeyFlag])
 	neworkConfigAddr := flag.String(networkConfigAddrFlag, "", flagUsageMap[networkConfigAddrFlag])
 	dockerImage := flag.String(dockerImageFlag, "testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest", flagUsageMap[dockerImageFlag])
 	flag.Parse()
 
+	cfg.upgradeScript = *upgradeScript
 	cfg.l1HTTPURL = *l1HTTPURL
 	cfg.privateKey = *privateKey
 	cfg.networkConfigAddr = *neworkConfigAddr
