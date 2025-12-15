@@ -55,13 +55,22 @@ func (es *eventsStorage) storeReceiptAndEventLogs(ctx context.Context, dbTX *enc
 		if err != nil {
 			return fmt.Errorf("could not store log entry %v. Cause: %w", l, err)
 		}
-		contract, err := es.readContract(ctx, dbTX.Tx, l.Address)
+		contract, err := es.readContract(ctx, dbTX.Tx, l.Address, true)
 		if err != nil {
 			return fmt.Errorf("could not read contract address. %s. Cause: %w", l.Address, err)
 		}
 		eventType := contract.EventType(l.Topics[0])
 		if eventType == nil {
-			return fmt.Errorf("could not read event type: %s for contract: %s. should not happen because an event log was emitted", l.Topics[0], contract.Address)
+			// there is a race on validators where a query is made for this contract during execution of the current batch, so the previously committed version is cached after invalidation
+			// in that case we bypass the cache and read the contract from the database directly
+			contract, err = es.readContract(ctx, dbTX.Tx, l.Address, false)
+			if err != nil {
+				return fmt.Errorf("could not read contract address. %s. Cause: %w", l.Address, err)
+			}
+			eventType = contract.EventType(l.Topics[0])
+			if eventType == nil {
+				return fmt.Errorf("could not read event type: %s for contract: %s. this really should not happen because an event log was emitted", l.Topics[0], contract.Address)
+			}
 		}
 		if eventType.IsPublic() {
 			isReceiptPublic = true
@@ -91,7 +100,7 @@ func (es *eventsStorage) storeNewContractWithEventTypeConfigs(ctx context.Contex
 		return fmt.Errorf("could not write contract address. cause %w", err)
 	}
 
-	c, err := es.readContract(ctx, dbTX.Tx, contractAddr)
+	c, err := es.readContract(ctx, dbTX.Tx, contractAddr, true)
 	if err != nil {
 		return err
 	}
@@ -140,7 +149,7 @@ func (es *eventsStorage) storeReceipt(ctx context.Context, dbTX *sqlx.Tx, batch 
 }
 
 func (es *eventsStorage) storeEventLog(ctx context.Context, dbTX *enclavedb.TxWithHooks, receiptId uint64, l *types.Log) ([]*enclavedb.EventTopic, error) {
-	contract, err := es.readContract(ctx, dbTX.Tx, l.Address)
+	contract, err := es.readContract(ctx, dbTX.Tx, l.Address, true)
 	if err != nil {
 		// the contract should already have been stored when it was created
 		return nil, fmt.Errorf("could not read contract address. %s. Cause: %w", l.Address, err)
@@ -302,7 +311,7 @@ func (es *eventsStorage) determineRelevantAddressForTopic(ctx context.Context, d
 		}
 
 		// if the address is a contract then it's clearly not an EOA
-		_, err = es.readContract(ctx, dbTX, *extractedAddr)
+		_, err = es.readContract(ctx, dbTX, *extractedAddr, true)
 		if err != nil && !errors.Is(err, errutil.ErrNotFound) {
 			return nil, err
 		}
@@ -343,20 +352,27 @@ func (es *eventsStorage) determineRelevantAddressForTopic(ctx context.Context, d
 	return relevantAddress, nil
 }
 
-func (es *eventsStorage) readContract(ctx context.Context, dbTX *sqlx.Tx, addr gethcommon.Address) (*enclavedb.Contract, error) {
+func (es *eventsStorage) readContract(ctx context.Context, dbTX *sqlx.Tx, addr gethcommon.Address, useCache bool) (*enclavedb.Contract, error) {
 	defer es.logDuration("readContract", measure.NewStopwatch())
+	if !useCache {
+		return readDBContract(ctx, dbTX, addr)
+	}
 	return es.cachingService.ReadContractAddr(ctx, addr, func() (*enclavedb.Contract, error) {
-		c, err := enclavedb.ReadContractByAddress(ctx, dbTX, addr)
-		if err != nil {
-			return nil, err
-		}
-		ets, err := enclavedb.ReadEventTypesForContract(ctx, dbTX, c.Id)
-		if err != nil {
-			return nil, err
-		}
-		c.SetEventTypes(ets)
-		return c, nil
+		return readDBContract(ctx, dbTX, addr)
 	})
+}
+
+func readDBContract(ctx context.Context, dbTX *sqlx.Tx, addr gethcommon.Address) (*enclavedb.Contract, error) {
+	c, err := enclavedb.ReadContractByAddress(ctx, dbTX, addr)
+	if err != nil {
+		return nil, err
+	}
+	ets, err := enclavedb.ReadEventTypesForContract(ctx, dbTX, c.Id)
+	if err != nil {
+		return nil, err
+	}
+	c.SetEventTypes(ets)
+	return c, nil
 }
 
 func (es *eventsStorage) ReadContract(ctx context.Context, addr gethcommon.Address) (*enclavedb.Contract, error) {
@@ -366,7 +382,7 @@ func (es *eventsStorage) ReadContract(ctx context.Context, addr gethcommon.Addre
 		return nil, err
 	}
 	defer dbtx.Rollback()
-	return es.readContract(ctx, dbtx, addr)
+	return es.readContract(ctx, dbtx, addr, true)
 }
 
 func (es *eventsStorage) findTopic(ctx context.Context, dbTX *sqlx.Tx, topic []byte, eventTypeId uint64) (*enclavedb.EventTopic, error) {
