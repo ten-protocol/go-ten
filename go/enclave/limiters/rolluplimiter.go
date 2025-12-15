@@ -17,6 +17,12 @@ const (
 	// Current: 2.06 bytes/batch actual, target estimation: 3.6 bytes/batch
 	// With 0.85 factor: 2.55 + 1.5 = 4.05 bytes/batch ≈ 22,222 batches
 	compressedHeaderSize = 2
+	// encodingOverheadFactor accounts for RLP structure encoding, encryption padding, blob encoding overhead,
+	// and rollup header/structure overhead that are not captured by just measuring transaction sizes.
+	// This factor is deliberately conservative (2.0 = 100% overhead) because large rollups with many batches
+	// can have significant overhead from batch headers, deltas, and structural encoding.
+	// Without this, large rollups can exceed the blob size limit (e.g., 543KB of transactions -> 638KB final)
+	encodingOverheadFactor = 2.0
 )
 
 type rollupLimiter struct {
@@ -36,12 +42,15 @@ func (rl *rollupLimiter) AcceptBatch(batch *core.Batch) (bool, error) {
 		return false, fmt.Errorf("failed to encode data. Cause: %w", err)
 	}
 
-	// adjust with a compression factor and add the size of a compressed batch header
-	encodedSize := uint64(float64(len(encodedData))*txCompressionFactor) + compressedHeaderSize
-	if encodedSize > rl.remainingSize {
+	// Calculate estimated final size accounting for:
+	// 1. Compression (txCompressionFactor)
+	// 2. RLP structure encoding, encryption, and blob encoding overhead (encodingOverheadFactor)
+	// 3. Compressed header size per batch (compressedHeaderSize)
+	estimatedSize := uint64(float64(len(encodedData))*txCompressionFactor*encodingOverheadFactor) + compressedHeaderSize
+	if estimatedSize > rl.remainingSize {
 		return false, nil
 	}
 
-	rl.remainingSize -= encodedSize
+	rl.remainingSize -= estimatedSize
 	return true, nil
 }
