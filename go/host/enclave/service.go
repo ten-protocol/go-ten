@@ -80,7 +80,7 @@ func (e *Service) Start() error {
 	if e.hostData.IsSequencer {
 		e.activeSequencerID.Store(_noActiveSequencer)
 		go e.managePeriodicBatches()
-		go e.managePeriodicRollups()
+		//go e.managePeriodicRollups()
 	}
 	return nil
 }
