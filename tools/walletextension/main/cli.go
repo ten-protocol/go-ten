@@ -112,6 +112,10 @@ const (
 	exportPublicKeyFlagName    = "exportPublicKey"
 	exportPublicKeyFlagDefault = ""
 	exportPublicKeyFlagUsage   = "Public key in DER format (Base64 encoded string) to encrypt the encryption key for export. If provided, the encryption key will be exported encrypted with this public key."
+
+	keyImportModeFlagName    = "keyImportMode"
+	keyImportModeFlagDefault = false
+	keyImportModeFlagUsage   = "Flag to enable key import mode. When enabled, allows importing encryption keys via HTTP endpoints (localhost only). Default: false"
 )
 
 // getLogLevelInt converts string log level to integer value
@@ -161,6 +165,7 @@ func parseCLIArgs() wecommon.Config {
 	sessionKeyExpirationThreshold := flag.Duration(sessionKeyExpirationThresholdFlagName, sessionKeyExpirationThresholdFlagDefault, sessionKeyExpirationThresholdFlagUsage)
 	sessionKeyExpirationInterval := flag.Duration(sessionKeyExpirationIntervalFlagName, sessionKeyExpirationIntervalFlagDefault, sessionKeyExpirationIntervalFlagUsage)
 	exportPublicKey := flag.String(exportPublicKeyFlagName, exportPublicKeyFlagDefault, exportPublicKeyFlagUsage)
+	keyImportMode := flag.Bool(keyImportModeFlagName, keyImportModeFlagDefault, keyImportModeFlagUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -189,5 +194,6 @@ func parseCLIArgs() wecommon.Config {
 		SessionKeyExpirationThreshold:  *sessionKeyExpirationThreshold,
 		SessionKeyExpirationInterval:   *sessionKeyExpirationInterval,
 		ExportPublicKey:                *exportPublicKey,
+		KeyImportMode:                  *keyImportMode,
 	}
 }

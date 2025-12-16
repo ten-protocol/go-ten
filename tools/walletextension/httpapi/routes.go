@@ -38,7 +38,7 @@ func generateCookieNameFromDomain(tlsDomain string) string {
 // NewHTTPRoutes returns the http specific routes
 // todo - move these to the rpc framework.
 func NewHTTPRoutes(walletExt *services.Services) []node.Route {
-	return []node.Route{
+	routes := []node.Route{
 		{
 			Name: common.APIVersion1 + common.PathReady,
 			Func: httpHandler(walletExt, readyRequestHandler),
@@ -91,15 +91,23 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 			Name: common.APIVersion1 + common.PathKeyExchange,
 			Func: httpHandler(walletExt, keyExchangeRequestHandler),
 		},
-		{
-			Name: common.APIVersion1 + common.PathKeyImportPublicKey,
-			Func: adminHttpHandler(walletExt, keyImportPublicKeyHandler),
-		},
-		{
-			Name: common.APIVersion1 + common.PathKeyImport,
-			Func: adminHttpHandler(walletExt, keyImportHandler),
-		},
 	}
+
+	// Conditionally add key import routes if enabled
+	if walletExt.Config.KeyImportMode {
+		routes = append(routes, []node.Route{
+			{
+				Name: common.APIVersion1 + common.PathKeyImportPublicKey,
+				Func: adminHttpHandler(walletExt, keyImportPublicKeyHandler),
+			},
+			{
+				Name: common.APIVersion1 + common.PathKeyImport,
+				Func: adminHttpHandler(walletExt, keyImportHandler),
+			},
+		}...)
+	}
+
+	return routes
 }
 
 func httpHandler(

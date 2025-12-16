@@ -35,4 +35,5 @@ type Config struct {
 	SessionKeyExpirationThreshold time.Duration // Threshold for session key expiration
 	SessionKeyExpirationInterval  time.Duration // How often the session key expiration service runs
 	ExportPublicKey               string        // Public key in DER format (Base64 encoded string) to encrypt the encryption key for export
+	KeyImportMode                 bool          // Flag to enable key import mode (localhost only)
 }
