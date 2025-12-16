@@ -28,6 +28,8 @@ const (
 	PathNetworkHealth             = "/network-health/"
 	PathNetworkConfig             = "/network-config/"
 	PathKeyExchange               = "/key-exchange/"
+	PathKeyImportPublicKey        = "/key-import/public-key/"
+	PathKeyImport                 = "/key-import/"
 	WSProtocol                    = "ws://"
 	HTTPProtocol                  = "http://"
 	EncryptedTokenQueryParameter  = "token"
