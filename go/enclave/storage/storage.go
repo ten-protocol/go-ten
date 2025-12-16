@@ -1145,6 +1145,12 @@ func (s *storageImpl) logDuration(method string, stopWatch *measure.Stopwatch) {
 func (s *storageImpl) StoreSystemContractAddresses(ctx context.Context, addresses common.SystemContractAddresses) error {
 	defer s.logDuration("StoreSystemContractAddresses", measure.NewStopwatch())
 
+	existingAddresses, err := s.GetSystemContractAddresses(ctx)
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		// log but don't fail, this was only for logging purposes - attempt the update still
+		s.logger.Warn("Could not fetch existing system contract addresses", log.ErrKey, err)
+	}
+
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
 		return fmt.Errorf("could not create DB transaction - %w", err)
@@ -1155,7 +1161,14 @@ func (s *storageImpl) StoreSystemContractAddresses(ctx context.Context, addresse
 	if err != nil {
 		return fmt.Errorf("could not marshal system contract addresses - %w", err)
 	}
-	_, err = storage.WriteConfig(ctx, dbTx, systemContractAddressesCfg, addressesBytes)
+
+	if existingAddresses != nil {
+		// this should be a rare occurrence (e.g. genesis batch had to get re-executed), log for visibility
+		s.logger.Warn("Overwriting system contract addresses", "prev", existingAddresses, "new", addresses)
+	}
+
+	// Use InsertOrUpdateConfig to handle both initial insert and re-execution update cases
+	err = storage.InsertOrUpdateConfig(ctx, dbTx, systemContractAddressesCfg, addressesBytes)
 	if err != nil {
 		return fmt.Errorf("could not write system contract addresses - %w", err)
 	}
