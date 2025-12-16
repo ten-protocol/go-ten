@@ -55,15 +55,15 @@ contract CrossChainMessenger is ICrossChainMessenger, PausableWithRoles, Reentra
     function consumeMessage(
         Structs.CrossChainMessage calldata message
     ) private {
-        bytes32 msgHash = keccak256(abi.encode(message));
-        require(!messageConsumed[msgHash], "Message already consumed.");
-        // Effects first to prevent reentrancy
-        messageConsumed[msgHash] = true;
-
         require(
             IMessageBus(address(messageBusContract)).verifyMessageFinalized(message),
             "Message not found or finalized."
         );
+        
+        bytes32 msgHash = keccak256(abi.encode(message));
+        require(!messageConsumed[msgHash], "Message already consumed.");
+        // Effects first to prevent reentrancy
+        messageConsumed[msgHash] = true;
     }
 
     /**
