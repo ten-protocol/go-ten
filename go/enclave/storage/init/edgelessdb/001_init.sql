@@ -83,10 +83,10 @@ create table if not exists tendb.statedb34
     UNIQUE INDEX USING HASH (ky)
 );
 
-create table if not exists tendb.statedb64
+create table if not exists tendb.statedb65
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  varbinary(64) NOT NULL,
+    ky  varbinary(65) NOT NULL,
     val mediumblob,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)

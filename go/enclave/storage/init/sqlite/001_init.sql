@@ -70,13 +70,13 @@ create table if not exists statedb34
     );
 create index IDX_KY34 on statedb34 (ky);
 
-create table if not exists statedb64
+create table if not exists statedb65
 (
     id  INTEGER PRIMARY KEY AUTOINCREMENT,
-    ky  varbinary(64) UNIQUE NOT NULL,
+    ky  varbinary(65) UNIQUE NOT NULL,
     val mediumblob
 );
-create index IDX_KY64 on statedb64 (ky);
+create index IDX_KY65 on statedb65 (ky);
 
 create table if not exists triedb_journal
 (

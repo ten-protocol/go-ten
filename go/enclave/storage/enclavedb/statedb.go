@@ -54,8 +54,8 @@ func getTable(key []byte) string {
 		}
 	case len(key) == 34:
 		return "statedb34"
-	case len(key) <= 64:
-		return "statedb64"
+	case len(key) <= 65:
+		return "statedb65"
 	default:
 		// it will fail here
 		return "non-existent-table"
