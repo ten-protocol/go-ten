@@ -120,7 +120,7 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 		}
 		encryptedKey, err := EncryptWithPublicKey(encryptionKey, exportPublicKey)
 		if err != nil {
-			logger.Crit("unable to encrypt encryption key", log.ErrKey, err)
+			logger.Error("unable to encrypt encryption key", log.ErrKey, err)
 			return nil, err
 		}
 		exportKeyFile := filepath.Join(dataDir, "encrypted-encryption-key.json")
