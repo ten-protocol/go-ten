@@ -105,6 +105,32 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	}
 	logger.Info("sealed new encryption key")
 
+	// Also export the encrypted (with provided public key) encryption key to a file if the flag is set
+	if config.ExportPublicKey != "" {
+		// First decode the Base64 string to get raw DER bytes
+		derBytes, err := DecodeBase64(config.ExportPublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode Base64 public key: %w", err)
+		}
+
+		// Then deserialize the DER bytes to get the RSA public key
+		exportPublicKey, err := DeserializePublicKey(derBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize public key: %w", err)
+		}
+		encryptedKey, err := EncryptWithPublicKey(encryptionKey, exportPublicKey)
+		if err != nil {
+			logger.Crit("unable to encrypt encryption key", log.ErrKey, err)
+			return nil, err
+		}
+		exportKeyFile := filepath.Join(dataDir, "encrypted-encryption-key.json")
+		err = os.WriteFile(exportKeyFile, encryptedKey, 0644)
+		if err != nil {
+			logger.Error("unable to write encrypted key to file", log.ErrKey, err)
+			return nil, err
+		}
+		logger.Info("exported encrypted encryption key to file", "file", exportKeyFile)
+	}
 	return encryptionKey, nil
 }
 

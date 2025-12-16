@@ -108,6 +108,10 @@ const (
 	sessionKeyExpirationIntervalFlagName    = "sessionKeyExpirationInterval"
 	sessionKeyExpirationIntervalFlagDefault = 30 * time.Minute
 	sessionKeyExpirationIntervalFlagUsage   = "How often the session key expiration service runs. Default: 2h"
+
+	exportPublicKeyFlagName    = "exportPublicKey"
+	exportPublicKeyFlagDefault = ""
+	exportPublicKeyFlagUsage   = "Public key in DER format (Base64 encoded string) to encrypt the encryption key for export. If provided, the encryption key will be exported encrypted with this public key."
 )
 
 // getLogLevelInt converts string log level to integer value
@@ -156,6 +160,7 @@ func parseCLIArgs() wecommon.Config {
 	frontendURL := flag.String(frontendURLFlagName, frontendURLFlagDefault, frontendURLFlagUsage)
 	sessionKeyExpirationThreshold := flag.Duration(sessionKeyExpirationThresholdFlagName, sessionKeyExpirationThresholdFlagDefault, sessionKeyExpirationThresholdFlagUsage)
 	sessionKeyExpirationInterval := flag.Duration(sessionKeyExpirationIntervalFlagName, sessionKeyExpirationIntervalFlagDefault, sessionKeyExpirationIntervalFlagUsage)
+	exportPublicKey := flag.String(exportPublicKeyFlagName, exportPublicKeyFlagDefault, exportPublicKeyFlagUsage)
 	flag.Parse()
 
 	return wecommon.Config{
@@ -183,5 +188,6 @@ func parseCLIArgs() wecommon.Config {
 		FrontendURL:                    *frontendURL,
 		SessionKeyExpirationThreshold:  *sessionKeyExpirationThreshold,
 		SessionKeyExpirationInterval:   *sessionKeyExpirationInterval,
+		ExportPublicKey:                *exportPublicKey,
 	}
 }
