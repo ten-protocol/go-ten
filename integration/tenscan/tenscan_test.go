@@ -459,9 +459,9 @@ func TestTenscan(t *testing.T) {
 		3,
 	)
 
-	time.Sleep(30 * time.Second)
+	time.Sleep(10 * time.Second)
 
-	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=0&size=30", serverAddress))
+	_, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=0&size=30", serverAddress))
 	assert.NoError(t, err)
 
 	type contractListingRes struct {
@@ -472,14 +472,6 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &contractListingObj)
 	assert.NoError(t, err)
 
-	////Timer for running local tests
-	//countdownDuration := 120 * time.Minute
-	//tickDuration := 5 * time.Minute
-	//
-	//for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
-	//	fmt.Printf("Shutting down in %s...\n", remaining)
-	//	time.Sleep(tickDuration)
-	//}
 	assert.GreaterOrEqual(t, len(contractListingObj.Result.Contracts), 3, "Should have at least 3 test contracts")
 	assert.GreaterOrEqual(t, contractListingObj.Result.Total, uint64(26), "Total contracts should be at least 26 (23 system + 3 test)")
 
@@ -553,7 +545,6 @@ func TestTenscan(t *testing.T) {
 
 	err = tenScanContainer.Stop()
 	assert.NoError(t, err)
-
 }
 
 func waitServerIsReady(serverAddr string) error {
