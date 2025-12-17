@@ -37,6 +37,10 @@ func routeItems(r *gin.Engine, server *WebServer) {
 	r.GET("/items/transactions/count", server.getTotalTxCount)
 	r.GET("/items/blocks/", server.getBlockListing)
 
+	// contracts
+	r.GET("/items/contracts/", server.getContractListing)
+	r.GET("/items/contract/:address", server.getContractByAddress)
+
 	// search
 	r.GET("/items/search/", server.search)
 }
@@ -358,4 +362,46 @@ func (w *WebServer) search(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"result": results})
+}
+
+func (w *WebServer) getContractListing(c *gin.Context) {
+	offsetStr := c.DefaultQuery("offset", "0")
+	sizeStr := c.DefaultQuery("size", "20")
+
+	offset, err := strconv.ParseUint(offsetStr, 10, 32)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to parse getContractListing offset units %w", err), w.logger)
+		return
+	}
+
+	size, err := strconv.ParseUint(sizeStr, 10, 64)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to parse getContractListing size units %w", err), w.logger)
+		return
+	}
+
+	contracts, err := w.backend.GetContractListing(offset, size)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute getContractListing request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": contracts})
+}
+
+func (w *WebServer) getContractByAddress(c *gin.Context) {
+	addressStr := c.Param("address")
+	if !gethcommon.IsHexAddress(addressStr) {
+		errorHandler(c, fmt.Errorf("invalid contract address: %s", addressStr), w.logger)
+		return
+	}
+
+	address := gethcommon.HexToAddress(addressStr)
+	contract, err := w.backend.GetContractByAddress(address)
+	if err != nil {
+		errorHandler(c, fmt.Errorf("unable to execute getContractByAddress request %w", err), w.logger)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"item": contract})
 }

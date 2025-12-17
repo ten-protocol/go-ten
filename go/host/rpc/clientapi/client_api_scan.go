@@ -58,6 +58,21 @@ func (s *ScanAPI) GetTotalTransactionsQuery() (*big.Int, error) {
 	return s.host.Storage().FetchTotalTxsQuery()
 }
 
+// GetPublicTransactionListing returns a paginated list of public transactions
+func (s *ScanAPI) GetPublicTransactionListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	return s.host.Storage().FetchTransactionListing(pagination)
+}
+
+// GetContractListing returns a paginated list of all contracts
+func (s *ScanAPI) GetContractListing(pagination *common.QueryPagination) (*common.ContractListingResponse, error) {
+	return s.host.Storage().FetchContractListing(pagination)
+}
+
+// GetContractByAddress returns contract details for a specific address
+func (s *ScanAPI) GetContractByAddress(address gethcommon.Address) (*common.PublicContract, error) {
+	return s.host.Storage().FetchContractByAddress(address)
+}
+
 // GetHistoricalTransactionCount returns the historical transaction count plus current count
 func (s *ScanAPI) GetHistoricalTransactionCount() (*big.Int, error) {
 	return s.host.Storage().FetchHistoricalTransactionCount()

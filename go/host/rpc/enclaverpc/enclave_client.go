@@ -525,6 +525,37 @@ func (c *Client) FetchSequencerAttestations(ctx context.Context) ([]*common.Atte
 	return reports, nil
 }
 
+func (c *Client) GetContractsSince(ctx context.Context, fromBatch uint64, limit uint) ([]common.EnclaveContractData, common.SystemError) {
+	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
+	defer cancel()
+
+	response, err := c.protoClient.GetContractsSince(timeoutCtx, &generated.ContractsSinceRequest{FromBatch: fromBatch, Limit: int32(limit)})
+	if err != nil {
+		return nil, syserr.NewRPCError(err)
+	}
+	if response == nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("nil response from enclave"))
+	}
+	if response.SystemError != nil {
+		return nil, syserr.NewInternalError(fmt.Errorf("%s", response.SystemError.ErrorString))
+	}
+
+	contracts := make([]common.EnclaveContractData, 0, len(response.Contracts))
+	for _, contract := range response.Contracts {
+		contracts = append(contracts, common.EnclaveContractData{
+			ID:             contract.Id,
+			Address:        gethcommon.BytesToAddress(contract.Address),
+			Creator:        gethcommon.BytesToAddress(contract.Creator),
+			AutoVisibility: contract.AutoVisibility,
+			Transparent:    contract.Transparent,
+			BatchSeq:       contract.BatchSeq,
+			BatchHeight:    contract.BatchHeight,
+			BatchTimestamp: contract.BatchTimestamp,
+		})
+	}
+	return contracts, nil
+}
+
 func (c *Client) MakeActive() common.SystemError {
 	response, err := c.protoClient.MakeActive(context.Background(), &generated.MakeActiveRequest{})
 	if err != nil {

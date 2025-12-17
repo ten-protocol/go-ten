@@ -22,6 +22,8 @@ func TransactionToMessageWithOverrides(
 	if tx.SystemDeployer {
 		msg := TransactionToMessageNoSender(tx.Tx, header.BaseFee)
 		msg.From = common.MaskedSender(gethcommon.BigToAddress(big.NewInt(tx.Tx.ChainId().Int64())))
+		// Skip nonce checks for system deployer transactions - they may be re-executed on restart
+		msg.SkipNonceChecks = true
 		return msg, nil
 	} else if tx.FromSelf {
 		msg := TransactionToMessageNoSender(tx.Tx, header.BaseFee)

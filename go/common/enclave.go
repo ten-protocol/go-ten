@@ -135,6 +135,9 @@ type EnclaveClientRPC interface {
 	// GetTotalContractCount returns the total number of contracts that have been deployed
 	GetTotalContractCount(context.Context) (*big.Int, SystemError)
 
+	// GetContractsSince returns contracts created after the specified batch sequence number
+	GetContractsSince(ctx context.Context, fromBatch uint64, limit uint) ([]EnclaveContractData, SystemError)
+
 	// EnclavePublicConfig returns network data that is known to the enclave but can be shared publicly
 	EnclavePublicConfig(context.Context) (*EnclavePublicConfig, SystemError)
 
@@ -170,4 +173,15 @@ type EnclavePublicConfig struct {
 	TransactionPostProcessorAddress gethcommon.Address
 	SystemContractsUpgrader         gethcommon.Address
 	PublicSystemContracts           map[string]gethcommon.Address
+}
+
+type EnclaveContractData struct {
+	ID             uint64
+	Address        gethcommon.Address
+	Creator        gethcommon.Address
+	AutoVisibility bool
+	Transparent    *bool
+	BatchSeq       uint64
+	BatchHeight    uint64
+	BatchTimestamp uint64
 }

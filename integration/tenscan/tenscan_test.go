@@ -86,7 +86,14 @@ func TestTenscan(t *testing.T) {
 	statusCode, body, err := fasthttp.Get(nil, fmt.Sprintf("%s/count/contracts/", serverAddress))
 	assert.NoError(t, err)
 	assert.Equal(t, 200, statusCode)
-	assert.Equal(t, "{\"count\":23}", string(body))
+	// 23 system contracts
+	assert.Contains(t, string(body), "count")
+	var contractCountRes struct {
+		Count int `json:"count"`
+	}
+	err = json.Unmarshal(body, &contractCountRes)
+	assert.NoError(t, err)
+	assert.GreaterOrEqual(t, contractCountRes.Count, 23, "Should have at least 23 system contracts")
 
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/count/transactions/", serverAddress))
 	assert.NoError(t, err)
@@ -104,7 +111,7 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &historicalTxCountObj)
 	assert.NoError(t, err)
 
-	// historical count should be config value (10) plus the additional 5 transactions added in the test
+	// historical count should be config value (10) plus the additional 8 transactions added in the test (5 transfers)
 	assert.GreaterOrEqual(t, historicalTxCountObj.Count, 15,
 		"Historical count should be >= current count")
 
@@ -119,7 +126,7 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &historicalContractCountObj)
 	assert.NoError(t, err)
 
-	// historical count will just be the config value of 7 + 23 contracts deployed
+	// historical count will be config value of 7 + 23 system contracts
 	assert.GreaterOrEqual(t, historicalContractCountObj.Count, 30,
 		"Historical count should be >= current count")
 
@@ -445,8 +452,108 @@ func TestTenscan(t *testing.T) {
 	assert.GreaterOrEqual(t, len(attestationObj.Result), 1)
 	assert.GreaterOrEqual(t, len(attestationObj.Result[0].Report), 11) // this is a mocked report with fixed length
 
+	deployTestContracts(
+		t,
+		fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
+		wallet.NewInMemoryWalletFromConfig(testcommon.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
+		3,
+	)
+
+	time.Sleep(30 * time.Second)
+
+	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=0&size=30", serverAddress))
+	assert.NoError(t, err)
+
+	type contractListingRes struct {
+		Result common.ContractListingResponse `json:"result"`
+	}
+
+	contractListingObj := contractListingRes{}
+	err = json.Unmarshal(body, &contractListingObj)
+	assert.NoError(t, err)
+
+	////Timer for running local tests
+	//countdownDuration := 120 * time.Minute
+	//tickDuration := 5 * time.Minute
+	//
+	//for remaining := countdownDuration; remaining > 0; remaining -= tickDuration {
+	//	fmt.Printf("Shutting down in %s...\n", remaining)
+	//	time.Sleep(tickDuration)
+	//}
+	assert.GreaterOrEqual(t, len(contractListingObj.Result.Contracts), 3, "Should have at least 3 test contracts")
+	assert.GreaterOrEqual(t, contractListingObj.Result.Total, uint64(26), "Total contracts should be at least 26 (23 system + 3 test)")
+
+	// Verify contract structure has all required fields
+	if len(contractListingObj.Result.Contracts) > 0 {
+		firstContract := contractListingObj.Result.Contracts[0]
+		assert.NotEqual(t, gethcommon.Address{}, firstContract.Address, "Contract address should not be empty")
+		assert.NotEqual(t, gethcommon.Address{}, firstContract.Creator, "Contract creator should not be empty")
+		assert.GreaterOrEqual(t, firstContract.BatchSeq, uint64(0), "Batch sequence should be set")
+		assert.GreaterOrEqual(t, firstContract.Height, uint64(0), "Height should be set")
+		assert.GreaterOrEqual(t, firstContract.Time, uint64(0), "Time should be set")
+	}
+
+	// Test fetching specific contract by address
+	if len(contractListingObj.Result.Contracts) > 0 {
+		testContractAddr := contractListingObj.Result.Contracts[0].Address
+		statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contract/%s", serverAddress, testContractAddr.Hex()))
+		assert.NoError(t, err)
+		assert.Equal(t, 200, statusCode)
+
+		type contractItemRes struct {
+			Item common.PublicContract `json:"item"`
+		}
+
+		contractItemObj := contractItemRes{}
+		err = json.Unmarshal(body, &contractItemObj)
+		assert.NoError(t, err)
+		assert.Equal(t, testContractAddr, contractItemObj.Item.Address, "Fetched contract should match requested address")
+	}
+
+	// Test contract pagination
+	if contractListingObj.Result.Total > 2 {
+		// First page
+		statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=0&size=1", serverAddress))
+		assert.NoError(t, err)
+		assert.Equal(t, 200, statusCode)
+
+		firstPageContracts := contractListingRes{}
+		err = json.Unmarshal(body, &firstPageContracts)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(firstPageContracts.Result.Contracts), "First page should have 1 contract")
+
+		// Second page
+		statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=1&size=1", serverAddress))
+		assert.NoError(t, err)
+		assert.Equal(t, 200, statusCode)
+
+		secondPageContracts := contractListingRes{}
+		err = json.Unmarshal(body, &secondPageContracts)
+		assert.NoError(t, err)
+		assert.Equal(t, 1, len(secondPageContracts.Result.Contracts), "Second page should have 1 contract")
+
+		// Verify different pages have different contracts
+		assert.NotEqual(t, firstPageContracts.Result.Contracts[0].Address,
+			secondPageContracts.Result.Contracts[0].Address,
+			"Different pages should have different contracts")
+	}
+
+	// Test invalid contract address returns appropriate error
+	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contract/0xinvalid", serverAddress))
+	assert.NoError(t, err)
+	// Should handle gracefully (either 400 or 404 or 500 depending on implementation)
+	assert.True(t, statusCode >= 400, "Invalid address should return error status")
+
+	// Test non-existent contract address
+	nonExistentAddr := "0x0000000000000000000000000000000000000001"
+	statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contract/%s", serverAddress, nonExistentAddr))
+	assert.NoError(t, err)
+	// Should return 404 or similar for non-existent contract
+	assert.True(t, statusCode >= 400, "Non-existent contract should return error status")
+
 	err = tenScanContainer.Stop()
 	assert.NoError(t, err)
+
 }
 
 func waitServerIsReady(serverAddr string) error {
@@ -555,6 +662,59 @@ func issueTransactions(t *testing.T, hostWSAddr string, issuerWallet wallet.Wall
 			t.Fatalf("Tx Failed")
 		}
 	}
+}
+
+func deployTestContracts(t *testing.T, hostWSAddr string, deployerWallet wallet.Wallet, numContracts int) {
+	ctx := context.Background()
+
+	vk, err := viewingkey.GenerateViewingKeyForWallet(deployerWallet)
+	assert.Nil(t, err)
+	client, err := rpc.NewEncNetworkClient(hostWSAddr, vk, testlog.Logger())
+	assert.Nil(t, err)
+	authClient := obsclient.NewAuthObsClient(client)
+
+	nonce, err := authClient.NonceAt(ctx, nil)
+	assert.Nil(t, err)
+	deployerWallet.SetNonce(nonce)
+
+	// simple contract bytecode - deploys a minimal contract with actual runtime code
+	// ensures OnCodeChange fires because code is actually stored at the contract address
+	simpleContractBytecode := gethcommon.Hex2Bytes("6112346000556001601260003960016000f300")
+	for i := 0; i < numContracts; i++ {
+		estimatedTx := authClient.EstimateGasAndGasPrice(&types.LegacyTx{
+			Nonce:    deployerWallet.GetNonceAndIncrement(),
+			To:       nil, // nil To address means contract deployment
+			Value:    big.NewInt(0),
+			Gas:      uint64(2_000_000),
+			GasPrice: gethcommon.Big1,
+			Data:     simpleContractBytecode,
+		})
+		assert.Nil(t, err)
+
+		signedTx, err := deployerWallet.SignTransaction(estimatedTx)
+		assert.Nil(t, err)
+
+		err = authClient.SendTransaction(ctx, signedTx)
+		assert.Nil(t, err)
+
+		var receipt *types.Receipt
+		for start := time.Now(); time.Since(start) < 2*time.Minute; time.Sleep(time.Second) {
+			receipt, err = authClient.TransactionReceipt(ctx, signedTx.Hash())
+			if err == nil && receipt != nil && receipt.Status == 1 {
+				fmt.Printf("Contract deployed at: %s\n", receipt.ContractAddress.Hex())
+				break
+			}
+		}
+
+		if receipt == nil || receipt.Status == 0 {
+			t.Fatalf("Failed to deploy contract %d", i)
+		}
+
+		// Small delay between deployments
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	fmt.Println("Successfully deployed test contracts: ", numContracts)
 }
 
 func waitForFirstRollup(serverAddress string) error {

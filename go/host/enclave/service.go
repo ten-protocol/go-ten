@@ -16,6 +16,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/ethadapter"
 	hostconfig "github.com/ten-protocol/go-ten/go/host/config"
+	"github.com/ten-protocol/go-ten/go/host/storage"
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 )
@@ -38,6 +39,7 @@ type enclaveServiceLocator interface {
 type Service struct {
 	hostData host.Identity
 	sl       enclaveServiceLocator
+	storage  storage.Storage
 
 	// The service goes via the Guardians to talk to the enclave (because guardian knows if the enclave is healthy etc.)
 	enclaveGuardians  []*Guardian
@@ -55,10 +57,11 @@ type Service struct {
 	logger          gethlog.Logger
 }
 
-func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLocator enclaveServiceLocator, enclaveGuardians []*Guardian, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Service {
+func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLocator enclaveServiceLocator, enclaveGuardians []*Guardian, hostStorage storage.Storage, interrupter *stopcontrol.StopControl, logger gethlog.Logger) *Service {
 	return &Service{
 		hostData:               hostData,
 		sl:                     serviceLocator,
+		storage:                hostStorage,
 		enclaveGuardians:       enclaveGuardians,
 		batchInterval:          config.BatchInterval,
 		rollupInterval:         config.RollupInterval,
@@ -83,7 +86,14 @@ func (e *Service) Start() error {
 		e.activeSequencerID.Store(_noActiveSequencer)
 		go e.managePeriodicBatches()
 		go e.managePeriodicRollups()
+		go e.managePeriodicContractSync()
 	}
+
+	//if !e.hostData.IsSequencer {
+	//	// periodic contract sync for validators
+	//	go e.managePeriodicContractSync()
+	//}
+
 	return nil
 }
 
@@ -496,4 +506,86 @@ func (e *Service) getActiveSequencerGuardian() (*Guardian, error) {
 		}
 	}
 	return nil, errors.New("active sequencer not found in guardians")
+}
+
+// managePeriodicContractSync periodically syncs contract data from the enclave to the host DB
+// This runs for all nodes (sequencers and validators) to keep the host DB in sync for the block explorer
+func (e *Service) managePeriodicContractSync() {
+	e.logger.Info("Starting periodic contract sync service")
+
+	// Sync every 10 seconds
+	syncInterval := 10 * time.Second
+	contractFetchLimit := uint(100) // Fetch up to 100 contracts per sync
+
+	const lastSyncedBatchKey = "contract_sync_last_batch_seq"
+
+	ticker := time.NewTicker(syncInterval)
+	defer ticker.Stop()
+
+	for e.running.Load() {
+		select {
+		case <-ticker.C:
+			lastSyncedBatchSeq, err := e.storage.GetMetadata(lastSyncedBatchKey)
+			if err != nil {
+				// First time running, start from 0
+				lastSyncedBatchSeq = 0
+			}
+
+			// fetch contracts from the enclave since the last synced batch
+			contracts, sysErr := e.GetEnclaveClient().GetContractsSince(context.Background(), lastSyncedBatchSeq, contractFetchLimit)
+			if sysErr != nil {
+				e.logger.Debug("Failed to fetch contracts from enclave", log.ErrKey, sysErr)
+				continue
+			}
+
+			if len(contracts) == 0 {
+				// No new contracts, nothing to sync
+				continue
+			}
+
+			// Convert to PublicContract format for host DB
+			publicContracts := make([]common.PublicContract, 0, len(contracts))
+			maxBatchSeq := lastSyncedBatchSeq
+
+			for _, contract := range contracts {
+				// Determine if contract has custom config
+				hasCustomConfig := !contract.AutoVisibility
+
+				// Determine if contract is transparent
+				isTransparent := contract.Transparent != nil && *contract.Transparent
+
+				publicContracts = append(publicContracts, common.PublicContract{
+					Address:         contract.Address,
+					Creator:         contract.Creator,
+					IsTransparent:   isTransparent,
+					HasCustomConfig: hasCustomConfig,
+					BatchSeq:        contract.BatchSeq,
+					Height:          contract.BatchHeight,
+					Time:            contract.BatchTimestamp,
+				})
+
+				// Track the highest batch sequence we've seen
+				if contract.BatchSeq > maxBatchSeq {
+					maxBatchSeq = contract.BatchSeq
+				}
+			}
+
+			// Store contracts in the host DB
+			if err := e.storage.AddContracts(publicContracts); err != nil {
+				e.logger.Error("Failed to store contracts in host DB", log.ErrKey, err, "count", len(publicContracts))
+				continue
+			}
+
+			// Update the last synced batch sequence
+			if err := e.storage.SetMetadata(lastSyncedBatchKey, maxBatchSeq); err != nil {
+				e.logger.Warn("Failed to update contract sync metadata", log.ErrKey, err)
+			} else {
+				e.logger.Info("Synced contracts to host DB", "count", len(publicContracts), "last_batch_seq", maxBatchSeq)
+			}
+
+		case <-e.hostInterrupter.Done():
+			e.logger.Info("Stopping periodic contract sync service")
+			return
+		}
+	}
 }

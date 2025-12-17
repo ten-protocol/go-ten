@@ -162,4 +162,5 @@ type ScanStorage interface {
 	GetContractCount(ctx context.Context) (*big.Int, error)
 	CountTransactionsPerAddress(ctx context.Context, addr *gethcommon.Address, showPublic bool, showSynthetic bool) (uint64, error)
 	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]common.PersonalTxReceipt, error)
+	GetContractsSince(ctx context.Context, fromBatchSeq uint64, limit uint) ([]common.EnclaveContractData, error)
 }

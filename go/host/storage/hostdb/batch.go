@@ -55,49 +55,12 @@ func AddBatch(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
 	}
 
 	if len(batch.TxHashes) > 0 {
-		valuePlaceholders := make([]string, len(batch.TxHashes))
-		args := make([]any, 0)
-		for i, txHash := range batch.TxHashes {
-			valuePlaceholders[i] = "(?, ?)"
-			args = append(args, txHash.Bytes(), batch.SeqNo().Uint64())
-		}
-
-		insert := insertTransactions + strings.Join(valuePlaceholders, ", ")
-		insert = db.GetSQLDB().Rebind(insert)
-		_, err = dbtx.Tx.Exec(insert, args...)
-		if err != nil {
+		if err = addBatchTransactions(dbtx, db, batch); err != nil {
 			return fmt.Errorf("failed to insert transactions. cause: %w", err)
 		}
 	}
-
-	// update current transaction count
-	var currentTotal int
-	reboundSelectTxCount := db.GetSQLDB().Rebind("SELECT total FROM transaction_count WHERE id = 1")
-	err = dbtx.Tx.QueryRow(reboundSelectTxCount).Scan(&currentTotal)
-	if err != nil {
-		return fmt.Errorf("failed to query transaction count: %w", err)
-	}
-
-	newTotal := currentTotal + len(batch.TxHashes)
-	reboundUpdateTxCount := db.GetSQLDB().Rebind(updateTxCount)
-	_, err = dbtx.Tx.Exec(reboundUpdateTxCount, newTotal)
-	if err != nil {
-		return fmt.Errorf("failed to update transaction count: %w", err)
-	}
-
-	// update historical transaction count
-	var currentHistoricalTotal int
-	reboundSelectHistoricalTxCount := db.GetSQLDB().Rebind("SELECT total FROM historical_transaction_count WHERE id = 1")
-	err = dbtx.Tx.QueryRow(reboundSelectHistoricalTxCount).Scan(&currentHistoricalTotal)
-	if err != nil {
-		return fmt.Errorf("failed to query historical transaction count: %w", err)
-	}
-
-	newHistoricalTotal := currentHistoricalTotal + len(batch.TxHashes)
-	reoundHistoricalQuery := db.GetSQLDB().Rebind(updateHistoricalTxCount)
-	_, err = dbtx.Tx.Exec(reoundHistoricalQuery, newHistoricalTotal)
-	if err != nil {
-		return fmt.Errorf("failed to update historical transaction count: %w", err)
+	if err = updateTransactionCounts(dbtx, db, batch); err != nil {
+		return fmt.Errorf("failed to update transaction counts. cause: %w", err)
 	}
 
 	return nil
@@ -471,6 +434,57 @@ func fetchTx(db HostDB, seqNo uint64) ([]common.TxHash, error) {
 		return nil, fmt.Errorf("error looping through transacion rows: %w", err)
 	}
 	return transactions, nil
+}
+
+func addBatchTransactions(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
+	valuePlaceholders := make([]string, len(batch.TxHashes))
+	args := make([]any, 0)
+	for i, txHash := range batch.TxHashes {
+		valuePlaceholders[i] = "(?, ?)"
+		args = append(args, txHash.Bytes(), batch.SeqNo().Uint64())
+
+	}
+
+	insert := insertTransactions + strings.Join(valuePlaceholders, ", ")
+	insert = db.GetSQLDB().Rebind(insert)
+	if _, err := dbtx.Tx.Exec(insert, args...); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func updateTransactionCounts(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch) error {
+	// update current transaction count
+	var currentTotal int
+	reboundSelectTxCount := db.GetSQLDB().Rebind("SELECT total FROM transaction_count WHERE id = 1")
+	err := dbtx.Tx.QueryRow(reboundSelectTxCount).Scan(&currentTotal)
+	if err != nil {
+		return fmt.Errorf("failed to query transaction count: %w", err)
+	}
+
+	newTotal := currentTotal + len(batch.TxHashes)
+	reboundUpdateTxCount := db.GetSQLDB().Rebind(updateTxCount)
+	_, err = dbtx.Tx.Exec(reboundUpdateTxCount, newTotal)
+	if err != nil {
+		return fmt.Errorf("failed to update transaction count: %w", err)
+	}
+
+	// update historical transaction count
+	var currentHistoricalTotal int
+	reboundSelectHistoricalTxCount := db.GetSQLDB().Rebind("SELECT total FROM historical_transaction_count WHERE id = 1")
+	err = dbtx.Tx.QueryRow(reboundSelectHistoricalTxCount).Scan(&currentHistoricalTotal)
+	if err != nil {
+		return fmt.Errorf("failed to query historical transaction count: %w", err)
+	}
+
+	newHistoricalTotal := currentHistoricalTotal + len(batch.TxHashes)
+	reoundHistoricalQuery := db.GetSQLDB().Rebind(updateHistoricalTxCount)
+	_, err = dbtx.Tx.Exec(reoundHistoricalQuery, newHistoricalTotal)
+	if err != nil {
+		return fmt.Errorf("failed to update historical transaction count: %w", err)
+	}
+	return nil
 }
 
 func IsRowExistsError(err error) bool {

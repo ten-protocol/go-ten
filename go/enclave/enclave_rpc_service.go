@@ -116,6 +116,10 @@ func (e *enclaveRPCService) GetTotalContractCount(ctx context.Context) (*big.Int
 	return e.storage.GetContractCount(ctx)
 }
 
+func (e *enclaveRPCService) GetContractsSince(ctx context.Context, fromBatchSeq uint64, limit uint) ([]common.EnclaveContractData, common.SystemError) {
+	return e.storage.GetContractsSince(ctx, fromBatchSeq, limit)
+}
+
 func (e *enclaveRPCService) EnclavePublicConfig(context.Context) (*common.EnclavePublicConfig, common.SystemError) {
 	if e.crossChainProcessors == nil {
 		e.logger.Error("cross chain processors not initialized")
