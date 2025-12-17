@@ -63,7 +63,8 @@ func getTable(key []byte) string {
 }
 
 func has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
-	err := db.QueryRowContext(ctx, fmt.Sprintf(getQry, getTable(key)), key).Scan()
+	var dummy []byte
+	err := db.QueryRowContext(ctx, fmt.Sprintf(getQry, getTable(key)), key).Scan(&dummy)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
@@ -73,7 +74,7 @@ func has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
 	return true, nil
 }
 
-func getJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) { //nolint:unused
+func getJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) {
 	q := "select val from triedb_journal order by id asc"
 	rows, err := db.QueryContext(ctx, q)
 	if err != nil {
@@ -107,7 +108,7 @@ func getJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) { //nolint:unu
 
 // the journal can be quite large, so we split it into chunks and insert them one by one
 // because edglessdb fails silently when the data is too large
-func putJournal(ctx context.Context, db *sqlx.DB, value []byte) error { //nolint:unused
+func putJournal(ctx context.Context, db *sqlx.DB, value []byte) error {
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction - %w", err)
@@ -163,7 +164,8 @@ func valTooLarge(val []byte) bool {
 
 func put(ctx context.Context, db *sqlx.DB, key []byte, value []byte) error {
 	if valTooLarge(value) {
-		return fmt.Errorf("value too large")
+		panic(fmt.Sprintf("value too large: %d", len(value)))
+		// return fmt.Errorf("value too large")
 	}
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
@@ -184,7 +186,8 @@ func putKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 
 	for _, val := range vals {
 		if valTooLarge(val) {
-			return fmt.Errorf("value too large")
+			panic(fmt.Sprintf("value too large: %d", len(val)))
+			// return fmt.Errorf("value too large")
 		}
 	}
 
@@ -251,17 +254,19 @@ func deleteKeys(ctx context.Context, db *sqlx.Tx, keys [][]byte) error {
 }
 
 func newIterator(ctx context.Context, db *sqlx.DB, prefix []byte, start []byte) ethdb.Iterator {
-	// todo - is this used?
+	// Avoid mutating `prefix` backing array.
 	pr := prefix
-	st := append(prefix, start...)
+	st := make([]byte, 0, len(prefix)+len(start))
+	st = append(st, prefix...)
+	st = append(st, start...)
 
-	// iterator clean-up handles closing this rows iterator
 	rows, err := db.QueryContext(ctx, fmt.Sprintf(searchQry, getTable(st)), len(pr), pr, st)
 	if err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),
 		}
 	}
+
 	if err = rows.Err(); err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),
