@@ -536,9 +536,8 @@ func (s *storageImpl) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
 	return state.New(root, s.stateCache)
 }
 
-func (s *storageImpl) RecoverState(root gethcommon.Hash) error {
-	// For pathdb scheme, this is the equivalent of geth's bc.triedb.Recover(root).
-	return s.trieDB.Recover(root)
+func (s *storageImpl) OpenTrie(root gethcommon.Hash) (state.Trie, error) {
+	return s.stateCache.OpenTrie(root)
 }
 
 func (s *storageImpl) GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error) {
