@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
@@ -51,9 +52,29 @@ func syncExecutedBatchesWithEVMStateDB(ctx context.Context, storage storage.Stor
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
 func stateDBAvailableForBatch(storage storage.Storage, root gethcommon.Hash, logger gethlog.Logger) bool {
 	s, err := storage.StateAt(root)
+	if err == nil && s != nil {
+		return true
+	}
+
 	if err != nil {
 		logger.Warn("Failed to fetch stateDB for batch", "batchRoot", root, "err", err)
-		return false
+
+		// Mirror geth pathdb repair: try Recover on missing-state errors.
+		// The exact error string is a bit ugly, but it’s a practical bridge until you
+		// can use richer signals (e.g. triedb stateRecoverable) directly.
+		if strings.Contains(err.Error(), "is not available") || strings.Contains(err.Error(), "missing trie node") {
+			if recErr := storage.RecoverState(root); recErr != nil {
+				logger.Warn("RecoverState failed", "batchRoot", root, "err", recErr)
+				return false
+			}
+			// Retry after recovery
+			s2, err2 := storage.StateAt(root)
+			if err2 != nil {
+				logger.Warn("StateAt still failing after RecoverState", "batchRoot", root, "err", err2)
+				return false
+			}
+			return s2 != nil
+		}
 	}
-	return s != nil
+	return false
 }
