@@ -52,7 +52,9 @@ func syncExecutedBatchesWithEVMStateDB(ctx context.Context, storage storage.Stor
 func stateDBAvailableForBatch(storage storage.Storage, root gethcommon.Hash, logger gethlog.Logger) bool {
 	_, err := storage.OpenTrie(root)
 	if err != nil {
-		logger.Warn("failed to open state trie for batch", "batch.root", root, "err", err)
+		logger.Info("failed to open state trie for batch", "batch_root", root, "err", err)
+		return false
 	}
-	return err == nil
+	logger.Info("successfully opened state trie for batch", "batch_root", root)
+	return true
 }
