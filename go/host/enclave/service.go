@@ -513,9 +513,8 @@ func (e *Service) getActiveSequencerGuardian() (*Guardian, error) {
 func (e *Service) managePeriodicContractSync() {
 	e.logger.Info("Starting periodic contract sync service")
 
-	// Sync every 10 seconds
 	syncInterval := 10 * time.Second
-	contractFetchLimit := uint(100) // Fetch up to 100 contracts per sync
+	contractFetchLimit := uint(100) // fetch up to 100 contracts per sync
 
 	const lastSyncedBatchKey = "contract_sync_last_batch_seq"
 
@@ -539,19 +538,15 @@ func (e *Service) managePeriodicContractSync() {
 			}
 
 			if len(contracts) == 0 {
-				// No new contracts, nothing to sync
 				continue
 			}
 
-			// Convert to PublicContract format for host DB
 			publicContracts := make([]common.PublicContract, 0, len(contracts))
 			maxBatchSeq := lastSyncedBatchSeq
 
 			for _, contract := range contracts {
-				// Determine if contract has custom config
 				hasCustomConfig := !contract.AutoVisibility
 
-				// Determine if contract is transparent
 				isTransparent := contract.Transparent != nil && *contract.Transparent
 
 				publicContracts = append(publicContracts, common.PublicContract{
@@ -564,19 +559,17 @@ func (e *Service) managePeriodicContractSync() {
 					Time:            contract.BatchTimestamp,
 				})
 
-				// Track the highest batch sequence we've seen
 				if contract.BatchSeq > maxBatchSeq {
 					maxBatchSeq = contract.BatchSeq
 				}
 			}
 
-			// Store contracts in the host DB
+			// store contracts in the host DB
 			if err := e.storage.AddContracts(publicContracts); err != nil {
 				e.logger.Error("Failed to store contracts in host DB", log.ErrKey, err, "count", len(publicContracts))
 				continue
 			}
 
-			// Update the last synced batch sequence
 			if err := e.storage.SetMetadata(lastSyncedBatchKey, maxBatchSeq); err != nil {
 				e.logger.Warn("Failed to update contract sync metadata", log.ErrKey, err)
 			} else {

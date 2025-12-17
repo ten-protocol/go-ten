@@ -407,7 +407,6 @@ func (s *RPCServer) GetContractsSince(ctx context.Context, req *generated.Contra
 	protoContracts := make([]*generated.ContractCreationDataMsg, len(contracts))
 	for i, contract := range contracts {
 		protoContracts[i] = &generated.ContractCreationDataMsg{
-			Id:             contract.ID,
 			Address:        contract.Address.Bytes(),
 			Creator:        contract.Creator.Bytes(),
 			AutoVisibility: contract.AutoVisibility,
@@ -415,7 +414,7 @@ func (s *RPCServer) GetContractsSince(ctx context.Context, req *generated.Contra
 			BatchHeight:    contract.BatchHeight,
 			BatchTimestamp: contract.BatchTimestamp,
 		}
-		
+
 		// Handle nullable Transparent field
 		if contract.Transparent != nil {
 			protoContracts[i].Transparent = contract.Transparent

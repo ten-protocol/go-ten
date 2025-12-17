@@ -543,7 +543,6 @@ func (c *Client) GetContractsSince(ctx context.Context, fromBatch uint64, limit 
 	contracts := make([]common.EnclaveContractData, 0, len(response.Contracts))
 	for _, contract := range response.Contracts {
 		contracts = append(contracts, common.EnclaveContractData{
-			ID:             contract.Id,
 			Address:        gethcommon.BytesToAddress(contract.Address),
 			Creator:        gethcommon.BytesToAddress(contract.Creator),
 			AutoVisibility: contract.AutoVisibility,
