@@ -106,14 +106,26 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	}
 }
 
-func (s *storageImpl) closeTrieDB() {
-	// to enable verkle trie, uncomment the following lines
+func (s *storageImpl) journal() error {
 	head, err := s.FetchHeadBatchHeader(context.Background())
 	if err != nil {
 		s.logger.Error("Failed to fetch head batch header", "err", err)
+		return err
+	}
+	if head.Number.Uint64() <= common.L2GenesisHeight+3 {
+		return nil
 	}
 	if err = s.trieDB.Journal(head.Root); err != nil {
 		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
+		return err
+	}
+	return nil
+}
+
+func (s *storageImpl) closeTrieDB() {
+	err := s.journal()
+	if err != nil {
+		s.logger.Error("Failed to journal trie db", "err", err)
 	}
 	err = s.trieDB.Close()
 	if err != nil {
@@ -522,6 +534,10 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 
 func (s *storageImpl) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
 	return state.New(root, s.stateCache)
+}
+
+func (s *storageImpl) OpenTrie(root gethcommon.Hash) (state.Trie, error) {
+	return s.stateCache.OpenTrie(root)
 }
 
 func (s *storageImpl) GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error) {
