@@ -31,6 +31,7 @@ service EnclaveProto {
   rpc EnclavePublicConfig(EnclavePublicConfigRequest) returns (EnclavePublicConfigResponse) {}
   rpc MakeActive(MakeActiveRequest) returns (MakeActiveResponse) {}
   rpc FetchSequencerAttestations(SequencerAttestationRequest) returns (SequencerAttestationResponse) {}
+  rpc GetContractsSince(ContractsSinceRequest) returns (ContractsSinceResponse) {}
   rpc BackupSharedSecret(BackupSharedSecretRequest) returns (BackupSharedSecretResponse) {}
 }
 
@@ -45,6 +46,27 @@ message EnclavePublicConfigResponse{
 }
 
 message SequencerAttestationRequest {}
+
+message ContractsSinceRequest {
+  uint64 fromBatch = 1;
+  int32 limit = 2;
+}
+
+message ContractCreationDataMsg {
+  uint64 id = 1;
+  bytes address = 2;
+  bytes creator = 3;
+  bool autoVisibility = 4;
+  optional bool transparent = 5;
+  uint64 batchSeq = 6;
+  uint64 batchHeight = 7;
+  uint64 batchTimestamp = 8;
+}
+
+message ContractsSinceResponse {
+  repeated ContractCreationDataMsg contracts = 1;
+  SystemError systemError = 2;
+}
 
 message PublicAttestationReportMsg {
   bytes enclaveID = 1;

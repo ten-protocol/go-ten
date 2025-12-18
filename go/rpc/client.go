@@ -49,6 +49,8 @@ const (
 	GetRollupBySeqNo        = "scan_getRollupBySeqNo"
 	GetBatchTransactions    = "scan_getBatchTransactions"
 	GetPersonalTransactions = "scan_getPersonalTransactions"
+	GetContractListing      = "scan_getContractListing"
+	GetContractByAddress    = "scan_getContractByAddress"
 	Search                  = "scan_search"
 )
 

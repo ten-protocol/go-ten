@@ -51,6 +51,14 @@ type BatchResolver interface {
 	FetchHistoricalTransactionCount() (*big.Int, error)
 	// FetchHistoricalContractCount returns the historical number of contracts deployed on the testnet
 	FetchHistoricalContractCount() (*big.Int, error)
+	// FetchContractListing returns a paginated list of contracts
+	FetchContractListing(pagination *common.QueryPagination) (*common.ContractListingResponse, error)
+	// FetchContractByAddress returns contract info for a specific address
+	FetchContractByAddress(address gethcommon.Address) (*common.PublicContract, error)
+	// FetchTotalContractCountHost returns the total contract count from host DB
+	FetchTotalContractCountHost() (uint64, error)
+	// AddContracts adds multiple contracts to the host DB (for periodic sync)
+	AddContracts(contracts []common.PublicContract) error
 	// FetchTransaction returns the transaction given its hash
 	FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error)
 	// FetchBatchTransactions returns a list of public transaction data within a given batch hash

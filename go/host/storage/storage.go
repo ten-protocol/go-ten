@@ -110,6 +110,10 @@ func (s *storageImpl) AddBlock(b *types.Header) error {
 	return nil
 }
 
+func (s *storageImpl) AddContracts(contracts []common.PublicContract) error {
+	return hostdb.AddContracts(s.db, contracts)
+}
+
 func (s *storageImpl) FetchCrossChainProof(messageType string, crossChainMessage gethcommon.Hash) ([][]byte, gethcommon.Hash, error) {
 	tree, err := hostdb.GetCrossChainMessagesTree(s.db, crossChainMessage)
 	if err != nil {
@@ -205,6 +209,18 @@ func (s *storageImpl) FetchHistoricalTransactionCount() (*big.Int, error) {
 
 func (s *storageImpl) FetchHistoricalContractCount() (*big.Int, error) {
 	return hostdb.GetHistoricalContractCount(s.db)
+}
+
+func (s *storageImpl) FetchContractListing(pagination *common.QueryPagination) (*common.ContractListingResponse, error) {
+	return hostdb.GetContractListing(s.db, pagination)
+}
+
+func (s *storageImpl) FetchContractByAddress(address gethcommon.Address) (*common.PublicContract, error) {
+	return hostdb.GetContractByAddress(s.db, address)
+}
+
+func (s *storageImpl) FetchTotalContractCountHost() (uint64, error) {
+	return hostdb.GetTotalContractCount(s.db)
 }
 
 func (s *storageImpl) FetchTransaction(hash gethcommon.Hash) (*common.PublicTransaction, error) {

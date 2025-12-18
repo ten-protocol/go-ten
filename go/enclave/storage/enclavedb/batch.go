@@ -395,6 +395,75 @@ func ReadContractCreationCount(ctx context.Context, db *sqlx.DB) (*big.Int, erro
 	return big.NewInt(count), nil
 }
 
+// ReadContractsSince returns all contracts created after the given batch sequence number
+// This is used by the host to sync contract data from the enclave periodically
+func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, limit uint) ([]common.EnclaveContractData, error) {
+	query := `
+		SELECT 
+			c.address,
+			eoa.address as creator,
+			c.auto_visibility,
+			c.transparent,
+			b.sequence as batch_seq,
+			b.height as batch_height,
+			b.sequence as batch_time_placeholder
+		FROM contract c
+		JOIN externally_owned_account eoa ON c.creator = eoa.id
+		JOIN tx ON c.tx = tx.id
+		JOIN receipt rec ON rec.tx = tx.id
+		JOIN batch b ON rec.batch = b.sequence
+		WHERE b.sequence >= ? AND b.is_canonical = true
+		ORDER BY b.sequence ASC
+		LIMIT ?
+	`
+
+	rows, err := db.QueryContext(ctx, query, fromBatchSeq, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query contracts since batch %d: %w", fromBatchSeq, err)
+	}
+	defer rows.Close()
+
+	var contracts []common.EnclaveContractData
+	rowCount := 0
+	for rows.Next() {
+		rowCount++
+		var contract common.EnclaveContractData
+		var addressBytes, creatorBytes []byte
+		var batchTimePlaceholder uint64 // We'll get timestamp from batch header separately
+
+		err = rows.Scan(
+			&addressBytes,
+			&creatorBytes,
+			&contract.AutoVisibility,
+			&contract.Transparent,
+			&contract.BatchSeq,
+			&contract.BatchHeight,
+			&batchTimePlaceholder,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan contract row: %w", err)
+		}
+
+		contract.Address = gethcommon.BytesToAddress(addressBytes)
+		contract.Creator = gethcommon.BytesToAddress(creatorBytes)
+
+		// Fetch batch header to get timestamp
+		batchHeader, err := ReadBatchHeaderBySeqNo(ctx, db, contract.BatchSeq)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read batch header for seq %d: %w", contract.BatchSeq, err)
+		}
+		contract.BatchTimestamp = batchHeader.Time
+
+		contracts = append(contracts, contract)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating contract rows: %w", err)
+	}
+
+	return contracts, nil
+}
+
 func ReadUnexecutedBatches(ctx context.Context, db *sqlx.DB, from *big.Int) ([]*common.BatchHeader, error) {
 	return fetchBatches(ctx, db, "where is_executed=false and is_canonical=true and sequence >= ? order by b.sequence", from.Uint64())
 }
