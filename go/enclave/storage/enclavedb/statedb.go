@@ -58,6 +58,7 @@ func getTable(key []byte) string {
 		return "statedb65"
 	default:
 		// it will fail here
+		panic(fmt.Sprintf("key too long: %d", len(key)))
 		return "non-existent-table"
 	}
 }
