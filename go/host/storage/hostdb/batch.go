@@ -442,7 +442,6 @@ func addBatchTransactions(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch
 	for i, txHash := range batch.TxHashes {
 		valuePlaceholders[i] = "(?, ?)"
 		args = append(args, txHash.Bytes(), batch.SeqNo().Uint64())
-
 	}
 	insert := insertTransactions + strings.Join(valuePlaceholders, ", ")
 	insert = db.GetSQLDB().Rebind(insert)
