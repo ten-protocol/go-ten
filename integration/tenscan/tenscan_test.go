@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -57,6 +58,10 @@ func TestTenscan(t *testing.T) {
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
 		ServerAddress:   fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultTenscanHTTPPortOffset),
 		LogPath:         "sys_out",
+	}
+	// If running on CI and no explicit Postgres URL is provided, set default used by workflow
+	if os.Getenv("TEN_TEST_POSTGRES_URL") == "" && os.Getenv("CI") == "true" {
+		require.NoError(t, os.Setenv("TEN_TEST_POSTGRES_URL", "postgres://postgres:postgres@127.0.0.1:55432/?sslmode=disable"))
 	}
 	serverAddress := fmt.Sprintf("http://%s", tenScanConfig.ServerAddress)
 
@@ -458,21 +463,31 @@ func TestTenscan(t *testing.T) {
 		3,
 	)
 
-	time.Sleep(10 * time.Second)
-
-	_, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=0&size=30", serverAddress))
-	assert.NoError(t, err)
-
 	type contractListingRes struct {
 		Result common.ContractListingResponse `json:"result"`
 	}
 
+	// contracts indexing is slower on postgres so we need to wait for it
 	contractListingObj := contractListingRes{}
-	err = json.Unmarshal(body, &contractListingObj)
-	assert.NoError(t, err)
-
-	assert.GreaterOrEqual(t, len(contractListingObj.Result.Contracts), 3, "Should have at least 3 test contracts")
-	assert.GreaterOrEqual(t, contractListingObj.Result.Total, uint64(26), "Total contracts should be at least 26 (23 system + 3 test)")
+	// local indexing wait
+	contractWaitDeadline := time.Now().Add(time.Second * 10)
+	if url := os.Getenv("TEN_TEST_POSTGRES_URL"); url != "" {
+		contractWaitDeadline = time.Now().Add(2 * time.Minute)
+	}
+	for {
+		statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=0&size=30", serverAddress))
+		assert.NoError(t, err)
+		assert.Equal(t, 200, statusCode)
+		err = json.Unmarshal(body, &contractListingObj)
+		assert.NoError(t, err)
+		if len(contractListingObj.Result.Contracts) >= 3 && contractListingObj.Result.Total >= uint64(26) {
+			break
+		}
+		if time.Now().After(contractWaitDeadline) {
+			t.Fatalf("Timed out waiting for contracts to be indexed; have total=%d, visible=%d", contractListingObj.Result.Total, len(contractListingObj.Result.Contracts))
+		}
+		time.Sleep(2 * time.Second)
+	}
 
 	// Verify contract structure has all required fields
 	if len(contractListingObj.Result.Contracts) > 0 {
