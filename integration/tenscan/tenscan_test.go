@@ -444,7 +444,6 @@ func TestTenscan(t *testing.T) {
 	type AttestationReportFetch struct {
 		Result []common.PublicAttestationReport `json:"result"`
 	}
-
 	attestationObj := AttestationReportFetch{}
 	err = json.Unmarshal(body, &attestationObj)
 	assert.NoError(t, err)
