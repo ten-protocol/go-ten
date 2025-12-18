@@ -444,7 +444,6 @@ func addBatchTransactions(dbtx *dbTransaction, db HostDB, batch *common.ExtBatch
 		args = append(args, txHash.Bytes(), batch.SeqNo().Uint64())
 
 	}
-
 	insert := insertTransactions + strings.Join(valuePlaceholders, ", ")
 	insert = db.GetSQLDB().Rebind(insert)
 	if _, err := dbtx.Tx.Exec(insert, args...); err != nil {
