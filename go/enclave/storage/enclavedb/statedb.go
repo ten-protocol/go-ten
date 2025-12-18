@@ -22,9 +22,8 @@ const (
 	putQryValues      = `(?,?)`
 	putQryBatchEdb2   = ` ON DUPLICATE KEY UPDATE val=VALUES(val)`
 	delQry            = `delete from %s where ky = ?`
-	// todo - how is the performance of this? probably extraordinarily slow
-	searchQry   = `select ky, val from %s sdb where substring(sdb.ky, 1, ?) = ? and sdb.ky >= ? order by sdb.ky asc`
-	dbChunkSize = 32 * 1024 // 32 KB chunks
+	searchQry         = `select ky, val from %s sdb where sdb.ky >= ? and sdb.ky < ? order by sdb.ky asc`
+	dbChunkSize       = 32 * 1024 // 32 KB chunks
 )
 
 var stateIDPrefix = []byte("L")
@@ -58,7 +57,6 @@ func getTable(key []byte) string {
 		return "statedb65"
 	default:
 		// it will fail here
-		panic(fmt.Sprintf("key too long: %d", len(key)))
 		return "non-existent-table"
 	}
 }
@@ -165,8 +163,7 @@ func valTooLarge(val []byte) bool {
 
 func put(ctx context.Context, db *sqlx.DB, key []byte, value []byte) error {
 	if valTooLarge(value) {
-		panic(fmt.Sprintf("value too large: %d", len(value)))
-		// return fmt.Errorf("value too large")
+		return fmt.Errorf("value too large")
 	}
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
@@ -187,8 +184,7 @@ func putKeyValues(ctx context.Context, tx *sqlx.Tx, keys [][]byte, vals [][]byte
 
 	for _, val := range vals {
 		if valTooLarge(val) {
-			panic(fmt.Sprintf("value too large: %d", len(val)))
-			// return fmt.Errorf("value too large")
+			return fmt.Errorf("value too large")
 		}
 	}
 
@@ -255,13 +251,22 @@ func deleteKeys(ctx context.Context, db *sqlx.Tx, keys [][]byte) error {
 }
 
 func newIterator(ctx context.Context, db *sqlx.DB, prefix []byte, start []byte) ethdb.Iterator {
-	// Avoid mutating `prefix` backing array.
-	pr := prefix
-	st := make([]byte, 0, len(prefix)+len(start))
-	st = append(st, prefix...)
-	st = append(st, start...)
+	// Calculate the "limit" key for the prefix scan (prefix + 1)
+	limit := make([]byte, len(prefix))
+	copy(limit, prefix)
+	for i := len(limit) - 1; i >= 0; i-- {
+		limit[i]++
+		if limit[i] > 0 {
+			break
+		}
+	}
 
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(searchQry, getTable(st)), len(pr), pr, st)
+	// st is the starting point (prefix + start)
+	st := append(prefix, start...)
+	tableName := getTable(st)
+
+	// The query now looks for everything between 'st' and the end of the prefix 'limit'
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(searchQry, tableName), st, limit)
 	if err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),
