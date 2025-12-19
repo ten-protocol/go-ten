@@ -566,20 +566,28 @@ func (r *DataService) streamLiveBlocks() {
 	for r.running.Load() {
 		select {
 		case blockHeader := <-liveStream:
+			blockProcessingStart := measure.NewStopwatch()
 			r.logger.Info("received block from l1 stream", log.BlockHashKey, blockHeader.Hash(), log.BlockHeightKey, blockHeader.Number)
+			
 			if blockHeader.Number.Uint64() > r.localBlockHeight.Load()+_minGapForEagerFetch {
 				// catch up historical blocks if we are behind
+				eagerFetchStart := measure.NewStopwatch()
 				r.eagerFetchBlocksUpTo(blockHeader.Number)
+				core.LogMethodDuration(r.logger, eagerFetchStart, "eagerFetchBlocksUpTo", &core.RelaxedThresholds, log.BlockHeightKey, blockHeader.Number)
 			}
 
 			// check that the block's ancestors are available in the host db
+			ancestorFetchStart := measure.NewStopwatch()
 			err := r.fetchAncestors(blockHeader.ParentHash)
+			core.LogMethodDuration(r.logger, ancestorFetchStart, "fetchAncestors", &core.RelaxedThresholds, log.BlockHashKey, blockHeader.ParentHash)
 			if err != nil {
 				r.logger.Error("error fetching ancestors", log.ErrKey, err)
 				continue
 			}
 
+			addBlockStart := measure.NewStopwatch()
 			err = r.blockResolver.AddBlock(blockHeader)
+			core.LogMethodDuration(r.logger, addBlockStart, "blockResolver.AddBlock", &core.RelaxedThresholds, log.BlockHashKey, blockHeader.Hash())
 			if err != nil {
 				r.logger.Error("error adding block", log.ErrKey, err)
 				continue
@@ -588,19 +596,33 @@ func (r *DataService) streamLiveBlocks() {
 
 			// only notify subscribers (enclave guardians) on the streamed block, because they have their own catch-up mechanism
 			r.head = blockHeader.Hash()
+			notifyStart := measure.NewStopwatch()
 			for _, handler := range r.blockSubscribers.Subscribers() {
 				go handler.HandleBlock(blockHeader)
 			}
+			core.LogMethodDuration(r.logger, notifyStart, "notify subscribers", &core.RelaxedThresholds, log.BlockHashKey, blockHeader.Hash())
+			
+			core.LogMethodDuration(r.logger, blockProcessingStart, "total block processing in streamLiveBlocks", &core.RelaxedThresholds, log.BlockHashKey, blockHeader.Hash(), log.BlockHeightKey, blockHeader.Number)
 
 		case <-time.After(_timeoutNoBlocks):
-			r.logger.Warn("no new blocks received since timeout. Reconnecting..", "timeout", _timeoutNoBlocks)
+			reconnectStart := measure.NewStopwatch()
+			r.logger.Warn("no new blocks received since timeout. Reconnecting..", "timeout", _timeoutNoBlocks, "currentHeight", r.localBlockHeight.Load(), "currentHead", r.head)
+			
+			unsubStart := measure.NewStopwatch()
 			if streamSub != nil {
 				streamSub.Unsubscribe()
 			}
+			core.LogMethodDuration(r.logger, unsubStart, "Unsubscribe from L1 stream", &core.RelaxedThresholds)
+			
 			if liveStream != nil {
 				close(liveStream)
 			}
+			
+			resetStart := measure.NewStopwatch()
 			liveStream, streamSub = r.resetLiveStream()
+			core.LogMethodDuration(r.logger, resetStart, "resetLiveStream (reconnect to L1)", &core.RelaxedThresholds)
+			
+			core.LogMethodDuration(r.logger, reconnectStart, "total L1 reconnection time", &core.RelaxedThresholds)
 
 		case <-r.hostInterrupt.Done():
 			r.logger.Info("block streaming stopped by stop signal")
