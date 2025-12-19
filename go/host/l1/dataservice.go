@@ -44,11 +44,10 @@ const (
 )
 
 var (
-	l1BlockTime      = 12 * time.Second
-	_timeoutNoBlocks = 2 * l1BlockTime // after this timeout we assume the subscription to the L1 node is not working
-	one              = big.NewInt(1)
-	_headBlock       = big.NewInt(-1) // special value to indicate fetching up to head block (rather than to a target)
-	ErrNoNextBlock   = errors.New("no next block")
+	l1BlockTime    = 12 * time.Second
+	one            = big.NewInt(1)
+	_headBlock     = big.NewInt(-1) // special value to indicate fetching up to head block (rather than to a target)
+	ErrNoNextBlock = errors.New("no next block")
 )
 
 // DataService is a host service for subscribing to new blocks and looking up L1 data
@@ -60,6 +59,7 @@ type DataService struct {
 	blobResolver     BlobResolver
 	blockResolver    storage.BlockResolver
 	l1StartHash      gethcommon.Hash
+	l1TimeoutBlocks  int
 
 	localBlockHeight atomic.Uint64 // the latest block height to eagerly fetch historical blocks from
 	head             gethcommon.Hash
@@ -69,7 +69,7 @@ type DataService struct {
 	logger        gethlog.Logger
 }
 
-func NewL1DataService(ethClient ethadapter.EthClient, blockResolver storage.BlockResolver, contractRegistry contractlib.ContractRegistryLib, blobResolver BlobResolver, l1StartHash gethcommon.Hash, hostInterrupt *stopcontrol.StopControl, logger gethlog.Logger) *DataService {
+func NewL1DataService(ethClient ethadapter.EthClient, blockResolver storage.BlockResolver, contractRegistry contractlib.ContractRegistryLib, blobResolver BlobResolver, l1StartHash gethcommon.Hash, l1TimeoutBlocks int, hostInterrupt *stopcontrol.StopControl, logger gethlog.Logger) *DataService {
 	return &DataService{
 		blockSubscribers: subscription.NewManager[host.L1BlockHandler](),
 		ethClient:        ethClient,
@@ -77,6 +77,7 @@ func NewL1DataService(ethClient ethadapter.EthClient, blockResolver storage.Bloc
 		blobResolver:     blobResolver,
 		blockResolver:    blockResolver,
 		l1StartHash:      l1StartHash,
+		l1TimeoutBlocks:  l1TimeoutBlocks,
 		running:          atomic.Bool{},
 		hostInterrupt:    hostInterrupt,
 		logger:           logger,
@@ -561,7 +562,7 @@ func (r *DataService) processEnclaveRegistrationTx(txData *common.L1TxData, proc
 func (r *DataService) streamLiveBlocks() {
 	// initial catch-up of all historical blocks before starting live streaming
 	r.eagerFetchBlocksUpTo(_headBlock)
-
+	timeoutNoBlocks := time.Duration(r.l1TimeoutBlocks) * l1BlockTime
 	liveStream, streamSub := r.resetLiveStream()
 	for r.running.Load() {
 		select {
@@ -592,8 +593,8 @@ func (r *DataService) streamLiveBlocks() {
 				go handler.HandleBlock(blockHeader)
 			}
 
-		case <-time.After(_timeoutNoBlocks):
-			r.logger.Warn("no new blocks received since timeout. Reconnecting..", "timeout", _timeoutNoBlocks)
+		case <-time.After(timeoutNoBlocks):
+			r.logger.Warn("no new blocks received since timeout. Reconnecting..", "timeout", timeoutNoBlocks)
 			if streamSub != nil {
 				streamSub.Unsubscribe()
 			}
