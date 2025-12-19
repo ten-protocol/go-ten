@@ -44,8 +44,9 @@ const (
 )
 
 var (
-	l1BlockTime      = 12 * time.Second
-	_timeoutNoBlocks = 2 * l1BlockTime // after this timeout we assume the subscription to the L1 node is not working
+	l1BlockTime = 12 * time.Second
+	// increased as we saw skipped blocks on sepolia
+	_timeoutNoBlocks = 5 * l1BlockTime // after this timeout we assume the subscription to the L1 node is not working
 	one              = big.NewInt(1)
 	_headBlock       = big.NewInt(-1) // special value to indicate fetching up to head block (rather than to a target)
 	ErrNoNextBlock   = errors.New("no next block")
@@ -568,7 +569,7 @@ func (r *DataService) streamLiveBlocks() {
 		case blockHeader := <-liveStream:
 			blockProcessingStart := measure.NewStopwatch()
 			r.logger.Info("received block from l1 stream", log.BlockHashKey, blockHeader.Hash(), log.BlockHeightKey, blockHeader.Number)
-			
+
 			if blockHeader.Number.Uint64() > r.localBlockHeight.Load()+_minGapForEagerFetch {
 				// catch up historical blocks if we are behind
 				eagerFetchStart := measure.NewStopwatch()
@@ -601,27 +602,27 @@ func (r *DataService) streamLiveBlocks() {
 				go handler.HandleBlock(blockHeader)
 			}
 			core.LogMethodDuration(r.logger, notifyStart, "notify subscribers", &core.RelaxedThresholds, log.BlockHashKey, blockHeader.Hash())
-			
+
 			core.LogMethodDuration(r.logger, blockProcessingStart, "total block processing in streamLiveBlocks", &core.RelaxedThresholds, log.BlockHashKey, blockHeader.Hash(), log.BlockHeightKey, blockHeader.Number)
 
 		case <-time.After(_timeoutNoBlocks):
 			reconnectStart := measure.NewStopwatch()
 			r.logger.Warn("no new blocks received since timeout. Reconnecting..", "timeout", _timeoutNoBlocks, "currentHeight", r.localBlockHeight.Load(), "currentHead", r.head)
-			
+
 			unsubStart := measure.NewStopwatch()
 			if streamSub != nil {
 				streamSub.Unsubscribe()
 			}
 			core.LogMethodDuration(r.logger, unsubStart, "Unsubscribe from L1 stream", &core.RelaxedThresholds)
-			
+
 			if liveStream != nil {
 				close(liveStream)
 			}
-			
+
 			resetStart := measure.NewStopwatch()
 			liveStream, streamSub = r.resetLiveStream()
 			core.LogMethodDuration(r.logger, resetStart, "resetLiveStream (reconnect to L1)", &core.RelaxedThresholds)
-			
+
 			core.LogMethodDuration(r.logger, reconnectStart, "total L1 reconnection time", &core.RelaxedThresholds)
 
 		case <-r.hostInterrupt.Done():

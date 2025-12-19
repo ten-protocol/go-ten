@@ -111,11 +111,7 @@ func (e *gethRPCClient) Nonce(account gethcommon.Address) (uint64, error) {
 }
 
 func (e *gethRPCClient) BlockListener() (chan *types.Header, ethereum.Subscription) {
-	// buffer allows the subscription to receive blocks even when consumer is busy processing
-	ch := make(chan *types.Header, 10)
-	if len(ch) > 5 {
-		e.logger.Warn("L1 block channel filling up", "buffered", len(ch))
-	}
+	ch := make(chan *types.Header)
 	var sub ethereum.Subscription
 	var err error
 	err = retry.Do(func() error {
