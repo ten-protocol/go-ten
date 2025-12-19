@@ -50,6 +50,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const feesDeployment = await deployments.deploy('Fees', {
         from: deployer,
         log: true,
+        waitConfirmations: 2, // Wait for confirmations to avoid race condition between implementation and proxy deployment
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -64,6 +65,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Deploy MerkleTreeMessageBus first
     const merkleMessageBusDeployment = await deployments.deploy('MerkleTreeMessageBus', {
         from: deployer,
+        waitConfirmations: 2, // Wait for confirmations to avoid race condition between implementation and proxy deployment
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -79,6 +81,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Deploy CrossChain with MessageBus address
     const crossChainDeployment = await deployments.deploy('CrossChain', {
         from: deployer,
+        waitConfirmations: 2, // wait 2 confirmations to avoid race condition between implementation and proxy deployment
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -93,6 +96,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const networkEnclaveRegistryDeployment = await deployments.deploy('NetworkEnclaveRegistry', {
         from: deployer,
+        waitConfirmations: 2,
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -107,6 +111,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const daRegistryDeployment = await deployments.deploy('DataAvailabilityRegistry', {
         from: deployer,
+        waitConfirmations: 2,
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -126,6 +131,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Then deploy NetworkConfig with all addresses
     const networkConfigDeployment = await deployments.deploy('NetworkConfig', {
         from: deployer,
+        waitConfirmations: 2,
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
