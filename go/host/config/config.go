@@ -23,8 +23,6 @@ type HostConfig struct {
 	TenChainID int64
 	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
-	// L1BlockTimeoutMultiplier is the multiplier for the L1 block timeout
-	L1BlockTimeoutMultiplier int
 	// The address of the sequencer node's P2P server
 	SequencerP2PAddress string
 	// This contract contains a registry of all the addresses of deployed contracts
@@ -46,6 +44,10 @@ type HostConfig struct {
 	L1RollupRetryDelay time.Duration
 	// CrossChainInterval - The interval at which the host will check for new cross chain data to submit
 	CrossChainInterval time.Duration
+	// L1TimeoutBlocks the number of L1 blocks we wait if none seen before disconnecting
+	L1TimeoutBlocks int
+	// MaxBlobRetries the number of retry attempts to publish a blob while increasing the gas price
+	MaxBlobRetries int
 
 	/////
 	// NODE CONFIG
@@ -132,8 +134,10 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		TenChainID: tenCfg.Network.ChainID,
 
 		L1StartHash:          tenCfg.Network.L1.StartHash,
+		L1TimeoutBlocks:      tenCfg.Network.L1.TimeoutBlocks,
 		L1BlockTime:          tenCfg.Network.L1.BlockTime,
 		L1RollupRetryDelay:   tenCfg.Network.L1.RollupRetryDelay,
+		MaxBlobRetries:       tenCfg.Network.L1.MaxBlobRetries,
 		SequencerP2PAddress:  tenCfg.Network.Sequencer.P2PAddress,
 		NetworkConfigAddress: tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
 
