@@ -563,9 +563,25 @@ func (r *DataService) streamLiveBlocks() {
 	r.eagerFetchBlocksUpTo(_headBlock)
 
 	liveStream, streamSub := r.resetLiveStream()
+
+	// use a timer that can be properly reset instead of time.After in the select loop
+	// time.After in a select creates a new timer on each iteration causing memory leaks
+	timeoutTimer := time.NewTimer(_timeoutNoBlocks)
+	defer timeoutTimer.Stop()
+
 	for r.running.Load() {
 		select {
 		case blockHeader := <-liveStream:
+			// reset the timer when we receive a block
+			if !timeoutTimer.Stop() {
+				// drain the channel if it wasn't stopped in time
+				select {
+				case <-timeoutTimer.C:
+				default:
+				}
+			}
+			timeoutTimer.Reset(_timeoutNoBlocks)
+
 			r.logger.Info("received block from l1 stream", log.BlockHashKey, blockHeader.Hash(), log.BlockHeightKey, blockHeader.Number)
 			if blockHeader.Number.Uint64() > r.localBlockHeight.Load()+_minGapForEagerFetch {
 				// catch up historical blocks if we are behind
@@ -592,23 +608,19 @@ func (r *DataService) streamLiveBlocks() {
 				go handler.HandleBlock(blockHeader)
 			}
 
-		case <-time.After(_timeoutNoBlocks):
+		case <-timeoutTimer.C:
 			r.logger.Warn("no new blocks received since timeout. Reconnecting..", "timeout", _timeoutNoBlocks)
 			if streamSub != nil {
 				streamSub.Unsubscribe()
 			}
-			if liveStream != nil {
-				close(liveStream)
-			}
+			// Don't close the channel - we don't own it, the subscription does
 			liveStream, streamSub = r.resetLiveStream()
+			timeoutTimer.Reset(_timeoutNoBlocks)
 
 		case <-r.hostInterrupt.Done():
 			r.logger.Info("block streaming stopped by stop signal")
 			if streamSub != nil {
 				streamSub.Unsubscribe()
-			}
-			if liveStream != nil {
-				close(liveStream)
 			}
 			return
 		}
