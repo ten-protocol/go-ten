@@ -27,7 +27,7 @@ network:
     blockTime: 15s
     rollupRetryDelay: 5s
     startHash: 0x0 # hash of the L1 block that Ten can safely start processing from to get entire L2 history
-    timeoutBlocks: 5 # number of blocks we wait before we reconnect to the l1 subscription
+    timeoutBlocks: 5 # number of expected block intervals (expectedBlockTime) to wait with no new blocks before timing out
     maxBlobRetries: 5 # number of attempts to publish a rollup blob
 
     contracts:
