@@ -51,6 +51,7 @@ type Publisher struct {
 	maxWaitForL1Receipt         time.Duration
 	retryIntervalForL1Receipt   time.Duration
 	retryIntervalForBlobReceipt time.Duration
+	maxBlobRetries              int
 
 	// we only allow one transaction in-flight at a time to avoid nonce conflicts
 	// We also have a context to cancel the tx if host stops
@@ -71,6 +72,7 @@ func NewL1Publisher(
 	maxWaitForL1Receipt time.Duration,
 	retryIntervalForL1Receipt time.Duration,
 	retryIntervalForBlobReceipt time.Duration,
+	maxBlobRetries int,
 	storage storage.Storage,
 	l1ChainCfg *params.ChainConfig,
 ) *Publisher {
@@ -87,6 +89,7 @@ func NewL1Publisher(
 		maxWaitForL1Receipt:         maxWaitForL1Receipt,
 		retryIntervalForL1Receipt:   retryIntervalForL1Receipt,
 		retryIntervalForBlobReceipt: retryIntervalForBlobReceipt,
+		maxBlobRetries:              maxBlobRetries,
 		storage:                     storage,
 		l1ChainCfg:                  l1ChainCfg,
 
@@ -355,8 +358,6 @@ func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData) error {
 }
 
 func (p *Publisher) publishBlobTxWithRetry(tx types.TxData) error {
-	const maxRetries = 5
-
 	p.sendingLock.Lock()
 	defer p.sendingLock.Unlock()
 
@@ -377,7 +378,7 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData) error {
 		}
 
 		if err != nil {
-			if retryCount > maxRetries {
+			if retryCount > p.maxBlobRetries {
 				blobTx, ok := pricedTx.(*types.BlobTx)
 				if !ok {
 					return retry.FailFast(&MaxRetriesError{
