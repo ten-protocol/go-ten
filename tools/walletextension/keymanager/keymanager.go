@@ -11,9 +11,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/edgelesssys/ego/enclave"
@@ -42,6 +44,27 @@ type KeyExchangeRequest struct {
 type KeyExchangeResponse struct {
 	EncryptedKey string `json:"encrypted_key"` // Base64 encoded encrypted encryption key
 }
+
+// KeyImportRequest represents the encrypted encryption key to import
+type KeyImportRequest struct {
+	EncryptedKey string `json:"encrypted_key"` // Base64 encoded RSA-encrypted encryption key
+}
+
+// KeyImportPublicKeyResponse represents the public key response for key import
+type KeyImportPublicKeyResponse struct {
+	PublicKey string `json:"public_key"` // Base64 encoded DER public key
+}
+
+// ImportKeyPair stores the RSA key pair for importing encryption keys
+type ImportKeyPair struct {
+	PrivateKey *rsa.PrivateKey
+	PublicKey  *rsa.PublicKey
+}
+
+var (
+	importKeyPair     *ImportKeyPair
+	importKeyPairOnce sync.Once
+)
 
 // GetEncryptionKey returns the encryption key for the database
 // - If we use an SQLite database, no encryption key is needed as SQLite typically runs in development or testing environments.
@@ -105,6 +128,32 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 	}
 	logger.Info("sealed new encryption key")
 
+	// Also export the encrypted (with provided public key) encryption key to a file if the flag is set
+	if config.ExportPublicKey != "" {
+		// First decode the Base64 string to get raw DER bytes
+		derBytes, err := DecodeBase64(config.ExportPublicKey)
+		if err != nil {
+			return nil, fmt.Errorf("failed to decode Base64 public key: %w", err)
+		}
+
+		// Then deserialize the DER bytes to get the RSA public key
+		exportPublicKey, err := DeserializePublicKey(derBytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize public key: %w", err)
+		}
+		encryptedKey, err := EncryptWithPublicKey(encryptionKey, exportPublicKey)
+		if err != nil {
+			logger.Error("unable to encrypt encryption key", log.ErrKey, err)
+			return nil, err
+		}
+		exportKeyFile := filepath.Join(dataDir, "encrypted-encryption-key.json")
+		err = os.WriteFile(exportKeyFile, encryptedKey, 0644)
+		if err != nil {
+			logger.Error("unable to write encrypted key to file", log.ErrKey, err)
+			return nil, err
+		}
+		logger.Info("exported encrypted encryption key to file", "file", exportKeyFile)
+	}
 	return encryptionKey, nil
 }
 
@@ -382,4 +431,78 @@ func DeserializeAttestationReport(data []byte) (*tencommon.AttestationReport, er
 		return nil, err
 	}
 	return &report, nil
+}
+
+// IsLocalhost checks if the given remote address is from localhost
+func IsLocalhost(remoteAddr string) bool {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return false
+	}
+	return host == "127.0.0.1" || host == "::1" || host == "localhost"
+}
+
+// GetOrGenerateImportKeyPair generates or returns the existing import key pair
+// The key pair is generated on first call and stored in memory
+func GetOrGenerateImportKeyPair(logger gethlog.Logger) (*ImportKeyPair, error) {
+	var err error
+	importKeyPairOnce.Do(func() {
+		privkey, genErr := GenerateKeyPair(RSAKeySize)
+		if genErr != nil {
+			err = genErr
+			return
+		}
+		importKeyPair = &ImportKeyPair{
+			PrivateKey: privkey,
+			PublicKey:  &privkey.PublicKey,
+		}
+		logger.Info("Generated import key pair for encryption key import")
+	})
+	return importKeyPair, err
+}
+
+// GetImportPublicKeyDER returns the public key in DER format (Base64 encoded)
+func GetImportPublicKeyDER(logger gethlog.Logger) (string, error) {
+	keyPair, err := GetOrGenerateImportKeyPair(logger)
+	if err != nil {
+		return "", fmt.Errorf("failed to get import key pair: %w", err)
+	}
+
+	derBytes, err := SerializePublicKey(keyPair.PublicKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to serialize public key: %w", err)
+	}
+
+	return EncodeBase64(derBytes), nil
+}
+
+// ImportEncryptionKey decrypts and seals an imported encryption key
+func ImportEncryptionKey(encryptedKeyBase64 string, config common.Config, logger gethlog.Logger) error {
+	// Decode Base64 encrypted key
+	encryptedKeyBytes, err := DecodeBase64(encryptedKeyBase64)
+	if err != nil {
+		return fmt.Errorf("failed to decode Base64 encrypted key: %w", err)
+	}
+	keyPair, err := GetOrGenerateImportKeyPair(logger)
+	if err != nil {
+		return fmt.Errorf("failed to get import key pair: %w", err)
+	}
+
+	encryptionKey, err := DecryptWithPrivateKey(encryptedKeyBytes, keyPair.PrivateKey)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt encryption key: %w", err)
+	}
+
+	if len(encryptionKey) != common.EncryptionKeySize {
+		return fmt.Errorf("invalid encryption key size: expected %d, got %d", common.EncryptionKeySize, len(encryptionKey))
+	}
+
+	// Seal the imported key
+	err = trySealKey(encryptionKey, encryptionKeyFile, config.InsideEnclave, logger)
+	if err != nil {
+		return fmt.Errorf("failed to seal imported encryption key: %w", err)
+	}
+
+	logger.Info("Successfully imported and sealed encryption key")
+	return nil
 }

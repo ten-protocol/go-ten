@@ -38,7 +38,7 @@ func generateCookieNameFromDomain(tlsDomain string) string {
 // NewHTTPRoutes returns the http specific routes
 // todo - move these to the rpc framework.
 func NewHTTPRoutes(walletExt *services.Services) []node.Route {
-	return []node.Route{
+	routes := []node.Route{
 		{
 			Name: common.APIVersion1 + common.PathReady,
 			Func: httpHandler(walletExt, readyRequestHandler),
@@ -92,6 +92,22 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 			Func: httpHandler(walletExt, keyExchangeRequestHandler),
 		},
 	}
+
+	// Conditionally add key import routes if enabled
+	if walletExt.Config.KeyImportMode {
+		routes = append(routes, []node.Route{
+			{
+				Name: common.APIVersion1 + common.PathKeyImportPublicKey,
+				Func: adminHttpHandler(walletExt, keyImportPublicKeyHandler),
+			},
+			{
+				Name: common.APIVersion1 + common.PathKeyImport,
+				Func: adminHttpHandler(walletExt, keyImportHandler),
+			},
+		}...)
+	}
+
+	return routes
 }
 
 func httpHandler(
@@ -134,6 +150,22 @@ func restrictiveHttpRequestHandler(walletExt *services.Services, resp http.Respo
 	}
 	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
 	fun(walletExt, userConn)
+}
+
+// adminHttpHandler restricts access to localhost only - used for key import
+func adminHttpHandler(
+	walletExt *services.Services,
+	fun func(walletExt *services.Services, conn UserConn),
+) func(resp http.ResponseWriter, req *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		// Check if request is from localhost
+		if !keymanager.IsLocalhost(req.RemoteAddr) {
+			walletExt.Logger().Warn("Admin endpoint access denied: not localhost", "remote_addr", req.RemoteAddr)
+			http.Error(resp, "Forbidden: Admin endpoints only accessible from localhost", http.StatusForbidden)
+			return
+		}
+		httpRequestHandler(walletExt, resp, req, fun)
+	}
 }
 
 // readyRequestHandler is used to check whether the server is ready
@@ -844,6 +876,64 @@ func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 	walletExt.Logger().Info("Shared encrypted key with another gateway enclave")
 	err = conn.WriteResponse(messageBytesOG)
+	if err != nil {
+		walletExt.Logger().Error("error writing response", log.ErrKey, err)
+	}
+}
+
+// keyImportPublicKeyHandler returns the public key for encryption key import
+func keyImportPublicKeyHandler(walletExt *services.Services, conn UserConn) {
+	publicKeyBase64, err := keymanager.GetImportPublicKeyDER(walletExt.Logger())
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to get import public key: %w", err))
+		return
+	}
+
+	response := keymanager.KeyImportPublicKeyResponse{
+		PublicKey: publicKeyBase64,
+	}
+
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to marshal response: %w", err))
+		return
+	}
+
+	err = conn.WriteResponse(responseBytes)
+	if err != nil {
+		walletExt.Logger().Error("error writing response", log.ErrKey, err)
+	}
+}
+
+// keyImportHandler imports an encrypted encryption key and calls a function to seal it to the disk
+func keyImportHandler(walletExt *services.Services, conn UserConn) {
+	body, err := conn.ReadRequest()
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		return
+	}
+
+	var req keymanager.KeyImportRequest
+	err = json.Unmarshal(body, &req)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to unmarshal request: %w", err))
+		return
+	}
+
+	err = keymanager.ImportEncryptionKey(req.EncryptedKey, *walletExt.Config, walletExt.Logger())
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to import encryption key: %w", err))
+		return
+	}
+
+	successResponse := map[string]string{"status": "success", "message": "Encryption key imported successfully"}
+	responseBytes, err := json.Marshal(successResponse)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to marshal response: %w", err))
+		return
+	}
+
+	err = conn.WriteResponse(responseBytes)
 	if err != nil {
 		walletExt.Logger().Error("error writing response", log.ErrKey, err)
 	}
