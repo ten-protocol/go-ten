@@ -51,10 +51,13 @@ func (nhs *NewHeadsService) Start() error {
 
 func (nhs *NewHeadsService) reconnect() {
 	// reconnect to the backend and restart the listening
+	reconnectStart := time.Now()
 	newCh, errCh, err := nhs.connectFunc()
+	reconnectDuration := time.Since(reconnectStart)
 	if err != nil {
 		nhs.logger.Crit("could not connect to new heads: ", log.ErrKey, err)
 	}
+	nhs.logger.Info("Successfully reconnected to new heads subscription", "reconnectDuration", reconnectDuration)
 	nhs._subscribe(newCh, errCh)
 }
 
@@ -69,7 +72,8 @@ func (nhs *NewHeadsService) _subscribe(inputCh chan *common.BatchHeader, errChan
 			return nhs.onNewBatch(head)
 		},
 		func() {
-			nhs.logger.Info("Disconnected from new head subscription. Reconnecting...")
+			disconnectTime := time.Now()
+			nhs.logger.Warn("Disconnected from new head subscription. Reconnecting...", "disconnectTime", disconnectTime)
 			nhs.reconnect()
 		},
 		backedUnsub,
