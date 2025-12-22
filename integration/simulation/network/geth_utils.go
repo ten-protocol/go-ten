@@ -195,6 +195,19 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 		return nil, fmt.Errorf("no receipt for TenBridge contract initialization")
 	}
 
+	// Set WETH address on the L1 bridge (same address as predeployed on L1 genesis)
+	l1WethAddress := common.HexToAddress("0x1000000000000000000000000000000000000042")
+	opts.Nonce = big.NewInt(int64(wallets.ContractOwnerWallet.GetNonceAndIncrement()))
+	tx, err = tenBridge.SetWeth(opts, l1WethAddress)
+	if err != nil {
+		return nil, fmt.Errorf("failed to set WETH on TenBridge contract. Cause: %w", err)
+	}
+
+	_, err = integrationCommon.AwaitReceiptEth(context.Background(), client.EthClient(), tx.Hash(), 25*time.Second)
+	if err != nil {
+		return nil, fmt.Errorf("no receipt for TenBridge SetWeth transaction")
+	}
+
 	// Get the MessageBus address from the CrossChain contract
 	messageBusAddr, err := crossChainContract.MessageBus(&bind.CallOpts{})
 	if err != nil {
