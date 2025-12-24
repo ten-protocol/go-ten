@@ -53,7 +53,9 @@ loop:
 		switch v := value.Interface().(type) {
 		case time.Time:
 			// no message was received longer than the timeout. Exiting.
-			if time.Since(lastMessageTime) > timeoutInterval {
+			timeSinceLastMsg := time.Since(lastMessageTime)
+			if timeSinceLastMsg > timeoutInterval {
+				logger.Warn("Subscription timeout detected - no messages received", "timeSinceLastMessage", timeSinceLastMsg, "timeoutInterval", timeoutInterval, "lastMessageTime", lastMessageTime)
 				break loop
 			}
 		case R:

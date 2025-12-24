@@ -594,7 +594,8 @@ func (r *DataService) streamLiveBlocks() {
 			}
 
 		case <-time.After(timeoutNoBlocks):
-			r.logger.Warn("no new blocks received since timeout. Reconnecting..", "timeout", timeoutNoBlocks)
+			reconnectStart := time.Now()
+			r.logger.Warn("no new blocks received since timeout. Reconnecting..", "timeout", timeoutNoBlocks, "currentHeight", r.localBlockHeight.Load(), "reconnectStartTime", reconnectStart)
 			if streamSub != nil {
 				streamSub.Unsubscribe()
 			}
@@ -602,6 +603,8 @@ func (r *DataService) streamLiveBlocks() {
 				close(liveStream)
 			}
 			liveStream, streamSub = r.resetLiveStream()
+			reconnectDuration := time.Since(reconnectStart)
+			r.logger.Debug("L1 stream reconnection completed", "reconnectDuration", reconnectDuration, "newHeight", r.localBlockHeight.Load())
 
 		case <-r.hostInterrupt.Done():
 			r.logger.Info("block streaming stopped by stop signal")
