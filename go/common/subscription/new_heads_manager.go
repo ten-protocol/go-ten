@@ -74,7 +74,7 @@ func (nhs *NewHeadsService) _subscribe(inputCh chan *common.BatchHeader, errChan
 		},
 		backedUnsub,
 		nhs.stopped,
-		30*time.Second, // detect disconnect quickly to minimize gap in block processing
+		2*time.Minute, // revert to original timeout
 		nhs.logger,
 	)
 }
