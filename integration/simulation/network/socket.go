@@ -96,7 +96,9 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 			isInboundP2PDisabled = i == simParams.NodeWithInboundP2PDisabled
 		}
 
-		genesis := "{}"
+		// Use genesis with prefunded accounts if WithPrefunding is set,
+		// otherwise use contracts-only genesis (WETH still needed for validation)
+		genesis := testcommon.GenesisContractsOnlyJSON()
 		if simParams.WithPrefunding {
 			genesis = testcommon.TestnetGenesisJSON()
 		}

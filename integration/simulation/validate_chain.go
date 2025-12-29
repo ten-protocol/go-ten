@@ -1007,6 +1007,7 @@ func checkWETHContract(t *testing.T, s *Simulation) {
 	copy(balanceOfData[16:36], testWallet.Address().Bytes())
 
 	wethBalanceResult, err := client.CallContract(context.Background(), ethereum.CallMsg{
+		From: testWallet.Address(),
 		To:   &wethAddress,
 		Data: balanceOfData,
 	}, nil)
@@ -1058,6 +1059,7 @@ func checkWETHContract(t *testing.T, s *Simulation) {
 
 	// Step 6: Verify WETH balance is now zero (or reduced by wrapAmount)
 	wethBalanceAfter, err := client.CallContract(context.Background(), ethereum.CallMsg{
+		From: testWallet.Address(),
 		To:   &wethAddress,
 		Data: balanceOfData,
 	}, nil)

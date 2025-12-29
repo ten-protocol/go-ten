@@ -140,6 +140,52 @@ func WriteContractConfig(ctx context.Context, dbTX *sqlx.Tx, contractAddress get
 	return &v, nil
 }
 
+// WriteGenesisTx creates a dummy transaction record for genesis contracts.
+// Returns the tx ID to be used when registering genesis contracts.
+func WriteGenesisTx(ctx context.Context, dbTX *sqlx.Tx, eoaId uint64) (uint64, error) {
+	// Use all-zeros hash as the genesis tx hash
+	genesisHash := gethcommon.Hash{}
+	// Empty content for genesis tx
+	content := []byte{}
+
+	insert := "insert into tx (hash, content, contract, to_eoa, type, sender_address, idx, batch_height, is_synthetic, time) values (?,?,?,?,?,?,?,?,?,?)"
+	res, err := dbTX.ExecContext(ctx, insert,
+		genesisHash.Bytes(), // hash - all zeros
+		content,             // content - empty
+		nil,                 // contract - null
+		nil,                 // to_eoa - null
+		0,                   // type - 0 (legacy)
+		eoaId,               // sender_address - genesis EOA
+		0,                   // idx - 0
+		0,                   // batch_height - 0 (genesis)
+		true,                // is_synthetic - true
+		0,                   // time - 0
+	)
+	if err != nil {
+		return 0, err
+	}
+	id, err := res.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	return uint64(id), nil
+}
+
+// ReadGenesisTx reads the genesis dummy transaction by its all-zeros hash.
+func ReadGenesisTx(ctx context.Context, dbTX *sqlx.Tx) (uint64, error) {
+	genesisHash := gethcommon.Hash{}
+	row := dbTX.QueryRowContext(ctx, "select id from tx where hash = ?", genesisHash.Bytes())
+	var id uint64
+	err := row.Scan(&id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, errutil.ErrNotFound
+		}
+		return 0, err
+	}
+	return id, nil
+}
+
 func ReadContractByAddress(ctx context.Context, dbTx *sqlx.Tx, addr gethcommon.Address) (*Contract, error) {
 	row := dbTx.QueryRowContext(ctx, "select c.id, c.address, c.auto_visibility, c.transparent, eoa.address from contract c join externally_owned_account eoa on c.creator=eoa.id where c.address = ?", addr.Bytes())
 

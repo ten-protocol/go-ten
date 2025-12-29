@@ -1,6 +1,7 @@
 package genesis
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -49,8 +50,8 @@ func New(genesisJSON string) (*Genesis, error) {
 	return genesis, nil
 }
 
-func (g Genesis) CommitGenesisState(storage storage.Storage) error {
-	stateDB, err := g.applyAllocations(storage)
+func (g Genesis) CommitGenesisState(ctx context.Context, s storage.Storage) error {
+	stateDB, err := g.applyAllocations(s)
 	if err != nil {
 		return err
 	}
@@ -62,6 +63,20 @@ func (g Genesis) CommitGenesisState(storage storage.Storage) error {
 	if root != types.EmptyRootHash {
 		if err := stateDB.Database().TrieDB().Commit(root, true); err != nil {
 			return err
+		}
+	}
+
+	// Register genesis contracts in the contract database so they can be looked up
+	// when processing event logs from transactions that interact with them
+	if len(g.Contracts) > 0 {
+		contractAddresses := make([]gethcommon.Address, 0, len(g.Contracts))
+		for _, c := range g.Contracts {
+			if c.Bytecode != "" {
+				contractAddresses = append(contractAddresses, c.Address)
+			}
+		}
+		if err := s.RegisterGenesisContracts(ctx, contractAddresses); err != nil {
+			return fmt.Errorf("could not register genesis contracts: %w", err)
 		}
 	}
 

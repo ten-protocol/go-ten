@@ -32,6 +32,7 @@ func load(filePaths []string) (*TenConfig, error) {
 	v := viper.New()
 
 	// Bind environment variables to config keys to override yaml files
+	// Use TEN_ prefix to avoid conflicts with common env vars like NODE, HOST, etc.
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
