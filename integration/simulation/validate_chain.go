@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -61,6 +62,7 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 	checkReceivedLogs(t, s)
 	checkTenscan(t, s)
 	checkZenBaseMinting(t, s)
+	checkWETHContract(t, s)
 }
 
 // Ensures that L1 and L2 txs were actually issued.
@@ -922,4 +924,154 @@ func getRollupFromBlobHashes(ctx context.Context, blobResolver l1.BlobResolver, 
 		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
 	}
 	return &rollup, nil
+}
+
+// checkWETHContract verifies that the WETH9 contract is deployed at genesis and functional.
+// It checks:
+// 1. Contract bytecode exists at the predefined WETH address
+// 2. Can wrap ETH by calling deposit()
+// 3. Can unwrap WETH by calling withdraw()
+// 4. Balances update correctly
+func checkWETHContract(t *testing.T, s *Simulation) {
+	// WETH9 is predeployed at this address (matches SystemDeployerPhase2.sol LOCAL_WETH_PREDEPLOY)
+	wethAddress := gethcommon.HexToAddress("0x1000000000000000000000000000000000000042")
+
+	// Use the first simulation wallet to test WETH
+	testWallet := s.Params.Wallets.SimObsWallets[0]
+	nodeIdx := 0
+
+	client := s.RPCHandles.TenWalletClient(testWallet.Address(), nodeIdx)
+
+	// Step 1: Verify contract code exists at WETH address
+	code, err := client.CodeAt(context.Background(), wethAddress, nil)
+	if err != nil {
+		t.Errorf("WETH check: Failed to get code at WETH address %s: %s", wethAddress.Hex(), err)
+		return
+	}
+	if len(code) == 0 {
+		t.Errorf("WETH check: No bytecode found at WETH address %s - genesis contract not deployed", wethAddress.Hex())
+		return
+	}
+	testlog.Logger().Info(fmt.Sprintf("WETH check: Contract bytecode found at %s (%d bytes)", wethAddress.Hex(), len(code)))
+
+	// Step 2: Get initial ETH balance
+	initialETHBalance, err := client.BalanceAt(context.Background(), nil)
+	if err != nil {
+		t.Errorf("WETH check: Failed to get initial ETH balance: %s", err)
+		return
+	}
+
+	// Need sufficient balance to test wrap/unwrap
+	wrapAmount := big.NewInt(1000000000000000) // 0.001 ETH
+	if initialETHBalance.Cmp(wrapAmount) < 0 {
+		testlog.Logger().Info(fmt.Sprintf("WETH check: Skipping wrap/unwrap test - insufficient ETH balance (%s)", initialETHBalance.String()))
+		return
+	}
+
+	// Step 3: Wrap ETH by sending to WETH contract (calls deposit())
+	// Create deposit transaction data (sending ETH to WETH contract triggers fallback which calls deposit())
+	depositTxData := &types.LegacyTx{
+		Nonce: testWallet.GetNonceAndIncrement(),
+		To:    &wethAddress,
+		Value: wrapAmount,
+		Data:  nil,
+	}
+
+	// Estimate gas and get gas price
+	estimatedDepositTx := client.EstimateGasAndGasPrice(depositTxData)
+
+	signedDepositTx, err := testWallet.SignTransaction(estimatedDepositTx)
+	if err != nil {
+		t.Errorf("WETH check: Failed to sign deposit tx: %s", err)
+		return
+	}
+
+	err = client.SendTransaction(context.Background(), signedDepositTx)
+	if err != nil {
+		t.Errorf("WETH check: Failed to send deposit tx: %s", err)
+		return
+	}
+
+	// Wait for receipt
+	err = testcommon.AwaitReceipt(context.Background(), client, signedDepositTx.Hash(), 30*time.Second)
+	if err != nil {
+		t.Errorf("WETH check: Failed to get deposit receipt: %s", err)
+		return
+	}
+	testlog.Logger().Info(fmt.Sprintf("WETH check: Successfully wrapped %s wei to WETH", wrapAmount.String()))
+
+	// Step 4: Check WETH balance using balanceOf(address)
+	// balanceOf function selector: 0x70a08231
+	balanceOfData := make([]byte, 36)
+	copy(balanceOfData[0:4], []byte{0x70, 0xa0, 0x82, 0x31})
+	copy(balanceOfData[16:36], testWallet.Address().Bytes())
+
+	wethBalanceResult, err := client.CallContract(context.Background(), ethereum.CallMsg{
+		To:   &wethAddress,
+		Data: balanceOfData,
+	}, nil)
+	if err != nil {
+		t.Errorf("WETH check: Failed to call balanceOf: %s", err)
+		return
+	}
+
+	wethBalance := new(big.Int).SetBytes(wethBalanceResult)
+	if wethBalance.Cmp(wrapAmount) < 0 {
+		t.Errorf("WETH check: WETH balance (%s) less than wrapped amount (%s)", wethBalance.String(), wrapAmount.String())
+		return
+	}
+	testlog.Logger().Info(fmt.Sprintf("WETH check: WETH balance after wrap: %s", wethBalance.String()))
+
+	// Step 5: Unwrap WETH by calling withdraw(uint256)
+	// withdraw function selector: 0x2e1a7d4d
+	withdrawData := make([]byte, 36)
+	copy(withdrawData[0:4], []byte{0x2e, 0x1a, 0x7d, 0x4d})
+	wrapAmount.FillBytes(withdrawData[4:36])
+
+	withdrawTxData := &types.LegacyTx{
+		Nonce: testWallet.GetNonceAndIncrement(),
+		To:    &wethAddress,
+		Value: big.NewInt(0),
+		Data:  withdrawData,
+	}
+
+	estimatedWithdrawTx := client.EstimateGasAndGasPrice(withdrawTxData)
+
+	signedWithdrawTx, err := testWallet.SignTransaction(estimatedWithdrawTx)
+	if err != nil {
+		t.Errorf("WETH check: Failed to sign withdraw tx: %s", err)
+		return
+	}
+
+	err = client.SendTransaction(context.Background(), signedWithdrawTx)
+	if err != nil {
+		t.Errorf("WETH check: Failed to send withdraw tx: %s", err)
+		return
+	}
+
+	err = testcommon.AwaitReceipt(context.Background(), client, signedWithdrawTx.Hash(), 30*time.Second)
+	if err != nil {
+		t.Errorf("WETH check: Failed to get withdraw receipt: %s", err)
+		return
+	}
+	testlog.Logger().Info(fmt.Sprintf("WETH check: Successfully unwrapped %s wei from WETH", wrapAmount.String()))
+
+	// Step 6: Verify WETH balance is now zero (or reduced by wrapAmount)
+	wethBalanceAfter, err := client.CallContract(context.Background(), ethereum.CallMsg{
+		To:   &wethAddress,
+		Data: balanceOfData,
+	}, nil)
+	if err != nil {
+		t.Errorf("WETH check: Failed to call balanceOf after withdraw: %s", err)
+		return
+	}
+
+	wethBalanceFinal := new(big.Int).SetBytes(wethBalanceAfter)
+	expectedFinalBalance := new(big.Int).Sub(wethBalance, wrapAmount)
+	if wethBalanceFinal.Cmp(expectedFinalBalance) != 0 {
+		t.Errorf("WETH check: Final WETH balance (%s) doesn't match expected (%s)", wethBalanceFinal.String(), expectedFinalBalance.String())
+		return
+	}
+
+	testlog.Logger().Info("WETH check: All WETH contract checks passed successfully")
 }
