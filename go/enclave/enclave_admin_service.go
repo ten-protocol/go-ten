@@ -300,6 +300,7 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 
 	err = e.validator().ExecuteStoredBatches(ctx)
 	if err != nil {
+		e.dataInMutex.Unlock()
 		return responses.ToInternalError(fmt.Errorf("could not execute batches. Cause: %w", err))
 	}
 
