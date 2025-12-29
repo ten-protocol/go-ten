@@ -138,7 +138,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		}
 	}
 
-	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
+	jsonConfig, _ := json.MarshalIndent(config.Redacted(), "", "  ")
 	logger.Info("Host service created with following config:", log.CfgKey, string(jsonConfig))
 
 	return host
@@ -158,7 +158,7 @@ func (h *host) Start() error {
 		return fmt.Errorf("could not start services. Cause: %w", err)
 	}
 
-	tomlConfig, err := toml.Marshal(h.config)
+	tomlConfig, err := toml.Marshal(h.config.Redacted())
 	if err != nil {
 		return fmt.Errorf("could not print host config - %w", err)
 	}
