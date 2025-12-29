@@ -98,7 +98,7 @@ func (g Genesis) applyAllocations(storage storage.Storage) (*state.StateDB, erro
 		if err != nil {
 			return nil, fmt.Errorf("invalid contract bytecode for %s: %w", c.Address.Hex(), err)
 		}
-		s.SetCode(c.Address, code)
+		s.SetCode(c.Address, code, tracing.CodeChangeGenesis)
 	}
 
 	return s, nil
