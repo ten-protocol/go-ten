@@ -105,6 +105,9 @@ type EnclaveAdmin interface {
 
 	ExportCrossChainData(context.Context, uint64, uint64) (*ExtCrossChainBundle, SystemError)
 
+	// BackupSharedSecret returns the backup encryption key
+	BackupSharedSecret(context.Context) ([]byte, SystemError)
+
 	// Stop gracefully stops the enclave
 	Stop() SystemError
 	// StopClient stops the enclave client if one exists - only implemented by the RPC layer
@@ -134,6 +137,9 @@ type EnclaveClientRPC interface {
 
 	// EnclavePublicConfig returns network data that is known to the enclave but can be shared publicly
 	EnclavePublicConfig(context.Context) (*EnclavePublicConfig, SystemError)
+
+	// FetchSequencerAttestations returns all attestation reports for sequencer enclaves
+	FetchSequencerAttestations(ctx context.Context) ([]*AttestationReport, SystemError)
 }
 
 // Enclave represents the API of the service that runs inside the TEE.

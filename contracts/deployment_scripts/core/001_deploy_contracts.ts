@@ -6,14 +6,19 @@ import { hexlify, toUtf8Bytes, parseUnits, formatUnits } from 'ethers';
     This deployment script instantiates the network contracts and stores them in the deployed NetworkConfig contract.
 */
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
+    console.log("Starting L1 contract deploy")
     const sequencerHostAddress = process.env.SEQUENCER_HOST_ADDRESS;
+    console.log("Sequencer Host Address: ", sequencerHostAddress)
     if (!sequencerHostAddress) {
+    console.log("ERROR Sequencer Host Address: ", sequencerHostAddress)
         console.error("SEQUENCER_HOST_ADDRESS environment variable is not set.");
         process.exit(1);
     }
 
     // Gas price safety check if enabled
+    console.log("about to check gas price")
     if (process.env.CHECK_GAS_PRICE === 'true') {
+        console.log("Checking gas price")
         const provider = hre.ethers.provider;
         const feeData = await provider.getFeeData();
         const currentGasPrice = feeData.gasPrice;
@@ -35,7 +40,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
         console.log(`✅ Gas price check passed: ${formatUnits(currentGasPrice, 'gwei')} gwei (limit: ${maxGasGwei} gwei)\n`);
     }
-
+    console.log("didnt check gas price")
     const {
         deployments,
         getNamedAccounts
@@ -45,6 +50,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const feesDeployment = await deployments.deploy('Fees', {
         from: deployer,
         log: true,
+        waitConfirmations: 2, // wait 2 confirmations to avoid race condition between implementation and proxy deployment
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -59,6 +65,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Deploy MerkleTreeMessageBus first
     const merkleMessageBusDeployment = await deployments.deploy('MerkleTreeMessageBus', {
         from: deployer,
+        waitConfirmations: 2,
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -74,6 +81,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Deploy CrossChain with MessageBus address
     const crossChainDeployment = await deployments.deploy('CrossChain', {
         from: deployer,
+        waitConfirmations: 2,
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -88,6 +96,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const networkEnclaveRegistryDeployment = await deployments.deploy('NetworkEnclaveRegistry', {
         from: deployer,
+        waitConfirmations: 2,
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -102,6 +111,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     const daRegistryDeployment = await deployments.deploy('DataAvailabilityRegistry', {
         from: deployer,
+        waitConfirmations: 2,
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {
@@ -121,6 +131,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Then deploy NetworkConfig with all addresses
     const networkConfigDeployment = await deployments.deploy('NetworkConfig', {
         from: deployer,
+        waitConfirmations: 2,
         proxy: {
             proxyContract: "OpenZeppelinTransparentProxy",
             execute: {

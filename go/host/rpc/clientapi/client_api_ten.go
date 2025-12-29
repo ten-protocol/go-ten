@@ -29,7 +29,7 @@ func NewTenAPI(host host.Host, logger gethlog.Logger) *TenAPI {
 	}
 }
 
-// Version returns the protocol version of the Obscuro network.
+// Version returns the protocol version of the TEN network.
 func (api *TenAPI) Version() string {
 	return fmt.Sprintf("%d", api.host.Config().TenChainID)
 }
@@ -46,6 +46,14 @@ func (api *TenAPI) Config() (*ChecksumFormattedTenNetworkConfig, error) {
 		return nil, err
 	}
 	return checksumFormatted(config), nil
+}
+
+func (api *TenAPI) SequencerAttestations() ([]*common.PublicAttestationReport, error) {
+	attestations, err := api.host.SequencerAttestations()
+	if err != nil {
+		return nil, err
+	}
+	return attestations, nil
 }
 
 func (api *TenAPI) RpcKey() ([]byte, error) {
@@ -95,6 +103,16 @@ func (api *TenAPI) EncryptedRPC(ctx context.Context, encryptedParams common.Encr
 		}, nil
 	}
 	return *enclaveResponse, nil
+}
+
+// BackupSharedSecret - used during the initial phase to allow the ultimate way to recover a network
+func (api *TenAPI) BackupSharedSecret(ctx context.Context) (hexutil.Bytes, error) {
+	encryptedSecret, err := api.host.EnclaveClient().BackupSharedSecret(ctx)
+	if err != nil {
+		api.logger.Error("Error backing up shared secret", log.ErrKey, err)
+		return nil, err
+	}
+	return encryptedSecret, nil
 }
 
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.

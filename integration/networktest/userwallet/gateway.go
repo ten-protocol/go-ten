@@ -113,7 +113,7 @@ func (g *GatewayUser) NativeBalance(ctx context.Context) (*big.Int, error) {
 	return g.client.BalanceAt(ctx, g.wal.Address(), nil)
 }
 
-func (g *GatewayUser) GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) (types.Receipts, uint64, error) {
+func (g *GatewayUser) GetPersonalTransactions(ctx context.Context, pagination common.QueryPagination) ([]common.PersonalTxReceipt, uint64, error) {
 	rpcClient := g.client.Client()
 	queryParams := &common.ListPrivateTransactionsQueryParams{
 		Address:    g.wal.Address(),

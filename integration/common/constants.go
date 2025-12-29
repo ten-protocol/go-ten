@@ -95,6 +95,8 @@ func DefaultEnclaveConfig() *enclaveconfig.EnclaveConfig {
 		RPCTimeout:                5 * time.Second,
 		StoreExecutedTransactions: true,
 		DecompressionLimit:        10 * 1024 * 1024,
+		BackupEncryptionKey:       "",
+		SharedSecret:              "",
 	}
 }
 

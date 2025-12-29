@@ -23,6 +23,9 @@ network:
     interval: 5s
     maxInterval: 120m # rollups will be produced after this time even if the data blob is not full
     maxSize: 131072 # 128kb - the size of a blob
+    batchCompressionFactor: 0.1 # estimation of how much the batches compress during rollup creation
+    txCompressionFactor: 0.85 # estimation of how much the txs compress during rollup creation
+
   gas:
     minBaseFee: 100000000
     minGasPrice: 9999999
@@ -34,6 +37,9 @@ network:
     blockTime: 15s
     rollupRetryDelay: 5s
     startHash: 0x0 # hash of the L1 block that Ten can safely start processing from to get entire L2 history
+    timeoutBlocks: 5 # number of blocks we wait before we reconnect to the l1 subscription
+    maxBlobRetries: 5 # number of attempts to publish a rollup blob
+
     contracts:
       networkConfig: 0x0 # L1 address of the Ten network config contract
       crossChain: 0x0 # L1 address of the Ten cross chain contract
@@ -92,6 +98,8 @@ enclave:
   enableAttestation: false
   storeExecutedTransactions: true
   decompressionLimit: "10MB"
+  backupEncryptionKey: "" # public key used for the shared secret backup
+  sharedSecret: "" # provision the shared secret. Note: only for extreme emergencies
   db:
     useInMemory: true
     edgelessDBHost: "" # host address for postgres db when used

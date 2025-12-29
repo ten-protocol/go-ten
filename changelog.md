@@ -2,6 +2,49 @@
 ---
 # Ten Testnet Change Log
 
+# Dec 2025-12-02 (v1.8.0)
+* This is an L2 deployment release meaning state will be lost in order to upgrade the network.
+* A full list of the PRs merged in this release is as below;
+    * `52819fd0` Block processing duration logging (#2753)
+    * `83a56421` Host: avoid multiple getlogs calls (#2752)
+    * `f9784fe4` Use default user if existing user is not set for execauth (#2714)
+    * `ccacf477` Session key funds expiration persistence (#2718)
+    * `2cb80593` Enclave: avoid corrupting data when block processing fails (#2749)
+    * `094913f3` Upgrade go-ethereum, move to osaka, misc fixes (#2722)
+    * `4b090cd1` Session key funds expiration (#2677)
+    * `2190d9a4` Add tx timestamp to personal txs (#2748)
+    * `f15b936e` Upgrade geth to 1.16.7 and prysm to 7.0.0 (#2746)
+    * `d3c1791d` Add erc20 (#2747)
+    * `651f22fb` Testnet recover funds (#2685)
+    * `97139144` Make rollup limiter figures configurable (#2744)
+    * `5acb5ec9` Expose sequencer attestation reports to tenscan (#2741)
+    * `980bcfe8` Move postgres docker into launcher  (#2743)
+    * `6b392b5f` Use postgres as host db on local testnet (#2742)
+
+# Oct 2025-10-27 (v1.7.0)
+* This is an L2 upgrade release meaning state will be persisted across the release.
+* A full list of the PRs merged in this release is as below;
+    * `51988e6d` Add postgres test to ci (#2735)
+    * `25a99319` Upgrade beacon api for fusaka fork (#2729)
+    * `d40b7e4e` Fix metadata integer conversion (#2734)
+    * `3599786c` Fix: remove in line l2 deployment and triggering existing l2 deployment (#2733)
+    * `fbbb1356` Rebind metadata queries (#2732)
+    * `354421cd` Updated base ref (#2730)
+    * `a0efe234` Feat: consolidate deployment workflows with automated argocd setup (#2724)
+    * `0ba30b1b` Fix geth notifications (#2727)
+    * `7ffc6856` Host: eagerly load l1 blocks from l1starthash (#2715)
+    * `b1a4d68e` Tests for zero chain id (#2717)
+    * `6add0801` Fix postgres connection issue (#2725)
+    * `c235a2ed` Enclave: fix unexpected db errs reported as batch conflict (#2726)
+    * `caa159a7` Update geth fork notification script (#2721)
+    * `0e86bce8` Geth hard fork notification workflow (#2719)
+    * `164b3b11` Add check for nil or zero chainid (#2716)
+    * `55573758` Upgrade geth to support cell proofs eip-7594 (#2712)
+    * `98501062` Enclave: always cache ma fees on calculation (#2710)
+    * `9c806f70` Minor: fix sepolia faucet url and add comment for debug noise confusion (#2711)
+    * `1578486d` Suppress noisy tls handshake error logs (#2709)
+    * `e9173b65` Get the token from path in json-rpc (#2704)
+
 # Oct 2025-10-07 (v1.6.0)
 * This is an L2 upgrade release meaning state will be persisted across the release.
 * A full list of the PRs merged in this release is as below;

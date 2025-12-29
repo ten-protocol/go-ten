@@ -14,6 +14,7 @@ import (
 	"github.com/ten-protocol/go-ten/testnet/launcher/eth2network"
 	"github.com/ten-protocol/go-ten/testnet/launcher/faucet"
 	"github.com/ten-protocol/go-ten/testnet/launcher/gateway"
+	"github.com/ten-protocol/go-ten/testnet/launcher/postgres"
 
 	l1cd "github.com/ten-protocol/go-ten/testnet/launcher/l1contractdeployer"
 	l1gs "github.com/ten-protocol/go-ten/testnet/launcher/l1grantsequencers"
@@ -33,7 +34,12 @@ func (t *Testnet) Start() error {
 	litter.Config.HidePrivateFields = true
 	fmt.Printf("Starting Testnet with config: \n%s\n\n", litter.Sdump(*t.cfg))
 
-	err := startEth2Network()
+	err := startPostgres()
+	if err != nil {
+		return fmt.Errorf("unable to start postgres - %w", err)
+	}
+
+	err = startEth2Network()
 	if err != nil {
 		return fmt.Errorf("unable to start eth2network - %w", err)
 	}
@@ -201,6 +207,25 @@ func (t *Testnet) Start() error {
 	time.Sleep(10 * time.Second)
 
 	fmt.Println("Network successfully launched!")
+	return nil
+}
+
+func startPostgres() error {
+	postgresContainer, err := postgres.NewDockerPostgres()
+	if err != nil {
+		return fmt.Errorf("unable to configure postgres - %w", err)
+	}
+
+	err = postgresContainer.Start()
+	if err != nil {
+		return fmt.Errorf("unable to start postgres - %w", err)
+	}
+
+	err = postgresContainer.IsReady()
+	if err != nil {
+		return fmt.Errorf("postgres not ready in time - %w", err)
+	}
+
 	return nil
 }
 

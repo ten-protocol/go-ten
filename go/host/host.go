@@ -61,9 +61,8 @@ func (bl batchListener) HandleBatch(batch *common.ExtBatch) {
 	bl.newHeads <- batch.Header
 }
 
-func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, l1Repo hostcommon.L1RepoService, enclaveClients []common.Enclave, ethWallet wallet.Wallet, contractRegistry contractlib.ContractRegistryLib, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
+func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p hostcommon.P2PHostService, ethClient ethadapter.EthClient, enclaveClients []common.Enclave, ethWallet wallet.Wallet, contractRegistry contractlib.ContractRegistryLib, logger gethlog.Logger, regMetrics gethmetrics.Registry, blobResolver l1.BlobResolver) hostcommon.Host {
 	hostStorage := storage.NewHostStorageFromConfig(config, logger)
-	l1Repo.SetBlockResolver(hostStorage)
 	hostIdentity := hostcommon.NewIdentity(config)
 	host := &host{
 		// config
@@ -97,14 +96,16 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 	}
 
 	enclService := enclave.NewService(config, hostIdentity, hostServices, enclGuardians, host.stopControl, logger)
+	l1Repo := l1.NewL1DataService(ethClient, hostStorage, contractRegistry, blobResolver, config.L1StartHash, config.L1TimeoutBlocks, host.stopControl, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
-	hostServices.RegisterService(hostcommon.P2PName, p2p)
-	hostServices.RegisterService(hostcommon.L1DataServiceName, l1Repo)
+	hostServices.RegisterService(hostcommon.P2PName, p2p, 70)
+	hostServices.RegisterService(hostcommon.L1DataServiceName, l1Repo, 20)
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
 	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
 	retryIntervalForBlobReceipt := config.L1RollupRetryDelay
+	maxBlobRetries := config.MaxBlobRetries
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
 	l1Publisher := l1.NewL1Publisher(
 		hostIdentity,
@@ -118,14 +119,15 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		maxWaitForL1Receipt,
 		retryIntervalForL1Receipt,
 		retryIntervalForBlobReceipt,
+		maxBlobRetries,
 		hostStorage,
 		l1ChainCfg,
 	)
 
-	hostServices.RegisterService(hostcommon.L1PublisherName, l1Publisher)
-	hostServices.RegisterService(hostcommon.L2BatchRepositoryName, l2Repo)
-	hostServices.RegisterService(hostcommon.EnclaveServiceName, enclService)
-	hostServices.RegisterService(hostcommon.LogSubscriptionServiceName, subsService)
+	hostServices.RegisterService(hostcommon.L1PublisherName, l1Publisher, 50)
+	hostServices.RegisterService(hostcommon.L2BatchRepositoryName, l2Repo, 10)
+	hostServices.RegisterService(hostcommon.EnclaveServiceName, enclService, 30)
+	hostServices.RegisterService(hostcommon.LogSubscriptionServiceName, subsService, 40)
 
 	var prof *profiler.Profiler
 	if config.ProfilerEnabled {
@@ -136,7 +138,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		}
 	}
 
-	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
+	jsonConfig, _ := json.MarshalIndent(config.Redacted(), "", "  ")
 	logger.Info("Host service created with following config:", log.CfgKey, string(jsonConfig))
 
 	return host
@@ -151,14 +153,12 @@ func (h *host) Start() error {
 	h.validateConfig()
 
 	// start all registered services
-	for name, service := range h.services.All() {
-		err := service.Start()
-		if err != nil {
-			return fmt.Errorf("could not start service=%s: %w", name, err)
-		}
+	err := h.services.Start()
+	if err != nil {
+		return fmt.Errorf("could not start services. Cause: %w", err)
 	}
 
-	tomlConfig, err := toml.Marshal(h.config)
+	tomlConfig, err := toml.Marshal(h.config.Redacted())
 	if err != nil {
 		return fmt.Errorf("could not print host config - %w", err)
 	}
@@ -203,10 +203,9 @@ func (h *host) Stop() error {
 	h.logger.Info("Host received a stop command. Attempting shutdown...")
 
 	// stop all registered services
-	for name, service := range h.services.All() {
-		if err := service.Stop(); err != nil {
-			h.logger.Error("Failed to stop service", "service", name, log.ErrKey, err)
-		}
+	err := h.services.Stop()
+	if err != nil {
+		h.logger.Error("Failed to stop services", log.ErrKey, err)
 	}
 
 	if err := h.storage.Close(); err != nil {
@@ -295,6 +294,27 @@ func (h *host) TenConfig() (*common.TenNetworkInfo, error) {
 		PublicSystemContracts:     h.publicSystemContracts,
 		AdditionalContracts:       importantContractAddresses.AdditionalContracts,
 	}, nil
+}
+
+func (h *host) SequencerAttestations() ([]*common.PublicAttestationReport, error) {
+	attestations, err := h.services.Enclaves().GetSequencerAttestations(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch attestations - %w", err)
+	}
+
+	publicAttestations := make([]*common.PublicAttestationReport, 0, len(attestations))
+	for _, a := range attestations {
+		if a == nil {
+			continue
+		}
+		publicAttestations = append(publicAttestations, &common.PublicAttestationReport{
+			Report:      a.Report,
+			PubKey:      a.PubKey,
+			EnclaveID:   a.EnclaveID,
+			HostAddress: a.HostAddress,
+		})
+	}
+	return publicAttestations, nil
 }
 
 func (h *host) Storage() storage.Storage {

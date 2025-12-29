@@ -48,6 +48,7 @@ const _multiEnclaveOffset = 10
 // Note: InMemNodeOperator will panic when things go wrong, we want to fail fast in sims and avoid verbose error handling in usage
 type InMemNodeOperator struct {
 	operatorIdx int
+	stoppedHost bool
 	config      *TenConfig
 	nodeType    common.NodeType
 	l1Data      *params.L1TenData
@@ -61,6 +62,10 @@ type InMemNodeOperator struct {
 }
 
 func (n *InMemNodeOperator) StopHost() error {
+	if n.stoppedHost {
+		return nil
+	}
+	n.stoppedHost = true
 	err := n.host.Stop()
 	if err != nil {
 		return fmt.Errorf("unable to stop host - %w", err)
@@ -100,6 +105,7 @@ func (n *InMemNodeOperator) StartHost() error {
 			panic(err)
 		}
 	}()
+	n.stoppedHost = false
 	return nil
 }
 
@@ -144,6 +150,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		L1ChainID:              integration.EthereumChainID,
 		TenChainID:             integration.TenChainID,
 		L1StartHash:            n.l1Data.TenStartBlock,
+		L1TimeoutBlocks:        2,
 		SequencerP2PAddress:    seqP2PAddr,
 		// Can provide the postgres db host if testing against a local DB instance
 		UseInMemoryDB:         true,
@@ -182,9 +189,8 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		panic(fmt.Sprintf("error creating contract registry. Cause: %s", err))
 	}
 
-	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort))), hostLogger)
-	l1Data := l1.NewL1DataService(n.l1Client, n.logger, contractRegistry, blobResolver, hostConfig.L1StartHash)
-	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, l1Data, enclaveClients, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger), blobResolver, contractRegistry)
+	blobResolver := l1.NewBlobResolver(ethadapter.NewL1BeaconClient(ethadapter.NewBeaconHTTPClient(new(http.Client), hostLogger, fmt.Sprintf("127.0.0.1:%d", n.config.L1BeaconPort))), hostLogger)
+	return hostcontainer.NewHostContainer(hostConfig, svcLocator, nodeP2p, n.l1Client, enclaveClients, n.l1Wallet, rpcServer, hostLogger, metrics.New(false, 0, n.logger), blobResolver, contractRegistry)
 }
 
 func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.EnclaveContainer {
@@ -223,18 +229,22 @@ func (n *InMemNodeOperator) createEnclaveContainer(idx int) *enclavecontainer.En
 		SystemContractOwner:             gethcommon.HexToAddress("0xA58C60cc047592DE97BF1E8d2f225Fc5D959De77"),
 		StoreExecutedTransactions:       true,
 		TenGenesis:                      integrationCommon.TestnetGenesisJSON(),
+		BackupEncryptionKey:             n.config.BackupEncryptionKey,
+		SharedSecret:                    n.config.SharedSecret,
 	}
 	return enclavecontainer.NewEnclaveContainerWithLogger(enclaveConfig, enclaveLogger)
 }
 
 func (n *InMemNodeOperator) Stop() error {
 	errs := make([]error, 0) // collect errors to return after attempting all stops
-	err := n.host.Stop()
-	if err != nil {
-		errs = append(errs, fmt.Errorf("failed to stop host - %w", err))
+	if !n.stoppedHost {
+		err := n.host.Stop()
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to stop host - %w", err))
+		}
 	}
 	for i := 0; i < len(n.enclaves); i++ {
-		err = n.enclaves[i].Stop()
+		err := n.enclaves[i].Stop()
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to stop enclave[%d] - %w", i, err))
 		}

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/bytedance/gopkg/util/logger"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common/log"
@@ -26,10 +25,8 @@ func getUserID(conn UserConn) ([]byte, error) {
 	userID, err := getQueryParameter(conn.ReadRequestParams(), common.EncryptedTokenQueryParameter)
 	if err == nil {
 		if len(userID) == common.MessageUserIDLenWithPrefix {
-			logger.Debug("userID with prefix", userID)
 			return hexutils.HexToBytes(userID[2:]), nil
 		} else if len(userID) == common.MessageUserIDLen {
-			logger.Debug("userID without prefix", userID)
 			return hexutils.HexToBytes(userID), nil
 		}
 

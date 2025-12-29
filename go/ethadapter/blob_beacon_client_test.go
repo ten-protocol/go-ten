@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/ten-protocol/go-ten/integration/common/testlog"
+
 	gethlog "github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -19,11 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/kzg4844"
 	"github.com/stretchr/testify/require"
 	"github.com/ten-protocol/go-ten/go/common"
-)
-
-const (
-	vHash1 = "0x012b7a6a22399aa9eecd8eda6ec658679e81be21af6ff296116aee205e2218f2"
-	vHash2 = "0x012374e04a848591844b75bc2f500318cf640552379b5e3a1a77bb828620690e"
 )
 
 func TestBlobsFromSidecars(t *testing.T) {
@@ -39,12 +36,12 @@ func TestBlobsFromSidecars(t *testing.T) {
 
 	// too few sidecars should error
 	sidecars := []*BlobSidecar{sidecar0, sidecar1}
-	_, err := BlobsFromSidecars(sidecars, hashes)
+	_, err := BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.Error(t, err)
 
 	// correct order should work
 	sidecars = []*BlobSidecar{sidecar0, sidecar1, sidecar2}
-	blobs, err := BlobsFromSidecars(sidecars, hashes)
+	blobs, err := BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.NoError(t, err)
 	for i := range blobs {
 		require.Equal(t, byte(indices[i]), blobs[i][0])
@@ -53,25 +50,25 @@ func TestBlobsFromSidecars(t *testing.T) {
 	badProof := *sidecar0
 	badProof.KZGProof[11]++
 	sidecars[1] = &badProof
-	_, err = BlobsFromSidecars(sidecars, hashes)
+	_, err = BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.Error(t, err)
 
 	badCommitment := *sidecar0
 	badCommitment.KZGCommitment[13]++
 	sidecars[1] = &badCommitment
-	_, err = BlobsFromSidecars(sidecars, hashes)
+	_, err = BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.Error(t, err)
 
 	sidecars[1] = sidecar0
 	hashes[2][17]++
-	_, err = BlobsFromSidecars(sidecars, hashes)
+	_, err = BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.Error(t, err)
 }
 
 func TestEmptyBlobSidecars(t *testing.T) {
 	var hashes []gethcommon.Hash
 	var sidecars []*BlobSidecar
-	blobs, err := BlobsFromSidecars(sidecars, hashes)
+	blobs, err := BlobsFromSidecars(sidecars, hashes, "deneb")
 	require.NoError(t, err)
 	require.Empty(t, blobs, "blobs should be empty when no sidecars are provided")
 }
@@ -127,15 +124,37 @@ func TestBlobEncodingLarge(t *testing.T) {
 
 func TestBlobArchiveClient(t *testing.T) {
 	t.Skipf("TODO need to fix this")
-	client := NewArchivalHTTPClient(new(http.Client), "https://eth-beacon-chain.drpc.org/rest/")
-	vHashes := []gethcommon.Hash{gethcommon.HexToHash(vHash1), gethcommon.HexToHash(vHash2)}
+	client := NewBeaconHTTPClient(new(http.Client), testlog.Logger(), "https://ethereum-sepolia-beacon-api.publicnode.com")
+	vHashes := []gethcommon.Hash{}
 	ctx := context.Background()
 
-	resp, err := client.BeaconBlobSidecars(ctx, 1, vHashes)
+	resp, err := client.BeaconBlobSidecars(ctx, 8782235, vHashes)
 	require.NoError(t, err)
 
-	require.Len(t, resp.Data, 2)
+	require.Len(t, resp.Data, 15)
 	require.NotNil(t, client)
+}
+
+func TestBlobClient(t *testing.T) {
+	client := NewBeaconHTTPClient(new(http.Client), testlog.Logger(), "https://ethereum-sepolia-beacon-api.publicnode.com")
+	var vHashes []gethcommon.Hash
+	ctx := context.Background()
+
+	resp, err := client.BeaconBlobSidecars(ctx,
+		9133064, vHashes)
+	require.NoError(t, err)
+
+	require.Len(t, resp.Data, 3)
+	require.NotNil(t, client)
+
+	// derive versioned blob hashes from the response and validate with BlobsFromSidecars
+	hashes := make([]gethcommon.Hash, len(resp.Data))
+	for i, sc := range resp.Data {
+		hashes[i] = KZGToVersionedHash(kzg4844.Commitment(sc.KZGCommitment))
+	}
+	blobs, err := BlobsFromSidecars(resp.Data, hashes, resp.Version)
+	require.NoError(t, err)
+	require.Len(t, blobs, len(hashes))
 }
 
 func TestBeaconClientFallback(t *testing.T) {

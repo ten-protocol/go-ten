@@ -342,11 +342,31 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 		return
 	}
 
+	// check if account already exists for this user
+	exists, err := walletExt.UserHasAccount(userID, address)
+	if err != nil {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+		walletExt.Logger().Error("error checking if account exists", "userID", userID, "address", address, log.ErrKey, err)
+		return
+	}
+	if exists {
+		// Account already exists, return success
+		err = conn.WriteResponse([]byte(common.AccountAlreadyExistsMsg))
+		if err != nil {
+			walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		}
+		return
+	}
+
 	// check signature and add address and signature for that user
 	err = walletExt.AddAddressToUser(userID, address, signature, messageType)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("internal error"))
-		walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, userID, signature))
+		if errors.Is(err, services.ErrMaxAccountsPerUserReached) {
+			handleError(conn, walletExt.Logger(), services.ErrMaxAccountsPerUserReached)
+		} else {
+			handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
+			walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, userID, signature))
+		}
 		return
 	}
 	err = conn.WriteResponse([]byte(common.SuccessMsg))
@@ -369,8 +389,8 @@ func queryRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("token ('token') not found in query parameters"))
-		walletExt.Logger().Debug("token not found in the query params", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("'token' not found in query parameters"))
+		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
 		return
 	}
 	address, err := getQueryParameter(conn.ReadRequestParams(), common.AddressQueryParameter)
@@ -421,8 +441,8 @@ func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("token ('token') not found in query parameters"))
-		walletExt.Logger().Debug("token not found in the query params", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("'token' not found in query parameters"))
+		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
 		return
 	}
 

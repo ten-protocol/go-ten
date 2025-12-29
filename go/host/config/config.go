@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"math/big"
 	"time"
 
@@ -36,12 +37,18 @@ type HostConfig struct {
 	RollupInterval time.Duration
 	// MaxRollupSize is the max size of the rollup
 	MaxRollupSize uint64
+	// BatchCompressionFactor estimation used to estimate size of rollups
+	BatchCompressionFactor float64
 	// The expected time between blocks on the L1 network
 	L1BlockTime time.Duration
 	// Delay for retrying rollups to handle blob gas spikes
 	L1RollupRetryDelay time.Duration
 	// CrossChainInterval - The interval at which the host will check for new cross chain data to submit
 	CrossChainInterval time.Duration
+	// L1TimeoutBlocks the number of L1 blocks we wait if none seen before disconnecting
+	L1TimeoutBlocks int
+	// MaxBlobRetries the number of retry attempts to publish a blob while increasing the gas price
+	MaxBlobRetries int
 
 	/////
 	// NODE CONFIG
@@ -117,6 +124,30 @@ type HostConfig struct {
 	MinBaseFee *big.Int
 }
 
+const _redactedString = "****"
+
+// Redacted returns a deep copy of the HostConfig with sensitive fields redacted for safe logging
+func (h *HostConfig) Redacted() *HostConfig {
+	// Deep copy via JSON marshal/unmarshal to avoid modifying the original
+	var copy HostConfig
+	b, err := json.Marshal(h)
+	if err != nil {
+		// If marshaling fails, return original (shouldn't happen in practice)
+		return h
+	}
+	if err := json.Unmarshal(b, &copy); err != nil {
+		// If unmarshaling fails, return original (shouldn't happen in practice)
+		return h
+	}
+
+	// Redact sensitive fields
+	if copy.PrivateKeyString != "" {
+		copy.PrivateKeyString = _redactedString
+	}
+
+	return &copy
+}
+
 func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 	return &HostConfig{
 		ID:               tenCfg.Node.ID,
@@ -128,16 +159,19 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		TenChainID: tenCfg.Network.ChainID,
 
 		L1StartHash:          tenCfg.Network.L1.StartHash,
+		L1TimeoutBlocks:      tenCfg.Network.L1.TimeoutBlocks,
 		L1BlockTime:          tenCfg.Network.L1.BlockTime,
 		L1RollupRetryDelay:   tenCfg.Network.L1.RollupRetryDelay,
+		MaxBlobRetries:       tenCfg.Network.L1.MaxBlobRetries,
 		SequencerP2PAddress:  tenCfg.Network.Sequencer.P2PAddress,
 		NetworkConfigAddress: tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
 
-		BatchInterval:      tenCfg.Network.Batch.Interval,
-		MaxBatchInterval:   tenCfg.Network.Batch.MaxInterval,
-		RollupInterval:     tenCfg.Network.Rollup.Interval,
-		MaxRollupSize:      tenCfg.Network.Rollup.MaxSize,
-		CrossChainInterval: tenCfg.Network.CrossChain.Interval,
+		BatchInterval:          tenCfg.Network.Batch.Interval,
+		MaxBatchInterval:       tenCfg.Network.Batch.MaxInterval,
+		RollupInterval:         tenCfg.Network.Rollup.Interval,
+		MaxRollupSize:          tenCfg.Network.Rollup.MaxSize,
+		BatchCompressionFactor: tenCfg.Network.Rollup.BatchCompressionFactor,
+		CrossChainInterval:     tenCfg.Network.CrossChain.Interval,
 
 		LogLevel: tenCfg.Host.Log.Level,
 		LogPath:  tenCfg.Host.Log.Path,

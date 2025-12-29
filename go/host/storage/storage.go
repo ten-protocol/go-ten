@@ -239,6 +239,14 @@ func (s *storageImpl) Search(query string) (*common.SearchResponse, error) {
 	return hostdb.Search(s.db, query)
 }
 
+func (s *storageImpl) GetMetadata(key string) (uint64, error) {
+	return hostdb.GetMetadata(s.db, key)
+}
+
+func (s *storageImpl) SetMetadata(key string, value uint64) error {
+	return hostdb.SetMetadata(s.db, key, value)
+}
+
 func (s *storageImpl) Close() error {
 	return s.db.GetSQLDB().Close()
 }

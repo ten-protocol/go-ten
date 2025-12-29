@@ -8,8 +8,6 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/enclave/storage/enclavedb"
 
-	"github.com/ethereum/go-ethereum/triedb"
-
 	"github.com/ethereum/go-ethereum/core/state"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
@@ -34,6 +32,8 @@ type BlockResolver interface {
 	UpdateProcessed(ctx context.Context, block common.L1BlockHash) error
 	// DeleteDirtyBlocks - deletes all traces of a block that was not finished. Only called at startup.
 	DeleteDirtyBlocks(ctx context.Context) error
+	// DeleteUnprocessedBlock - deletes a specific unprocessed block and its associated data (rollups, messages)
+	DeleteUnprocessedBlock(ctx context.Context, blockHash common.L1BlockHash) error
 	// IsAncestor returns true if maybeAncestor is an ancestor of the L1 BlockHeader, and false otherwise
 	IsAncestor(ctx context.Context, block *types.Header, maybeAncestor *types.Header) bool
 }
@@ -82,10 +82,12 @@ type BatchResolver interface {
 }
 
 type GethStateDB interface {
+	StateAt(root gethcommon.Hash) (*state.StateDB, error)
 	// CreateStateDB creates a database that can be used to execute transactions
-	CreateStateDB(ctx context.Context, hash common.L2BatchHash) (*state.StateDB, error)
+	CreateStateDB(ctx context.Context, batch *common.BatchHeader) (*state.StateDB, error)
 	// EmptyStateDB creates the original empty StateDB
 	EmptyStateDB() (*state.StateDB, error)
+	OpenTrie(root gethcommon.Hash) (state.Trie, error)
 }
 
 type SharedSecretStorage interface {
@@ -105,9 +107,10 @@ type TransactionStorage interface {
 
 type AttestationStorage interface {
 	GetEnclavePubKey(ctx context.Context, enclaveId common.EnclaveID) (*AttestedEnclave, error)
-	StoreNewEnclave(ctx context.Context, enclaveId common.EnclaveID, key *ecdsa.PublicKey) error
+	StoreNewEnclave(ctx context.Context, attestation common.AttestationReport, key *ecdsa.PublicKey) error
 	StoreNodeType(ctx context.Context, enclaveId common.EnclaveID, nodeType common.NodeType) error
 	GetSequencerEnclaveIDs(ctx context.Context) ([]common.EnclaveID, error)
+	FetchSequencerAttestations(ctx context.Context) ([]common.AttestationReport, error)
 }
 
 type CrossChainMessagesStorage interface {
@@ -153,17 +156,11 @@ type Storage interface {
 	// DebugGetLogs returns logs for a given tx hash without any constraints - should only be used for debug purposes
 	DebugGetLogs(ctx context.Context, from *big.Int, to *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error)
 
-	// TrieDB - return the underlying trie database
-	TrieDB() *triedb.Database
-
-	// StateDB - return the underlying state database
-	StateDB() *state.CachingDB
-
 	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
 }
 
 type ScanStorage interface {
 	GetContractCount(ctx context.Context) (*big.Int, error)
 	CountTransactionsPerAddress(ctx context.Context, addr *gethcommon.Address, showPublic bool, showSynthetic bool) (uint64, error)
-	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]*core.InternalReceipt, error)
+	GetTransactionsPerAddress(ctx context.Context, address *gethcommon.Address, pagination *common.QueryPagination, showPublic bool, showSynthetic bool) ([]common.PersonalTxReceipt, error)
 }

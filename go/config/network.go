@@ -57,8 +57,9 @@ type L1Config struct {
 	BlockTime        time.Duration   `mapstructure:"blockTime"`        // average expected block time for the L1 network
 	RollupRetryDelay time.Duration   `mapstructure:"rollupRetryDelay"` // delay rollup publishing when gas price spikes
 	StartHash        gethcommon.Hash `mapstructure:"startHash"`        // hash of the first block on the L1 network relevant to the Ten network
-
-	L1Contracts *L1Contracts `mapstructure:"contracts"`
+	TimeoutBlocks    int             `mapstructure:"timeoutBlocks"`    // number of blocks we wait before disconnecting if no blocks seen
+	MaxBlobRetries   int             `mapstructure:"maxBlobRetries"`   // number of retry attempts to publish a blob
+	L1Contracts      *L1Contracts    `mapstructure:"contracts"`
 }
 
 // L1Contracts contains the addresses of Ten contracts on the L1 network
@@ -86,6 +87,11 @@ type RollupConfig struct {
 	// a protocol limit, but a miner imposed limit and it might be hard to find someone
 	// to include a transaction if it goes above it
 	MaxSize uint64 `mapstructure:"maxSize"`
+	// BatchCompressionFactor is the estimated reduction of batch sizes after they get encrypted. It is used during rollup
+	// size estimation
+	BatchCompressionFactor float64 `mapstructure:"batchCompressionFactor"`
+	// TxCompressionFactor used by the rollup limiter to estimate the size of compressed transactions during rollup creation
+	TxCompressionFactor float64 `mapstructure:"txCompressionFactor"`
 }
 
 // Sequencer contains the configuration for how the L2 sequencer will operate for the Ten network

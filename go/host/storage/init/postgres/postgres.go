@@ -15,13 +15,11 @@ import (
 	"github.com/lib/pq"
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/storage"
-
-	_ "github.com/lib/pq"
 )
 
 const (
 	defaultDatabase  = "postgres"
-	maxDBConnections = 100
+	maxDBConnections = 75 // azure has 100 max connections
 	initFile         = "001_init.sql"
 )
 
@@ -33,39 +31,43 @@ func CreatePostgresDBConnection(baseURL string, dbName string, logger gethlog.Lo
 	if baseURL == "" {
 		return nil, fmt.Errorf("failed to prepare PostgreSQL connection - DB URL was not set on host config")
 	}
-	dbURL := baseURL + defaultDatabase
-
+	dbURL := appendDBNamePreserveQuery(baseURL, defaultDatabase)
 	dbName = strings.ToLower(dbName)
 
-	db, err := sqlx.Open(driverName, dbURL)
+	// default postgres database
+	defaultDB, err := sqlx.Open(driverName, dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL server: %v", err)
 	}
-	defer db.Close() // Close the connection when done
+	defer defaultDB.Close() // Close the default postgres connection when done
 
-	rows, err := db.Query("SELECT 1 FROM pg_database WHERE datname = $1", dbName)
+	rows, err := defaultDB.Query("SELECT 1 FROM pg_database WHERE datname = $1", dbName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query database existence: %v", err)
 	}
 	defer rows.Close()
 
 	if !rows.Next() {
-		_, err = db.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
+		_, err = defaultDB.Exec(fmt.Sprintf("CREATE DATABASE %s", dbName))
 		if err != nil {
 			return nil, fmt.Errorf("failed to create database %s: %v", dbName, err)
 		}
 	}
 
-	dbURL = fmt.Sprintf("%s%s", baseURL, dbName)
+	// close the default postgres connection explicitly before opening the target DB
+	defaultDB.Close()
 
-	db, err = sqlx.Open("postgres", dbURL)
+	dbURL = appendDBNamePreserveQuery(baseURL, dbName)
+
+	// open connection to target DB
+	db, err := sqlx.Open("postgres", dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL database %s: %v", dbName, err)
 	}
 	db.SetMaxOpenConns(maxDBConnections)
-	db.SetMaxIdleConns(maxDBConnections / 2)
+	db.SetMaxIdleConns(maxDBConnections / 3)
 	db.SetConnMaxLifetime(30 * time.Minute)
-	db.SetConnMaxIdleTime(5 * time.Minute)
+	db.SetConnMaxIdleTime(3 * time.Minute)
 
 	// initialise the database with the initial SQL file
 	err = migration.InitialiseDB(db, sqlFiles, initFile)
@@ -102,4 +104,23 @@ func registerPanicOnConnectionRefusedDriver(logger gethlog.Logger) string {
 
 	logger.Info("Registered custom PostgreSQL driver with panic handling", "driver_name", driverName)
 	return driverName
+}
+
+// appendDBNamePreserveQuery appends the database name as a path segment before any existing query string.
+// It preserves query parameters like sslmode and avoids concatenating the name into the query value. This is
+// needed for running postgres locally.
+func appendDBNamePreserveQuery(base, name string) string {
+	// Split base into path and query components
+	if idx := strings.Index(base, "?"); idx >= 0 {
+		path := base[:idx]
+		query := base[idx:]
+		if !strings.HasSuffix(path, "/") {
+			path += "/"
+		}
+		return path + name + query
+	}
+	if !strings.HasSuffix(base, "/") {
+		base += "/"
+	}
+	return base + name
 }

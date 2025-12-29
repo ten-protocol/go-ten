@@ -70,7 +70,7 @@ func (e *enclaveRPCService) EncryptedRPC(ctx context.Context, encryptedParams co
 }
 
 func (e *enclaveRPCService) GetCode(ctx context.Context, address gethcommon.Address, blockNrOrHash gethrpc.BlockNumberOrHash) ([]byte, common.SystemError) {
-	stateDB, err := e.registry.GetBatchState(ctx, blockNrOrHash)
+	stateDB, _, err := e.registry.GetBatchState(ctx, blockNrOrHash)
 	if err != nil {
 		return nil, responses.ToInternalError(fmt.Errorf("could not create stateDB. Cause: %w", err))
 	}
@@ -158,4 +158,16 @@ func (e *enclaveRPCService) EnclavePublicConfig(context.Context) (*common.Enclav
 		SystemContractsUpgrader:         *systemContractsUpgraderAddress,
 		PublicSystemContracts:           publicContractsMap,
 	}, nil
+}
+
+func (e *enclaveRPCService) FetchSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, common.SystemError) {
+	reports, err := e.storage.FetchSequencerAttestations(ctx)
+	if err != nil {
+		return nil, responses.ToInternalError(fmt.Errorf("failed to fetch sequencer attestations: %w", err))
+	}
+	result := make([]*common.AttestationReport, len(reports))
+	for i := range reports {
+		result[i] = &reports[i]
+	}
+	return result, nil
 }

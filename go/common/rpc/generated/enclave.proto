@@ -30,6 +30,8 @@ service EnclaveProto {
   rpc GetTotalContractCount(GetTotalContractCountRequest) returns (GetTotalContractCountResponse) {}
   rpc EnclavePublicConfig(EnclavePublicConfigRequest) returns (EnclavePublicConfigResponse) {}
   rpc MakeActive(MakeActiveRequest) returns (MakeActiveResponse) {}
+  rpc FetchSequencerAttestations(SequencerAttestationRequest) returns (SequencerAttestationResponse) {}
+  rpc BackupSharedSecret(BackupSharedSecretRequest) returns (BackupSharedSecretResponse) {}
 }
 
 message EnclavePublicConfigRequest {}
@@ -40,6 +42,19 @@ message EnclavePublicConfigResponse{
   bytes systemContractsUpgraderAddress = 3;
   map<string, bytes> publicSystemContracts = 4;
   SystemError systemError = 5;
+}
+
+message SequencerAttestationRequest {}
+
+message PublicAttestationReportMsg {
+  bytes enclaveID = 1;
+  bytes publicKey = 2;
+  bytes report = 3;
+}
+
+message SequencerAttestationResponse{
+  repeated PublicAttestationReportMsg reports = 1;
+  SystemError systemError = 2;
 }
 
 message GetBatchRequest {
@@ -341,4 +356,11 @@ message WithdrawalMsg {
 
 message BlobMsg {
   bytes blob = 1;
+}
+
+message BackupSharedSecretRequest {}
+
+message BackupSharedSecretResponse {
+  bytes secret = 1;
+  SystemError systemError = 2;
 }

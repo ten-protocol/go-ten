@@ -29,19 +29,23 @@ type SKManager interface {
 	CreateSessionKey(user *common.GWUser) (*common.GWSessionKey, error)
 	DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcommon.Address) (bool, error)
 	SignTx(ctx context.Context, user *common.GWUser, sessionKeyAddr gethcommon.Address, input *types.Transaction) (*types.Transaction, error)
+	SetTxSender(txSender TxSender)
 }
 
 type skManager struct {
-	storage storage.UserStorage
-	config  *common.Config
-	logger  gethlog.Logger
+	storage         storage.UserStorage
+	config          *common.Config
+	logger          gethlog.Logger
+	activityTracker SessionKeyActivityTracker
+	txSender        TxSender
 }
 
-func NewSKManager(storage storage.UserStorage, config *common.Config, logger gethlog.Logger) SKManager {
+func NewSKManager(storage storage.UserStorage, config *common.Config, logger gethlog.Logger, tracker SessionKeyActivityTracker) SKManager {
 	return &skManager{
-		storage: storage,
-		config:  config,
-		logger:  logger,
+		storage:         storage,
+		config:          config,
+		logger:          logger,
+		activityTracker: tracker,
 	}
 }
 
@@ -60,6 +64,11 @@ func (m *skManager) CreateSessionKey(user *common.GWUser) (*common.GWSessionKey,
 	if err != nil {
 		return nil, err
 	}
+
+	// Mark activity for the new session key
+	if m.activityTracker != nil && sk != nil && sk.Account != nil && sk.Account.Address != nil {
+		m.activityTracker.MarkActive(user.ID, *sk.Account.Address)
+	}
 	return sk, nil
 }
 
@@ -70,6 +79,29 @@ func (m *skManager) DeleteSessionKey(user *common.GWUser, sessionKeyAddr gethcom
 
 	if _, exists := user.SessionKeys[sessionKeyAddr]; !exists {
 		return false, fmt.Errorf("session key not found: %s", sessionKeyAddr.Hex())
+	}
+
+	// Transfer funds to user's primary account before deletion (if TxSender is available)
+	if m.txSender != nil {
+		firstAccount, err := user.GetFirstAccount()
+		if err != nil {
+			m.logger.Warn("No primary account found for user, skipping fund transfer",
+				"error", err,
+				"userID", common.HashForLogging(user.ID),
+				"sessionKeyAddress", sessionKeyAddr.Hex())
+		} else {
+			_, err := m.txSender.SendAllMinusGasWithSK(context.Background(), user, sessionKeyAddr, *firstAccount.Address)
+			if err != nil {
+				m.logger.Error("Failed to recover funds from session key before deletion",
+					"error", err,
+					"userID", common.HashForLogging(user.ID),
+					"sessionKeyAddress", sessionKeyAddr.Hex())
+				return false, err // fail deletion if funds transfer fails - we won't be able to recover funds after deletion
+			}
+			m.logger.Info("Successfully transferred funds from session key before deletion",
+				"userID", common.HashForLogging(user.ID),
+				"sessionKeyAddress", sessionKeyAddr.Hex())
+		}
 	}
 
 	err := m.storage.RemoveSessionKey(user.ID, &sessionKeyAddr)
@@ -147,6 +179,13 @@ func (m *skManager) SignTx(ctx context.Context, user *common.GWUser, sessionKeyA
 	}
 
 	m.logger.Debug("Signed transaction with session key", "stxHash", stx.Hash().Hex(), "sessionKey", sessionKeyAddr.Hex())
+	if m.activityTracker != nil {
+		m.activityTracker.MarkActive(user.ID, sessionKeyAddr)
+	}
 
 	return stx, nil
+}
+
+func (m *skManager) SetTxSender(txSender TxSender) {
+	m.txSender = txSender
 }

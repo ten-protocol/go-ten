@@ -26,17 +26,19 @@ type TenConfigOption func(*TenConfig) // option pattern - typically used as over
 
 // TenConfig describes the L2 network configuration we want to spin up
 type TenConfig struct {
-	PortStart          int
-	InitNumValidators  int
-	BatchInterval      time.Duration
-	RollupInterval     time.Duration
-	CrossChainInterval time.Duration
-	NumNodes           int
-	TenGatewayEnabled  bool
-	NumSeqEnclaves     int
-	L1BeaconPort       int
-	L1BlockTime        time.Duration
-	DeployerPK         string
+	PortStart           int
+	InitNumValidators   int
+	BatchInterval       time.Duration
+	RollupInterval      time.Duration
+	CrossChainInterval  time.Duration
+	NumNodes            int
+	TenGatewayEnabled   bool
+	NumSeqEnclaves      int
+	L1BeaconPort        int
+	L1BlockTime         time.Duration
+	DeployerPK          string
+	BackupEncryptionKey string
+	SharedSecret        string
 }
 
 func DefaultTenConfig() *TenConfig {
@@ -147,5 +149,19 @@ func WithHASequencer() TenConfigOption {
 func WithPredictableDeployer() TenConfigOption {
 	return func(tc *TenConfig) {
 		tc.DeployerPK = "f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb"
+	}
+}
+
+// WithBackupEncryptionKey - sets the backup encryption public key (hex-encoded) for the enclave.
+func WithBackupEncryptionKey(publicKeyHex string) TenConfigOption {
+	return func(tc *TenConfig) {
+		tc.BackupEncryptionKey = publicKeyHex
+	}
+}
+
+// WithSharedSecret - sets the shared secret (hex-encoded byte array) for the enclave.
+func WithSharedSecret(secretHex string) TenConfigOption {
+	return func(tc *TenConfig) {
+		tc.SharedSecret = secretHex
 	}
 }

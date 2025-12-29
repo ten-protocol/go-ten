@@ -1,0 +1,60 @@
+name: '[S] Geth Hard Fork Alert'
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # Every day at 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  check-geth-releases:
+    runs-on: self-hosted
+    environment: development
+    steps:
+      - name: Fetch latest go-ethereum release
+        id: latest
+        run: |
+          set -euo pipefail
+          curl -sSL https://api.github.com/repos/ethereum/go-ethereum/releases/latest > latest.json
+          echo "id=$(jq -r .id latest.json)" >> "$GITHUB_OUTPUT"
+          echo "name=$(jq -r .name latest.json)" >> "$GITHUB_OUTPUT"
+          echo "url=$(jq -r .html_url latest.json)" >> "$GITHUB_OUTPUT"
+
+      # Check release ID using the cache
+      - name: Check if this release was already notified
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: .release-notify
+          key: geth-release-${{ steps.latest.outputs.id }}
+
+      - name: Prepare cache dir
+        run: |
+          set -euo pipefail
+          mkdir -p .release-notify
+          echo "${{ steps.latest.outputs.id }}" > .release-notify/id
+
+      - name: Post fork notification to Discord
+        if: steps.cache.outputs.cache-hit != 'true'   # only post if we haven't seen this ID before
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+            echo "ERROR: DISCORD_WEBHOOK_URL secret is missing or empty."
+            exit 1
+          fi
+
+          title=$(jq -r '.name // "Geth Release"' latest.json)
+          url=$(jq -r '.html_url' latest.json)
+          body=$(jq -r '.body // ""' latest.json)
+
+          # Match any standalone "fork" (case-insensitive)
+          if printf '%s\n%s\n' "$title" "$body" | grep -iq '\bfork\b'; then
+            payload=$(jq -n --arg content "Fork mentioned in ${title} release. Please take a look or pay the iron price <#945360340613484684> ${url}" '{content: $content}')
+            curl -sS -H "Content-Type: application/json" -X POST \
+              -d "$payload" "$DISCORD_WEBHOOK_URL" \
+              -o /dev/stderr -w "\nHTTP %{http_code}\n"
+          else
+            echo "No 'fork' mention — skipping post."
+          fi

@@ -6,13 +6,83 @@ create table if not exists statedb32
 );
 create index IDX_KY32 on statedb32 (ky);
 
-create table if not exists statedb64
+create table if not exists statedb33
 (
     id  INTEGER PRIMARY KEY AUTOINCREMENT,
-    ky  varbinary(64) UNIQUE NOT NULL,
+    ky  binary(33) UNIQUE NOT NULL,
     val mediumblob
 );
-create index IDX_KY64 on statedb64 (ky);
+create index IDX_KY33 on statedb33 (ky);
+
+create table if not exists statedb33_trie_node_account
+(
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky  binary(33) UNIQUE NOT NULL,
+    val mediumblob
+);
+create index IDX_STATEDB33_TRIE_NODE_ACCOUNT on statedb33_trie_node_account (ky);
+
+create table if not exists statedb33_trie_node_storage
+(
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky  binary(33) UNIQUE NOT NULL,
+    val mediumblob
+);
+create index IDX_STATEDB33_TRIE_NODE_STORAGE on statedb33_trie_node_storage (ky);
+
+create table if not exists statedb33_state_id
+(
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky  binary(33) UNIQUE NOT NULL,
+    val mediumblob
+);
+create index IDX_STATEDB33_STATE_ID on statedb33_state_id (ky);
+
+create table if not exists statedb33_code
+(
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky  binary(33) UNIQUE NOT NULL,
+    val mediumblob
+);
+create index IDX_STATEDB33_CODE on statedb33_code (ky);
+
+create table if not exists statedb33_snapshot_storage
+(
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky  binary(33) UNIQUE NOT NULL,
+    val mediumblob
+);
+create index IDX_STATEDB33_SNAPSHOT_STORAGE on statedb33_snapshot_storage (ky);
+
+create table if not exists statedb33_snapshot_account
+(
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky  binary(34) UNIQUE NOT NULL,
+    val mediumblob
+);
+create index IDX_STATEDB33_SNAPSHOT_ACCOUNT on statedb33_snapshot_account (ky);
+
+create table if not exists statedb34
+(
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky  binary(34) UNIQUE NOT NULL,
+    val mediumblob
+    );
+create index IDX_KY34 on statedb34 (ky);
+
+create table if not exists statedb65
+(
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ky  varbinary(65) UNIQUE NOT NULL,
+    val mediumblob
+);
+create index IDX_KY65 on statedb65 (ky);
+
+create table if not exists triedb_journal
+(
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    val mediumblob NOT NULL
+);
 
 create table if not exists config
 (
@@ -28,6 +98,7 @@ create table if not exists attestation
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     enclave_id binary(20) UNIQUE NOT NULL,
     pub_key    binary(33)        NOT NULL,
+    report     mediumblob        NOT NULL,
     node_type  smallint          NOT NULL
 );
 

@@ -66,10 +66,10 @@ func (api *FilterAPI) NewHeads(ctx context.Context) (*rpc.Subscription, error) {
 }
 
 func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rpc.Subscription, error) {
-	services.Audit(api.we, services.DebugLevel, "start Logs subscription %v", crit)
+	api.we.Logger().Debug("start Logs subscription", "crit", SafeValueForLogging(crit))
 	subNotifier, user, err := getUserAndNotifier(ctx, api)
 	if err != nil {
-		services.Audit(api.we, services.DebugLevel, "Failed to get user and notifier: %v", err)
+		api.we.Logger().Debug("Failed to get user and notifier", "err", err)
 		return nil, err
 	}
 
@@ -165,9 +165,12 @@ func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *we
 		return nil, nil, errors.New("creation of subscriptions is not supported")
 	}
 
-	// todo - we might want to allow access to public logs
+	// Allow unauthenticated subscriptions with the default user
 	if len(subNotifier.UserID) == 0 {
-		return nil, nil, errors.New("illegal access")
+		if api.we.DefaultUser == nil {
+			return nil, nil, errors.New("default user not found")
+		}
+		return subNotifier, api.we.DefaultUser, nil
 	}
 
 	user, err := api.we.Storage.GetUser(subNotifier.UserID)
@@ -197,18 +200,18 @@ func (api *FilterAPI) NewFilter(crit common.FilterCriteria) (rpc.ID, error) {
 
 func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) ([]*types.Log, error) {
 	method := rpc2.ERPCGetLogs
-	services.Audit(api.we, services.DebugLevel, "RPC start method=%s args=%v", method, ctx)
+	api.we.Logger().Debug("RPC start", "method", method, "args", SafeArgsForLogging([]any{crit}))
 	requestStartTime := time.Now()
 	user, err := extractUserForRequest(ctx, api.we)
 	if err != nil {
-		services.Audit(api.we, services.DebugLevel, "Failed to extract user: %v", err)
+		api.we.Logger().Debug("Failed to extract user", "err", err)
 		return nil, err
 	}
 
 	rateLimitAllowed, requestUUID := api.we.RateLimiter.Allow(gethcommon.Address(user.ID))
 	defer api.we.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	if !rateLimitAllowed {
-		services.Audit(api.we, services.DebugLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
+		api.we.Logger().Debug("Rate limit exceeded for user", "userID", hexutils.BytesToHex(user.ID))
 		return nil, errors.New("rate limit exceeded")
 	}
 
@@ -271,7 +274,7 @@ func (api *FilterAPI) GetLogs(ctx context.Context, crit common.FilterCriteria) (
 	if err != nil {
 		return nil, err
 	}
-	services.Audit(api.we, services.DebugLevel, "RPC call. uid=%s, method=%s args=%v result=%v error=%v time=%d", hexutils.BytesToHex(user.ID), method, crit, res, err, time.Since(requestStartTime).Milliseconds())
+	api.we.Logger().Debug("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", SafeArgsForLogging([]any{crit}), "result", SafeValueForLogging(res), "err", err, "time", time.Since(requestStartTime).Milliseconds())
 	return *res, err
 }
 

@@ -84,18 +84,30 @@ echo "Test" > "${TEST_LOG_FILE}" 2>&1 &
 
 ${PRYSMCTL_BINARY} testnet generate-genesis \
            --fork deneb \
-           --num-validators 2 \
+           --num-validators 4 \
 	         --genesis-time-delay 5 \
            --chain-config-file "${BASE_PATH}/config.yml" \
            --geth-genesis-json-in "${BUILD_DIR}/genesis.json" \
 	         --geth-genesis-json-out "${BUILD_DIR}/genesis.json" \
 	         --output-ssz "${BEACONDATA_DIR}/genesis.ssz"
 
+
+# quick sanity
+ls -l "${BEACONDATA_DIR}/genesis.ssz" || { echo "genesis.ssz missing"; exit 1; }
+
 sleep 1
 echo "Prysm genesis generated"
 
 echo -e "\n\n" | ${GETH_BINARY} --datadir="${GETHDATA_DIR}" account import "${BASE_PATH}/pk.txt"
 echo "Private key imported into gethdata"
+
+# make osaka activate at the same time as prague
+jq '.config.osakaTime = .config.pragueTime' \
+  "${BUILD_DIR}/genesis.json" > "${BUILD_DIR}/genesis.patched.json" \
+  && mv "${BUILD_DIR}/genesis.patched.json" "${BUILD_DIR}/genesis.json"
+
+# sanity print
+jq '.config | {shanghaiTime, cancunTime, pragueTime, osakaTime}' "${BUILD_DIR}/genesis.json"
 
 ${GETH_BINARY} --datadir="${GETHDATA_DIR}" init "${BUILD_DIR}/genesis.json"
 sleep 1
@@ -119,7 +131,6 @@ ${BEACON_BINARY} --datadir="${BEACONDATA_DIR}" \
                --jwt-secret "${BASE_PATH}/jwt.hex" \
                --suggested-fee-recipient 0x123463a4B065722E99115D6c222f267d9cABb524 \
                --minimum-peers-per-subnet 0 \
-               --enable-debug-rpc-endpoints \
                --verbosity=debug \
                --execution-endpoint "${GETHDATA_DIR}/geth.ipc" > "${BEACON_LOG_FILE}" 2>&1 &
 beacon_pid=$!
@@ -128,8 +139,9 @@ echo "BEACON PID $beacon_pid"
 # Run Prysm validator client
 ${VALIDATOR_BINARY} --beacon-rpc-provider=127.0.0.1:"${BEACON_RPC_PORT}" \
             --datadir="${VALIDATORDATA_DIR}" \
+            --interop-num-validators 4 \
+            --interop-start-index 0 \
             --accept-terms-of-use \
-            --interop-num-validators 2 \
             --chain-config-file "${BASE_PATH}/config.yml" > "${VALIDATOR_LOG_FILE}" 2>&1 &
 validator_pid=$!
 echo "VALIDATOR PID $validator_pid"

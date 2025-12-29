@@ -50,8 +50,9 @@ type enclaveImpl struct {
 	adminAPI common.EnclaveAdmin
 	rpcAPI   common.EnclaveClientRPC
 
-	stopControl  *stopcontrol.StopControl
-	shutdownFunc func() // function to call when stopping the enclave (e.g. sys exit for docker but not for tests)
+	processingCtx context.Context // context for async data processing tasks that should not be canceled if RPC caller context is canceled
+	stopControl   *stopcontrol.StopControl
+	shutdownFunc  func() // function to call when stopping the enclave (e.g. sys exit for docker but not for tests)
 }
 
 // NewEnclave creates and initializes all the services of the enclave.
@@ -67,20 +68,36 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 	// Initialise the database
 	cachingService := storage.NewCacheService(logger, config.UseInMemoryDB)
 	storage := storage.NewStorageFromConfig(config, cachingService, chainConfig, logger)
+	err := storage.DeleteDirtyBlocks(context.Background())
+	if err != nil {
+		logger.Crit("failed to clean dirty blocks", log.ErrKey, err)
+	}
 
 	// attempt to fetch the enclave key from the database
 	// the enclave key is part of the attestation and identifies the current enclave
 	// if this is the first time the enclave starts, it has to generate a new key
 	enclaveKeyService := crypto.NewEnclaveAttestedKeyService(logger)
-	err := loadOrCreateEnclaveKey(storage, enclaveKeyService, logger)
+	err = loadOrCreateEnclaveKey(storage, enclaveKeyService, logger)
 	if err != nil {
 		logger.Crit("Failed to load or create enclave key", log.ErrKey, err)
 	}
 
 	sharedSecretService := crypto.NewSharedSecretService(logger)
-	err = loadSharedSecret(storage, sharedSecretService, logger)
-	if err != nil {
-		logger.Crit("Failed to load shared secret", log.ErrKey, err)
+
+	sharedSecret, err := storage.FetchSecret(context.Background())
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		logger.Crit("Failed to fetch secret", "err", err)
+	}
+
+	if sharedSecret != nil {
+		sharedSecretService.SetSharedSecret(sharedSecret)
+	} else if len(config.SharedSecret) != 0 {
+		// if the shared secret is configured explicitly, use it
+		// this is a breaking glass functionality to allow recovery after an extreme event
+		var configSharedSecret [crypto.SharedSecretLenInBytes]byte
+		copy(configSharedSecret[:], gethcommon.Hex2BytesFixed(config.SharedSecret, crypto.SharedSecretLenInBytes))
+		sharedSecretService.SetSharedSecret((*crypto.SharedEnclaveSecret)(&configSharedSecret))
+		logger.Info("Started node with configured shared secret")
 	}
 
 	daEncryptionService := crypto.NewDAEncryptionService(sharedSecretService, logger)
@@ -112,41 +129,35 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 
 	tenChain := components.NewChain(storage, config, evmFacade, gethEncodingService, chainConfig, genesis, logger, batchRegistry)
 
+	// note: this has to happen after the sync of executed batches as the mempool needs to know the current state
 	mempool, err := components.NewTxPool(batchRegistry.EthChain(), config, tenChain, storage, batchRegistry, blockProcessor, gasOracle, gasPricer, config.MinGasPrice, true, logger)
 	if err != nil {
 		logger.Crit("unable to init eth tx pool", log.ErrKey, err)
 	}
-
 	batchExecutor := components.NewBatchExecutor(storage, batchRegistry, evmFacade, config, gethEncodingService, crossChainProcessors, genesis, gasOracle, chainConfig, scb, evmEntropyService, mempool, dataCompressionService, gasPricer, logger)
-
-	// ensure EVM state data is up-to-date using the persisted batch data
-	err = syncExecutedBatchesWithEVMStateDB(context.Background(), storage, batchRegistry, logger)
-	if err != nil {
-		logger.Crit("failed to resync L2 chain state DB after restart", log.ErrKey, err)
-	}
 
 	subscriptionManager := events.NewSubscriptionManager(storage, batchRegistry, config.TenChainID, logger)
 
 	// todo (#1474) - make sure the enclave cannot be started in production with WillAttest=false
 	attestationProvider := components.NewAttestationProvider(enclaveKeyService, config.WillAttest, logger)
 
+	processingCtx, cancelProcessingCtx := context.WithCancel(context.Background())
 	// signal to stop the enclave
 	stopControl := stopcontrol.New()
 
 	// shutdownFunc is called after services attempt a graceful shutdown.
 	// For tests, we don't want the process to exit, but in docker we do
-	shutdownFunc := func() {}
+	shutdownFunc := func() {
+		cancelProcessingCtx()
+		logger.Info("enclave shutdown complete")
+	}
 	if config.WillAttest { // using attestation as a signal that this is a production enclave
 		shutdownFunc = func() {
+			cancelProcessingCtx()
 			time.Sleep(1 * time.Second)
 			fmt.Println("enclave shutdown complete")
 			os.Exit(0)
 		}
-	}
-
-	err = storage.DeleteDirtyBlocks(context.Background())
-	if err != nil {
-		logger.Crit("failed to clean dirty blocks", log.ErrKey, err)
 	}
 
 	// these services are directly exposed as the API of the Enclave
@@ -156,11 +167,12 @@ func NewEnclave(config *enclaveconfig.EnclaveConfig, genesis *genesis.Genesis, c
 
 	logger.Info("Enclave service created successfully.", log.EnclaveIDKey, enclaveKeyService.EnclaveID())
 	return &enclaveImpl{
-		initAPI:      initAPI,
-		adminAPI:     adminAPI,
-		rpcAPI:       rpcAPI,
-		stopControl:  stopControl,
-		shutdownFunc: shutdownFunc,
+		initAPI:       initAPI,
+		adminAPI:      adminAPI,
+		rpcAPI:        rpcAPI,
+		processingCtx: processingCtx,
+		stopControl:   stopControl,
+		shutdownFunc:  shutdownFunc,
 	}
 }
 
@@ -221,6 +233,13 @@ func (e *enclaveImpl) EnclavePublicConfig(ctx context.Context) (*common.EnclaveP
 	return e.rpcAPI.EnclavePublicConfig(ctx)
 }
 
+func (e *enclaveImpl) FetchSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, common.SystemError) {
+	if systemError := checkStopping(e.stopControl); systemError != nil {
+		return nil, systemError
+	}
+	return e.rpcAPI.FetchSequencerAttestations(ctx)
+}
+
 func (e *enclaveImpl) EncryptedRPC(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.EnclaveResponse, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
@@ -260,6 +279,13 @@ func (e *enclaveImpl) ExportCrossChainData(ctx context.Context, fromSeqNo uint64
 	return e.adminAPI.ExportCrossChainData(ctx, fromSeqNo, toSeqNo)
 }
 
+func (e *enclaveImpl) BackupSharedSecret(ctx context.Context) ([]byte, common.SystemError) {
+	if systemError := checkStopping(e.stopControl); systemError != nil {
+		return nil, systemError
+	}
+	return e.adminAPI.BackupSharedSecret(ctx)
+}
+
 func (e *enclaveImpl) GetBatch(ctx context.Context, hash common.L2BatchHash) (*common.ExtBatch, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
@@ -290,14 +316,16 @@ func (e *enclaveImpl) SubmitL1Block(ctx context.Context, processed *common.Proce
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.adminAPI.SubmitL1Block(ctx, processed)
+	// pass a background context here as the data processing should not be canceled by the caller disconnecting
+	return e.adminAPI.SubmitL1Block(e.processingCtx, processed)
 }
 
 func (e *enclaveImpl) SubmitBatch(ctx context.Context, extBatch *common.ExtBatch) common.SystemError {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return systemError
 	}
-	return e.adminAPI.SubmitBatch(ctx, extBatch)
+	// pass a background context here as the data processing should not be canceled by the caller disconnecting
+	return e.adminAPI.SubmitBatch(e.processingCtx, extBatch)
 }
 
 func (e *enclaveImpl) CreateBatch(ctx context.Context, skipBatchIfEmpty bool) common.SystemError {
@@ -339,17 +367,6 @@ func (e *enclaveImpl) Stop() common.SystemError {
 func checkStopping(s *stopcontrol.StopControl) common.SystemError {
 	if s.IsStopping() {
 		return responses.ToInternalError(fmt.Errorf("enclave is stopping"))
-	}
-	return nil
-}
-
-func loadSharedSecret(storage storage.Storage, sharedSecretService *crypto.SharedSecretService, logger gethlog.Logger) error {
-	sharedSecret, err := storage.FetchSecret(context.Background())
-	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
-		logger.Crit("Failed to fetch secret", "err", err)
-	}
-	if sharedSecret != nil {
-		sharedSecretService.SetSharedSecret(sharedSecret)
 	}
 	return nil
 }

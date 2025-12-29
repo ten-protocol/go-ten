@@ -313,13 +313,13 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 }
 
 func EstimateRollupSize(db HostDB, fromSeqNo *big.Int) (uint64, error) {
-	var totalTx uint64
+	var total sql.NullInt64
 	reboundQuery := db.GetSQLDB().Rebind(selectSumBatchSizes)
-	err := db.GetSQLDB().QueryRow(reboundQuery, fromSeqNo.Uint64()).Scan(&totalTx)
+	err := db.GetSQLDB().QueryRow(reboundQuery, fromSeqNo.Uint64()).Scan(&total)
 	if err != nil {
 		return 0, fmt.Errorf("failed to query sum of rollup batches: %w", err)
 	}
-	return totalTx, nil
+	return uint64(total.Int64), nil
 }
 
 func fetchBatchHeader(db HostDB, whereQuery string, args ...any) (*common.BatchHeader, error) {
@@ -370,35 +370,15 @@ func fetchBatchNumber(db HostDB, args ...any) (*big.Int, error) {
 }
 
 func fetchPublicBatch(db HostDB, whereQuery string, args ...any) (*common.PublicBatch, error) {
-	var sequenceInt64 uint64
-	var fullHash common.TxHash
-	var heightInt64 int
-	var extBatch []byte
-
-	query := selectBatch + whereQuery
-	reboundQuery := db.GetSQLDB().Rebind(query)
-	var err error
-	if len(args) > 0 {
-		err = db.GetSQLDB().QueryRow(reboundQuery, args...).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
-	} else {
-		err = db.GetSQLDB().QueryRow(reboundQuery).Scan(&sequenceInt64, &fullHash, &heightInt64, &extBatch)
-	}
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, errutil.ErrNotFound
-		}
-		return nil, fmt.Errorf("failed to scan with query %s - %w", query, err)
-	}
-	var b common.ExtBatch
-	err = rlp.DecodeBytes(extBatch, &b)
+	b, err := fetchFullBatch(db, whereQuery, args...)
 	if err != nil {
 		return nil, fmt.Errorf("could not decode ext batch. Cause: %w", err)
 	}
 
 	batch := &common.PublicBatch{
-		SequencerOrderNo: new(big.Int).SetInt64(int64(sequenceInt64)),
-		FullHash:         fullHash,
-		Height:           new(big.Int).SetInt64(int64(heightInt64)),
+		SequencerOrderNo: b.SeqNo(),
+		FullHash:         b.Hash(),
+		Height:           b.Header.Number,
 		Header:           b.Header,
 		EncryptedTxBlob:  b.EncryptedTxBlob,
 		TxHashes:         b.TxHashes,

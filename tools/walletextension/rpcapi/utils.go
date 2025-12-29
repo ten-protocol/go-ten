@@ -42,7 +42,10 @@ const (
 	sendTransactionDuration = 20 * time.Second
 )
 
-var ErrRPCNotImplemented = errors.New("rpc endpoint not implemented")
+var (
+	ErrRPCNotImplemented          = errors.New("rpc endpoint not implemented")
+	ErrAuthenticationTokenMissing = errors.New("authentication token missing")
+)
 
 type AuthExecCfg struct {
 	// these 4 fields specify the account(s) that should make the backend call
@@ -68,7 +71,7 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 	if ctx == nil {
 		return nil, errors.New("invalid call. nil Context")
 	}
-	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
+	w.Logger().Debug("RPC start", "method", method, "args", SafeArgsForLogging(args))
 	requestStartTime := time.Now()
 	cacheArgs := []any{method}
 	cacheArgs = append(cacheArgs, args...)
@@ -87,30 +90,47 @@ func UnauthenticatedTenRPCCall[R any](ctx context.Context, w *services.Services,
 		})
 	})
 	if err != nil {
-		services.Audit(w, services.ErrorLevel, "RPC call failed. method=%s args=%v error=%+v time=%d", method, args, err, time.Since(requestStartTime).Milliseconds())
+		w.Logger().Error("RPC call failed", "method", method, "args", SafeArgsForLogging(args), "err", err, "time", time.Since(requestStartTime).Milliseconds())
 		return nil, err
 	}
 
-	services.Audit(w, services.InfoLevel, "RPC call succeeded. method=%s args=%v result=%+v time=%d", method, args, res, time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("RPC call succeeded", "method", method, "args", SafeArgsForLogging(args), "result", SafeValueForLogging(res), "time", time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
 func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExecCfg, method string, args ...any) (*R, error) {
-	services.Audit(w, services.DebugLevel, "RPC start method=%s args=%v", method, args)
+	w.Logger().Debug("RPC start", "method", method, "args", SafeArgsForLogging(args))
 	requestStartTime := time.Now()
+
+	// get the user from the request
 	user, err := extractUserForRequest(ctx, w)
-	if err != nil {
+
+	switch err {
+	case nil:
+		// proced with the user from the request
+	case ErrAuthenticationTokenMissing:
+		// use the default user for public access & return error if not found
+		user = w.DefaultUser
+		if user == nil {
+			w.Logger().Warn("Default user not found")
+			return nil, errors.New("default user not found")
+		}
+	default:
+		// return the error
 		return nil, err
 	}
 
 	w.MetricsTracker.RecordUserActivity(user.ID)
 
-	rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
-	if !rateLimitAllowed {
-		services.Audit(w, services.WarnLevel, "Rate limit exceeded for user: %s", hexutils.BytesToHex(user.ID))
-		return nil, errors.New("rate limit exceeded")
+	// use rate limiting for non-default users
+	if user != w.DefaultUser {
+		rateLimitAllowed, requestUUID := w.RateLimiter.Allow(gethcommon.Address(user.ID))
+		if !rateLimitAllowed {
+			w.Logger().Warn("Rate limit exceeded for user", "userID", hexutils.BytesToHex(user.ID))
+			return nil, errors.New("rate limit exceeded")
+		}
+		defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 	}
-	defer w.RateLimiter.SetRequestEnd(gethcommon.Address(user.ID), requestUUID)
 
 	cacheArgs := []any{user.ID, method}
 	cacheArgs = append(cacheArgs, args...)
@@ -163,7 +183,7 @@ func ExecAuthRPC[R any](ctx context.Context, w *services.Services, cfg *AuthExec
 		}
 		return nil, rpcErr
 	})
-	services.Audit(w, services.InfoLevel, "RPC call. uid=%s, method=%s args=%v result=%s error=%s time=%d", hexutils.BytesToHex(user.ID), method, args, SafeGenericToString(res), err, time.Since(requestStartTime).Milliseconds())
+	w.Logger().Info("RPC call", "uid", hexutils.BytesToHex(user.ID), "method", method, "args", SafeArgsForLogging(args), "result", SafeValueForLogging(res), "err", err, "time", time.Since(requestStartTime).Milliseconds())
 	return res, err
 }
 
@@ -205,6 +225,9 @@ func extractUserID(ctx context.Context, _ *services.Services) ([]byte, error) {
 	token, ok := ctx.Value(rpc.GWTokenKey{}).(string)
 	if !ok {
 		return nil, fmt.Errorf("invalid authentication token: %s", ctx.Value(rpc.GWTokenKey{}))
+	}
+	if len(strings.TrimSpace(token)) == 0 {
+		return nil, ErrAuthenticationTokenMissing
 	}
 	userID := gethcommon.FromHex(token)
 	if len(userID) != viewingkey.UserIDLength {
@@ -255,57 +278,145 @@ func cacheBlockNumber(lastBlock rpc.BlockNumber) cache.Strategy {
 	return cache.LatestBatch
 }
 
-func SafeGenericToString[R any](r *R) string {
-	if r == nil {
-		return "nil"
+// SafeArgsForLogging replaces nil fmt.Stringer pointers in args with "<nil>" to prevent segfaults
+func SafeArgsForLogging(args []any) string {
+	if len(args) == 0 {
+		return "[]"
 	}
-
-	v := reflect.ValueOf(r).Elem()
-	t := v.Type()
-
-	switch v.Kind() {
-	case reflect.Struct:
-		return structToString(v, t)
-	default:
-		return fmt.Sprintf("%v", v.Interface())
+	var b strings.Builder
+	b.WriteByte('[')
+	for i, arg := range args {
+		if i > 0 {
+			b.WriteString(", ")
+		}
+		safeStringify(&b, reflect.ValueOf(arg), 0)
 	}
+	b.WriteByte(']')
+	return b.String()
 }
 
-func structToString(v reflect.Value, t reflect.Type) string {
-	var parts []string
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Field(i)
-		fieldType := t.Field(i)
-		fieldName := fieldType.Name
+// SafeValueForLogging safely converts a value to a string for logging, handling nil pointers
+func SafeValueForLogging(v any) string {
+	var b strings.Builder
+	safeStringify(&b, reflect.ValueOf(v), 0)
+	return b.String()
+}
 
-		if !fieldType.IsExported() {
-			parts = append(parts, fmt.Sprintf("%s: <unexported>", fieldName))
-			continue
-		}
+const (
+	// maxDepth limits the recursion depth when stringifying nested structures to prevent infinite loops
+	maxDepth = 5
+	// maxSliceElements limits the number of slice elements to log before truncating with "...+X more"
+	maxSliceElements = 10
+	// maxMapEntries limits the number of map key-value pairs to log before truncating
+	maxMapEntries = 5
+	// maxStructFields limits the number of struct fields to log before truncating
+	maxStructFields = 10
+)
 
-		fieldStr := fmt.Sprintf("%s: ", fieldName)
-
-		switch field.Kind() {
-		case reflect.Ptr:
-			if field.IsNil() {
-				fieldStr += "nil"
-			} else {
-				fieldStr += fmt.Sprintf("%v", field.Elem().Interface())
-			}
-		case reflect.Slice, reflect.Array:
-			if field.Len() > 10 {
-				fieldStr += fmt.Sprintf("%v (length: %d)", field.Slice(0, 10).Interface(), field.Len())
-			} else {
-				fieldStr += fmt.Sprintf("%v", field.Interface())
-			}
-		case reflect.Struct:
-			fieldStr += "{...}" // Avoid recursive calls for nested structs
-		default:
-			fieldStr += fmt.Sprintf("%v", field.Interface())
-		}
-
-		parts = append(parts, fieldStr)
+func safeStringify(b *strings.Builder, rv reflect.Value, depth int) {
+	if depth > maxDepth {
+		b.WriteString("...")
+		return
 	}
 
-	return fmt.Sprintf("%s{%s}", t.Name(), strings.Join(parts, ", "))
+	if !rv.IsValid() {
+		b.WriteString("<nil>")
+		return
+	}
+
+	switch rv.Kind() {
+	case reflect.Interface:
+		if rv.IsZero() {
+			fmt.Fprintf(b, "<%s nil>", rv.Type())
+			return
+		}
+		safeStringify(b, rv.Elem(), depth+1)
+		return
+
+	case reflect.Ptr:
+		if rv.IsNil() {
+			fmt.Fprintf(b, "<%s nil>", rv.Type())
+			return
+		}
+		safeStringify(b, rv.Elem(), depth+1)
+		return
+
+	case reflect.Slice:
+		if rv.IsNil() {
+			fmt.Fprintf(b, "<%s nil>", rv.Type())
+			return
+		}
+		b.WriteByte('[')
+		for i := 0; i < rv.Len() && i < maxSliceElements; i++ {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			safeStringify(b, rv.Index(i), depth+1)
+		}
+		if rv.Len() > maxSliceElements {
+			fmt.Fprintf(b, "...+%d more", rv.Len()-maxSliceElements)
+		}
+		b.WriteByte(']')
+		return
+
+	case reflect.Map:
+		if rv.IsNil() {
+			fmt.Fprintf(b, "<%s nil>", rv.Type())
+			return
+		}
+		b.WriteString("map[")
+		iter := rv.MapRange()
+		count := 0
+		for iter.Next() && count < maxMapEntries {
+			if count > 0 {
+				b.WriteString(", ")
+			}
+			safeStringify(b, iter.Key(), depth+1)
+			b.WriteByte(':')
+			safeStringify(b, iter.Value(), depth+1)
+			count++
+		}
+		b.WriteByte(']')
+		return
+
+	case reflect.Struct:
+		b.WriteByte('{')
+		t := rv.Type()
+		for i := 0; i < rv.NumField() && i < maxStructFields; i++ {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(t.Field(i).Name)
+			b.WriteByte(':')
+			field := rv.Field(i)
+			if field.CanInterface() {
+				safeStringify(b, field, depth+1)
+			} else {
+				b.WriteString("<unexported>")
+			}
+		}
+		b.WriteByte('}')
+		return
+
+	case reflect.Chan, reflect.Func:
+		if rv.IsNil() {
+			fmt.Fprintf(b, "<%s nil>", rv.Type())
+		} else {
+			fmt.Fprintf(b, "<%s>", rv.Type())
+		}
+		return
+
+	case reflect.String:
+		fmt.Fprintf(b, "%q", rv.String())
+	case reflect.Bool:
+		fmt.Fprintf(b, "%t", rv.Bool())
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		fmt.Fprintf(b, "%d", rv.Int())
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		fmt.Fprintf(b, "%d", rv.Uint())
+	case reflect.Float32, reflect.Float64:
+		fmt.Fprintf(b, "%g", rv.Float())
+	default:
+		fmt.Fprintf(b, "<%s>", rv.Type())
+	}
 }

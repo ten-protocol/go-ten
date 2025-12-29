@@ -174,6 +174,15 @@ func (s *RPCServer) SubmitBatch(ctx context.Context, request *generated.SubmitBa
 	return &generated.SubmitBatchResponse{SystemError: toRPCError(sysError)}, nil
 }
 
+func (s *RPCServer) BackupSharedSecret(ctx context.Context, _ *generated.BackupSharedSecretRequest) (*generated.BackupSharedSecretResponse, error) {
+	encryptedSecret, sysError := s.enclave.BackupSharedSecret(ctx)
+	if sysError != nil {
+		s.logger.Error("Error backing up shared secret", log.ErrKey, sysError)
+		return &generated.BackupSharedSecretResponse{SystemError: toRPCError(sysError)}, nil
+	}
+	return &generated.BackupSharedSecretResponse{Secret: encryptedSecret}, nil
+}
+
 func (s *RPCServer) Stop(context.Context, *generated.StopRequest) (*generated.StopResponse, error) {
 	// stop the grpcServer on its own goroutine to avoid killing the existing connection
 	go s.grpcServer.GracefulStop()
@@ -413,6 +422,27 @@ func (s *RPCServer) EnclavePublicConfig(ctx context.Context, _ *generated.Enclav
 		TransactionPostProcessorAddress: enclaveCfg.TransactionPostProcessorAddress.Bytes(),
 		SystemContractsUpgraderAddress:  enclaveCfg.SystemContractsUpgrader.Bytes(),
 		PublicSystemContracts:           publicContracts,
+	}, nil
+}
+
+func (s *RPCServer) FetchSequencerAttestations(ctx context.Context, _ *generated.SequencerAttestationRequest) (*generated.SequencerAttestationResponse, error) {
+	reports, sysError := s.enclave.FetchSequencerAttestations(ctx)
+	if sysError != nil {
+		s.logger.Error("Error fetching sequencer attestations", log.ErrKey, sysError)
+		return &generated.SequencerAttestationResponse{SystemError: toRPCError(sysError)}, nil
+	}
+
+	protoReports := make([]*generated.PublicAttestationReportMsg, 0, len(reports))
+	for _, r := range reports {
+		protoReports = append(protoReports, &generated.PublicAttestationReportMsg{
+			EnclaveID: r.EnclaveID.Bytes(),
+			PublicKey: r.PubKey,
+			Report:    r.Report,
+		})
+	}
+
+	return &generated.SequencerAttestationResponse{
+		Reports: protoReports,
 	}, nil
 }
 

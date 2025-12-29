@@ -4,8 +4,6 @@ import (
 	"context"
 	"math/big"
 
-	"github.com/ten-protocol/go-ten/go/host/storage"
-
 	"github.com/ten-protocol/go-ten/go/responses"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
@@ -79,7 +77,6 @@ type P2PBatchRequestHandler interface {
 
 // L1DataService provides an interface for the host to request L1 block data (live-streaming and historical)
 type L1DataService interface {
-	SetBlockResolver(br storage.BlockResolver)
 	// Subscribe will register a block handler to receive new blocks as they arrive, returns unsubscribe func
 	Subscribe(handler L1BlockHandler) func()
 
@@ -164,6 +161,9 @@ type EnclaveService interface {
 
 	// GetEnclaveClients returns a list of all enclave clients
 	GetEnclaveClients() []common.Enclave
+
+	// GetSequencerAttestations returns the attestation reports for the sequencer enclaves
+	GetSequencerAttestations(ctx context.Context) ([]*common.AttestationReport, error)
 
 	// SubmitAndBroadcastTx submits an encrypted transaction to the enclave, and broadcasts it to other hosts on the network (in particular, to the sequencer)
 	SubmitAndBroadcastTx(ctx context.Context, encryptedParams common.EncryptedRequest) (*responses.RawTx, error)
