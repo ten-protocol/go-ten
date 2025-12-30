@@ -74,7 +74,7 @@ func (nhs *NewHeadsService) _subscribe(inputCh chan *common.BatchHeader, errChan
 		},
 		backedUnsub,
 		nhs.stopped,
-		2*time.Minute, // revert to original timeout
+		2*time.Minute, // todo - create constant
 		nhs.logger,
 	)
 }
