@@ -279,7 +279,7 @@ func connect(rpcURL string, connectionTimeout time.Duration, logger gethlog.Logg
 	var c *ethclient.Client
 	retryInterval := 1 * time.Second
 	for start := time.Now(); time.Since(start) < connectionTimeout; time.Sleep(retryInterval) {
-		c, err = ethclient.DialContext(context.Background(), rpcURL)
+		c, err = ethclient.Dial(rpcURL)
 		if err == nil {
 			break
 		}
