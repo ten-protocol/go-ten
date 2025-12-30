@@ -89,15 +89,10 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		return nil, err
 	}
 
-	tailSize := "7"
-	if n.cfg.DebugEnabled {
-		tailSize = "8"
-	}
-
 	logsOptions := container.LogsOptions{
 		ShowStdout: true,
 		ShowStderr: true,
-		Tail:       tailSize,
+		Tail:       "50", // fetch more lines to ensure we capture all contract addresses
 	}
 
 	// Read the container logs
@@ -114,42 +109,39 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 		return nil, err
 	}
 
-	// Get the last lines
 	output := buf.String()
-	fmt.Printf("L2 Deployer output %s\n", output)
+	fmt.Printf("L1 Deployer output:\n%s\n", output)
 
-	lines := strings.Split(output, "\n")
-
-	if n.cfg.DebugEnabled {
-		// remove debugger lines
-		lines = lines[:len(lines)-2]
-	}
-
-	networkConfigAddr, err := findAddress(lines[0])
+	// Parse contract addresses by searching for specific keys in the output
+	// This is more robust than relying on exact line positions
+	networkConfigAddr, err := findAddressByKey(output, "NetworkConfig")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find NetworkConfig address: %w", err)
 	}
-	crossChainAddr, err := findAddress(lines[1])
+	crossChainAddr, err := findAddressByKey(output, "CrossChain")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find CrossChain address: %w", err)
 	}
-	messageBusAddr, err := findAddress(lines[2])
+	messageBusAddr, err := findAddressByKey(output, "MerkleMessageBus")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find MerkleMessageBus address: %w", err)
 	}
-	enclaveRegistryAddr, err := findAddress(lines[3])
+	enclaveRegistryAddr, err := findAddressByKey(output, "NetworkEnclaveRegistry")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find NetworkEnclaveRegistry address: %w", err)
 	}
-	daRegistryAddr, err := findAddress(lines[4])
+	daRegistryAddr, err := findAddressByKey(output, "DataAvailabilityRegistry")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find DataAvailabilityRegistry address: %w", err)
 	}
-	bridgeAddress, err := findAddress(lines[5])
+	bridgeAddress, err := findAddressByKey(output, "L1Bridge")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to find L1Bridge address: %w", err)
 	}
-	l1BlockHash := readValue("L1Start", lines[6])
+	l1BlockHash, err := findValueByKey(output, "L1Start")
+	if err != nil {
+		return nil, fmt.Errorf("failed to find L1Start hash: %w", err)
+	}
 
 	return &node.NetworkConfig{
 		EnclaveRegistryAddress:          enclaveRegistryAddr,
@@ -162,22 +154,57 @@ func (n *ContractDeployer) RetrieveL1ContractAddresses() (*node.NetworkConfig, e
 	}, nil
 }
 
-func findAddress(line string) (string, error) {
-	// Regular expression to match Ethereum addresses
-	re := regexp.MustCompile("(0x[a-fA-F0-9]{40})")
-
-	// Find all Ethereum addresses in the text
-	matches := re.FindAllString(line, -1)
-
-	if len(matches) == 0 {
-		return "", fmt.Errorf("no address found in: %s", line)
+// findAddressByKey searches for a line containing "key=" and extracts the Ethereum address from it.
+// This is more robust than relying on exact line positions in the output.
+func findAddressByKey(output, key string) (string, error) {
+	// Look for pattern like "NetworkConfig= 0x..." or "NetworkConfig=0x..."
+	keyPattern := regexp.MustCompile(key + `=\s*(0x[a-fA-F0-9]{40})`)
+	matches := keyPattern.FindStringSubmatch(output)
+	if len(matches) >= 2 {
+		return matches[1], nil
 	}
-	// Print the last
-	return matches[len(matches)-1], nil
+
+	// Fallback: find the line containing the key and extract any address from it
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, key+"=") {
+			addrPattern := regexp.MustCompile(`(0x[a-fA-F0-9]{40})`)
+			addrMatches := addrPattern.FindStringSubmatch(line)
+			if len(addrMatches) >= 1 {
+				return addrMatches[1], nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no address found for key %s in output", key)
 }
 
-func readValue(name string, line string) string {
-	parts := strings.Split(line, fmt.Sprintf("%s=", name))
-	val := strings.TrimSpace(parts[len(parts)-1])
-	return val
+// findValueByKey searches for a line containing "key=" and extracts the value after it.
+// Used for non-address values like block hashes.
+func findValueByKey(output, key string) (string, error) {
+	// Look for pattern like "L1Start= 0x..." or "L1Start=0x..."
+	keyPattern := regexp.MustCompile(key + `=\s*(0x[a-fA-F0-9]+)`)
+	matches := keyPattern.FindStringSubmatch(output)
+	if len(matches) >= 2 {
+		return matches[1], nil
+	}
+
+	// Fallback: find the line containing the key and extract the value
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.Contains(line, key+"=") {
+			parts := strings.Split(line, key+"=")
+			if len(parts) >= 2 {
+				val := strings.TrimSpace(parts[1])
+				// Extract just the hex value (stop at whitespace or newline)
+				hexPattern := regexp.MustCompile(`(0x[a-fA-F0-9]+)`)
+				hexMatches := hexPattern.FindStringSubmatch(val)
+				if len(hexMatches) >= 1 {
+					return hexMatches[1], nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no value found for key %s in output", key)
 }
