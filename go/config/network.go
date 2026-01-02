@@ -57,8 +57,9 @@ type L1Config struct {
 	BlockTime        time.Duration   `mapstructure:"blockTime"`        // average expected block time for the L1 network
 	RollupRetryDelay time.Duration   `mapstructure:"rollupRetryDelay"` // delay rollup publishing when gas price spikes
 	StartHash        gethcommon.Hash `mapstructure:"startHash"`        // hash of the first block on the L1 network relevant to the Ten network
-
-	L1Contracts *L1Contracts `mapstructure:"contracts"`
+	TimeoutBlocks    int             `mapstructure:"timeoutBlocks"`    // number of blocks we wait before disconnecting if no blocks seen
+	MaxBlobRetries   int             `mapstructure:"maxBlobRetries"`   // number of retry attempts to publish a blob
+	L1Contracts      *L1Contracts    `mapstructure:"contracts"`
 }
 
 // L1Contracts contains the addresses of Ten contracts on the L1 network

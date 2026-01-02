@@ -102,8 +102,8 @@ func NewHostContainerFromConfig(cfg *hostconfig.HostConfig, logger gethlog.Logge
 		logger = log.New(log.HostCmp, cfg.LogLevel, cfg.LogPath, log.NodeIDKey, cfg.ID)
 	}
 
-	fmt.Printf("Building host container with config: %+v\n", cfg)
-	logger.Info(fmt.Sprintf("Building host container with config: %+v", cfg))
+	fmt.Printf("Building host container with config: %+v\n", cfg.Redacted())
+	logger.Info(fmt.Sprintf("Building host container with config: %+v", cfg.Redacted()))
 
 	ethWallet := wallet.NewInMemoryWalletFromConfig(cfg.PrivateKeyString, cfg.L1ChainID, log.New("wallet", cfg.LogLevel, cfg.LogPath))
 

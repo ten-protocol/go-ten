@@ -5,7 +5,7 @@ GRANT ALL ON tendb.* TO ten;
 create table if not exists tendb.statedb32
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  binary(32) NOT NULL,
+    ky  varbinary(32) NOT NULL,
     val mediumblob,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)
@@ -14,7 +14,7 @@ create table if not exists tendb.statedb32
 create table if not exists tendb.statedb33
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  binary(33) NOT NULL,
+    ky  varbinary(33) NOT NULL,
     val mediumblob,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)
@@ -23,7 +23,7 @@ create table if not exists tendb.statedb33
 create table if not exists tendb.statedb33_trie_node_account
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  binary(33) NOT NULL,
+    ky  varbinary(33) NOT NULL,
     val mediumblob,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)
@@ -32,7 +32,7 @@ create table if not exists tendb.statedb33_trie_node_account
 create table if not exists tendb.statedb33_trie_node_storage
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  binary(33) NOT NULL,
+    ky  varbinary(33) NOT NULL,
     val mediumblob,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)
@@ -41,7 +41,7 @@ create table if not exists tendb.statedb33_trie_node_storage
 create table if not exists tendb.statedb33_state_id
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  binary(33) NOT NULL,
+    ky  varbinary(33) NOT NULL,
     val mediumblob,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)
@@ -50,7 +50,7 @@ create table if not exists tendb.statedb33_state_id
 create table if not exists tendb.statedb33_code
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  binary(33) NOT NULL,
+    ky  varbinary(33) NOT NULL,
     val mediumblob,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)
@@ -59,7 +59,7 @@ create table if not exists tendb.statedb33_code
 create table if not exists tendb.statedb33_snapshot_storage
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  binary(33) NOT NULL,
+    ky  varbinary(33) NOT NULL,
     val mediumblob,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)
@@ -68,7 +68,7 @@ create table if not exists tendb.statedb33_snapshot_storage
 create table if not exists tendb.statedb33_snapshot_account
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  binary(33) NOT NULL,
+    ky  varbinary(33) NOT NULL,
     val mediumblob,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)
@@ -77,7 +77,7 @@ create table if not exists tendb.statedb33_snapshot_account
 create table if not exists tendb.statedb34
 (
     id  INTEGER AUTO_INCREMENT,
-    ky  binary(34) NOT NULL,
+    ky  varbinary(34) NOT NULL,
     val mediumblob,
     primary key (id),
     UNIQUE INDEX USING HASH (ky)

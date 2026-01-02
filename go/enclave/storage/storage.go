@@ -106,14 +106,26 @@ func NewStorage(backingDB enclavedb.EnclaveDB, cachingService *CacheService, con
 	}
 }
 
-func (s *storageImpl) closeTrieDB() {
-	// to enable verkle trie, uncomment the following lines
+func (s *storageImpl) journal() error {
 	head, err := s.FetchHeadBatchHeader(context.Background())
 	if err != nil {
 		s.logger.Error("Failed to fetch head batch header", "err", err)
+		return err
+	}
+	if head.Number.Uint64() <= common.L2GenesisHeight+3 {
+		return nil
 	}
 	if err = s.trieDB.Journal(head.Root); err != nil {
 		s.logger.Error("Failed to journal in-memory trie nodes", "err", err)
+		return err
+	}
+	return nil
+}
+
+func (s *storageImpl) closeTrieDB() {
+	err := s.journal()
+	if err != nil {
+		s.logger.Error("Failed to journal trie db", "err", err)
 	}
 	err = s.trieDB.Close()
 	if err != nil {
@@ -522,6 +534,10 @@ func (s *storageImpl) EmptyStateDB() (*state.StateDB, error) {
 
 func (s *storageImpl) StateAt(root gethcommon.Hash) (*state.StateDB, error) {
 	return state.New(root, s.stateCache)
+}
+
+func (s *storageImpl) OpenTrie(root gethcommon.Hash) (state.Trie, error) {
+	return s.stateCache.OpenTrie(root)
 }
 
 func (s *storageImpl) GetTransaction(ctx context.Context, txHash common.L2TxHash) (*types.Transaction, common.L2BatchHash, uint64, uint64, gethcommon.Address, error) {
@@ -1150,6 +1166,12 @@ func (s *storageImpl) logDuration(method string, stopWatch *measure.Stopwatch) {
 func (s *storageImpl) StoreSystemContractAddresses(ctx context.Context, addresses common.SystemContractAddresses) error {
 	defer s.logDuration("StoreSystemContractAddresses", measure.NewStopwatch())
 
+	existingAddresses, err := s.GetSystemContractAddresses(ctx)
+	if err != nil && !errors.Is(err, errutil.ErrNotFound) {
+		// log but don't fail, this was only for logging purposes - attempt the update still
+		s.logger.Warn("Could not fetch existing system contract addresses", log.ErrKey, err)
+	}
+
 	dbTx, err := s.db.NewDBTransaction(ctx)
 	if err != nil {
 		return fmt.Errorf("could not create DB transaction - %w", err)
@@ -1160,7 +1182,14 @@ func (s *storageImpl) StoreSystemContractAddresses(ctx context.Context, addresse
 	if err != nil {
 		return fmt.Errorf("could not marshal system contract addresses - %w", err)
 	}
-	_, err = storage.WriteConfig(ctx, dbTx, systemContractAddressesCfg, addressesBytes)
+
+	if existingAddresses != nil {
+		// this should be a rare occurrence (e.g. genesis batch had to get re-executed), log for visibility
+		s.logger.Warn("Overwriting system contract addresses", "prev", existingAddresses, "new", addresses)
+	}
+
+	// Use InsertOrUpdateConfig to handle both initial insert and re-execution update cases
+	err = storage.InsertOrUpdateConfig(ctx, dbTx, systemContractAddressesCfg, addressesBytes)
 	if err != nil {
 		return fmt.Errorf("could not write system contract addresses - %w", err)
 	}
