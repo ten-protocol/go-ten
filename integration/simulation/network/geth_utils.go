@@ -567,7 +567,7 @@ func StopEth2Network(clients []ethadapter.EthClient, network eth2network.PosEth2
 // DeployContract returns receipt of deployment
 // todo (@matt) - this should live somewhere else
 func DeployContract(workerClient ethadapter.EthClient, w wallet.Wallet, contractBytes []byte) (*types.Receipt, error) {
-	deployContractTx, err := ethadapter.SetTxGasPrice(context.Background(), workerClient, &types.LegacyTx{Data: contractBytes}, w.Address(), w.GetNonceAndIncrement(), 0, nil, testlog.Logger())
+	deployContractTx, err := ethadapter.SetTxGasPrice(context.Background(), workerClient, &types.LegacyTx{Data: contractBytes}, w.Address(), w.GetNonceAndIncrement(), 0, 5, nil, testlog.Logger())
 	if err != nil {
 		return nil, err
 	}

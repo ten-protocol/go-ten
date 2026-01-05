@@ -106,6 +106,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
 	retryIntervalForBlobReceipt := config.L1RollupRetryDelay
 	maxBlobRetries := config.MaxBlobRetries
+	maxDynamicRetries := config.MaxDynamicRetries
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
 	l1Publisher := l1.NewL1Publisher(
 		hostIdentity,
@@ -120,6 +121,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		retryIntervalForL1Receipt,
 		retryIntervalForBlobReceipt,
 		maxBlobRetries,
+		maxDynamicRetries,
 		hostStorage,
 		l1ChainCfg,
 	)
