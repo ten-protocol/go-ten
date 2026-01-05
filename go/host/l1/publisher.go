@@ -52,6 +52,7 @@ type Publisher struct {
 	retryIntervalForL1Receipt   time.Duration
 	retryIntervalForBlobReceipt time.Duration
 	maxBlobRetries              int
+	maxDynamicRetries           int
 
 	// we only allow one transaction in-flight at a time to avoid nonce conflicts
 	// We also have a context to cancel the tx if host stops
@@ -73,6 +74,7 @@ func NewL1Publisher(
 	retryIntervalForL1Receipt time.Duration,
 	retryIntervalForBlobReceipt time.Duration,
 	maxBlobRetries int,
+	maxDynamicRetries int,
 	storage storage.Storage,
 	l1ChainCfg *params.ChainConfig,
 ) *Publisher {
@@ -90,6 +92,7 @@ func NewL1Publisher(
 		retryIntervalForL1Receipt:   retryIntervalForL1Receipt,
 		retryIntervalForBlobReceipt: retryIntervalForBlobReceipt,
 		maxBlobRetries:              maxBlobRetries,
+		maxDynamicRetries:           maxDynamicRetries,
 		storage:                     storage,
 		l1ChainCfg:                  l1ChainCfg,
 
@@ -342,7 +345,7 @@ func (p *Publisher) publishDynamicTxWithRetry(tx types.TxData) error {
 			return retry.FailFast(errors.New("host is stopping while publishing transaction"))
 		}
 
-		_, err = p.executeTransaction(tx, nonce, retryCount)
+		_, err = p.executeTransaction(tx, nonce, retryCount, p.maxDynamicRetries)
 		if err != nil {
 			// when the transaction fails because the smart contract rejects it, we abort.
 			if isSmartContractError(err) {
@@ -371,28 +374,27 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData) error {
 			return retry.FailFast(errors.New("host is stopping while attempting to publish blob"))
 		}
 
-		pricedTx, err := p.executeTransaction(tx, nonce, retryCount)
+		pricedTx, err := p.executeTransaction(tx, nonce, retryCount, p.maxBlobRetries)
 		if pricedTx == nil {
 			// even if there was an error we expect pricedTx to be populated for common failures
 			return retry.FailFast(fmt.Errorf("could not price transaction. Cause: %w", err))
 		}
 
 		if err != nil {
+			// For blob transactions, don't give up after maxBlobRetries - continue retrying
+			// but log a warning. The gas prices will continue to increase up to the cap.
+			// This prevents getting stuck in a loop where we reset the nonce and retry count.
 			if retryCount > p.maxBlobRetries {
-				blobTx, ok := pricedTx.(*types.BlobTx)
-				if !ok {
-					return retry.FailFast(&MaxRetriesError{
-						Err:    fmt.Sprintf("unexpected tx type: %T", pricedTx),
-						BlobTx: nil,
-					})
-				}
-				return retry.FailFast(&MaxRetriesError{
-					Err:    err.Error(),
-					BlobTx: blobTx,
-				})
+				p.logger.Warn("Blob transaction exceeded max retries, continuing with capped gas prices",
+					"nonce", nonce,
+					"retry_count", retryCount,
+					log.ErrKey, err)
+			} else {
+				p.logger.Info("publish L1 blob tx failed, retrying...",
+					"nonce", nonce,
+					"retry_count", retryCount,
+					log.ErrKey, err)
 			}
-
-			p.logger.Info("publish L1 blob tx failed, retrying...", log.ErrKey, err)
 			return err
 		}
 
@@ -433,9 +435,9 @@ func (p *Publisher) waitForReceipt(signedTx *types.Transaction, isBlobTx bool) (
 	return receipt, err
 }
 
-func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int) (types.TxData, error) {
+func (p *Publisher) executeTransaction(tx types.TxData, nonce uint64, retryNum int, retryMax int) (types.TxData, error) {
 	// Set gas prices and create transaction
-	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, p.l1ChainCfg, p.logger)
+	pricedTx, err := ethadapter.SetTxGasPrice(p.sendingContext, p.ethClient, tx, p.hostWallet.Address(), nonce, retryNum, retryMax, p.l1ChainCfg, p.logger)
 	if err != nil {
 		return pricedTx, errors.Wrap(err, "could not estimate gas/gas price for L1 tx")
 	}

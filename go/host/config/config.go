@@ -49,6 +49,8 @@ type HostConfig struct {
 	L1TimeoutBlocks int
 	// MaxBlobRetries the number of retry attempts to publish a blob while increasing the gas price
 	MaxBlobRetries int
+	// MaxDynamicRetries the number of retry attempts to publish dynamic fee txs
+	MaxDynamicRetries int
 
 	/////
 	// NODE CONFIG
@@ -163,6 +165,7 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		L1BlockTime:          tenCfg.Network.L1.BlockTime,
 		L1RollupRetryDelay:   tenCfg.Network.L1.RollupRetryDelay,
 		MaxBlobRetries:       tenCfg.Network.L1.MaxBlobRetries,
+		MaxDynamicRetries:    tenCfg.Network.L1.MaxDynamicRetries,
 		SequencerP2PAddress:  tenCfg.Network.Sequencer.P2PAddress,
 		NetworkConfigAddress: tenCfg.Network.L1.L1Contracts.NetworkConfigContract,
 
