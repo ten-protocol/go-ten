@@ -381,20 +381,21 @@ func (p *Publisher) publishBlobTxWithRetry(tx types.TxData) error {
 		}
 
 		if err != nil {
-			// For blob transactions, don't give up after maxBlobRetries - continue retrying
-			// but log a warning. The gas prices will continue to increase up to the cap.
-			// This prevents getting stuck in a loop where we reset the nonce and retry count.
 			if retryCount > p.maxBlobRetries {
-				p.logger.Warn("Blob transaction exceeded max retries, continuing with capped gas prices",
-					"nonce", nonce,
-					"retry_count", retryCount,
-					log.ErrKey, err)
-			} else {
-				p.logger.Info("publish L1 blob tx failed, retrying...",
-					"nonce", nonce,
-					"retry_count", retryCount,
-					log.ErrKey, err)
+				blobTx, ok := pricedTx.(*types.BlobTx)
+				if !ok {
+					return retry.FailFast(&MaxRetriesError{
+						Err:    fmt.Sprintf("unexpected tx type: %T", pricedTx),
+						BlobTx: nil,
+					})
+				}
+				return retry.FailFast(&MaxRetriesError{
+					Err:    err.Error(),
+					BlobTx: blobTx,
+				})
 			}
+
+			p.logger.Info("publish L1 blob tx failed, retrying...", log.ErrKey, err)
 			return err
 		}
 
