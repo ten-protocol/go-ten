@@ -106,6 +106,12 @@ contract TenBridge is
     function setWeth(address _weth) external onlyRole(ADMIN_ROLE) whenNotPaused {
         require(_weth != address(0), "WETH cannot be 0x0");
         weth = _weth;
+        // Grant ERC20_TOKEN_ROLE so WETH can pass the sendERC20 whitelist check.
+        // Note: We don't use whitelistToken() here because WETH has special handling
+        // (unwrap to native ETH) and shouldn't create a wrapped token on L2.
+        if (!hasRole(ERC20_TOKEN_ROLE, _weth)) {
+            _grantRole(ERC20_TOKEN_ROLE, _weth);
+        }
     }
 
     // This cross chain message is specialized and will result in automatic increase
