@@ -60,7 +60,11 @@ func (b *dbTxBatch) ValueSize() int {
 func (b *dbTxBatch) Write() error {
 	ctx, cancelCtx := context.WithTimeout(context.Background(), b.timeout)
 	defer cancelCtx()
-	return b.writeCtx(ctx)
+	err := b.writeCtx(ctx)
+	if err != nil {
+		panic(fmt.Errorf("failed to write db batch. This is unrecoverable. Cause: %w", err))
+	}
+	return err
 }
 
 func (b *dbTxBatch) writeCtx(ctx context.Context) error {
@@ -111,16 +115,6 @@ func (b *dbTxBatch) Reset() {
 
 // Replay replays the batch contents.
 func (b *dbTxBatch) Replay(w ethdb.KeyValueWriter) error {
-	for _, keyvalue := range b.writes {
-		if keyvalue.delete {
-			if err := w.Delete(keyvalue.key); err != nil {
-				return err
-			}
-			continue
-		}
-		if err := w.Put(keyvalue.key, keyvalue.value); err != nil {
-			return err
-		}
-	}
+	panic("Replay not implemented - only used by HashDB")
 	return nil
 }
