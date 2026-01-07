@@ -61,7 +61,7 @@ func TestTenscan(t *testing.T) {
 	}
 	// If running on CI and no explicit Postgres URL is provided, set default used by workflow
 	if os.Getenv("TEN_TEST_POSTGRES_URL") == "" && os.Getenv("CI") == "true" {
-		require.NoError(t, os.Setenv("TEN_TEST_POSTGRES_URL", "postgres://postgres:postgres@127.0.0.1:55432/?sslmode=disable"))
+		t.Setenv("TEN_TEST_POSTGRES_URL", "postgres://postgres:postgres@127.0.0.1:55432/?sslmode=disable")
 	}
 	serverAddress := fmt.Sprintf("http://%s", tenScanConfig.ServerAddress)
 
