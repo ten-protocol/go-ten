@@ -126,7 +126,12 @@ func (val *validator) handleGenesis(ctx context.Context, batch *common.BatchHead
 }
 
 func (val *validator) OnL1Block(ctx context.Context, block *types.Header, result *components.BlockIngestionType) error {
-	return val.ExecuteStoredBatches(ctx)
+	err := val.ExecuteStoredBatches(ctx)
+	if err != nil {
+		val.logger.Error("failed to execute stored batches after L1 block ingestion", log.BlockHeightKey, block.Number, log.BlockHashKey, block.Hash(), log.ErrKey, err)
+		return err
+	}
+	return nil
 }
 
 func (val *validator) Close() error {
