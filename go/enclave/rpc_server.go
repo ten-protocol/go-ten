@@ -403,7 +403,6 @@ func (s *RPCServer) GetContractsSince(ctx context.Context, req *generated.Contra
 		return &generated.ContractsSinceResponse{SystemError: toRPCError(sysError)}, nil
 	}
 
-	// Convert to protobuf format
 	protoContracts := make([]*generated.ContractCreationDataMsg, len(contracts))
 	for i, contract := range contracts {
 		protoContracts[i] = &generated.ContractCreationDataMsg{
@@ -415,7 +414,6 @@ func (s *RPCServer) GetContractsSince(ctx context.Context, req *generated.Contra
 			BatchTimestamp: contract.BatchTimestamp,
 		}
 
-		// Handle nullable Transparent field
 		if contract.Transparent != nil {
 			protoContracts[i].Transparent = contract.Transparent
 		}

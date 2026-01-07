@@ -46,7 +46,6 @@ func AddContracts(db HostDB, contracts []common.PublicContract) error {
 		)
 		if err != nil {
 			if IsRowExistsError(err) {
-				// Contract already exists, skip
 				continue
 			}
 			return fmt.Errorf("failed to insert contract %s: %w", contract.Address.Hex(), err)
@@ -54,7 +53,7 @@ func AddContracts(db HostDB, contracts []common.PublicContract) error {
 		insertedCount++
 	}
 
-	// Update contract count if we inserted any new contracts
+	// update contract count if we inserted any new contracts
 	if insertedCount > 0 {
 		var currentTotal int
 		reboundSelectCount := db.GetSQLDB().Rebind("SELECT total FROM contract_count WHERE id = 1")
@@ -126,7 +125,6 @@ func GetContractListing(db HostDB, pagination *common.QueryPagination) (*common.
 		return nil, err
 	}
 
-	// Get total count
 	var total uint64
 	reboundCountQuery := db.GetSQLDB().Rebind(selectContractCount)
 	err = db.GetSQLDB().QueryRow(reboundCountQuery).Scan(&total)

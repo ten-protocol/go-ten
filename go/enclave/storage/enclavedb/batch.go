@@ -429,7 +429,7 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 		rowCount++
 		var contract common.EnclaveContractData
 		var addressBytes, creatorBytes []byte
-		var batchTimePlaceholder uint64 // We'll get timestamp from batch header separately
+		var batchTimePlaceholder uint64
 
 		err = rows.Scan(
 			&addressBytes,
@@ -447,7 +447,6 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 		contract.Address = gethcommon.BytesToAddress(addressBytes)
 		contract.Creator = gethcommon.BytesToAddress(creatorBytes)
 
-		// Fetch batch header to get timestamp
 		batchHeader, err := ReadBatchHeaderBySeqNo(ctx, db, contract.BatchSeq)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read batch header for seq %d: %w", contract.BatchSeq, err)

@@ -60,10 +60,6 @@ func TestTenscan(t *testing.T) {
 		LogPath:         "sys_out",
 	}
 
-	// If running on CI and no explicit Postgres URL is provided, set default used by workflow
-	if os.Getenv("TEN_TEST_POSTGRES_URL") == "" && os.Getenv("CI") == "true" {
-		t.Setenv("TEN_TEST_POSTGRES_URL", "postgres://postgres:postgres@127.0.0.1:55432/?sslmode=disable")
-	}
 	serverAddress := fmt.Sprintf("http://%s", tenScanConfig.ServerAddress)
 
 	tenScanContainer, err := container.NewTenScanContainer(tenScanConfig)
@@ -488,7 +484,6 @@ func TestTenscan(t *testing.T) {
 			time.Sleep(2 * time.Second)
 		}
 
-		// Verify contract structure has all required fields
 		if len(contractListingObj.Result.Contracts) > 0 {
 			firstContract := contractListingObj.Result.Contracts[0]
 			assert.NotEqual(t, gethcommon.Address{}, firstContract.Address, "Contract address should not be empty")
@@ -498,7 +493,6 @@ func TestTenscan(t *testing.T) {
 			assert.GreaterOrEqual(t, firstContract.Time, uint64(0), "Time should be set")
 		}
 
-		// Test fetching specific contract by address
 		if len(contractListingObj.Result.Contracts) > 0 {
 			testContractAddr := contractListingObj.Result.Contracts[0].Address
 			statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contract/%s", serverAddress, testContractAddr.Hex()))
@@ -515,9 +509,8 @@ func TestTenscan(t *testing.T) {
 			assert.Equal(t, testContractAddr, contractItemObj.Item.Address, "Fetched contract should match requested address")
 		}
 
-		// Test contract pagination
 		if contractListingObj.Result.Total > 2 {
-			// First page
+			// first page
 			statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=0&size=1", serverAddress))
 			assert.NoError(t, err)
 			assert.Equal(t, 200, statusCode)
@@ -527,7 +520,7 @@ func TestTenscan(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, 1, len(firstPageContracts.Result.Contracts), "First page should have 1 contract")
 
-			// Second page
+			// second page
 			statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=1&size=1", serverAddress))
 			assert.NoError(t, err)
 			assert.Equal(t, 200, statusCode)
@@ -537,23 +530,22 @@ func TestTenscan(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, 1, len(secondPageContracts.Result.Contracts), "Second page should have 1 contract")
 
-			// Verify different pages have different contracts
+			// verify different pages have different contracts
 			assert.NotEqual(t, firstPageContracts.Result.Contracts[0].Address,
 				secondPageContracts.Result.Contracts[0].Address,
 				"Different pages should have different contracts")
 		}
 
-		// Test invalid contract address returns appropriate error
+		// invalid contract address returns appropriate error
 		statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contract/0xinvalid", serverAddress))
 		assert.NoError(t, err)
 		// Should handle gracefully (either 400 or 404 or 500 depending on implementation)
 		assert.True(t, statusCode >= 400, "Invalid address should return error status")
 
-		// Test non-existent contract address
+		// non-existent contract address
 		nonExistentAddr := "0x0000000000000000000000000000000000000001"
 		statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contract/%s", serverAddress, nonExistentAddr))
 		assert.NoError(t, err)
-		// Should return 404 or similar for non-existent contract
 		assert.True(t, statusCode >= 400, "Non-existent contract should return error status")
 	}
 

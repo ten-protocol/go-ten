@@ -86,13 +86,8 @@ func (e *Service) Start() error {
 		e.activeSequencerID.Store(_noActiveSequencer)
 		go e.managePeriodicBatches()
 		go e.managePeriodicRollups()
-		go e.managePeriodicContractSync()
 	}
-
-	//if !e.hostData.IsSequencer {
-	//	// periodic contract sync for validators
-	//	go e.managePeriodicContractSync()
-	//}
+	go e.managePeriodicContractSync()
 
 	return nil
 }
