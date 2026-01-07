@@ -11,7 +11,6 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
-
 const (
 	insertContract      = "INSERT INTO contract_host (address, creator, transparent, custom_config, batch_seq, height, time) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	selectContract      = "SELECT id, address, creator, transparent, custom_config, batch_seq, height, time FROM contract_host"
