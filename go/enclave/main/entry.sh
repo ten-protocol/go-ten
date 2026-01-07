@@ -11,7 +11,7 @@ if [ ! -L /dev/sgx/enclave ]; then
 	ln -s /dev/sgx_enclave /dev/sgx/enclave
 fi
 
-PCCS_URL=https://global.acccache.azure.net/sgx/certification/v4/
+PCCS_URL=${PCCS_URL:-https://global.acccache.azure.net/sgx/certification/v4/}
 echo "PCCS_URL: ${PCCS_URL}"
 
 apt-get install -qq libsgx-dcap-default-qpl
