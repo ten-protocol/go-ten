@@ -116,5 +116,4 @@ func (b *dbTxBatch) Reset() {
 // Replay replays the batch contents.
 func (b *dbTxBatch) Replay(w ethdb.KeyValueWriter) error {
 	panic("Replay not implemented - only used by HashDB")
-	return nil
 }
