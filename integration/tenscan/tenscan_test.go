@@ -59,6 +59,7 @@ func TestTenscan(t *testing.T) {
 		ServerAddress:   fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultTenscanHTTPPortOffset),
 		LogPath:         "sys_out",
 	}
+
 	// If running on CI and no explicit Postgres URL is provided, set default used by workflow
 	if os.Getenv("TEN_TEST_POSTGRES_URL") == "" && os.Getenv("CI") == "true" {
 		t.Setenv("TEN_TEST_POSTGRES_URL", "postgres://postgres:postgres@127.0.0.1:55432/?sslmode=disable")
@@ -462,6 +463,13 @@ func TestTenscan(t *testing.T) {
 		wallet.NewInMemoryWalletFromConfig(testcommon.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
 		3,
 	)
+
+	// Give the indexer time to process the deployed contracts, especially in CI
+	if url := os.Getenv("TEN_TEST_POSTGRES_URL"); url != "" {
+		time.Sleep(30 * time.Second)
+	} else {
+		time.Sleep(5 * time.Second)
+	}
 
 	type contractListingRes struct {
 		Result common.ContractListingResponse `json:"result"`
