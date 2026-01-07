@@ -27,6 +27,10 @@ network:
     blockTime: 15s
     rollupRetryDelay: 5s
     startHash: 0x0 # hash of the L1 block that Ten can safely start processing from to get entire L2 history
+    timeoutBlocks: 5 # number of blocks we wait before we reconnect to the l1 subscription
+    maxBlobRetries: 5 # number of attempts to publish a rollup blob
+    maxDynamicRetries: 5 # number of attempts to publish a dynamic fee tx
+
     contracts:
       networkConfig: 0x0 # L1 address of the Ten network config contract
       crossChain: 0x0 # L1 address of the Ten cross chain contract

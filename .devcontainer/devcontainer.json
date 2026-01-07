@@ -26,6 +26,16 @@
 			}
 		}
 	},
+	"mounts": [
+		// 1. Keep OpenCode Config (Settings/API keys) - shared across devcontainers
+		"source=opencode-config,target=/home/node/.config/opencode,type=volume",
+		// 2. Keep OpenCode History (Past chats/sessions) - separate per container
+		"source=go-ten-opencode-data,target=/home/node/.local/share/opencode,type=volume",
+		// Persist VS Code server extensions between rebuilds
+		"source=go-ten-vscode-extensions,target=/home/node/.vscode-server/extensions,type=volume",
+		// Persist VS Code server user data (includes globalStorage/secret storage used by extensions)
+		"source=go-ten-vscode-userdata,target=/home/node/.vscode-server/data/User,type=volume"
+	],
 	"postCreateCommand": "bash -i ./.devcontainer/install-deps.sh",
 	"containerEnv": {
 		"LOCALHOST_URL": "http://host.docker.internal",

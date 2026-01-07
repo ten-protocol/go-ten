@@ -96,7 +96,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 	}
 
 	enclService := enclave.NewService(config, hostIdentity, hostServices, enclGuardians, hostStorage, host.stopControl, logger)
-	l1Repo := l1.NewL1DataService(ethClient, hostStorage, contractRegistry, blobResolver, config.L1StartHash, host.stopControl, logger)
+	l1Repo := l1.NewL1DataService(ethClient, hostStorage, contractRegistry, blobResolver, config.L1StartHash, config.L1TimeoutBlocks, host.stopControl, logger)
 	l2Repo := l2.NewBatchRepository(config, hostServices, hostStorage, logger)
 	subsService := events.NewLogEventManager(hostServices, logger)
 	l2Repo.SubscribeValidatedBatches(batchListener{newHeads: host.newHeads})
@@ -105,6 +105,8 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 	maxWaitForL1Receipt := 6 * config.L1BlockTime   // wait ~10 blocks to see if tx gets published before retrying
 	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
 	retryIntervalForBlobReceipt := config.L1RollupRetryDelay
+	maxBlobRetries := config.MaxBlobRetries
+	maxDynamicRetries := config.MaxDynamicRetries
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
 	l1Publisher := l1.NewL1Publisher(
 		hostIdentity,
@@ -118,6 +120,8 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		maxWaitForL1Receipt,
 		retryIntervalForL1Receipt,
 		retryIntervalForBlobReceipt,
+		maxBlobRetries,
+		maxDynamicRetries,
 		hostStorage,
 		l1ChainCfg,
 	)
@@ -136,7 +140,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		}
 	}
 
-	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
+	jsonConfig, _ := json.MarshalIndent(config.Redacted(), "", "  ")
 	logger.Info("Host service created with following config:", log.CfgKey, string(jsonConfig))
 
 	return host
@@ -156,7 +160,7 @@ func (h *host) Start() error {
 		return fmt.Errorf("could not start services. Cause: %w", err)
 	}
 
-	tomlConfig, err := toml.Marshal(h.config)
+	tomlConfig, err := toml.Marshal(h.config.Redacted())
 	if err != nil {
 		return fmt.Errorf("could not print host config - %w", err)
 	}

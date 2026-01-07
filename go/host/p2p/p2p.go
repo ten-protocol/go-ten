@@ -311,14 +311,14 @@ func (p *Service) handle(conn net.Conn) {
 
 	encodedMsg, err := io.ReadAll(conn)
 	if err != nil {
-		p.logger.Debug("Failed to read message from peer", log.ErrKey, err)
+		p.logger.Trace("Failed to read message from peer", log.ErrKey, err)
 		return
 	}
 
 	msg := message{}
 	err = rlp.DecodeBytes(encodedMsg, &msg)
 	if err != nil {
-		p.logger.Debug("Failed to decode message received from peer: ", log.ErrKey, err)
+		p.logger.Trace("Failed to decode message received from peer: ", log.ErrKey, err)
 		return
 	}
 

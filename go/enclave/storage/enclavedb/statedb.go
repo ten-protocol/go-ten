@@ -22,9 +22,8 @@ const (
 	putQryValues      = `(?,?)`
 	putQryBatchEdb2   = ` ON DUPLICATE KEY UPDATE val=VALUES(val)`
 	delQry            = `delete from %s where ky = ?`
-	// todo - how is the performance of this? probably extraordinarily slow
-	searchQry   = `select ky, val from %s sdb where substring(sdb.ky, 1, ?) = ? and sdb.ky >= ? order by sdb.ky asc`
-	dbChunkSize = 32 * 1024 // 32 KB chunks
+	searchQry         = `select ky, val from %s sdb where sdb.ky >= ? and sdb.ky < ? order by sdb.ky asc`
+	dbChunkSize       = 32 * 1024 // 32 KB chunks
 )
 
 var stateIDPrefix = []byte("L")
@@ -63,7 +62,8 @@ func getTable(key []byte) string {
 }
 
 func has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
-	err := db.QueryRowContext(ctx, fmt.Sprintf(getQry, getTable(key)), key).Scan()
+	var dummy []byte
+	err := db.QueryRowContext(ctx, fmt.Sprintf(getQry, getTable(key)), key).Scan(&dummy)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return false, nil
@@ -73,7 +73,7 @@ func has(ctx context.Context, db *sqlx.DB, key []byte) (bool, error) {
 	return true, nil
 }
 
-func getJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) { //nolint:unused
+func getJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) {
 	q := "select val from triedb_journal order by id asc"
 	rows, err := db.QueryContext(ctx, q)
 	if err != nil {
@@ -107,7 +107,7 @@ func getJournal(ctx context.Context, db *sqlx.DB) ([]byte, error) { //nolint:unu
 
 // the journal can be quite large, so we split it into chunks and insert them one by one
 // because edglessdb fails silently when the data is too large
-func putJournal(ctx context.Context, db *sqlx.DB, value []byte) error { //nolint:unused
+func putJournal(ctx context.Context, db *sqlx.DB, value []byte) error {
 	tx, err := db.BeginTxx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction - %w", err)
@@ -251,17 +251,28 @@ func deleteKeys(ctx context.Context, db *sqlx.Tx, keys [][]byte) error {
 }
 
 func newIterator(ctx context.Context, db *sqlx.DB, prefix []byte, start []byte) ethdb.Iterator {
-	// todo - is this used?
-	pr := prefix
-	st := append(prefix, start...)
+	// Calculate the "limit" key for the prefix scan (prefix + 1)
+	limit := make([]byte, len(prefix))
+	copy(limit, prefix)
+	for i := len(limit) - 1; i >= 0; i-- {
+		limit[i]++
+		if limit[i] > 0 {
+			break
+		}
+	}
 
-	// iterator clean-up handles closing this rows iterator
-	rows, err := db.QueryContext(ctx, fmt.Sprintf(searchQry, getTable(st)), len(pr), pr, st)
+	// st is the starting point (prefix + start)
+	st := append(prefix, start...)
+	tableName := getTable(st)
+
+	// The query now looks for everything between 'st' and the end of the prefix 'limit'
+	rows, err := db.QueryContext(ctx, fmt.Sprintf(searchQry, tableName), st, limit)
 	if err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),
 		}
 	}
+
 	if err = rows.Err(); err != nil {
 		return &iterator{
 			err: fmt.Errorf("failed to get rows, iter will be empty, %w", err),

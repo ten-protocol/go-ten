@@ -29,7 +29,7 @@ var minGasTipCap = big.NewInt(2 * params.GWei)
 
 // SetTxGasPrice takes a txData type and overrides the From, Gas and Gas Price field with current values
 // it bumps the price by a multiplier for retries. retryNumber is zero on first attempt (no multiplier on price)
-func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int, l1ChainCfg *params.ChainConfig, logger gethlog.Logger) (types.TxData, error) {
+func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData, from gethcommon.Address, nonce uint64, retryNumber int, maxRetries int, l1ChainCfg *params.ChainConfig, logger gethlog.Logger) (types.TxData, error) {
 	rawTx := types.NewTx(txData)
 	to := rawTx.To()
 	value := rawTx.Value()
@@ -60,11 +60,11 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	}
 
 	// adjust the gasTipCap if we have to retry
-	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps to 5
-	// we apply a 30% gas price increase for each retry (retrying with similar price gets rejected by mempool)
+	// it should never happen but to avoid any risk of repeated price increases we cap the possible retry price bumps
+	// we apply a 70% gas price increase for each retry (retrying with similar price gets rejected by mempool)
 	// Retry '0' is the first attempt, gives multiplier of 1.0
 
-	retryMultiplier := calculateRetryMultiplier(_retryPriceMultiplier, retryNumber)
+	retryMultiplier := calculateRetryMultiplier(_retryPriceMultiplier, retryNumber, maxRetries)
 	gasTipCap = big.NewInt(0).SetUint64(uint64(retryMultiplier * float64(gasTipCap.Uint64())))
 
 	// calculate the gas fee cap
@@ -82,7 +82,7 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 			return nil, fmt.Errorf("should not happen. missing blob base fee")
 		}
 		blobBaseFee := eip4844.CalcBlobFee(l1ChainCfg, head)
-		blobMultiplier := calculateRetryMultiplier(_blobPriceMultiplier, retryNumber)
+		blobMultiplier := calculateRetryMultiplier(_blobPriceMultiplier, retryNumber, maxRetries)
 		blobFeeCap := new(uint256.Int).Mul(
 			uint256.MustFromBig(blobBaseFee),
 			uint256.NewInt(uint64(math.Ceil(blobMultiplier)))) // double base fee with retry multiplier,
@@ -126,8 +126,8 @@ func SetTxGasPrice(ctx context.Context, ethClient EthClient, txData types.TxData
 	}, nil
 }
 
-func calculateRetryMultiplier(baseMultiplier float64, retryNumber int) float64 {
-	return math.Pow(baseMultiplier, float64(min(_maxTxRetryPriceIncreases, retryNumber)))
+func calculateRetryMultiplier(baseMultiplier float64, retryNumber int, maxRetries int) float64 {
+	return math.Pow(baseMultiplier, float64(min(maxRetries, retryNumber)))
 }
 
 // Base64EncodeToString encodes a byte array to a string

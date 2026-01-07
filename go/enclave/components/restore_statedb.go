@@ -26,7 +26,7 @@ func syncExecutedBatchesWithEVMStateDB(ctx context.Context, storage storage.Stor
 	// `headBatch` variable will eventually be the latest batch for which we are able to produce a StateDB
 	// - we will then set that as the head of the L2 so that this node can rebuild its missing state
 	// loop backwards building a slice of all batches that don't have cached stateDB data available
-	for !stateDBAvailableForBatch(storage, headBatch.Root) {
+	for !stateDBAvailableForBatch(storage, headBatch.Root, logger) {
 		logger.Info("StateDB not available for batch, rolling back", "batchHash", headBatch.Hash(), "sequencerOrderNo", headBatch.SequencerOrderNo)
 		err = storage.MarkBatchAsUnexecuted(ctx, headBatch.SequencerOrderNo)
 		if err != nil {
@@ -49,7 +49,12 @@ func syncExecutedBatchesWithEVMStateDB(ctx context.Context, storage storage.Stor
 // batch in the chain and is used to query state at a certain height.
 //
 // This method checks if the stateDB data is available for a given batch hash (so it can be restored if not)
-func stateDBAvailableForBatch(storage storage.Storage, hash gethcommon.Hash) bool {
-	s, _ := storage.StateAt(hash)
-	return s != nil
+func stateDBAvailableForBatch(storage storage.Storage, root gethcommon.Hash, logger gethlog.Logger) bool {
+	_, err := storage.OpenTrie(root)
+	if err != nil {
+		logger.Info("failed to open state trie for batch", "batch_root", root, "err", err)
+		return false
+	}
+	logger.Info("successfully opened state trie for batch", "batch_root", root)
+	return true
 }
