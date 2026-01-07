@@ -11,11 +11,11 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 )
 
+
 const (
 	insertContract      = "INSERT INTO contract_host (address, creator, transparent, custom_config, batch_seq, height, time) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	selectContract      = "SELECT id, address, creator, transparent, custom_config, batch_seq, height, time FROM contract_host"
 	selectContractCount = "SELECT COUNT(*) FROM contract_host"
-	updateContractCount = "UPDATE contract_count SET total=? WHERE id=1"
 	whereContractAddr   = " WHERE address = ?"
 	orderByDeployed     = " ORDER BY time DESC"
 )
@@ -55,18 +55,14 @@ func AddContracts(db HostDB, contracts []common.PublicContract) error {
 
 	// update contract count if we inserted any new contracts
 	if insertedCount > 0 {
-		var currentTotal int
-		reboundSelectCount := db.GetSQLDB().Rebind("SELECT total FROM contract_count WHERE id = 1")
-		err = dbtx.Tx.QueryRow(reboundSelectCount).Scan(&currentTotal)
+		err = updateCountTable(dbtx, db, "contract_count", insertedCount)
 		if err != nil {
-			return fmt.Errorf("failed to query contract count: %w", err)
+			return err
 		}
 
-		newTotal := currentTotal + insertedCount
-		reboundUpdateCount := db.GetSQLDB().Rebind(updateContractCount)
-		_, err = dbtx.Tx.Exec(reboundUpdateCount, newTotal)
+		err = updateCountTable(dbtx, db, "historical_contract_count", insertedCount)
 		if err != nil {
-			return fmt.Errorf("failed to update contract count: %w", err)
+			return err
 		}
 	}
 
@@ -186,4 +182,25 @@ func GetTotalContractCount(db HostDB) (uint64, error) {
 		return 0, fmt.Errorf("failed to get contract count: %w", err)
 	}
 	return total, nil
+}
+
+// updateCountTable updates a contract count table by adding the inserted count to the current total
+func updateCountTable(dbtx *dbTransaction, db HostDB, tableName string, insertedCount int) error {
+	var currentTotal int
+	selectQuery := fmt.Sprintf("SELECT total FROM %s WHERE id = 1", tableName)
+	reboundSelectCount := db.GetSQLDB().Rebind(selectQuery)
+	err := dbtx.Tx.QueryRow(reboundSelectCount).Scan(&currentTotal)
+	if err != nil {
+		return fmt.Errorf("failed to query contract count from %s: %w", tableName, err)
+	}
+
+	newTotal := currentTotal + insertedCount
+	updateQuery := fmt.Sprintf("UPDATE %s SET total=? WHERE id=1", tableName)
+	reboundUpdateCount := db.GetSQLDB().Rebind(updateQuery)
+	_, err = dbtx.Tx.Exec(reboundUpdateCount, newTotal)
+	if err != nil {
+		return fmt.Errorf("failed to update contract count in %s: %w", tableName, err)
+	}
+
+	return nil
 }
