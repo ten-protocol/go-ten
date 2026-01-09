@@ -206,6 +206,7 @@ func (e *enclaveAdminService) SubmitL1Block(ctx context.Context, blockData *comm
 				e.logger.Crit("failed to revert L1 head after critical rollup error", log.BlockHashKey, blockData.BlockHeader.Hash(), log.ErrKey, err)
 				return nil, err
 			}
+			e.logger.Info("Reverted L1 block after critical processing error", log.BlockHashKey, blockData.BlockHeader.Hash())
 		}
 		return nil, e.rejectBlockErr(ctx, fmt.Errorf("could not submit L1 block. Cause: %w", err))
 	}
@@ -291,10 +292,11 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 
 	// todo - review whether we need to lock here.
 	e.dataInMutex.Lock()
+	defer e.dataInMutex.Unlock()
+
 	// if the signature is valid, then store the batch together with the converted hash
 	err = e.storage.StoreBatch(ctx, batch, convertedHeader.Hash())
 	if err != nil {
-		e.dataInMutex.Unlock()
 		return responses.ToInternalError(fmt.Errorf("could not store batch. Cause: %w", err))
 	}
 
@@ -302,8 +304,6 @@ func (e *enclaveAdminService) SubmitBatch(ctx context.Context, extBatch *common.
 	if err != nil {
 		return responses.ToInternalError(fmt.Errorf("could not execute batches. Cause: %w", err))
 	}
-
-	e.dataInMutex.Unlock()
 
 	return nil
 }

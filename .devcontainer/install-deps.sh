@@ -41,3 +41,8 @@ CGO_ENABLED=0 go install github.com/ethereum/go-ethereum/cmd/abigen@latest
 
 echo "Installation completed successfully!"
 
+# Install opencode
+echo "Installing opencode..."
+sudo chown -R node:node /home/node/.local/share/opencode /home/node/.config/opencode || true
+curl -fsSL https://opencode.ai/install | bash
+echo 'OpenCode Installed ✅'

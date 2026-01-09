@@ -770,12 +770,16 @@ func testSessionKeyDeletionAndFundRecovery(t *testing.T, _ int, httpURL, wsURL s
 	require.Equal(t, byte(0x01), delResult[0])
 	t.Logf("✓ Session key deleted: %s", skAddress.Hex())
 
-	// 5) Wait for fund recovery to be processed (poll until balance changes or timeout)
+	// 5) Wait for fund recovery to be processed (poll until user balance increases or timeout)
 	t.Logf("⏳ Waiting for fund recovery to be processed...")
 	var finalBalance *big.Int
 	var finalUserBalance *big.Int
 	recoveryTimeout := 30 * time.Second
 	recoveryStart := time.Now()
+
+	// Calculate minimum expected user balance increase (90% of balance after activity, accounting for gas)
+	minExpectedUserIncrease := big.NewInt(0).Div(big.NewInt(0).Mul(balanceAfterActivity, big.NewInt(90)), big.NewInt(100))
+
 	for time.Since(recoveryStart) < recoveryTimeout {
 		time.Sleep(2 * time.Second)
 
@@ -787,13 +791,10 @@ func testSessionKeyDeletionAndFundRecovery(t *testing.T, _ int, httpURL, wsURL s
 		finalUserBalance, err = user1.HTTPClient.BalanceAt(ctx, fromAddr, nil)
 		require.NoError(t, err)
 
-		// Check if funds were recovered (user balance should increase)
-		recoveredAmount := big.NewInt(0).Sub(balanceAfterActivity, finalBalance)
+		// Check if user balance increased (this means transaction was mined)
 		userBalanceIncrease := big.NewInt(0).Sub(finalUserBalance, balanceBeforeDeletion)
-
-		// If significant recovery happened (more than 90% of what should be recovered), consider it done
-		expectedRecovery := big.NewInt(0).Div(big.NewInt(0).Mul(balanceAfterActivity, big.NewInt(90)), big.NewInt(100))
-		if recoveredAmount.Cmp(expectedRecovery) >= 0 {
+		if userBalanceIncrease.Cmp(minExpectedUserIncrease) >= 0 {
+			recoveredAmount := big.NewInt(0).Sub(balanceAfterActivity, finalBalance)
 			t.Logf("✓ Fund recovery detected: %s TEN recovered from session key, user balance increased by %s TEN",
 				formatWeiToETH(recoveredAmount), formatWeiToETH(userBalanceIncrease))
 			break

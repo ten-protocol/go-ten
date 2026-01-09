@@ -2,6 +2,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
+import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import "./ICrossChainMessenger.sol";
 import "../L1/IMerkleTreeMessageBus.sol";
 import {PausableWithRoles} from "../../common/PausableWithRoles.sol";
@@ -19,7 +20,7 @@ import {PausableWithRoles} from "../../common/PausableWithRoles.sol";
  * Notice that this Messenger has no restrictions on who can relay messages, nor does it have any understanding of fees.
  * You can opt in to deploy a customer messenger for your cross chain dApp with more specialized logic.
  */
-contract CrossChainMessenger is ICrossChainMessenger, PausableWithRoles {
+contract CrossChainMessenger is ICrossChainMessenger, PausableWithRoles, ReentrancyGuardUpgradeable {
     error CallFailed(bytes error);
 
     IMerkleTreeMessageBus public messageBusContract;
@@ -33,6 +34,7 @@ contract CrossChainMessenger is ICrossChainMessenger, PausableWithRoles {
      * TODO initialize only once
      */
     function initialize(address messageBusAddr) external initializer {
+        __ReentrancyGuard_init();
         require(messageBusAddr != address(0));
         __PausableWithRoles_init(msg.sender);
         messageBusContract = IMerkleTreeMessageBus(messageBusAddr);
@@ -52,14 +54,15 @@ contract CrossChainMessenger is ICrossChainMessenger, PausableWithRoles {
      */
     function consumeMessage(
         Structs.CrossChainMessage calldata message
-    ) private whenNotPaused {
+    ) private {
         require(
             IMessageBus(address(messageBusContract)).verifyMessageFinalized(message),
             "Message not found or finalized."
         );
+        
         bytes32 msgHash = keccak256(abi.encode(message));
         require(!messageConsumed[msgHash], "Message already consumed.");
-
+        // Effects first to prevent reentrancy
         messageConsumed[msgHash] = true;
     }
 
@@ -73,7 +76,7 @@ contract CrossChainMessenger is ICrossChainMessenger, PausableWithRoles {
         Structs.CrossChainMessage calldata message,
         bytes32[] calldata proof, 
         bytes32 root
-    ) private whenNotPaused {
+    ) private {
         messageBusContract.verifyMessageInclusion(message, proof, root);
         bytes32 msgHash = keccak256(abi.encode(message));
         require(messageConsumed[msgHash] == false, "Message already consumed.");
@@ -106,7 +109,7 @@ contract CrossChainMessenger is ICrossChainMessenger, PausableWithRoles {
      * message bus.
      * @param message The cross-chain message to relay
      */
-    function relayMessage(Structs.CrossChainMessage calldata message) public whenNotPaused {
+    function relayMessage(Structs.CrossChainMessage calldata message) public whenNotPaused nonReentrant {
         consumeMessage(message);
 
         crossChainSender = message.sender;
@@ -137,7 +140,7 @@ contract CrossChainMessenger is ICrossChainMessenger, PausableWithRoles {
      * @param proof Merkle proof verifying the message inclusion
      * @param root The Merkle root against which to verify the proof
      */
-    function relayMessageWithProof(Structs.CrossChainMessage calldata message, bytes32[] calldata proof, bytes32 root) public whenNotPaused {
+    function relayMessageWithProof(Structs.CrossChainMessage calldata message, bytes32[] calldata proof, bytes32 root) public whenNotPaused nonReentrant {
         consumeMessageWithProof(message, proof, root);
 
         crossChainSender = message.sender;

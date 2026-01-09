@@ -106,6 +106,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 	retryIntervalForL1Receipt := config.L1BlockTime // retry ~every block
 	retryIntervalForBlobReceipt := config.L1RollupRetryDelay
 	maxBlobRetries := config.MaxBlobRetries
+	maxDynamicRetries := config.MaxDynamicRetries
 	l1ChainCfg := common.GetL1ChainConfig(uint64(config.L1ChainID))
 	l1Publisher := l1.NewL1Publisher(
 		hostIdentity,
@@ -120,6 +121,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		retryIntervalForL1Receipt,
 		retryIntervalForBlobReceipt,
 		maxBlobRetries,
+		maxDynamicRetries,
 		hostStorage,
 		l1ChainCfg,
 	)
@@ -138,7 +140,7 @@ func NewHost(config *hostconfig.HostConfig, hostServices *ServicesRegistry, p2p 
 		}
 	}
 
-	jsonConfig, _ := json.MarshalIndent(config, "", "  ")
+	jsonConfig, _ := json.MarshalIndent(config.Redacted(), "", "  ")
 	logger.Info("Host service created with following config:", log.CfgKey, string(jsonConfig))
 
 	return host
@@ -158,7 +160,7 @@ func (h *host) Start() error {
 		return fmt.Errorf("could not start services. Cause: %w", err)
 	}
 
-	tomlConfig, err := toml.Marshal(h.config)
+	tomlConfig, err := toml.Marshal(h.config.Redacted())
 	if err != nil {
 		return fmt.Errorf("could not print host config - %w", err)
 	}
