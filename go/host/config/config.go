@@ -45,7 +45,7 @@ type HostConfig struct {
 	L1RollupRetryDelay time.Duration
 	// CrossChainInterval - The interval at which the host will check for new cross chain data to submit
 	CrossChainInterval time.Duration
-	// L1TimeoutBlocks the number of L1 blocks we wait if none seen before disconnecting
+	// L1TimeoutBlocks the number of expected block intervals (expectedBlockTime) to wait with no new blocks before timing out
 	L1TimeoutBlocks int
 	// MaxBlobRetries the number of retry attempts to publish a blob while increasing the gas price
 	MaxBlobRetries int
