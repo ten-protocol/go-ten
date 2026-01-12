@@ -12,9 +12,9 @@ type SessionKeyActivityStorage interface {
 }
 
 // NewSessionKeyActivityStorage is a factory that returns a concrete storage based on dbType
-func NewSessionKeyActivityStorage(dbType, dbConnectionURL string) (SessionKeyActivityStorage, error) {
+func NewSessionKeyActivityStorage(dbType, dbConnectionURL string, encryptionKey []byte) (SessionKeyActivityStorage, error) {
 	if dbType == "cosmosDB" {
-		return cosmosdb.NewSessionKeyActivityStorage(dbConnectionURL)
+		return cosmosdb.NewSessionKeyActivityStorage(dbConnectionURL, encryptionKey)
 	}
 	return NewNoOpSessionKeyActivityStorage(), nil
 }
