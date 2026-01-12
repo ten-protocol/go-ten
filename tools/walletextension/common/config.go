@@ -25,6 +25,11 @@ type Config struct {
 	RateLimitWindow                time.Duration
 	RateLimitMaxConcurrentRequests int
 
+	// HTTP endpoint rate limiting (for /join - can be used by other endpoints in the future too)
+	// Burst is automatically set to 1.5x the rate for both limiters
+	HTTPRateLimitGlobalRate float64 // Global requests per second (0 = disabled)
+	HTTPRateLimitPerIPRate  float64 // Per-IP requests per second (0 = disabled)
+
 	InsideEnclave                 bool // Indicates if the program is running inside an enclave
 	EncryptionKeySource           string
 	EnableTLS                     bool

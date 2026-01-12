@@ -9,7 +9,6 @@ require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/TwiN/gocache/v2 v2.4.0
 	github.com/andybalholm/brotli v1.2.0
-	github.com/bytedance/gopkg v0.1.3
 	github.com/codeclysm/extract/v3 v3.1.1
 	github.com/containerd/errdefs v1.0.0
 	github.com/deckarep/golang-set/v2 v2.8.0
@@ -49,6 +48,7 @@ require (
 	golang.org/x/crypto v0.45.0
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
 	golang.org/x/sync v0.18.0
+	golang.org/x/time v0.9.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -67,6 +67,7 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.13.0 // indirect
 	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/bits-and-blooms/bitset v1.24.3 // indirect
+	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.14.2 // indirect
 	github.com/bytedance/sonic/loader v0.4.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
