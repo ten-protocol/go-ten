@@ -128,6 +128,18 @@ func (ti *TransactionInjector) Start() {
 			ti.bridgeRandomGasTransfers()
 			return nil
 		})
+
+		// WETH bridging L1 -> L2
+		wg.Go(func() error {
+			ti.bridgeRandomWETHTransfers()
+			return nil
+		})
+
+		// WETH bridging L2 -> L1
+		wg.Go(func() error {
+			ti.issueRandomWETHWithdrawals()
+			return nil
+		})
 	}
 
 	wg.Go(func() error {
@@ -265,6 +277,385 @@ func (ti *TransactionInjector) bridgeRandomGasTransfers() {
 	}
 }
 
+// bridgeRandomWETHTransfers bridges WETH from L1 to L2 using TenBridge.SendERC20
+// The flow is: wrap ETH to WETH on L1 -> approve TenBridge -> sendERC20(weth) -> receiver gets WETH on L2
+func (ti *TransactionInjector) bridgeRandomWETHTransfers() {
+	gasWallet := ti.wallets.GasBridgeWallet
+	wethAddress := gethcommon.HexToAddress("0x1000000000000000000000000000000000000042")
+
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
+		ethClient := ti.rpcHandles.RndEthClient().EthClient()
+		bridgeAddr := ti.params.L1TenData.BridgeAddress
+
+		// Create random receiver and amount
+		receiverWallet := datagenerator.RandomWallet(ti.rndObsWallet().ChainID().Int64())
+		amount := big.NewInt(0).SetUint64(testcommon.RndBtw(500, 50_000))
+
+		// Get gas price
+		gasPrice, err := ethClient.SuggestGasPrice(ti.ctx)
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to get gas price", log.ErrKey, err)
+			continue
+		}
+		gasPrice = new(big.Int).Mul(gasPrice, big.NewInt(2))
+
+		// Fetch actual nonce from chain to avoid desync issues
+		nonce, err := ethClient.PendingNonceAt(ti.ctx, gasWallet.Address())
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to get nonce", log.ErrKey, err)
+			continue
+		}
+
+		// Step 1: Wrap ETH to WETH by sending ETH to WETH contract (triggers deposit())
+		wrapTxData := &types.LegacyTx{
+			Nonce:    nonce,
+			To:       &wethAddress,
+			Value:    amount,
+			Gas:      uint64(100_000),
+			GasPrice: gasPrice,
+		}
+		wrapTx, err := gasWallet.SignTransaction(wrapTxData)
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to sign wrap tx", log.ErrKey, err)
+			continue
+		}
+
+		err = ethClient.SendTransaction(ti.ctx, wrapTx)
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to send wrap tx", log.ErrKey, err)
+			continue
+		}
+
+		_, err = testcommon.AwaitReceiptEth(ti.ctx, ethClient, wrapTx.Hash(), 30*time.Second)
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] wrap tx failed", log.ErrKey, err, log.TxKey, wrapTx.Hash())
+			continue
+		}
+		ti.logger.Info("[WETH Bridge] wrapped ETH to WETH", log.TxKey, wrapTx.Hash(), "amount", amount)
+
+		// Re-fetch nonce after wrap tx - other concurrent transactions may have used nonces
+		nonce, err = ethClient.PendingNonceAt(ti.ctx, gasWallet.Address())
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to get nonce after wrap", log.ErrKey, err)
+			continue
+		}
+
+		// Step 2: Approve TenBridge to spend WETH
+		// approve(address spender, uint256 amount) selector: 0x095ea7b3
+		approveData := make([]byte, 68)
+		copy(approveData[0:4], []byte{0x09, 0x5e, 0xa7, 0xb3})
+		copy(approveData[16:36], bridgeAddr.Bytes())
+		amount.FillBytes(approveData[36:68])
+
+		approveTxData := &types.LegacyTx{
+			Nonce:    nonce,
+			To:       &wethAddress,
+			Value:    big.NewInt(0),
+			Gas:      uint64(100_000),
+			GasPrice: gasPrice,
+			Data:     approveData,
+		}
+		approveTx, err := gasWallet.SignTransaction(approveTxData)
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to sign approve tx", log.ErrKey, err)
+			continue
+		}
+
+		err = ethClient.SendTransaction(ti.ctx, approveTx)
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to send approve tx", log.ErrKey, err)
+			continue
+		}
+
+		_, err = testcommon.AwaitReceiptEth(ti.ctx, ethClient, approveTx.Hash(), 30*time.Second)
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] approve tx failed", log.ErrKey, err, log.TxKey, approveTx.Hash())
+			continue
+		}
+		ti.logger.Info("[WETH Bridge] approved TenBridge to spend WETH", log.TxKey, approveTx.Hash())
+
+		// Re-fetch nonce after approve tx
+		nonce, err = ethClient.PendingNonceAt(ti.ctx, gasWallet.Address())
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to get nonce after approve", log.ErrKey, err)
+			continue
+		}
+
+		// Step 3: Call TenBridge.SendERC20(wethAddress, amount, receiver)
+		bridgeCtr, err := TenBridge.NewTenBridge(bridgeAddr, ethClient)
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to create TenBridge contract", log.ErrKey, err)
+			continue
+		}
+
+		sendOpts, err := bind.NewKeyedTransactorWithChainID(gasWallet.PrivateKey(), gasWallet.ChainID())
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to create transactor for sendERC20", log.ErrKey, err)
+			continue
+		}
+		sendOpts.GasLimit = uint64(500_000)
+		sendOpts.Nonce = big.NewInt(int64(nonce))
+
+		bridgeTx, err := bridgeCtr.SendERC20(sendOpts, wethAddress, amount, receiverWallet.Address())
+		if err != nil {
+			ti.logger.Error("[WETH Bridge] failed to call SendERC20", log.ErrKey, err)
+			continue
+		}
+
+		ti.logger.Info("[WETH Bridge] L1->L2 WETH bridge tx sent", log.TxKey, bridgeTx.Hash(), "amount", amount, "receiver", receiverWallet.Address())
+		go ti.awaitAndRelayL1ToL2Message(bridgeTx, amount, receiverWallet)
+
+		sleepRndBtw(ti.avgBlockDuration/3, ti.avgBlockDuration)
+	}
+}
+
+// awaitAndRelayL1ToL2Message waits for an L1→L2 bridge transaction to be processed,
+// extracts the cross-chain message, and relays it on L2 to complete the bridge.
+func (ti *TransactionInjector) awaitAndRelayL1ToL2Message(tx *types.Transaction, amount *big.Int, receiverWallet wallet.Wallet) {
+	ethClient := ti.rpcHandles.RndEthClient().EthClient()
+
+	// Step 1: Wait for L1 transaction receipt
+	receipt, err := testcommon.AwaitReceiptEth(ti.ctx, ethClient, tx.Hash(), 45*time.Second)
+	if err != nil {
+		ti.logger.Error("[WETH Bridge L1->L2] failed to get L1 receipt", log.ErrKey, err, log.TxKey, tx.Hash())
+		return
+	}
+
+	if receipt.Status != types.ReceiptStatusSuccessful {
+		ti.logger.Error("[WETH Bridge L1->L2] L1 transaction failed", log.TxKey, tx.Hash())
+		return
+	}
+
+	// Step 2: Extract LogMessagePublished events from L1 MessageBus
+	l1MessageBusAddr := ti.params.L1TenData.MessageBusAddr
+	filteredLogs, err := crosschain.FilterLogsFromReceipt(receipt, &l1MessageBusAddr, &ethadapter.CrossChainEventID)
+	if err != nil {
+		ti.logger.Error("[WETH Bridge L1->L2] failed to filter L1 logs", log.ErrKey, err)
+		return
+	}
+
+	if len(filteredLogs) == 0 {
+		ti.logger.Error("[WETH Bridge L1->L2] no cross-chain messages found in L1 tx")
+		return
+	}
+
+	// Convert logs to CrossChainMessages
+	messages, err := crosschain.ConvertLogsToMessages(filteredLogs, ethadapter.CrossChainEventName, ethadapter.MessageBusABI)
+	if err != nil {
+		ti.logger.Error("[WETH Bridge L1->L2] failed to convert logs to messages", log.ErrKey, err)
+		return
+	}
+
+	// Find the receiveNativeWrapped message (Topic = TRANSFER = 0)
+	// The sendNative message (Topic = VALUE = 2) is handled automatically by value transfer
+	var targetMessage *common.CrossChainMessage
+	for i := range messages {
+		msg := &messages[i]
+		// Topic 0 = TRANSFER, which is used for receiveNativeWrapped
+		if msg.Topic == 0 {
+			targetMessage = msg
+			break
+		}
+	}
+
+	if targetMessage == nil {
+		ti.logger.Error("[WETH Bridge L1->L2] no TRANSFER message found for relay")
+		return
+	}
+
+	ti.logger.Info("[WETH Bridge L1->L2] found cross-chain message to relay",
+		"sender", targetMessage.Sender.Hex(),
+		"sequence", targetMessage.Sequence,
+		"topic", targetMessage.Topic)
+
+	// Step 3: Wait for the message to be stored on L2 (synthetic tx processing)
+	// Give time for the L1 block to be processed and synthetic tx to be created
+	time.Sleep(30 * time.Second)
+
+	// Step 4: Get L2 config and relay the message
+	l2Client := ti.rpcHandles.TenWalletRndClient(receiverWallet)
+	cfg, err := l2Client.GetConfig()
+	if err != nil {
+		ti.logger.Error("[WETH Bridge L1->L2] failed to get L2 config", log.ErrKey, err)
+		return
+	}
+
+	// Create L2 CrossChainMessenger contract instance
+	crossChainMessenger, err := CrossChainMessenger.NewCrossChainMessenger(cfg.L2CrossChainMessenger, l2Client)
+	if err != nil {
+		ti.logger.Error("[WETH Bridge L1->L2] failed to create L2 CrossChainMessenger", log.ErrKey, err)
+		return
+	}
+
+	// Use a wallet with L2 funds for the relay transaction
+	relayWallet := ti.wallets.L2FaucetWallet
+	opts, err := bind.NewKeyedTransactorWithChainID(relayWallet.PrivateKey(), relayWallet.ChainID())
+	if err != nil {
+		ti.logger.Error("[WETH Bridge L1->L2] failed to create transactor", log.ErrKey, err)
+		return
+	}
+	opts.Nonce = big.NewInt(int64(relayWallet.GetNonceAndIncrement()))
+	opts.GasLimit = uint64(500_000)
+
+	// Convert to the struct expected by the contract
+	msgStruct := CrossChainMessenger.StructsCrossChainMessage{
+		Sender:           targetMessage.Sender,
+		Sequence:         targetMessage.Sequence,
+		Nonce:            targetMessage.Nonce,
+		Topic:            targetMessage.Topic,
+		Payload:          targetMessage.Payload,
+		ConsistencyLevel: targetMessage.ConsistencyLevel,
+	}
+
+	// Step 5: Call relayMessage on L2
+	relayTx, err := crossChainMessenger.RelayMessage(opts, msgStruct)
+	if err != nil {
+		ti.logger.Error("[WETH Bridge L1->L2] failed to call relayMessage", log.ErrKey, err)
+		return
+	}
+
+	ti.logger.Info("[WETH Bridge L1->L2] relay transaction sent", log.TxKey, relayTx.Hash())
+
+	// Wait for relay transaction receipt
+	err = testcommon.AwaitReceipt(ti.ctx, l2Client, relayTx.Hash(), 30*time.Second)
+	if err != nil {
+		ti.logger.Error("[WETH Bridge L1->L2] relay transaction failed", log.ErrKey, err, log.TxKey, relayTx.Hash())
+		return
+	}
+
+	ti.logger.Info("[WETH Bridge L1->L2] successfully relayed message", log.TxKey, relayTx.Hash(), "amount", amount, "receiver", receiverWallet.Address())
+
+	// Track the successful bridge for verification
+	ti.TxTracker.trackWETHBridgingL1ToL2(tx, amount, receiverWallet)
+}
+
+// issueRandomWETHWithdrawals bridges WETH from L2 to L1 using EthereumBridge.SendERC20
+// The flow is: wrap ETH to WETH on L2 -> approve EthereumBridge -> sendERC20(weth) -> receiver gets native ETH on L1
+func (ti *TransactionInjector) issueRandomWETHWithdrawals() {
+	wethAddress := gethcommon.HexToAddress("0x1000000000000000000000000000000000000042")
+
+	cfg, err := ti.rpcHandles.TenWalletRndClient(ti.wallets.L2FaucetWallet).GetConfig()
+	if err != nil {
+		ti.logger.Error("[WETH Withdrawal] failed to get config", log.ErrKey, err)
+		return
+	}
+	l2BridgeAddr := cfg.L2Bridge
+
+	for txCounter := 0; ti.shouldKeepIssuing(txCounter); txCounter++ {
+		fromWallet := ti.rndObsWallet()
+		client := ti.rpcHandles.TenWalletRndClient(fromWallet)
+
+		amount := big.NewInt(0).SetUint64(testcommon.RndBtw(500, 50_000))
+
+		// Step 1: Wrap native ETH to WETH on L2 by sending ETH to WETH contract
+		price, err := client.GasPrice(ti.ctx)
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] failed to get gas price", log.ErrKey, err)
+			continue
+		}
+		price = new(big.Int).Mul(price, big.NewInt(2))
+
+		wrapTxData := &types.LegacyTx{
+			Nonce:    fromWallet.GetNonceAndIncrement(),
+			To:       &wethAddress,
+			Value:    amount,
+			Gas:      uint64(100_000),
+			GasPrice: price,
+			Data:     nil, // sending ETH triggers deposit()
+		}
+
+		signedWrapTx, err := fromWallet.SignTransaction(wrapTxData)
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] failed to sign wrap tx", log.ErrKey, err)
+			continue
+		}
+
+		err = client.SendTransaction(ti.ctx, signedWrapTx)
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] failed to send wrap tx", log.ErrKey, err)
+			continue
+		}
+
+		err = testcommon.AwaitReceipt(ti.ctx, client, signedWrapTx.Hash(), 30*time.Second)
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] wrap tx failed", log.ErrKey, err, log.TxKey, signedWrapTx.Hash())
+			continue
+		}
+		ti.logger.Info("[WETH Withdrawal] wrapped ETH to WETH on L2", log.TxKey, signedWrapTx.Hash(), "amount", amount)
+
+		// Step 2: Approve EthereumBridge to spend WETH
+		approveData := make([]byte, 68)
+		copy(approveData[0:4], []byte{0x09, 0x5e, 0xa7, 0xb3})
+		copy(approveData[16:36], l2BridgeAddr.Bytes())
+		amount.FillBytes(approveData[36:68])
+
+		approveTxData := &types.LegacyTx{
+			Nonce:    fromWallet.GetNonceAndIncrement(),
+			To:       &wethAddress,
+			Value:    big.NewInt(0),
+			Gas:      uint64(100_000),
+			GasPrice: price,
+			Data:     approveData,
+		}
+
+		signedApproveTx, err := fromWallet.SignTransaction(approveTxData)
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] failed to sign approve tx", log.ErrKey, err)
+			continue
+		}
+
+		err = client.SendTransaction(ti.ctx, signedApproveTx)
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] failed to send approve tx", log.ErrKey, err)
+			continue
+		}
+
+		err = testcommon.AwaitReceipt(ti.ctx, client, signedApproveTx.Hash(), 30*time.Second)
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] approve tx failed", log.ErrKey, err, log.TxKey, signedApproveTx.Hash())
+			continue
+		}
+		ti.logger.Info("[WETH Withdrawal] approved EthereumBridge to spend WETH", log.TxKey, signedApproveTx.Hash())
+
+		// Step 3: Call EthereumBridge.SendERC20(wethAddress, amount, receiver)
+		ethereumBridge, err := EthereumBridge.NewEthereumBridge(l2BridgeAddr, client)
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] failed to create EthereumBridge contract", log.ErrKey, err)
+			continue
+		}
+
+		// Get the publish fee for the bridge message
+		fee, err := ethereumBridge.Erc20Fee(&bind.CallOpts{From: fromWallet.Address()})
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] failed to get bridge fee", log.ErrKey, err)
+			continue
+		}
+
+		opts, err := bind.NewKeyedTransactorWithChainID(fromWallet.PrivateKey(), fromWallet.ChainID())
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] failed to create transactor", log.ErrKey, err)
+			continue
+		}
+		opts.Value = fee
+		opts.GasLimit = uint64(500_000)
+		opts.GasPrice = price
+		opts.Nonce = big.NewInt(int64(fromWallet.GetNonceAndIncrement()))
+
+		// Receiver gets native ETH on L1
+		bridgeTx, err := ethereumBridge.SendERC20(opts, wethAddress, amount, fromWallet.Address())
+		if err != nil {
+			ti.logger.Error("[WETH Withdrawal] failed to call SendERC20", log.ErrKey, err)
+			continue
+		}
+
+		ti.logger.Info("[WETH Withdrawal] L2->L1 WETH bridge tx sent", log.TxKey, bridgeTx.Hash(), "amount", amount, "receiver", fromWallet.Address())
+		go ti.TxTracker.trackWETHBridgingL2ToL1(bridgeTx, amount, fromWallet)
+		go ti.awaitAndFinalizeWithdrawal(bridgeTx, fromWallet)
+
+		sleepRndBtw(ti.avgBlockDuration/3, ti.avgBlockDuration)
+	}
+}
+
 // issueRandomDeposits creates and issues a number of transactions proportional to the simulation time, such that they can be processed
 func (ti *TransactionInjector) issueRandomDeposits() {
 	// todo (@stefan) - this implementation transfers from the hoc and poc owner contracts
@@ -325,12 +716,15 @@ func (ti *TransactionInjector) awaitAndFinalizeWithdrawal(tx *types.Transaction,
 		return
 	}
 
-	logs := make([]types.Log, len(receipt.Logs))
-	for i, log := range receipt.Logs {
-		logs[i] = *log
+	// Filter logs to only include LogMessagePublished events from the MessageBus
+	messageBusAddr := cfg.L2MessageBus
+	filteredLogs, err := crosschain.FilterLogsFromReceipt(receipt, &messageBusAddr, &ethadapter.CrossChainEventID)
+	if err != nil {
+		ti.logger.Error("Failed to filter logs for withdrawal transaction", log.ErrKey, err)
+		return
 	}
 
-	transfers, err := crosschain.ConvertLogsToMessages(logs, ethadapter.CrossChainEventName, ethadapter.MessageBusABI)
+	transfers, err := crosschain.ConvertLogsToMessages(filteredLogs, ethadapter.CrossChainEventName, ethadapter.MessageBusABI)
 	if err != nil {
 		panic(err)
 	}

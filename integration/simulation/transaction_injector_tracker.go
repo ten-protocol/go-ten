@@ -1,6 +1,7 @@
 package simulation
 
 import (
+	"math/big"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -18,11 +19,21 @@ type txInjectorTracker struct {
 	NativeValueTransferL2Transactions []*common.L2Tx
 	WithdrawalL2Transactions          []*common.L2Tx
 	GasBridgeTransactions             []GasBridgingRecord
+	wethBridgeLock                    sync.RWMutex
+	WETHBridgeTransactions            []WETHBridgingRecord
 }
 
 type GasBridgingRecord struct {
 	L1BridgeTx     *types.Transaction
 	ReceiverWallet wallet.Wallet
+}
+
+// WETHBridgingRecord tracks WETH bridge transactions for verification
+type WETHBridgingRecord struct {
+	BridgeTx       *types.Transaction // The bridge transaction (L1 or L2)
+	Amount         *big.Int           // Amount of WETH bridged
+	ReceiverWallet wallet.Wallet      // Wallet that should receive funds
+	IsL1ToL2       bool               // true = L1->L2, false = L2->L1
 }
 
 func newCounter() *txInjectorTracker {
@@ -34,6 +45,7 @@ func newCounter() *txInjectorTracker {
 		WithdrawalL2Transactions:          []*common.L2Tx{},
 		NativeValueTransferL2Transactions: []*common.L2Tx{},
 		GasBridgeTransactions:             []GasBridgingRecord{},
+		WETHBridgeTransactions:            []WETHBridgingRecord{},
 	}
 }
 
@@ -79,4 +91,28 @@ func (m *txInjectorTracker) GetL1Transactions() []common.L1TenTransaction {
 // GetL2Transactions returns all generated non-WithdrawalTx transactions, excluding prefund and ERC20 deploy transactions.
 func (m *txInjectorTracker) GetL2Transactions() ([]*common.L2Tx, []*common.L2Tx, []*common.L2Tx) {
 	return m.TransferL2Transactions, m.WithdrawalL2Transactions, m.NativeValueTransferL2Transactions
+}
+
+// trackWETHBridgingL1ToL2 tracks a WETH bridge transaction from L1 to L2
+func (m *txInjectorTracker) trackWETHBridgingL1ToL2(tx *types.Transaction, amount *big.Int, receiverWallet wallet.Wallet) {
+	m.wethBridgeLock.Lock()
+	defer m.wethBridgeLock.Unlock()
+	m.WETHBridgeTransactions = append(m.WETHBridgeTransactions, WETHBridgingRecord{
+		BridgeTx:       tx,
+		Amount:         amount,
+		ReceiverWallet: receiverWallet,
+		IsL1ToL2:       true,
+	})
+}
+
+// trackWETHBridgingL2ToL1 tracks a WETH bridge transaction from L2 to L1
+func (m *txInjectorTracker) trackWETHBridgingL2ToL1(tx *types.Transaction, amount *big.Int, receiverWallet wallet.Wallet) {
+	m.wethBridgeLock.Lock()
+	defer m.wethBridgeLock.Unlock()
+	m.WETHBridgeTransactions = append(m.WETHBridgeTransactions, WETHBridgingRecord{
+		BridgeTx:       tx,
+		Amount:         amount,
+		ReceiverWallet: receiverWallet,
+		IsL1ToL2:       false,
+	})
 }

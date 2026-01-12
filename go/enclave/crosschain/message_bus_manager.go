@@ -19,9 +19,22 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethlog "github.com/ethereum/go-ethereum/log"
+	"github.com/ten-protocol/go-ten/contracts/generated/EthereumBridge"
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/log"
 )
+
+// receiveNativeWrappedSelector is the 4-byte function selector for receiveNativeWrapped(address,uint256)
+// Used for WETH bridging - these messages don't represent native value transfers and should be skipped
+var receiveNativeWrappedSelector []byte
+
+func init() {
+	parsedABI, err := EthereumBridge.EthereumBridgeMetaData.GetAbi()
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse EthereumBridge ABI: %v", err))
+	}
+	receiveNativeWrappedSelector = parsedABI.Methods["receiveNativeWrapped"].ID
+}
 
 type MessageBusManager struct {
 	messageBusAddress *gethcommon.Address
@@ -225,7 +238,13 @@ func ConvertCrossChainMessagesToValueTransfers(msgs common.CrossChainMessages, e
 			return nil, fmt.Errorf("unpack CrossChainCall failed: topic=%d sender=%s seq=%d: %w", m.Topic, m.Sender.Hex(), m.Sequence, err)
 		}
 
-		// 2) Decode inner receiveAssets call
+		// 2) Check selector - skip receiveNativeWrapped as it doesn't represent a native value transfer
+		// (the actual value transfer happens via a separate sendNative/receiveAssets call)
+		if len(out.Data) >= 4 && bytes.Equal(out.Data[:4], receiveNativeWrappedSelector) {
+			continue
+		}
+
+		// 3) Decode inner receiveAssets call
 		asset, amount, recipient, err := decodeReceiveAssetsCall(out.Data)
 		if err != nil {
 			selector := ""

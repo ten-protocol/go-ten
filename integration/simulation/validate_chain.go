@@ -349,6 +349,98 @@ func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
 	}
 }
 
+// verifyWETHBridgeTransactions verifies that WETH bridge transactions completed successfully
+// For L1->L2: receiver should have WETH balance on L2
+// For L2->L1: receiver should have received native ETH on L1 (via withdrawal finalization)
+// Uses a success rate threshold similar to other transaction checks - at least 50% must succeed
+func verifyWETHBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
+	wethAddress := gethcommon.HexToAddress("0x1000000000000000000000000000000000000042")
+	wethBridgeRecords := s.TxInjector.TxTracker.WETHBridgeTransactions
+
+	if len(wethBridgeRecords) == 0 {
+		testlog.Logger().Info("No WETH bridge transactions to verify")
+		return
+	}
+
+	testlog.Logger().Info(fmt.Sprintf("Verifying %d WETH bridge transactions", len(wethBridgeRecords)))
+
+	// Wait for cross-chain messages to be processed
+	time.Sleep(45 * time.Second)
+
+	l1ToL2Total := 0
+	l1ToL2Success := 0
+	l2ToL1Total := 0
+	l2ToL1Success := 0
+
+	for i, record := range wethBridgeRecords {
+		if record.IsL1ToL2 {
+			l1ToL2Total++
+			// L1 -> L2: Verify receiver has WETH on L2
+			// When WETH is bridged L1->L2, it goes through receiveNativeWrapped which wraps to L2 WETH
+			obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, record.ReceiverWallet)
+			client := obsClients[nodeIdx]
+
+			// Check L2 WETH balance using balanceOf(address)
+			// balanceOf function selector: 0x70a08231
+			balanceOfData := make([]byte, 36)
+			copy(balanceOfData[0:4], []byte{0x70, 0xa0, 0x82, 0x31})
+			copy(balanceOfData[16:36], record.ReceiverWallet.Address().Bytes())
+
+			wethBalanceResult, err := client.CallContract(context.Background(), ethereum.CallMsg{
+				From: record.ReceiverWallet.Address(),
+				To:   &wethAddress,
+				Data: balanceOfData,
+			}, nil)
+			if err != nil {
+				testlog.Logger().Warn(fmt.Sprintf("WETH bridge L1->L2 [%d]: failed to get WETH balance: %v", i, err))
+				continue
+			}
+
+			wethBalance := new(big.Int).SetBytes(wethBalanceResult)
+			if wethBalance.Cmp(record.Amount) < 0 {
+				testlog.Logger().Warn(fmt.Sprintf("WETH bridge L1->L2 [%d]: L2 WETH balance (%s) less than bridged amount (%s)",
+					i, wethBalance.String(), record.Amount.String()))
+			} else {
+				l1ToL2Success++
+				testlog.Logger().Info(fmt.Sprintf("WETH bridge L1->L2 [%d]: verified receiver has WETH balance %s on L2",
+					i, wethBalance.String()))
+			}
+		} else {
+			l2ToL1Total++
+			// L2 -> L1: Verify the L2 transaction succeeded
+			// The actual L1 withdrawal finalization is handled by awaitAndFinalizeWithdrawal
+			// Here we just verify the L2 bridge tx was successful
+			client := s.RPCHandles.TenWalletClient(record.ReceiverWallet.Address(), nodeIdx)
+
+			receipt, err := client.TransactionReceipt(context.Background(), record.BridgeTx.Hash())
+			if err != nil {
+				testlog.Logger().Warn(fmt.Sprintf("WETH bridge L2->L1 [%d]: failed to get L2 tx receipt: %v", i, err))
+				continue
+			}
+
+			if receipt.Status != types.ReceiptStatusSuccessful {
+				testlog.Logger().Warn(fmt.Sprintf("WETH bridge L2->L1 [%d]: L2 transaction failed with status %d", i, receipt.Status))
+			} else {
+				l2ToL1Success++
+				testlog.Logger().Info(fmt.Sprintf("WETH bridge L2->L1 [%d]: L2 transaction succeeded, hash: %s",
+					i, record.BridgeTx.Hash().Hex()))
+			}
+		}
+	}
+
+	// Log summary
+	testlog.Logger().Info(fmt.Sprintf("WETH bridge verification summary: L1->L2 %d/%d successful, L2->L1 %d/%d successful",
+		l1ToL2Success, l1ToL2Total, l2ToL1Success, l2ToL1Total))
+
+	// Require at least 50% success rate for each direction (if transactions were attempted)
+	if l1ToL2Total > 0 && l1ToL2Success < l1ToL2Total/2 {
+		t.Errorf("Node %d: WETH L1->L2 bridge: less than half succeeded (%d/%d)", nodeIdx, l1ToL2Success, l1ToL2Total)
+	}
+	if l2ToL1Total > 0 && l2ToL1Success < l2ToL1Total/2 {
+		t.Errorf("Node %d: WETH L2->L1 bridge: less than half succeeded (%d/%d)", nodeIdx, l2ToL1Success, l2ToL1Total)
+	}
+}
+
 func checkZenBaseMinting(t *testing.T, s *Simulation) {
 	// Map to track the number of transactions per sender
 	txCountPerSender := make(map[gethcommon.Address]int)
@@ -450,6 +542,7 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	}
 
 	verifyGasBridgeTransactions(t, s, nodeIdx)
+	verifyWETHBridgeTransactions(t, s, nodeIdx)
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",

@@ -33,6 +33,7 @@ func load(filePaths []string) (*TenConfig, error) {
 
 	// Bind environment variables to config keys to override yaml files
 	// Use TEN_ prefix to avoid conflicts with common env vars like NODE, HOST, etc.
+	v.SetEnvPrefix("TEN")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
 
@@ -80,8 +81,8 @@ func load(filePaths []string) (*TenConfig, error) {
 	err := v.Unmarshal(&tenCfg, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
 		mapstructure.StringToTimeDurationHookFunc(), // handle string -> time.Duration
 		mapstructure.StringToSliceHookFunc(","),     // handle string -> []string
+		bigIntHookFunc(),                            // handle int values -> big.Int fields (must be before TextUnmarshallerHookFunc)
 		mapstructure.TextUnmarshallerHookFunc(),     // handle all types that implement encoding.TextUnmarshaler
-		bigIntHookFunc(),                            // handle int values -> big.Int fields
 	)))
 	if err != nil {
 		fmt.Println("Error unmarshalling config: ", err)
