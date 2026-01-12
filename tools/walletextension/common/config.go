@@ -34,4 +34,5 @@ type Config struct {
 	FrontendURL                   string        // Frontend URL allowed for restrictive CORS
 	SessionKeyExpirationThreshold time.Duration // Threshold for session key expiration
 	SessionKeyExpirationInterval  time.Duration // How often the session key expiration service runs
+	BackupEncryptionKey           string        // Public key (hex) for encrypting backup of the encryption key
 }

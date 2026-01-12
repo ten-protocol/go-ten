@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -10,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/crypto/ecies"
 	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
@@ -88,8 +91,12 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 			Func: httpHandler(walletExt, networkConfigRequestHandler),
 		},
 		{
-			Name: common.APIVersion1 + common.PathKeyExchange,
+			Name: common.PathAdmin + common.PathKeyExchange,
 			Func: httpHandler(walletExt, keyExchangeRequestHandler),
+		},
+		{
+			Name: common.PathAdmin + common.PathBackupEncryptionKey,
+			Func: httpHandler(walletExt, backupEncryptionKeyRequestHandler),
 		},
 	}
 }
@@ -844,6 +851,62 @@ func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 	walletExt.Logger().Info("Shared encrypted key with another gateway enclave")
 	err = conn.WriteResponse(messageBytesOG)
+	if err != nil {
+		walletExt.Logger().Error("error writing response", log.ErrKey, err)
+	}
+}
+
+// backupEncryptionKeyRequestHandler handles requests to backup the encryption key.
+// The encryption key is encrypted with the configured backup public key and returned as hex.
+// This endpoint requires the -backupEncryptionKey flag to be configured.
+func backupEncryptionKeyRequestHandler(walletExt *services.Services, conn UserConn) {
+	// Check if backup encryption key is configured
+	if walletExt.Config.BackupEncryptionKey == "" {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("backup encryption key not configured - set -backupEncryptionKey flag"))
+		return
+	}
+
+	// Get the encryption key from storage
+	encryptionKey := walletExt.Storage.GetEncryptionKey()
+	if len(encryptionKey) == 0 {
+		handleError(conn, walletExt.Logger(), fmt.Errorf("no encryption key available to backup"))
+		return
+	}
+
+	// Decode the backup public key from hex
+	backupPubKeyHex := walletExt.Config.BackupEncryptionKey
+	// Remove 0x prefix if present
+	backupPubKeyHex = strings.TrimPrefix(backupPubKeyHex, "0x")
+
+	backupPubKeyBytes, err := hex.DecodeString(backupPubKeyHex)
+	if err != nil {
+		walletExt.Logger().Error("Failed to decode backup public key", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid backup public key format: %w", err))
+		return
+	}
+
+	// Decompress the public key (expecting compressed ECDSA public key - 33 bytes)
+	backupPubKey, err := crypto.DecompressPubkey(backupPubKeyBytes)
+	if err != nil {
+		walletExt.Logger().Error("Failed to decompress backup public key", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid backup public key: %w", err))
+		return
+	}
+
+	// Convert to ECIES public key and encrypt
+	eciesPubKey := ecies.ImportECDSAPublic(backupPubKey)
+	encryptedKey, err := ecies.Encrypt(rand.Reader, eciesPubKey, encryptionKey, nil, nil)
+	if err != nil {
+		walletExt.Logger().Error("Failed to encrypt backup key", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to encrypt backup key: %w", err))
+		return
+	}
+
+	// Return the encrypted key as hex with 0x prefix
+	response := "0x" + hex.EncodeToString(encryptedKey)
+	walletExt.Logger().Info("Successfully created encryption key backup")
+
+	err = conn.WriteResponse([]byte(response))
 	if err != nil {
 		walletExt.Logger().Error("error writing response", log.ErrKey, err)
 	}
