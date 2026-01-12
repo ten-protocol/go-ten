@@ -246,7 +246,7 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 8: Send the message to KeyProvider via HTTP POST
-	resp, err := http.Post(config.EncryptionKeySource+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
+	resp, err := http.Post(config.EncryptionKeySource+common.PathAdmin+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
 	if err != nil {
 		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err)
 		return nil, fmt.Errorf("failed to send message to KeyProvider: %w", err)
