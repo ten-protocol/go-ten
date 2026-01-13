@@ -315,8 +315,8 @@ func (e *enclaveAdminService) CreateBatch(ctx context.Context, skipBatchIfEmpty 
 
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateBatch call ended", &core.RelaxedThresholds)
 
-	e.dataInMutex.RLock()
-	defer e.dataInMutex.RUnlock()
+	e.dataInMutex.Lock()
+	defer e.dataInMutex.Unlock()
 
 	err := e.sequencer().CreateBatch(ctx, skipBatchIfEmpty)
 	if err != nil {
@@ -333,8 +333,8 @@ func (e *enclaveAdminService) CreateRollup(ctx context.Context, fromSeqNo uint64
 	defer core.LogMethodDuration(e.logger, measure.NewStopwatch(), "CreateRollup call ended", &core.RelaxedThresholds)
 
 	// allow the simultaneous production of rollups and batches
-	e.dataInMutex.RLock()
-	defer e.dataInMutex.RUnlock()
+	e.dataInMutex.Lock()
+	defer e.dataInMutex.Unlock()
 
 	if e.registry.HeadBatchSeq() == nil {
 		return nil, responses.ToInternalError(fmt.Errorf("not initialised yet"))
