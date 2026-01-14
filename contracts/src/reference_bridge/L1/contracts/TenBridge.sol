@@ -199,5 +199,6 @@ contract TenBridge is
         emit Withdrawal(receiver, address(0), amount);
     }
 
-
+    // Required to receive ETH from WETH.withdraw() when bridging WETH
+    receive() external payable {}
 }

@@ -285,6 +285,7 @@ func DeployTenNetworkContracts(client ethadapter.EthClient, wallets *params.SimW
 
 func ConnectTenNetworkBridge(client ethadapter.EthClient, wallets *params.SimWallets, l1Data *params.L1TenData, l2BridgeAddress common.Address) error {
 	bridgeAddr := l1Data.BridgeAddress
+
 	bridgeCtr, err := TenBridge.NewTenBridge(bridgeAddr, client.EthClient())
 	if err != nil {
 		return fmt.Errorf("failed to instantiate TenBridge contract. Cause: %w", err)

@@ -510,7 +510,9 @@ func (r *DataService) processCrossChainLogs(l types.Log, txData *common.L1TxData
 		return err
 	}
 
-	txData.CrossChainMessages = messages
+	// Append messages instead of replacing - a single transaction can emit multiple LogMessagePublished events
+	// (e.g., sendERC20(WETH) emits both VALUE and TRANSFER events)
+	txData.CrossChainMessages = append(txData.CrossChainMessages, messages...)
 	processed.AddEvent(common.CrossChainMessageTx, txData)
 	return nil
 }
