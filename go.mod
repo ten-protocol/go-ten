@@ -9,7 +9,6 @@ require (
 	github.com/Microsoft/go-winio v0.6.2
 	github.com/TwiN/gocache/v2 v2.4.0
 	github.com/andybalholm/brotli v1.2.0
-	github.com/bytedance/gopkg v0.1.3
 	github.com/codeclysm/extract/v3 v3.1.1
 	github.com/containerd/errdefs v1.0.0
 	github.com/deckarep/golang-set/v2 v2.8.0
@@ -17,7 +16,7 @@ require (
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.6.0
 	github.com/edgelesssys/ego v1.8.0
-	github.com/ethereum/go-ethereum v1.16.7
+	github.com/ethereum/go-ethereum v1.16.8
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-git/go-git/v5 v5.16.3
@@ -67,6 +66,7 @@ require (
 	github.com/VictoriaMetrics/fastcache v1.13.0 // indirect
 	github.com/allegro/bigcache v1.2.1 // indirect
 	github.com/bits-and-blooms/bitset v1.24.3 // indirect
+	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.14.2 // indirect
 	github.com/bytedance/sonic/loader v0.4.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
