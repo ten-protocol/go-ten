@@ -91,15 +91,9 @@ jobs:
          # parse YAML and emit outputs
          -  name: Parse l1-config.yaml
             id: parse
-            env:
-               TESTNET_SHORT_NAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
             run: |
-               # Choose the correct config directory based on environment
-               if [[ "$TESTNET_SHORT_NAME" == "mainnet" ]]; then
-                  CFG=cfg/prod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
-               else
-                  CFG=cfg/nonprod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
-               fi
+               # Hardcoded to use testnet config
+               CFG=cfg/nonprod-argocd-config/apps/envs/testnet/valuesFile/l1-values.yaml
                
                echo "network_config=$(yq -r '.l1Config.networkConfig'     "$CFG")"   >> $GITHUB_OUTPUT
                echo "message_bus=$(yq -r '.l1Config.messagebus'           "$CFG")"   >> $GITHUB_OUTPUT
@@ -150,9 +144,9 @@ jobs:
          - name: "Wait until obscuro node is healthy"
            shell: bash
            run: |
-              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-sequencer.ten.xyz
-              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-validator-01.ten.xyz
-              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=${{needs.read-l1-config.outputs.TESTNET_SHORT_NAME}}-validator-02.ten.xyz
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=testnet-sequencer.ten.xyz
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=testnet-validator-01.ten.xyz
+              ./.github/workflows/runner-scripts/wait-node-healthy.sh --host=testnet-validator-02.ten.xyz
    
 
    grant-sequencer-enclaves:
@@ -173,7 +167,7 @@ jobs:
                DEPLOY_DOCKERIMAGE: ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
                DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
                DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
-               DEPLOY_L2_SEQUENCERURL: http://${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-sequencer.ten.xyz:80
+               DEPLOY_L2_SEQUENCERURL: http://testnet-sequencer.ten.xyz:80
                NETWORK_L1_CONTRACTS_ENCLAVEREGISTRY: ${{ needs.read-l1-config.outputs.enclave_registry }}
                NETWORK_CHAINID: ${{ vars.CHAIN_ID }}
 
@@ -248,7 +242,7 @@ jobs:
               DEPLOY_L1_DEPLOYERPK: ${{ secrets.ACCOUNT_PK_WORKER }}
               DEPLOY_L1_RPCADDRESS: ${{ secrets.L1_HTTP_URL }}
               DEPLOY_L2_DEPLOYERPK: ${{ secrets.L2_DEPLOYER_KEY }}
-              DEPLOY_L2_RPCADDRESS: ${{ needs.read-l1-config.outputs.TESTNET_SHORT_NAME }}-validator-01.ten.xyz
+              DEPLOY_L2_RPCADDRESS: testnet-validator-01.ten.xyz
               DEPLOY_L2_HTTPPORT: 80
               DEPLOY_L2_WSPORT: 81
               DEPLOY_L2_FAUCETPREFUND: ${{ vars.FAUCET_INITIAL_FUNDS }}
