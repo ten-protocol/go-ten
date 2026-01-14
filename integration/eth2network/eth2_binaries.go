@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	_gethVersion  = "1.16.7"
-	_gethHash     = "b9f3a3d9"
+	_gethVersion  = "1.16.8"
+	_gethHash     = "abeb78c6"
 	_prysmVersion = "v7.1.0"
 	MAC           = "darwin"
 )
