@@ -473,7 +473,8 @@ func (ti *TransactionInjector) awaitAndRelayL1ToL2Message(tx *types.Transaction,
 	time.Sleep(30 * time.Second)
 
 	// Step 4: Get L2 config and relay the message
-	l2Client := ti.rpcHandles.TenWalletRndClient(receiverWallet)
+	// Use L2FaucetWallet's client since receiverWallet is a newly generated wallet without registered clients
+	l2Client := ti.rpcHandles.TenWalletRndClient(ti.wallets.L2FaucetWallet)
 	cfg, err := l2Client.GetConfig()
 	if err != nil {
 		ti.logger.Error("[WETH Bridge L1->L2] failed to get L2 config", log.ErrKey, err)
