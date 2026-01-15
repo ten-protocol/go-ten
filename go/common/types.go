@@ -108,8 +108,11 @@ type (
 	}
 )
 
+// ValueTransferTopic is the topic ID for cross-chain value transfers (Topics.VALUE = 2)
+const ValueTransferTopic = 2
+
 func (c CrossChainMessage) IsValueTransfer(bridgeAuthority gethcommon.Address) bool {
-	return c.Sender == bridgeAuthority
+	return c.Sender == bridgeAuthority && c.Topic == ValueTransferTopic
 }
 
 func (c CrossChainMessages) FilterValueTransfers(bridgeAuthority gethcommon.Address) CrossChainMessages {

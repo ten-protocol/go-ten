@@ -98,10 +98,6 @@ contract CrossChainMessenger is ICrossChainMessenger, PausableWithRoles, Reentra
         return abi.encode(CrossChainCall(target, payload, 0));
     }
 
-    // This function can be called by anyone and if the message @param actually exists in the message bus,
-    // then the function will push it to the targeted smart contract.
-    // Notice that anyone can queue a call to be relayed, but the cross chain sender is set to be
-    // the address of the message sender on the other layer, as it is when reaching the message bus.
     /**
      * @dev This function can be called by anyone and if the message @param actually exists in the message bus, then the
      * function will push it to the targeted smart contract. Notice that anyone can queue a call to be relayed, but the

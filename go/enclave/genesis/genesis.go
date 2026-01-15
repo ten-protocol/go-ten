@@ -1,6 +1,7 @@
 package genesis
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -12,19 +13,27 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/storage"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ten-protocol/go-ten/go/common"
 )
 
 // Account specifies the address that's prefunded and the amount it's funded with
 type Account struct {
-	Address gethcommon.Address
-	Amount  *big.Int
+	Address gethcommon.Address `json:"address"`
+	Amount  *big.Int           `json:"amount"`
+}
+
+// Contract specifies an address and its bytecode to be set at genesis
+type Contract struct {
+	Address  gethcommon.Address `json:"address"`
+	Bytecode string             `json:"bytecode"` // hex string with 0x prefix
 }
 
 // Genesis holds a range of prefunded accounts
 type Genesis struct {
-	Accounts []Account
+	Accounts  []Account  `json:"accounts"`
+	Contracts []Contract `json:"contracts"`
 }
 
 // New creates a new Genesis given a json string
@@ -41,8 +50,8 @@ func New(genesisJSON string) (*Genesis, error) {
 	return genesis, nil
 }
 
-func (g Genesis) CommitGenesisState(storage storage.Storage) error {
-	stateDB, err := g.applyAllocations(storage)
+func (g Genesis) CommitGenesisState(ctx context.Context, s storage.Storage) error {
+	stateDB, err := g.applyAllocations(s)
 	if err != nil {
 		return err
 	}
@@ -54,6 +63,20 @@ func (g Genesis) CommitGenesisState(storage storage.Storage) error {
 	if root != types.EmptyRootHash {
 		if err := stateDB.Database().TrieDB().Commit(root, true); err != nil {
 			return err
+		}
+	}
+
+	// Register genesis contracts in the contract database so they can be looked up
+	// when processing event logs from transactions that interact with them
+	if len(g.Contracts) > 0 {
+		contractAddresses := make([]gethcommon.Address, 0, len(g.Contracts))
+		for _, c := range g.Contracts {
+			if c.Bytecode != "" {
+				contractAddresses = append(contractAddresses, c.Address)
+			}
+		}
+		if err := s.RegisterGenesisContracts(ctx, contractAddresses); err != nil {
+			return fmt.Errorf("could not register genesis contracts: %w", err)
 		}
 	}
 
@@ -79,6 +102,18 @@ func (g Genesis) applyAllocations(storage storage.Storage) (*state.StateDB, erro
 	// set the accounts funds
 	for _, acc := range g.Accounts {
 		s.SetBalance(acc.Address, uint256.MustFromBig(acc.Amount), tracing.BalanceIncreaseGenesisBalance)
+	}
+
+	// set predeployed contract code
+	for _, c := range g.Contracts {
+		if c.Bytecode == "" {
+			continue
+		}
+		code, err := hexutil.Decode(c.Bytecode)
+		if err != nil {
+			return nil, fmt.Errorf("invalid contract bytecode for %s: %w", c.Address.Hex(), err)
+		}
+		s.SetCode(c.Address, code, tracing.CodeChangeGenesis)
 	}
 
 	return s, nil

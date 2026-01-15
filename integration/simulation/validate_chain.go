@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ten-protocol/go-ten/go/host/l1"
 
 	"github.com/ethereum/go-ethereum/rlp"
@@ -61,6 +62,7 @@ func checkNetworkValidity(t *testing.T, s *Simulation) {
 	checkReceivedLogs(t, s)
 	checkTenscan(t, s)
 	checkZenBaseMinting(t, s)
+	checkWETHContract(t, s)
 }
 
 // Ensures that L1 and L2 txs were actually issued.
@@ -347,6 +349,98 @@ func verifyGasBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
 	}
 }
 
+// verifyWETHBridgeTransactions verifies that WETH bridge transactions completed successfully
+// For L1->L2: receiver should have WETH balance on L2
+// For L2->L1: receiver should have received native ETH on L1 (via withdrawal finalization)
+// Uses a success rate threshold similar to other transaction checks - at least 50% must succeed
+func verifyWETHBridgeTransactions(t *testing.T, s *Simulation, nodeIdx int) {
+	wethAddress := gethcommon.HexToAddress("0x1000000000000000000000000000000000000042")
+	wethBridgeRecords := s.TxInjector.TxTracker.WETHBridgeTransactions
+
+	if len(wethBridgeRecords) == 0 {
+		testlog.Logger().Info("No WETH bridge transactions to verify")
+		return
+	}
+
+	testlog.Logger().Info(fmt.Sprintf("Verifying %d WETH bridge transactions", len(wethBridgeRecords)))
+
+	// Wait for cross-chain messages to be processed
+	time.Sleep(45 * time.Second)
+
+	l1ToL2Total := 0
+	l1ToL2Success := 0
+	l2ToL1Total := 0
+	l2ToL1Success := 0
+
+	for i, record := range wethBridgeRecords {
+		if record.IsL1ToL2 {
+			l1ToL2Total++
+			// L1 -> L2: Verify receiver has WETH on L2
+			// When WETH is bridged L1->L2, it goes through receiveNativeWrapped which wraps to L2 WETH
+			obsClients := network.CreateAuthClients(s.RPCHandles.RPCClients, record.ReceiverWallet)
+			client := obsClients[nodeIdx]
+
+			// Check L2 WETH balance using balanceOf(address)
+			// balanceOf function selector: 0x70a08231
+			balanceOfData := make([]byte, 36)
+			copy(balanceOfData[0:4], []byte{0x70, 0xa0, 0x82, 0x31})
+			copy(balanceOfData[16:36], record.ReceiverWallet.Address().Bytes())
+
+			wethBalanceResult, err := client.CallContract(context.Background(), ethereum.CallMsg{
+				From: record.ReceiverWallet.Address(),
+				To:   &wethAddress,
+				Data: balanceOfData,
+			}, nil)
+			if err != nil {
+				testlog.Logger().Warn(fmt.Sprintf("WETH bridge L1->L2 [%d]: failed to get WETH balance: %v", i, err))
+				continue
+			}
+
+			wethBalance := new(big.Int).SetBytes(wethBalanceResult)
+			if wethBalance.Cmp(record.Amount) < 0 {
+				testlog.Logger().Warn(fmt.Sprintf("WETH bridge L1->L2 [%d]: L2 WETH balance (%s) less than bridged amount (%s)",
+					i, wethBalance.String(), record.Amount.String()))
+			} else {
+				l1ToL2Success++
+				testlog.Logger().Info(fmt.Sprintf("WETH bridge L1->L2 [%d]: verified receiver has WETH balance %s on L2",
+					i, wethBalance.String()))
+			}
+		} else {
+			l2ToL1Total++
+			// L2 -> L1: Verify the L2 transaction succeeded
+			// The actual L1 withdrawal finalization is handled by awaitAndFinalizeWithdrawal
+			// Here we just verify the L2 bridge tx was successful
+			client := s.RPCHandles.TenWalletClient(record.ReceiverWallet.Address(), nodeIdx)
+
+			receipt, err := client.TransactionReceipt(context.Background(), record.BridgeTx.Hash())
+			if err != nil {
+				testlog.Logger().Warn(fmt.Sprintf("WETH bridge L2->L1 [%d]: failed to get L2 tx receipt: %v", i, err))
+				continue
+			}
+
+			if receipt.Status != types.ReceiptStatusSuccessful {
+				testlog.Logger().Warn(fmt.Sprintf("WETH bridge L2->L1 [%d]: L2 transaction failed with status %d", i, receipt.Status))
+			} else {
+				l2ToL1Success++
+				testlog.Logger().Info(fmt.Sprintf("WETH bridge L2->L1 [%d]: L2 transaction succeeded, hash: %s",
+					i, record.BridgeTx.Hash().Hex()))
+			}
+		}
+	}
+
+	// Log summary
+	testlog.Logger().Info(fmt.Sprintf("WETH bridge verification summary: L1->L2 %d/%d successful, L2->L1 %d/%d successful",
+		l1ToL2Success, l1ToL2Total, l2ToL1Success, l2ToL1Total))
+
+	// Require at least 50% success rate for each direction (if transactions were attempted)
+	if l1ToL2Total > 0 && l1ToL2Success < l1ToL2Total/2 {
+		t.Errorf("Node %d: WETH L1->L2 bridge: less than half succeeded (%d/%d)", nodeIdx, l1ToL2Success, l1ToL2Total)
+	}
+	if l2ToL1Total > 0 && l2ToL1Success < l2ToL1Total/2 {
+		t.Errorf("Node %d: WETH L2->L1 bridge: less than half succeeded (%d/%d)", nodeIdx, l2ToL1Success, l2ToL1Total)
+	}
+}
+
 func checkZenBaseMinting(t *testing.T, s *Simulation) {
 	// Map to track the number of transactions per sender
 	txCountPerSender := make(map[gethcommon.Address]int)
@@ -448,6 +542,7 @@ func checkBlockchainOfTenNode(t *testing.T, rpcHandles *network.RPCHandles, minT
 	}
 
 	verifyGasBridgeTransactions(t, s, nodeIdx)
+	verifyWETHBridgeTransactions(t, s, nodeIdx)
 	notFoundTransfers, notFoundWithdrawals, notFoundNativeTransfers := FindNotIncludedL2Txs(s.ctx, nodeIdx, rpcHandles, s.TxInjector)
 	if notFoundTransfers > 0 {
 		t.Errorf("Node %d: %d out of %d Transfer Txs not found in the enclave",
@@ -922,4 +1017,156 @@ func getRollupFromBlobHashes(ctx context.Context, blobResolver l1.BlobResolver, 
 		return nil, fmt.Errorf("could not decode rollup. Cause: %w", err)
 	}
 	return &rollup, nil
+}
+
+// checkWETHContract verifies that the WETH9 contract is deployed at genesis and functional.
+// It checks:
+// 1. Contract bytecode exists at the predefined WETH address
+// 2. Can wrap ETH by calling deposit()
+// 3. Can unwrap WETH by calling withdraw()
+// 4. Balances update correctly
+func checkWETHContract(t *testing.T, s *Simulation) {
+	// WETH9 is predeployed at this address (matches SystemDeployerPhase2.sol LOCAL_WETH_PREDEPLOY)
+	wethAddress := gethcommon.HexToAddress("0x1000000000000000000000000000000000000042")
+
+	// Use the first simulation wallet to test WETH
+	testWallet := s.Params.Wallets.SimObsWallets[0]
+	nodeIdx := 0
+
+	client := s.RPCHandles.TenWalletClient(testWallet.Address(), nodeIdx)
+
+	// Step 1: Verify contract code exists at WETH address
+	code, err := client.CodeAt(context.Background(), wethAddress, nil)
+	if err != nil {
+		t.Errorf("WETH check: Failed to get code at WETH address %s: %s", wethAddress.Hex(), err)
+		return
+	}
+	if len(code) == 0 {
+		t.Errorf("WETH check: No bytecode found at WETH address %s - genesis contract not deployed", wethAddress.Hex())
+		return
+	}
+	testlog.Logger().Info(fmt.Sprintf("WETH check: Contract bytecode found at %s (%d bytes)", wethAddress.Hex(), len(code)))
+
+	// Step 2: Get initial ETH balance
+	initialETHBalance, err := client.BalanceAt(context.Background(), nil)
+	if err != nil {
+		t.Errorf("WETH check: Failed to get initial ETH balance: %s", err)
+		return
+	}
+
+	// Need sufficient balance to test wrap/unwrap
+	wrapAmount := big.NewInt(1000000000000000) // 0.001 ETH
+	if initialETHBalance.Cmp(wrapAmount) < 0 {
+		testlog.Logger().Info(fmt.Sprintf("WETH check: Skipping wrap/unwrap test - insufficient ETH balance (%s)", initialETHBalance.String()))
+		return
+	}
+
+	// Step 3: Wrap ETH by sending to WETH contract (calls deposit())
+	// Create deposit transaction data (sending ETH to WETH contract triggers fallback which calls deposit())
+	depositTxData := &types.LegacyTx{
+		Nonce: testWallet.GetNonceAndIncrement(),
+		To:    &wethAddress,
+		Value: wrapAmount,
+		Data:  nil,
+	}
+
+	// Estimate gas and get gas price
+	estimatedDepositTx := client.EstimateGasAndGasPrice(depositTxData)
+
+	signedDepositTx, err := testWallet.SignTransaction(estimatedDepositTx)
+	if err != nil {
+		t.Errorf("WETH check: Failed to sign deposit tx: %s", err)
+		return
+	}
+
+	err = client.SendTransaction(context.Background(), signedDepositTx)
+	if err != nil {
+		t.Errorf("WETH check: Failed to send deposit tx: %s", err)
+		return
+	}
+
+	// Wait for receipt
+	err = testcommon.AwaitReceipt(context.Background(), client, signedDepositTx.Hash(), 30*time.Second)
+	if err != nil {
+		t.Errorf("WETH check: Failed to get deposit receipt: %s", err)
+		return
+	}
+	testlog.Logger().Info(fmt.Sprintf("WETH check: Successfully wrapped %s wei to WETH", wrapAmount.String()))
+
+	// Step 4: Check WETH balance using balanceOf(address)
+	// balanceOf function selector: 0x70a08231
+	balanceOfData := make([]byte, 36)
+	copy(balanceOfData[0:4], []byte{0x70, 0xa0, 0x82, 0x31})
+	copy(balanceOfData[16:36], testWallet.Address().Bytes())
+
+	wethBalanceResult, err := client.CallContract(context.Background(), ethereum.CallMsg{
+		From: testWallet.Address(),
+		To:   &wethAddress,
+		Data: balanceOfData,
+	}, nil)
+	if err != nil {
+		t.Errorf("WETH check: Failed to call balanceOf: %s", err)
+		return
+	}
+
+	wethBalance := new(big.Int).SetBytes(wethBalanceResult)
+	if wethBalance.Cmp(wrapAmount) < 0 {
+		t.Errorf("WETH check: WETH balance (%s) less than wrapped amount (%s)", wethBalance.String(), wrapAmount.String())
+		return
+	}
+	testlog.Logger().Info(fmt.Sprintf("WETH check: WETH balance after wrap: %s", wethBalance.String()))
+
+	// Step 5: Unwrap WETH by calling withdraw(uint256)
+	// withdraw function selector: 0x2e1a7d4d
+	withdrawData := make([]byte, 36)
+	copy(withdrawData[0:4], []byte{0x2e, 0x1a, 0x7d, 0x4d})
+	wrapAmount.FillBytes(withdrawData[4:36])
+
+	withdrawTxData := &types.LegacyTx{
+		Nonce: testWallet.GetNonceAndIncrement(),
+		To:    &wethAddress,
+		Value: big.NewInt(0),
+		Data:  withdrawData,
+	}
+
+	estimatedWithdrawTx := client.EstimateGasAndGasPrice(withdrawTxData)
+
+	signedWithdrawTx, err := testWallet.SignTransaction(estimatedWithdrawTx)
+	if err != nil {
+		t.Errorf("WETH check: Failed to sign withdraw tx: %s", err)
+		return
+	}
+
+	err = client.SendTransaction(context.Background(), signedWithdrawTx)
+	if err != nil {
+		t.Errorf("WETH check: Failed to send withdraw tx: %s", err)
+		return
+	}
+
+	err = testcommon.AwaitReceipt(context.Background(), client, signedWithdrawTx.Hash(), 30*time.Second)
+	if err != nil {
+		t.Errorf("WETH check: Failed to get withdraw receipt: %s", err)
+		return
+	}
+	testlog.Logger().Info(fmt.Sprintf("WETH check: Successfully unwrapped %s wei from WETH", wrapAmount.String()))
+
+	// Step 6: Verify WETH balance is now zero (or reduced by wrapAmount)
+	wethBalanceAfter, err := client.CallContract(context.Background(), ethereum.CallMsg{
+		From: testWallet.Address(),
+		To:   &wethAddress,
+		Data: balanceOfData,
+	}, nil)
+	if err != nil {
+		t.Errorf("WETH check: Failed to call balanceOf after withdraw: %s", err)
+		return
+	}
+
+	wethBalanceFinal := new(big.Int).SetBytes(wethBalanceAfter)
+	expectedFinalBalance := new(big.Int).Sub(wethBalance, wrapAmount)
+	if wethBalanceFinal.Cmp(expectedFinalBalance) != 0 {
+		t.Errorf("WETH check: Final WETH balance (%s) doesn't match expected (%s)", wethBalanceFinal.String(), expectedFinalBalance.String())
+		return
+	}
+
+	testlog.Logger().Info("WETH check: All WETH contract checks passed successfully")
 }

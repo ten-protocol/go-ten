@@ -157,6 +157,10 @@ type Storage interface {
 	DebugGetLogs(ctx context.Context, from *big.Int, to *big.Int, address gethcommon.Address, eventSig gethcommon.Hash) ([]*common.DebugLogVisibility, error)
 
 	ReadContract(ctx context.Context, address gethcommon.Address) (*enclavedb.Contract, error)
+
+	// RegisterGenesisContracts registers contracts that were deployed at genesis (predeployed contracts like WETH).
+	// These contracts exist in the state but weren't created via a transaction.
+	RegisterGenesisContracts(ctx context.Context, contracts []gethcommon.Address) error
 }
 
 type ScanStorage interface {

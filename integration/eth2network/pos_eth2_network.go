@@ -374,6 +374,9 @@ func fundWallets(walletsToFund []string, buildDir string, chainID int) (string, 
 		genesisJSON["alloc"].(map[string]interface{})[account] = map[string]string{"balance": "7500000000000000000000000000000"}
 	}
 
+	// Note: WETH9 is already predeployed in genesis-init.json at address
+	// 0x1000000000000000000000000000000000000042 with full bytecode
+
 	// set the chain ID
 	genesisJSON["config"].(map[string]interface{})["chainId"] = chainID
 

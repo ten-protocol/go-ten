@@ -1238,3 +1238,81 @@ func (s *storageImpl) FetchSequencerAttestations(ctx context.Context) ([]common.
 
 // Removed: StorePendingNetworkUpgrade, FinalizeNetworkUpgrade, GetPendingNetworkUpgrades, GetFinalizedNetworkUpgrades
 // Upgrades are disabled; methods deleted.
+
+// RegisterGenesisContracts registers contracts that were deployed at genesis (predeployed contracts like WETH).
+// These contracts exist in the state but weren't created via a transaction.
+// A genesis EOA (zero address) and dummy genesis tx (all-zeros hash) are created/used for these contracts.
+func (s *storageImpl) RegisterGenesisContracts(ctx context.Context, contracts []gethcommon.Address) error {
+	defer s.logDuration("RegisterGenesisContracts", measure.NewStopwatch())
+
+	if len(contracts) == 0 {
+		return nil
+	}
+
+	dbTx, err := s.db.NewDBTransaction(ctx)
+	if err != nil {
+		return fmt.Errorf("could not create DB transaction - %w", err)
+	}
+	defer dbTx.Rollback()
+
+	// Use zero address as the genesis EOA (creator of genesis contracts)
+	genesisEOA := gethcommon.Address{}
+
+	// Check if the genesis EOA already exists, if not create it
+	eoaId, err := enclavedb.ReadEoa(ctx, dbTx, genesisEOA)
+	if errors.Is(err, errutil.ErrNotFound) {
+		eoaId, err = enclavedb.WriteEoa(ctx, dbTx, genesisEOA)
+		if err != nil {
+			return fmt.Errorf("could not create genesis EOA - %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("could not check genesis EOA - %w", err)
+	}
+
+	// Check if the genesis tx already exists, if not create it
+	genesisTxId, err := enclavedb.ReadGenesisTx(ctx, dbTx)
+	if errors.Is(err, errutil.ErrNotFound) {
+		genesisTxId, err = enclavedb.WriteGenesisTx(ctx, dbTx, eoaId)
+		if err != nil {
+			return fmt.Errorf("could not create genesis tx - %w", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("could not check genesis tx - %w", err)
+	}
+
+	// Config for genesis contracts - transparent (public) visibility
+	genesisCfg := &core.ContractVisibilityConfig{
+		AutoConfig:  false,
+		Transparent: boolPtr(true),
+	}
+
+	for _, contractAddr := range contracts {
+		// Check if contract is already registered
+		_, err := enclavedb.ReadContractByAddress(ctx, dbTx, contractAddr)
+		if err == nil {
+			// Contract already registered, skip
+			s.logger.Debug("Genesis contract already registered", "address", contractAddr.Hex())
+			continue
+		}
+		if !errors.Is(err, errutil.ErrNotFound) {
+			return fmt.Errorf("could not check if genesis contract exists - %w", err)
+		}
+
+		// Register the genesis contract using the dummy genesis tx
+		_, err = enclavedb.WriteContractConfig(ctx, dbTx, contractAddr, eoaId, genesisCfg, genesisTxId)
+		if err != nil {
+			return fmt.Errorf("could not register genesis contract %s - %w", contractAddr.Hex(), err)
+		}
+		s.logger.Info("Registered genesis contract", "address", contractAddr.Hex())
+	}
+
+	if err := dbTx.Commit(); err != nil {
+		return fmt.Errorf("could not commit genesis contracts - %w", err)
+	}
+
+	return nil
+}
+
+func boolPtr(b bool) *bool {
+	return &b
+}
