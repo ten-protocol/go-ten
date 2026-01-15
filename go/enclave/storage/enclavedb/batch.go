@@ -449,7 +449,7 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 
 		// extract the timestamp
 		h := new(common.BatchHeader)
-		if err := rlp.DecodeBytes([]byte(headerBytes), h); err != nil {
+		if err := rlp.DecodeBytes(headerBytes, h); err != nil {
 			return nil, fmt.Errorf("could not decode batch header for seq %d: %w", contract.BatchSeq, err)
 		}
 		contract.BatchTimestamp = h.Time
