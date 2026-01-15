@@ -406,7 +406,7 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 			c.transparent,
 			b.sequence as batch_seq,
 			b.height as batch_height,
-			b.sequence as batch_time_placeholder
+			b.header as batch_header
 		FROM contract c
 		JOIN externally_owned_account eoa ON c.creator = eoa.id
 		JOIN tx ON c.tx = tx.id
@@ -429,7 +429,7 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 		rowCount++
 		var contract common.EnclaveContractData
 		var addressBytes, creatorBytes []byte
-		var batchTimePlaceholder uint64
+		var headerBytes []byte
 
 		err = rows.Scan(
 			&addressBytes,
@@ -438,7 +438,7 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 			&contract.Transparent,
 			&contract.BatchSeq,
 			&contract.BatchHeight,
-			&batchTimePlaceholder,
+			&headerBytes,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan contract row: %w", err)
@@ -447,11 +447,12 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 		contract.Address = gethcommon.BytesToAddress(addressBytes)
 		contract.Creator = gethcommon.BytesToAddress(creatorBytes)
 
-		batchHeader, err := ReadBatchHeaderBySeqNo(ctx, db, contract.BatchSeq)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read batch header for seq %d: %w", contract.BatchSeq, err)
+		// extract the timestamp
+		h := new(common.BatchHeader)
+		if err := rlp.DecodeBytes([]byte(headerBytes), h); err != nil {
+			return nil, fmt.Errorf("could not decode batch header for seq %d: %w", contract.BatchSeq, err)
 		}
-		contract.BatchTimestamp = batchHeader.Time
+		contract.BatchTimestamp = h.Time
 
 		contracts = append(contracts, contract)
 	}
