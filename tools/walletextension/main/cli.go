@@ -73,6 +73,14 @@ const (
 	rateLimitMaxConcurrentRequestsDefault = 3
 	rateLimitMaxConcurrentRequestsUsage   = "Number of concurrent requests allowed per user. Default: 3"
 
+	httpRateLimitGlobalRateName    = "httpRateLimitGlobalRate"
+	httpRateLimitGlobalRateDefault = 0.0
+	httpRateLimitGlobalRateUsage   = "Global HTTP rate limit in requests per second for endpoints like /join. Set to 0 to disable. Default: 0 (disabled)"
+
+	httpRateLimitPerIPRateName    = "httpRateLimitPerIPRate"
+	httpRateLimitPerIPRateDefault = 0.0
+	httpRateLimitPerIPRateUsage   = "Per-IP HTTP rate limit in requests per second for endpoints like /join. Burst is automatically 1.5x this value. Set to 0 to disable. Default: 0 (disabled)"
+
 	insideEnclaveFlagName    = "insideEnclave"
 	insideEnclaveFlagDefault = false
 	insideEnclaveFlagUsage   = "Flag to indicate if the program is running inside an enclave. Default: false"
@@ -147,6 +155,8 @@ func parseCLIArgs() wecommon.Config {
 	rateLimitUserComputeTime := flag.Duration(rateLimitUserComputeTimeName, rateLimitUserComputeTimeDefault, rateLimitUserComputeTimeUsage)
 	rateLimitWindow := flag.Duration(rateLimitWindowName, rateLimitWindowDefault, rateLimitWindowUsage)
 	rateLimitMaxConcurrentRequests := flag.Int(rateLimitMaxConcurrentRequestsName, rateLimitMaxConcurrentRequestsDefault, rateLimitMaxConcurrentRequestsUsage)
+	httpRateLimitGlobalRate := flag.Float64(httpRateLimitGlobalRateName, httpRateLimitGlobalRateDefault, httpRateLimitGlobalRateUsage)
+	httpRateLimitPerIPRate := flag.Float64(httpRateLimitPerIPRateName, httpRateLimitPerIPRateDefault, httpRateLimitPerIPRateUsage)
 	insideEnclaveFlag := flag.Bool(insideEnclaveFlagName, insideEnclaveFlagDefault, insideEnclaveFlagUsage)
 	encryptionKeySource := flag.String(encryptionKeySourceFlagName, encryptionKeySourceFlagDefault, encryptionKeySourceFlagUsage)
 	enableTLSFlag := flag.Bool(enableTLSFlagName, enableTLSFlagDefault, enableTLSFlagUsage)
@@ -174,6 +184,8 @@ func parseCLIArgs() wecommon.Config {
 		RateLimitUserComputeTime:       *rateLimitUserComputeTime,
 		RateLimitWindow:                *rateLimitWindow,
 		RateLimitMaxConcurrentRequests: *rateLimitMaxConcurrentRequests,
+		HTTPRateLimitGlobalRate:        *httpRateLimitGlobalRate,
+		HTTPRateLimitPerIPRate:         *httpRateLimitPerIPRate,
 		InsideEnclave:                  *insideEnclaveFlag,
 		EncryptionKeySource:            *encryptionKeySource,
 		EnableTLS:                      *enableTLSFlag,

@@ -47,6 +47,7 @@ type Services struct {
 	RPCResponsesCache   cache.Cache
 	BackendRPC          *BackendRPC
 	RateLimiter         *ratelimiter.RateLimiter
+	HTTPRateLimiter     *ratelimiter.HTTPRateLimiter
 	SKManager           SKManager
 	Config              *common.Config
 	NewHeadsService     *subscriptioncommon.NewHeadsService
@@ -86,6 +87,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 	}
 
 	rateLimiter := ratelimiter.NewRateLimiter(config.RateLimitUserComputeTime, config.RateLimitWindow, uint32(config.RateLimitMaxConcurrentRequests), logger)
+	httpRateLimiter := ratelimiter.NewHTTPRateLimiter(config.HTTPRateLimitGlobalRate, config.HTTPRateLimitPerIPRate, logger)
 
 	activityTracker := NewSessionKeyActivityTracker(logger)
 
@@ -100,6 +102,7 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 		BackendRPC:          NewBackendRPC(hostAddrHTTP, hostAddrWS, logger),
 		SKManager:           NewSKManager(storage, config, logger, activityTracker),
 		RateLimiter:         rateLimiter,
+		HTTPRateLimiter:     httpRateLimiter,
 		Config:              config,
 		cacheInvalidationCh: make(chan *tencommon.BatchHeader),
 		MetricsTracker:      metricsTracker,
@@ -369,5 +372,8 @@ func (w *Services) GenerateUserMessageToSign(encryptionToken []byte, formatsSlic
 
 func (w *Services) Stop() {
 	w.BackendRPC.Stop()
+	if w.HTTPRateLimiter != nil {
+		w.HTTPRateLimiter.Stop()
+	}
 	close(w.cacheInvalidationCh)
 }
