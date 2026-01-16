@@ -83,6 +83,8 @@ type HostEnclave struct {
 	// RPCAddresses is a list of managed enclave RPC addresses.
 	RPCAddresses []string      `mapstructure:"rpcAddresses"`
 	RPCTimeout   time.Duration `mapstructure:"rpcTimeout"`
+	// How often we fetch the contract data from the enclave
+	ContractSyncInterval time.Duration `mapstructure:"contractSyncInterval"`
 }
 
 // HostDebug contains the configuration for the host's debug settings.

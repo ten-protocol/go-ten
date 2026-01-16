@@ -51,6 +51,7 @@ type Service struct {
 	blockTime              time.Duration
 	maxRollupSize          uint64
 	batchCompressionFactor float64
+	contractSyncInterval   time.Duration
 
 	running         atomic.Bool
 	hostInterrupter *stopcontrol.StopControl
@@ -68,6 +69,7 @@ func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLo
 		blockTime:              config.L1BlockTime,
 		maxRollupSize:          config.MaxRollupSize,
 		batchCompressionFactor: config.BatchCompressionFactor,
+		contractSyncInterval:   config.ContractSyncInterval,
 		hostInterrupter:        interrupter,
 		logger:                 logger,
 	}
@@ -508,12 +510,11 @@ func (e *Service) getActiveSequencerGuardian() (*Guardian, error) {
 func (e *Service) managePeriodicContractSync() {
 	e.logger.Info("Starting periodic contract sync service")
 
-	syncInterval := 10 * time.Second
 	contractFetchLimit := uint(100) // fetch up to 100 contracts per sync
 
 	const lastSyncedBatchKey = "contract_sync_last_batch_seq"
 
-	ticker := time.NewTicker(syncInterval)
+	ticker := time.NewTicker(e.contractSyncInterval)
 	defer ticker.Stop()
 
 	for e.running.Load() {
