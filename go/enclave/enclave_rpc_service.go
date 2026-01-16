@@ -116,8 +116,8 @@ func (e *enclaveRPCService) GetTotalContractCount(ctx context.Context) (*big.Int
 	return e.storage.GetContractCount(ctx)
 }
 
-func (e *enclaveRPCService) GetContractsSince(ctx context.Context, fromBatchSeq uint64, limit uint) ([]common.EnclaveContractData, common.SystemError) {
-	return e.storage.GetContractsSince(ctx, fromBatchSeq, limit)
+func (e *enclaveRPCService) GetContracts(ctx context.Context, fromContractID uint64, limit uint) ([]common.EnclaveContractData, common.SystemError) {
+	return e.storage.GetContracts(ctx, fromContractID, limit)
 }
 
 func (e *enclaveRPCService) EnclavePublicConfig(context.Context) (*common.EnclavePublicConfig, common.SystemError) {

@@ -76,6 +76,7 @@ func createInMemTenNode(
 		L1StartHash:          l1StartBlk,
 		L1TimeoutBlocks:      2,
 		ContractSyncInterval: 2 * time.Second,
+		ContractFetchLimit:   5,
 		NetworkConfigAddress: *networkConfigAddr,
 		BatchInterval:        batchInterval,
 		CrossChainInterval:   11 * time.Second, // todo @matt fix where this default comes from

@@ -67,6 +67,7 @@ host:
     rpcAddresses: [ "127.0.0.1:11000" ] # list of enclave rpc addresses
     rpcTimeout: 10s
     contractSyncInterval: 2s # short for local testing, sepolia/ mainnet would be ~5min
+    contractFetchLimit: 100 
   l1:
     wsURL: ws://localhost:8546 # websocket URL for L1 RPC service
     beaconURL: eth2network:12600 # websocket URL for L1 beacon service

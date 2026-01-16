@@ -395,11 +395,10 @@ func ReadContractCreationCount(ctx context.Context, db *sqlx.DB) (*big.Int, erro
 	return big.NewInt(count), nil
 }
 
-// ReadContractsSince returns all contracts created after the given batch sequence number
+// ReadContracts returns all contracts created after the given contract ID
 // This is used by the host to sync contract data from the enclave periodically
-// The query uses deterministic ordering (batch sequence, then contract ID) to ensure proper pagination
-// when a batch contains more contracts than the limit
-func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, limit uint) ([]common.EnclaveContractData, error) {
+// The query uses the contract ID as a simple cursor for pagination
+func ReadContracts(ctx context.Context, db *sqlx.DB, fromContractID uint64, limit uint) ([]common.EnclaveContractData, error) {
 	query := `
 		SELECT 
 			c.id,
@@ -415,14 +414,14 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 		JOIN tx ON c.tx = tx.id
 		JOIN receipt rec ON rec.tx = tx.id
 		JOIN batch b ON rec.batch = b.sequence
-		WHERE b.sequence >= ? AND b.is_canonical = true
-		ORDER BY b.sequence ASC, c.id ASC
+		WHERE c.id > ? AND b.is_canonical = true
+		ORDER BY c.id ASC
 		LIMIT ?
 	`
 
-	rows, err := db.QueryContext(ctx, query, fromBatchSeq, limit)
+	rows, err := db.QueryContext(ctx, query, fromContractID, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query contracts since batch %d: %w", fromBatchSeq, err)
+		return nil, fmt.Errorf("failed to query contracts since contract ID %d: %w", fromContractID, err)
 	}
 	defer rows.Close()
 
@@ -449,6 +448,7 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 			return nil, fmt.Errorf("failed to scan contract row: %w", err)
 		}
 
+		contract.ID = contractID
 		contract.Address = gethcommon.BytesToAddress(addressBytes)
 		contract.Creator = gethcommon.BytesToAddress(creatorBytes)
 

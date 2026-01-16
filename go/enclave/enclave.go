@@ -226,11 +226,11 @@ func (e *enclaveImpl) GetTotalContractCount(ctx context.Context) (*big.Int, comm
 	return e.rpcAPI.GetTotalContractCount(ctx)
 }
 
-func (e *enclaveImpl) GetContractsSince(ctx context.Context, fromBatchSeq uint64, limit uint) ([]common.EnclaveContractData, common.SystemError) {
+func (e *enclaveImpl) GetContracts(ctx context.Context, fromContractID uint64, limit uint) ([]common.EnclaveContractData, common.SystemError) {
 	if systemError := checkStopping(e.stopControl); systemError != nil {
 		return nil, systemError
 	}
-	return e.rpcAPI.GetContractsSince(ctx, fromBatchSeq, limit)
+	return e.rpcAPI.GetContracts(ctx, fromContractID, limit)
 }
 
 func (e *enclaveImpl) EnclavePublicConfig(ctx context.Context) (*common.EnclavePublicConfig, common.SystemError) {

@@ -52,6 +52,7 @@ type Service struct {
 	maxRollupSize          uint64
 	batchCompressionFactor float64
 	contractSyncInterval   time.Duration
+	contractFetchLimit     uint
 
 	running         atomic.Bool
 	hostInterrupter *stopcontrol.StopControl
@@ -70,6 +71,7 @@ func NewService(config *hostconfig.HostConfig, hostData host.Identity, serviceLo
 		maxRollupSize:          config.MaxRollupSize,
 		batchCompressionFactor: config.BatchCompressionFactor,
 		contractSyncInterval:   config.ContractSyncInterval,
+		contractFetchLimit:     config.ContractFetchLimit,
 		hostInterrupter:        interrupter,
 		logger:                 logger,
 	}
@@ -510,9 +512,7 @@ func (e *Service) getActiveSequencerGuardian() (*Guardian, error) {
 func (e *Service) managePeriodicContractSync() {
 	e.logger.Info("Starting periodic contract sync service")
 
-	contractFetchLimit := uint(100) // fetch up to 100 contracts per sync
-
-	const lastSyncedBatchKey = "contract_sync_last_batch_seq"
+	const lastSyncedContractIDKey = "contract_sync_last_contract_id"
 
 	ticker := time.NewTicker(e.contractSyncInterval)
 	defer ticker.Stop()
@@ -520,16 +520,16 @@ func (e *Service) managePeriodicContractSync() {
 	for e.running.Load() {
 		select {
 		case <-ticker.C:
-			lastSyncedBatchSeq, err := e.storage.GetMetadata(lastSyncedBatchKey)
+			lastSyncedContractID, err := e.storage.GetMetadata(lastSyncedContractIDKey)
 			if err != nil {
-				// First time running, start from 0
-				lastSyncedBatchSeq = 0
+				// first time set to 0
+				lastSyncedContractID = 0
 			}
 
-			// fetch contracts from the enclave since the last synced batch
-			contracts, sysErr := e.GetEnclaveClient().GetContractsSince(context.Background(), lastSyncedBatchSeq, contractFetchLimit)
+			// fetch contracts from the enclave since the last synced contract ID
+			contracts, sysErr := e.GetEnclaveClient().GetContracts(context.Background(), lastSyncedContractID, e.contractFetchLimit)
 			if sysErr != nil {
-				e.logger.Debug("Failed to fetch contracts from enclave", log.ErrKey, sysErr)
+				e.logger.Warn("Failed to fetch contracts from enclave", log.ErrKey, sysErr)
 				continue
 			}
 
@@ -538,7 +538,7 @@ func (e *Service) managePeriodicContractSync() {
 			}
 
 			publicContracts := make([]common.PublicContract, 0, len(contracts))
-			maxBatchSeq := lastSyncedBatchSeq
+			var lastContract common.EnclaveContractData
 
 			for _, contract := range contracts {
 				hasCustomConfig := !contract.AutoVisibility
@@ -555,9 +555,7 @@ func (e *Service) managePeriodicContractSync() {
 					Time:            contract.BatchTimestamp,
 				})
 
-				if contract.BatchSeq > maxBatchSeq {
-					maxBatchSeq = contract.BatchSeq
-				}
+				lastContract = contract
 			}
 
 			// store contracts in the host DB
@@ -566,10 +564,11 @@ func (e *Service) managePeriodicContractSync() {
 				continue
 			}
 
-			if err := e.storage.SetMetadata(lastSyncedBatchKey, maxBatchSeq); err != nil {
-				e.logger.Warn("Failed to update contract sync metadata", log.ErrKey, err)
+			// update cursor to the last contract ID fetched to enable proper pagination
+			if err := e.storage.SetMetadata(lastSyncedContractIDKey, lastContract.ID); err != nil {
+				e.logger.Warn("Failed to update contract ID metadata", log.ErrKey, err)
 			} else {
-				e.logger.Info("Synced contracts to host DB", "count", len(publicContracts), "last_batch_seq", maxBatchSeq)
+				e.logger.Info("Synced contracts to host DB", "count", len(publicContracts), "last_contract_id", lastContract.ID)
 			}
 
 		case <-e.hostInterrupter.Done():

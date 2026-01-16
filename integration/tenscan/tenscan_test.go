@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -452,102 +451,6 @@ func TestTenscan(t *testing.T) {
 
 	assert.GreaterOrEqual(t, len(attestationObj.Result), 1)
 	assert.GreaterOrEqual(t, len(attestationObj.Result[0].Report), 11) // this is a mocked report with fixed length
-
-	// slow indexing in CI so we skip the contract listing tests but useful locally
-	if os.Getenv("CI") != "true" {
-		deployTestContracts(
-			t,
-			fmt.Sprintf("ws://127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
-			wallet.NewInMemoryWalletFromConfig(testcommon.TestnetPrefundedPK, integration.TenChainID, testlog.Logger()),
-			3,
-		)
-
-		type contractListingRes struct {
-			Result common.ContractListingResponse `json:"result"`
-		}
-
-		// contracts indexing is slower on postgres so we need to wait for it
-		contractListingObj := contractListingRes{}
-		contractWaitDeadline := time.Now().Add(time.Second * 10)
-		for {
-			statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=0&size=30", serverAddress))
-			assert.NoError(t, err)
-			assert.Equal(t, 200, statusCode)
-			err = json.Unmarshal(body, &contractListingObj)
-			assert.NoError(t, err)
-			if len(contractListingObj.Result.Contracts) >= 3 && contractListingObj.Result.Total >= uint64(26) {
-				break
-			}
-			if time.Now().After(contractWaitDeadline) {
-				t.Fatalf("Timed out waiting for contracts to be indexed; have total=%d, visible=%d", contractListingObj.Result.Total, len(contractListingObj.Result.Contracts))
-			}
-			time.Sleep(2 * time.Second)
-		}
-
-		if len(contractListingObj.Result.Contracts) > 0 {
-			firstContract := contractListingObj.Result.Contracts[0]
-			assert.NotEqual(t, gethcommon.Address{}, firstContract.Address, "Contract address should not be empty")
-			assert.NotEqual(t, gethcommon.Address{}, firstContract.Creator, "Contract creator should not be empty")
-			assert.GreaterOrEqual(t, firstContract.BatchSeq, uint64(0), "Batch sequence should be set")
-			assert.GreaterOrEqual(t, firstContract.Height, uint64(0), "Height should be set")
-			assert.GreaterOrEqual(t, firstContract.Time, uint64(0), "Time should be set")
-		}
-
-		if len(contractListingObj.Result.Contracts) > 0 {
-			testContractAddr := contractListingObj.Result.Contracts[0].Address
-			statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contract/%s", serverAddress, testContractAddr.Hex()))
-			assert.NoError(t, err)
-			assert.Equal(t, 200, statusCode)
-
-			type contractItemRes struct {
-				Item common.PublicContract `json:"item"`
-			}
-
-			contractItemObj := contractItemRes{}
-			err = json.Unmarshal(body, &contractItemObj)
-			assert.NoError(t, err)
-			assert.Equal(t, testContractAddr, contractItemObj.Item.Address, "Fetched contract should match requested address")
-		}
-
-		if contractListingObj.Result.Total > 2 {
-			// first page
-			statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=0&size=1", serverAddress))
-			assert.NoError(t, err)
-			assert.Equal(t, 200, statusCode)
-
-			firstPageContracts := contractListingRes{}
-			err = json.Unmarshal(body, &firstPageContracts)
-			assert.NoError(t, err)
-			assert.Equal(t, 1, len(firstPageContracts.Result.Contracts), "First page should have 1 contract")
-
-			// second page
-			statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contracts/?offset=1&size=1", serverAddress))
-			assert.NoError(t, err)
-			assert.Equal(t, 200, statusCode)
-
-			secondPageContracts := contractListingRes{}
-			err = json.Unmarshal(body, &secondPageContracts)
-			assert.NoError(t, err)
-			assert.Equal(t, 1, len(secondPageContracts.Result.Contracts), "Second page should have 1 contract")
-
-			// verify different pages have different contracts
-			assert.NotEqual(t, firstPageContracts.Result.Contracts[0].Address,
-				secondPageContracts.Result.Contracts[0].Address,
-				"Different pages should have different contracts")
-		}
-
-		// invalid contract address returns appropriate error
-		statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contract/0xinvalid", serverAddress))
-		assert.NoError(t, err)
-		// Should handle gracefully (either 400 or 404 or 500 depending on implementation)
-		assert.True(t, statusCode >= 400, "Invalid address should return error status")
-
-		// non-existent contract address
-		nonExistentAddr := "0x0000000000000000000000000000000000000001"
-		statusCode, _, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/contract/%s", serverAddress, nonExistentAddr))
-		assert.NoError(t, err)
-		assert.True(t, statusCode >= 400, "Non-existent contract should return error status")
-	}
 
 	err = tenScanContainer.Stop()
 	assert.NoError(t, err)

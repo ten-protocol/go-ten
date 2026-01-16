@@ -53,6 +53,8 @@ type HostConfig struct {
 	MaxDynamicRetries int
 	// ContractSyncInterval how often we fetch contract data from the enclave
 	ContractSyncInterval time.Duration
+	// ContractFetchLimit number of contracts that can be fetched at once
+	ContractFetchLimit uint
 
 	/////
 	// NODE CONFIG
@@ -196,6 +198,7 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		EnclaveRPCAddresses:  tenCfg.Host.Enclave.RPCAddresses,
 		EnclaveRPCTimeout:    tenCfg.Host.Enclave.RPCTimeout,
 		ContractSyncInterval: tenCfg.Host.Enclave.ContractSyncInterval,
+		ContractFetchLimit:   tenCfg.Host.Enclave.ContractFetchLimit,
 
 		IsInboundP2PDisabled: tenCfg.Host.P2P.IsDisabled,
 		P2PBindAddress:       tenCfg.Host.P2P.BindAddress,

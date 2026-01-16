@@ -525,11 +525,14 @@ func (c *Client) FetchSequencerAttestations(ctx context.Context) ([]*common.Atte
 	return reports, nil
 }
 
-func (c *Client) GetContractsSince(ctx context.Context, fromBatch uint64, limit uint) ([]common.EnclaveContractData, common.SystemError) {
+func (c *Client) GetContracts(ctx context.Context, fromContractID uint64, limit uint) ([]common.EnclaveContractData, common.SystemError) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, c.enclaveRPCTimeout)
 	defer cancel()
 
-	response, err := c.protoClient.GetContractsSince(timeoutCtx, &generated.ContractsSinceRequest{FromBatch: fromBatch, Limit: int32(limit)})
+	response, err := c.protoClient.GetContracts(timeoutCtx, &generated.ContractsSinceRequest{
+		FromContractID: fromContractID,
+		Limit:          int32(limit),
+	})
 	if err != nil {
 		return nil, syserr.NewRPCError(err)
 	}
@@ -543,6 +546,7 @@ func (c *Client) GetContractsSince(ctx context.Context, fromBatch uint64, limit 
 	contracts := make([]common.EnclaveContractData, 0, len(response.Contracts))
 	for _, contract := range response.Contracts {
 		contracts = append(contracts, common.EnclaveContractData{
+			ID:             contract.Id,
 			Address:        gethcommon.BytesToAddress(contract.Address),
 			Creator:        gethcommon.BytesToAddress(contract.Creator),
 			AutoVisibility: contract.AutoVisibility,
