@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/edgelesssys/ego/enclave"
@@ -87,6 +89,16 @@ func GetEncryptionKey(config common.Config, logger gethlog.Logger) ([]byte, erro
 			logger.Crit("unable to generate random encryption key", log.ErrKey, err)
 			return nil, err
 		}
+	} else if strings.HasPrefix(config.EncryptionKeySource, "hex:") {
+		// If encryptionKeySource starts with "hex:", import the key directly (disaster recovery)
+		hexKey := strings.TrimPrefix(config.EncryptionKeySource, "hex:")
+		logger.Info("encryptionKeySource set to 'hex:...' -> importing encryption key directly (disaster recovery mode)")
+		encryptionKey, err = decodeHexKey(hexKey)
+		if err != nil {
+			logger.Crit("unable to decode hex encryption key", log.ErrKey, err)
+			return nil, fmt.Errorf("invalid hex encryption key: %w", err)
+		}
+		logger.Info("Successfully imported encryption key from hex value")
 	} else {
 		// If encryptionKeySource is a URL, attempt to perform key exchange with the specified key provider
 		logger.Info(fmt.Sprintf("encryptionKeySource set to '%s', trying to get encryption key from key provider", config.EncryptionKeySource))
@@ -234,7 +246,7 @@ func HandleKeyExchange(config common.Config, logger gethlog.Logger) ([]byte, err
 	}
 
 	// Step 8: Send the message to KeyProvider via HTTP POST
-	resp, err := http.Post(config.EncryptionKeySource+"/v1"+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
+	resp, err := http.Post(config.EncryptionKeySource+common.PathAdmin+common.PathKeyExchange, "application/json", bytes.NewBuffer(messageBytesRequester))
 	if err != nil {
 		logger.Error("KeyRequester: Failed to send message to KeyProvider", "error", err)
 		return nil, fmt.Errorf("failed to send message to KeyProvider: %w", err)
@@ -382,4 +394,22 @@ func DeserializeAttestationReport(data []byte) (*tencommon.AttestationReport, er
 		return nil, err
 	}
 	return &report, nil
+}
+
+// decodeHexKey decodes a hex-encoded encryption key and validates its length.
+// The key must be exactly 32 bytes (64 hex characters) for AES-256.
+func decodeHexKey(hexKey string) ([]byte, error) {
+	// Remove 0x prefix if present
+	hexKey = strings.TrimPrefix(hexKey, "0x")
+
+	key, err := hex.DecodeString(hexKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode hex key: %w", err)
+	}
+
+	if len(key) != common.EncryptionKeySize {
+		return nil, fmt.Errorf("invalid key length: expected %d bytes, got %d", common.EncryptionKeySize, len(key))
+	}
+
+	return key, nil
 }

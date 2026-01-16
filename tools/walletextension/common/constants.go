@@ -28,6 +28,7 @@ const (
 	PathNetworkHealth             = "/network-health/"
 	PathNetworkConfig             = "/network-config/"
 	PathKeyExchange               = "/key-exchange/"
+	PathBackupEncryptionKey       = "/backup-encryption-key/"
 	WSProtocol                    = "ws://"
 	HTTPProtocol                  = "http://"
 	EncryptedTokenQueryParameter  = "token"
@@ -38,6 +39,7 @@ const (
 	SuccessMsg                    = "success"
 	AccountAlreadyExistsMsg       = "account already exists"
 	APIVersion1                   = "/v1"
+	PathAdmin                     = "/admin"
 	PathVersion                   = "/version/"
 	DeduplicationBufferSize       = 20
 	DefaultGatewayAuthMessageType = "EIP712"
