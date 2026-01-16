@@ -193,8 +193,9 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		ClientRPCPortWS:        tenCfg.Host.RPC.WSPort,
 		ClientRPCHost:          tenCfg.Host.RPC.Address,
 
-		EnclaveRPCAddresses: tenCfg.Host.Enclave.RPCAddresses,
-		EnclaveRPCTimeout:   tenCfg.Host.Enclave.RPCTimeout,
+		EnclaveRPCAddresses:  tenCfg.Host.Enclave.RPCAddresses,
+		EnclaveRPCTimeout:    tenCfg.Host.Enclave.RPCTimeout,
+		ContractSyncInterval: tenCfg.Host.Enclave.ContractSyncInterval,
 
 		IsInboundP2PDisabled: tenCfg.Host.P2P.IsDisabled,
 		P2PBindAddress:       tenCfg.Host.P2P.BindAddress,
