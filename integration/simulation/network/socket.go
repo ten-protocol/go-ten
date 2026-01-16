@@ -132,7 +132,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Host.RPC.WSPort = uint64(simParams.StartPort + integration.DefaultHostRPCWSOffset + i)
 		tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)}
 		tenCfg.Host.Enclave.ContractFetchLimit = 2
-		tenCfg.Host.Enclave.ContractSyncInterval = 30 * time.Second
+		tenCfg.Host.Enclave.ContractSyncInterval = simParams.ContractSyncInterval
 		tenCfg.Host.L1.WebsocketURL = fmt.Sprintf("ws://127.0.0.1:%d", simParams.StartPort+100)
 		tenCfg.Host.DB.HistoricalTxCount = 10      // needed to test historicalTxCount endpoint
 		tenCfg.Host.DB.HistoricalContractCount = 7 // needed to test historicalContractCount endpoint

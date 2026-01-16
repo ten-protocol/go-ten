@@ -51,7 +51,7 @@ const (
 
 func TestTenscan(t *testing.T) {
 	startPort := integration.TestPorts.TestTenscanPort
-	createTenNetwork(t, integration.TestPorts.TestTenscanPort)
+	createTenNetwork(t, integration.TestPorts.TestTenscanPort, 1*time.Second)
 
 	tenScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
@@ -475,18 +475,19 @@ func waitServerIsReady(serverAddr string) error {
 }
 
 // Creates a single-node TEN network for testing.
-func createTenNetwork(t *testing.T, startPort int) {
+func createTenNetwork(t *testing.T, startPort int, contractSyncInterval time.Duration) {
 	// Create the TEN network.
 	wallets := params.NewSimWallets(1, 1, integration.EthereumChainID, integration.TenChainID)
 	simParams := params.SimParams{
-		NumberOfNodes:       1,
-		AvgBlockDuration:    2 * time.Second,
-		ContractRegistryLib: ethereummock.NewContractRegistryLibMock(),
-		ERC20ContractLib:    ethereummock.NewERC20ContractLibMock(),
-		Wallets:             wallets,
-		StartPort:           startPort,
-		WithPrefunding:      true,
-		L1BeaconPort:        integration.TestPorts.TestTenscanPort + integration.DefaultPrysmGatewayPortOffset,
+		NumberOfNodes:        1,
+		AvgBlockDuration:     2 * time.Second,
+		ContractRegistryLib:  ethereummock.NewContractRegistryLibMock(),
+		ERC20ContractLib:     ethereummock.NewERC20ContractLibMock(),
+		Wallets:              wallets,
+		StartPort:            startPort,
+		WithPrefunding:       true,
+		L1BeaconPort:         integration.TestPorts.TestTenscanPort + integration.DefaultPrysmGatewayPortOffset,
+		ContractSyncInterval: contractSyncInterval,
 	}
 
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)

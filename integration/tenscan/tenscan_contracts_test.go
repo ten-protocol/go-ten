@@ -36,7 +36,7 @@ func init() { //nolint:gochecknoinits
 func TestTenscanContracts(t *testing.T) {
 	t.Skipf("Used only to test contract listing stuff locally")
 	startPort := integration.TestPorts.TestTenscanPort
-	createTenNetwork(t, integration.TestPorts.TestTenscanPort)
+	createTenNetwork(t, integration.TestPorts.TestTenscanPort, 30*time.Second)
 
 	tenScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
@@ -166,7 +166,7 @@ func TestTenscanContracts(t *testing.T) {
 func TestContractsPagination(t *testing.T) {
 	t.Skipf("Local only test - uncomment to test contract pagination with small fetch limit")
 	startPort := integration.TestPorts.TestTenscanPort
-	createTenNetwork(t, integration.TestPorts.TestTenscanPort)
+	createTenNetwork(t, integration.TestPorts.TestTenscanPort, 30*time.Second)
 
 	tenScanConfig := &config.Config{
 		NodeHostAddress: fmt.Sprintf("http://127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
