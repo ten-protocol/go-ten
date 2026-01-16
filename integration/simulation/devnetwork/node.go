@@ -151,6 +151,7 @@ func (n *InMemNodeOperator) createHostContainer() *hostcontainer.HostContainer {
 		TenChainID:             integration.TenChainID,
 		L1StartHash:            n.l1Data.TenStartBlock,
 		L1TimeoutBlocks:        2,
+		ContractSyncInterval:   2,
 		SequencerP2PAddress:    seqP2PAddr,
 		// Can provide the postgres db host if testing against a local DB instance
 		UseInMemoryDB:         true,

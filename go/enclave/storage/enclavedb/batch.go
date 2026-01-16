@@ -397,9 +397,12 @@ func ReadContractCreationCount(ctx context.Context, db *sqlx.DB) (*big.Int, erro
 
 // ReadContractsSince returns all contracts created after the given batch sequence number
 // This is used by the host to sync contract data from the enclave periodically
+// The query uses deterministic ordering (batch sequence, then contract ID) to ensure proper pagination
+// when a batch contains more contracts than the limit
 func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, limit uint) ([]common.EnclaveContractData, error) {
 	query := `
 		SELECT 
+			c.id,
 			c.address,
 			eoa.address as creator,
 			c.auto_visibility,
@@ -413,7 +416,7 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 		JOIN receipt rec ON rec.tx = tx.id
 		JOIN batch b ON rec.batch = b.sequence
 		WHERE b.sequence >= ? AND b.is_canonical = true
-		ORDER BY b.sequence ASC
+		ORDER BY b.sequence ASC, c.id ASC
 		LIMIT ?
 	`
 
@@ -428,10 +431,12 @@ func ReadContractsSince(ctx context.Context, db *sqlx.DB, fromBatchSeq uint64, l
 	for rows.Next() {
 		rowCount++
 		var contract common.EnclaveContractData
+		var contractID uint64
 		var addressBytes, creatorBytes []byte
 		var headerBytes []byte
 
 		err = rows.Scan(
+			&contractID,
 			&addressBytes,
 			&creatorBytes,
 			&contract.AutoVisibility,
