@@ -347,3 +347,19 @@ curl -X POST 127.0.0.1:80  -H 'Content-Type: application/json' \
 
 ## Community 
 Development is discussed by the team and the community on [discord](https://discord.com/invite/tenprotocol)
+
+##Broken documentation links in README and docs
+## Description
+While reviewing the documentation, I noticed that some external links are broken or outdated.  
+For example:
+- The [EdglessDB link](https://github.com/edgelesssys/edgelessdb) no longer resolves correctly.  
+- A few other references point to resources that no longer exist.
+
+## Suggested Fix
+- Update the broken links to the correct ones.  
+- If resources are deprecated, replace them with archived or alternative docs.  
+
+## Environment
+Repo: go-ten  
+Branch: main  
+Date checked: September 6, 2025
