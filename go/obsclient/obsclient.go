@@ -250,6 +250,26 @@ func (oc *ObsClient) GetRollupListing(pagination *common.QueryPagination) (*comm
 	return &result, nil
 }
 
+// GetContractListing returns a list of all contracts
+func (oc *ObsClient) GetContractListing(pagination *common.QueryPagination) (*common.ContractListingResponse, error) {
+	var result common.ContractListingResponse
+	err := oc.rpcClient.Call(&result, rpc.GetContractListing, pagination)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetContractByAddress returns contract details for a specific address
+func (oc *ObsClient) GetContractByAddress(address gethcommon.Address) (*common.PublicContract, error) {
+	var result common.PublicContract
+	err := oc.rpcClient.Call(&result, rpc.GetContractByAddress, address)
+	if err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
 // GetRollupByHash returns the public rollup data given its hash
 func (oc *ObsClient) GetRollupByHash(hash gethcommon.Hash) (*common.PublicRollup, error) {
 	var rollup *common.PublicRollup

@@ -1,7 +1,6 @@
 package clientapi
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 
@@ -25,16 +24,20 @@ func NewScanAPI(host host.Host, logger log.Logger) *ScanAPI {
 }
 
 // GetTotalContractCount returns the number of recorded contracts on the network.
-func (s *ScanAPI) GetTotalContractCount(ctx context.Context) (*big.Int, error) {
-	return s.host.EnclaveClient().GetTotalContractCount(ctx)
+func (s *ScanAPI) GetTotalContractCount() (*big.Int, error) {
+	total, err := s.host.Storage().FetchTotalContractCountHost()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get current contract count from host storage. Cause %w", err)
+	}
+	return big.NewInt(int64(total)), nil
 }
 
 // GetHistoricalContractCount returns the number of recorded contracts on the network. We store the historical in the host
 // db to try and keep the enclave lightweight.
-func (s *ScanAPI) GetHistoricalContractCount(ctx context.Context) (*big.Int, error) {
-	currentCount, err := s.GetTotalContractCount(ctx)
+func (s *ScanAPI) GetHistoricalContractCount() (*big.Int, error) {
+	currentCount, err := s.GetTotalContractCount()
 	if err != nil {
-		return nil, fmt.Errorf("unable to get current contract count from enclave. Cause %w", err)
+		return nil, fmt.Errorf("unable to get current contract count from host storage. Cause %w", err)
 	}
 	historicalCount, err := s.host.Storage().FetchHistoricalContractCount()
 	if err != nil {
@@ -56,6 +59,21 @@ func (s *ScanAPI) GetTotalTransactionCount() (*big.Int, error) {
 // GetTotalTransactionsQuery returns the number of recorded transactions on the network.
 func (s *ScanAPI) GetTotalTransactionsQuery() (*big.Int, error) {
 	return s.host.Storage().FetchTotalTxsQuery()
+}
+
+// GetPublicTransactionListing returns a paginated list of public transactions
+func (s *ScanAPI) GetPublicTransactionListing(pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
+	return s.host.Storage().FetchTransactionListing(pagination)
+}
+
+// GetContractListing returns a paginated list of all contracts
+func (s *ScanAPI) GetContractListing(pagination *common.QueryPagination) (*common.ContractListingResponse, error) {
+	return s.host.Storage().FetchContractListing(pagination)
+}
+
+// GetContractByAddress returns contract details for a specific address
+func (s *ScanAPI) GetContractByAddress(address gethcommon.Address) (*common.PublicContract, error) {
+	return s.host.Storage().FetchContractByAddress(address)
 }
 
 // GetHistoricalTransactionCount returns the historical transaction count plus current count

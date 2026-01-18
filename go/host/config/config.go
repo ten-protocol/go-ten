@@ -12,17 +12,17 @@ import (
 
 // For now, this is the bridge between TenConfig and the config used internally by the host service.
 
-// HostConfig contains the configuration used in the Obscuro host execution.
+// HostConfig contains the configuration used in the TEN host execution.
 type HostConfig struct {
 	/////
-	// OBSCURO NETWORK CONFIG (these properties are the same for all obscuro nodes on the network)
+	// TEN NETWORK CONFIG (these properties are the same for all TEN nodes on the network)
 	/////
 
 	// The ID of the L1 chain
 	L1ChainID int64
 	// The ID of the Ten chain
 	TenChainID int64
-	// L1StartHash is the hash of the L1 block we can start streaming from for all Obscuro state (e.g. management contract deployment block)
+	// L1StartHash is the hash of the L1 block we can start streaming from for all TEN state (e.g. management contract deployment block)
 	L1StartHash gethcommon.Hash
 	// The address of the sequencer node's P2P server
 	SequencerP2PAddress string
@@ -51,6 +51,10 @@ type HostConfig struct {
 	MaxBlobRetries int
 	// MaxDynamicRetries the number of retry attempts to publish dynamic fee txs
 	MaxDynamicRetries int
+	// ContractSyncInterval how often we fetch contract data from the enclave
+	ContractSyncInterval time.Duration
+	// ContractFetchLimit number of contracts that can be fetched at once
+	ContractFetchLimit uint
 
 	/////
 	// NODE CONFIG
@@ -191,8 +195,10 @@ func HostConfigFromTenConfig(tenCfg *config.TenConfig) *HostConfig {
 		ClientRPCPortWS:        tenCfg.Host.RPC.WSPort,
 		ClientRPCHost:          tenCfg.Host.RPC.Address,
 
-		EnclaveRPCAddresses: tenCfg.Host.Enclave.RPCAddresses,
-		EnclaveRPCTimeout:   tenCfg.Host.Enclave.RPCTimeout,
+		EnclaveRPCAddresses:  tenCfg.Host.Enclave.RPCAddresses,
+		EnclaveRPCTimeout:    tenCfg.Host.Enclave.RPCTimeout,
+		ContractSyncInterval: tenCfg.Host.Enclave.ContractSyncInterval,
+		ContractFetchLimit:   tenCfg.Host.Enclave.ContractFetchLimit,
 
 		IsInboundP2PDisabled: tenCfg.Host.P2P.IsDisabled,
 		P2PBindAddress:       tenCfg.Host.P2P.BindAddress,
