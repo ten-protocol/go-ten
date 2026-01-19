@@ -227,11 +227,13 @@ func (w *Services) GenerateAndStoreNewUser() ([]byte, error) {
 
 	// create ID and store it in the database with the private key
 	userID := viewingkey.CalculateUserID(common.PrivateKeyToCompressedPubKey(viewingPrivateKeyEcies))
+	w.Logger().Info("Adding user to the database", "userID", common.HashForLogging(userID))
 	err = w.Storage.AddUser(userID, crypto.FromECDSA(viewingPrivateKeyEcies.ExportECDSA()))
 	if err != nil {
 		w.Logger().Error(fmt.Sprintf("failed to save user to the database: %s", err))
 		return nil, err
 	}
+	w.Logger().Info("User added to the database", "userID", common.HashForLogging(userID))
 	w.MetricsTracker.RecordNewUser()
 
 	requestEndTime := time.Now()
