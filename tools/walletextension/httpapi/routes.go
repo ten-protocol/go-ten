@@ -209,7 +209,8 @@ func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	// Verify the user exists in the database
 	_, err = walletExt.Storage.GetUser(userIDBytes)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("user not found in database"))
+		walletExt.Logger().Info("user not found in database", "userID", userID, log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database: %s", userID))
 		return
 	}
 
@@ -261,7 +262,8 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	// Verify the user exists in the database
 	_, err = walletExt.Storage.GetUser(userIDBytes)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("user not found in database"))
+		walletExt.Logger().Info("user not found in database", "userID", req.Token, log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("user not found in database: %s", req.Token))
 		return
 	}
 
