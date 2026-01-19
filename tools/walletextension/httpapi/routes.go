@@ -158,8 +158,9 @@ func joinRequestHandler(walletExt *services.Services, conn UserConn) {
 	// generate new key-pair and store it in the database
 	userID, err := walletExt.GenerateAndStoreNewUser()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("internal Error"))
 		walletExt.Logger().Error("error creating new user", log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), errors.New("internal error: failed to generate user"))
+		return
 	}
 
 	// write hex encoded userID in the response
@@ -352,8 +353,8 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	// check if account already exists for this user
 	exists, err := walletExt.UserHasAccount(userID, address)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
 		walletExt.Logger().Error("error checking if account exists", "userID", userID, "address", address, log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error: failed to check account existence"))
 		return
 	}
 	if exists {
@@ -371,8 +372,8 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 		if errors.Is(err, services.ErrMaxAccountsPerUserReached) {
 			handleError(conn, walletExt.Logger(), services.ErrMaxAccountsPerUserReached)
 		} else {
-			handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-			walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, userID, signature))
+			walletExt.Logger().Error("error adding address to user", "address", address, "userID", userID, "signature", hex.EncodeToString(signature), log.ErrKey, err)
+			handleError(conn, walletExt.Logger(), fmt.Errorf("internal error: failed to add address to user"))
 		}
 		return
 	}
@@ -415,8 +416,9 @@ func queryRequestHandler(walletExt *services.Services, conn UserConn) {
 	// check if this account is registered with given user
 	found, err := walletExt.UserHasAccount(userID, address)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("internal error"))
-		walletExt.Logger().Error("error during checking if account exists for user", "userID", userID, log.ErrKey, err)
+		walletExt.Logger().Error("error during checking if account exists for user", "userID", userID, "address", address, log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), errors.New("internal error: failed to query account"))
+		return
 	}
 
 	// create and write the response
@@ -456,8 +458,8 @@ func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
 	// delete user and accounts associated with it from the database
 	err = walletExt.Storage.DeleteUser(userID)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("internal error"))
 		walletExt.Logger().Error("unable to delete user", "userID", userID, log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), errors.New("internal error: failed to revoke user"))
 		return
 	}
 
@@ -702,8 +704,8 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	message, err := walletExt.GenerateUserMessageToSign(userID, formatsSlice)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("internal error"))
-		walletExt.Logger().Error("error getting message", log.ErrKey, err)
+		walletExt.Logger().Error("error generating message to sign", "userID", hex.EncodeToString(userID), "formats", formatsSlice, log.ErrKey, err)
+		handleError(conn, walletExt.Logger(), errors.New("internal error: failed to generate message"))
 		return
 	}
 
