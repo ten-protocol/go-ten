@@ -3,6 +3,7 @@ package rpcapi
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ten-protocol/go-ten/go/common/log"
 	tencommonrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
@@ -243,7 +245,8 @@ func extractUserForRequest(ctx context.Context, w *services.Services) (*common.G
 	}
 	user, err := w.Storage.GetUser(userID)
 	if err != nil {
-		return nil, fmt.Errorf("authentication failed: %w", err)
+		w.Logger().Info("authentication failed: user not found", "userID", hex.EncodeToString(userID), log.ErrKey, err)
+		return nil, fmt.Errorf("authentication failed (userID=%s): %w", hex.EncodeToString(userID), err)
 	}
 	return user, nil
 }
