@@ -119,6 +119,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Network.L1.L1Contracts.EnclaveRegistryContract = simParams.L1TenData.EnclaveRegistryAddress
 		tenCfg.Network.L1.L1Contracts.MessageBusContract = simParams.L1TenData.MessageBusAddr
 		tenCfg.Network.L1.L1Contracts.BridgeContract = simParams.L1TenData.BridgeAddress
+		tenCfg.Host.Enclave.ContractSyncInterval = 10 * time.Second
 		tenCfg.Network.Gas.PaymentAddress = simParams.Wallets.L2FeesWallet.Address()
 
 		tenCfg.Node.PrivateKeyString = privateKey
@@ -132,7 +133,7 @@ func (n *networkOfSocketNodes) Create(simParams *params.SimParams, _ *stats.Stat
 		tenCfg.Host.RPC.WSPort = uint64(simParams.StartPort + integration.DefaultHostRPCWSOffset + i)
 		tenCfg.Host.Enclave.RPCAddresses = []string{fmt.Sprintf("127.0.0.1:%d", simParams.StartPort+integration.DefaultEnclaveOffset+i)}
 		tenCfg.Host.Enclave.ContractFetchLimit = 2
-		tenCfg.Host.Enclave.ContractSyncInterval = simParams.ContractSyncInterval
+		tenCfg.Host.Enclave.ContractSyncInterval = durationOrDefault(simParams.ContractSyncInterval)
 		tenCfg.Host.L1.WebsocketURL = fmt.Sprintf("ws://127.0.0.1:%d", simParams.StartPort+100)
 		tenCfg.Host.DB.HistoricalTxCount = 10      // needed to test historicalTxCount endpoint
 		tenCfg.Host.DB.HistoricalContractCount = 7 // needed to test historicalContractCount endpoint
@@ -306,4 +307,11 @@ func checkProcessPort(errPort string) error {
 	fmt.Printf("Found processes still opened on port %s - %+v\n", port, processes)
 
 	return nil
+}
+
+func durationOrDefault(v *time.Duration) time.Duration {
+	if v != nil {
+		return *v
+	}
+	return 10 * time.Second
 }
