@@ -487,7 +487,7 @@ func createTenNetwork(t *testing.T, startPort int, contractSyncInterval time.Dur
 		StartPort:            startPort,
 		WithPrefunding:       true,
 		L1BeaconPort:         integration.TestPorts.TestTenscanPort + integration.DefaultPrysmGatewayPortOffset,
-		ContractSyncInterval: contractSyncInterval,
+		ContractSyncInterval: &contractSyncInterval,
 	}
 
 	tenNetwork := network.NewNetworkOfSocketNodes(wallets)
