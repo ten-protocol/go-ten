@@ -148,6 +148,7 @@ func readyRequestHandler(_ *services.Services, _ UserConn) {}
 
 // This function handles request to /join endpoint. It is responsible to create new user (new key-pair) and store it to the db
 func joinRequestHandler(walletExt *services.Services, conn UserConn) {
+	walletExt.Logger().Info("Joining request")
 	// todo (@ziga) add protection against DDOS attacks
 	_, err := conn.ReadRequest()
 	if err != nil {
@@ -304,6 +305,8 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 // In the request we receive message, signature and address in JSON as request body and userID and address as query parameters
 // We then check if message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
 func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
+
+	walletExt.Logger().Info("Authenticate request received")
 	// read the request
 	body, err := conn.ReadRequest()
 	if err != nil {
@@ -332,6 +335,7 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 		handleError(conn, walletExt.Logger(), errors.New("unable to read address field from the request"))
 		return
 	}
+	walletExt.Logger().Info("Address from authenticate request", "address", address)
 
 	// get an optional type of the message that was signed
 	messageTypeValue := common.DefaultGatewayAuthMessageType
