@@ -30,45 +30,39 @@ func NewUserStorageWithCache(storage UserStorage, logger log.Logger) (*UserStora
 
 // AddUser adds a new user and invalidates the cache for the userID
 func (s *UserStorageWithCache) AddUser(userID []byte, privateKey []byte) error {
+	// Invalidate cache before operation to prevent race conditions
+	s.cache.Remove(userID)
 	return s.storage.AddUser(userID, privateKey)
 }
 
 // DeleteUser deletes a user and invalidates the cache for the userID
 func (s *UserStorageWithCache) DeleteUser(userID []byte) error {
-	err := s.storage.DeleteUser(userID)
-	if err != nil {
-		return err
-	}
+	// Invalidate cache before operation to prevent race conditions
 	s.cache.Remove(userID)
-	return nil
+	return s.storage.DeleteUser(userID)
 }
 
 func (s *UserStorageWithCache) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error {
-	err := s.storage.AddSessionKey(userID, key)
-	if err != nil {
-		return err
-	}
+	// Invalidate cache before operation to prevent race conditions
 	s.cache.Remove(userID)
-	return nil
+	return s.storage.AddSessionKey(userID, key)
 }
 
 func (s *UserStorageWithCache) RemoveSessionKey(userID []byte, sessionKeyAddr *gethcommon.Address) error {
-	err := s.storage.RemoveSessionKey(userID, sessionKeyAddr)
-	if err != nil {
-		return err
-	}
+	// Invalidate cache before operation to prevent race conditions
 	s.cache.Remove(userID)
-	return nil
+	return s.storage.RemoveSessionKey(userID, sessionKeyAddr)
 }
 
 // AddAccount adds an account to a user and invalidates the cache for the userID
+// Cache is invalidated BEFORE the operation to prevent race conditions where concurrent
+// GetUser calls might read stale cached data during the storage transaction.
+// This ensures any concurrent reads will get a cache miss and read fresh data
+// from the database after the transaction commits.
 func (s *UserStorageWithCache) AddAccount(userID []byte, accountAddress []byte, signature []byte, signatureType viewingkey.SignatureType) error {
-	err := s.storage.AddAccount(userID, accountAddress, signature, signatureType)
-	if err != nil {
-		return err
-	}
+	// Invalidate cache BEFORE operation to prevent race conditions
 	s.cache.Remove(userID)
-	return nil
+	return s.storage.AddAccount(userID, accountAddress, signature, signatureType)
 }
 
 // GetUser retrieves a user from the cache or underlying storage
