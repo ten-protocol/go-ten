@@ -26,6 +26,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/common/httputil"
 	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
 )
 
 // generateCookieNameFromDomain generates a safe cookie name from TLS domain
@@ -347,6 +348,7 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	messageType, ok := viewingkey.SignatureTypeMap[messageTypeValue]
 	if !ok {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid message type: %s", messageTypeValue))
+		return
 	}
 
 	// read userID from query params
@@ -359,6 +361,12 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	// check if account already exists for this user
 	exists, err := walletExt.UserHasAccount(userID, address)
 	if err != nil {
+		// Check if the error is because the user doesn't exist
+		if errors.Is(err, dbcommon.ErrUserNotFound) {
+			walletExt.Logger().Error("user not found during account registration", "userID", hexutils.BytesToHex(userID), "address", address, log.ErrKey, err)
+			handleError(conn, walletExt.Logger(), fmt.Errorf("user not found. Please register via /join endpoint first"))
+			return
+		}
 		walletExt.Logger().Error("error checking if account exists", "userID", userID, "address", address, log.ErrKey, err)
 		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error: failed to check account existence"))
 		return
@@ -377,6 +385,9 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	if err != nil {
 		if errors.Is(err, services.ErrMaxAccountsPerUserReached) {
 			handleError(conn, walletExt.Logger(), services.ErrMaxAccountsPerUserReached)
+		} else if errors.Is(err, dbcommon.ErrUserNotFound) {
+			walletExt.Logger().Error("user not found when adding address", "userID", hexutils.BytesToHex(userID), "address", address, log.ErrKey, err)
+			handleError(conn, walletExt.Logger(), fmt.Errorf("user not found. Please register via /join endpoint first"))
 		} else {
 			walletExt.Logger().Error("error adding address to user", "address", address, "userID", userID, "signature", hex.EncodeToString(signature), log.ErrKey, err)
 			handleError(conn, walletExt.Logger(), fmt.Errorf("internal error: failed to add address to user"))
