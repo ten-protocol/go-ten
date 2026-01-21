@@ -180,3 +180,14 @@ func (b *Backend) SequencerAttestations() ([]common.PublicAttestationReport, err
 func (b *Backend) Search(query string) (*common.SearchResponse, error) {
 	return b.obsClient.Search(query)
 }
+
+func (b *Backend) GetContractListing(offset uint64, size uint64) (*common.ContractListingResponse, error) {
+	return b.obsClient.GetContractListing(&common.QueryPagination{
+		Offset: offset,
+		Size:   uint(size),
+	})
+}
+
+func (b *Backend) GetContractByAddress(address gethcommon.Address) (*common.PublicContract, error) {
+	return b.obsClient.GetContractByAddress(address)
+}

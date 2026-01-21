@@ -47,6 +47,22 @@ type RollupListingResponse struct {
 	Total       uint64
 }
 
+type ContractListingResponse struct {
+	Contracts []PublicContract
+	Total     uint64
+}
+
+type PublicContract struct {
+	ID              uint64         `json:"id"`
+	Address         common.Address `json:"address"`
+	Creator         common.Address `json:"creator"`
+	IsTransparent   bool           `json:"isTransparent"`
+	HasCustomConfig bool           `json:"hasCustomConfig"`
+	BatchSeq        uint64         `json:"deployedBatchSeq"`
+	Height          uint64         `json:"deployedHeight"`
+	Time            uint64         `json:"deployedTime"`
+}
+
 type PublicTransaction struct {
 	TransactionHash TxHash
 	BatchHeight     *big.Int

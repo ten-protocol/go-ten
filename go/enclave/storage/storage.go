@@ -1068,6 +1068,11 @@ func (s *storageImpl) GetContractCount(ctx context.Context) (*big.Int, error) {
 	return enclavedb.ReadContractCreationCount(ctx, s.db.GetSQLDB())
 }
 
+func (s *storageImpl) GetContracts(ctx context.Context, fromContractID uint64, limit uint) ([]common.EnclaveContractData, error) {
+	defer s.logDuration("GetContracts", measure.NewStopwatch())
+	return enclavedb.ReadContracts(ctx, s.db.GetSQLDB(), fromContractID, limit)
+}
+
 func (s *storageImpl) FetchCanonicalUnexecutedBatches(ctx context.Context, from *big.Int) ([]*common.BatchHeader, error) {
 	defer s.logDuration("FetchCanonicalUnexecutedBatches", measure.NewStopwatch())
 	return enclavedb.ReadUnexecutedBatches(ctx, s.db.GetSQLDB(), from)

@@ -396,6 +396,36 @@ func (s *RPCServer) GetTotalContractCount(ctx context.Context, _ *generated.GetT
 	}, nil
 }
 
+func (s *RPCServer) GetContracts(ctx context.Context, req *generated.ContractsSinceRequest) (*generated.ContractsSinceResponse, error) {
+	contracts, sysError := s.enclave.GetContracts(ctx, req.FromContractID, uint(req.Limit))
+	if sysError != nil {
+		s.logger.Error("Error GetContracts", log.ErrKey, sysError)
+		return &generated.ContractsSinceResponse{SystemError: toRPCError(sysError)}, nil
+	}
+
+	protoContracts := make([]*generated.ContractCreationDataMsg, len(contracts))
+	for i, contract := range contracts {
+		protoContracts[i] = &generated.ContractCreationDataMsg{
+			Id:             contract.ID,
+			Address:        contract.Address.Bytes(),
+			Creator:        contract.Creator.Bytes(),
+			AutoVisibility: contract.AutoVisibility,
+			BatchSeq:       contract.BatchSeq,
+			BatchHeight:    contract.BatchHeight,
+			BatchTimestamp: contract.BatchTimestamp,
+		}
+
+		if contract.Transparent != nil {
+			protoContracts[i].Transparent = contract.Transparent
+		}
+	}
+
+	return &generated.ContractsSinceResponse{
+		Contracts:   protoContracts,
+		SystemError: toRPCError(sysError),
+	}, nil
+}
+
 func (s *RPCServer) EncryptedRPC(ctx context.Context, req *generated.EncCallRequest) (*generated.EncCallResponse, error) {
 	enclaveResp, sysError := s.enclave.EncryptedRPC(ctx, req.EncryptedParams)
 	if sysError != nil {

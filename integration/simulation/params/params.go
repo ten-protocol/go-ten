@@ -38,7 +38,8 @@ type SimParams struct {
 	StartPort int  // The port from which to start allocating ports. Must be unique across all simulations.
 	IsInMem   bool // Denotes that the sim does not have a full RPC layer.
 
-	ReceiptTimeout time.Duration // How long to wait for transactions to be confirmed.
+	ReceiptTimeout       time.Duration // How long to wait for transactions to be confirmed.
+	ContractSyncInterval *time.Duration
 
 	StoppingDelay              time.Duration // How long to wait between injection and verification
 	NodeWithInboundP2PDisabled int
