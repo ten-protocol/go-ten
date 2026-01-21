@@ -14,7 +14,7 @@ import (
 const (
 	insertContract      = "INSERT INTO contract_host (address, creator, transparent, custom_config, batch_seq, height, time) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	selectContract      = "SELECT id, address, creator, transparent, custom_config, batch_seq, height, time FROM contract_host"
-	selectContractCount = "SELECT COUNT(*) FROM contract_host"
+	selectContractCount = "SELECT total FROM contract_count WHERE id = 1"
 	whereContractAddr   = " WHERE address = ?"
 	orderByDeployed     = " ORDER BY time DESC"
 )
@@ -175,7 +175,7 @@ func GetContractByAddress(db HostDB, address gethcommon.Address) (*common.Public
 // GetTotalContractCount returns the total number of contracts
 func GetTotalContractCount(db HostDB) (uint64, error) {
 	var total uint64
-	reboundQuery := db.GetSQLDB().Rebind("SELECT total FROM contract_count WHERE id = 1")
+	reboundQuery := db.GetSQLDB().Rebind(selectContractCount)
 	err := db.GetSQLDB().QueryRow(reboundQuery).Scan(&total)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get contract count: %w", err)

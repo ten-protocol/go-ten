@@ -5,9 +5,9 @@ CREATE TABLE IF NOT EXISTS contract_host
     creator             BYTEA      NOT NULL,
     transparent      BOOLEAN    NOT NULL,
     custom_config   BOOLEAN    NOT NULL,
-    batch_seq  INT        NOT NULL,
-    height     INT        NOT NULL,
-    time       BIGINT     NOT NULL
+    batch_seq  BIGINT     NOT NULL,
+    height     BIGINT     NOT NULL,
+    time       INT     NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS IDX_CONTRACT_ADDR_HOST ON contract_host USING HASH (address);
