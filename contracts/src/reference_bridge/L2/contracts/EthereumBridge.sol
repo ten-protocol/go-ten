@@ -103,6 +103,7 @@ contract EthereumBridge is
         require(amount > 0, "Amount must be greater than 0.");
 
         if (asset == localWETH) {
+            revert("disabled");
             _bridgeWETHToL1(amount, receiver);
             return;
         }
