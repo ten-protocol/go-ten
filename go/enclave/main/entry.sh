@@ -15,6 +15,7 @@ PCCS_URL=${PCCS_URL:-https://global.acccache.azure.net/sgx/certification/v4/}
 COLLATERAL_SERVICE=${COLLATERAL_SERVICE:-https://api.trustedservices.intel.com/sgx/certification/v4/}
 
 echo "PCCS_URL: ${PCCS_URL}"
+echo "COLLATERAL_SERVICE: ${COLLATERAL_SERVICE}"
 
 apt-get install -qq libsgx-dcap-default-qpl
 
