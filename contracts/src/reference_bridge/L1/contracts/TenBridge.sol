@@ -143,7 +143,6 @@ contract TenBridge is
         );
 
         if (asset == weth) {
-            revert("disabled");
             // Unwrap WETH to native ETH, then send native and also notify L2 via receiveNativeWrapped
             IWETH(weth).withdraw(amount);
             // Send native value to L2 so the receiver's L2 native balance increases
