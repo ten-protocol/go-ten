@@ -45,19 +45,28 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Create transaction to set remote bridge
     console.log("Creating setRemoteBridge transaction...");
     const tx = await bridgeContract.getFunction("setRemoteBridge").populateTransaction(l2BridgeAddress);
-    
+
     // Execute transaction via layer1 network
     console.log("Sending transaction to set remote bridge...");
-    const receipt = await hre.companionNetworks.layer1.deployments.rawTx({
-        from: deployer,
-        to: l1BridgeAddress,
-        data: tx.data,
-        log: true,
-        waitConfirmations: 1,
-    });
-    
-    if (receipt.status !== 1) {
-        throw new Error("Transaction failed");
+    try {
+        const receipt = await hre.companionNetworks.layer1.deployments.rawTx({
+            from: deployer,
+            to: l1BridgeAddress,
+            data: tx.data,
+            log: true,
+            waitConfirmations: 1,
+        });
+
+        if (receipt.status !== 1) {
+            throw new Error("Transaction failed");
+        }
+    } catch (err: any) {
+        const msg = err?.error?.message || err?.message || String(err);
+        if (msg.includes("Remote bridge address already set")) {
+            console.log("Remote bridge already set; skipping transaction.");
+            return;
+        }
+        throw err;
     }
 };
 
