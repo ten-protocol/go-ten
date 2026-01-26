@@ -130,7 +130,7 @@ contract EthereumBridge is
 
         // Single publish fee covers both messages
         uint256 fee = _messageBus().getPublishFee();
-        require(msg.value >= fee, "Insufficient funds for publish fee");
+        require(msg.value >= fee*2, "Insufficient funds for publish fee");
 
         // 1) Increase L1 bridge native balance by sending native to the remote bridge address
         this.sendNative{value: amount + fee}(remoteBridgeAddress);
@@ -141,8 +141,7 @@ contract EthereumBridge is
             receiver,
             amount
         );
-        // No extra fee for the second message
-        queueMessage(remoteBridgeAddress, nativeWrappedNotice, uint32(Topics.TRANSFER), 0, 0, 0);
+        queueMessage(remoteBridgeAddress, nativeWrappedNotice, uint32(Topics.TRANSFER), 0, 0, fee);
     }
 
     function receiveAssets(
