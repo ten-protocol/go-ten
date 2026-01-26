@@ -533,8 +533,6 @@ func (ti *TransactionInjector) awaitAndRelayL1ToL2Message(tx *types.Transaction,
 // issueRandomWETHWithdrawals bridges WETH from L2 to L1 using EthereumBridge.SendERC20
 // The flow is: wrap ETH to WETH on L2 -> approve EthereumBridge -> sendERC20(weth) -> receiver gets native ETH on L1
 func (ti *TransactionInjector) issueRandomWETHWithdrawals() {
-
-	//nolint:unreachable // ignore this lint warning unreachable: unreachable code (govet)
 	wethAddress := gethcommon.HexToAddress("0x1000000000000000000000000000000000000042")
 
 	cfg, err := ti.rpcHandles.TenWalletRndClient(ti.wallets.L2FaucetWallet).GetConfig()
