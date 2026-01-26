@@ -2,6 +2,15 @@
 ---
 # Ten Testnet Change Log
 
+# Jan 2026-01-26 (v1.8.11)
+* This is an L2 deployment release meaning state will be lost in order to upgrade the network.
+* A full list of the PRs merged in this release is as below;
+  * `80f74a7b` Whitelist usdt and usdc, add weth (#2713)
+  * `384456a0` Attestation: use intel pcs for verification collateral (#2813)
+  * `70664bc3` Ignore error warning that bridge already set so we can see what the failure is (#2815)
+  * `013baa24` Add rate limiting for /join request (#2808)
+  * `c2aa24d8` GW encryption key recovery (#2789)
+
 # Jan 2026-01-14 (v1.8.10)
 * This is an L2 deployment release meaning state will be lost in order to upgrade the network.
 * A full list of the PRs merged in this release is as below;
