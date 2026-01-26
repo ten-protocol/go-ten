@@ -761,7 +761,7 @@ func (executor *batchExecutor) CreateGenesisState(
 		Transactions: []*common.L2Tx{},
 	}
 
-	if err = executor.genesis.CommitGenesisState(executor.storage); err != nil {
+	if err = executor.genesis.CommitGenesisState(ctx, executor.storage); err != nil {
 		return nil, nil, fmt.Errorf("could not apply genesis preallocation. Cause: %w", err)
 	}
 	return genesisBatch, nil, nil

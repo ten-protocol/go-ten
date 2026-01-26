@@ -52,6 +52,9 @@ func (n *RPCHandles) RndEthClient() ethadapter.EthClient {
 func (n *RPCHandles) TenWalletRndClient(wallet wallet.Wallet) *obsclient.AuthObsClient {
 	addr := wallet.Address().String()
 	clients := n.AuthObsClients[addr]
+	if len(clients) == 0 {
+		panic("no authenticated clients found for wallet " + addr)
+	}
 	return clients[rand.Intn(len(clients))] //nolint:gosec
 }
 

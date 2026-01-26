@@ -46,3 +46,5 @@ echo "Installing opencode..."
 sudo chown -R node:node /home/node/.local/share/opencode /home/node/.config/opencode || true
 curl -fsSL https://opencode.ai/install | bash
 echo 'OpenCode Installed ✅'
+
+curl -fsSL https://claude.ai/install.sh | bash

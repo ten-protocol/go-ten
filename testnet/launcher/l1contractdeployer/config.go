@@ -12,6 +12,9 @@ type Config struct {
 	EtherscanAPIKey      string
 	MaxGasGwei           string
 	CheckGasPrice        string
+	USDCAddress          string
+	USDTAddress          string
+	WETHAddress          string
 }
 
 func NewContractDeployerConfig(tenCfg *config.TenConfig) *Config {
@@ -24,5 +27,8 @@ func NewContractDeployerConfig(tenCfg *config.TenConfig) *Config {
 		EtherscanAPIKey:      tenCfg.Deployment.L1Deploy.EtherscanAPIKey,
 		MaxGasGwei:           tenCfg.Deployment.L1Deploy.MaxGasGwei,
 		CheckGasPrice:        tenCfg.Deployment.L1Deploy.CheckGasPrice,
+		USDCAddress:          tenCfg.Deployment.L1Deploy.USDCAddress,
+		USDTAddress:          tenCfg.Deployment.L1Deploy.USDTAddress,
+		WETHAddress:          tenCfg.Deployment.L1Deploy.WETHAddress,
 	}
 }

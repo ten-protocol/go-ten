@@ -14,6 +14,9 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 contract SystemDeployerPhase2 {
     event SystemContractDeployed(string name, address contractAddress);
 
+    // Predeployed local WETH address (configured in genesis): 0x1000...0042
+    address constant LOCAL_WETH_PREDEPLOY = 0x1000000000000000000000000000000000000042;
+
     struct DeployedContracts {
         address messageBus;
         address crossChainMessenger;
@@ -53,7 +56,7 @@ contract SystemDeployerPhase2 {
 
     function deployEthereumBridge(address eoaAdmin, address crossChainMessengerAddress, address remoteBridgeAddress) internal returns (address) {
         EthereumBridge ethereumBridge = new EthereumBridge();
-        bytes memory callData = abi.encodeWithSelector(ethereumBridge.initialize.selector, crossChainMessengerAddress, remoteBridgeAddress);
+        bytes memory callData = abi.encodeWithSelector(ethereumBridge.initialize.selector, crossChainMessengerAddress, remoteBridgeAddress, LOCAL_WETH_PREDEPLOY);
         address ethereumBridgeProxy = deployProxy(address(ethereumBridge), eoaAdmin, callData);
 
         emit SystemContractDeployed("EthereumBridge", ethereumBridgeProxy);
