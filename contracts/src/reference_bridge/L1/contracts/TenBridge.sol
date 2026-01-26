@@ -16,6 +16,7 @@ import "../../common/IBridge.sol";
 // Minimal WETH interface used only for unwrapping
 interface IWETH {
     function withdraw(uint256 wad) external;
+    function deposit() external payable;
 }
 // This is the Ethereum side of the Obscuro Bridge.
 // End-users can interact with it to transfer ERC20 tokens and native eth to the Layer 2 Obscuro.
@@ -181,7 +182,8 @@ contract TenBridge is
     }
 
     function receiveNativeWrapped(address receiver, uint256 amount) external onlyCrossChainSender(remoteBridgeAddress) whenNotPaused {
-        _receiveNative(receiver, amount);
+       IWETH(weth).deposit{value: amount}();
+       _receiveTokens(weth, amount, receiver);
     }
 
     function _receiveTokens(
