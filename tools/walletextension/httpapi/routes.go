@@ -10,12 +10,14 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	tencommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
 	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
+	"github.com/ten-protocol/go-ten/tools/walletextension/ratelimiter"
 	"github.com/ten-protocol/go-ten/tools/walletextension/services"
 
 	"github.com/status-im/keycard-go/hexutils"
@@ -48,7 +50,7 @@ func NewHTTPRoutes(walletExt *services.Services) []node.Route {
 		},
 		{
 			Name: common.APIVersion1 + common.PathJoin,
-			Func: httpHandler(walletExt, joinRequestHandler),
+			Func: rateLimitedHttpHandler(walletExt, joinRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetToken,
@@ -119,6 +121,17 @@ func restrictiveHttpHandler(
 	}
 }
 
+// rateLimitedHttpHandler wraps an HTTP handler with rate limiting.
+// It applies both global and per-IP rate limits before processing the request.
+func rateLimitedHttpHandler(
+	walletExt *services.Services,
+	fun func(walletExt *services.Services, conn UserConn),
+) func(resp http.ResponseWriter, req *http.Request) {
+	return func(resp http.ResponseWriter, req *http.Request) {
+		rateLimitedHttpRequestHandler(walletExt, resp, req, fun)
+	}
+}
+
 // Overall request handler for http requests
 func httpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
 	if walletExt.IsStopping() {
@@ -143,12 +156,46 @@ func restrictiveHttpRequestHandler(walletExt *services.Services, resp http.Respo
 	fun(walletExt, userConn)
 }
 
+// rateLimitedHttpRequestHandler handles HTTP requests with rate limiting applied.
+// It checks both global and per-IP rate limits before processing the request.
+func rateLimitedHttpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
+	if walletExt.IsStopping() {
+		return
+	}
+	if httputil.EnableCORS(resp, req) {
+		return
+	}
+
+	// Apply rate limiting if enabled
+	if walletExt.HTTPRateLimiter != nil && walletExt.HTTPRateLimiter.IsEnabled() {
+		clientIP := ratelimiter.GetClientIP(req)
+		allowed, retryAfter := walletExt.HTTPRateLimiter.Allow(clientIP)
+		if !allowed {
+			writeRateLimitResponse(resp, retryAfter)
+			return
+		}
+	}
+
+	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
+	fun(walletExt, userConn)
+}
+
+// writeRateLimitResponse writes an HTTP 429 response with appropriate headers and body.
+func writeRateLimitResponse(resp http.ResponseWriter, retryAfter time.Duration) {
+	resp.Header().Set("Content-Type", "application/json")
+	resp.Header().Set("Retry-After", fmt.Sprintf("%.0f", retryAfter.Seconds()))
+	resp.WriteHeader(http.StatusTooManyRequests)
+	_ = json.NewEncoder(resp).Encode(map[string]interface{}{
+		"error":       "rate limit exceeded",
+		"retry_after": int(retryAfter.Seconds()),
+	})
+}
+
 // readyRequestHandler is used to check whether the server is ready
 func readyRequestHandler(_ *services.Services, _ UserConn) {}
 
 // This function handles request to /join endpoint. It is responsible to create new user (new key-pair) and store it to the db
 func joinRequestHandler(walletExt *services.Services, conn UserConn) {
-	// todo (@ziga) add protection against DDOS attacks
 	_, err := conn.ReadRequest()
 	if err != nil {
 		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
