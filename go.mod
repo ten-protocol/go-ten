@@ -1,6 +1,6 @@
 module github.com/ten-protocol/go-ten
 
-go 1.25.1
+go 1.25.6
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.20.0
@@ -15,7 +15,7 @@ require (
 	github.com/dgraph-io/ristretto/v2 v2.3.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/docker/go-connections v0.6.0
-	github.com/edgelesssys/ego v1.8.0
+	github.com/edgelesssys/ego v1.8.1
 	github.com/ethereum/go-ethereum v1.16.8
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
