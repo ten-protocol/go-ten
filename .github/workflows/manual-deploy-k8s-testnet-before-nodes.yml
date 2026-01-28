@@ -71,6 +71,8 @@ jobs:
           # extract the environment prefix (dev, uat, sepolia, mainnet)
           if [[ "$TESTNET_TYPE" == "mainnet" ]]; then
             short_name="mainnet"
+          elif [[ "$TESTNET_TYPE" == "sepolia-testnet" ]]; then
+            short_name="testnet"
           else
             # strip the -testnet suffix from testnet environments
             short_name=${TESTNET_TYPE%-testnet}
