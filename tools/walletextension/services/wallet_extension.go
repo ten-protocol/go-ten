@@ -66,7 +66,7 @@ type NewHeadNotifier interface {
 const rpcResponseCacheSize = 1_000_000
 
 // Maximum number of accounts allowed per user
-const MaxAccountsPerUser = 100
+const MaxAccountsPerUser = 120
 
 // ErrMaxAccountsPerUserReached indicates a user has reached the allowed account limit
 var ErrMaxAccountsPerUserReached = errors.New("maximum number of accounts per user reached")
