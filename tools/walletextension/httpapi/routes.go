@@ -940,6 +940,12 @@ func backupEncryptionKeyRequestHandler(walletExt *services.Services, conn UserCo
 		return
 	}
 
+	walletExt.Logger().Info("Encrypting with public key",
+		"compressed_hex", hex.EncodeToString(backupPubKeyBytes),
+		"decompressed_x", backupPubKey.X.String(),
+		"decompressed_y", backupPubKey.Y.String(),
+	)
+
 	// Convert to ECIES public key and encrypt
 	eciesPubKey := ecies.ImportECDSAPublic(backupPubKey)
 	encryptedKey, err := ecies.Encrypt(rand.Reader, eciesPubKey, encryptionKey, nil, nil)
