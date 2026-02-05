@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1.6
+
 # for integration with the Azure Key Vault, it needs an azure "tenant id" and "subscription id" to be passed as build arguments
 # The build process when using these arguments is interactive. It requires logging in on Azure and approving the login request.
 ARG AZURE_TENANT_ID
@@ -42,8 +44,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
 # Sign the enclave executable
 RUN ego sign enclave.json
 
-# Run the complete Azure HSM setup (builds signer tool, signs binary, or skips if not needed)
-RUN /home/obscuro/go-obscuro/tools/enclavesigner/AzureHSMSignatureScript.sh main /home/obscuro/go-obscuro/tools/enclavesigner/main
+# Use a local signing key provided from the host as a BuildKit secret (not baked into the image layers)
+RUN --mount=type=secret,id=sgx_signing_key,target=/run/secrets/sgx_signing_key,required=true \
+    LOCAL_SIGNING_KEY_PATH=/run/secrets/sgx_signing_key \
+    /home/obscuro/go-obscuro/tools/enclavesigner/LocalKeySignatureScript.sh main /home/obscuro/go-obscuro/tools/enclavesigner/main
 
 # Trigger a new build stage and use the smaller ego version:
 FROM ghcr.io/edgelesssys/ego-deploy:v1.8.0
@@ -51,7 +55,7 @@ FROM ghcr.io/edgelesssys/ego-deploy:v1.8.0
 # Copy just the binary for the enclave into this build stage
 COPY --from=build-enclave \
     /home/obscuro/go-obscuro/go/enclave/main /home/obscuro/go-obscuro/go/enclave/main
-    
+
 WORKDIR /home/obscuro/go-obscuro/go/enclave/main
 
 # simulation mode is ACTIVE by default
