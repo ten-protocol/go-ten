@@ -3,14 +3,14 @@ package erc20deployer
 import "fmt"
 
 type Config struct {
-	tokenName          string
-	tokenSymbol        string
-	tokenDecimals      string
-	tokenSupply        string
-	l1HTTPURL          string
-	privateKey         string
-	dockerImage        string
-	networkConfigAddr  string
+	tokenName         string
+	tokenSymbol       string
+	tokenDecimals     string
+	tokenSupply       string
+	l1HTTPURL         string
+	privateKey        string
+	dockerImage       string
+	networkConfigAddr string
 }
 
 func NewConfig(opts ...ConfigOption) *Config {
