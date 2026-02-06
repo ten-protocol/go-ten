@@ -131,15 +131,22 @@ type ChecksumFormattedTenNetworkConfig struct {
 	SystemContractsUpgrader   gethcommon.AddressEIP55
 	L1StartHash               gethcommon.Hash
 	PublicSystemContracts     map[string]gethcommon.AddressEIP55
-	AdditionalContracts       []*common.NamedAddress
+	AdditionalContracts       map[string]gethcommon.AddressEIP55
 }
 
 func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetworkConfig {
-	additionalContracts := info.AdditionalContracts
-
 	publicSystemContracts := make(map[string]gethcommon.AddressEIP55)
 	for name, addr := range info.PublicSystemContracts {
 		publicSystemContracts[name] = gethcommon.AddressEIP55(addr)
+	}
+
+	additionalContracts := make(map[string]gethcommon.AddressEIP55)
+	if info.AdditionalContracts != nil {
+		for _, contract := range info.AdditionalContracts {
+			if contract != nil {
+				additionalContracts[contract.Name] = gethcommon.AddressEIP55(contract.Addr)
+			}
+		}
 	}
 
 	return &ChecksumFormattedTenNetworkConfig{
