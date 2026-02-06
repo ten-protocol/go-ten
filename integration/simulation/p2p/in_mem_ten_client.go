@@ -189,10 +189,25 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 		TransactionsPostProcessor: gethcommon.Address(cfg.TransactionsPostProcessor),
 		L1StartHash:               cfg.L1StartHash,
 		PublicSystemContracts:     publicSystemContracts,
-		AdditionalContracts:       cfg.AdditionalContracts,
+		AdditionalContracts:       convertMapToNamedAddresses(cfg.AdditionalContracts),
 	}
 	*result.(*common.TenNetworkInfo) = *tenNetworkInfo
 	return nil
+}
+
+// convertMapToNamedAddresses converts a map of name->address to an array of NamedAddress
+func convertMapToNamedAddresses(addressMap map[string]gethcommon.AddressEIP55) []*common.NamedAddress {
+	if len(addressMap) == 0 {
+		return nil
+	}
+	result := make([]*common.NamedAddress, 0, len(addressMap))
+	for name, addr := range addressMap {
+		result = append(result, &common.NamedAddress{
+			Name: name,
+			Addr: gethcommon.Address(addr),
+		})
+	}
+	return result
 }
 
 func (c *inMemTenClient) Subscribe(context.Context, string, interface{}, ...interface{}) (*gethrpc.ClientSubscription, error) {
