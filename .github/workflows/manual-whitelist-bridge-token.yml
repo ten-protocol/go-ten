@@ -7,15 +7,14 @@ on:
       testnet_type:
         description: 'Testnet Type'
         required: true
-        default: 'dev-testnet'
+        default: 'uat-testnet'
         type: choice
         options:
-          - 'dev-testnet'
           - 'uat-testnet'
           - 'sepolia-testnet'
           - 'mainnet'
       token_address:
-        description: 'Token Address (e.g., 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238 for USDC on Sepolia)'
+        description: 'Token Address'
         required: true
         type: string
       token_name:
