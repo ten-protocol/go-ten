@@ -162,7 +162,7 @@ type NamedAddress struct {
 func (t *TenNetworkInfo) UnmarshalJSON(data []byte) error {
 	// Create an alias to avoid recursion
 	type Alias TenNetworkInfo
-	
+
 	// Try to unmarshal with map format first (new format)
 	aux := &struct {
 		AdditionalContracts map[string]common.Address `json:"AdditionalContracts,omitempty"`
@@ -170,11 +170,11 @@ func (t *TenNetworkInfo) UnmarshalJSON(data []byte) error {
 	}{
 		Alias: (*Alias)(t),
 	}
-	
+
 	if err := json.Unmarshal(data, aux); err != nil {
 		return err
 	}
-	
+
 	// Convert map to array if map format was used
 	if len(aux.AdditionalContracts) > 0 {
 		t.AdditionalContracts = make([]*NamedAddress, 0, len(aux.AdditionalContracts))
@@ -185,7 +185,7 @@ func (t *TenNetworkInfo) UnmarshalJSON(data []byte) error {
 			})
 		}
 	}
-	
+
 	return nil
 }
 
