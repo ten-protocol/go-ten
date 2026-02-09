@@ -157,6 +157,38 @@ type NamedAddress struct {
 	Addr common.Address
 }
 
+// UnmarshalJSON implements custom unmarshaling for TenNetworkInfo
+// to handle AdditionalContracts which can be either a map or an array in JSON
+func (t *TenNetworkInfo) UnmarshalJSON(data []byte) error {
+	// Create an alias to avoid recursion
+	type Alias TenNetworkInfo
+	
+	// Try to unmarshal with map format first (new format)
+	aux := &struct {
+		AdditionalContracts map[string]common.Address `json:"AdditionalContracts,omitempty"`
+		*Alias
+	}{
+		Alias: (*Alias)(t),
+	}
+	
+	if err := json.Unmarshal(data, aux); err != nil {
+		return err
+	}
+	
+	// Convert map to array if map format was used
+	if len(aux.AdditionalContracts) > 0 {
+		t.AdditionalContracts = make([]*NamedAddress, 0, len(aux.AdditionalContracts))
+		for name, addr := range aux.AdditionalContracts {
+			t.AdditionalContracts = append(t.AdditionalContracts, &NamedAddress{
+				Name: name,
+				Addr: addr,
+			})
+		}
+	}
+	
+	return nil
+}
+
 // PublicAttestationReport mirrors AttestationReport but encodes byte slices as hex in JSON
 type PublicAttestationReport struct {
 	Report      hexutil.Bytes  `json:"Report"`
