@@ -71,7 +71,7 @@ const MaxAccountsPerUser = 100
 // ErrMaxAccountsPerUserReached indicates a user has reached the allowed account limit
 var ErrMaxAccountsPerUserReached = errors.New("maximum number of accounts per user reached")
 
-func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserStorage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, metricsTracker metrics.Metrics, config *common.Config) *Services {
+func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserStorage, activityStorage storage.SessionKeyActivityStorage, stopControl *stopcontrol.StopControl, version string, logger gethlog.Logger, metricsTracker metrics.Metrics, config *common.Config) *Services {
 	var newGatewayCache cache.Cache
 	var err error
 
@@ -89,7 +89,8 @@ func NewServices(hostAddrHTTP string, hostAddrWS string, storage storage.UserSto
 	rateLimiter := ratelimiter.NewRateLimiter(config.RateLimitUserComputeTime, config.RateLimitWindow, uint32(config.RateLimitMaxConcurrentRequests), logger)
 	httpRateLimiter := ratelimiter.NewHTTPRateLimiter(config.HTTPRateLimitGlobalRate, config.HTTPRateLimitPerIPRate, logger)
 
-	activityTracker := NewSessionKeyActivityTracker(logger)
+	// Create activity tracker with async persistence to DB for evicted entries
+	activityTracker := NewSessionKeyActivityTrackerWithStorage(logger, activityStorage)
 
 	services := Services{
 		HostAddrHTTP:        hostAddrHTTP,
@@ -374,6 +375,10 @@ func (w *Services) Stop() {
 	w.BackendRPC.Stop()
 	if w.HTTPRateLimiter != nil {
 		w.HTTPRateLimiter.Stop()
+	}
+	// Stop the activity tracker to flush pending writes
+	if w.ActivityTracker != nil {
+		w.ActivityTracker.Stop()
 	}
 	close(w.cacheInvalidationCh)
 }
