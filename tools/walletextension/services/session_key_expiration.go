@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	gethcommon "github.com/ethereum/go-ethereum/common"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
@@ -103,8 +104,20 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 	s.logger.Info("Session key expiration check started")
 
 	cutoff := time.Now().Add(-s.config.SessionKeyExpirationThreshold)
-	candidates := s.activityTracker.ListOlderThan(cutoff)
-	s.logger.Info("Session key expiration check", "cutoff", cutoff, "candidatesFound", len(candidates))
+
+	// Get expired candidates from in-memory LRU cache
+	memoryCandidates := s.activityTracker.ListOlderThan(cutoff)
+
+	// Also query CosmosDB for expired entries (evicted from memory but still valid)
+	dbCandidates, err := s.activityStorage.ListOlderThan(cutoff)
+	if err != nil {
+		s.logger.Warn("Failed to query DB for expired session keys", "error", err)
+		dbCandidates = nil
+	}
+
+	// Merge and deduplicate: in-memory takes precedence for recent updates
+	candidates := s.mergeActivityLists(memoryCandidates, dbCandidates)
+	s.logger.Info("Session key expiration check", "cutoff", cutoff, "memoryCount", len(memoryCandidates), "dbCount", len(dbCandidates), "mergedCount", len(candidates))
 
 	for _, c := range candidates {
 		s.logger.Info("Processing expired session key candidate",
@@ -120,8 +133,8 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 
 		// Ensure this session key still belongs to the user
 		if _, ok := user.SessionKeys[c.Addr]; !ok {
-			// The session key may have been deleted; remove from tracker
-			s.activityTracker.Delete(c.Addr)
+			// The session key may have been deleted; remove from both tracker and DB
+			s.deleteActivity(c.Addr)
 			continue
 		}
 
@@ -148,11 +161,44 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 			"sessionKeyAddress", c.Addr.Hex(),
 			"txHash", txHash.Hex())
 
-		// After successful external operation, delete from tracker
-		_ = s.activityTracker.Delete(c.Addr)
+		// After successful external operation, delete from both tracker and DB
+		s.deleteActivity(c.Addr)
 	}
 
 	// store all activities in the database to make them persistent and recoverable in case of restart
 	allActivities := s.activityTracker.ListAll()
 	_ = s.activityStorage.Save(allActivities)
+}
+
+// mergeActivityLists merges activities from memory and DB, deduplicating by address.
+// In-memory entries take precedence as they have the most recent state.
+func (s *SessionKeyExpirationService) mergeActivityLists(memory, db []wecommon.SessionKeyActivity) []wecommon.SessionKeyActivity {
+	seen := make(map[gethcommon.Address]struct{})
+	result := make([]wecommon.SessionKeyActivity, 0, len(memory)+len(db))
+
+	// Add all memory entries first (they take precedence)
+	for _, item := range memory {
+		if _, exists := seen[item.Addr]; !exists {
+			seen[item.Addr] = struct{}{}
+			result = append(result, item)
+		}
+	}
+
+	// Add DB entries that aren't already in memory
+	for _, item := range db {
+		if _, exists := seen[item.Addr]; !exists {
+			seen[item.Addr] = struct{}{}
+			result = append(result, item)
+		}
+	}
+
+	return result
+}
+
+// deleteActivity removes an activity from both the in-memory tracker and the database
+func (s *SessionKeyExpirationService) deleteActivity(addr gethcommon.Address) {
+	s.activityTracker.Delete(addr)
+	if err := s.activityStorage.Delete(addr); err != nil {
+		s.logger.Warn("Failed to delete activity from DB", "addr", addr.Hex(), "error", err)
+	}
 }
