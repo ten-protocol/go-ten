@@ -105,7 +105,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, stopControl, version, logger, metricsTracker, &config)
+	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, activityStorage, stopControl, version, logger, metricsTracker, &config)
 
 	// Create session key expiration service after services are created
 	var sessionKeyExpirationService *services.SessionKeyExpirationService
