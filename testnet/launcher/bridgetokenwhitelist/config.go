@@ -7,6 +7,7 @@ type Config struct {
 	tokenName         string
 	tokenSymbol       string
 	l1HTTPURL         string
+	l2RPCURL          string
 	privateKey        string
 	dockerImage       string
 	networkConfigAddr string
@@ -46,6 +47,12 @@ func WithL1HTTPURL(url string) ConfigOption {
 	}
 }
 
+func WithL2RPCURL(url string) ConfigOption {
+	return func(c *Config) {
+		c.l2RPCURL = url
+	}
+}
+
 func WithPrivateKey(key string) ConfigOption {
 	return func(c *Config) {
 		c.privateKey = key
@@ -77,6 +84,9 @@ func (c *Config) Validate() error {
 	if c.l1HTTPURL == "" {
 		return fmt.Errorf("L1 HTTP URL is required")
 	}
+	if c.l2RPCURL == "" {
+		return fmt.Errorf("L2 RPC URL is required")
+	}
 	if c.privateKey == "" {
 		return fmt.Errorf("private key is required")
 	}
@@ -90,6 +100,6 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf("Bridge Token Whitelist Config: tokenAddress=%s, tokenName=%s, tokenSymbol=%s, l1HTTPURL=%s, dockerImage=%s, networkConfigAddr=%s",
-		c.tokenAddress, c.tokenName, c.tokenSymbol, c.l1HTTPURL, c.dockerImage, c.networkConfigAddr)
+	return fmt.Sprintf("Bridge Token Whitelist Config: tokenAddress=%s, tokenName=%s, tokenSymbol=%s, l1HTTPURL=%s, l2RPCURL=%s, dockerImage=%s, networkConfigAddr=%s",
+		c.tokenAddress, c.tokenName, c.tokenSymbol, c.l1HTTPURL, c.l2RPCURL, c.dockerImage, c.networkConfigAddr)
 }

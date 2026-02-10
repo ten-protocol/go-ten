@@ -47,7 +47,28 @@ go run ./testnet/launcher/bridgetokenwhitelist/cmd \
   -token_name="USD Coin" \
   -token_symbol="USDC" \
   -l1_http_url="https://sepolia.infura.io/v3/YOUR_KEY" \
+  l2_rpc_url=""
   -private_key="0x..." \
   -docker_image="your-docker-image" \
   -network_config_addr="0x..."
 ```
+
+go run ./testnet/launcher/erc20deployer/cmd \
+  -token_name="USD Coin" \
+  -token_symbol="USDC" \
+  -token_decimals="6" \
+  -token_supply="100000" \
+  -l1_http_url="http://eth2network:8025" \
+  -private_key="f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb" \
+  -docker_image="testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" \
+  -network_config_addr="0x2a8b83Fd5EB49A7a620F27f34D52DFA86Dabf393"
+
+  go run ./testnet/launcher/bridgetokenwhitelist/cmd \
+  -token_address="0xD41916EC71b801A2b994648BD0009C59bAb4F9cA" \
+  -token_name="USD Coin" \
+  -token_symbol="USDC" \
+  -l1_http_url="http://eth2network:8025" \
+  -l2_rpc_url="http://sequencer-host:80" \
+  -private_key="f52e5418e349dccdda29b6ac8b0abe6576bb7713886aa85abea6181ba731f9bb" \
+  -docker_image="testnetobscuronet.azurecr.io/obscuronet/hardhatdeployer:latest" \
+  -network_config_addr="0x2a8b83Fd5EB49A7a620F27f34D52DFA86Dabf393"

@@ -26,7 +26,7 @@ const deployAndRegisterToken = async function (): Promise<void> {
     const tokenName = process.env.TOKEN_NAME;
     const tokenSymbol = process.env.TOKEN_SYMBOL;
     const tokenDecimalsStr = process.env.TOKEN_DECIMALS;
-    const tokenSupplyStr = process.env.TOKEN_SUPPLY || '1000000000'; // 1 billion default
+    const tokenSupplyStr = process.env.TOKEN_SUPPLY || '10000'; // 1 billion default
     const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR;
     
     if (!tokenName) {
@@ -59,10 +59,13 @@ const deployAndRegisterToken = async function (): Promise<void> {
         'Initial Supply (with decimals)': initialSupply.toString()
     });
     
-    // Deploy the ERC20 token
+    // Deploy the ERC20 token with random salt for unique address
     console.log('\nDeploying ERC20 token...');
+    const salt = BigInt(Date.now()); // Use timestamp as salt for unique address
+    console.log(`Using salt: ${salt}`);
+    
     const TokenFactory = await ethers.getContractFactory('ConfigurableERC20');
-    const token = await TokenFactory.deploy(tokenName, tokenSymbol, tokenDecimals, initialSupply);
+    const token = await TokenFactory.deploy(tokenName, tokenSymbol, tokenDecimals, initialSupply, salt);
     await token.waitForDeployment();
     const tokenAddress = await token.getAddress();
 

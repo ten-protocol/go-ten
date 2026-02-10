@@ -30,6 +30,10 @@ on:
         required: false
         type: string
 
+concurrency:
+  group: whitelist-bridge-${{ github.event.inputs.testnet_type }}
+  cancel-in-progress: false
+
 jobs:
   whitelist-token:
     runs-on: ubuntu-latest
@@ -127,6 +131,7 @@ jobs:
           -token_name="${{ github.event.inputs.token_name }}" \
           -token_symbol="${{ github.event.inputs.token_symbol }}" \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+          -l2_rpc_url=${{ secrets.L2_RPC_URL }} \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -network_config_addr="${{ steps.parse.outputs.network_config }}"

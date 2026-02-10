@@ -10,6 +10,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  */
 contract ConfigurableERC20 is ERC20 {
     uint8 private _decimals;
+    uint256 private _salt;
 
     /**
      * @dev Constructor that mints initialSupply tokens to the deployer
@@ -17,15 +18,18 @@ contract ConfigurableERC20 is ERC20 {
      * @param symbol Token symbol (e.g., "USDC")
      * @param decimals_ Number of decimals (e.g., 6 for USDC, 18 for most tokens)
      * @param initialSupply Initial token supply (already adjusted for decimals)
+     * @param salt Random value to ensure unique deployment addresses
      */
     constructor(
         string memory name,
         string memory symbol,
         uint8 decimals_,
-        uint256 initialSupply
+        uint256 initialSupply,
+        uint256 salt
     ) ERC20(name, symbol) {
         require(decimals_ <= 18, "Decimals must be <= 18");
         _decimals = decimals_;
+        _salt = salt;
         _mint(msg.sender, initialSupply);
     }
 
