@@ -331,6 +331,7 @@ func TestGetBatchTransactions(t *testing.T) {
 	db, _ := CreateSQLiteDB(t)
 	txHashesOne := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringOne")), gethcommon.BytesToHash([]byte("magicStringTwo"))}
 	batchOne := CreateBatch(batchNumber, txHashesOne)
+	batchOne.Header.Time = uint64(1700000001)
 	dbtx, _ := db.NewDBTransaction()
 	err := AddBatch(dbtx, db, &batchOne)
 	if err != nil {
@@ -339,6 +340,7 @@ func TestGetBatchTransactions(t *testing.T) {
 
 	txHashesTwo := []common.L2TxHash{gethcommon.BytesToHash([]byte("magicStringThree")), gethcommon.BytesToHash([]byte("magicStringFour")), gethcommon.BytesToHash([]byte("magicStringFive"))}
 	batchTwo := CreateBatch(batchNumber+1, txHashesTwo)
+	batchTwo.Header.Time = uint64(1700000002)
 
 	err = AddBatch(dbtx, db, &batchTwo)
 	if err != nil {
@@ -355,11 +357,45 @@ func TestGetBatchTransactions(t *testing.T) {
 	if txListing1.Total != uint64(len(txHashesOne)) {
 		t.Errorf("batch transactions were not retrieved correctly")
 	}
+	if len(txListing1.TransactionsData) != len(txHashesOne) {
+		t.Errorf("batch transactions were not retrieved correctly")
+	}
+	for _, tx := range txListing1.TransactionsData {
+		if tx.BatchHeight.Cmp(batchOne.Header.Number) != 0 {
+			t.Errorf("batch height was not retrieved correctly")
+		}
+		if tx.BatchTimestamp != batchOne.Header.Time {
+			t.Errorf("batch timestamp was not retrieved correctly")
+		}
+		if tx.BatchTimestamp == batchOne.Header.Number.Uint64() {
+			t.Errorf("batch timestamp should not equal batch height")
+		}
+		if tx.Finality != common.BatchFinal {
+			t.Errorf("finality was not retrieved correctly")
+		}
+	}
 	txListing2, err := GetBatchTransactions(db, batchTwo.Header.Hash(), &common.QueryPagination{Offset: 0, Size: 2})
 	if err != nil {
 		t.Errorf("stored batch but could not retrieve transactions. Cause: %s", err)
 	}
 	if txListing2.Total != uint64(len(txHashesTwo)) {
 		t.Errorf("batch transactions were not retrieved correctly")
+	}
+	if len(txListing2.TransactionsData) != 2 {
+		t.Errorf("batch transactions were not paginated correctly")
+	}
+	for _, tx := range txListing2.TransactionsData {
+		if tx.BatchHeight.Cmp(batchTwo.Header.Number) != 0 {
+			t.Errorf("batch height was not retrieved correctly")
+		}
+		if tx.BatchTimestamp != batchTwo.Header.Time {
+			t.Errorf("batch timestamp was not retrieved correctly")
+		}
+		if tx.BatchTimestamp == batchTwo.Header.Number.Uint64() {
+			t.Errorf("batch timestamp should not equal batch height")
+		}
+		if tx.Finality != common.BatchFinal {
+			t.Errorf("finality was not retrieved correctly")
+		}
 	}
 }

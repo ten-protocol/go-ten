@@ -21,7 +21,7 @@ const (
 	selectTxsAndBatch       = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.hash = ?"
 	selectBatchSeqByTx      = "SELECT b_sequence FROM transaction_host WHERE hash = ?"
 	selectTxBySeq           = "SELECT hash FROM transaction_host WHERE b_sequence = ?"
-	selectBatchTxs          = "SELECT t.hash, b.sequence, b.height, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
+	selectBatchTxs          = "SELECT t.hash, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
 	selectSumBatchSizes     = "SELECT SUM(txs_size) FROM batch_host WHERE sequence >= ?"
 	insertBatch             = "INSERT INTO batch_host (sequence, hash, height, ext_batch, txs_size) VALUES (?, ?, ?, ?, ?)"
 	insertTransactions      = "INSERT INTO transaction_host (hash, b_sequence) VALUES "
@@ -280,12 +280,10 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 	var transactions []common.PublicTransaction
 	for rows.Next() {
 		var (
-			txHash         gethcommon.Hash
-			batchHeight    int64
-			batchTimestamp uint64
-			finality       string
+			fullHash []byte
+			extBatch []byte
 		)
-		err := rows.Scan(&txHash, &batchHeight, &batchTimestamp, &finality)
+		err := rows.Scan(&fullHash, &extBatch)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, errutil.ErrNotFound
@@ -293,11 +291,17 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 			return nil, fmt.Errorf("failed to fetch batch transactions: %w", err)
 		}
 
+		b := new(common.ExtBatch)
+		if err := rlp.DecodeBytes(extBatch, b); err != nil {
+			return nil, fmt.Errorf("could not decode ext batch. Cause: %w", err)
+		}
+
 		tx := common.PublicTransaction{
-			TransactionHash: txHash,
-			BatchHeight:     new(big.Int).SetInt64(batchHeight),
-			BatchTimestamp:  batchTimestamp,
-			Finality:        common.FinalityType(finality),
+			TransactionHash: gethcommon.BytesToHash(fullHash),
+			BatchHeight:     b.Header.Number,
+			BatchTimestamp:  b.Header.Time,
+			// TODO @will this will be implemented under #3336
+			Finality: common.BatchFinal,
 		}
 		transactions = append(transactions, tx)
 	}
