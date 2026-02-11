@@ -47,11 +47,11 @@ const (
 
 	dbTypeFlagName    = "dbType"
 	dbTypeFlagDefault = "sqlite"
-	dbTypeFlagUsage   = "Defined the db type (sqlite or mariaDB)"
+	dbTypeFlagUsage   = "Defines the db type (sqlite or cosmosDB)"
 
 	dbConnectionURLFlagName    = "dbConnectionURL"
 	dbConnectionURLFlagDefault = ""
-	dbConnectionURLFlagUsage   = "If dbType is set to mariaDB, this must be set. ex: obscurouser:password@tcp(127.0.0.1:3306)/ogdb"
+	dbConnectionURLFlagUsage   = "If dbType is set to cosmosDB, this must be set (Cosmos DB connection string / endpoint)"
 
 	tenChainIDName      = "tenChainID"
 	tenChainIDDefault   = 443

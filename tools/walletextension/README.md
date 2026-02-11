@@ -86,11 +86,10 @@ grouped by concern.
 #### Database backend
 
 - **`--dbType`**  
-  Database type (`sqlite` or `mariaDB`). Default: `sqlite`.
+  Database type (`sqlite` or `cosmosDB`). Default: `sqlite`.
 
 - **`--dbConnectionURL`**  
-  Required when `--dbType=mariaDB`, e.g.  
-  `obscurouser:password@tcp(127.0.0.1:3306)/ogdb`.
+  Required when `--dbType=cosmosDB`; pass the Cosmos DB connection string / endpoint.
 
 #### Encryption, TLS & key management
 
