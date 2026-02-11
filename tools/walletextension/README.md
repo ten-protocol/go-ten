@@ -2,6 +2,50 @@
 
 This document focuses on the **TEN Gateway** in this repository.
 
+## High‑level architecture
+
+At a high level, the gateway sits between browser‑based dApps/wallets and the
+TEN node. The **frontend talks to the gateway backend using standard,
+Ethereum‑style JSON‑RPC / REST (payloads are not encrypted at the application
+level), while the gateway backend talks to the TEN node over an **encrypted\*\*
+JSON‑RPC channel inside the confidential compute environment.
+
+```text
++------------------------------+
+|  Browser dApp / Wallet UI    |
+|  (gateway-ui)                |
++--------------+---------------+
+               |
+               | HTTPS (standard Ethereum-style
+               | JSON-RPC / REST, app-layer
+               | payloads not encrypted)
+               v
++--------------+---------------+
+|    TEN Gateway backend       |
+|  - HTTP API (/v1, /admin)    |
+|  - JSON-RPC proxy            |
+|  - Rate limiting             |
+|  - Caching                   |
+|  - Session keys              |
+|  - Key & TLS management      |
++--------------+-------+-------+
+               |       |
+               |       | reads / writes
+               |       v
+               |   +---+--------------------+
+               |   |   Storage              |
+               |   |   - sqlite (local dev) |
+               |   |   - cosmosDB (hosted)  |
+               |   |   - certs & metrics    |
+               |   +------------------------+
+               |
+               | Encrypted JSON-RPC
+               v
++--------------+---------------+
+|           TEN Node           |
++------------------------------+
+```
+
 ## Running the Gateway Locally
 
 ### Backend
@@ -279,6 +323,7 @@ infrastructure level (e.g. only reachable from inside a trusted network).
   bootstrapping its own encryption key using `--encryptionKeySource=<provider-url>`.
 
   Request body (`keymanager.KeyExchangeRequest`):
+
   ```json
   {
     "public_key": "<RSA public key bytes>",
