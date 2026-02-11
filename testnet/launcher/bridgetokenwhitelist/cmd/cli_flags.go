@@ -8,6 +8,7 @@ type CLIConfig struct {
 	tokenSymbol       string
 	l1HTTPURL         string
 	l2RPCURL          string
+	l2Nonce           string
 	privateKey        string
 	dockerImage       string
 	networkConfigAddr string
@@ -20,6 +21,7 @@ func ParseConfigCLI() *CLIConfig {
 	flag.StringVar(&cfg.tokenSymbol, "token_symbol", "", "Token symbol (e.g., 'USDC')")
 	flag.StringVar(&cfg.l1HTTPURL, "l1_http_url", "", "L1 HTTP URL")
 	flag.StringVar(&cfg.l2RPCURL, "l2_rpc_url", "", "L2 RPC URL (for ten_getCrossChainProof)")
+	flag.StringVar(&cfg.l2Nonce, "l2_nonce", "0", "Starting nonce for L2 transactions (defaults to 0)")
 	flag.StringVar(&cfg.privateKey, "private_key", "", "Private key for deployment")
 	flag.StringVar(&cfg.dockerImage, "docker_image", "", "Docker image for hardhat deployer")
 	flag.StringVar(&cfg.networkConfigAddr, "network_config_addr", "", "NetworkConfig contract address")

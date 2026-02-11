@@ -19,6 +19,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  * - TOKEN_SYMBOL: Symbol of the token (e.g., "USDC")
  * - NETWORK_CONFIG_ADDR: Address of the NetworkConfig contract (L1)
  * - L2_RPC_URL: RPC URL for L2 (for verifying message finalization and relaying)
+ * - L2_NONCE: (Optional) Nonce to use for L2 relay transaction, defaults to 0
  * 
  * Example for Sepolia:
  * - USDC: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
@@ -85,6 +86,7 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
     const tokenSymbol = process.env.TOKEN_SYMBOL;
     const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR;
     const l2RpcUrl = process.env.L2_RPC_URL;
+    const l2Nonce = process.env.L2_NONCE ? parseInt(process.env.L2_NONCE) : 0;
     
     // Get private key from hardhat config (passed via NETWORK_JSON env var)
     const networkJson = JSON.parse(process.env.NETWORK_JSON || '{}');
@@ -176,11 +178,13 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
     console.log(`  L2 CrossChainMessenger: ${l2CrossChainMessengerAddress}`);
     console.log(`  L2 MessageBus: ${l2MessageBusAddress}`);
     
-    // Connect to L2 using the same deployer wallet
-    // Use staticNetwork to skip network detection (Ten doesn't support all eth_ methods)
-    const l2Network = ethers.Network.from(443); // Ten testnet chainId
-    const l2Provider = new ethers.JsonRpcProvider(l2RpcUrl, l2Network, { staticNetwork: l2Network });
-    const l2Signer = new ethers.Wallet(privateKey, l2Provider);
+    // For L2 interactions, reuse the deployer signer from Hardhat
+    // This avoids the eth_getTransactionCount issue with custom providers
+    const l2Signer = deployer;
+    const l2Provider = l2Signer.provider;
+    if (!l2Provider) {
+        throw new Error('L2 provider not available from signer');
+    }
     
     // 1. whitelist token on L1 Bridge
     console.log('\n[STEP 1] Whitelisting token on L1 TenBridge...');
@@ -238,56 +242,113 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
     await sleep(60000);
     
     // 3. relay message on L2 to create wrapped token
-    console.log('\n[STEP 3] Relaying message on L2 to create wrapped token...');
+    console.log('\n [STEP 3] Relaying message on L2 to create wrapped token...');
     
-    // ISSUE IS HERE WITH THE SIGNER
-    // ISSUE IS HERE WITH THE SIGNER
-    // ISSUE IS HERE WITH THE SIGNER
-    // ISSUE IS HERE WITH THE SIGNER
-    // ISSUE IS HERE WITH THE SIGNER
-    // ISSUE IS HERE WITH THE SIGNER
-    // ISSUE IS HERE WITH THE SIGNER
-    // ISSUE IS HERE WITH THE SIGNER
     const l2CrossChainMessenger = await ethers.getContractAt('CrossChainMessenger', l2CrossChainMessengerAddress, l2Signer);
     
-    // Manually set nonce to 0 to avoid eth_getTransactionCount call
-    // This assumes it's the first transaction from this address on L2
+    // Try nonces from l2Nonce to l2Nonce + 30
+    console.log(`Will try nonces from ${l2Nonce} to ${l2Nonce + 30}`);
     
-    const relayTx = await l2CrossChainMessenger.relayMessage(crossChainMessage, { nonce: 0 });
-    console.log(`Relay transaction hash: ${relayTx.hash}`);
+    let relayReceipt = null;
+    let lastError = null;
+    let sentTxHash: string | null = null;
     
-    const relayReceipt = await relayTx.wait();
-    if (!relayReceipt) {
-        throw new Error('Failed to get relay transaction receipt');
+    for (let nonce = l2Nonce; nonce < l2Nonce + 30; nonce++) {
+        try {
+            console.log(`Attempting relay with nonce ${nonce}...`);
+            const relayTx = await l2CrossChainMessenger.relayMessage(crossChainMessage, { nonce });
+            sentTxHash = relayTx.hash;
+            console.log(`Transaction submitted: ${sentTxHash}`);
+            console.log('Note: Ten enclave will create a synthetic transaction to process this.');
+            
+            // Successfully sent the relay message, break out of nonce loop
+            // We can't poll for receipt of our tx because the enclave creates a synthetic one
+            relayReceipt = { hash: sentTxHash } as any;
+            break;
+        } catch (error: any) {
+            lastError = error;
+            const errorMsg = error.message || String(error);
+            
+            if (errorMsg.includes('nonce too low') || errorMsg.includes('already known')) {
+                console.log(`Nonce ${nonce} already used, trying next...`);
+                continue;
+            } else if (errorMsg.includes('nonce too high')) {
+                console.log(`Nonce ${nonce} too high, stopping.`);
+                break;
+            } else if (errorMsg.includes('replacement transaction underpriced')) {
+                console.log(`Nonce ${nonce} underpriced (transaction already pending), trying next...`);
+                continue;
+            } else {
+                console.log(`Error with nonce ${nonce}: ${errorMsg}`);
+                // If we got an error sending, try next nonce
+                continue;
+            }
+        }
     }
-    console.log(`Relayed in block: ${relayReceipt.blockNumber}`);
     
-    // Extract CreatedWrappedToken event from relay receipt
+    if (!relayReceipt) {
+        console.error('Failed to relay message after trying 30 nonces');
+        throw lastError || new Error('Failed to relay message');
+    }
+    
+    console.log(`\nRelay transaction submitted: ${sentTxHash}`);
+    console.log('The enclave will process this and create a synthetic transaction.');
+    console.log('Synthetic transaction hash will be different from the one we sent.');
+    
+    // Query for CreatedWrappedToken event since we can't get receipt of synthetic tx
+    console.log('\nWaiting for enclave to process and emit CreatedWrappedToken event...');
     const l2Bridge = await ethers.getContractAt('EthereumBridge', l2BridgeAddress, l2Signer);
     
-    const createdWrappedTokenEvents = relayReceipt.logs
-        .map((log: any) => {
-            try {
-                return l2Bridge.interface.parseLog({ topics: log.topics as string[], data: log.data });
-            } catch {
-                return null;
-            }
-        })
-        .filter((event: any) => event && event.name === 'CreatedWrappedToken');
-    
-    if (createdWrappedTokenEvents.length === 0) {
-        throw new Error('CreatedWrappedToken event not found in transaction logs');
-    }
-    
-    const l2TokenAddress = createdWrappedTokenEvents[0]!.args.localAddress;
-    console.log(`L2 wrapped token created at: ${l2TokenAddress}`);
-    
-    // 4. register L2 token address in NetworkConfig
-    console.log('\n[STEP 4] Registering L2 token in NetworkConfig...');
-    
+    let l2TokenAddress = '';
     const l2TokenKey = `L2_${tokenSymbol}`;
     
     try {
+        // Retry event query with progressive backoff
+        let relevantEvent: any = null;
+        const maxAttempts = 12; // 12 attempts over ~2 minutes
+        
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            const waitTime = Math.min(attempt * 5, 30); // 5, 10, 15, 20, 25, 30, 30, 30...
+            console.log(`Attempt ${attempt}/${maxAttempts}: Waiting ${waitTime}s before querying...`);
+            await sleep(waitTime * 1000);
+            
+            try {
+                const filter = l2Bridge.filters.CreatedWrappedToken();
+                const events = await l2Bridge.queryFilter(filter, -300, 'latest'); // Last 300 blocks
+                
+                console.log(`Found ${events.length} total CreatedWrappedToken events`);
+                
+                // Find the most recent event for this L1 token
+                relevantEvent = events
+                    .reverse()
+                    .find((e: any) => e.args?.remoteAddress?.toLowerCase() === tokenAddress.toLowerCase());
+                
+                if (relevantEvent?.args?.localAddress) {
+                    console.log('Found matching CreatedWrappedToken event!');
+                    break;
+                } else {
+                    console.log(`No matching event for L1 token ${tokenAddress} yet...`);
+                    console.log('The enclave may still be processing the relay message.');
+                }
+            } catch (queryError: any) {
+                console.warn(`Query attempt ${attempt} failed:`, queryError.message);
+            }
+        }
+        
+        if (!relevantEvent?.args?.localAddress) {
+            throw new Error(
+                `CreatedWrappedToken event not found after ${maxAttempts} attempts.\n` +
+                `The enclave should have created a synthetic transaction to process relay message.\n` +
+                `Check enclave logs for: docker logs sequencer-host 2>&1 | grep -i "CreatedWrappedToken\\|wrapped"`
+            );
+        }
+        
+        l2TokenAddress = relevantEvent.args.localAddress;
+        console.log(`L2 wrapped token created at: ${l2TokenAddress}`);
+        
+        // 4. register L2 token address in NetworkConfig
+        console.log('\n[STEP 4] Registering L2 token in NetworkConfig...');
+        
         const existingAddr = await networkConfig.additionalAddresses(l2TokenKey);
         if (existingAddr !== ethers.ZeroAddress) {
             console.log(`Token "${l2TokenKey}" already registered at ${existingAddr}`);
@@ -295,7 +356,7 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
                 console.warn(`WARNING: Registered address (${existingAddr}) doesn't match created L2 token (${l2TokenAddress})`);
                 console.warn('This may indicate a previous failed run. Consider manual verification.');
             } else {
-                console.log(' L2 token already registered with correct address');
+                console.log('L2 token already registered with correct address');
             }
         } else {
             console.log(`Adding L2 token to NetworkConfig with key: "${l2TokenKey}"...`);
@@ -303,7 +364,7 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
             console.log(`Transaction hash: ${registerTx.hash}`);
             
             const registerReceipt = await registerTx.wait();
-            console.log(` Registered in block: ${registerReceipt?.blockNumber}`);
+            console.log(`Registered in block: ${registerReceipt?.blockNumber}`);
             
             const registeredAddr = await networkConfig.additionalAddresses(l2TokenKey);
             if (registeredAddr.toLowerCase() !== l2TokenAddress.toLowerCase()) {
@@ -311,7 +372,7 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
             }
         }
     } catch (error) {
-        console.error('Error registering L2 token:', error);
+        console.error('Error querying L2 events or registering token:', error);
         throw error;
     }
     

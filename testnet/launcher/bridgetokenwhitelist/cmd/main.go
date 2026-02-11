@@ -17,6 +17,7 @@ func main() {
 			bridgetokenwhitelist.WithTokenSymbol(cliConfig.tokenSymbol),
 			bridgetokenwhitelist.WithL1HTTPURL(cliConfig.l1HTTPURL),
 			bridgetokenwhitelist.WithL2RPCURL(cliConfig.l2RPCURL),
+			bridgetokenwhitelist.WithL2Nonce(cliConfig.l2Nonce),
 			bridgetokenwhitelist.WithPrivateKey(cliConfig.privateKey),
 			bridgetokenwhitelist.WithDockerImage(cliConfig.dockerImage),
 			bridgetokenwhitelist.WithNetworkConfigAddress(cliConfig.networkConfigAddr),

@@ -25,6 +25,11 @@ on:
         description: 'Token Symbol (e.g., "USDC")'
         required: true
         type: string
+      l2_nonce:
+        description: 'L2 Nonce (starting nonce for L2 transactions, defaults to 0)'
+        required: false
+        type: string
+        default: '0'
       confirmation:
         description: 'Type "confirm" if whitelisting on sepolia or mainnet'
         required: false
@@ -132,6 +137,7 @@ jobs:
           -token_symbol="${{ github.event.inputs.token_symbol }}" \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
           -l2_rpc_url=${{ secrets.L2_RPC_URL }} \
+          -l2_nonce="${{ github.event.inputs.l2_nonce }}" \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -network_config_addr="${{ steps.parse.outputs.network_config }}"

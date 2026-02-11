@@ -8,6 +8,7 @@ type Config struct {
 	tokenSymbol       string
 	l1HTTPURL         string
 	l2RPCURL          string
+	l2Nonce           string
 	privateKey        string
 	dockerImage       string
 	networkConfigAddr string
@@ -50,6 +51,12 @@ func WithL1HTTPURL(url string) ConfigOption {
 func WithL2RPCURL(url string) ConfigOption {
 	return func(c *Config) {
 		c.l2RPCURL = url
+	}
+}
+
+func WithL2Nonce(nonce string) ConfigOption {
+	return func(c *Config) {
+		c.l2Nonce = nonce
 	}
 }
 

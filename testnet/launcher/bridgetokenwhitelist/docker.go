@@ -57,6 +57,7 @@ func (w *BridgeTokenWhitelister) Start() error {
 		"TOKEN_SYMBOL":        w.cfg.tokenSymbol,
 		"NETWORK_CONFIG_ADDR": w.cfg.networkConfigAddr,
 		"L2_RPC_URL":          w.cfg.l2RPCURL,
+		"L2_NONCE":            w.cfg.l2Nonce,
 	}
 
 	// Mount scripts and src directories so contracts can be compiled if needed
