@@ -277,6 +277,7 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &firstPageTxObj)
 	assert.NoError(t, err)
 	firstPageTxs := firstPageTxObj.Result.TransactionsData
+	expectedBatchTimestamp := firstPageBatches[0].Header.Time
 
 	// second page of transactions
 	statusCode, body, err = fasthttp.Get(nil, fmt.Sprintf("%s/items/batch/%s/transactions?offset=2&size=2", serverAddress, batchHash))
@@ -287,6 +288,16 @@ func TestTenscan(t *testing.T) {
 	err = json.Unmarshal(body, &secondPageTxObj)
 	assert.NoError(t, err)
 	secondPageTxs := secondPageTxObj.Result.TransactionsData
+
+	// verify batch timestamps match the batch header
+	for _, tx := range firstPageTxs {
+		assert.Equal(t, expectedBatchTimestamp, tx.BatchTimestamp)
+		assert.NotEqual(t, uint64(0), tx.BatchTimestamp)
+	}
+	for _, tx := range secondPageTxs {
+		assert.Equal(t, expectedBatchTimestamp, tx.BatchTimestamp)
+		assert.NotEqual(t, uint64(0), tx.BatchTimestamp)
+	}
 
 	// verify different pages have different transactions
 	if len(firstPageTxs) > 0 && len(secondPageTxs) > 0 {
