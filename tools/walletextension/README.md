@@ -46,6 +46,60 @@ JSON‑RPC channel inside the confidential compute environment.
 +------------------------------+
 ```
 
+## How authentication & viewing keys work
+
+At a high level, users authenticate with the gateway using an **encryption token**
+and a **viewing key** that is cryptographically tied to their wallet accounts. In
+the code this token is often called `userID`, but in this document we always refer
+to it as **`encryptionToken`**. The gateway uses the viewing key to open an
+**encrypted, authenticated channel** to the TEN node on behalf of the user.
+
+- **1. Create a user & token (`/v1/join`)**
+  - Gateway generates a fresh viewing key pair and derives an `encryptionToken`
+    from the viewing key public key.
+  - It stores a `GWUser` (encryptionToken, viewing key, empty account list) in the DB.
+  - It returns the `encryptionToken` as the **gateway token** (hex). This token
+    identifies the user in both HTTP and JSON‑RPC flows.
+
+- **2. Bind wallet accounts to the user (`/v1/getmessage` + `/v1/authenticate`)**
+  - The dApp calls `/v1/getmessage` with the `encryptionToken` to get a canonical
+    message to sign (EIP‑712 or personal sign), parameterised by the
+    `encryptionToken` and TEN chain ID.
+  - The user signs this message with their wallet (e.g. Metamask) and sends the
+    signature and address to `/v1/authenticate?token=<encryptionToken>`.
+  - The gateway verifies the signature and stores a `GWAccount` that proves the
+    wallet account is bound to the viewing key (and thus to that `encryptionToken`).
+
+- **3. JSON‑RPC calls carry the token**
+  - For HTTP/WS JSON‑RPC, a small middleware inspects requests for a hex token
+    and attaches it to the context as the **gateway token**.
+  - The wallet extension RPC layer reads this token, validates it, converts it
+    back to `encryptionToken` bytes and loads the corresponding `GWUser` from storage.
+
+- **4. Encrypted RPC from gateway to node**
+  - For authenticated methods, the gateway selects one or more accounts from
+    `GWUser.AllAccounts()` and builds a `viewingkey.ViewingKey` object that
+    includes:
+    - the account address,
+    - the viewing key (private & public),
+    - the wallet’s binding signature.
+  - It then creates an encrypted RPC client and calls the TEN node over an
+    encrypted channel using this viewing key.
+  - The node verifies the viewing key + signature and uses it to encrypt/decrypt
+    user‑specific state and to decide whether the call is authorised.
+
+- **5. Running actions on behalf of users**
+  - **Reads** (balances, transactions, logs, custom queries) use the encrypted
+    viewing‑key channel, so the node only returns data for accounts bound to that
+    user.
+  - **Writes** (transactions) can be sent via user‑owned session keys: the
+    gateway signs with a session key that is linked to the user’s viewing key and
+    submits it through the encrypted channel.
+  - Background services (e.g. session‑key expiration and fund recovery) also use
+    these viewing keys and session keys, allowing the gateway to safely perform
+    automated operations on behalf of users while the node can still verify and
+    enforce authorisation.
+
 ## Running the Gateway Locally
 
 ### Backend
@@ -462,7 +516,7 @@ optionally **expires** inactive session keys:
 - `SessionKeyActivityTracker` (`services/session_key_activity.go`) keeps
   in‑memory records of:
   - last active time,
-  - associated user ID.
+  - associated user identifier (the same `encryptionToken`).
 
 - `SessionKeyExpirationService` (`services/session_key_expiration.go`) runs in
   the background and:
