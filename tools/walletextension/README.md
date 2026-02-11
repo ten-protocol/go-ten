@@ -97,9 +97,10 @@ grouped by concern.
 - **`--encryptionKeySource`**  
   Source of the encryption key for the gateway database.  
   Can be:
-  - empty: read from sealed key (default),
-  - URL of another gateway to perform key exchange,
-  - `new`: generate a new key (only if no sealed key exists).
+  - empty: read from a previously sealed key inside the enclave (default),
+  - `new`: generate a new random key (only if no sealed key exists),
+  - `hex:<32-byte-hex>`: import the key directly from a hex value (disaster‑recovery only; key is not derived or sealed elsewhere),
+  - URL of another gateway to perform remote key exchange (this node becomes a key requester and calls `POST <url>/admin/key-exchange/`).
 
 - **`--enableTLS`**  
   Enable TLS/HTTPS on the HTTP port. Default: `false`.
@@ -271,17 +272,37 @@ cookie to store the gateway user token.
 ### Admin endpoints (`/admin/...`)
 
 These are operational / enclave‑level endpoints and should be protected at
-infrastructure level.
+infrastructure level (e.g. only reachable from inside a trusted network).
 
 - **`POST /admin/key-exchange/`**  
-  Performs an attested key exchange between this gateway and another gateway
-  enclave. The other enclave sends:
-  - its public key,
-  - an attestation report proving the key belongs to a valid enclave.
+  Endpoint implemented by the **key‑provider** gateway (typically a primary,
+  already‑provisioned enclave). It is called by another gateway that is
+  bootstrapping its own encryption key using `--encryptionKeySource=<provider-url>`.
 
-  The gateway verifies the attestation, checks that the public key hash matches
-  the attested data and returns the gateway’s own encryption key encrypted with
-  the peer’s public key.
+  Request body (`keymanager.KeyExchangeRequest`):
+  ```json
+  {
+    "public_key": "<RSA public key bytes>",
+    "attestation": "<attestation report bytes>"
+  }
+  ```
+
+  High‑level flow:
+  - The requesting gateway generates an ephemeral RSA key pair and an SGX
+    attestation report over the hash of its public key.
+  - It POSTs this data to `<provider-url>/admin/key-exchange/`.
+  - The provider gateway:
+    - verifies the attestation with `VerifyReport` to ensure the request
+      comes from a valid enclave,
+    - checks that the attested data matches the received public key,
+    - encrypts its own database encryption key with the requester’s public key
+      (RSA‑OAEP),
+    - returns it as Base64 (`encrypted_key`) in `KeyExchangeResponse`.
+  - The requesting gateway decrypts the key using its private key and then
+    seals it locally (if running inside an enclave).
+
+  This mechanism allows securely cloning the gateway encryption key between
+  enclaves without ever exposing it in plaintext on the network.
 
 - **`POST /admin/backup-encryption-key/`**  
   Uses the public key provided via `--backupEncryptionKey` to encrypt the
@@ -375,7 +396,7 @@ exposing long‑term keys.
 
 ### Session key model
 
-- Each user can have **multiple session keys** (up to an internal maximum).
+- Each user can have **multiple session keys** (up to an 100 accounts).
 - Each session key:
   - is a normal Ethereum account from the network’s point of view,
   - is linked to the user’s viewing key,
