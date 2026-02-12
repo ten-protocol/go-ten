@@ -7,8 +7,9 @@ type Config struct {
 	tokenName         string
 	tokenSymbol       string
 	l1HTTPURL         string
-	l2RPCURL          string
-	l2Nonce           string
+	l2Host            string
+	l2HTTPPort        int
+	l2WSPort          int
 	privateKey        string
 	dockerImage       string
 	networkConfigAddr string
@@ -48,15 +49,21 @@ func WithL1HTTPURL(url string) ConfigOption {
 	}
 }
 
-func WithL2RPCURL(url string) ConfigOption {
+func WithL2Host(host string) ConfigOption {
 	return func(c *Config) {
-		c.l2RPCURL = url
+		c.l2Host = host
 	}
 }
 
-func WithL2Nonce(nonce string) ConfigOption {
+func WithL2HTTPPort(port int) ConfigOption {
 	return func(c *Config) {
-		c.l2Nonce = nonce
+		c.l2HTTPPort = port
+	}
+}
+
+func WithL2WSPort(port int) ConfigOption {
+	return func(c *Config) {
+		c.l2WSPort = port
 	}
 }
 
@@ -91,8 +98,14 @@ func (c *Config) Validate() error {
 	if c.l1HTTPURL == "" {
 		return fmt.Errorf("L1 HTTP URL is required")
 	}
-	if c.l2RPCURL == "" {
-		return fmt.Errorf("L2 RPC URL is required")
+	if c.l2Host == "" {
+		return fmt.Errorf("L2 host is required")
+	}
+	if c.l2HTTPPort == 0 {
+		return fmt.Errorf("L2 HTTP port is required")
+	}
+	if c.l2WSPort == 0 {
+		return fmt.Errorf("L2 WS port is required")
 	}
 	if c.privateKey == "" {
 		return fmt.Errorf("private key is required")
@@ -107,6 +120,6 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf("Bridge Token Whitelist Config: tokenAddress=%s, tokenName=%s, tokenSymbol=%s, l1HTTPURL=%s, l2RPCURL=%s, dockerImage=%s, networkConfigAddr=%s",
-		c.tokenAddress, c.tokenName, c.tokenSymbol, c.l1HTTPURL, c.l2RPCURL, c.dockerImage, c.networkConfigAddr)
+	return fmt.Sprintf("Bridge Token Whitelist Config: tokenAddress=%s, tokenName=%s, tokenSymbol=%s, l1HTTPURL=%s, l2Host=%s, l2HTTPPort=%d, l2WSPort=%d, dockerImage=%s, networkConfigAddr=%s",
+		c.tokenAddress, c.tokenName, c.tokenSymbol, c.l1HTTPURL, c.l2Host, c.l2HTTPPort, c.l2WSPort, c.dockerImage, c.networkConfigAddr)
 }

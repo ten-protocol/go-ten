@@ -1,4 +1,5 @@
 import { ethers } from 'hardhat';
+import type { MessageBus, Structs } from '../../typechain-types/src/cross_chain_messaging/common/MessageBus';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -6,41 +7,38 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  * Script to whitelist existing ERC20 tokens on the TenBridge and register the L2 wrapped token in NetworkConfig
  * 
  * This script follows the L1→L2 bridge whitelisting flow:
- * 1. Call whitelistToken() on L1 TenBridge
- * 2. Extract cross-chain message from logs[0] LogMessagePublished event
- * 3. Poll L2 MessageBus.verifyMessageFinalized() until it returns true
- * 4. Call L2 CrossChainMessenger.relayMessage() to trigger L2 wrapped token creation
- * 5. Get L2 wrapped token address from logs[0] CreatedWrappedToken event
- * 6. Register L2 token address in NetworkConfig with "L2_" prefix
+ * 1. Query NetworkConfig on L1 to get all contract addresses (L1 Bridge, L1 MessageBus, L2 Bridge, L2 CrossChainMessenger)
+ * 2. Call whitelistToken() on L1 TenBridge
+ * 3. Extract cross-chain message from logs[0] LogMessagePublished event
+ * 4. Poll L1 MessageBus.verifyMessageFinalized() until it returns true
+ * 5. Call L2 CrossChainMessenger.relayMessage() to trigger L2 wrapped token creation
+ * 6. Get L2 wrapped token address from CreatedWrappedToken event
+ * 7. Register L2 token address in L1 NetworkConfig with "L2_" prefix
  * 
  * Environment variables:
  * - TOKEN_ADDRESS: Address of the existing L1 token contract
  * - TOKEN_NAME: Name of the token (e.g., "USD Coin")
  * - TOKEN_SYMBOL: Symbol of the token (e.g., "USDC")
  * - NETWORK_CONFIG_ADDR: Address of the NetworkConfig contract (L1)
- * - L2_RPC_URL: RPC URL for L2 (for verifying message finalization and relaying)
- * - L2_NONCE: (Optional) Nonce to use for L2 relay transaction, defaults to 0
+ * - NETWORK_JSON: JSON config with layer1 network info { url: L1_RPC_URL, accounts: [private_key] }
+ * - L2_RPC_URL: L2 RPC URL (e.g., http://sequencer-host:80)
+ * 
+ * Note: For local testing, L2_RPC_URL should point to the L2 node directly.
+ * For production, it may point to a wallet extension gateway that provides full RPC support.
  * 
  * Example for Sepolia:
  * - USDC: 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238
  * - USDT: 0x7169D38820dfd117C3FA1f22a697dBA58d90BA06
  */
 
-interface CrossChainMessage {
-    sender: string;
-    sequence: bigint;
-    nonce: number;
-    topic: number;
-    payload: string;
-    consistencyLevel: number;
-}
+type CrossChainMessage = Structs.CrossChainMessageStruct;
 
 async function waitForMessageFinalized(
-    l2MessageBus: any,
+    l1MessageBus: MessageBus,
     crossChainMessage: CrossChainMessage,
-    maxRetries = 300
+    maxRetries = 100
 ): Promise<void> {
-    console.log(`Polling for message finalization (max ${maxRetries} attempts)...`);
+    console.log(`Polling for message finalization on L1 MessageBus (max ${maxRetries} attempts)...`);
     console.log('Cross-chain message:', {
         sender: crossChainMessage.sender,
         sequence: crossChainMessage.sequence.toString(),
@@ -54,10 +52,10 @@ async function waitForMessageFinalized(
     
     for (let i = 0; i < maxRetries; i++) {
         try {
-            const isFinalized = await l2MessageBus.verifyMessageFinalized(crossChainMessage);
+            const isFinalized = await l1MessageBus.verifyMessageFinalized(crossChainMessage);
             console.log(`Attempt ${i + 1}/${maxRetries}: isFinalized = ${isFinalized}`);
             if (isFinalized) {
-                console.log('Message is finalized on L2');
+                console.log('Message is finalized on L1');
                 return;
             }
         } catch (error) {
@@ -85,14 +83,24 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
     const tokenName = process.env.TOKEN_NAME;
     const tokenSymbol = process.env.TOKEN_SYMBOL;
     const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR;
-    const l2RpcUrl = process.env.L2_RPC_URL;
-    const l2Nonce = process.env.L2_NONCE ? parseInt(process.env.L2_NONCE) : 0;
+    const l2host = process.env.L2_HOST ?? "sequencer-host";
+    const l2port = process.env.L2_PORT ?? "80";
+
+    const l2RpcUrl = new URL(`http://${l2host}:${l2port}`).toString();
     
-    // Get private key from hardhat config (passed via NETWORK_JSON env var)
+    // Get L1 network config from NETWORK_JSON
     const networkJson = JSON.parse(process.env.NETWORK_JSON || '{}');
     const privateKey = networkJson.layer1?.accounts?.[0];
+    const l1RpcUrl = networkJson.layer1?.url;
+    
     if (!privateKey) {
-        throw new Error('Private key not found in NETWORK_JSON');
+        throw new Error('Private key not found in NETWORK_JSON.layer1.accounts');
+    }
+    if (!l1RpcUrl) {
+        throw new Error('L1 RPC URL not found in NETWORK_JSON.layer1.url');
+    }
+    if (!l2RpcUrl) {
+        throw new Error('L2 RPC URL not found in L2_RPC_URL environment variable');
     }
     
     if (!tokenAddress) {
@@ -107,9 +115,6 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
     if (!networkConfigAddr) {
         throw new Error('NETWORK_CONFIG_ADDR environment variable is required');
     }
-    if (!l2RpcUrl) {
-        throw new Error('L2_RPC_URL environment variable is required');
-    }
     
     if (!ethers.isAddress(tokenAddress)) {
         throw new Error(`Invalid token address: ${tokenAddress}`);
@@ -121,6 +126,7 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
         'Token Name': tokenName,
         'Token Symbol': tokenSymbol,
         'NetworkConfig': networkConfigAddr,
+        'L1 RPC URL': l1RpcUrl,
         'L2 RPC URL': l2RpcUrl
     });
     
@@ -129,6 +135,9 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
     const addresses = await networkConfig.addresses();
     const l1BridgeAddress = addresses.l1Bridge;
     const l1MessageBusAddress = addresses.messageBus;
+    console.log('Addresses:', addresses);
+    console.log('Addresses:', addresses);
+    console.log('Addresses:', addresses);
     
     if (l1BridgeAddress === ethers.ZeroAddress) {
         throw new Error('L1 Bridge address not set in NetworkConfig');
@@ -159,14 +168,14 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
         throw new Error('Failed to get L2 config from ten_config RPC');
     }
     
-    const l2BridgeAddress = l2ConfigData.result.L2Bridge;
-    const l2CrossChainMessengerAddress = l2ConfigData.result.L2CrossChainMessenger;
+    const l2BridgeAddress = networkConfig.l2BridgeAddress;
+    const l2CrossChainMessengerAddress = networkConfig.l2BridgeAddress
     const l2MessageBusAddress = l2ConfigData.result.L2MessageBus;
     
-    if (!l2BridgeAddress || l2BridgeAddress === ethers.ZeroAddress) {
+    if (!l2BridgeAddress) {
         throw new Error('L2 Bridge address not found in ten_config');
     }
-    if (!l2CrossChainMessengerAddress || l2CrossChainMessengerAddress === ethers.ZeroAddress) {
+    if (!l2CrossChainMessengerAddress) {
         throw new Error('L2 CrossChainMessenger address not found in ten_config');
     }
     if (!l2MessageBusAddress || l2MessageBusAddress === ethers.ZeroAddress) {
@@ -178,13 +187,11 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
     console.log(`  L2 CrossChainMessenger: ${l2CrossChainMessengerAddress}`);
     console.log(`  L2 MessageBus: ${l2MessageBusAddress}`);
     
-    // For L2 interactions, reuse the deployer signer from Hardhat
-    // This avoids the eth_getTransactionCount issue with custom providers
-    const l2Signer = deployer;
-    const l2Provider = l2Signer.provider;
-    if (!l2Provider) {
-        throw new Error('L2 provider not available from signer');
-    }
+    const l2Network = ethers.Network.from({ name: 'ten-testnet', chainId: 443 });
+    const l2Provider = new ethers.JsonRpcProvider(l2RpcUrl, l2Network, { staticNetwork: l2Network });
+    const l2Signer = new ethers.Wallet(privateKey, l2Provider);
+    
+    console.log(`\nL2 Signer address: ${l2Signer.address}`);
     
     // 1. whitelist token on L1 Bridge
     console.log('\n[STEP 1] Whitelisting token on L1 TenBridge...');
@@ -224,76 +231,36 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
     
     // Get the first LogMessagePublished event (logs[0])
     const logEvent = logMessagePublishedEvents[0]!;
+    // Explicitly convert types from event args to match Solidity types
     const crossChainMessage: CrossChainMessage = {
-        sender: logEvent.args.sender,
-        sequence: logEvent.args.sequence,
-        nonce: logEvent.args.nonce,
-        topic: logEvent.args.topic,
-        payload: logEvent.args.payload,
-        consistencyLevel: logEvent.args.consistencyLevel
+        sender: logEvent.args.sender as string,
+        sequence: BigInt(logEvent.args.sequence.toString()),
+        nonce: Number(logEvent.args.nonce),
+        topic: Number(logEvent.args.topic),
+        payload: logEvent.args.payload as string,
+        consistencyLevel: Number(logEvent.args.consistencyLevel)
     };
     
     console.log('Cross-chain message extracted from logs[0]');
     
-    // 2. Wait for L2 to process cross-chain message (happens via synthetic tx)
-    console.log('\n[STEP 2] Waiting for L2 to process cross-chain message...');
-    console.log('The Ten enclave creates a synthetic transaction to store the message on L2 MessageBus');
-    console.log('Waiting 60 seconds for this to complete...');
-    await sleep(60000);
+    // 2. Wait for message to be finalized on L1
+    console.log('\n[STEP 2] Waiting for message finalization on L1 MessageBus...');
+    console.log('Checking L1 MessageBus to verify the cross-chain message is finalized');
+    
+    // Wait for message to be finalized - this must succeed before we can relay
+    await waitForMessageFinalized(l1MessageBus, crossChainMessage, 120);
+    console.log('Message finalized on L1, ready to relay on L2');
     
     // 3. relay message on L2 to create wrapped token
     console.log('\n [STEP 3] Relaying message on L2 to create wrapped token...');
     
     const l2CrossChainMessenger = await ethers.getContractAt('CrossChainMessenger', l2CrossChainMessengerAddress, l2Signer);
     
-    // Try nonces from l2Nonce to l2Nonce + 30
-    console.log(`Will try nonces from ${l2Nonce} to ${l2Nonce + 30}`);
-    
-    let relayReceipt = null;
-    let lastError = null;
-    let sentTxHash: string | null = null;
-    
-    for (let nonce = l2Nonce; nonce < l2Nonce + 30; nonce++) {
-        try {
-            console.log(`Attempting relay with nonce ${nonce}...`);
-            const relayTx = await l2CrossChainMessenger.relayMessage(crossChainMessage, { nonce });
-            sentTxHash = relayTx.hash;
-            console.log(`Transaction submitted: ${sentTxHash}`);
-            console.log('Note: Ten enclave will create a synthetic transaction to process this.');
-            
-            // Successfully sent the relay message, break out of nonce loop
-            // We can't poll for receipt of our tx because the enclave creates a synthetic one
-            relayReceipt = { hash: sentTxHash } as any;
-            break;
-        } catch (error: any) {
-            lastError = error;
-            const errorMsg = error.message || String(error);
-            
-            if (errorMsg.includes('nonce too low') || errorMsg.includes('already known')) {
-                console.log(`Nonce ${nonce} already used, trying next...`);
-                continue;
-            } else if (errorMsg.includes('nonce too high')) {
-                console.log(`Nonce ${nonce} too high, stopping.`);
-                break;
-            } else if (errorMsg.includes('replacement transaction underpriced')) {
-                console.log(`Nonce ${nonce} underpriced (transaction already pending), trying next...`);
-                continue;
-            } else {
-                console.log(`Error with nonce ${nonce}: ${errorMsg}`);
-                // If we got an error sending, try next nonce
-                continue;
-            }
-        }
-    }
-    
-    if (!relayReceipt) {
-        console.error('Failed to relay message after trying 30 nonces');
-        throw lastError || new Error('Failed to relay message');
-    }
-    
-    console.log(`\nRelay transaction submitted: ${sentTxHash}`);
-    console.log('The enclave will process this and create a synthetic transaction.');
-    console.log('Synthetic transaction hash will be different from the one we sent.');
+    console.log('Sending relay message transaction...');
+    const relayTx = await l2CrossChainMessenger.relayMessage(crossChainMessage);
+    const sentTxHash = relayTx.hash;
+    console.log(`Transaction submitted: ${sentTxHash}`);
+    console.log('Note: Ten enclave will create a synthetic transaction to process this.');
     
     // Query for CreatedWrappedToken event since we can't get receipt of synthetic tx
     console.log('\nWaiting for enclave to process and emit CreatedWrappedToken event...');
@@ -407,7 +374,7 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
             console.warn('Could not verify via ten_config (RPC may not be ready)');
         }
     } catch (error) {
-        console.warn('ould not verify via ten_config:', error);
+        console.warn('Could not verify via ten_config:', error);
     }
     
     console.log('\n=== Token whitelisting and registration completed successfully ===');
