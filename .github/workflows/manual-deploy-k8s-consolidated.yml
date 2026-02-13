@@ -907,16 +907,34 @@ jobs:
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "Processing app: $app"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            
-            # Check overall sync status
+
+            if [[ "${IS_DESTRUCTIVE}" == "true" ]]; then
+              echo "  ⏳ Waiting for app to be ready (not deleting)..."
+              for i in $(seq 1 30); do
+                app_check=$(argocd app get "$app" --server "${ARGOCD_SERVER}" -o json 2>&1) || true
+                if echo "$app_check" | grep -q "is deleting\|NotFound"; then
+                  echo "    Attempt $i/30: app still deleting/not found, waiting 10s..."
+                  sleep 10
+                else
+                  echo "    App is ready"
+                  break
+                fi
+                if [[ $i -eq 30 ]]; then
+                  echo "  ❌ Timed out waiting for $app to be ready"
+                  sync_failed=true
+                  failed_apps="$failed_apps $app"
+                  continue 2
+                fi
+              done
+            fi
+
             app_status=$(argocd app get "$app" --server "${ARGOCD_SERVER}" -o json)
             sync_status=$(echo "$app_status" | jq -r '.status.sync.status // "Unknown"')
             echo "  📊 Overall sync status: $sync_status"
-            
+
             if [[ "${IS_DESTRUCTIVE}" == "true" ]]; then
-              # DESTRUCTIVE: Full app sync (will run all sync waves and hooks)
               echo "  🔥 DESTRUCTIVE MODE: Full app sync (includes sync waves/hooks)"
-              
+
               if argocd app sync "$app" --server "${ARGOCD_SERVER}"; then
                 echo "  ✅ Full sync completed: $app"
                 synced_count=$((synced_count + 1))
