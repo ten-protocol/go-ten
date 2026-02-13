@@ -398,6 +398,7 @@ jobs:
           CONFIG_PATH: ${{ needs.validate-inputs.outputs.CONFIG_PATH }}
           DESTRUCTIVE_OPTIONS_INPUT: ${{ github.event.inputs.destructive_options }}
           IS_DESTRUCTIVE: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE }}
+          DEPLOY_ACTIONS_PAT: ${{ secrets.DEPLOY_ACTIONS_PAT }}
         run: |
           cd ten-apps
 
@@ -514,10 +515,11 @@ jobs:
             commit_msg+=" for ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}"
 
             git commit -m "$commit_msg"
-            if git push 2>&1; then
+            if git push https://${DEPLOY_ACTIONS_PAT}@github.com/ten-protocol/ten-apps.git HEAD:main 2>&1; then
               echo "✅ Updated and pushed changes to ten-apps"
             else
-              echo "⚠️  Commit created but push failed (may need write permissions)"
+              echo "❌ Commit created but push failed (check DEPLOY_ACTIONS_PAT permissions)"
+              exit 1
             fi
           fi
 
@@ -526,7 +528,7 @@ jobs:
   # ============================================================================
   deploy-l1-contracts:
     needs: [validate-inputs, update-ten-apps-config]
-    if: needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
+    if: always() && needs.validate-inputs.result == 'success' && needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -632,6 +634,8 @@ jobs:
   argocd-delete-child-apps:
     needs: [validate-inputs, deploy-l1-contracts]
     if: |
+      always() &&
+      needs.validate-inputs.result == 'success' &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
       (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped')
     runs-on: ubuntu-latest
@@ -763,6 +767,8 @@ jobs:
   argocd-sync-apps:
     needs: [validate-inputs, argocd-delete-child-apps]
     if: |
+      always() &&
+      needs.validate-inputs.result == 'success' &&
       (needs.argocd-delete-child-apps.result == 'success' || needs.argocd-delete-child-apps.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
@@ -956,7 +962,7 @@ jobs:
   # ============================================================================
   wait-argocd-healthy:
     needs: [validate-inputs, argocd-sync-apps]
-    if: success()
+    if: always() && needs.argocd-sync-apps.result == 'success'
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -1031,6 +1037,8 @@ jobs:
   post-deployment:
     needs: [validate-inputs, wait-argocd-healthy]
     if: |
+      always() &&
+      needs.validate-inputs.result == 'success' &&
       (needs.wait-argocd-healthy.result == 'success' || needs.wait-argocd-healthy.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
