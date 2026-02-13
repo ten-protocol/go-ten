@@ -358,7 +358,10 @@ jobs:
   # ============================================================================
   update-ten-apps-config:
     needs: [validate-inputs, build-images]
-    if: ${{ always() }}
+    if: |
+      always() &&
+      needs.validate-inputs.result == 'success' &&
+      (needs.build-images.result == 'success' || github.event.inputs.destructive_options != '')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
