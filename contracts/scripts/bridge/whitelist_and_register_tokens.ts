@@ -22,7 +22,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  * - TOKEN_SYMBOL: Symbol of the token (e.g., "USDC")
  * - NETWORK_CONFIG_ADDR: Address of the NetworkConfig contract (L1)
  * - NETWORK_JSON: JSON config with layer1 network info { url: L1_RPC_URL, accounts: [private_key] }
- * - L2_RPC_URL / L2_HOST + L2_PORT: L2 RPC URL for relay + event query
+ * - NETWORK_ENV: The environment to get the chain ID
  * - L2_GATEWAY_URL (optional): Gateway URL for finalized-message polling (defaults to NETWORK_JSON.layer2.url)
  *   Supports either ten_config or net_config on the target RPC.
  * 
