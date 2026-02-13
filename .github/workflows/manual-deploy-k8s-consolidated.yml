@@ -910,16 +910,22 @@ jobs:
 
             if [[ "${IS_DESTRUCTIVE}" == "true" ]]; then
               echo "  ⏳ Waiting for app to be ready (not deleting)..."
-              for i in $(seq 1 30); do
+              for i in $(seq 1 60); do
                 app_check=$(argocd app get "$app" --server "${ARGOCD_SERVER}" -o json 2>&1) || true
-                if echo "$app_check" | grep -q "is deleting\|NotFound"; then
-                  echo "    Attempt $i/30: app still deleting/not found, waiting 10s..."
+                if echo "$app_check" | grep -q "NotFound\|not found"; then
+                  echo "    Attempt $i/60: app not found yet, waiting 10s..."
+                  sleep 10
+                elif echo "$app_check" | jq -e '.metadata.deletionTimestamp // empty' >/dev/null 2>&1; then
+                  echo "    Attempt $i/60: app has deletionTimestamp, still deleting, waiting 10s..."
+                  sleep 10
+                elif echo "$app_check" | grep -q '"operation"' && echo "$app_check" | jq -e '.status.operationState.phase == "Running"' >/dev/null 2>&1; then
+                  echo "    Attempt $i/60: app has running operation, waiting 10s..."
                   sleep 10
                 else
-                  echo "    App is ready"
+                  echo "    App is ready (no deletionTimestamp)"
                   break
                 fi
-                if [[ $i -eq 30 ]]; then
+                if [[ $i -eq 60 ]]; then
                   echo "  ❌ Timed out waiting for $app to be ready"
                   sync_failed=true
                   failed_apps="$failed_apps $app"
