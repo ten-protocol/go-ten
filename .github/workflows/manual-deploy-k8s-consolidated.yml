@@ -515,7 +515,10 @@ jobs:
             commit_msg+=" for ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}"
 
             git commit -m "$commit_msg"
-            if git push https://${DEPLOY_ACTIONS_PAT}@github.com/ten-protocol/ten-apps.git HEAD:main 2>&1; then
+            # Remove credential helper set by actions/checkout (it overrides our PAT)
+            git config --unset-all http.https://github.com/.extraheader || true
+            git remote set-url origin https://${DEPLOY_ACTIONS_PAT}@github.com/ten-protocol/ten-apps.git
+            if git push origin HEAD:main 2>&1; then
               echo "✅ Updated and pushed changes to ten-apps"
             else
               echo "❌ Commit created but push failed (check DEPLOY_ACTIONS_PAT permissions)"
