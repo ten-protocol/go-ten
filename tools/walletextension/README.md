@@ -10,41 +10,8 @@ Ethereum‑style JSON‑RPC / REST (payloads are not encrypted at the applicatio
 level), while the gateway backend talks to the TEN node over an **encrypted\*\*
 JSON‑RPC channel inside the confidential compute environment.
 
-```text
-+------------------------------+
-|  Browser dApp / Wallet UI    |
-|  (gateway-ui)                |
-+--------------+---------------+
-               |
-               | HTTPS (standard Ethereum-style
-               | JSON-RPC / REST, app-layer
-               | payloads not encrypted)
-               v
-+--------------+---------------+
-|    TEN Gateway backend       |
-|  - HTTP API (/v1, /admin)    |
-|  - JSON-RPC proxy            |
-|  - Rate limiting             |
-|  - Caching                   |
-|  - Session keys              |
-|  - Key & TLS management      |
-+--------------+-------+-------+
-               |       |
-               |       | reads / writes
-               |       v
-               |   +---+--------------------+
-               |   |   Storage              |
-               |   |   - sqlite (local dev) |
-               |   |   - cosmosDB (hosted)  |
-               |   |   - certs & metrics    |
-               |   +------------------------+
-               |
-               | Encrypted JSON-RPC
-               v
-+--------------+---------------+
-|           TEN Node           |
-+------------------------------+
-```
+![Gateway Architecture](../../design/architecture/gw_architecture.png)
+
 
 ## How authentication & viewing keys work
 
