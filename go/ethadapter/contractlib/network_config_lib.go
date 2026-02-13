@@ -48,6 +48,14 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkConfigAdd
 		return nil, fmt.Errorf("failed to call addresses(): %w", err)
 	}
 
+	additionalContracts := make([]*common.NamedAddress, len(addresses.AdditionalContracts))
+	for i, contract := range addresses.AdditionalContracts {
+		additionalContracts[i] = &common.NamedAddress{
+			Name: contract.Name,
+			Addr: contract.Addr,
+		}
+	}
+
 	return &common.NetworkConfigAddresses{
 		CrossChain:               addresses.CrossChain,
 		EnclaveRegistry:          addresses.NetworkEnclaveRegistry,
@@ -57,6 +65,7 @@ func (nc *networkConfigLibImpl) GetContractAddresses() (*common.NetworkConfigAdd
 		L2Bridge:                 addresses.L2Bridge,
 		L1CrossChainMessenger:    addresses.L1CrossChainMessenger,
 		L2CrossChainMessenger:    addresses.L2CrossChainMessenger,
+		AdditionalContracts:      additionalContracts,
 	}, nil
 }
 

@@ -115,6 +115,12 @@ func (api *TenAPI) BackupSharedSecret(ctx context.Context) (hexutil.Bytes, error
 	return encryptedSecret, nil
 }
 
+// ChecksumFormattedNamedAddress is NamedAddress with EIP55 checksum formatting
+type ChecksumFormattedNamedAddress struct {
+	Name string                  `json:"name"`
+	Addr gethcommon.AddressEIP55 `json:"address"`
+}
+
 // ChecksumFormattedTenNetworkConfig serialises the addresses as EIP55 checksum addresses.
 type ChecksumFormattedTenNetworkConfig struct {
 	NetworkConfig             gethcommon.AddressEIP55
@@ -131,15 +137,23 @@ type ChecksumFormattedTenNetworkConfig struct {
 	SystemContractsUpgrader   gethcommon.AddressEIP55
 	L1StartHash               gethcommon.Hash
 	PublicSystemContracts     map[string]gethcommon.AddressEIP55
-	AdditionalContracts       []*common.NamedAddress
+	AdditionalContracts       []*ChecksumFormattedNamedAddress
 }
 
 func checksumFormatted(info *common.TenNetworkInfo) *ChecksumFormattedTenNetworkConfig {
-	additionalContracts := info.AdditionalContracts
-
 	publicSystemContracts := make(map[string]gethcommon.AddressEIP55)
 	for name, addr := range info.PublicSystemContracts {
 		publicSystemContracts[name] = gethcommon.AddressEIP55(addr)
+	}
+
+	additionalContracts := make([]*ChecksumFormattedNamedAddress, 0, len(info.AdditionalContracts))
+	for _, contract := range info.AdditionalContracts {
+		if contract != nil {
+			additionalContracts = append(additionalContracts, &ChecksumFormattedNamedAddress{
+				Name: contract.Name,
+				Addr: gethcommon.AddressEIP55(contract.Addr),
+			})
+		}
 	}
 
 	return &ChecksumFormattedTenNetworkConfig{

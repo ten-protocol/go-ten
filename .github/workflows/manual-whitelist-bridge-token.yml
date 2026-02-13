@@ -1,0 +1,169 @@
+name: '[M] Whitelist Bridge Token'
+run-name: '[M] Whitelist Bridge Token ( ${{ github.event.inputs.token_symbol }} on ${{ github.event.inputs.testnet_type }} )'
+
+on:
+  workflow_dispatch:
+    inputs:
+      testnet_type:
+        description: 'Testnet Type'
+        required: true
+        default: 'uat-testnet'
+        type: choice
+        options:
+          - 'uat-testnet'
+          - 'sepolia-testnet'
+          - 'mainnet'
+      token_address:
+        description: 'Token Address'
+        required: true
+        type: string
+      token_name:
+        description: 'Token Name (e.g., "USD Coin")'
+        required: true
+        type: string
+      token_symbol:
+        description: 'Token Symbol (e.g., "USDC")'
+        required: true
+        type: string
+      confirmation:
+        description: 'Type "confirm" if whitelisting on sepolia or mainnet'
+        required: false
+        type: string
+
+concurrency:
+  group: whitelist-bridge-${{ github.event.inputs.testnet_type }}
+  cancel-in-progress: false
+
+jobs:
+  whitelist-token:
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+
+    steps:
+      - name: 'Check confirmation'
+        run: |
+          if [[ ("${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" || "${{ github.event.inputs.testnet_type }}" == "mainnet") && "${{ github.event.inputs.confirmation }}" != "confirm" ]]; then
+            echo "Confirmation field must say 'confirm' to whitelist on sepolia or mainnet to avoid accidental changes"
+            exit 1
+          fi
+
+      - name: 'Print whitelisting parameters'
+        run: |
+          echo "Whitelisting ERC20 token with the following parameters:"
+          echo "  Network: ${{ github.event.inputs.testnet_type }}"
+          echo "  Token Address: ${{ github.event.inputs.token_address }}"
+          echo "  Token Name: ${{ github.event.inputs.token_name }}"
+          echo "  Token Symbol: ${{ github.event.inputs.token_symbol }}"
+
+      - uses: actions/checkout@v4
+
+      # Checkout the repo that contains the YAML under ./cfg/
+      - uses: actions/checkout@v4
+        with:
+          repository: ten-protocol/ten-apps
+          token: ${{ secrets.DEPLOY_ACTIONS_PAT }}
+          path: cfg
+
+      - name: 'Prepare testnet short name'
+        id: prepareTestnetShortName
+        shell: bash
+        env:
+          TESTNET_TYPE: ${{ github.event.inputs.testnet_type }}
+        run: |
+          # strip the -testnet suffix from the testnet type
+          short_name=${TESTNET_TYPE%-testnet}
+          echo "TESTNET_SHORT_NAME=$short_name" >> $GITHUB_OUTPUT
+
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq \
+            https://github.com/mikefarah/yq/releases/download/v4.44.1/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      # Parse YAML and emit outputs
+      - name: Parse l1-config.yaml
+        id: parse
+        env:
+          TESTNET_SHORT_NAME: ${{ steps.prepareTestnetShortName.outputs.TESTNET_SHORT_NAME }}
+        run: |
+          CFG=cfg/nonprod-argocd-config/apps/envs/$TESTNET_SHORT_NAME/valuesFile/l1-values.yaml
+          
+          echo "network_config=$(yq -r '.l1Config.networkConfig' "$CFG")" >> $GITHUB_OUTPUT
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.25.1
+
+      - name: 'Login to Azure docker registry'
+        uses: azure/docker-login@v1
+        with:
+          login-server: testnetobscuronet.azurecr.io
+          username: testnetobscuronet
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
+      - name: 'Build and push hardhat deployer image'
+        run: |
+          DOCKER_BUILDKIT=1 docker build -t ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} -f tools/hardhatdeployer/Dockerfile .
+          docker push ${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }}
+
+      - name: 'Whitelist and Register Token'
+        id: whitelistToken
+        shell: bash
+        env:
+          DOCKER_API_VERSION: "1.45"
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        run: |
+          # Extract the environment prefix from the input
+          TESTNET_TYPE_RAW="${{ github.event.inputs.testnet_type }}"
+          if [[ "$TESTNET_TYPE_RAW" == "mainnet" ]]; then
+            TESTNET_TYPE="mainnet"
+          else
+            # Strip the "-testnet" suffix from testnet environments
+            TESTNET_TYPE=${TESTNET_TYPE_RAW%-testnet}
+          fi
+
+          # External L2 gateway URL
+          L2_GATEWAY_URL="${{ vars.L2_RPC_URL_VALIDATOR }}"
+          echo "L2 Gateway URL: $L2_GATEWAY_URL"
+          echo "Network env: $TESTNET_TYPE"
+          
+          # Run token whitelisting script
+          go run ./testnet/launcher/bridgetokenwhitelist/cmd \
+          -token_address="${{ github.event.inputs.token_address }}" \
+          -token_name="${{ github.event.inputs.token_name }}" \
+          -token_symbol="${{ github.event.inputs.token_symbol }}" \
+          -network_env="$TESTNET_TYPE" \
+          -l1_http_url=${{ secrets.L1_HTTP_URL }} \
+          -l2_gateway_url="$L2_GATEWAY_URL" \
+          -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
+          -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
+          -network_config_addr="${{ steps.parse.outputs.network_config }}"
+
+      - name: 'Save whitelisting container logs'
+        if: ${{ always() }}
+        run: |
+          docker logs `docker ps -aqf "name=whitelist-bridge-token"` > whitelist-bridge-token.out 2>&1
+
+      - name: 'Upload whitelisting container logs'
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: whitelist-bridge-token-${{ github.event.inputs.token_symbol }}
+          path: |
+            whitelist-bridge-token.out
+          retention-days: 7
+
+      - name: 'Whitelisting Summary'
+        if: success()
+        run: |
+          echo "Token whitelisted and registered successfully!"
+          echo ""
+          echo "Token Details:"
+          echo "  Address: ${{ github.event.inputs.token_address }}"
+          echo "  Name: ${{ github.event.inputs.token_name }}"
+          echo "  Symbol: ${{ github.event.inputs.token_symbol }}"
+          echo "  Network: ${{ github.event.inputs.testnet_type }}"
+          echo "Token registered in NetworkConfig"
