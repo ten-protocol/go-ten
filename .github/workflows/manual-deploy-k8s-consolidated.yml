@@ -728,7 +728,8 @@ jobs:
           argocd login "${ARGOCD_SERVER}" \
             --username "${ARGOCD_USERNAME}" \
             --password "${ARGOCD_PASSWORD}" \
-            --insecure
+            --insecure \
+            --plaintext
           
           echo "✅ Successfully logged in to ArgoCD"
 
@@ -863,7 +864,8 @@ jobs:
           argocd login "${ARGOCD_SERVER}" \
             --username "${ARGOCD_USERNAME}" \
             --password "${ARGOCD_PASSWORD}" \
-            --insecure
+            --insecure \
+            --plaintext
           
           echo "✅ Successfully logged in to ArgoCD"
 
@@ -1053,7 +1055,8 @@ jobs:
           argocd login "${ARGOCD_SERVER}" \
             --username "${ARGOCD_USERNAME}" \
             --password "${ARGOCD_PASSWORD}" \
-            --insecure
+            --insecure \
+            --plaintext
           
           echo "✅ Successfully logged in to ArgoCD"
 
