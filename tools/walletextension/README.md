@@ -235,6 +235,9 @@ The gateway UI is now maintained in a **separate repository**:
 
 ## HTTP Endpoints
 
+For a higher-level overview of these APIs and example usage, see the TEN docs on
+[Programmable Access to Gateway](https://docs.ten.xyz/docs/write-ten-dapp/programmable-gateway-access).
+
 The gateway exposes several HTTP endpoints for interaction. Paths are versioned
 under `/v1` and some endpoints live under `/admin`.
 
@@ -454,6 +457,9 @@ Additionally, a **singleflight** group is used to ensure that concurrent request
 for the same key share a single upstream call and reuse the result.
 
 ## Session keys
+
+For a dApp‑developer‑focused overview of native session keys and account abstraction on TEN, see
+[Account Abstraction](https://docs.ten.xyz/docs/write-ten-dapp/session-keys).
 
 Session keys are **ephemeral accounts managed by the gateway** on behalf of a
 user. They are designed to support dApps and short‑lived sessions without
