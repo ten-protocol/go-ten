@@ -539,13 +539,13 @@ jobs:
     environment:
       name: ${{ github.event.inputs.testnet_type }}
     outputs:
-      NETWORK_CONFIG_ADDR: ${{ steps.deploy.outputs.NETWORK_CONFIG_ADDR }}
-      MSG_BUS_CONTRACT_ADDR: ${{ steps.deploy.outputs.MSG_BUS_CONTRACT_ADDR }}
-      BRIDGE_CONTRACT_ADDR: ${{ steps.deploy.outputs.BRIDGE_CONTRACT_ADDR }}
-      CROSS_CHAIN_ADDR: ${{ steps.deploy.outputs.CROSS_CHAIN_ADDR }}
-      DA_REGISTRY_ADDR: ${{ steps.deploy.outputs.DA_REGISTRY_ADDR }}
-      ENCLAVE_REGISTRY_ADDR: ${{ steps.deploy.outputs.ENCLAVE_REGISTRY_ADDR }}
-      L1_START_HASH: ${{ steps.deploy.outputs.L1_START_HASH }}
+      NETWORK_CONFIG_ADDR: ${{ steps.deployContracts.outputs.NETWORK_CONFIG_ADDR }}
+      MSG_BUS_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.MSG_BUS_CONTRACT_ADDR }}
+      BRIDGE_CONTRACT_ADDR: ${{ steps.deployContracts.outputs.BRIDGE_CONTRACT_ADDR }}
+      CROSS_CHAIN_ADDR: ${{ steps.deployContracts.outputs.CROSS_CHAIN_ADDR }}
+      DA_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.DA_REGISTRY_ADDR }}
+      ENCLAVE_REGISTRY_ADDR: ${{ steps.deployContracts.outputs.ENCLAVE_REGISTRY_ADDR }}
+      L1_START_HASH: ${{ steps.deployContracts.outputs.L1_START_HASH }}
 
     steps:
       - uses: actions/checkout@v4
@@ -635,15 +635,72 @@ jobs:
           retention-days: 2
 
   # ============================================================================
+  # UPDATE L1 CONTRACT ADDRESSES IN TEN-APPS (Destructive only)
+  # ============================================================================
+  update-l1-config:
+    needs: [validate-inputs, deploy-l1-contracts]
+    if: always() && needs.deploy-l1-contracts.result == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.testnet_type }}
+    steps:
+      - name: 'Clone ten-apps and update l1-values.yaml'
+        env:
+          DEPLOY_ACTIONS_PAT: ${{ secrets.DEPLOY_ACTIONS_PAT }}
+          NETWORK_CONFIG_ADDR: ${{ needs.deploy-l1-contracts.outputs.NETWORK_CONFIG_ADDR }}
+          MSG_BUS_CONTRACT_ADDR: ${{ needs.deploy-l1-contracts.outputs.MSG_BUS_CONTRACT_ADDR }}
+          BRIDGE_CONTRACT_ADDR: ${{ needs.deploy-l1-contracts.outputs.BRIDGE_CONTRACT_ADDR }}
+          CROSS_CHAIN_ADDR: ${{ needs.deploy-l1-contracts.outputs.CROSS_CHAIN_ADDR }}
+          DA_REGISTRY_ADDR: ${{ needs.deploy-l1-contracts.outputs.DA_REGISTRY_ADDR }}
+          ENCLAVE_REGISTRY_ADDR: ${{ needs.deploy-l1-contracts.outputs.ENCLAVE_REGISTRY_ADDR }}
+          L1_START_HASH: ${{ needs.deploy-l1-contracts.outputs.L1_START_HASH }}
+          CONFIG_PATH: ${{ needs.validate-inputs.outputs.CONFIG_PATH }}
+          TESTNET_SHORT_NAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
+        run: |
+          set -e
+          git clone https://${DEPLOY_ACTIONS_PAT}@github.com/ten-protocol/ten-apps.git ten-apps
+          cd ten-apps
+
+          L1_VALUES="${CONFIG_PATH}/apps/envs/${TESTNET_SHORT_NAME}/valuesFile/l1-values.yaml"
+
+          echo "Updating L1 contract addresses in ${L1_VALUES}"
+          echo "  networkConfig:    ${NETWORK_CONFIG_ADDR}"
+          echo "  messagebus:       ${MSG_BUS_CONTRACT_ADDR}"
+          echo "  bridge:           ${BRIDGE_CONTRACT_ADDR}"
+          echo "  crosschain:       ${CROSS_CHAIN_ADDR}"
+          echo "  rollup:           ${DA_REGISTRY_ADDR}"
+          echo "  enclaveRegistry:  ${ENCLAVE_REGISTRY_ADDR}"
+          echo "  starthash:        ${L1_START_HASH}"
+
+          printf 'l1Config:\n    networkConfig: %s\n    messagebus: %s\n    bridge: %s\n    crosschain: %s\n    rollup: %s\n    enclaveRegistry: %s\n    starthash: %s\n' \
+            "${NETWORK_CONFIG_ADDR}" "${MSG_BUS_CONTRACT_ADDR}" "${BRIDGE_CONTRACT_ADDR}" \
+            "${CROSS_CHAIN_ADDR}" "${DA_REGISTRY_ADDR}" "${ENCLAVE_REGISTRY_ADDR}" \
+            "${L1_START_HASH}" > "${L1_VALUES}"
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add "${L1_VALUES}"
+
+          if git diff --cached --quiet; then
+            echo "No changes to L1 config"
+          else
+            git commit -m "chore: update L1 contract addresses for ${TESTNET_SHORT_NAME}"
+            git config --unset-all http.https://github.com/.extraheader || true
+            git remote set-url origin https://${DEPLOY_ACTIONS_PAT}@github.com/ten-protocol/ten-apps.git
+            git push origin HEAD:main
+            echo "✅ L1 contract addresses updated in ten-apps"
+          fi
+
+  # ============================================================================
   # ARGOCD - DELETE CHILD APPS (Destructive only)
   # ============================================================================
   argocd-delete-child-apps:
-    needs: [validate-inputs, deploy-l1-contracts]
+    needs: [validate-inputs, deploy-l1-contracts, update-l1-config]
     if: |
       always() &&
       needs.validate-inputs.result == 'success' &&
       needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
-      (needs.deploy-l1-contracts.result == 'success' || needs.deploy-l1-contracts.result == 'skipped')
+      (needs.update-l1-config.result == 'success' || needs.update-l1-config.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
