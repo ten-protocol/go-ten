@@ -75,7 +75,6 @@ const deployAndRegisterToken = async function (): Promise<void> {
         'Token Address': tokenAddress,
         'Token Name': tokenName,
         'Token Symbol': tokenSymbol,
-        'NetworkConfig Address': networkConfigAddr
     });
 }
 

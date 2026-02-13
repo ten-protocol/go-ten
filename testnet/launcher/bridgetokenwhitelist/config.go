@@ -6,10 +6,9 @@ type Config struct {
 	tokenAddress      string
 	tokenName         string
 	tokenSymbol       string
+	networkEnv        string
 	l1HTTPURL         string
-	l2Host            string
-	l2HTTPPort        int
-	l2WSPort          int
+	l2GatewayURL      string
 	privateKey        string
 	dockerImage       string
 	networkConfigAddr string
@@ -43,27 +42,21 @@ func WithTokenSymbol(symbol string) ConfigOption {
 	}
 }
 
+func WithNetworkEnv(networkEnv string) ConfigOption {
+	return func(c *Config) {
+		c.networkEnv = networkEnv
+	}
+}
+
 func WithL1HTTPURL(url string) ConfigOption {
 	return func(c *Config) {
 		c.l1HTTPURL = url
 	}
 }
 
-func WithL2Host(host string) ConfigOption {
+func WithL2GatewayURL(url string) ConfigOption {
 	return func(c *Config) {
-		c.l2Host = host
-	}
-}
-
-func WithL2HTTPPort(port int) ConfigOption {
-	return func(c *Config) {
-		c.l2HTTPPort = port
-	}
-}
-
-func WithL2WSPort(port int) ConfigOption {
-	return func(c *Config) {
-		c.l2WSPort = port
+		c.l2GatewayURL = url
 	}
 }
 
@@ -95,17 +88,14 @@ func (c *Config) Validate() error {
 	if c.tokenSymbol == "" {
 		return fmt.Errorf("token symbol is required")
 	}
+	if c.networkEnv == "" {
+		return fmt.Errorf("network env is required")
+	}
 	if c.l1HTTPURL == "" {
 		return fmt.Errorf("L1 HTTP URL is required")
 	}
-	if c.l2Host == "" {
-		return fmt.Errorf("L2 host is required")
-	}
-	if c.l2HTTPPort == 0 {
-		return fmt.Errorf("L2 HTTP port is required")
-	}
-	if c.l2WSPort == 0 {
-		return fmt.Errorf("L2 WS port is required")
+	if c.l2GatewayURL == "" {
+		return fmt.Errorf("L2_GATEWAY_URL is required")
 	}
 	if c.privateKey == "" {
 		return fmt.Errorf("private key is required")
@@ -120,6 +110,6 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf("Bridge Token Whitelist Config: tokenAddress=%s, tokenName=%s, tokenSymbol=%s, l1HTTPURL=%s, l2Host=%s, l2HTTPPort=%d, l2WSPort=%d, dockerImage=%s, networkConfigAddr=%s",
-		c.tokenAddress, c.tokenName, c.tokenSymbol, c.l1HTTPURL, c.l2Host, c.l2HTTPPort, c.l2WSPort, c.dockerImage, c.networkConfigAddr)
+	return fmt.Sprintf("Bridge Token Whitelist Config: tokenAddress=%s, tokenName=%s, tokenSymbol=%s, networkEnv=%s, l1HTTPURL=%s, l2GatewayURL=%s, dockerImage=%s, networkConfigAddr=%s",
+		c.tokenAddress, c.tokenName, c.tokenSymbol, c.networkEnv, c.l1HTTPURL, c.l2GatewayURL, c.dockerImage, c.networkConfigAddr)
 }

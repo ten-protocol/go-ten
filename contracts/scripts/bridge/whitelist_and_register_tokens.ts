@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
 import type { MessageBus, Structs } from '../../typechain-types/src/cross_chain_messaging/common/MessageBus';
+import { MessageBus__factory } from '../../typechain-types/factories/src/cross_chain_messaging/common/MessageBus__factory';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -10,7 +11,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  * 1. Query NetworkConfig on L1 to get all contract addresses (L1 Bridge, L1 MessageBus, L2 Bridge, L2 CrossChainMessenger)
  * 2. Call whitelistToken() on L1 TenBridge
  * 3. Extract cross-chain message from logs[0] LogMessagePublished event
- * 4. Poll L1 MessageBus.verifyMessageFinalized() until it returns true
+ * 4. Poll L2 MessageBus.verifyMessageFinalized() (via gateway) until it returns true
  * 5. Call L2 CrossChainMessenger.relayMessage() to trigger L2 wrapped token creation
  * 6. Get L2 wrapped token address from CreatedWrappedToken event
  * 7. Register L2 token address in L1 NetworkConfig with "L2_" prefix
@@ -21,7 +22,9 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  * - TOKEN_SYMBOL: Symbol of the token (e.g., "USDC")
  * - NETWORK_CONFIG_ADDR: Address of the NetworkConfig contract (L1)
  * - NETWORK_JSON: JSON config with layer1 network info { url: L1_RPC_URL, accounts: [private_key] }
- * - L2_RPC_URL: L2 RPC URL (e.g., http://sequencer-host:80)
+ * - L2_RPC_URL / L2_HOST + L2_PORT: L2 RPC URL for relay + event query
+ * - L2_GATEWAY_URL (optional): Gateway URL for finalized-message polling (defaults to NETWORK_JSON.layer2.url)
+ *   Supports either ten_config or net_config on the target RPC.
  * 
  * Note: For local testing, L2_RPC_URL should point to the L2 node directly.
  * For production, it may point to a wallet extension gateway that provides full RPC support.
@@ -32,77 +35,300 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
  */
 
 type CrossChainMessage = Structs.CrossChainMessageStruct;
+const PREFUND_L2_AMOUNT = ethers.parseEther('0.5');
+const ENV_CHAIN_IDS: Record<string, number> = {
+    sepolia: 8443,
+    uat: 7443,
+    dev: 6443,
+    local: 5443,
+    mainnet: 443
+};
+
+function normalizeNetworkEnv(value: string): string {
+    return value.toLowerCase().trim().replace(/-testnet$/, '');
+}
+
+function resolveL2ChainId(networkEnvRaw: string, overrideChainId?: string): number {
+    if (overrideChainId) {
+        const parsed = Number(overrideChainId);
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+            throw new Error(`Invalid NETWORK_CHAINID override: ${overrideChainId}`);
+        }
+        return parsed;
+    }
+
+    const networkEnv = normalizeNetworkEnv(networkEnvRaw);
+    const mapped = ENV_CHAIN_IDS[networkEnv];
+    if (!mapped) {
+        throw new Error(
+            `Unsupported NETWORK_ENV "${networkEnvRaw}". Supported values: ${Object.keys(ENV_CHAIN_IDS).join(', ')}`
+        );
+    }
+    return mapped;
+}
+
+async function fetchRpcConfig(rpcUrl: string): Promise<any> {
+    const methods = ['ten_config', 'net_config'];
+    let lastError: unknown = null;
+
+    for (const method of methods) {
+        try {
+            const response = await fetch(rpcUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    method,
+                    params: [],
+                    id: 1
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`${method} RPC failed with status ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.error || !data.result) {
+                throw new Error(`${method} returned invalid response: ${JSON.stringify(data.error ?? data)}`);
+            }
+
+            return data.result;
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw new Error(`Unable to fetch RPC config from gateway. Last error: ${String(lastError)}`);
+}
+
+async function fetchChainIdFromGateway(gatewayUrl: string): Promise<number> {
+    const response = await fetch(gatewayUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_chainId',
+            params: [],
+            id: 1
+        })
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch chain ID from gateway: HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (data?.error || !data?.result || typeof data.result !== 'string') {
+        throw new Error(`Invalid eth_chainId response from gateway: ${JSON.stringify(data?.error ?? data)}`);
+    }
+
+    return Number(BigInt(data.result));
+}
+
+async function ensureGatewayAccountRegistered(gatewayBaseUrl: string, privateKey: string): Promise<string> {
+    const baseUrl = gatewayBaseUrl.replace(/\/+$/, '');
+    const wallet = new ethers.Wallet(privateKey);
+
+    const joinResponse = await fetch(`${baseUrl}/join`, { method: 'GET' });
+    if (!joinResponse.ok) {
+        throw new Error(`Gateway join failed with status ${joinResponse.status}`);
+    }
+    const token = (await joinResponse.text()).trim();
+    if (!token) {
+        throw new Error('Gateway join returned an empty token');
+    }
+
+    const queryUrl = new URL(`${baseUrl}/query/address`);
+    queryUrl.searchParams.set('token', token);
+    queryUrl.searchParams.set('a', wallet.address);
+    const queryResponse = await fetch(queryUrl.toString(), { method: 'GET' });
+
+    let isRegistered = false;
+    if (queryResponse.ok) {
+        const queryData = await queryResponse.json();
+        isRegistered = queryData?.status === true;
+    }
+
+    if (!isRegistered) {
+        const chainId = await fetchChainIdFromGateway(gatewayBaseUrl);
+        const domain = {
+            name: 'Ten',
+            version: '1.0',
+            chainId,
+            verifyingContract: ethers.ZeroAddress
+        };
+        const types = {
+            Authentication: [{ name: 'Encryption Token', type: 'address' }]
+        };
+        const message = {
+            'Encryption Token': `0x${token}`
+        };
+        const signature = await wallet.signTypedData(domain, types, message);
+
+        const authenticateUrl = new URL(`${baseUrl}/authenticate/`);
+        authenticateUrl.searchParams.set('token', token);
+        const authResponse = await fetch(authenticateUrl.toString(), {
+            method: 'POST',
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                address: wallet.address,
+                signature
+            })
+        });
+
+        if (!authResponse.ok) {
+            throw new Error(`Gateway account authentication failed with status ${authResponse.status}`);
+        }
+        const verifyResponse = await fetch(queryUrl.toString(), { method: 'GET' });
+        if (!verifyResponse.ok) {
+            throw new Error(`Gateway registration verification failed with status ${verifyResponse.status}`);
+        }
+        const verifyData = await verifyResponse.json();
+        if (verifyData?.status !== true) {
+            throw new Error(`Gateway registration failed for ${wallet.address}`);
+        }
+
+        console.log(`Registered ${wallet.address} with gateway for token ${token}`);
+    }
+
+    const rpcUrl = new URL(gatewayBaseUrl);
+    rpcUrl.searchParams.set('token', token);
+    return rpcUrl.toString();
+}
 
 async function waitForMessageFinalized(
-    l1MessageBus: MessageBus,
+    l2messageBus: MessageBus,
     crossChainMessage: CrossChainMessage,
-    maxRetries = 100
+    maxRetries = 100,
+    networkLabel = 'target'
 ): Promise<void> {
-    console.log(`Polling for message finalization on L1 MessageBus (max ${maxRetries} attempts)...`);
-    console.log('Cross-chain message:', {
-        sender: crossChainMessage.sender,
-        sequence: crossChainMessage.sequence.toString(),
-        nonce: crossChainMessage.nonce.toString(),
-        topic: crossChainMessage.topic.toString(),
-        payload: crossChainMessage.payload,
-        consistencyLevel: crossChainMessage.consistencyLevel.toString()
-    });
-    
-    let lastError: any = null;
-    
+    let lastError: unknown = null;
+
     for (let i = 0; i < maxRetries; i++) {
         try {
-            const isFinalized = await l1MessageBus.verifyMessageFinalized(crossChainMessage);
-            console.log(`Attempt ${i + 1}/${maxRetries}: isFinalized = ${isFinalized}`);
-            if (isFinalized) {
-                console.log('Message is finalized on L1');
+            if (await l2messageBus.verifyMessageFinalized(crossChainMessage)) {
                 return;
             }
         } catch (error) {
             lastError = error;
-            console.log(`Attempt ${i + 1}/${maxRetries}: Error checking finalization - ${error}`);
         }
-        
-        await sleep(2000); 
+
+        if ((i + 1) % 10 === 0) {
+            console.log(`Still waiting for ${networkLabel} message finalization (${i + 1}/${maxRetries})...`);
+        }
+
+        await sleep(2000);
     }
-    
-    console.error('Last error:', lastError);
-    throw new Error('Timeout waiting for message finalization');
+
+    const suffix = lastError ? ` Last error: ${String(lastError)}` : '';
+    throw new Error(`Timeout waiting for message finalization.${suffix}`);
 }
 
-const whitelistAndRegisterToken = async function (): Promise<void> {
-    console.log('=== Starting token whitelisting and L2 registration ===');
-    
-    const [deployer] = await ethers.getSigners();
-    if (!deployer) {
-        throw new Error('No deployer signer found');
+function extractCrossChainMessageFromReceipt(
+    receipt: { logs: Array<{ topics: readonly string[]; data: string }> },
+    l1MessageBus: MessageBus
+): CrossChainMessage {
+    for (const log of receipt.logs) {
+        let parsed: ReturnType<typeof l1MessageBus.interface.parseLog> | null = null;
+        try {
+            parsed = l1MessageBus.interface.parseLog({ topics: [...log.topics], data: log.data });
+        } catch {
+            continue;
+        }
+
+        if (parsed && parsed.name === 'LogMessagePublished') {
+            return {
+                sender: parsed.args.sender as string,
+                sequence: BigInt(parsed.args.sequence.toString()),
+                nonce: Number(parsed.args.nonce),
+                topic: Number(parsed.args.topic),
+                payload: parsed.args.payload as string,
+                consistencyLevel: Number(parsed.args.consistencyLevel)
+            };
+        }
     }
-    console.log(`Using signer: ${deployer.address}`);
-    
+
+    throw new Error('LogMessagePublished event not found in transaction receipt');
+}
+
+async function waitForWrappedTokenAddress(l2Bridge: any, l1TokenAddress: string): Promise<string> {
+    const filter = l2Bridge.filters.CreatedWrappedToken();
+    const maxAttempts = 12;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const waitSeconds = Math.min(attempt * 5, 30);
+        await sleep(waitSeconds * 1000);
+
+        const events = await l2Bridge.queryFilter(filter, -300, 'latest');
+        const match = [...events]
+            .reverse()
+            .find((event: any) => event.args?.remoteAddress?.toLowerCase() === l1TokenAddress.toLowerCase());
+
+        if (match?.args?.localAddress) {
+            return match.args.localAddress;
+        }
+
+        console.log(`Waiting for wrapped token creation (${attempt}/${maxAttempts})...`);
+    }
+
+    throw new Error(
+        `CreatedWrappedToken event not found after ${maxAttempts} attempts.\n` +
+        'Check enclave logs for wrapped token creation.'
+    );
+}
+
+type ScriptConfig = {
+    tokenAddress: string;
+    tokenName: string;
+    tokenSymbol: string;
+    networkConfigAddr: string;
+    l2RpcUrl: string;
+    l1PrivateKey: string;
+    l2PrivateKey: string;
+    l1RpcUrl: string;
+    l2ChainId: number;
+    networkEnv: string;
+};
+
+type ContractAddresses = {
+    l1BridgeAddress: string;
+    l1MessageBusAddress: string;
+    l2BridgeAddress: string;
+    l2CrossChainMessengerAddress: string;
+};
+
+function getScriptConfig(): ScriptConfig {
     const tokenAddress = process.env.TOKEN_ADDRESS;
     const tokenName = process.env.TOKEN_NAME;
     const tokenSymbol = process.env.TOKEN_SYMBOL;
     const networkConfigAddr = process.env.NETWORK_CONFIG_ADDR;
-    const l2host = process.env.L2_HOST ?? "sequencer-host";
-    const l2port = process.env.L2_PORT ?? "80";
+    const networkEnvRaw = process.env.NETWORK_ENV ?? 'mainnet';
+    const networkChainIdOverride = process.env.NETWORK_CHAINID;
 
-    const l2RpcUrl = new URL(`http://${l2host}:${l2port}`).toString();
-    
-    // Get L1 network config from NETWORK_JSON
     const networkJson = JSON.parse(process.env.NETWORK_JSON || '{}');
-    const privateKey = networkJson.layer1?.accounts?.[0];
+    const l1PrivateKey = networkJson.layer1?.accounts?.[0];
+    const l2PrivateKey = networkJson.layer2?.accounts?.[0] ?? l1PrivateKey;
     const l1RpcUrl = networkJson.layer1?.url;
-    
-    if (!privateKey) {
+    const l2RpcUrl = networkJson.layer2?.url;
+    const l2ChainId = resolveL2ChainId(networkEnvRaw, networkChainIdOverride);
+
+    if (!l1PrivateKey) {
         throw new Error('Private key not found in NETWORK_JSON.layer1.accounts');
+    }
+    if (!l2PrivateKey) {
+        throw new Error('Private key not found in NETWORK_JSON.layer2.accounts');
     }
     if (!l1RpcUrl) {
         throw new Error('L1 RPC URL not found in NETWORK_JSON.layer1.url');
     }
     if (!l2RpcUrl) {
-        throw new Error('L2 RPC URL not found in L2_RPC_URL environment variable');
+        throw new Error('L2 RPC URL not found in NETWORK_JSON.layer2.url');
     }
-    
+
     if (!tokenAddress) {
         throw new Error('TOKEN_ADDRESS environment variable is required');
     }
@@ -119,273 +345,247 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
     if (!ethers.isAddress(tokenAddress)) {
         throw new Error(`Invalid token address: ${tokenAddress}`);
     }
-    
-    console.log('\nToken parameters:');
-    console.table({
-        'L1 Token Address': tokenAddress,
-        'Token Name': tokenName,
-        'Token Symbol': tokenSymbol,
-        'NetworkConfig': networkConfigAddr,
-        'L1 RPC URL': l1RpcUrl,
-        'L2 RPC URL': l2RpcUrl
-    });
-    
-    // Get L1 addresses from NetworkConfig contract
+
+    return {
+        tokenAddress,
+        tokenName,
+        tokenSymbol,
+        networkConfigAddr,
+        l2RpcUrl,
+        l1PrivateKey,
+        l2PrivateKey,
+        l1RpcUrl,
+        l2ChainId,
+        networkEnv: normalizeNetworkEnv(networkEnvRaw)
+    };
+}
+
+async function step1QueryNetworkAddresses(networkConfigAddr: string): Promise<{ networkConfig: any; addresses: ContractAddresses }> {
     const networkConfig = await ethers.getContractAt('NetworkConfig', networkConfigAddr);
     const addresses = await networkConfig.addresses();
     const l1BridgeAddress = addresses.l1Bridge;
     const l1MessageBusAddress = addresses.messageBus;
-    console.log('Addresses:', addresses);
-    console.log('Addresses:', addresses);
-    console.log('Addresses:', addresses);
-    
+    const l2BridgeAddress = addresses.l2Bridge;
+    const l2CrossChainMessengerAddress = addresses.l2CrossChainMessenger;
+
+    const parsedAddresses: ContractAddresses = {
+        l1BridgeAddress,
+        l1MessageBusAddress,
+        l2BridgeAddress,
+        l2CrossChainMessengerAddress
+    };
+
     if (l1BridgeAddress === ethers.ZeroAddress) {
         throw new Error('L1 Bridge address not set in NetworkConfig');
     }
     if (l1MessageBusAddress === ethers.ZeroAddress) {
         throw new Error('L1 MessageBus address not set in NetworkConfig');
     }
-    
-    console.log(`\nL1 Contract Addresses:`);
-    console.log(`  L1 Bridge: ${l1BridgeAddress}`);
-    console.log(`  L1 MessageBus: ${l1MessageBusAddress}`);
-    
-    // Get L2 addresses from ten_config RPC
-    console.log(`\nQuerying L2 contract addresses from ten_config...`);
-    const l2ConfigResponse = await fetch(l2RpcUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            jsonrpc: '2.0',
-            method: 'ten_config',
-            params: [],
-            id: 1
-        })
-    });
-    
-    const l2ConfigData = await l2ConfigResponse.json();
-    if (!l2ConfigData.result) {
-        throw new Error('Failed to get L2 config from ten_config RPC');
+
+    if (l2BridgeAddress === ethers.ZeroAddress) {
+        throw new Error('L2 Bridge address not set in NetworkConfig');
     }
-    
-    const l2BridgeAddress = networkConfig.l2BridgeAddress;
-    const l2CrossChainMessengerAddress = networkConfig.l2BridgeAddress
-    const l2MessageBusAddress = l2ConfigData.result.L2MessageBus;
-    
-    if (!l2BridgeAddress) {
-        throw new Error('L2 Bridge address not found in ten_config');
+    if (l2CrossChainMessengerAddress === ethers.ZeroAddress) {
+        throw new Error('L2 CrossChainMessenger address not set in NetworkConfig');
     }
-    if (!l2CrossChainMessengerAddress) {
-        throw new Error('L2 CrossChainMessenger address not found in ten_config');
-    }
-    if (!l2MessageBusAddress || l2MessageBusAddress === ethers.ZeroAddress) {
-        throw new Error('L2 MessageBus address not found in ten_config');
-    }
-    
-    console.log(`\nL2 Contract Addresses (from ten_config):`);
-    console.log(`  L2 Bridge: ${l2BridgeAddress}`);
-    console.log(`  L2 CrossChainMessenger: ${l2CrossChainMessengerAddress}`);
-    console.log(`  L2 MessageBus: ${l2MessageBusAddress}`);
-    
-    const l2Network = ethers.Network.from({ name: 'ten-testnet', chainId: 443 });
-    const l2Provider = new ethers.JsonRpcProvider(l2RpcUrl, l2Network, { staticNetwork: l2Network });
-    const l2Signer = new ethers.Wallet(privateKey, l2Provider);
-    
-    console.log(`\nL2 Signer address: ${l2Signer.address}`);
-    
-    // 1. whitelist token on L1 Bridge
-    console.log('\n[STEP 1] Whitelisting token on L1 TenBridge...');
+
+    return { networkConfig, addresses: parsedAddresses };
+}
+
+async function step2WhitelistToken(
+    l1BridgeAddress: string,
+    l1MessageBusAddress: string,
+    tokenAddress: string,
+    tokenName: string,
+    tokenSymbol: string
+): Promise<{ whitelistReceipt: any; l1MessageBus: MessageBus }> {
     const l1Bridge = await ethers.getContractAt('TenBridge', l1BridgeAddress);
     const l1MessageBus = await ethers.getContractAt('MessageBus', l1MessageBusAddress);
-    
-    console.log(`Whitelisting token: ${tokenName} (${tokenSymbol}) at ${tokenAddress}`);
+
     const whitelistTx = await l1Bridge.whitelistToken(tokenAddress, tokenName, tokenSymbol);
     console.log(`Transaction hash: ${whitelistTx.hash}`);
-    
+
     const whitelistReceipt = await whitelistTx.wait();
     if (!whitelistReceipt) {
-        throw new Error('Failed to get whitelist transaction receipt');
+        throw new Error('Failed to fetch whitelist transaction receipt');
     }
-    
     if (whitelistReceipt.status !== 1) {
-        console.error('Transaction failed! Receipt:', whitelistReceipt);
         throw new Error(`Whitelist transaction failed with status: ${whitelistReceipt.status}`);
     }
-    
-    console.log(`Whitelisted successfully in block: ${whitelistReceipt.blockNumber}`);
-    
-    // Extract LogMessagePublished event - use MessageBus contract to parse logs
-    const logMessagePublishedEvents = whitelistReceipt.logs
-        .map(log => {
-            try {
-                return l1MessageBus.interface.parseLog({ topics: log.topics as string[], data: log.data });
-            } catch {
-                return null;
-            }
-        })
-        .filter(event => event && event.name === 'LogMessagePublished');
-    
-    if (logMessagePublishedEvents.length === 0) {
-        throw new Error('LogMessagePublished event not found in transaction receipt');
+
+    return { whitelistReceipt, l1MessageBus };
+}
+
+function step3ExtractCrossChainMessage(whitelistReceipt: any, l1MessageBus: MessageBus): CrossChainMessage {
+    return extractCrossChainMessageFromReceipt(whitelistReceipt, l1MessageBus);
+}
+
+async function step4WaitForMessageFinalization(
+    l2RpcUrl: string,
+    l2PrivateKey: string,
+    crossChainMessage: CrossChainMessage
+): Promise<string> {
+    const authenticatedGatewayUrl = await ensureGatewayAccountRegistered(l2RpcUrl, l2PrivateKey);
+    const tenConfig = await fetchRpcConfig(authenticatedGatewayUrl);
+    const l2MessageBusAddress = tenConfig.L2MessageBus;
+
+    if (!l2MessageBusAddress || !ethers.isAddress(l2MessageBusAddress) || l2MessageBusAddress === ethers.ZeroAddress) {
+        throw new Error(`Invalid L2MessageBus address from ten_config: ${String(l2MessageBusAddress)}`);
     }
-    
-    // Get the first LogMessagePublished event (logs[0])
-    const logEvent = logMessagePublishedEvents[0]!;
-    // Explicitly convert types from event args to match Solidity types
-    const crossChainMessage: CrossChainMessage = {
-        sender: logEvent.args.sender as string,
-        sequence: BigInt(logEvent.args.sequence.toString()),
-        nonce: Number(logEvent.args.nonce),
-        topic: Number(logEvent.args.topic),
-        payload: logEvent.args.payload as string,
-        consistencyLevel: Number(logEvent.args.consistencyLevel)
-    };
-    
-    console.log('Cross-chain message extracted from logs[0]');
-    
-    // 2. Wait for message to be finalized on L1
-    console.log('\n[STEP 2] Waiting for message finalization on L1 MessageBus...');
-    console.log('Checking L1 MessageBus to verify the cross-chain message is finalized');
-    
-    // Wait for message to be finalized - this must succeed before we can relay
-    await waitForMessageFinalized(l1MessageBus, crossChainMessage, 120);
-    console.log('Message finalized on L1, ready to relay on L2');
-    
-    // 3. relay message on L2 to create wrapped token
-    console.log('\n [STEP 3] Relaying message on L2 to create wrapped token...');
-    
+
+    const l2GatewayProvider = new ethers.JsonRpcProvider(authenticatedGatewayUrl);
+    const l2MessageBus = MessageBus__factory.connect(l2MessageBusAddress, l2GatewayProvider);
+    await waitForMessageFinalized(l2MessageBus, crossChainMessage, 120, 'L2');
+    return authenticatedGatewayUrl;
+}
+
+async function step5PrefundL2SignerIfNeeded(
+    l1BridgeAddress: string,
+    l2Signer: any,
+    l2Provider: any
+): Promise<void> {
+    const currentBalance = await l2Provider.getBalance(l2Signer.address);
+    if (currentBalance > 0n) {
+        console.log(`L2 signer already funded: ${ethers.formatEther(currentBalance)} ETH`);
+        return;
+    }
+
+    const l1Bridge = await ethers.getContractAt('TenBridge', l1BridgeAddress);
+    const prefundTx = await l1Bridge.sendNative(l2Signer.address, { value: PREFUND_L2_AMOUNT });
+    await prefundTx.wait();
+    console.log(`Prefund tx submitted (${ethers.formatEther(PREFUND_L2_AMOUNT)} ETH): ${prefundTx.hash}`);
+
+    const maxAttempts = 30;
+    for (let i = 0; i < maxAttempts; i++) {
+        const balance = await l2Provider.getBalance(l2Signer.address);
+        if (balance > 0n) {
+            console.log(`L2 signer funded: ${ethers.formatEther(balance)} ETH`);
+            return;
+        }
+        await sleep(2000);
+    }
+
+    throw new Error('Timed out waiting for L2 prefund to arrive');
+}
+
+async function step5RelayMessageOnL2(
+    l2CrossChainMessengerAddress: string,
+    l2Signer: any,
+    crossChainMessage: CrossChainMessage
+): Promise<void> {
     const l2CrossChainMessenger = await ethers.getContractAt('CrossChainMessenger', l2CrossChainMessengerAddress, l2Signer);
-    
-    console.log('Sending relay message transaction...');
     const relayTx = await l2CrossChainMessenger.relayMessage(crossChainMessage);
-    const sentTxHash = relayTx.hash;
-    console.log(`Transaction submitted: ${sentTxHash}`);
-    console.log('Note: Ten enclave will create a synthetic transaction to process this.');
-    
-    // Query for CreatedWrappedToken event since we can't get receipt of synthetic tx
-    console.log('\nWaiting for enclave to process and emit CreatedWrappedToken event...');
+    console.log(`Relay tx submitted: ${relayTx.hash}`);
+}
+
+async function step6GetWrappedTokenAddress(
+    l2BridgeAddress: string,
+    l2Signer: any,
+    tokenAddress: string
+): Promise<string> {
     const l2Bridge = await ethers.getContractAt('EthereumBridge', l2BridgeAddress, l2Signer);
-    
-    let l2TokenAddress = '';
-    const l2TokenKey = `L2_${tokenSymbol}`;
-    
+    return waitForWrappedTokenAddress(l2Bridge, tokenAddress);
+}
+
+async function step7RegisterWrappedToken(
+    networkConfig: any,
+    l2TokenKey: string,
+    l2TokenAddress: string
+): Promise<void> {
+    const existingAddr = await networkConfig.additionalAddresses(l2TokenKey);
+    if (existingAddr === ethers.ZeroAddress) {
+        const registerTx = await networkConfig.addAdditionalAddress(l2TokenKey, l2TokenAddress);
+        console.log(`Register tx hash: ${registerTx.hash}`);
+        await registerTx.wait();
+    } else if (existingAddr.toLowerCase() !== l2TokenAddress.toLowerCase()) {
+        console.warn(`"${l2TokenKey}" already exists with different address: ${existingAddr}`);
+    }
+
+    const registeredAddr = await networkConfig.additionalAddresses(l2TokenKey);
+    if (registeredAddr.toLowerCase() !== l2TokenAddress.toLowerCase()) {
+        throw new Error(`Registration failed: expected ${l2TokenAddress}, got ${registeredAddr}`);
+    }
+}
+
+async function verifyViaTenConfig(l2RpcUrl: string, l2TokenKey: string, l2TokenAddress: string): Promise<void> {
     try {
-        // Retry event query with progressive backoff
-        let relevantEvent: any = null;
-        const maxAttempts = 12; // 12 attempts over ~2 minutes
-        
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            const waitTime = Math.min(attempt * 5, 30); // 5, 10, 15, 20, 25, 30, 30, 30...
-            console.log(`Attempt ${attempt}/${maxAttempts}: Waiting ${waitTime}s before querying...`);
-            await sleep(waitTime * 1000);
-            
-            try {
-                const filter = l2Bridge.filters.CreatedWrappedToken();
-                const events = await l2Bridge.queryFilter(filter, -300, 'latest'); // Last 300 blocks
-                
-                console.log(`Found ${events.length} total CreatedWrappedToken events`);
-                
-                // Find the most recent event for this L1 token
-                relevantEvent = events
-                    .reverse()
-                    .find((e: any) => e.args?.remoteAddress?.toLowerCase() === tokenAddress.toLowerCase());
-                
-                if (relevantEvent?.args?.localAddress) {
-                    console.log('Found matching CreatedWrappedToken event!');
-                    break;
-                } else {
-                    console.log(`No matching event for L1 token ${tokenAddress} yet...`);
-                    console.log('The enclave may still be processing the relay message.');
-                }
-            } catch (queryError: any) {
-                console.warn(`Query attempt ${attempt} failed:`, queryError.message);
-            }
-        }
-        
-        if (!relevantEvent?.args?.localAddress) {
-            throw new Error(
-                `CreatedWrappedToken event not found after ${maxAttempts} attempts.\n` +
-                `The enclave should have created a synthetic transaction to process relay message.\n` +
-                `Check enclave logs for: docker logs sequencer-host 2>&1 | grep -i "CreatedWrappedToken\\|wrapped"`
-            );
-        }
-        
-        l2TokenAddress = relevantEvent.args.localAddress;
-        console.log(`L2 wrapped token created at: ${l2TokenAddress}`);
-        
-        // 4. register L2 token address in NetworkConfig
-        console.log('\n[STEP 4] Registering L2 token in NetworkConfig...');
-        
-        const existingAddr = await networkConfig.additionalAddresses(l2TokenKey);
-        if (existingAddr !== ethers.ZeroAddress) {
-            console.log(`Token "${l2TokenKey}" already registered at ${existingAddr}`);
-            if (existingAddr.toLowerCase() !== l2TokenAddress.toLowerCase()) {
-                console.warn(`WARNING: Registered address (${existingAddr}) doesn't match created L2 token (${l2TokenAddress})`);
-                console.warn('This may indicate a previous failed run. Consider manual verification.');
-            } else {
-                console.log('L2 token already registered with correct address');
-            }
+        const tenConfig = await fetchRpcConfig(l2RpcUrl);
+        const tenConfigAddr = tenConfig.AdditionalContracts?.[l2TokenKey];
+
+        if (tenConfigAddr?.toLowerCase() === l2TokenAddress.toLowerCase()) {
+            console.log(`Verified in ten_config: ${l2TokenKey} = ${tenConfigAddr}`);
+        } else if (tenConfigAddr) {
+            console.warn(`ten_config mismatch for ${l2TokenKey}: ${tenConfigAddr}`);
         } else {
-            console.log(`Adding L2 token to NetworkConfig with key: "${l2TokenKey}"...`);
-            const registerTx = await networkConfig.addAdditionalAddress(l2TokenKey, l2TokenAddress);
-            console.log(`Transaction hash: ${registerTx.hash}`);
-            
-            const registerReceipt = await registerTx.wait();
-            console.log(`Registered in block: ${registerReceipt?.blockNumber}`);
-            
-            const registeredAddr = await networkConfig.additionalAddresses(l2TokenKey);
-            if (registeredAddr.toLowerCase() !== l2TokenAddress.toLowerCase()) {
-                throw new Error(`Registration failed: expected ${l2TokenAddress}, got ${registeredAddr}`);
-            }
+            console.warn(`${l2TokenKey} not found in ten_config yet`);
         }
     } catch (error) {
-        console.error('Error querying L2 events or registering token:', error);
-        throw error;
+        console.warn(`Could not verify via ten_config: ${String(error)}`);
     }
-    
-    // 5. verify registration via ten_config RPC
-    console.log('\n[STEP 5] Verifying registration via ten_config...');
-    
-    try {
-        const response = await fetch(l2RpcUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                jsonrpc: '2.0',
-                method: 'ten_config',
-                params: [],
-                id: 1
-            })
-        });
-        
-        const data = await response.json();
-        if (data.result && data.result.AdditionalContracts) {
-            const registeredAddress = data.result.AdditionalContracts[l2TokenKey];
-            if (registeredAddress && registeredAddress.toLowerCase() === l2TokenAddress.toLowerCase()) {
-                console.log(`Verified: ${l2TokenKey} = ${registeredAddress}`);
-            } else if (registeredAddress) {
-                console.warn(`Warning: Address mismatch in ten_config!`);
-                console.warn(`Expected: ${l2TokenAddress}`);
-                console.warn(`Got: ${registeredAddress}`);
-            } else {
-                console.warn(`Warning: ${l2TokenKey} not found in ten_config (may need time to sync)`);
-            }
-        } else {
-            console.warn('Could not verify via ten_config (RPC may not be ready)');
-        }
-    } catch (error) {
-        console.warn('Could not verify via ten_config:', error);
-    }
-    
-    console.log('\n=== Token whitelisting and registration completed successfully ===');
+}
+
+const whitelistAndRegisterToken = async function (): Promise<void> {
+    console.log('Starting token whitelisting and L2 registration...');
+    const config = getScriptConfig();
+
     console.table({
-        'L1 Token Address': tokenAddress,
+        'L1 Token Address': config.tokenAddress,
+        'Token Name': config.tokenName,
+        'Token Symbol': config.tokenSymbol,
+        'NetworkConfig': config.networkConfigAddr,
+        'L1 RPC URL': config.l1RpcUrl,
+        'L2 RPC URL': config.l2RpcUrl,
+        'Network Env': config.networkEnv,
+        'L2 Chain ID': config.l2ChainId
+    });
+
+    console.log('[1/7] Querying network addresses...');
+    const { networkConfig, addresses } = await step1QueryNetworkAddresses(config.networkConfigAddr);
+
+    console.log('[2/7] Whitelisting token on L1 bridge...');
+    const { whitelistReceipt, l1MessageBus } = await step2WhitelistToken(
+        addresses.l1BridgeAddress,
+        addresses.l1MessageBusAddress,
+        config.tokenAddress,
+        config.tokenName,
+        config.tokenSymbol
+    );
+
+    console.log('[3/7] Extracting cross-chain message...');
+    const crossChainMessage = step3ExtractCrossChainMessage(whitelistReceipt, l1MessageBus);
+
+    console.log('[4/7] Waiting for L2 message finalization (via gateway)...');
+    const authenticatedL2RpcUrl = await step4WaitForMessageFinalization(config.l2RpcUrl, config.l2PrivateKey, crossChainMessage);
+
+    const l2Network = ethers.Network.from({ name: `ten-${config.networkEnv}`, chainId: config.l2ChainId });
+    const l2Provider = new ethers.JsonRpcProvider(authenticatedL2RpcUrl, l2Network, { staticNetwork: l2Network });
+    const l2Signer = new ethers.Wallet(config.l2PrivateKey, l2Provider);
+
+    console.log('[5/7] Prefunding L2 signer...');
+    await step5PrefundL2SignerIfNeeded(addresses.l1BridgeAddress, l2Signer, l2Provider);
+
+    console.log('[6/7] Relaying message on L2...');
+    await step5RelayMessageOnL2(addresses.l2CrossChainMessengerAddress, l2Signer, crossChainMessage);
+
+    console.log('[7/7] Waiting for wrapped token creation...');
+    const l2TokenAddress = await step6GetWrappedTokenAddress(addresses.l2BridgeAddress, l2Signer, config.tokenAddress);
+
+    console.log('[8/8] Registering wrapped token in NetworkConfig...');
+    const l2TokenKey = `L2_${config.tokenSymbol}`;
+    await step7RegisterWrappedToken(networkConfig, l2TokenKey, l2TokenAddress);
+
+    console.log('Verifying registration via ten_config...');
+    await verifyViaTenConfig(authenticatedL2RpcUrl, l2TokenKey, l2TokenAddress);
+
+    console.log('Token whitelisting and registration completed successfully.');
+    console.table({
+        'L1 Token Address': config.tokenAddress,
         'L2 Token Address': l2TokenAddress,
-        'Token Name': tokenName,
-        'Token Symbol': tokenSymbol,
+        'Token Name': config.tokenName,
+        'Token Symbol': config.tokenSymbol,
         'NetworkConfig Key': l2TokenKey,
-        'L1 Bridge Address': l1BridgeAddress,
-        'NetworkConfig Address': networkConfigAddr
+        'L1 Bridge Address': addresses.l1BridgeAddress,
+        'NetworkConfig Address': config.networkConfigAddr
     });
 }
 

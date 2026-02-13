@@ -125,35 +125,19 @@ jobs:
             TESTNET_TYPE=${TESTNET_TYPE_RAW%-testnet}
           fi
 
-          # Get L2 RPC URL from vars (like the gateway workflow does)
-          L2_RPC_URL="${{ vars.L2_RPC_URL_VALIDATOR }}"
-          
-          # Parse L2 RPC URL to extract host and port
-          L2_HOST=$(echo $L2_RPC_URL | sed -E 's|^https?://([^:/]+).*|\1|')
-          L2_PORT=$(echo $L2_RPC_URL | sed -E 's|^https?://[^:]+:([0-9]+).*|\1|')
-          
-          # Default to 80 if no port specified
-          if [ "$L2_PORT" = "$L2_RPC_URL" ]; then
-            L2_PORT=80
-          fi
-          
-          # WebSocket port is typically HTTP port + 1
-          L2_WS_PORT=$((L2_PORT + 1))
-          
-          echo "L2 RPC URL: $L2_RPC_URL"
-          echo "L2 Host: $L2_HOST"
-          echo "L2 HTTP Port: $L2_PORT"
-          echo "L2 WS Port: $L2_WS_PORT"
+          # External L2 gateway URL
+          L2_GATEWAY_URL="${{ vars.L2_RPC_URL_VALIDATOR }}"
+          echo "L2 Gateway URL: $L2_GATEWAY_URL"
+          echo "Network env: $TESTNET_TYPE"
           
           # Run token whitelisting script
           go run ./testnet/launcher/bridgetokenwhitelist/cmd \
           -token_address="${{ github.event.inputs.token_address }}" \
           -token_name="${{ github.event.inputs.token_name }}" \
           -token_symbol="${{ github.event.inputs.token_symbol }}" \
+          -network_env="$TESTNET_TYPE" \
           -l1_http_url=${{ secrets.L1_HTTP_URL }} \
-          -l2_host="$L2_HOST" \
-          -l2_http_port="$L2_PORT" \
-          -l2_ws_port="$L2_WS_PORT" \
+          -l2_gateway_url="$L2_GATEWAY_URL" \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
           -network_config_addr="${{ steps.parse.outputs.network_config }}"

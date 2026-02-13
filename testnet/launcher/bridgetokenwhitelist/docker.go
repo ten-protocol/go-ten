@@ -7,7 +7,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -32,23 +31,18 @@ func NewBridgeTokenWhitelister(cfg *Config) (*BridgeTokenWhitelister, error) {
 func (w *BridgeTokenWhitelister) Start() error {
 	fmt.Printf("Starting bridge token whitelisting with config: %s\n", w.cfg)
 
-	// Use entrypoint.sh to start wallet extension first (like l2contractdeployer does)
+	if w.cfg.l2GatewayURL == "" {
+		return fmt.Errorf("l2 gateway url is required")
+	}
+
 	cmds := []string{
 		"/bin/sh",
-		"/home/obscuro/go-obscuro/entrypoint.sh",
-		"run",
-		"scripts/bridge/whitelist_and_register_tokens.ts",
-		"--network",
-		"layer1",
-		"--verbose",
+		"-c",
+		"npx hardhat run scripts/bridge/whitelist_and_register_tokens.ts --network layer1 --verbose",
 	}
 
 	envs := map[string]string{
-		// Wallet extension config (proxies to L2 node)
-		"L2_HOST":         w.cfg.l2Host,
-		"L2_HTTP_PORT":    strconv.Itoa(w.cfg.l2HTTPPort),
-		"L2_WS_PORT":      strconv.Itoa(w.cfg.l2WSPort),
-		"NETWORK_CHAINID": "443",
+		"NETWORK_ENV": w.cfg.networkEnv,
 
 		// Network config for Hardhat
 		"NETWORK_JSON": fmt.Sprintf(`
@@ -61,14 +55,14 @@ func (w *BridgeTokenWhitelister) Start() error {
 				"accounts": ["%s"]
 			},
 			"layer2": {
-				"url": "http://127.0.0.1:3000/v1/",
+				"url": "%s",
 				"useGateway": true,
 				"live": false,
 				"saveDeployments": true,
 				"companionNetworks": { "layer1": "layer1" },
 				"accounts": ["%s"]
 			}
-		}`, w.cfg.l1HTTPURL, w.cfg.privateKey, w.cfg.privateKey),
+		}`, w.cfg.l1HTTPURL, w.cfg.privateKey, w.cfg.l2GatewayURL, w.cfg.privateKey),
 
 		// Token whitelisting params
 		"TOKEN_ADDRESS":       w.cfg.tokenAddress,
