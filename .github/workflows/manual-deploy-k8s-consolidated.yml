@@ -767,7 +767,7 @@ jobs:
           for app_suffix in ${DEFAULT_APPS}; do
             app="${TESTNET_SHORT_NAME}-${app_suffix}"
             echo "  🗑️  Deleting: $app"
-            if ! argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes 2>&1 | tee /tmp/argocd_output.txt; then
+            if ! argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes --wait 2>&1 | tee /tmp/argocd_output.txt; then
               if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
                 echo "     ℹ️  App not found (this is OK)"
               else
@@ -775,9 +775,8 @@ jobs:
                 exit 1
               fi
             else
-              echo "     ✅ Deleted"
+              echo "     ✅ Deleted (cascade complete)"
             fi
-            sleep 2
           done
 
           # Delete additional apps if specified
@@ -786,7 +785,7 @@ jobs:
             echo "Additional apps to delete: ${ADDITIONAL_APPS}"
             for app in ${ADDITIONAL_APPS}; do
               echo "  🗑️  Deleting: $app"
-              if ! argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes 2>&1 | tee /tmp/argocd_output.txt; then
+              if ! argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes --wait 2>&1 | tee /tmp/argocd_output.txt; then
                 if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
                   echo "     ℹ️  App not found (this is OK)"
                 else
@@ -794,9 +793,8 @@ jobs:
                   exit 1
                 fi
               else
-                echo "     ✅ Deleted"
+                echo "     ✅ Deleted (cascade complete)"
               fi
-              sleep 2
             done
           fi
           
@@ -818,8 +816,8 @@ jobs:
           fi
           
           echo ""
-          echo "⏳ Waiting 10 seconds for child apps to be created..."
-          sleep 10
+          echo "⏳ Waiting 30 seconds for child apps to be created..."
+          sleep 30
           
           echo ""
           echo "✅ Destructive delete and recreate complete"
