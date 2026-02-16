@@ -47,7 +47,7 @@ on:
         default: 'log_level=3,max_gas_gwei=1.5,sync_timeout=10m,use_azure_hsm=no'
 
       destructive_options:
-        description: 'Destructive deployment options (format: node_selectors=sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4|additional_apps=gateway,tools,postgres-client)'
+        description: 'Destructive deployment options (format: node_selectors=sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4)'
         required: false
         type: string
 
@@ -72,7 +72,6 @@ jobs:
       NEEDS_APPROVAL: ${{ steps.setup.outputs.NEEDS_APPROVAL }}
       CONFIG_PATH: ${{ steps.setup.outputs.CONFIG_PATH }}
       CHILD_APPS: ${{ steps.setup.outputs.CHILD_APPS }}
-      ADDITIONAL_APPS_TO_DELETE: ${{ steps.setup.outputs.ADDITIONAL_APPS_TO_DELETE }}
 
     steps:
       - name: 'Check confirmation for production envs'
@@ -133,29 +132,6 @@ jobs:
               ;;
           esac
 
-          # Parse destructive_options (if provided, destructive only)
-          # Format: node_selectors=sequencer=node1,validator-01=node2,validator-02=node3,gateway=node4|additional_apps=gateway,tools,postgres-client
-          DESTRUCTIVE_OPTS="${{ github.event.inputs.destructive_options }}"
-
-          # Extract additional_apps from destructive_options
-          if [[ "$DESTRUCTIVE_OPTS" =~ additional_apps=([^|]*) ]]; then
-            ADDITIONAL_APPS="${BASH_REMATCH[1]}"
-            if [[ -n "$ADDITIONAL_APPS" ]]; then
-              # Convert comma-separated to environment-prefixed list
-              IFS=',' read -ra APPS <<< "$ADDITIONAL_APPS"
-              PREFIXED_APPS=""
-              for app in "${APPS[@]}"; do
-                app=$(echo "$app" | xargs)  # trim whitespace
-                prefixed_app="${SHORT_NAME}-${app}"
-                PREFIXED_APPS="$PREFIXED_APPS $prefixed_app"
-              done
-              echo "ADDITIONAL_APPS_TO_DELETE=$PREFIXED_APPS" >> $GITHUB_OUTPUT
-            else
-              echo "ADDITIONAL_APPS_TO_DELETE=" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "ADDITIONAL_APPS_TO_DELETE=" >> $GITHUB_OUTPUT
-          fi
 
   # ============================================================================
   # APPROVAL (mandatory for sepolia/mainnet, skipped for dev/uat)
@@ -207,11 +183,10 @@ jobs:
             echo "  1. Build & push images (if enabled)"
             echo "  2. Update ten-apps config"
             echo "  3. Deploy L1 contracts"
-            echo "  4. Delete child apps (sequencer, validators)"
-            echo "  5. Sync parent app (recreates children)"
-            echo "  6. Sync all ArgoCD apps"
-            echo "  7. Wait for apps to be healthy"
-            echo "  8. Auto-trigger L2 deployment"
+            echo "  4. Sync parent app (picks up new config)"
+            echo "  5. Sync all child apps (PreSync hooks clean PVCs)"
+            echo "  6. Wait for apps to be healthy"
+            echo "  7. Auto-trigger L2 deployment"
             echo ""
             echo "⚠️  WARNING: This will cause downtime!"
           else
@@ -361,7 +336,7 @@ jobs:
     if: |
       always() &&
       needs.validate-inputs.result == 'success' &&
-      (needs.build-images.result == 'success' || github.event.inputs.destructive_options != '')
+      (needs.build-images.result == 'success' || needs.build-images.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -692,146 +667,15 @@ jobs:
           fi
 
   # ============================================================================
-  # ARGOCD - DELETE CHILD APPS (Destructive only)
-  # ============================================================================
-  argocd-delete-child-apps:
-    needs: [validate-inputs, deploy-l1-contracts, update-l1-config]
-    if: |
-      always() &&
-      needs.validate-inputs.result == 'success' &&
-      needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
-      (needs.update-l1-config.result == 'success' || needs.update-l1-config.result == 'skipped')
-    runs-on: ubuntu-latest
-    environment:
-      name: ${{ github.event.inputs.testnet_type }}
-    steps:
-      - name: 'Install ArgoCD CLI'
-        run: |
-          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          chmod +x /usr/local/bin/argocd
-
-      - name: 'Login to ArgoCD'
-        env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
-          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
-        run: |
-          set -e
-          
-          echo "🔐 Logging in to ArgoCD server: ${ARGOCD_SERVER}"
-          
-          if [[ -z "${ARGOCD_SERVER}" ]] || [[ -z "${ARGOCD_USERNAME}" ]] || [[ -z "${ARGOCD_PASSWORD}" ]]; then
-            echo "❌ ERROR: ArgoCD credentials not set!"
-            exit 1
-          fi
-          
-          argocd login "${ARGOCD_SERVER}" \
-            --username "${ARGOCD_USERNAME}" \
-            --password "${ARGOCD_PASSWORD}" \
-            --insecure \
-            --plaintext
-          
-          echo "✅ Successfully logged in to ArgoCD"
-
-      - name: 'Delete ArgoCD child applications and sync parent'
-        env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          DEFAULT_APPS: "sequencer validator-01 validator-02"
-          ADDITIONAL_APPS: ${{ needs.validate-inputs.outputs.ADDITIONAL_APPS_TO_DELETE }}
-          TESTNET_SHORT_NAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
-        run: |
-          set -e
-
-          echo "🔥 DESTRUCTIVE DEPLOYMENT: Delete child apps and sync parent"
-          echo "Environment: ${{ github.event.inputs.testnet_type }}"
-          echo ""
-          
-          # Validate required variables
-          if [[ -z "${ARGOCD_SERVER}" ]]; then
-            echo "❌ ERROR: ARGOCD_SERVER is not set!"
-            exit 1
-          fi
-          
-          # Determine parent app name based on environment
-          PARENT_APP="ten-${TESTNET_SHORT_NAME}-apps"
-          echo "📌 Parent app: $PARENT_APP"
-          echo ""
-
-          # Step 1: Delete child apps
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "STEP 1: Delete child applications"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          
-          # Always delete default apps (sequencer, validator-01, validator-02)
-          echo "Default apps to delete: sequencer, validator-01, validator-02"
-          for app_suffix in ${DEFAULT_APPS}; do
-            app="${TESTNET_SHORT_NAME}-${app_suffix}"
-            echo "  🗑️  Deleting: $app"
-            if ! argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes --wait 2>&1 | tee /tmp/argocd_output.txt; then
-              if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
-                echo "     ℹ️  App not found (this is OK)"
-              else
-                echo "     ❌ Failed to delete app"
-                exit 1
-              fi
-            else
-              echo "     ✅ Deleted (cascade complete)"
-            fi
-          done
-
-          # Delete additional apps if specified
-          if [[ -n "${ADDITIONAL_APPS}" ]]; then
-            echo ""
-            echo "Additional apps to delete: ${ADDITIONAL_APPS}"
-            for app in ${ADDITIONAL_APPS}; do
-              echo "  🗑️  Deleting: $app"
-              if ! argocd app delete "$app" --server "${ARGOCD_SERVER}" --cascade --yes --wait 2>&1 | tee /tmp/argocd_output.txt; then
-                if grep -q "NotFound\|not found" /tmp/argocd_output.txt; then
-                  echo "     ℹ️  App not found (this is OK)"
-                else
-                  echo "     ❌ Failed to delete app"
-                  exit 1
-                fi
-              else
-                echo "     ✅ Deleted (cascade complete)"
-              fi
-            done
-          fi
-          
-          echo ""
-          echo "✅ Child apps deleted"
-          echo ""
-          
-          # Step 2: Sync parent app to recreate child apps
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "STEP 2: Sync parent app to recreate children"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-          echo "🔄 Syncing parent app: $PARENT_APP"
-          
-          if argocd app sync "$PARENT_APP" --server "${ARGOCD_SERVER}" --grpc-web; then
-            echo "✅ Parent app synced - child apps should be recreated"
-          else
-            echo "❌ Failed to sync parent app"
-            exit 1
-          fi
-          
-          echo ""
-          echo "⏳ Waiting 30 seconds for child apps to be created..."
-          sleep 30
-          
-          echo ""
-          echo "✅ Destructive delete and recreate complete"
-          echo "   Child apps will be fully synced in the next job"
-
-  # ============================================================================
   # ARGOCD - SYNC APPLICATIONS
   # ============================================================================
   argocd-sync-apps:
-    needs: [validate-inputs, argocd-delete-child-apps]
+    needs: [validate-inputs, update-ten-apps-config, update-l1-config]
     if: |
       always() &&
       needs.validate-inputs.result == 'success' &&
-      (needs.argocd-delete-child-apps.result == 'success' || needs.argocd-delete-child-apps.result == 'skipped')
+      needs.update-ten-apps-config.result == 'success' &&
+      (needs.update-l1-config.result == 'success' || needs.update-l1-config.result == 'skipped')
     runs-on: ubuntu-latest
     environment:
       name: ${{ github.event.inputs.testnet_type }}
@@ -875,6 +719,27 @@ jobs:
           [[ "$ADVANCED_CONFIG" =~ sync_timeout=([^ ,]+) ]] && SYNC_TIMEOUT="${BASH_REMATCH[1]}"
           echo "SYNC_TIMEOUT=$SYNC_TIMEOUT" >> $GITHUB_OUTPUT
 
+      - name: 'Sync parent app (destructive only)'
+        if: needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          TESTNET_SHORT_NAME: ${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}
+        run: |
+          set -e
+
+          PARENT_APP="ten-${TESTNET_SHORT_NAME}-apps"
+          echo "🔄 Syncing parent app: $PARENT_APP (to pick up new config from ten-apps)"
+
+          if argocd app sync "$PARENT_APP" --server "${ARGOCD_SERVER}" --grpc-web; then
+            echo "✅ Parent app synced - child apps will pick up new values"
+          else
+            echo "❌ Failed to sync parent app"
+            exit 1
+          fi
+
+          echo "⏳ Waiting 30 seconds for child apps to detect changes..."
+          sleep 30
+
       - name: 'Sync ArgoCD child applications'
         id: sync
         env:
@@ -886,9 +751,8 @@ jobs:
           set -e
 
           echo "🔄 Syncing ArgoCD child applications"
-          echo "Strategy: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && 'destructive (full app sync with all resources)' || 'non-destructive (only OutOfSync resources)' }}"
-          
-          # Validate required variables
+          echo "Strategy: ${{ needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' && 'destructive (full app sync with PreSync PVC cleanup hooks)' || 'non-destructive (only OutOfSync resources)' }}"
+
           if [[ -z "${ARGOCD_SERVER}" ]]; then
             echo "❌ ERROR: ARGOCD_SERVER is not set!"
             exit 1
@@ -906,40 +770,14 @@ jobs:
             echo "Processing app: $app"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-            if [[ "${IS_DESTRUCTIVE}" == "true" ]]; then
-              echo "  ⏳ Waiting for app to be ready (not deleting)..."
-              for i in $(seq 1 60); do
-                app_check=$(argocd app get "$app" --server "${ARGOCD_SERVER}" -o json 2>&1) || true
-                if echo "$app_check" | grep -q "NotFound\|not found"; then
-                  echo "    Attempt $i/60: app not found yet, waiting 10s..."
-                  sleep 10
-                elif echo "$app_check" | jq -e '.metadata.deletionTimestamp // empty' >/dev/null 2>&1; then
-                  echo "    Attempt $i/60: app has deletionTimestamp, still deleting, waiting 10s..."
-                  sleep 10
-                elif echo "$app_check" | grep -q '"operation"' && echo "$app_check" | jq -e '.status.operationState.phase == "Running"' >/dev/null 2>&1; then
-                  echo "    Attempt $i/60: app has running operation, waiting 10s..."
-                  sleep 10
-                else
-                  echo "    App is ready (no deletionTimestamp)"
-                  break
-                fi
-                if [[ $i -eq 60 ]]; then
-                  echo "  ❌ Timed out waiting for $app to be ready"
-                  sync_failed=true
-                  failed_apps="$failed_apps $app"
-                  continue 2
-                fi
-              done
-            fi
-
             app_status=$(argocd app get "$app" --server "${ARGOCD_SERVER}" -o json)
             sync_status=$(echo "$app_status" | jq -r '.status.sync.status // "Unknown"')
             echo "  📊 Overall sync status: $sync_status"
 
             if [[ "${IS_DESTRUCTIVE}" == "true" ]]; then
-              echo "  🔥 DESTRUCTIVE MODE: Full app sync (includes sync waves/hooks)"
+              echo "  🔥 DESTRUCTIVE MODE: Full app sync (PreSync hooks will clean PVCs, then fresh resources created)"
 
-              if argocd app sync "$app" --server "${ARGOCD_SERVER}"; then
+              if argocd app sync "$app" --server "${ARGOCD_SERVER}" --timeout ${SYNC_TIMEOUT%%m*}; then
                 echo "  ✅ Full sync completed: $app"
                 synced_count=$((synced_count + 1))
               else
@@ -947,7 +785,7 @@ jobs:
                 sync_failed=true
                 failed_apps="$failed_apps $app"
               fi
-              
+
             else
               # NON-DESTRUCTIVE: Only sync OutOfSync resources (skip sync waves/hooks)
               echo "  📦 NON-DESTRUCTIVE MODE: Syncing only OutOfSync resources"
