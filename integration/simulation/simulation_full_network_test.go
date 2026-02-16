@@ -23,7 +23,6 @@ func TestFullNetworkMonteCarloSimulation(t *testing.T) {
 	wallets := params.NewSimWallets(numberOfSimWallets, numberOfNodes, integration.EthereumChainID, integration.TenChainID)
 
 	simParams := &params.SimParams{
-
 		NumberOfNodes:              numberOfNodes,
 		AvgBlockDuration:           2 * time.Second,
 		SimulationTime:             120 * time.Second,
