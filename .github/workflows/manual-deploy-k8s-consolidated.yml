@@ -779,7 +779,21 @@ jobs:
               echo "  🔥 DESTRUCTIVE MODE: Full app sync (PreSync hooks will clean PVCs, then fresh resources created)"
 
               TIMEOUT_SECONDS=$(( ${SYNC_TIMEOUT%%m*} * 60 ))
-              if argocd app sync "$app" --server "${ARGOCD_SERVER}" --timeout $TIMEOUT_SECONDS; then
+              sync_success=false
+              for attempt in $(seq 1 3); do
+                if argocd app sync "$app" --server "${ARGOCD_SERVER}" --timeout $TIMEOUT_SECONDS 2>&1 | tee /tmp/sync_output.txt; then
+                  sync_success=true
+                  break
+                fi
+                if grep -q "another operation is already in progress" /tmp/sync_output.txt; then
+                  echo "  ⏳ Another sync in progress, waiting 30s before retry (attempt $attempt/3)..."
+                  sleep 30
+                else
+                  break
+                fi
+              done
+
+              if [[ "$sync_success" == "true" ]]; then
                 echo "  ✅ Full sync completed: $app"
                 synced_count=$((synced_count + 1))
               else
