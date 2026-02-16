@@ -465,6 +465,7 @@ jobs:
               gw_file="$ENV_DIR/values-${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-gateway.yaml"
               if [ -f "$gw_file" ]; then
                 yq eval -i ".gateway.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[gateway]}\"" "$gw_file"
+                yq eval -i ".backend.nodeSelector.[\"kubernetes.io/hostname\"] = \"${node_selectors[gateway]}\"" "$gw_file" 2>/dev/null || true
                 echo "✅ Gateway node selector updated"
               fi
             fi
