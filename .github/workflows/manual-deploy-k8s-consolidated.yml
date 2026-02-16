@@ -777,7 +777,8 @@ jobs:
             if [[ "${IS_DESTRUCTIVE}" == "true" ]]; then
               echo "  🔥 DESTRUCTIVE MODE: Full app sync (PreSync hooks will clean PVCs, then fresh resources created)"
 
-              if argocd app sync "$app" --server "${ARGOCD_SERVER}" --timeout ${SYNC_TIMEOUT%%m*}; then
+              TIMEOUT_SECONDS=$(( ${SYNC_TIMEOUT%%m*} * 60 ))
+              if argocd app sync "$app" --server "${ARGOCD_SERVER}" --timeout $TIMEOUT_SECONDS; then
                 echo "  ✅ Full sync completed: $app"
                 synced_count=$((synced_count + 1))
               else
