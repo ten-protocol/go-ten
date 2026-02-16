@@ -18,10 +18,10 @@ const (
 	selectBatch             = "SELECT sequence, hash, height, ext_batch FROM batch_host b"
 	selectExtBatch          = "SELECT ext_batch FROM batch_host"
 	selectLatestBatch       = "SELECT sequence, hash, height, ext_batch FROM batch_host ORDER BY sequence DESC LIMIT 1"
-	selectTxsAndBatch       = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence WHERE b.hash = ?"
+	selectTxsAndBatch       = "SELECT t.hash FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence" + whereBHash
+	countTxsInBatch         = "SELECT COUNT(*) FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence" + whereBHash
 	selectBatchSeqByTx      = "SELECT b_sequence FROM transaction_host WHERE hash = ?"
 	selectTxBySeq           = "SELECT hash FROM transaction_host WHERE b_sequence = ?"
-	selectBatchTxs          = "SELECT t.hash, b.ext_batch FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence"
 	selectSumBatchSizes     = "SELECT SUM(txs_size) FROM batch_host WHERE sequence >= ?"
 	insertBatch             = "INSERT INTO batch_host (sequence, hash, height, ext_batch, txs_size) VALUES (?, ?, ?, ?, ?)"
 	insertTransactions      = "INSERT INTO transaction_host (hash, b_sequence) VALUES "
@@ -260,18 +260,20 @@ func GetBatchByHeight(db HostDB, height *big.Int) (*common.PublicBatch, error) {
 
 // GetBatchTransactions returns the TransactionListingResponse for a given batch hash
 func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *common.QueryPagination) (*common.TransactionListingResponse, error) {
-	orderQuery := " ORDER BY t.id DESC "
-	query := selectBatchTxs + whereBHash + orderQuery + paginationQuery
-	countQuery := "SELECT COUNT(*) FROM transaction_host t JOIN batch_host b ON t.b_sequence = b.sequence" + whereBHash
-	reboundQuery := db.GetSQLDB().Rebind(query)
-	reboundCountQuery := db.GetSQLDB().Rebind(countQuery)
-	var total uint64
-	err := db.GetSQLDB().QueryRow(reboundCountQuery, batchHash.Bytes()).Scan(&total)
+	// fetch the batch header once since all transactions share the same batch
+	batchHeader, err := GetBatchHeader(db, batchHash)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get total count: %w", err)
+		return nil, fmt.Errorf("failed to fetch batch header: %w", err)
 	}
 
-	rows, err := db.GetSQLDB().Query(reboundQuery, batchHash.Bytes(), int64(pagination.Size), int64(pagination.Offset))
+	total, err := countBatchTransactions(db, batchHash)
+	if err != nil {
+		return nil, err
+	}
+
+	txQuery := selectTxsAndBatch + " ORDER BY t.id DESC " + paginationQuery
+	reboundTxQuery := db.GetSQLDB().Rebind(txQuery)
+	rows, err := db.GetSQLDB().Query(reboundTxQuery, batchHash.Bytes(), int64(pagination.Size), int64(pagination.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("query execution for select batch transactions failed: %w", err)
 	}
@@ -279,11 +281,8 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 
 	var transactions []common.PublicTransaction
 	for rows.Next() {
-		var (
-			fullHash []byte
-			extBatch []byte
-		)
-		err := rows.Scan(&fullHash, &extBatch)
+		var fullHash []byte
+		err := rows.Scan(&fullHash)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return nil, errutil.ErrNotFound
@@ -291,19 +290,13 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 			return nil, fmt.Errorf("failed to fetch batch transactions: %w", err)
 		}
 
-		b := new(common.ExtBatch)
-		if err := rlp.DecodeBytes(extBatch, b); err != nil {
-			return nil, fmt.Errorf("could not decode ext batch. Cause: %w", err)
-		}
-
-		tx := common.PublicTransaction{
+		transactions = append(transactions, common.PublicTransaction{
 			TransactionHash: gethcommon.BytesToHash(fullHash),
-			BatchHeight:     b.Header.Number,
-			BatchTimestamp:  b.Header.Time,
+			BatchHeight:     batchHeader.Number,
+			BatchTimestamp:  batchHeader.Time,
 			// TODO @will this will be implemented under #3336
 			Finality: common.BatchFinal,
-		}
-		transactions = append(transactions, tx)
+		})
 	}
 
 	if err := rows.Err(); err != nil {
@@ -314,6 +307,17 @@ func GetBatchTransactions(db HostDB, batchHash gethcommon.Hash, pagination *comm
 		TransactionsData: transactions,
 		Total:            total,
 	}, nil
+}
+
+// countBatchTransactions returns the total number of transactions in a batch
+func countBatchTransactions(db HostDB, batchHash gethcommon.Hash) (uint64, error) {
+	reboundQuery := db.GetSQLDB().Rebind(countTxsInBatch)
+	var total uint64
+	err := db.GetSQLDB().QueryRow(reboundQuery, batchHash.Bytes()).Scan(&total)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get batch transaction count: %w", err)
+	}
+	return total, nil
 }
 
 func EstimateRollupSize(db HostDB, fromSeqNo *big.Int) (uint64, error) {
