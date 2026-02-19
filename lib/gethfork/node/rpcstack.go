@@ -237,6 +237,21 @@ func (f *handshakeFilterWriter) Write(p []byte) (int, error) {
 }
 
 func (h *httpServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Apply security headers to all HTTP responses from the RPC gateway.
+	// These are set before any routing so they apply regardless of endpoint or status code.
+	headers := w.Header()
+	headers.Set("X-Frame-Options", "DENY")
+	headers.Set("X-Content-Type-Options", "nosniff")
+	headers.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+	headers.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+	headers.Set("Content-Security-Policy", "frame-ancestors 'self'")
+	if r.TLS != nil {
+		headers.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+	}
+	// Ensure we don't leak implementation version details.
+	headers.Set("Server", "ten-gateway")
+	headers.Del("X-Powered-By")
+
 	// check if ws request and serve if ws enabled
 	ws := h.wsHandler.Load().(*rpcHandler)
 	if ws != nil && isWebsocket(r) {
