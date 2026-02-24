@@ -1,6 +1,10 @@
 # TEN Gateway Documentation
 
-This document focuses on the **TEN Gateway** in this repository.
+The **TEN Gateway** is a component of the TEN network designed to improve the UX.
+
+The ultimate goal is for users to be able to use any standard Ethereum wallets and 
+for developers to use any existing Ethereum library.
+
 
 ## High‑level architecture
 
@@ -12,14 +16,19 @@ JSON‑RPC channel inside the confidential compute environment.
 
 ![Gateway Architecture](../../design/architecture/gw_architecture.png)
 
+The Gateway runs inside a TEE, and clients create (encrypted) HTTPS connections 
+into the enclave. 
+We designed a crypto-economic protocol to guarantee that users are always routed into the enclave.
 
 ## How authentication & viewing keys work
 
-At a high level, users authenticate with the gateway using an **encryption token**
-and a **viewing key** that is cryptographically tied to their wallet accounts. In
-the code this token is often called `userID`, but in this document we always refer
-to it as **`encryptionToken`**. The gateway uses the viewing key to open an
-**encrypted, authenticated channel** to the TEN node on behalf of the user.
+At a high level, users authenticate with the gateway using an **encryption token**.
+The token is linked to a **viewing key** that is cryptographically tied to their wallet accounts. 
+
+Note: In the code, this token is often called `userID`, but in this document we always refer
+to it as **`encryptionToken`**. 
+
+The gateway uses the viewing key to open an **encrypted, authenticated channel** to the TEN node on behalf of the user.
 
 - **1. Create a user & token (`/v1/join`)**
   - Gateway generates a fresh viewing key pair and derives an `encryptionToken`
@@ -40,7 +49,7 @@ to it as **`encryptionToken`**. The gateway uses the viewing key to open an
 - **3. JSON‑RPC calls carry the token**
   - For HTTP/WS JSON‑RPC, a small middleware inspects requests for a hex token
     and attaches it to the context as the **gateway token**.
-  - The wallet extension RPC layer reads this token, validates it, converts it
+  - The gateway RPC layer reads this token, validates it, converts it
     back to `encryptionToken` bytes and loads the corresponding `GWUser` from storage.
 
 - **4. Encrypted RPC from gateway to node**
@@ -48,14 +57,97 @@ to it as **`encryptionToken`**. The gateway uses the viewing key to open an
     `GWUser.AllAccounts()` and builds a `viewingkey.ViewingKey` object that
     includes:
     - the account address,
-    - the viewing key (private & public),
+    - the viewing key,
     - the wallet’s binding signature.
-  - It then creates an encrypted RPC client and calls the TEN node over an
-    encrypted channel using this viewing key.
-  - The node verifies the viewing key + signature and uses it to encrypt/decrypt
-    user‑specific state and to decide whether the call is authorised.
+  - It then creates an encrypted RPC client and calls the TEN node.  The payload is encrypted with the well-known TEN public key.
+  The call itself is signed by the viewing key. Note that the RPC contains the entire signature chain to the account.
+  - The node verifies the viewing key + signature.
 
-- **5. Running actions on behalf of users**
+Note: Users can have multiple accounts in the same wallet, and the gateway must use one of these
+accounts for each call.
+
+
+## Caching
+
+The gateway uses an in‑memory cache (Ristretto) to avoid redundant RPC calls and
+to smooth load on the TEN node.
+
+The caching key and expiration are dependent on the type of call.
+
+Key properties:
+
+- **Backend**: `cache.RistrettoCache` (see `cache/RistrettoCache.go`).
+- **Strategies** (via `cache.Cfg` / `cache.WithCache`):
+  - `LongLiving` – used for data that changes rarely (e.g. network config).  
+    Default TTL: **5 hours**.
+  - `LatestBatch` – used for short‑lived data tied to the latest batch
+    (e.g. health and network‑health).  
+    Default TTL: **2 seconds**, with custom eviction logic when a new batch is
+    processed.
+  - `NoCache` – bypass the cache completely.
+
+You can globally disable short‑living responses by setting `--disableCaching=true`,
+which makes `LatestBatch` behave as “no cache” to avoid serving stale data.
+
+Additionally, a **singleflight** group is used to ensure that concurrent requests
+for the same key share a single upstream call and reuse the result.
+
+## Session keys
+
+For a dApp‑developer‑focused overview of native session keys and account abstraction on TEN, see
+[Account Abstraction](https://docs.ten.xyz/docs/write-ten-dapp/session-keys).
+
+Session keys are **ephemeral accounts managed by the gateway** on behalf of a
+user. They are designed to support dApps and short‑lived sessions without
+exposing long‑term keys.
+
+### Session key model
+
+- Each user can have **multiple session keys** (up to an 100 accounts).
+- Each session key:
+  - is a normal Ethereum account from the network’s point of view,
+  - is linked to the user’s viewing key,
+  - can be used to sign and submit transactions via the gateway.
+
+The core implementation lives in `services/sk_manager.go`:
+
+- `CreateSessionKey` generates a fresh keypair, signs over the user’s viewing
+  key and persists the session key in storage.
+- `SignTx` signs transactions using the session key’s private key.
+- `DeleteSessionKey` can optionally sweep remaining funds back to the user’s
+  primary account before deleting the key.
+
+### Activity tracking and expiration
+
+To avoid unbounded growth and stale keys, the gateway tracks activity and
+optionally **expires** inactive session keys:
+
+- `SessionKeyActivityTracker` (`services/session_key_activity.go`) keeps
+  in‑memory records of:
+  - last active time,
+  - associated user identifier (the same `encryptionToken`).
+
+- `SessionKeyExpirationService` (`services/session_key_expiration.go`) runs in
+  the background and:
+  - periodically scans for session keys older than
+    `--sessionKeyExpirationThreshold`,
+  - for each candidate:
+    - reloads the owning user from storage,
+    - attempts to move funds from the session key back to the user’s primary
+      account using the gateway’s `TxSender`,
+    - removes the key from the activity tracker and persists updated activity
+      information.
+
+The service is controlled by:
+
+- **`--sessionKeyExpirationThreshold`** – how long a session key may stay idle
+  before it is treated as expired (set to `0` to disable).
+- **`--sessionKeyExpirationInterval`** – how often the expiration scan runs.
+
+This mechanism lets you safely use many short‑lived session keys for dApps,
+while automatically cleaning up inactive ones and protecting user funds.
+
+- **5. Forwarding user calls**
   - **Reads** (balances, transactions, logs, custom queries) use the encrypted
     viewing‑key channel, so the node only returns data for accounts bound to that
     user.
@@ -433,80 +525,4 @@ with a `Retry-After` header and a JSON body of the form:
 }
 ```
 
-## Caching
 
-The gateway uses an in‑memory cache (Ristretto) to avoid redundant RPC calls and
-to smooth load on the TEN node.
-
-Key properties:
-
-- **Backend**: `cache.RistrettoCache` (see `cache/RistrettoCache.go`).
-- **Strategies** (via `cache.Cfg` / `cache.WithCache`):
-  - `LongLiving` – used for data that changes rarely (e.g. network config).  
-    Default TTL: **5 hours**.
-  - `LatestBatch` – used for short‑lived data tied to the latest batch
-    (e.g. health and network‑health).  
-    Default TTL: **2 seconds**, with custom eviction logic when a new batch is
-    processed.
-  - `NoCache` – bypass the cache completely.
-
-You can globally disable short‑living responses by setting `--disableCaching=true`,
-which makes `LatestBatch` behave as “no cache” to avoid serving stale data.
-
-Additionally, a **singleflight** group is used to ensure that concurrent requests
-for the same key share a single upstream call and reuse the result.
-
-## Session keys
-
-For a dApp‑developer‑focused overview of native session keys and account abstraction on TEN, see
-[Account Abstraction](https://docs.ten.xyz/docs/write-ten-dapp/session-keys).
-
-Session keys are **ephemeral accounts managed by the gateway** on behalf of a
-user. They are designed to support dApps and short‑lived sessions without
-exposing long‑term keys.
-
-### Session key model
-
-- Each user can have **multiple session keys** (up to an 100 accounts).
-- Each session key:
-  - is a normal Ethereum account from the network’s point of view,
-  - is linked to the user’s viewing key,
-  - can be used to sign and submit transactions via the gateway.
-
-The core implementation lives in `services/sk_manager.go`:
-
-- `CreateSessionKey` generates a fresh keypair, signs over the user’s viewing
-  key and persists the session key in storage.
-- `SignTx` signs transactions using the session key’s private key.
-- `DeleteSessionKey` can optionally sweep remaining funds back to the user’s
-  primary account before deleting the key.
-
-### Activity tracking and expiration
-
-To avoid unbounded growth and stale keys, the gateway tracks activity and
-optionally **expires** inactive session keys:
-
-- `SessionKeyActivityTracker` (`services/session_key_activity.go`) keeps
-  in‑memory records of:
-  - last active time,
-  - associated user identifier (the same `encryptionToken`).
-
-- `SessionKeyExpirationService` (`services/session_key_expiration.go`) runs in
-  the background and:
-  - periodically scans for session keys older than
-    `--sessionKeyExpirationThreshold`,
-  - for each candidate:
-    - reloads the owning user from storage,
-    - attempts to move funds from the session key back to the user’s primary
-      account using the gateway’s `TxSender`,
-    - removes the key from the activity tracker and persists updated activity
-      information.
-
-The service is controlled by:
-
-- **`--sessionKeyExpirationThreshold`** – how long a session key may stay idle
-  before it is treated as expired (set to `0` to disable).
-- **`--sessionKeyExpirationInterval`** – how often the expiration scan runs.
-
-This mechanism lets you safely use many short‑lived session keys for dApps,
-while automatically cleaning up inactive ones and protecting user funds.
