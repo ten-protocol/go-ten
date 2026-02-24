@@ -122,7 +122,7 @@ jobs:
               echo "CHILD_APPS=dev-sequencer dev-validator-01 dev-validator-02 dev-gateway dev-ten-tools" >> $GITHUB_OUTPUT
               ;;
             uat-testnet)
-              echo "CHILD_APPS=uat-sequencer uat-validator-01 uat-validator-02 uat-gateway uat-ten-tools" >> $GITHUB_OUTPUT
+              echo "CHILD_APPS=uat-sequencer uat-validator-01 uat-validator-02 uat-gateway uat-ten-tools uat-deploy-jobs" >> $GITHUB_OUTPUT
               ;;
             sepolia-testnet)
               echo "CHILD_APPS=sepolia-sequencer sepolia-validator-01 sepolia-validator-02 sepolia-gateway sepolia-gateway-dexynth sepolia-gateway-pentest sepolia-ten-tools" >> $GITHUB_OUTPUT
@@ -186,7 +186,7 @@ jobs:
             echo "  4. Sync parent app (picks up new config)"
             echo "  5. Sync all child apps (PreSync hooks clean PVCs)"
             echo "  6. Wait for apps to be healthy"
-            echo "  7. Auto-trigger L2 deployment"
+            echo "  7. L2 deploy-jobs run as ArgoCD PostSync hooks"
             echo ""
             echo "⚠️  WARNING: This will cause downtime!"
           else
@@ -403,6 +403,12 @@ jobs:
           done
 
           echo "✅ Image tags updated"
+
+          deploy_jobs_file="$ENV_DIR/values-${{ needs.validate-inputs.outputs.TESTNET_SHORT_NAME }}-deploy-jobs.yaml"
+          if [ -f "$deploy_jobs_file" ]; then
+            echo "  Updating deploy-jobs image tag..."
+            yq eval -i ".image.tag = \"${IMAGE_TAG}\"" "$deploy_jobs_file" 2>/dev/null || true
+          fi
 
           # ⚠️  NODE SELECTORS ONLY FOR DESTRUCTIVE DEPLOYMENTS
           # Extract node_selectors from destructive_options
@@ -1013,28 +1019,30 @@ jobs:
             https://api.github.com/repos/ten-protocol/ten-test/dispatches \
             --data "{\"event_type\": \"$event_type\", \"client_payload\": {\"ref\": \"${{ github.ref_name }}\"}}"
 
-      - name: 'Parse advanced config for L2 trigger'
-        id: parse_l2_config
+      - name: 'Trigger L2 contract deployment (k8s)'
+        if: needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true'
         run: |
           ADVANCED_CONFIG="${{ github.event.inputs.advanced_config }}"
-          LOG_LEVEL="3"
+          LOG_LEVEL=3
           [[ "$ADVANCED_CONFIG" =~ log_level=([^ ,]+) ]] && LOG_LEVEL="${BASH_REMATCH[1]}"
-          echo "LOG_LEVEL=$LOG_LEVEL" >> $GITHUB_OUTPUT
 
-      - name: 'Trigger L2 contract deployment workflow'
-        if: |
-          needs.validate-inputs.outputs.IS_DESTRUCTIVE == 'true' &&
-          needs.wait-argocd-healthy.result == 'success'
-        run: |
-          echo "🚀 Triggering L2 contract deployment workflow..."
-          echo "Branch/Ref: ${{ github.ref_name }}"
-          echo "Testnet: ${{ github.event.inputs.testnet_type }}"
+          CONFIRM_FLAG=""
+          if [[ "${{ github.event.inputs.testnet_type }}" == "sepolia-testnet" || "${{ github.event.inputs.testnet_type }}" == "mainnet" ]]; then
+            CONFIRM_FLAG="-f confirmation=confirm"
+          fi
 
-          gh workflow run manual-deploy-testnet-l2.yml \
+          echo "Triggering k8s L2 contract deployment..."
+          echo "  Environment: ${{ github.event.inputs.testnet_type }}"
+          echo "  Log level: $LOG_LEVEL"
+          echo "  Branch: ${{ github.ref_name }}"
+
+          gh workflow run manual-deploy-k8s-testnet-after-nodes.yml \
             -f testnet_type=${{ github.event.inputs.testnet_type }} \
-            -f log_level=${{ steps.parse_l2_config.outputs.LOG_LEVEL }} \
+            -f log_level=$LOG_LEVEL \
+            $CONFIRM_FLAG \
             --ref ${{ github.ref_name }}
 
-          echo "✅ L2 deployment workflow triggered on branch: ${{ github.ref_name }}"
+          echo "L2 deployment workflow triggered"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
