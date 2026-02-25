@@ -48,7 +48,7 @@ const (
 	RPCClientCmp    = "rpc_client"
 	DeployerCmp     = "deployer"
 	NetwMngCmp      = "network_manager"
-	WalletExtCmp    = "wallet_extension"
+	GatewayCmp      = "gateway"
 	TestGethNetwCmp = "test_geth_network"
 	EthereumL1Cmp   = "l1_host"
 	TenscanCmp      = "tenscan"

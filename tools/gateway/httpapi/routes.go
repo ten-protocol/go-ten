@@ -40,120 +40,120 @@ func generateCookieNameFromDomain(tlsDomain string) string {
 	return "gateway_" + safeName
 }
 
-// NewHTTPRoutes returns the http specific routes
+// NewHTTPRoutes returns the http specific routes.
 // todo - move these to the rpc framework.
-func NewHTTPRoutes(walletExt *services.Services) []node.Route {
+func NewHTTPRoutes(gatewayServices *services.Services) []node.Route {
 	return []node.Route{
 		{
 			Name: common.APIVersion1 + common.PathReady,
-			Func: httpHandler(walletExt, readyRequestHandler),
+			Func: httpHandler(gatewayServices, readyRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathJoin,
-			Func: rateLimitedHttpHandler(walletExt, joinRequestHandler),
+			Func: rateLimitedHttpHandler(gatewayServices, joinRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetToken,
-			Func: restrictiveHttpHandler(walletExt, getTokenRequestHandler),
+			Func: restrictiveHttpHandler(gatewayServices, getTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathSetToken,
-			Func: restrictiveHttpHandler(walletExt, setTokenRequestHandler),
+			Func: restrictiveHttpHandler(gatewayServices, setTokenRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathGetMessage,
-			Func: httpHandler(walletExt, getMessageRequestHandler),
+			Func: httpHandler(gatewayServices, getMessageRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathAuthenticate,
-			Func: httpHandler(walletExt, authenticateRequestHandler),
+			Func: httpHandler(gatewayServices, authenticateRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathQuery,
-			Func: httpHandler(walletExt, queryRequestHandler),
+			Func: httpHandler(gatewayServices, queryRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathRevoke,
-			Func: httpHandler(walletExt, revokeRequestHandler),
+			Func: httpHandler(gatewayServices, revokeRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathHealth,
-			Func: httpHandler(walletExt, healthRequestHandler),
+			Func: httpHandler(gatewayServices, healthRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathNetworkHealth,
-			Func: httpHandler(walletExt, networkHealthRequestHandler),
+			Func: httpHandler(gatewayServices, networkHealthRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathVersion,
-			Func: httpHandler(walletExt, versionRequestHandler),
+			Func: httpHandler(gatewayServices, versionRequestHandler),
 		},
 		{
 			Name: common.APIVersion1 + common.PathNetworkConfig,
-			Func: httpHandler(walletExt, networkConfigRequestHandler),
+			Func: httpHandler(gatewayServices, networkConfigRequestHandler),
 		},
 		{
 			Name: common.PathAdmin + common.PathKeyExchange,
-			Func: httpHandler(walletExt, keyExchangeRequestHandler),
+			Func: httpHandler(gatewayServices, keyExchangeRequestHandler),
 		},
 		{
 			Name: common.PathAdmin + common.PathBackupEncryptionKey,
-			Func: httpHandler(walletExt, backupEncryptionKeyRequestHandler),
+			Func: httpHandler(gatewayServices, backupEncryptionKeyRequestHandler),
 		},
 	}
 }
 
 func httpHandler(
-	walletExt *services.Services,
-	fun func(walletExt *services.Services, conn UserConn),
+	gatewayServices *services.Services,
+	fun func(gatewayServices *services.Services, conn UserConn),
 ) func(resp http.ResponseWriter, req *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		httpRequestHandler(walletExt, resp, req, fun)
+		httpRequestHandler(gatewayServices, resp, req, fun)
 	}
 }
 
 func restrictiveHttpHandler(
-	walletExt *services.Services,
-	fun func(walletExt *services.Services, conn UserConn),
+	gatewayServices *services.Services,
+	fun func(gatewayServices *services.Services, conn UserConn),
 ) func(resp http.ResponseWriter, req *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		restrictiveHttpRequestHandler(walletExt, resp, req, fun)
+		restrictiveHttpRequestHandler(gatewayServices, resp, req, fun)
 	}
 }
 
 // rateLimitedHttpHandler wraps an HTTP handler with rate limiting.
 // It applies both global and per-IP rate limits before processing the request.
 func rateLimitedHttpHandler(
-	walletExt *services.Services,
-	fun func(walletExt *services.Services, conn UserConn),
+	gatewayServices *services.Services,
+	fun func(gatewayServices *services.Services, conn UserConn),
 ) func(resp http.ResponseWriter, req *http.Request) {
 	return func(resp http.ResponseWriter, req *http.Request) {
-		rateLimitedHttpRequestHandler(walletExt, resp, req, fun)
+		rateLimitedHttpRequestHandler(gatewayServices, resp, req, fun)
 	}
 }
 
 // Overall request handler for http requests
-func httpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
-	if walletExt.IsStopping() {
+func httpRequestHandler(gatewayServices *services.Services, resp http.ResponseWriter, req *http.Request, fun func(gatewayServices *services.Services, conn UserConn)) {
+	if gatewayServices.IsStopping() {
 		return
 	}
 	if httputil.EnableCORS(resp, req) {
 		return
 	}
-	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
-	fun(walletExt, userConn)
+	userConn := NewUserConnHTTP(resp, req, gatewayServices.Logger())
+	fun(gatewayServices, userConn)
 }
 
 // Restrictive request handler for endpoints requiring specific origin access
-func restrictiveHttpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
-	if walletExt.IsStopping() {
+func restrictiveHttpRequestHandler(gatewayServices *services.Services, resp http.ResponseWriter, req *http.Request, fun func(gatewayServices *services.Services, conn UserConn)) {
+	if gatewayServices.IsStopping() {
 		return
 	}
-	if httputil.EnableRestrictiveCORS(resp, req, walletExt.Config.FrontendURL) {
+	if httputil.EnableRestrictiveCORS(resp, req, gatewayServices.Config.FrontendURL) {
 		return
 	}
-	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
-	fun(walletExt, userConn)
+	userConn := NewUserConnHTTP(resp, req, gatewayServices.Logger())
+	fun(gatewayServices, userConn)
 }
 
 // rateLimitedHttpRequestHandler handles HTTP requests with rate limiting applied.

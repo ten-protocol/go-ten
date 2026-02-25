@@ -22,7 +22,7 @@ func main() {
 			panic(fmt.Sprintf("could not create log file. Cause: %s", err))
 		}
 	}
-	logger := log.New(log.WalletExtCmp, config.LogLevel, config.LogPath)
+	logger := log.New(log.GatewayCmp, config.LogLevel, config.LogPath)
 
 	logger.Info("Welcome to the TEN gateway")
 	logger.Info("Starting with following config", "config", string(jsonConfig))
@@ -31,7 +31,7 @@ func main() {
 	walletExtContainer := gateway.NewContainerFromConfig(config, logger)
 	err := walletExtContainer.Start()
 	if err != nil {
-		logger.Error("Failed to start wallet extension", "error", err)
+		logger.Error("Failed to start gateway", "error", err)
 		os.Exit(1)
 	}
 

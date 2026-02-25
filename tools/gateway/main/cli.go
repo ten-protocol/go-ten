@@ -12,10 +12,10 @@ const (
 	// Flag names, defaults and usages.
 	walletExtensionHostName    = "host"
 	walletExtensionHostDefault = "127.0.0.1"
-	walletExtensionHostUsage   = "The host where the wallet extension should open the port."
+	walletExtensionHostUsage   = "The host where the gateway should open the port."
 	walletExtensionPortName    = "port"
 	walletExtensionPortDefault = 3000
-	walletExtensionPortUsage   = "The port on which to serve the wallet extension. Default: 3000."
+	walletExtensionPortUsage   = "The port on which to serve the gateway. Default: 3000."
 
 	walletExtensionPortWSName    = "portWS"
 	walletExtensionPortWSDefault = 3001
@@ -35,15 +35,15 @@ const (
 
 	logPathName    = "logPath"
 	logPathDefault = "sys_out"
-	logPathUsage   = "The path to use for the wallet extension's log file"
+	logPathUsage   = "The path to use for the gateway's log file"
 
 	databasePathName    = "databasePath"
 	databasePathDefault = ".obscuro/gateway_database.db"
-	databasePathUsage   = "The path for the wallet extension's database file. Default: .obscuro/gateway_database.db"
+	databasePathUsage   = "The path for the gateway's database file. Default: .obscuro/gateway_database.db"
 
 	logLevelFlagName    = "logLevel"
 	logLevelFlagDefault = "info"
-	logLevelFlagUsage   = "Log level for wallet extension (critical, error, warn, info, debug, trace). Default: info"
+	logLevelFlagUsage   = "Log level for the gateway (critical, error, warn, info, debug, trace). Default: info"
 
 	dbTypeFlagName    = "dbType"
 	dbTypeFlagDefault = "sqlite"
