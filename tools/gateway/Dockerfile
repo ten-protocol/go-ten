@@ -4,7 +4,7 @@
 # build-wallet = copies over the source code and builds the binaries using a compiler cache
 # final = copies over only the executables in an alpine image that doesn't have any additional load.
 
-FROM golang:1.25-alpine as system
+FROM golang:1.25-alpine AS system
 
 # set the base libs to build / run
 RUN apk add build-base bash git
@@ -12,7 +12,7 @@ ENV CGO_ENABLED=1
 ARG TESTNET_TYPE
 
 # Standard build stage that initializes the go dependencies
-FROM system as get-dependencies
+FROM system AS get-dependencies
 # create the base directory
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
@@ -25,7 +25,7 @@ COPY go.sum .
 RUN go mod download
 
 # Build stage that will create a gateway executable
-FROM get-dependencies as build-wallet
+FROM get-dependencies AS build-wallet
 # make sure the geth network code is available
 COPY . /home/obscuro/go-obscuro
 
