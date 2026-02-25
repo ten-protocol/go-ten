@@ -32,7 +32,7 @@ COPY . /home/obscuro/go-obscuro
 # build the gateway executable
 WORKDIR /home/obscuro/go-obscuro/tools/gateway/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    go build -o ../bin/wallet_extension_linux
+    go build -o ../bin/gateway_linux
 
 # Lightweight final build stage. Includes bare minimum to start gateway
 FROM alpine:3.18

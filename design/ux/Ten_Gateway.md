@@ -1,23 +1,23 @@
 # The TEN Gateway - Design
 
-The scope of this document is to design a hosted [Wallet Extension](wallet_extension.md) called the "TEN Gateway" (TG).
+The scope of this document is to design a hosted [gateway component](wallet_extension.md) called the "TEN Gateway" (TG).
 
-The TG will be a superset of the WE functionality, so this document will only cover the additions.
+The TG will be a superset of the existing local gateway functionality, so this document will only cover the additions.
 
 ## High level overview
 
 The TG will be a [Confidential Web Service](https://medium.com/p/983a2a67fc08), running inside SGX.
 
-The current WE is designed to be used by a single user holding multiple addresses across potentially multiple wallets. 
+The current local gateway is designed to be used by a single user holding multiple addresses across potentially multiple wallets. 
 
-The TG must support mutiple users, each with multiple addresses. It can be seen as offering a WE per user.
+The TG must support mutiple users, each with multiple addresses. It can be seen as offering a dedicated gateway per user.
 
 The TEN node has no concept of "User". It only authenticates based on the "blockchain address". 
 It expects to be supplied with a signed viewing key per address, so that it can respond encrypted with that VK. 
 
 *Note that multiple addresses can share a VK.*
 
-The role of the current WE is to manage a list of authenticated viewing keys (AVK), which it uses behind the scenes to communicate with an TEN node. 
+The role of the current local gateway is to manage a list of authenticated viewing keys (AVK), which it uses behind the scenes to communicate with an TEN node. 
 The AVKs are stored on the local computer in a file.
 An AVK is a text containing the hash of the public viewing key signed with the "spending key" that controls a blockchain address.
 
@@ -33,13 +33,13 @@ cloud "TEN Nodes"
 actor Alice
 component "Alice's Computer"{
     agent "Alice's MetaMask"
-    node "Alice's Wallet Extension"
+    node "Alice's Local Gateway"
     database "Alice's Viewing Keys"
 }
 Alice --> "Alice's MetaMask"
-"Alice's MetaMask" --> "Alice's Wallet Extension"
-"Alice's Wallet Extension" <-> "Alice's Viewing Keys"
-"Alice's Wallet Extension" ----> "TEN Nodes" : Encrypted RPC
+"Alice's MetaMask" --> "Alice's Local Gateway"
+"Alice's Local Gateway" <-> "Alice's Viewing Keys"
+"Alice's Local Gateway" ----> "TEN Nodes" : Encrypted RPC
 
 actor Bob
 component "Bob's Computer"{
@@ -66,7 +66,7 @@ Charlie --> "Charlie's MetaMask"
 @enduml
 ```
 
-Notice that the TG is a multi-tenant WE running inside SGX and storing the authenticated viewing keys (and other information) in an encrypted database.
+Notice that the TG is a multi-tenant gateway running inside SGX and storing the authenticated viewing keys (and other information) in an encrypted database.
 
 ## User interactions
 
@@ -190,12 +190,12 @@ After signing it will submit to the server
 
 ## Multitenancy
 
-The curent WE is single-tenant. It assumes that all registered blockchain addresses belong to the same user.
+The current local gateway is single-tenant. It assumes that all registered blockchain addresses belong to the same user.
 
 The TG will keep a many-to-one relationship between addresses and users. It will have multiple users, each with multiple addresses.
 
 Each request to the TG (except "/join") must have the "u" query parameter. 
-The first thing, the WE will lookup the encryption token and then operate in "Wallet Extension" mode, after loading all addresses.
+The first thing, the TG will lookup the encryption token and then operate in "gateway" mode, after loading all addresses.
 
 Note that the system considers the realm of an encryption token as completely independent. Multiple users could register the same addrss,
 if they somehow control the spending key.
@@ -236,7 +236,7 @@ Actions:
 When this endpoint is triggered, the encryption token with the authenticated viewing keys should be deleted.
 
 ### ETH RPC endpoints
-All the Eth RPC endpoints are implemented as they are now in the WE. 
+All the Eth RPC endpoints are implemented as they are now in the local gateway. 
 The difference is that the encryption token must be checked before any logic, and the registered addresses for that user are loaded in context.
 
 ## SGX
@@ -249,7 +249,7 @@ The difference is that the encryption token must be checked before any logic, an
 The "3-click" flow must be implemented as in the above diagram.
 The first UI can be ugly.
 
-Note that the current WE implements most of this flow.
+Note that the current local gateway implements most of this flow.
 
 
 ## Upgradability
@@ -263,7 +263,7 @@ The tasks can be split up in 3 streams: Implementing multi-tenancy, SGX and the 
 
 ### Multi tenancy stream
 
-I propose to start gradually by adding functionality that doesn't break the WE.
+I propose to start gradually by adding functionality that doesn't break the existing local gateway.
 
 1. Implement an SQL database. 
    The tests can use sqlite, same as we do for the enclave. And in the real setup it will be edgelessdb. 

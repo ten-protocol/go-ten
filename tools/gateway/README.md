@@ -170,22 +170,22 @@ with the frontend service, which typically runs on port 3000.
 
    ```bash
    # macOS AMD64
-   env GOOS=darwin GOARCH=amd64 go build -o ../bin/wallet_extension_macos_amd64 .
+   env GOOS=darwin GOARCH=amd64 go build -o ../bin/gateway_macos_amd64 .
 
    # macOS ARM64
-   env GOOS=darwin GOARCH=arm64 go build -o ../bin/wallet_extension_macos_arm64 .
+   env GOOS=darwin GOARCH=arm64 go build -o ../bin/gateway_macos_arm64 .
 
    # Windows AMD64
-   env GOOS=windows GOARCH=amd64 go build -o ../bin/wallet_extension_win_amd64.exe .
+   env GOOS=windows GOARCH=amd64 go build -o ../bin/gateway_win_amd64.exe .
 
    # Linux AMD64
-   env GOOS=linux GOARCH=amd64 go build -o ../bin/wallet_extension_linux_amd64 .
+   env GOOS=linux GOARCH=amd64 go build -o ../bin/gateway_linux_amd64 .
    ```
 
 2. Run the compiled binary and specify the desired port and configuration flags, for example:
 
    ```bash
-   ./wallet_extension_macos_arm64 \
+   ./gateway_macos_arm64 \
      --port 1443 \
      --nodeHost erpc.sepolia-testnet.ten.xyz \
      --tenChainID 443

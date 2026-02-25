@@ -33,7 +33,7 @@ COPY . /home/obscuro/go-obscuro
 # build the contract deployer exec
 WORKDIR /home/obscuro/go-obscuro/tools/gateway/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    go build -o ../bin/wallet_extension_linux
+    go build -o ../bin/gateway_linux
 
 # Standalone stage to perform npm install
 FROM node:20-alpine AS install-npm-deps

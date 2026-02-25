@@ -14,7 +14,7 @@ host="0.0.0.0"
 nodeHost="erpc.sepolia-testnet.ten.xyz"
 nodePortHTTP=80
 nodePortWS=81
-logPath="wallet_extension_logs.txt"
+logPath="gateway_logs.txt"
 databasePath=".obscuro/gateway_database.db"
 image="obscuronet/obscuro_gateway_sepolia_testnet:latest"
 
@@ -46,7 +46,7 @@ echo "Starting Obscuro Gateway..."
 docker run -p 3000:"${port}" --name=obscuro_gateway_testnet \
     --detach \
     --network=node_network \
-    --entrypoint ./wallet_extension_linux \
+    --entrypoint ./gateway_linux \
       "${image}" \
       -host="${host}" -port="${port}" -portWS="${portWS}" -nodeHost="${nodeHost}" -nodePortHTTP="${nodePortHTTP}" \
       -nodePortWS="${nodePortWS}" -logPath="${logPath}" -databasePath="${databasePath}"

@@ -43,7 +43,7 @@ integration/eth2network/main/main
 # Logs files
 **/enclave_logs.txt
 **/host_logs.txt
-**/wallet_extension_logs.txt
+**/gateway_logs.txt
 **/tenscan_logs.txt
 
 # Temp env files
