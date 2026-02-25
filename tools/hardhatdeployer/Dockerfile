@@ -25,13 +25,13 @@ COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
-# Build stage that will create a wallet extension executable
+# Build stage that will create a gateway executable
 FROM get-dependencies as build-wallet
 # make sure the geth network code is available
 COPY . /home/obscuro/go-obscuro
 
 # build the contract deployer exec
-WORKDIR /home/obscuro/go-obscuro/tools/walletextension/main
+WORKDIR /home/obscuro/go-obscuro/tools/gateway/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
     go build -o ../bin/wallet_extension_linux
 
@@ -54,7 +54,7 @@ COPY --from=install-npm-deps /home/obscuro/go-obscuro/contracts/ /home/obscuro/g
 RUN npm config set update-notifier false
 RUN npx hardhat compile
 
-COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/bin /home/obscuro/go-obscuro/tools/walletextension/bin
+COPY --from=build-wallet /home/obscuro/go-obscuro/tools/gateway/bin /home/obscuro/go-obscuro/tools/gateway/bin
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/hardhatdeployer/scripts/entrypoint.sh /home/obscuro/go-obscuro/entrypoint.sh
 
 ENTRYPOINT [ "/home/obscuro/go-obscuro/entrypoint.sh" ]
