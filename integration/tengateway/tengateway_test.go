@@ -63,9 +63,9 @@ func TestTenGateway(t *testing.T) {
 	createTenNetwork(t, startPort)
 
 	tenGatewayConf := wecommon.Config{
-		WalletExtensionHost:            "127.0.0.1",
-		WalletExtensionPortHTTP:        startPort + integration.DefaultTenGatewayHTTPPortOffset,
-		WalletExtensionPortWS:          startPort + integration.DefaultTenGatewayWSPortOffset,
+		GatewayHost:                    "127.0.0.1",
+		GatewayPortHTTP:                startPort + integration.DefaultTenGatewayHTTPPortOffset,
+		GatewayPortWS:                  startPort + integration.DefaultTenGatewayWSPortOffset,
 		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
 		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
 		LogPath:                        "sys_out",
@@ -92,8 +92,8 @@ func TestTenGateway(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// make sure the server is ready to receive requests
-	httpURL := fmt.Sprintf("http://%s:%d", tenGatewayConf.WalletExtensionHost, tenGatewayConf.WalletExtensionPortHTTP)
-	wsURL := fmt.Sprintf("ws://%s:%d", tenGatewayConf.WalletExtensionHost, tenGatewayConf.WalletExtensionPortWS)
+	httpURL := fmt.Sprintf("http://%s:%d", tenGatewayConf.GatewayHost, tenGatewayConf.GatewayPortHTTP)
+	wsURL := fmt.Sprintf("ws://%s:%d", tenGatewayConf.GatewayHost, tenGatewayConf.GatewayPortWS)
 
 	// make sure the server is ready to receive requests
 	err := waitServerIsReady(httpURL)

@@ -106,9 +106,9 @@ func (t *testnetEnv) startTenGateway() {
 	// replace the last character with a 1 (expect it to be zero), this is good enough for these tests
 	validatorWS := validatorHTTP[:len(validatorHTTP)-1] + "1"
 	cfg := wecommon.Config{
-		WalletExtensionHost:     "127.0.0.1",
-		WalletExtensionPortHTTP: _gwHTTPPort,
-		WalletExtensionPortWS:   _gwWSPort,
+		GatewayHost:             "127.0.0.1",
+		GatewayPortHTTP:         _gwHTTPPort,
+		GatewayPortWS:           _gwWSPort,
 		NodeRPCHTTPAddress:      validatorHTTP,
 		NodeRPCWebsocketAddress: validatorWS,
 		LogPath:                 "sys_out",

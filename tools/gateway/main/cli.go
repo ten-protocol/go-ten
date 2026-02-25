@@ -174,9 +174,9 @@ func parseCLIArgs() wecommon.Config {
 	flag.Parse()
 
 	return wecommon.Config{
-		WalletExtensionHost:            *walletExtensionHost,
-		WalletExtensionPortHTTP:        *walletExtensionPort,
-		WalletExtensionPortWS:          *walletExtensionPortWS,
+		GatewayHost:                    *walletExtensionHost,
+		GatewayPortHTTP:                *walletExtensionPort,
+		GatewayPortWS:                  *walletExtensionPortWS,
 		NodeRPCHTTPAddress:             fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
 		NodeRPCWebsocketAddress:        fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
 		LogPath:                        *logPath,

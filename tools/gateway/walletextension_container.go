@@ -125,12 +125,12 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 	cfg := &node.RPCConfig{
 		EnableHTTP: true,
-		HTTPPort:   config.WalletExtensionPortHTTP,
+		HTTPPort:   config.GatewayPortHTTP,
 		EnableWs:   true,
-		WsPort:     config.WalletExtensionPortWS,
+		WsPort:     config.GatewayPortWS,
 		WsPath:     wecommon.APIVersion1 + "/",
 		HTTPPath:   wecommon.APIVersion1 + "/",
-		Host:       config.WalletExtensionHost,
+		Host:       config.GatewayHost,
 	}
 
 	// check if TLS is enabled

@@ -255,9 +255,9 @@ func (s *InMemDevNetwork) startTenGateway() {
 	// remove ws:// prefix for the gateway config
 	validatorWS = validatorWS[len("ws://"):]
 	cfg := wecommon.Config{
-		WalletExtensionHost:     "127.0.0.1",
-		WalletExtensionPortHTTP: _gwHTTPPort,
-		WalletExtensionPortWS:   _gwWSPort,
+		GatewayHost:             "127.0.0.1",
+		GatewayPortHTTP:         _gwHTTPPort,
+		GatewayPortWS:           _gwWSPort,
 		NodeRPCHTTPAddress:      validatorHTTP,
 		NodeRPCWebsocketAddress: validatorWS,
 		LogPath:                 "sys_out",

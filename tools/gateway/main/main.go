@@ -35,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.WalletExtensionPortHTTP)
+	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.GatewayPortHTTP)
 	fmt.Println("TEN gateway started") // We expect stdout message in some tests
 	logger.Info("TEN gateway started: ", "url", fmt.Sprintf("http://%s/v1/network-config", walletExtensionAddr))
 

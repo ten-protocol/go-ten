@@ -2,11 +2,11 @@ package common
 
 import "time"
 
-// Config contains the configuration required by the WalletExtension.
+// Config contains the configuration required by the gateway.
 type Config struct {
-	WalletExtensionHost     string
-	WalletExtensionPortHTTP int
-	WalletExtensionPortWS   int
+	GatewayHost     string
+	GatewayPortHTTP int
+	GatewayPortWS   int
 
 	NodeRPCHTTPAddress      string
 	NodeRPCWebsocketAddress string
