@@ -4,8 +4,8 @@ import (
 	"context"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
-	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+	"github.com/ten-protocol/go-ten/tools/gateway/cache"
+	"github.com/ten-protocol/go-ten/tools/gateway/services"
 )
 
 type TenAPI struct {

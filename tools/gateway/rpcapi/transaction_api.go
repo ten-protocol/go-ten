@@ -7,9 +7,9 @@ import (
 
 	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+	"github.com/ten-protocol/go-ten/tools/gateway/cache"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+	"github.com/ten-protocol/go-ten/tools/gateway/services"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

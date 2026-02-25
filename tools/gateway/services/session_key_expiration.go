@@ -6,8 +6,8 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/storage"
 )
 
 // SessionKeyExpirationService runs in the background and monitors users

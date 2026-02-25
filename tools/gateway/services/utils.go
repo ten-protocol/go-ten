@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 // ReturnDefaultUserAndAccount creates a new in-memory user and a corresponding account.

@@ -26,11 +26,11 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	_ "github.com/mattn/go-sqlite3" // sqlite driver for sql.Open()
 
-	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
+	dbcommon "github.com/ten-protocol/go-ten/tools/gateway/storage/database/common"
 
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 type SqliteDB struct {

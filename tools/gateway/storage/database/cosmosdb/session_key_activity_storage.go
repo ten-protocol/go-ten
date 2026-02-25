@@ -10,8 +10,8 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/encryption"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/encryption"
 )
 
 const (

@@ -4,8 +4,8 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/cache"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 // UserStorageWithCache implements the UserStorage interface with caching

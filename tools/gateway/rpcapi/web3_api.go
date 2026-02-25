@@ -3,7 +3,7 @@ package rpcapi
 import (
 	"context"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+	"github.com/ten-protocol/go-ten/tools/gateway/services"
 )
 
 var _hardcodedClientVersion = "Geth/v10.0.0/ten"

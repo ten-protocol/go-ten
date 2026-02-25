@@ -12,7 +12,7 @@ import (
 	tencommonrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 // dustThresholdWei is the minimum balance considered worth recovering from an expired

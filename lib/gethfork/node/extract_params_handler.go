@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 type httpParamsHandler struct {

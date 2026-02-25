@@ -6,14 +6,14 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/storage/database/common"
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/stretchr/testify/require"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 var tests = map[string]func(storage UserStorage, t *testing.T){

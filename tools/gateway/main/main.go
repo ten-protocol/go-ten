@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension"
+	"github.com/ten-protocol/go-ten/tools/gateway"
 
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 func main() {
@@ -27,8 +27,8 @@ func main() {
 	logger.Info("Welcome to the TEN gateway")
 	logger.Info("Starting with following config", "config", string(jsonConfig))
 
-	// Start the wallet extension right away
-	walletExtContainer := walletextension.NewContainerFromConfig(config, logger)
+	// Start the gateway right away
+	walletExtContainer := gateway.NewContainerFromConfig(config, logger)
 	err := walletExtContainer.Start()
 	if err != nil {
 		logger.Error("Failed to start wallet extension", "error", err)

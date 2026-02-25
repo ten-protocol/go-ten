@@ -7,7 +7,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
+	"github.com/ten-protocol/go-ten/tools/gateway/lib"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ten-protocol/go-ten/go/wallet"

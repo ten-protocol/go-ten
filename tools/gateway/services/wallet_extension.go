@@ -22,8 +22,8 @@ import (
 
 	"github.com/status-im/keycard-go/hexutils"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
-	"github.com/ten-protocol/go-ten/tools/walletextension/metrics"
+	"github.com/ten-protocol/go-ten/tools/gateway/cache"
+	"github.com/ten-protocol/go-ten/tools/gateway/metrics"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -31,9 +31,9 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/ratelimiter"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+	"github.com/ten-protocol/go-ten/tools/gateway/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/ratelimiter"
+	"github.com/ten-protocol/go-ten/tools/gateway/storage"
 )
 
 // Services handles the various business logic for the api endpoints

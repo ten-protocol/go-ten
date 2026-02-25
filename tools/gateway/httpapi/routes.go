@@ -15,10 +15,10 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	tencommon "github.com/ten-protocol/go-ten/go/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
-	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
-	"github.com/ten-protocol/go-ten/tools/walletextension/ratelimiter"
-	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+	"github.com/ten-protocol/go-ten/tools/gateway/cache"
+	"github.com/ten-protocol/go-ten/tools/gateway/keymanager"
+	"github.com/ten-protocol/go-ten/tools/gateway/ratelimiter"
+	"github.com/ten-protocol/go-ten/tools/gateway/services"
 
 	"github.com/status-im/keycard-go/hexutils"
 
@@ -27,7 +27,7 @@ import (
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
 	"github.com/ten-protocol/go-ten/go/common/httputil"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 // generateCookieNameFromDomain generates a safe cookie name from TLS domain

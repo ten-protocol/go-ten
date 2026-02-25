@@ -12,7 +12,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 type BackendRPC struct {

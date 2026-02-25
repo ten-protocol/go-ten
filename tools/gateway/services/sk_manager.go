@@ -14,8 +14,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+	"github.com/ten-protocol/go-ten/tools/gateway/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/storage"
 )
 
 // SKManager - session keys are Private Keys managed by the Gateway

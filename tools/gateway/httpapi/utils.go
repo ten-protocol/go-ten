@@ -7,7 +7,7 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/status-im/keycard-go/hexutils"
 	"github.com/ten-protocol/go-ten/go/common/log"
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 func getQueryParameter(params map[string]string, selectedParameter string) (string, error) {

@@ -13,11 +13,11 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	tencommonrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/common"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+	"github.com/ten-protocol/go-ten/tools/gateway/cache"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+	"github.com/ten-protocol/go-ten/tools/gateway/services"
 
 	"github.com/status-im/keycard-go/hexutils"
 

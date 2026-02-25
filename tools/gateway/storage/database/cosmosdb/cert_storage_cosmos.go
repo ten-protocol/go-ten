@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
-	"github.com/ten-protocol/go-ten/tools/walletextension/encryption"
+	"github.com/ten-protocol/go-ten/tools/gateway/encryption"
 	"golang.org/x/crypto/acme/autocert"
 )
 

@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 var ErrUserNotFound = errors.New("user not found")

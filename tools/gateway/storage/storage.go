@@ -7,9 +7,9 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/cosmosdb"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/sqlite"
+	"github.com/ten-protocol/go-ten/tools/gateway/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/storage/database/cosmosdb"
+	"github.com/ten-protocol/go-ten/tools/gateway/storage/database/sqlite"
 )
 
 // todo - pass the Context

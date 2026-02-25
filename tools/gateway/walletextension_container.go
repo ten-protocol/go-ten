@@ -1,4 +1,4 @@
-package walletextension
+package gateway
 
 import (
 	"crypto/tls"
@@ -6,14 +6,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/metrics"
-	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+	"github.com/ten-protocol/go-ten/tools/gateway/metrics"
+	"github.com/ten-protocol/go-ten/tools/gateway/services"
 
 	"github.com/ten-protocol/go-ten/go/common/subscription"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/httpapi"
+	"github.com/ten-protocol/go-ten/tools/gateway/httpapi"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/rpcapi"
+	"github.com/ten-protocol/go-ten/tools/gateway/rpcapi"
 
 	"github.com/ten-protocol/go-ten/lib/gethfork/node"
 
@@ -21,9 +21,9 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/keymanager"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/keymanager"
+	"github.com/ten-protocol/go-ten/tools/gateway/storage"
 	"golang.org/x/crypto/acme/autocert"
 )
 

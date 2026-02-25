@@ -11,15 +11,15 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	dbcommon "github.com/ten-protocol/go-ten/tools/walletextension/storage/database/common"
+	dbcommon "github.com/ten-protocol/go-ten/tools/gateway/storage/database/common"
 
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/encryption"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/encryption"
 )
 
 /*

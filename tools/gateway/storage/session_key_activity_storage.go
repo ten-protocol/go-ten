@@ -1,8 +1,8 @@
 package storage
 
 import (
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/cosmosdb"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/storage/database/cosmosdb"
 )
 
 // SessionKeyActivityStorage defines persistence for session key activity tracker

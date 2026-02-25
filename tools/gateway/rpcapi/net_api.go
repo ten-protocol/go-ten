@@ -3,9 +3,9 @@ package rpcapi
 import (
 	"context"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+	"github.com/ten-protocol/go-ten/tools/gateway/cache"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+	"github.com/ten-protocol/go-ten/tools/gateway/services"
 )
 
 type NetAPI struct {

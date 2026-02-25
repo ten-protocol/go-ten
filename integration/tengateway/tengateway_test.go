@@ -16,13 +16,13 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension"
+	"github.com/ten-protocol/go-ten/tools/gateway"
 
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ethereum/go-ethereum"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -41,7 +41,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
-	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
+	"github.com/ten-protocol/go-ten/tools/gateway/lib"
 	"github.com/valyala/fasthttp"
 )
 
@@ -80,7 +80,7 @@ func TestTenGateway(t *testing.T) {
 		SessionKeyExpirationInterval:   2 * time.Second,
 	}
 
-	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
+	tenGwContainer := gateway.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
 	go func() {
 		err := tenGwContainer.Start()
 		if err != nil {

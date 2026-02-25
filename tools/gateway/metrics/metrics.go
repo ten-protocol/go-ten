@@ -7,7 +7,7 @@ import (
 	"time"
 
 	gethlog "github.com/ethereum/go-ethereum/log"
-	"github.com/ten-protocol/go-ten/tools/walletextension/storage/database/cosmosdb"
+	"github.com/ten-protocol/go-ten/tools/gateway/storage/database/cosmosdb"
 )
 
 const (

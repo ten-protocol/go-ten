@@ -8,8 +8,8 @@ import (
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/networktest"
-	"github.com/ten-protocol/go-ten/tools/walletextension"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/gateway"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 const (
@@ -74,7 +74,7 @@ type TestnetEnvOption func(env *testnetEnv)
 type testnetEnv struct {
 	testnetConnector    *testnetConnector
 	localTenGateway     bool
-	tenGatewayContainer *walletextension.Container
+	tenGatewayContainer *gateway.Container
 	logger              gethlog.Logger
 }
 
@@ -116,7 +116,7 @@ func (t *testnetEnv) startTenGateway() {
 		DBType:                  "sqlite",
 		TenChainID:              t.testnetConnector.chainID,
 	}
-	tenGWContainer := walletextension.NewContainerFromConfig(cfg, t.logger)
+	tenGWContainer := gateway.NewContainerFromConfig(cfg, t.logger)
 
 	fmt.Println("Starting TEN Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 	err := tenGWContainer.Start()

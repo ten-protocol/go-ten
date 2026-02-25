@@ -11,9 +11,9 @@ import (
 	rpc2 "github.com/ten-protocol/go-ten/go/common/rpc"
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/cache"
+	"github.com/ten-protocol/go-ten/tools/gateway/cache"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension/services"
+	"github.com/ten-protocol/go-ten/tools/gateway/services"
 
 	"github.com/status-im/keycard-go/hexutils"
 
@@ -24,7 +24,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"

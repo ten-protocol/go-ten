@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 const (
