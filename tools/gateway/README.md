@@ -166,7 +166,7 @@ while automatically cleaning up inactive ones and protecting user funds.
 To run the backend locally, it is recommended to use **port 1443** to avoid conflicts
 with the frontend service, which typically runs on port 3000.
 
-1. Build the backend using `go build`. From `tools/walletextension/main`:
+1. Build the backend using `go build`. From `tools/gateway/main`:
 
    ```bash
    # macOS AMD64
@@ -191,7 +191,7 @@ with the frontend service, which typically runs on port 3000.
      --tenChainID 443
    ```
 
-The binaries will be available in the `tools/walletextension/bin` directory.
+The binaries will be available in the `tools/gateway/bin` directory.
 
 ### Additional Backend Configuration Options
 

@@ -28,8 +28,8 @@ go-obscuro.iml
 integration/simulation/cmd/cmd
 go/host/main/main
 go/enclave/main/main
-tools/walletextension/main/main
-tools/walletextension/main/wallet_extension
+tools/gateway/main/main
+tools/gateway/main/wallet_extension
 tools/networkmanager/main/main
 tools/tenscan/main/main
 **/node_modules/

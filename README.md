@@ -281,12 +281,12 @@ written in [go](https://go.dev). Unless otherwise stated, all paths stated herei
 
 ### Building
 To create the build artefacts local to the checkout of the repository the easiest approach is to build each component 
-separately for the host, enclave, and wallet extension  i.e. 
+separately for the host, enclave, and gateway i.e. 
 
 ```
 cd ./go/host/main && go build && cd -
 cd ./go/enclave/main && go build && cd -
-cd ./tools/walletextension/main && go build && cd -
+cd ./tools/gateway/main && go build && cd -
 ```
 
 Running `go build ./...` to build all packages at the root level will build all packages, but it will discard the 
