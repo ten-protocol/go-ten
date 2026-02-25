@@ -171,7 +171,7 @@ jobs:
           echo "Image tag: ${{ env.DOCKER_BUILD_TAG_GATEWAY }}"
           echo "Testnet type: ${{ github.event.inputs.testnet_type }}"
           
-          if ! DOCKER_BUILDKIT=1 docker build --build-arg TESTNET_TYPE=${{ github.event.inputs.testnet_type }} -t ${{ env.DOCKER_BUILD_TAG_GATEWAY }} -f ./tools/walletextension/enclave.Dockerfile .; then
+          if ! DOCKER_BUILDKIT=1 docker build --build-arg TESTNET_TYPE=${{ github.event.inputs.testnet_type }} -t ${{ env.DOCKER_BUILD_TAG_GATEWAY }} -f ./tools/gateway/enclave.Dockerfile .; then
             echo "❌ Docker build failed"
             exit 1
           fi
@@ -566,7 +566,7 @@ jobs:
             -e OBSCURO_GATEWAY_VERSION="${{ github.run_number }}-${{ github.sha }}" \
             -e OE_SIMULATION=0 \
             "${{ env.DOCKER_BUILD_TAG_GATEWAY }}" \
-            ego run /home/ten/go-ten/tools/walletextension/main/main \
+            ego run /home/ten/go-ten/tools/gateway/main/main \
             -host=0.0.0.0 -port=443 -portWS=443 -nodeHost="${{ env.L2_RPC_URL_VALIDATOR }}" -logLevel="${{ env.GATEWAY_LOG_LEVEL }}" \
             -logPath=sys_out -dbType=cosmosDB -dbConnectionURL="${{ secrets.COSMOS_DB_CONNECTION_STRING }}" \
             -rateLimitUserComputeTime="${{ env.GATEWAY_RATE_LIMIT_USER_COMPUTE_TIME }}" \

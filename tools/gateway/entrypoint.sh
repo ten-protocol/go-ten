@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Start wallet_extension_linux with parameters passed to the script
-/home/obscuro/go-obscuro/tools/walletextension/bin/wallet_extension_linux "$@"
+/home/obscuro/go-obscuro/tools/gateway/bin/wallet_extension_linux "$@"
 
 # Wait for any process to exit
 wait -n
