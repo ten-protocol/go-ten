@@ -42,9 +42,9 @@ interface IMessageBus {
     // Returns the time when a message is final (when the rollup challenge period has passed). If the message was never submitted the call will revert.
     function getMessageTimeOfFinality(Structs.CrossChainMessage calldata crossChainMessage) external view returns (uint256);
 
-    // Stores messages sent from the other linked layer.
-    // On L2, called by the enclave via synthetic transactions. On L1, not used for L2→L1 messages (Merkle proofs are used instead).
-    // Access controlled via ownerOrSelf modifier.
+    // This is the smart contract function which is used to store messages sent from the other linked layer. 
+    // The function will only be called by the enclave on the L2. 
+    // It should be access controlled and called according to the consistencyLevel and Obscuro platform rules.
     function storeCrossChainMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) external;
 
     // the fee needed to be paid in msg.value to publish the value transfer
