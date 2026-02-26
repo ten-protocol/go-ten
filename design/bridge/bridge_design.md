@@ -473,7 +473,7 @@ Security is layered, matching the architecture.
 ### Contract Dependency Chain
 
 ```
-TenBridge → CrossChainMessenger → MerkleTreeMessageBus ← DataAvailabilityRegistry
+TenBridge → CrossChainMessenger → MerkleTreeMessageBus  ← DataAvailabilityRegistry
                                                         ← CrossChain
 ```
 
@@ -540,7 +540,7 @@ The `consistencyLevel` parameter provides additional protection — setting it t
 
 ---
 
-## 10. Fees
+## Fees
 
 Publishing a message on L2 has a direct cost: the sequencer must pay L1 gas to include it in the rollup. The fee model channels this cost to the user.
 
