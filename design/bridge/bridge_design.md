@@ -20,12 +20,12 @@ The reference bridge is one such application. It locks ERC20 tokens (and native 
 ## 2. Architecture Overview
 
 The system has three layers:
-1. `MessageBus` (Transport) - publishes and stores messages
-2. `CrossChainMessenger` (Relay) - verifies and delivers messages
+1. Transport - publishes and stores messages
+2. Relay - verifies and delivers messages
 3. Applications (eg Bridge) - dApps built by anyone
 
 
-Each layer exists on **both** L1 and L2, but with different implementations suited to each environment:
+Each layer exists on both the L1 and L2, but with different implementations suited to each environment:
 
 | Component | L1 | L2 |
 |---|---|---|
@@ -80,7 +80,7 @@ This exists because native value transfers don't go through the messenger relay 
 
 The MessageBus is the foundation. It does two things:
 1. Publish — accept messages from local contracts and emit them as events
-2. Store a verify** — accept messages from the other chain and make them queryable
+2. Store and verify — accept messages from the other chain and make them queryable
 
 ### Publishing a Message
 
@@ -149,11 +149,11 @@ State roots have an activation time — they can't be used for verification unti
 
 ---
 
-## 5. CrossChainMessenger (Relay)
+## 5. Cross Chain Messenger 
 
 The messenger sits between the MessageBus and application contracts. It takes a verified message and executes it — calling the target contract with the encoded calldata.
 
-### CrossChainCall
+### Cross Chain Function Calls
 
 When a dApp wants to send a cross-chain function call, it encodes a `CrossChainCall`:
 
@@ -252,7 +252,6 @@ Used by: ERC20 deposits, token whitelisting, WETH notifications.
 
 ```
   Ethereum L1                                TEN L2
-  ──────────                                ──────
 
   1. User/admin calls dApp (e.g. sendERC20)
   2. dApp calls queueMessage()
@@ -266,9 +265,6 @@ Used by: ERC20 deposits, token whitelisting, WETH notifications.
                     ▼
                                              4. MessageBus.storeCrossChainMessage()
                                                 (message now stored on L2)
-
-                                             ── user/relayer action required ──
-
                                              5. Poll MessageBus.verifyMessageFinalized()
                                                 until it returns true
                                              6. Call CrossChainMessenger.relayMessage(message)
@@ -280,31 +276,30 @@ Step 4 is automatic (the enclave creates synthetic transactions). Steps 5-6 requ
 
 ### L1 to L2 (Native value transfer)
 
-Used by: `TenBridge.sendNative()` (native ETH deposits).
+Used by `TenBridge.sendNative()` (native ETH deposits).
 
 ```
   Ethereum L1                                TEN L2
-  ──────────                                ──────
+
 
   1. User calls TenBridge.sendNative{value}()
   2. publishRawMessage(ValueTransfer, Topics.VALUE)
      to MessageBus.publishMessage()
   3. LogMessagePublished event emitted
                     │
-                    │  (automatic)
-                    │  Enclave processes the value transfer
-                    │  and directly increases the receiver's
-                    │  native L2 balance
+                    │  
+                    │ 
+                    │  
+                    │  
                     ▼
                                              4. Receiver's balance updated
-                                                (no relay needed)
 ```
 
 Native value transfers bypass the relay mechanism entirely. The enclave recognises `Topics.VALUE` messages with a `ValueTransfer` payload and credits the receiver's L2 balance directly via state modification.
 
 ### L2 to L1
 
-Used by: ERC20 withdrawals, native withdrawals, WETH withdrawals.
+Used by ERC20 withdrawals, native withdrawals, WETH withdrawals.
 
 ```
   TEN L2                                     Ethereum L1
@@ -316,17 +311,14 @@ Used by: ERC20 withdrawals, native withdrawals, WETH withdrawals.
   3. LogMessagePublished event emitted
   4. Message included in rollup state
                     │
-                    │  (automatic)
-                    │  Rollup published to L1,
-                    │  state root registered on
-                    │  MerkleTreeMessageBus
-                    │  with activation time
+                    │  
+                    │ 
+                    │  
+                    │  
+                    │  
                     ▼
                                              5. Challenge period elapses,
                                                 state root activates
-
-                                             ── user/relayer action required ──
-
                                              6. Call CrossChainMessenger
                                                 .relayMessageWithProof(
                                                     message, proof, root)
@@ -349,15 +341,6 @@ The bridge is built entirely on top of the messaging API. It consists of two con
 | `TenBridge` | L1 | Holds locked tokens, manages whitelist |
 | `EthereumBridge` | L2 | Mints/burns wrapped tokens |
 
-### Message Topics
-
-The bridge uses three topics:
-
-| Topic | Value | Purpose |
-|---|---|---|
-| `TRANSFER` | 0 | Asset transfers between chains |
-| `MANAGEMENT` | 1 | Administrative commands (token whitelisting) |
-| `VALUE` | 2 | Native currency transfers |
 
 ### Token Whitelisting
 
@@ -486,78 +469,6 @@ Security is layered, matching the architecture.
 | **Malicious tokens** | Whitelist controlled by admin (eventually DAO). Only approved tokens can be bridged. |
 | **Reentrancy on withdrawals** | `ReentrancyGuardTransient` on `TenBridge`. |
 
-### L1 Reorganisation Handling
-
-This is the most subtle security concern. Consider:
-
-1. User deposits tokens on L1
-2. Message published, enclave stores it on L2, user relays it, tokens minted on L2
-3. User withdraws back to L1
-4. **L1 reorgs** — the original deposit transaction disappears
-
-The system handles this because rollups are **bound to specific L1 block hashes**. If the L1 reorgs:
-- The block hash changes for that block number
-- The rollup that processed the now-missing deposit references the old (invalid) block hash
-- The L1 rollup contract rejects the rollup
-- The enclave regenerates from the new canonical chain
-
-The `consistencyLevel` parameter provides additional protection — setting it to `N` means the message won't be processed until `N` blocks have confirmed the original transaction, exponentially reducing reorg probability.
-
----
-
-## 10. Fees
-
-Publishing a message on L2 has a direct cost: the sequencer must pay L1 gas to include it in the rollup. The fee model channels this cost to the user.
-
-```solidity
-function getPublishFee() external view returns (uint256);
-```
-
-The fee is collected as `msg.value` when calling `publishMessage`. It covers:
-- Fixed cost for the message metadata
-- Variable cost proportional to payload size
-
-Fee parameters are managed by a separate `Fees` contract, configurable by the DAO.
-
-For the bridge specifically, native value transfers deduct the publishing fee from the sent amount:
-```
-actual_bridged = msg.value - publishFee
-```
-
----
-
-## 11. Deployment
-
-All L1 contracts are deployed behind `OpenZeppelinTransparentProxy` for upgradeability. L2 contracts (`MessageBus`, `CrossChainMessenger`, `EthereumBridge`) are deployed as **system contracts** during L2 network creation — they are not deployed via the L1 deployment scripts.
-
-### L1 Deployment Order
-
-The L1 deployment happens across three scripts in `deployment_scripts/core/`:
-
-**Step 1** (`001_deploy_contracts.ts`) — Core infrastructure:
-1. `Fees` — fee configuration
-2. `MerkleTreeMessageBus` — initialized with `(deployer, deployer, feesAddress)`
-3. `CrossChain` — initialized with `(deployer, merkleMessageBusAddress)`, manages value transfer withdrawals
-4. `NetworkEnclaveRegistry` — enclave registration
-5. `DataAvailabilityRegistry` — initialized with `(merkleMessageBusAddress, networkEnclaveRegistryAddress, deployer)`
-6. `NetworkConfig` — registry of all deployed addresses
-7. Role grants:
-   - `DataAvailabilityRegistry` → `STATE_ROOT_MANAGER_ROLE` on `MerkleTreeMessageBus` (so it can publish rollup state roots)
-   - `CrossChain` → `WITHDRAWAL_MANAGER_ROLE` on `MerkleTreeMessageBus`
-
-**Step 2** (`002_deploy_cross_chain_messenger.ts`) — Relay layer:
-1. `CrossChainMessenger` — initialized with `messageBusAddress` (read from `NetworkConfig`)
-2. Address recorded in `NetworkConfig` via `setL1CrossChainMessengerAddress`
-
-**Step 3** (`003_deploy_ten_bridge.ts`) — Bridge:
-1. `TenBridge` — initialized with `(crossChainMessengerAddress, deployer)`
-2. Address recorded in `NetworkConfig` via `setL1BridgeAddress`
-
-### L1 to L2 Linking
-
-After both L1 and L2 contracts exist, `bridge/001_deploy_bridge.ts` links them:
-1. Reads L1 and L2 bridge addresses from network config
-2. Calls `TenBridge.setRemoteBridge(l2BridgeAddress)` on L1
 
 ### Contract Dependency Chain
 
@@ -606,3 +517,79 @@ TenBridge → CrossChainMessenger → MerkleTreeMessageBus ← DataAvailabilityR
 | `DataAvailabilityRegistry` | Publishes rollup state roots to `MerkleTreeMessageBus` |
 | `NetworkEnclaveRegistry` | Manages enclave registration |
 | `Fees` | Configurable fee parameters for message publishing |
+
+
+# Addition stuff(not sure if we want to include)
+
+### L1 Reorganisation Handling
+
+This is the most subtle security concern. Consider:
+
+1. User deposits tokens on L1
+2. Message published, enclave stores it on L2, user relays it, tokens minted on L2
+3. User withdraws back to L1
+4. **L1 reorgs** — the original deposit transaction disappears
+
+The system handles this because rollups are **bound to specific L1 block hashes**. If the L1 reorgs:
+- The block hash changes for that block number
+- The rollup that processed the now-missing deposit references the old (invalid) block hash
+- The L1 rollup contract rejects the rollup
+- The enclave regenerates from the new canonical chain
+
+The `consistencyLevel` parameter provides additional protection — setting it to `N` means the message won't be processed until `N` blocks have confirmed the original transaction, exponentially reducing reorg probability.
+
+---
+
+## 10. Fees
+
+Publishing a message on L2 has a direct cost: the sequencer must pay L1 gas to include it in the rollup. The fee model channels this cost to the user.
+
+```solidity
+function getPublishFee() external view returns (uint256);
+```
+
+The fee is collected as `msg.value` when calling `publishMessage`. It covers:
+- Fixed cost for the message metadata
+- Variable cost proportional to payload size
+
+Fee parameters are managed by a separate `Fees` contract, configurable by the DAO.
+
+For the bridge specifically, native value transfers deduct the publishing fee from the sent amount:
+```
+actual_bridged = msg.value - publishFee
+```
+
+---
+
+## Deployment
+
+All L1 contracts are deployed behind `OpenZeppelinTransparentProxy` for upgradeability. L2 contracts (`MessageBus`, `CrossChainMessenger`, `EthereumBridge`) are deployed as **system contracts** during L2 network creation — they are not deployed via the L1 deployment scripts.
+
+### L1 Deployment Order
+
+The L1 deployment happens across three scripts in `deployment_scripts/core/`:
+
+**Step 1** Core infrastructure:
+1. `Fees` — fee configuration
+2. `MerkleTreeMessageBus` — initialized with `(deployer, deployer, feesAddress)`
+3. `CrossChain` — initialized with `(deployer, merkleMessageBusAddress)`, manages value transfer withdrawals
+4. `NetworkEnclaveRegistry` — enclave registration
+5. `DataAvailabilityRegistry` — initialized with `(merkleMessageBusAddress, networkEnclaveRegistryAddress, deployer)`
+6. `NetworkConfig` — registry of all deployed addresses
+7. Role grants:
+   - `DataAvailabilityRegistry` → `STATE_ROOT_MANAGER_ROLE` on `MerkleTreeMessageBus` (so it can publish rollup state roots)
+   - `CrossChain` → `WITHDRAWAL_MANAGER_ROLE` on `MerkleTreeMessageBus`
+
+**Step 2** Relay layer:
+1. `CrossChainMessenger` — initialized with `messageBusAddress` (read from `NetworkConfig`)
+2. Address recorded in `NetworkConfig` via `setL1CrossChainMessengerAddress`
+
+**Step 3** Bridge:
+1. `TenBridge` — initialized with `(crossChainMessengerAddress, deployer)`
+2. Address recorded in `NetworkConfig` via `setL1BridgeAddress`
+
+### L1 to L2 Linking
+
+After both L1 and L2 contracts exist, `bridge/001_deploy_bridge.ts` links them:
+1. Reads L1 and L2 bridge addresses from network config
+2. Calls `TenBridge.setRemoteBridge(l2BridgeAddress)` on L1
