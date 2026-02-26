@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-TEN is an L2 that needs to communicate with Ethereum L1. This document describes the system that makes that possible: a **cross-chain messaging protocol** and a **reference bridge** built on top of it.
+TEN is an L2 that needs to communicate with Ethereum L1. This document describes the cross-chain messaging protocol and reference bridge built on top of it..
 
 The messaging protocol is a general-purpose API. Any developer can use it to build cross-chain applications — bridges, oracles, governance relays, or anything else that requires authenticated data to move between L1 and L2.
 
@@ -19,17 +19,11 @@ The reference bridge is one such application. It locks ERC20 tokens (and native 
 
 ## 2. Architecture Overview
 
-The system has three layers, each building on the one below:
+The system has three layers:
+1. `MessageBus` (Transport) - publishes and stores messages
+2. `CrossChainMessenger` (Relay) - verifies and delivers messages
+3. Applications (eg Bridge) - dApps built by anyone
 
-```
-┌─────────────────────────────────────────────────┐
-│           Applications (e.g. Bridge)            │  ← dApps built by anyone
-├─────────────────────────────────────────────────┤
-│          CrossChainMessenger (Relay)             │  ← verifies & delivers messages
-├─────────────────────────────────────────────────┤
-│           MessageBus (Transport)                │  ← publishes & stores messages
-└─────────────────────────────────────────────────┘
-```
 
 Each layer exists on **both** L1 and L2, but with different implementations suited to each environment:
 
@@ -60,10 +54,10 @@ struct CrossChainMessage {
 }
 ```
 
-- **`sender` + `sequence`** uniquely identify a message globally
-- **`nonce`** lets applications group related messages or deduplicate identical payloads
-- **`topic`** provides basic routing and versioning — the bridge uses topics `0` (transfer), `1` (management), and `2` (value)
-- **`consistencyLevel`** controls how many L1 block confirmations must pass before the message is considered final
+- `sender` + `sequence` uniquely identify a message globally
+- `nonce` lets applications group related messages or deduplicate identical payloads
+- `topic` provides basic routing and versioning — the bridge uses topics `0` (transfer), `1` (management), and `2` (value)
+- `consistencyLevel` controls how many L1 block confirmations must pass before the message is considered final
 
 ### ValueTransferMessage
 
@@ -82,11 +76,11 @@ This exists because native value transfers don't go through the messenger relay 
 
 ---
 
-## 4. L1 MessageBus (Transport)
+## 4. MessageBus (Transport)
 
 The MessageBus is the foundation. It does two things:
-1. **Publish** — accept messages from local contracts and emit them as events
-2. **Store & verify** — accept messages from the other chain and make them queryable
+1. Publish — accept messages from local contracts and emit them as events
+2. Store a verify** — accept messages from the other chain and make them queryable
 
 ### Publishing a Message
 
@@ -155,7 +149,7 @@ State roots have an activation time — they can't be used for verification unti
 
 ---
 
-## 5. L2 CrossChainMessenger (Relay)
+## 5. CrossChainMessenger (Relay)
 
 The messenger sits between the MessageBus and application contracts. It takes a verified message and executes it — calling the target contract with the encoded calldata.
 
@@ -205,7 +199,7 @@ A `mapping(bytes32 => bool) messageConsumed` ensures each message can only be re
 
 ---
 
-## 6. Layer 3: Developer API (CrossChainEnabledTEN)
+## 6. Developer API (CrossChainEnabledTEN)
 
 Application contracts inherit `CrossChainEnabledTEN` to get cross-chain capabilities. This abstract contract provides:
 
@@ -532,7 +526,55 @@ actual_bridged = msg.value - publishFee
 
 ---
 
-## 11. Contract Reference
+## 11. Deployment
+
+All L1 contracts are deployed behind `OpenZeppelinTransparentProxy` for upgradeability. L2 contracts (`MessageBus`, `CrossChainMessenger`, `EthereumBridge`) are deployed as **system contracts** during L2 network creation — they are not deployed via the L1 deployment scripts.
+
+### L1 Deployment Order
+
+The L1 deployment happens across three scripts in `deployment_scripts/core/`:
+
+**Step 1** (`001_deploy_contracts.ts`) — Core infrastructure:
+1. `Fees` — fee configuration
+2. `MerkleTreeMessageBus` — initialized with `(deployer, deployer, feesAddress)`
+3. `CrossChain` — initialized with `(deployer, merkleMessageBusAddress)`, manages value transfer withdrawals
+4. `NetworkEnclaveRegistry` — enclave registration
+5. `DataAvailabilityRegistry` — initialized with `(merkleMessageBusAddress, networkEnclaveRegistryAddress, deployer)`
+6. `NetworkConfig` — registry of all deployed addresses
+7. Role grants:
+   - `DataAvailabilityRegistry` → `STATE_ROOT_MANAGER_ROLE` on `MerkleTreeMessageBus` (so it can publish rollup state roots)
+   - `CrossChain` → `WITHDRAWAL_MANAGER_ROLE` on `MerkleTreeMessageBus`
+
+**Step 2** (`002_deploy_cross_chain_messenger.ts`) — Relay layer:
+1. `CrossChainMessenger` — initialized with `messageBusAddress` (read from `NetworkConfig`)
+2. Address recorded in `NetworkConfig` via `setL1CrossChainMessengerAddress`
+
+**Step 3** (`003_deploy_ten_bridge.ts`) — Bridge:
+1. `TenBridge` — initialized with `(crossChainMessengerAddress, deployer)`
+2. Address recorded in `NetworkConfig` via `setL1BridgeAddress`
+
+### L1 to L2 Linking
+
+After both L1 and L2 contracts exist, `bridge/001_deploy_bridge.ts` links them:
+1. Reads L1 and L2 bridge addresses from network config
+2. Calls `TenBridge.setRemoteBridge(l2BridgeAddress)` on L1
+
+### Contract Dependency Chain
+
+```
+TenBridge → CrossChainMessenger → MerkleTreeMessageBus ← DataAvailabilityRegistry
+                                                        ← CrossChain
+```
+
+- `TenBridge` inherits `CrossChainEnabledTEN`, which is configured with the `CrossChainMessenger` address
+- `CrossChainMessenger` is initialized with the `MerkleTreeMessageBus` address for proof verification
+- `DataAvailabilityRegistry` publishes state roots to `MerkleTreeMessageBus`
+- `CrossChain` manages value transfer withdrawals via `MerkleTreeMessageBus`
+
+---
+
+
+## 12. Contract Reference
 
 ### Messaging Contracts
 
@@ -540,7 +582,7 @@ actual_bridged = msg.value - publishFee
 |---|---|
 | `IMessageBus` | MessageBus interface |
 | `MessageBus` | Base implementation — publish, store, verify |
-| `MerkleTreeMessageBus` | L1 extension with Merkle proof verification |
+| `MerkleTreeMessageBus` | L1 extension with Merkle proof and state root verification |
 | `ICrossChainMessenger` | Messenger interface |
 | `CrossChainMessenger` | Relay layer — consumes and executes messages |
 | `CrossChainEnabledTEN` | Abstract base for dApps — provides `queueMessage`, `onlyCrossChainSender` |
@@ -554,3 +596,13 @@ actual_bridged = msg.value - publishFee
 | `EthereumBridge` | L2 bridge — mints/burns wrapped tokens |
 | `WrappedERC20` | Wrapped token with mint/burn access control |
 | `TenERC20` | Privacy-aware ERC20 base for TEN |
+
+### L1 Management Contracts
+
+| Contract | Purpose |
+|---|---|
+| `NetworkConfig` | Registry of all deployed contract addresses |
+| `CrossChain` | Manages cross-chain value transfer withdrawals and bundle verification |
+| `DataAvailabilityRegistry` | Publishes rollup state roots to `MerkleTreeMessageBus` |
+| `NetworkEnclaveRegistry` | Manages enclave registration |
+| `Fees` | Configurable fee parameters for message publishing |
