@@ -29,9 +29,9 @@ Each layer exists on **both** L1 and L2, but with different implementations suit
 
 | Component | L1 | L2 |
 |---|---|---|
-| **MessageBus** | `MerkleTreeMessageBus` — verifies messages via Merkle proofs against rollup state roots | `MessageBus` — stores messages submitted by the enclave from L1 block processing |
-| **Messenger** | `CrossChainMessenger` — relays messages using Merkle proofs | `CrossChainMessenger` — relays messages after finality verification |
-| **Bridge** | `TenBridge` — holds locked tokens, manages whitelist | `EthereumBridge` — mints/burns wrapped tokens |
+| Transport | `MerkleTreeMessageBus` verifies messages via Merkle proofs against rollup state roots | `MessageBus` stores messages submitted by the enclave from L1 block processing |
+| Relay | `CrossChainMessenger` relays messages using Merkle proofs | `CrossChainMessenger` relays messages after finality verification |
+| App | `TenBridge` holds locked tokens, manages whitelist | `EthereumBridge` mints/burns wrapped tokens |
 
 ---
 
