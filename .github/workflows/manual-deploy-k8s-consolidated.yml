@@ -221,7 +221,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.25.1
+          go-version: 1.25.6
 
       - name: 'Parse advanced config'
         id: parse_config
@@ -534,7 +534,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.25.1
+          go-version: 1.25.6
 
       - name: 'Login via Azure CLI'
         uses: azure/login@v1
