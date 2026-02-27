@@ -2,7 +2,7 @@
 
 ## 1. Introduction
 
-TEN is an L2 that needs to communicate with Ethereum L1. This document describes the cross-chain messaging protocol and reference bridge built on top of it..
+TEN is an L2 that needs to communicate with Ethereum L1. This document describes the native cross-chain messaging protocol and reference bridge built on top of it..
 
 The messaging protocol is a general-purpose API. Any developer can use it to build cross-chain applications — bridges, oracles, governance relays, or anything else that requires authenticated data to move between L1 and L2.
 
@@ -11,7 +11,7 @@ The reference bridge is one such application. It locks ERC20 tokens (and native 
 ### Goals
 
 - Provide a generic, permissionless messaging API between L1 and L2
-- Build the bridge as an ordinary application on top of that API (no special privileges)
+- Build a reference bridge as an ordinary application on top of that API (no special privileges)
 - Support both push and pull semantics for message delivery
 - Ensure security through Merkle proofs, challenge periods, and replay protection
 
@@ -54,10 +54,10 @@ struct CrossChainMessage {
 }
 ```
 
-- `sender` + `sequence` uniquely identify a message globally
-- `nonce` lets applications group related messages or deduplicate identical payloads
-- `topic` provides basic routing and versioning — the bridge uses topics `0` (transfer), `1` (management), and `2` (value)
-- `consistencyLevel` controls how many L1 block confirmations must pass before the message is considered final
+- `sequence` is assigned by the MessageBus (auto-incrementing per sender). The caller cannot control it. `sender + sequence` uniquely identifies every message.
+- `nonce` is provided by the caller. It is included in the emitted event and the message hash. In `CrossChainEnabledTEN`, it is auto-incremented per contract. Used to group related messages or deduplicate identical payloads.
+- `topic` provides basic routing and versioning — the bridge uses topics `0` (transfer), `1` (management), and `2` (value).
+- `consistencyLevel` controls how many L1 block confirmations must pass before the message is considered final for L2 to L1 messages.
 
 ### ValueTransferMessage
 
@@ -72,15 +72,19 @@ struct ValueTransferMessage {
 }
 ```
 
-This exists because native value transfers don't go through the messenger relay — they're verified directly via Merkle proofs on L1.
+This struct is used for L1 to L2 native deposits. When the enclave processes a `Topics.VALUE` message with a `ValueTransfer` payload from L1, it extracts the sender, receiver, and amount, and directly credits the receiver's L2 native balance — bypassing the messenger relay entirely. The `MerkleTreeMessageBus` has a `verifyValueTransferInclusion` method for verifying these against state roots.
 
 ---
 
 ## 4. MessageBus (Transport)
 
-The MessageBus is the foundation. It does two things:
-1. Publish — accept messages from local contracts and emit them as events
-2. Store and verify — accept messages from the other chain and make them queryable
+The MessageBus is the foundation of cross-chain communication. It's defined as the set of contracts that exists on both chains but with different implementations:
+
+The L1 message bus is deployed as `MerkleTreeMessageBus`, which extends the base `MessageBus`. It accepts outbound messages from L1 contracts (e.g. the bridge publishing a deposit). For inbound messages from L2, it does **not** store them individually. Instead, the `DataAvailabilityRegistry` registers rollup state roots, and messages are verified on-demand against those roots using Merkle proofs.
+
+The L2 message bus is deployed as the base `MessageBus`. It accepts outbound messages from L2 contracts (e.g. the bridge publishing a withdrawal). For inbound messages from L1, the enclave creates synthetic transactions that store them directly in the contract. These stored messages can then be verified and relayed.
+
+Both implementations share the same publishing interface:
 
 ### Publishing a Message
 
@@ -201,7 +205,13 @@ A `mapping(bytes32 => bool) messageConsumed` ensures each message can only be re
 
 ## 6. Developer API (CrossChainEnabledTEN)
 
-Application contracts inherit `CrossChainEnabledTEN` to get cross-chain capabilities. This abstract contract provides:
+`CrossChainEnabledTEN` is a convenience base contract that applications inherit to get cross-chain capabilities. During initialisation, it must be configured with the address of the `CrossChainMessenger` on the same chain — e.g. `TenBridge` on L1 points to the L1 messenger, `EthereumBridge` on L2 points to the L2 messenger. This is the trusted authority that authenticates incoming cross-chain calls:
+
+```solidity
+CrossChainEnabledTEN.configure(messengerAddress);
+```
+
+The `configure` call derives the `MessageBus` address from the messenger and initialises the nonce counter. Once configured, the contract provides:
 
 ### Sending Messages
 
@@ -329,6 +339,10 @@ Used by ERC20 withdrawals, native withdrawals, WETH withdrawals.
 ```
 
 On L1, messages from L2 are never stored individually. The rollup's state root is registered in the `MerkleTreeMessageBus`, and messages are verified on-demand using Merkle proofs. This is gas-efficient — only messages that are actually claimed incur verification cost. The caller must provide the Merkle proof and the state root to use.
+
+### L1 Event Authentication
+
+The host only processes events emitted by the **known L1 MessageBus contract address**, and only events matching the `LogMessagePublished` topic signature. These are extracted from L1 blocks whose integrity is guaranteed by Ethereum consensus. The enclave then binds its rollups to specific L1 block hashes — if L1 reorgs and a block changes, any rollup referencing the old block hash is invalidated (see [L1 Reorganisation Handling](#l1-reorganisation-handling)).
 
 ---
 
@@ -469,6 +483,22 @@ Security is layered, matching the architecture.
 | **Malicious tokens** | Whitelist controlled by admin (eventually DAO). Only approved tokens can be bridged. |
 | **Reentrancy on withdrawals** | `ReentrancyGuardTransient` on `TenBridge`. |
 
+### L1 Reorganisation Handling
+
+This is the most subtle security concern. Consider:
+
+1. User deposits tokens on L1
+2. Message published, enclave stores it on L2, user relays it, tokens minted on L2
+3. User withdraws back to L1
+4. **L1 reorgs** — the original deposit transaction disappears
+
+The system handles this because rollups are **bound to specific L1 block hashes**. If the L1 reorgs:
+- The block hash changes for that block number
+- The rollup that processed the now-missing deposit references the old (invalid) block hash
+- The L1 rollup contract rejects the rollup
+- The enclave regenerates from the new canonical chain
+
+The `consistencyLevel` parameter provides additional protection — setting it to `N` means the message won't be processed until `N` blocks have confirmed the original transaction, exponentially reducing reorg probability.
 
 ### Contract Dependency Chain
 
@@ -483,7 +513,6 @@ TenBridge → CrossChainMessenger → MerkleTreeMessageBus  ← DataAvailability
 - `CrossChain` manages value transfer withdrawals via `MerkleTreeMessageBus`
 
 ---
-
 
 ## 12. Contract Reference
 
@@ -516,27 +545,6 @@ TenBridge → CrossChainMessenger → MerkleTreeMessageBus  ← DataAvailability
 | `CrossChain` | Manages cross-chain value transfer withdrawals and bundle verification |
 | `DataAvailabilityRegistry` | Publishes rollup state roots to `MerkleTreeMessageBus` |
 | `NetworkEnclaveRegistry` | Manages enclave registration |
-| `Fees` | Configurable fee parameters for message publishing |
-
-
-# Addition stuff(not sure if we want to include)
-
-### L1 Reorganisation Handling
-
-This is the most subtle security concern. Consider:
-
-1. User deposits tokens on L1
-2. Message published, enclave stores it on L2, user relays it, tokens minted on L2
-3. User withdraws back to L1
-4. **L1 reorgs** — the original deposit transaction disappears
-
-The system handles this because rollups are **bound to specific L1 block hashes**. If the L1 reorgs:
-- The block hash changes for that block number
-- The rollup that processed the now-missing deposit references the old (invalid) block hash
-- The L1 rollup contract rejects the rollup
-- The enclave regenerates from the new canonical chain
-
-The `consistencyLevel` parameter provides additional protection — setting it to `N` means the message won't be processed until `N` blocks have confirmed the original transaction, exponentially reducing reorg probability.
 
 ---
 
