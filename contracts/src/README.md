@@ -9,10 +9,8 @@ Basic functionality and data structures used across functionality.
 
 ## - l1_management 
 
-Set of contracts deployed to Ethereum that manage the state of the TEN network collectively called the "Management Contract".
-This is the main entry point into TEN.
+Set of contracts deployed to Ethereum that manage the state of the TEN network collectively.
 
-The "Management Contract" is composed of: 
 - configurations (`NetworkConfig.sol`): advertising point for the important addresses and configurations. 
 - network management (`NetworkEnclaveRegistry.sol`): responsible for managing the network secret and holds a list of all nodes which have the secret. It is the Source of Truth(SoT)  for the node that functions as a sequencer.
 - data availability (`DataAvailabilityRegistry.sol`): manages “Rollups” which are data structures with metadata and an encrypted blob representing L2 transactions.
@@ -20,58 +18,21 @@ The "Management Contract" is composed of:
 
 ## - cross_chain_messaging 
 
-A generic message bus implementation which has both Ethereum support and TEN platform support.
-This cross chain messaging protocol is intended to be used by top-of-stack bridges.
+Generic cross-chain messaging protocol between Ethereum and TEN. Contracts exist on both layers:
 
-The TEN platform understands the `IMessageBus` interface and executes the cross-chain logic in real time when the L1 blocks are created.
+- `MessageBus` — publishes messages as events and stores incoming messages from the other chain. On L2, the enclave stores L1 messages via synthetic transactions. On L1, `MerkleTreeMessageBus` extends this with Merkle proof verification against rollup state roots.
+- `CrossChainMessenger` — permissionless relay layer. Verifies a message (via finality check on L2, or Merkle proof on L1), marks it consumed, and executes the encoded function call on the target contract.
+- `CrossChainEnabledTEN` — abstract base contract for dApps. Provides `queueMessage()` to send cross-chain function calls and `onlyCrossChainSender()` to authenticate incoming ones.
 
-On Ethereum, the messages are submitted by TEN as a MTree root, which is "finalised" based on the DA. A relayer is responsible for presenting the actual message and executing it.    
-
-This is the original design: https://github.com/ten-protocol/go-ten/blob/main/design/bridge/bridge_design.md
-(note: the current implementation differs slightly from the design)
+Design doc: https://github.com/ten-protocol/go-ten/blob/main/design/bridge/bridge_design.md
 
 ## - reference_bridge
 
-TEN-Ethereum ERC20 and native ETH reference bridge implementation on top of the native cross-chain protocol. 
+Lock-and-mint ERC20/native ETH bridge built on top of the cross-chain messaging protocol:
 
-```plantuml
-@startuml
-'https://plantuml.com/sequence-diagram
-
-title Ten->Ethereum native value withdrawal flow
-autonumber
-
-Alice -> TEN: Calls "EthereumBridge.sendNative" with 0.1Eth
-TEN --> TEN: Encode the value transfer as a xchain message
-TEN --> TEN: Emit MB `LogMessagePublished` event encoding the VT (E1)
-
-TEN -> Ethereum: Rollup with Xchain MTreeRoot (R1)
-
-Alice -> Ethereum: Call "TenBridge.extractNativeValue" with E1 as parameter. (This is the "Relay" step)
-Ethereum -> Ethereum: Check E1 against R1 (Call the Message Bus contract and authenticate the message)
-Ethereum -> Ethereum: Check that the message originated from the `"EthereumBridge"` (LogMessagePublished.sender=address(EthereumBridge))
-Ethereum -> Ethereum: Decode the `LogMessagePublished.payload` into a ValueTransfer(vt) struct
-Ethereum -> Ethereum: Move native value from the MB to Alice's account (`receiver.call{value: vt.amount}("");`)
-
-@enduml
-```
-
-```plantuml
-@startuml
-'https://plantuml.com/sequence-diagram
-
-title Ethereum->TEN native value deposit flow.
-autonumber
-
-Alice -> Ethereum: Calls "TenBridge.sendNative" with 0.1Eth (Transaction T1)
-Ethereum --> Ethereum: Encode the value transfer as a ``ValueTransfer``(VT)
-Ethereum --> Ethereum: Emit MB `LogMessagePublished` event encoding the VT (E1) 
-
-Ethereum --> TEN: The Ethereum block containing T1 is processed by TEN
-TEN -> TEN: Event E1 is authenticated against the block
-TEN -> TEN: Increase Alice's native balance 
-@enduml
-```
+- `TenBridge` (L1) — locks ERC20 tokens and native ETH on Ethereum. Manages a token whitelist. On withdrawal, releases locked tokens back to the receiver.
+- `EthereumBridge` (L2) — mints/burns `WrappedERC20` tokens on TEN. When a token is whitelisted on L1, deploys a corresponding wrapped token on L2.
+- Native ETH deposits (L1→L2) are processed automatically by the enclave as value transfers. All other flows (ERC20 deposits, withdrawals, WETH) require an explicit `relayMessage` / `relayMessageWithProof` call.
 
 
 ## - system 
