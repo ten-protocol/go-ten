@@ -1,14 +1,14 @@
 package storage
 
 import (
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 	"github.com/ten-protocol/go-ten/tools/gateway/storage/database/cosmosdb"
 )
 
 // SessionKeyActivityStorage defines persistence for session key activity tracker
 type SessionKeyActivityStorage interface {
-	Load() ([]wecommon.SessionKeyActivity, error)
-	Save([]wecommon.SessionKeyActivity) error
+	Load() ([]gwcommon.SessionKeyActivity, error)
+	Save([]gwcommon.SessionKeyActivity) error
 }
 
 // NewSessionKeyActivityStorage is a factory that returns a concrete storage based on dbType
@@ -26,8 +26,8 @@ func NewNoOpSessionKeyActivityStorage() SessionKeyActivityStorage {
 	return &noOpSessionKeyActivityStorage{}
 }
 
-func (n *noOpSessionKeyActivityStorage) Load() ([]wecommon.SessionKeyActivity, error) {
+func (n *noOpSessionKeyActivityStorage) Load() ([]gwcommon.SessionKeyActivity, error) {
 	return nil, nil
 }
 
-func (n *noOpSessionKeyActivityStorage) Save([]wecommon.SessionKeyActivity) error { return nil }
+func (n *noOpSessionKeyActivityStorage) Save([]gwcommon.SessionKeyActivity) error { return nil }

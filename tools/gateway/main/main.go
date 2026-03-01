@@ -28,16 +28,16 @@ func main() {
 	logger.Info("Starting with following config", "config", string(jsonConfig))
 
 	// Start the gateway right away
-	walletExtContainer := gateway.NewContainerFromConfig(config, logger)
-	err := walletExtContainer.Start()
+	gatewayContainer := gateway.NewContainerFromConfig(config, logger)
+	err := gatewayContainer.Start()
 	if err != nil {
 		logger.Error("Failed to start gateway", "error", err)
 		os.Exit(1)
 	}
 
-	walletExtensionAddr := fmt.Sprintf("%s:%d", common.Localhost, config.GatewayPortHTTP)
+	gatewayAddr := fmt.Sprintf("%s:%d", common.Localhost, config.GatewayPortHTTP)
 	fmt.Println("TEN gateway started") // We expect stdout message in some tests
-	logger.Info("TEN gateway started: ", "url", fmt.Sprintf("http://%s/v1/network-config", walletExtensionAddr))
+	logger.Info("TEN gateway started: ", "url", fmt.Sprintf("http://%s/v1/network-config", gatewayAddr))
 
 	select {}
 }

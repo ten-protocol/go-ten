@@ -24,7 +24,7 @@ import (
 	gethcommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ten-protocol/go-ten/go/common"
 
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
@@ -106,7 +106,7 @@ func (api *FilterAPI) Logs(ctx context.Context, crit common.FilterCriteria) (*rp
 		backendSubscriptions = append(backendSubscriptions, backendSubscription)
 	}
 
-	dedupeBuffer := NewCircularBuffer(wecommon.DeduplicationBufferSize)
+	dedupeBuffer := NewCircularBuffer(gwcommon.DeduplicationBufferSize)
 	subscription := subNotifier.CreateSubscription()
 
 	unsubscribedByClient := atomic.Bool{}
@@ -159,7 +159,7 @@ func (api *FilterAPI) closeConnections(backendSubscriptions []*rpc.ClientSubscri
 	}
 }
 
-func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *wecommon.GWUser, error) {
+func getUserAndNotifier(ctx context.Context, api *FilterAPI) (*rpc.Notifier, *gwcommon.GWUser, error) {
 	subNotifier, supported := rpc.NotifierFromContext(ctx)
 	if !supported {
 		return nil, nil, errors.New("creation of subscriptions is not supported")

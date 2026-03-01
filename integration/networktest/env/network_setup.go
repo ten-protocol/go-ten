@@ -9,7 +9,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/networktest"
 	"github.com/ten-protocol/go-ten/tools/gateway"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 const (
@@ -105,7 +105,7 @@ func (t *testnetEnv) startTenGateway() {
 	validatorHTTP := validator[len("http://"):]
 	// replace the last character with a 1 (expect it to be zero), this is good enough for these tests
 	validatorWS := validatorHTTP[:len(validatorHTTP)-1] + "1"
-	cfg := wecommon.Config{
+	cfg := gwcommon.Config{
 		GatewayHost:             "127.0.0.1",
 		GatewayPortHTTP:         _gwHTTPPort,
 		GatewayPortWS:           _gwWSPort,

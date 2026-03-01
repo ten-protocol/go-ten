@@ -94,9 +94,9 @@ func mmSignViewingKey(messageHash []byte, signerKey *ecdsa.PrivateKey) ([]byte, 
 	signature[64] += 27
 	signatureWithLeadBytes := append([]byte("0"), signature...)
 
-	// this string encoded signature is what the wallet extension would receive after it is signed by metamask
+	// this string encoded signature is what the gateway would receive after it is signed by metamask
 	sigStr := hex.EncodeToString(signatureWithLeadBytes)
-	// and then we extract the signature bytes in the same way as the wallet extension
+	// and then we extract the signature bytes in the same way as the gateway
 	outputSig, err := hex.DecodeString(sigStr[2:])
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode signature string: %w", err)

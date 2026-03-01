@@ -5,21 +5,21 @@ import (
 	"fmt"
 	"time"
 
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 const (
 	// Flag names, defaults and usages.
-	walletExtensionHostName    = "host"
-	walletExtensionHostDefault = "127.0.0.1"
-	walletExtensionHostUsage   = "The host where the gateway should open the port."
-	walletExtensionPortName    = "port"
-	walletExtensionPortDefault = 3000
-	walletExtensionPortUsage   = "The port on which to serve the gateway. Default: 3000."
+	gatewayHostName    = "host"
+	gatewayHostDefault = "127.0.0.1"
+	gatewayHostUsage   = "The host where the gateway should open the port."
+	gatewayPortName    = "port"
+	gatewayPortDefault = 3000
+	gatewayPortUsage   = "The port on which to serve the gateway. Default: 3000."
 
-	walletExtensionPortWSName    = "portWS"
-	walletExtensionPortWSDefault = 3001
-	walletExtensionPortWSUsage   = "The port on which to serve websocket JSON RPC requests. Default: 3001."
+	gatewayPortWSName    = "portWS"
+	gatewayPortWSDefault = 3001
+	gatewayPortWSUsage   = "The port on which to serve websocket JSON RPC requests. Default: 3001."
 
 	nodeHostName    = "nodeHost"
 	nodeHostDefault = "erpc.sepolia-testnet.ten.xyz"
@@ -142,10 +142,10 @@ func getLogLevelInt(level string) int {
 	}
 }
 
-func parseCLIArgs() wecommon.Config {
-	walletExtensionHost := flag.String(walletExtensionHostName, walletExtensionHostDefault, walletExtensionHostUsage)
-	walletExtensionPort := flag.Int(walletExtensionPortName, walletExtensionPortDefault, walletExtensionPortUsage)
-	walletExtensionPortWS := flag.Int(walletExtensionPortWSName, walletExtensionPortWSDefault, walletExtensionPortWSUsage)
+func parseCLIArgs() gwcommon.Config {
+	gatewayHost := flag.String(gatewayHostName, gatewayHostDefault, gatewayHostUsage)
+	gatewayPort := flag.Int(gatewayPortName, gatewayPortDefault, gatewayPortUsage)
+	gatewayPortWS := flag.Int(gatewayPortWSName, gatewayPortWSDefault, gatewayPortWSUsage)
 	nodeHost := flag.String(nodeHostName, nodeHostDefault, nodeHostUsage)
 	nodeHTTPPort := flag.Int(nodeHTTPPortName, nodeHTTPPortDefault, nodeHTTPPortUsage)
 	nodeWebsocketPort := flag.Int(nodeWebsocketPortName, nodeWebsocketPortDefault, nodeWebsocketPortUsage)
@@ -173,10 +173,10 @@ func parseCLIArgs() wecommon.Config {
 	backupEncryptionKey := flag.String(backupEncryptionKeyFlagName, backupEncryptionKeyFlagDefault, backupEncryptionKeyFlagUsage)
 	flag.Parse()
 
-	return wecommon.Config{
-		GatewayHost:                    *walletExtensionHost,
-		GatewayPortHTTP:                *walletExtensionPort,
-		GatewayPortWS:                  *walletExtensionPortWS,
+	return gwcommon.Config{
+		GatewayHost:                    *gatewayHost,
+		GatewayPortHTTP:                *gatewayPort,
+		GatewayPortWS:                  *gatewayPortWS,
 		NodeRPCHTTPAddress:             fmt.Sprintf("%s:%d", *nodeHost, *nodeHTTPPort),
 		NodeRPCWebsocketAddress:        fmt.Sprintf("%s:%d", *nodeHost, *nodeWebsocketPort),
 		LogPath:                        *logPath,

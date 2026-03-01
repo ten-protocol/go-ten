@@ -12,7 +12,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/enclave/core"
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 type BackendRPC struct {
@@ -89,7 +89,7 @@ func readEncKey(hostAddrHTTP string, logger gethlog.Logger) []byte {
 	}
 }
 
-func (rpc *BackendRPC) ConnectWS(ctx context.Context, account *wecommon.GWAccount) (*tenrpc.EncRPCClient, error) {
+func (rpc *BackendRPC) ConnectWS(ctx context.Context, account *gwcommon.GWAccount) (*tenrpc.EncRPCClient, error) {
 	return connect(ctx, rpc.rpcWSConnPool, account, rpc.encKey, rpc.logger)
 }
 
@@ -97,7 +97,7 @@ func (rpc *BackendRPC) ReturnConnWS(conn tenrpc.Client) error {
 	return returnConn(rpc.rpcWSConnPool, conn, rpc.logger)
 }
 
-func (rpc *BackendRPC) ConnectHttp(ctx context.Context, account *wecommon.GWAccount) (*tenrpc.EncRPCClient, error) {
+func (rpc *BackendRPC) ConnectHttp(ctx context.Context, account *gwcommon.GWAccount) (*tenrpc.EncRPCClient, error) {
 	return connect(ctx, rpc.rpcHTTPConnPool, account, rpc.encKey, rpc.logger)
 }
 
@@ -114,7 +114,7 @@ func (rpc *BackendRPC) Stop() {
 	rpc.rpcWSConnPool.Close(context.Background())
 }
 
-func WithEncRPCConnection[R any](ctx context.Context, rpc *BackendRPC, acct *wecommon.GWAccount, execute func(*tenrpc.EncRPCClient) (*R, error)) (*R, error) {
+func WithEncRPCConnection[R any](ctx context.Context, rpc *BackendRPC, acct *gwcommon.GWAccount, execute func(*tenrpc.EncRPCClient) (*R, error)) (*R, error) {
 	rpcClient, err := connect(ctx, rpc.rpcHTTPConnPool, acct, rpc.encKey, rpc.logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not connect to backed. Cause: %w", err)
@@ -142,14 +142,14 @@ func connectPlain(ctx context.Context, p *pool.ObjectPool, logger gethlog.Logger
 	return conn, nil
 }
 
-func connect(ctx context.Context, p *pool.ObjectPool, account *wecommon.GWAccount, key []byte, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
+func connect(ctx context.Context, p *pool.ObjectPool, account *gwcommon.GWAccount, key []byte, logger gethlog.Logger) (*tenrpc.EncRPCClient, error) {
 	defer core.LogMethodDuration(logger, measure.NewStopwatch(), "get rpc connection")
 	connectionObj, err := p.BorrowObject(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot fetch rpc connection to backend node %w", err)
 	}
 	conn := connectionObj.(*gethrpc.Client)
-	encClient, err := wecommon.CreateEncClient(conn, key, account.Address.Bytes(), account.User.UserKey, account.Signature, account.SignatureType, logger)
+	encClient, err := gwcommon.CreateEncClient(conn, key, account.Address.Bytes(), account.User.UserKey, account.Signature, account.SignatureType, logger)
 	if err != nil {
 		_ = returnConn(p, conn, logger)
 		return nil, fmt.Errorf("error creating new client, %w", err)

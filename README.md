@@ -8,7 +8,7 @@ TEN is an encrypted EVM Ethereum Layer 2.
 
 TEN uses Trusted Execution Environments (TEE) to execute transactions in a confidential environment, which means we diverge from the typical EVM node architecture. 
 
-There are three main components, each running as a separate process: the "Enclave", the "Host" and the "Gateway" (shown as "Wallet Extension" in the diagram below).
+There are three main components, each running as a separate process: the "Enclave", the "Host" and the "Gateway".
 
 ![Architecture](design/architecture/resources/obscuro_arch.jpeg)
 
@@ -224,10 +224,10 @@ See [go/host](go/host)
 
 
 
-### III. The Wallet Extension
+### III. The Gateway
 
-The missing link to achieving fully private transactions while allowing end-users to continue using their favourite 
-wallets (like MetaMask). This is a very thin component that is responsible for encrypting and decrypting traffic 
+The missing link to achieving fully private transactions while allowing end-users to continue using their favourite
+wallets (like MetaMask). This is a very thin component that is responsible for encrypting and decrypting traffic
 between the TEN node and its clients.
 
 See the [docs](https://docs.ten.xyz/docs/getting-started/for-users/setup-you-wallet/) for more information.

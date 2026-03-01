@@ -158,8 +158,8 @@ func restrictiveHttpRequestHandler(gatewayServices *services.Services, resp http
 
 // rateLimitedHttpRequestHandler handles HTTP requests with rate limiting applied.
 // It checks both global and per-IP rate limits before processing the request.
-func rateLimitedHttpRequestHandler(walletExt *services.Services, resp http.ResponseWriter, req *http.Request, fun func(walletExt *services.Services, conn UserConn)) {
-	if walletExt.IsStopping() {
+func rateLimitedHttpRequestHandler(gwServices *services.Services, resp http.ResponseWriter, req *http.Request, fun func(gwServices *services.Services, conn UserConn)) {
+	if gwServices.IsStopping() {
 		return
 	}
 	if httputil.EnableCORS(resp, req) {
@@ -167,17 +167,17 @@ func rateLimitedHttpRequestHandler(walletExt *services.Services, resp http.Respo
 	}
 
 	// Apply rate limiting if enabled
-	if walletExt.HTTPRateLimiter != nil && walletExt.HTTPRateLimiter.IsEnabled() {
+	if gwServices.HTTPRateLimiter != nil && gwServices.HTTPRateLimiter.IsEnabled() {
 		clientIP := ratelimiter.GetClientIP(req)
-		allowed, retryAfter := walletExt.HTTPRateLimiter.Allow(clientIP)
+		allowed, retryAfter := gwServices.HTTPRateLimiter.Allow(clientIP)
 		if !allowed {
 			writeRateLimitResponse(resp, retryAfter)
 			return
 		}
 	}
 
-	userConn := NewUserConnHTTP(resp, req, walletExt.Logger())
-	fun(walletExt, userConn)
+	userConn := NewUserConnHTTP(resp, req, gwServices.Logger())
+	fun(gwServices, userConn)
 }
 
 // writeRateLimitResponse writes an HTTP 429 response with appropriate headers and body.
@@ -195,38 +195,38 @@ func writeRateLimitResponse(resp http.ResponseWriter, retryAfter time.Duration) 
 func readyRequestHandler(_ *services.Services, _ UserConn) {}
 
 // This function handles request to /join endpoint. It is responsible to create new user (new key-pair) and store it to the db
-func joinRequestHandler(walletExt *services.Services, conn UserConn) {
+func joinRequestHandler(gwServices *services.Services, conn UserConn) {
 	_, err := conn.ReadRequest()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("error reading request: %w", err))
 		return
 	}
 
 	// generate new key-pair and store it in the database
-	userID, err := walletExt.GenerateAndStoreNewUser()
+	userID, err := gwServices.GenerateAndStoreNewUser()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("internal Error"))
-		walletExt.Logger().Error("error creating new user", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), errors.New("internal Error"))
+		gwServices.Logger().Error("error creating new user", log.ErrKey, err)
 	}
 
 	// write hex encoded userID in the response
 	err = conn.WriteResponse([]byte(hexutils.BytesToHex(userID)))
 	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
 // This function handles request to /get-token endpoint. It reads the session key from the cookie and returns it to the user.
-func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
+func getTokenRequestHandler(gwServices *services.Services, conn UserConn) {
 	// Get the HTTP request to access cookies
 	req := conn.GetHTTPRequest()
 	if req == nil {
-		handleError(conn, walletExt.Logger(), errors.New("could not access request"))
+		handleError(conn, gwServices.Logger(), errors.New("could not access request"))
 		return
 	}
 
 	// Find the gateway token cookie (with dynamic name based on TLS domain)
-	cookieName := generateCookieNameFromDomain(walletExt.Config.TLSDomain)
+	cookieName := generateCookieNameFromDomain(gwServices.Config.TLSDomain)
 	var userID string
 	for _, cookie := range req.Cookies() {
 		if cookie.Name == cookieName {
@@ -236,42 +236,42 @@ func getTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	}
 
 	if userID == "" {
-		handleError(conn, walletExt.Logger(), errors.New("gateway token cookie not found"))
+		handleError(conn, gwServices.Logger(), errors.New("gateway token cookie not found"))
 		return
 	}
 
 	// Validate the token format (should be hex)
 	userIDBytes, err := hex.DecodeString(userID)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid token format: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("invalid token format: %w", err))
 		return
 	}
 
 	if len(userIDBytes) == 0 {
-		handleError(conn, walletExt.Logger(), errors.New("token cannot be empty"))
+		handleError(conn, gwServices.Logger(), errors.New("token cannot be empty"))
 		return
 	}
 
 	// Verify the user exists in the database
-	_, err = walletExt.Storage.GetUser(userIDBytes)
+	_, err = gwServices.Storage.GetUser(userIDBytes)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("user not found in database"))
+		handleError(conn, gwServices.Logger(), errors.New("user not found in database"))
 		return
 	}
 
 	// Return the userID from the cookie (same format as /join)
 	err = conn.WriteResponse([]byte(userID))
 	if err != nil {
-		walletExt.Logger().Error("error writing token response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing token response", log.ErrKey, err)
 	}
 }
 
 // This function handles request to /set-token endpoint. It receives a token in JSON format and sets it as a session cookie.
-func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
+func setTokenRequestHandler(gwServices *services.Services, conn UserConn) {
 	// Read the request body to get the token
 	requestBody, err := conn.ReadRequest()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("error reading request: %w", err))
 		return
 	}
 
@@ -283,36 +283,36 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	var req SetTokenRequest
 	err = json.Unmarshal(requestBody, &req)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid JSON format: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("invalid JSON format: %w", err))
 		return
 	}
 
 	if req.Token == "" {
-		handleError(conn, walletExt.Logger(), errors.New("token is required"))
+		handleError(conn, gwServices.Logger(), errors.New("token is required"))
 		return
 	}
 
 	// Validate the token format (should be hex)
 	userIDBytes, err := hex.DecodeString(req.Token)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid token format: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("invalid token format: %w", err))
 		return
 	}
 
 	if len(userIDBytes) == 0 {
-		handleError(conn, walletExt.Logger(), errors.New("token cannot be empty"))
+		handleError(conn, gwServices.Logger(), errors.New("token cannot be empty"))
 		return
 	}
 
 	// Verify the user exists in the database
-	_, err = walletExt.Storage.GetUser(userIDBytes)
+	_, err = gwServices.Storage.GetUser(userIDBytes)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("user not found in database"))
+		handleError(conn, gwServices.Logger(), errors.New("user not found in database"))
 		return
 	}
 
 	// Set the cookie with the provided token
-	cookieName := generateCookieNameFromDomain(walletExt.Config.TLSDomain)
+	cookieName := generateCookieNameFromDomain(gwServices.Config.TLSDomain)
 	cookie := &http.Cookie{
 		Name:     cookieName,
 		Value:    req.Token,
@@ -326,7 +326,7 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	err = conn.SetCookie(cookie)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error setting cookie: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("error setting cookie: %w", err))
 		return
 	}
 
@@ -334,24 +334,24 @@ func setTokenRequestHandler(walletExt *services.Services, conn UserConn) {
 	successResponse := map[string]string{"status": "success", "message": "Token cookie set successfully"}
 	responseBytes, err := json.Marshal(successResponse)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error marshaling response: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("error marshaling response: %w", err))
 		return
 	}
 
 	err = conn.WriteResponse(responseBytes)
 	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
 // This function handles request to /authenticate endpoint.
 // In the request we receive message, signature and address in JSON as request body and userID and address as query parameters
 // We then check if message is in correct format and if signature is valid. If all checks pass we save address and signature against userID
-func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
+func authenticateRequestHandler(gwServices *services.Services, conn UserConn) {
 	// read the request
 	body, err := conn.ReadRequest()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("error reading request: %w", err))
 		return
 	}
 
@@ -359,21 +359,21 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	var reqJSONMap map[string]string
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal request body - %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("could not unmarshal request body - %w", err))
 		return
 	}
 
 	// get signature from the request and remove leading two bytes (0x)
 	signature, err := hex.DecodeString(reqJSONMap[common.JSONKeySignature][2:])
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("unable to decode signature - %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("unable to decode signature - %w", err))
 		return
 	}
 
 	// get address from the request
 	address, ok := reqJSONMap[common.JSONKeyAddress]
 	if !ok || address == "" {
-		handleError(conn, walletExt.Logger(), errors.New("unable to read address field from the request"))
+		handleError(conn, gwServices.Logger(), errors.New("unable to read address field from the request"))
 		return
 	}
 
@@ -386,46 +386,46 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 	// check if a message type is valid
 	messageType, ok := viewingkey.SignatureTypeMap[messageTypeValue]
 	if !ok {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid message type: %s", messageTypeValue))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("invalid message type: %s", messageTypeValue))
 	}
 
 	// read userID from query params
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("malformed query: 'token' required - representing encryption token - %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("malformed query: 'token' required - representing encryption token - %w", err))
 		return
 	}
 
 	// check if account already exists for this user
-	exists, err := walletExt.UserHasAccount(userID, address)
+	exists, err := gwServices.UserHasAccount(userID, address)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-		walletExt.Logger().Error("error checking if account exists", "userID", userID, "address", address, log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("internal error"))
+		gwServices.Logger().Error("error checking if account exists", "userID", userID, "address", address, log.ErrKey, err)
 		return
 	}
 	if exists {
 		// Account already exists, return success
 		err = conn.WriteResponse([]byte(common.AccountAlreadyExistsMsg))
 		if err != nil {
-			walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+			gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 		}
 		return
 	}
 
 	// check signature and add address and signature for that user
-	err = walletExt.AddAddressToUser(userID, address, signature, messageType)
+	err = gwServices.AddAddressToUser(userID, address, signature, messageType)
 	if err != nil {
 		if errors.Is(err, services.ErrMaxAccountsPerUserReached) {
-			handleError(conn, walletExt.Logger(), services.ErrMaxAccountsPerUserReached)
+			handleError(conn, gwServices.Logger(), services.ErrMaxAccountsPerUserReached)
 		} else {
-			handleError(conn, walletExt.Logger(), fmt.Errorf("internal error"))
-			walletExt.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, userID, signature))
+			handleError(conn, gwServices.Logger(), fmt.Errorf("internal error"))
+			gwServices.Logger().Error(fmt.Sprintf("error adding address: %s to user: %s with signature: %s", address, userID, signature))
 		}
 		return
 	}
 	err = conn.WriteResponse([]byte(common.SuccessMsg))
 	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
@@ -433,37 +433,37 @@ func authenticateRequestHandler(walletExt *services.Services, conn UserConn) {
 // This function handles request to /query endpoint.
 // In the query parameters address and userID are required. We check if provided address is registered for given userID
 // and return true/false in json response
-func queryRequestHandler(walletExt *services.Services, conn UserConn) {
+func queryRequestHandler(gwServices *services.Services, conn UserConn) {
 	// read the request
 	_, err := conn.ReadRequest()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("error reading request: %w", err))
 		return
 	}
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("'token' not found in query parameters"))
-		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("'token' not found in query parameters"))
+		gwServices.Logger().Info("user not found in the query params", log.ErrKey, err)
 		return
 	}
 	address, err := getQueryParameter(conn.ReadRequestParams(), common.AddressQueryParameter)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("address ('a') not found in query parameters"))
-		walletExt.Logger().Error("address ('a') not found in query parameters", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), errors.New("address ('a') not found in query parameters"))
+		gwServices.Logger().Error("address ('a') not found in query parameters", log.ErrKey, err)
 		return
 	}
 	// check if address length is correct
 	if len(address) != common.EthereumAddressLen {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("provided address length is %d, expected: %d", len(address), common.EthereumAddressLen))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("provided address length is %d, expected: %d", len(address), common.EthereumAddressLen))
 		return
 	}
 
 	// check if this account is registered with given user
-	found, err := walletExt.UserHasAccount(userID, address)
+	found, err := gwServices.UserHasAccount(userID, address)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("internal error"))
-		walletExt.Logger().Error("error during checking if account exists for user", "userID", userID, log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), errors.New("internal error"))
+		gwServices.Logger().Error("error during checking if account exists for user", "userID", userID, log.ErrKey, err)
 	}
 
 	// create and write the response
@@ -473,53 +473,53 @@ func queryRequestHandler(walletExt *services.Services, conn UserConn) {
 
 	msg, err := json.Marshal(res)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), err)
+		handleError(conn, gwServices.Logger(), err)
 		return
 	}
 
 	err = conn.WriteResponse(msg)
 	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
 // This function handles request to /revoke endpoint.
 // It requires userID as query parameter and deletes given user and all associated viewing keys
-func revokeRequestHandler(walletExt *services.Services, conn UserConn) {
+func revokeRequestHandler(gwServices *services.Services, conn UserConn) {
 	// read the request
 	_, err := conn.ReadRequest()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("error reading request: %w", err))
 		return
 	}
 
 	userID, err := getUserID(conn)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("'token' not found in query parameters"))
-		walletExt.Logger().Info("user not found in the query params", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("'token' not found in query parameters"))
+		gwServices.Logger().Info("user not found in the query params", log.ErrKey, err)
 		return
 	}
 
 	// delete user and accounts associated with it from the database
-	err = walletExt.Storage.DeleteUser(userID)
+	err = gwServices.Storage.DeleteUser(userID)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("internal error"))
-		walletExt.Logger().Error("unable to delete user", "userID", userID, log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), errors.New("internal error"))
+		gwServices.Logger().Error("unable to delete user", "userID", userID, log.ErrKey, err)
 		return
 	}
 
 	err = conn.WriteResponse([]byte(common.SuccessMsg))
 	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
 // Handles request to /health endpoint.
-func healthRequestHandler(walletExt *services.Services, conn UserConn) {
+func healthRequestHandler(gwServices *services.Services, conn UserConn) {
 	// read the request
 	_, err := conn.ReadRequest()
 	if err != nil {
-		walletExt.Logger().Error("error reading request", log.ErrKey, err)
+		gwServices.Logger().Error("error reading request", log.ErrKey, err)
 		return
 	}
 
@@ -527,28 +527,28 @@ func healthRequestHandler(walletExt *services.Services, conn UserConn) {
 	cacheKey := []byte("health_check")
 	cacheCfg := &cache.Cfg{Type: cache.LatestBatch} // Short-living cache
 
-	result, err := cache.WithCache(walletExt.RPCResponsesCache, cacheCfg, cacheKey, func() (*[]byte, error) {
+	result, err := cache.WithCache(gwServices.RPCResponsesCache, cacheCfg, cacheKey, func() (*[]byte, error) {
 		// TODO: connect to database and check if it is healthy
 		response := []byte(common.SuccessMsg)
 		return &response, nil
 	})
 	if err != nil {
-		walletExt.Logger().Error("error getting health status", log.ErrKey, err)
+		gwServices.Logger().Error("error getting health status", log.ErrKey, err)
 		return
 	}
 
 	err = conn.WriteResponse(*result)
 	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
 // Handles request to /network-health endpoint.
-func networkHealthRequestHandler(walletExt *services.Services, userConn UserConn) {
+func networkHealthRequestHandler(gwServices *services.Services, userConn UserConn) {
 	// read the request
 	_, err := userConn.ReadRequest()
 	if err != nil {
-		walletExt.Logger().Error("error reading request", log.ErrKey, err)
+		gwServices.Logger().Error("error reading request", log.ErrKey, err)
 		return
 	}
 
@@ -556,9 +556,9 @@ func networkHealthRequestHandler(walletExt *services.Services, userConn UserConn
 	cacheKey := []byte("network_health_check")
 	cacheCfg := &cache.Cfg{Type: cache.LatestBatch} // Short-living cache
 
-	result, err := cache.WithCache(walletExt.RPCResponsesCache, cacheCfg, cacheKey, func() (*[]byte, error) {
+	result, err := cache.WithCache(gwServices.RPCResponsesCache, cacheCfg, cacheKey, func() (*[]byte, error) {
 		// call `obscuro-health` rpc method to get the health status of the node
-		healthStatus, err := walletExt.GetTenNodeHealthStatus()
+		healthStatus, err := gwServices.GetTenNodeHealthStatus()
 
 		// create the response in the required format
 		type HealthStatus struct {
@@ -587,21 +587,21 @@ func networkHealthRequestHandler(walletExt *services.Services, userConn UserConn
 		return &data, nil
 	})
 	if err != nil {
-		walletExt.Logger().Error("error getting network health status", log.ErrKey, err)
+		gwServices.Logger().Error("error getting network health status", log.ErrKey, err)
 		return
 	}
 
 	err = userConn.WriteResponse(*result)
 	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
-func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn) {
+func networkConfigRequestHandler(gwServices *services.Services, userConn UserConn) {
 	// read the request
 	_, err := userConn.ReadRequest()
 	if err != nil {
-		walletExt.Logger().Error("error reading request", log.ErrKey, err)
+		gwServices.Logger().Error("error reading request", log.ErrKey, err)
 		return
 	}
 
@@ -609,9 +609,9 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 	cacheKey := []byte("network_config")
 	cacheCfg := &cache.Cfg{Type: cache.LongLiving} // Long-living cache
 
-	result, err := cache.WithCache(walletExt.RPCResponsesCache, cacheCfg, cacheKey, func() (*[]byte, error) {
+	result, err := cache.WithCache(gwServices.RPCResponsesCache, cacheCfg, cacheKey, func() (*[]byte, error) {
 		// Call the RPC method to get the network configuration
-		networkConfig, err := walletExt.GetTenNetworkConfig()
+		networkConfig, err := gwServices.GetTenNetworkConfig()
 		if err != nil {
 			return nil, fmt.Errorf("error fetching network config: %w", err)
 		}
@@ -666,38 +666,38 @@ func networkConfigRequestHandler(walletExt *services.Services, userConn UserConn
 		return &data, nil
 	})
 	if err != nil {
-		walletExt.Logger().Error("error getting network config", log.ErrKey, err)
+		gwServices.Logger().Error("error getting network config", log.ErrKey, err)
 		return
 	}
 
 	// Write the response back to the user
 	err = userConn.WriteResponse(*result)
 	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
 // Handles request to /version endpoint.
-func versionRequestHandler(walletExt *services.Services, userConn UserConn) {
+func versionRequestHandler(gwServices *services.Services, userConn UserConn) {
 	// read the request
 	_, err := userConn.ReadRequest()
 	if err != nil {
-		walletExt.Logger().Error("error reading request", log.ErrKey, err)
+		gwServices.Logger().Error("error reading request", log.ErrKey, err)
 		return
 	}
 
-	err = userConn.WriteResponse([]byte(walletExt.Version()))
+	err = userConn.WriteResponse([]byte(gwServices.Version()))
 	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
 // getMessageRequestHandler handles request to /getmessage endpoint.
-func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
+func getMessageRequestHandler(gwServices *services.Services, conn UserConn) {
 	// read the request
 	body, err := conn.ReadRequest()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("error reading request: %w", err))
 		return
 	}
 
@@ -705,21 +705,21 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	var reqJSONMap map[string]interface{}
 	err = json.Unmarshal(body, &reqJSONMap)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("could not unmarshal address request - %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("could not unmarshal address request - %w", err))
 		return
 	}
 
 	// get address from the request
 	encryptionToken, ok := reqJSONMap[common.JSONKeyEncryptionToken]
 	if !ok {
-		handleError(conn, walletExt.Logger(), errors.New("encryptionToken field not found in the request"))
+		handleError(conn, gwServices.Logger(), errors.New("encryptionToken field not found in the request"))
 		return
 	}
 	if tokenStr, ok := encryptionToken.(string); !ok {
-		handleError(conn, walletExt.Logger(), errors.New("encryptionToken field is not a string"))
+		handleError(conn, gwServices.Logger(), errors.New("encryptionToken field is not a string"))
 		return
 	} else if len(tokenStr) != common.MessageUserIDLen {
-		handleError(conn, walletExt.Logger(), errors.New("encryptionToken field is not of correct length"))
+		handleError(conn, gwServices.Logger(), errors.New("encryptionToken field is not of correct length"))
 		return
 	}
 
@@ -728,14 +728,14 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 	if formatsInterface, ok := reqJSONMap[common.JSONKeyFormats]; ok {
 		formats, ok := formatsInterface.([]interface{})
 		if !ok {
-			handleError(conn, walletExt.Logger(), errors.New("formats field is not an array"))
+			handleError(conn, gwServices.Logger(), errors.New("formats field is not an array"))
 			return
 		}
 
 		for _, f := range formats {
 			formatStr, ok := f.(string)
 			if !ok {
-				handleError(conn, walletExt.Logger(), errors.New("format value is not a string"))
+				handleError(conn, gwServices.Logger(), errors.New("format value is not a string"))
 				return
 			}
 			formatsSlice = append(formatsSlice, formatStr)
@@ -747,10 +747,10 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 		return
 	}
 
-	message, err := walletExt.GenerateUserMessageToSign(userID, formatsSlice)
+	message, err := gwServices.GenerateUserMessageToSign(userID, formatsSlice)
 	if err != nil {
-		handleError(conn, walletExt.Logger(), errors.New("internal error"))
-		walletExt.Logger().Error("error getting message", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), errors.New("internal error"))
+		gwServices.Logger().Error("error getting message", log.ErrKey, err)
 		return
 	}
 
@@ -778,14 +778,14 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 
 		responseBytes, err = json.Marshal(response)
 		if err != nil {
-			handleError(conn, walletExt.Logger(), fmt.Errorf("error marshaling JSON response: %w", err))
+			handleError(conn, gwServices.Logger(), fmt.Errorf("error marshaling JSON response: %w", err))
 			return
 		}
 	} else if messageFormat == viewingkey.EIP712Signature {
 		var messageMap map[string]interface{}
 		err = json.Unmarshal([]byte(message), &messageMap)
 		if err != nil {
-			handleError(conn, walletExt.Logger(), fmt.Errorf("error unmarshaling JSON: %w", err))
+			handleError(conn, gwServices.Logger(), fmt.Errorf("error unmarshaling JSON: %w", err))
 			return
 		}
 
@@ -800,7 +800,7 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 		// Marshal the modified map back to JSON
 		modifiedMessage, err := json.Marshal(messageMap)
 		if err != nil {
-			handleError(conn, walletExt.Logger(), fmt.Errorf("error marshaling modified JSON: %w", err))
+			handleError(conn, gwServices.Logger(), fmt.Errorf("error marshaling modified JSON: %w", err))
 			return
 		}
 
@@ -811,22 +811,22 @@ func getMessageRequestHandler(walletExt *services.Services, conn UserConn) {
 
 		responseBytes, err = json.Marshal(response)
 		if err != nil {
-			handleError(conn, walletExt.Logger(), fmt.Errorf("error marshaling JSON response: %w", err))
+			handleError(conn, gwServices.Logger(), fmt.Errorf("error marshaling JSON response: %w", err))
 			return
 		}
 	}
 
 	err = conn.WriteResponse(responseBytes)
 	if err != nil {
-		walletExt.Logger().Error("error writing success response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing success response", log.ErrKey, err)
 	}
 }
 
-func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {
+func keyExchangeRequestHandler(gwServices *services.Services, conn UserConn) {
 	// Read the request
 	body, err := conn.ReadRequest()
 	if err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error reading request: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("error reading request: %w", err))
 		return
 	}
 
@@ -834,31 +834,31 @@ func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {
 	var receivedMessageOG keymanager.KeyExchangeRequest
 	err = json.Unmarshal(body, &receivedMessageOG)
 	if err != nil {
-		walletExt.Logger().Error("OG: Failed to deserialize received message", log.ErrKey, err)
-		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to deserialize message: %w", err))
+		gwServices.Logger().Error("OG: Failed to deserialize received message", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("failed to deserialize message: %w", err))
 		return
 	}
 
 	// Step 2: Deserialize the public key
 	receivedPubKey, err := keymanager.DeserializePublicKey(receivedMessageOG.PublicKey)
 	if err != nil {
-		walletExt.Logger().Error("OG: Failed to deserialize public key", log.ErrKey, err)
-		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to deserialize public key: %w", err))
+		gwServices.Logger().Error("OG: Failed to deserialize public key", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("failed to deserialize public key: %w", err))
 		return
 	}
 
 	// Step 3: Deserialize the attestation report
 	var receivedAttestation tencommon.AttestationReport
 	if err := json.Unmarshal(receivedMessageOG.Attestation, &receivedAttestation); err != nil {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("error unmarshaling attestation report: %w", err))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("error unmarshaling attestation report: %w", err))
 		return
 	}
 
 	// Step 4: Verify the attestation report
 	verifiedData, err := keymanager.VerifyReport(&receivedAttestation)
 	if err != nil {
-		walletExt.Logger().Error("OG: Failed to verify attestation report", log.ErrKey, err)
-		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to verify attestation report: %w", err))
+		gwServices.Logger().Error("OG: Failed to verify attestation report", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("failed to verify attestation report: %w", err))
 		return
 	}
 
@@ -868,16 +868,16 @@ func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {
 	// Only compare the first 32 bytes since verifiedData is padded to 64 bytes
 	verifiedDataTruncated := verifiedData[:32]
 	if bytes.Equal(verifiedDataTruncated, pubKeyHash[:]) {
-		walletExt.Logger().Info("OG: Public keys match")
+		gwServices.Logger().Info("OG: Public keys match")
 	} else {
-		walletExt.Logger().Error("OG: Public keys do not match")
+		gwServices.Logger().Error("OG: Public keys do not match")
 	}
 
 	// Step 5 Encrypt the encryption key using the received public key
-	encryptedKeyOG, err := keymanager.EncryptWithPublicKey(walletExt.Storage.GetEncryptionKey(), receivedPubKey)
+	encryptedKeyOG, err := keymanager.EncryptWithPublicKey(gwServices.Storage.GetEncryptionKey(), receivedPubKey)
 	if err != nil {
-		walletExt.Logger().Error("OG: Encryption failed", log.ErrKey, err)
-		handleError(conn, walletExt.Logger(), fmt.Errorf("encryption failed: %w", err))
+		gwServices.Logger().Error("OG: Encryption failed", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("encryption failed: %w", err))
 		return
 	}
 
@@ -892,51 +892,51 @@ func keyExchangeRequestHandler(walletExt *services.Services, conn UserConn) {
 	// Step 8: Serialize the response message to JSON and send it back to the requester
 	messageBytesOG, err := json.Marshal(messageOG)
 	if err != nil {
-		walletExt.Logger().Error("OG: Failed to serialize response message", log.ErrKey, err)
-		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to serialize response message: %w", err))
+		gwServices.Logger().Error("OG: Failed to serialize response message", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("failed to serialize response message: %w", err))
 		return
 	}
-	walletExt.Logger().Info("Shared encrypted key with another gateway enclave")
+	gwServices.Logger().Info("Shared encrypted key with another gateway enclave")
 	err = conn.WriteResponse(messageBytesOG)
 	if err != nil {
-		walletExt.Logger().Error("error writing response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing response", log.ErrKey, err)
 	}
 }
 
 // backupEncryptionKeyRequestHandler handles requests to backup the encryption key.
 // The encryption key is encrypted with the configured backup public key and returned as hex.
 // This endpoint requires the -backupEncryptionKey flag to be configured.
-func backupEncryptionKeyRequestHandler(walletExt *services.Services, conn UserConn) {
+func backupEncryptionKeyRequestHandler(gwServices *services.Services, conn UserConn) {
 	// Check if backup encryption key is configured
-	if walletExt.Config.BackupEncryptionKey == "" {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("backup encryption key not configured - set -backupEncryptionKey flag"))
+	if gwServices.Config.BackupEncryptionKey == "" {
+		handleError(conn, gwServices.Logger(), fmt.Errorf("backup encryption key not configured - set -backupEncryptionKey flag"))
 		return
 	}
 
 	// Get the encryption key from storage
-	encryptionKey := walletExt.Storage.GetEncryptionKey()
+	encryptionKey := gwServices.Storage.GetEncryptionKey()
 	if len(encryptionKey) == 0 {
-		handleError(conn, walletExt.Logger(), fmt.Errorf("no encryption key available to backup"))
+		handleError(conn, gwServices.Logger(), fmt.Errorf("no encryption key available to backup"))
 		return
 	}
 
 	// Decode the backup public key from hex
-	backupPubKeyHex := walletExt.Config.BackupEncryptionKey
+	backupPubKeyHex := gwServices.Config.BackupEncryptionKey
 	// Remove 0x prefix if present
 	backupPubKeyHex = strings.TrimPrefix(backupPubKeyHex, "0x")
 
 	backupPubKeyBytes, err := hex.DecodeString(backupPubKeyHex)
 	if err != nil {
-		walletExt.Logger().Error("Failed to decode backup public key", log.ErrKey, err)
-		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid backup public key format: %w", err))
+		gwServices.Logger().Error("Failed to decode backup public key", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("invalid backup public key format: %w", err))
 		return
 	}
 
 	// Decompress the public key (expecting compressed ECDSA public key - 33 bytes)
 	backupPubKey, err := crypto.DecompressPubkey(backupPubKeyBytes)
 	if err != nil {
-		walletExt.Logger().Error("Failed to decompress backup public key", log.ErrKey, err)
-		handleError(conn, walletExt.Logger(), fmt.Errorf("invalid backup public key: %w", err))
+		gwServices.Logger().Error("Failed to decompress backup public key", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("invalid backup public key: %w", err))
 		return
 	}
 
@@ -944,17 +944,17 @@ func backupEncryptionKeyRequestHandler(walletExt *services.Services, conn UserCo
 	eciesPubKey := ecies.ImportECDSAPublic(backupPubKey)
 	encryptedKey, err := ecies.Encrypt(rand.Reader, eciesPubKey, encryptionKey, nil, nil)
 	if err != nil {
-		walletExt.Logger().Error("Failed to encrypt backup key", log.ErrKey, err)
-		handleError(conn, walletExt.Logger(), fmt.Errorf("failed to encrypt backup key: %w", err))
+		gwServices.Logger().Error("Failed to encrypt backup key", log.ErrKey, err)
+		handleError(conn, gwServices.Logger(), fmt.Errorf("failed to encrypt backup key: %w", err))
 		return
 	}
 
 	// Return the encrypted key as hex with 0x prefix
 	response := "0x" + hex.EncodeToString(encryptedKey)
-	walletExt.Logger().Info("Successfully created encryption key backup")
+	gwServices.Logger().Info("Successfully created encryption key backup")
 
 	err = conn.WriteResponse([]byte(response))
 	if err != nil {
-		walletExt.Logger().Error("error writing response", log.ErrKey, err)
+		gwServices.Logger().Error("error writing response", log.ErrKey, err)
 	}
 }

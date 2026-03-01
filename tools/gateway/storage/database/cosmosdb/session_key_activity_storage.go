@@ -10,7 +10,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 	gethcommon "github.com/ethereum/go-ethereum/common"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 	"github.com/ten-protocol/go-ten/tools/gateway/encryption"
 )
 
@@ -26,8 +26,8 @@ const (
 
 // SessionKeyActivityStorage interface defines the session key activity storage operations
 type SessionKeyActivityStorage interface {
-	Load() ([]wecommon.SessionKeyActivity, error)
-	Save([]wecommon.SessionKeyActivity) error
+	Load() ([]gwcommon.SessionKeyActivity, error)
+	Save([]gwcommon.SessionKeyActivity) error
 }
 
 type sessionKeyActivityStorageCosmosDB struct {
@@ -81,9 +81,9 @@ func NewSessionKeyActivityStorage(connectionString string, encryptionKey []byte)
 	}, nil
 }
 
-func (s *sessionKeyActivityStorageCosmosDB) Load() ([]wecommon.SessionKeyActivity, error) {
+func (s *sessionKeyActivityStorageCosmosDB) Load() ([]gwcommon.SessionKeyActivity, error) {
 	ctx := context.Background()
-	result := make([]wecommon.SessionKeyActivity, 0)
+	result := make([]gwcommon.SessionKeyActivity, 0)
 
 	for i := 0; i < s.shardCount; i++ {
 		shardID := s.getShardDocumentIDByIndex(i)
@@ -117,7 +117,7 @@ func (s *sessionKeyActivityStorageCosmosDB) Load() ([]wecommon.SessionKeyActivit
 		for _, it := range dto.Items {
 			addr := gethcommon.BytesToAddress(it.Addr)
 			userID := it.UserID
-			result = append(result, wecommon.SessionKeyActivity{Addr: addr, UserID: userID, LastActive: it.LastActive})
+			result = append(result, gwcommon.SessionKeyActivity{Addr: addr, UserID: userID, LastActive: it.LastActive})
 		}
 	}
 	return result, nil
@@ -141,14 +141,14 @@ func (s *sessionKeyActivityStorageCosmosDB) Load() ([]wecommon.SessionKeyActivit
 //
 // The method groups items by shard index, clears all shards, then writes data only to shards
 // that contain items. Each shard document is validated against CosmosDB's 2MB size limit.
-func (s *sessionKeyActivityStorageCosmosDB) Save(items []wecommon.SessionKeyActivity) error {
+func (s *sessionKeyActivityStorageCosmosDB) Save(items []gwcommon.SessionKeyActivity) error {
 	ctx := context.Background()
 	timestamp := time.Now().UTC().Format(time.RFC3339)
 
 	// Group items by shard index for efficient batch writing.
 	// Each session key address is hashed to determine which shard it belongs to,
 	// ensuring even distribution across all shards.
-	itemsByShardIndex := make(map[int][]wecommon.SessionKeyActivity)
+	itemsByShardIndex := make(map[int][]gwcommon.SessionKeyActivity)
 	for _, item := range items {
 		shardIdx := s.shardIndexForAddress(item.Addr)
 		itemsByShardIndex[shardIdx] = append(itemsByShardIndex[shardIdx], item)
@@ -225,7 +225,7 @@ func (s *sessionKeyActivityStorageCosmosDB) clearAllShards(ctx context.Context, 
 // This is phase 2 of the Save operation, writing actual data to shards that contain items.
 // The method converts session key activities to DTOs and validates the document size
 // against CosmosDB's 2MB limit before writing.
-func (s *sessionKeyActivityStorageCosmosDB) writeShardData(ctx context.Context, shardIdx int, items []wecommon.SessionKeyActivity, timestamp string) error {
+func (s *sessionKeyActivityStorageCosmosDB) writeShardData(ctx context.Context, shardIdx int, items []gwcommon.SessionKeyActivity, timestamp string) error {
 	shardID := s.getShardDocumentIDByIndex(shardIdx)
 	dto := sessionKeyActivityDTO{
 		ID:          shardID,

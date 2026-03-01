@@ -13,7 +13,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 
 	"github.com/stretchr/testify/require"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 var tests = map[string]func(storage UserStorage, t *testing.T){
@@ -24,7 +24,7 @@ var tests = map[string]func(storage UserStorage, t *testing.T){
 }
 
 func TestGatewayStorage(t *testing.T) {
-	randomKey, err := wecommon.GenerateRandomKey()
+	randomKey, err := gwcommon.GenerateRandomKey()
 	require.NoError(t, err)
 
 	for name, test := range tests {

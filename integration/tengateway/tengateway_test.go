@@ -22,7 +22,7 @@ import (
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ethereum/go-ethereum"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -62,7 +62,7 @@ func TestTenGateway(t *testing.T) {
 	startPort := integration.TestPorts.TestTenGatewayPort
 	createTenNetwork(t, startPort)
 
-	tenGatewayConf := wecommon.Config{
+	tenGatewayConf := gwcommon.Config{
 		GatewayHost:                    "127.0.0.1",
 		GatewayPortHTTP:                startPort + integration.DefaultTenGatewayHTTPPortOffset,
 		GatewayPortWS:                  startPort + integration.DefaultTenGatewayWSPortOffset,
@@ -1636,10 +1636,10 @@ func makeHTTPEthJSONReq(url string, method string, userID string, params interfa
 
 func prepareRequestBody(method string, params interface{}) []byte {
 	reqBodyBytes, err := json.Marshal(map[string]interface{}{
-		wecommon.JSONKeyRPCVersion: jsonrpc.Version,
-		wecommon.JSONKeyMethod:     method,
-		wecommon.JSONKeyParams:     params,
-		wecommon.JSONKeyID:         "1",
+		gwcommon.JSONKeyRPCVersion: jsonrpc.Version,
+		gwcommon.JSONKeyMethod:     method,
+		gwcommon.JSONKeyParams:     params,
+		gwcommon.JSONKeyID:         "1",
 	})
 	if err != nil {
 		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))

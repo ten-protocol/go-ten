@@ -21,7 +21,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
 	gethrpc "github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 	"github.com/ten-protocol/go-ten/tools/gateway/keymanager"
 	"github.com/ten-protocol/go-ten/tools/gateway/storage"
 	"golang.org/x/crypto/acme/autocert"
@@ -36,7 +36,7 @@ type Container struct {
 	sessionKeyExpirationService *services.SessionKeyExpirationService
 }
 
-func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Container {
+func NewContainerFromConfig(config gwcommon.Config, logger gethlog.Logger) *Container {
 	// secureHeaders is a small middleware that sets defensive HTTP headers.
 	secureHeaders := func(next http.Handler, enableHSTS bool) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -61,8 +61,8 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	// create the account manager with a single unauthenticated connection
-	hostRPCBindAddrWS := wecommon.WSProtocol + config.NodeRPCWebsocketAddress
-	hostRPCBindAddrHTTP := wecommon.HTTPProtocol + config.NodeRPCHTTPAddress
+	hostRPCBindAddrWS := gwcommon.WSProtocol + config.NodeRPCWebsocketAddress
+	hostRPCBindAddrHTTP := gwcommon.HTTPProtocol + config.NodeRPCHTTPAddress
 
 	// get the encryption key (method is determined by the config)
 	encryptionKey, err := keymanager.GetEncryptionKey(config, logger)
@@ -105,7 +105,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	}
 
 	stopControl := stopcontrol.New()
-	walletExt := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, stopControl, version, logger, metricsTracker, &config)
+	gwServices := services.NewServices(hostRPCBindAddrHTTP, hostRPCBindAddrWS, userStorage, stopControl, version, logger, metricsTracker, &config)
 
 	// Create session key expiration service after services are created
 	var sessionKeyExpirationService *services.SessionKeyExpirationService
@@ -116,9 +116,9 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 			logger,
 			stopControl,
 			&config,
-			walletExt.BackendRPC,
-			walletExt.ActivityTracker,
-			walletExt.TxSender,
+			gwServices.BackendRPC,
+			gwServices.ActivityTracker,
+			gwServices.TxSender,
 		)
 	} else {
 		logger.Info("Session key expiration is disabled")
@@ -128,8 +128,8 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 		HTTPPort:   config.GatewayPortHTTP,
 		EnableWs:   true,
 		WsPort:     config.GatewayPortWS,
-		WsPath:     wecommon.APIVersion1 + "/",
-		HTTPPath:   wecommon.APIVersion1 + "/",
+		WsPath:     gwcommon.APIVersion1 + "/",
+		HTTPPath:   gwcommon.APIVersion1 + "/",
 		Host:       config.GatewayHost,
 	}
 
@@ -203,7 +203,7 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	rpcServer := node.NewServer(cfg, logger)
 
 	// Build routes and wrap each with secure headers
-	routes := httpapi.NewHTTPRoutes(walletExt)
+	routes := httpapi.NewHTTPRoutes(gwServices)
 	for i := range routes {
 		// Wrap route function with middleware
 		handler := http.HandlerFunc(routes[i].Func)
@@ -217,31 +217,31 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	rpcServer.RegisterAPIs([]gethrpc.API{
 		{
 			Namespace: "eth",
-			Service:   rpcapi.NewEthereumAPI(walletExt),
+			Service:   rpcapi.NewEthereumAPI(gwServices),
 		}, {
 			Namespace: "eth",
-			Service:   rpcapi.NewBlockChainAPI(walletExt),
+			Service:   rpcapi.NewBlockChainAPI(gwServices),
 		}, {
 			Namespace: "eth",
-			Service:   rpcapi.NewTransactionAPI(walletExt),
+			Service:   rpcapi.NewTransactionAPI(gwServices),
 		}, {
 			Namespace: "txpool",
-			Service:   rpcapi.NewTxPoolAPI(walletExt),
+			Service:   rpcapi.NewTxPoolAPI(gwServices),
 		}, {
 			Namespace: "debug",
-			Service:   rpcapi.NewDebugAPI(walletExt),
+			Service:   rpcapi.NewDebugAPI(gwServices),
 		}, {
 			Namespace: "eth",
-			Service:   rpcapi.NewFilterAPI(walletExt),
+			Service:   rpcapi.NewFilterAPI(gwServices),
 		}, {
 			Namespace: "net",
-			Service:   rpcapi.NewNetAPI(walletExt),
+			Service:   rpcapi.NewNetAPI(gwServices),
 		}, {
 			Namespace: "web3",
-			Service:   rpcapi.NewWeb3API(walletExt),
+			Service:   rpcapi.NewWeb3API(gwServices),
 		}, {
 			Namespace: "ten",
-			Service:   rpcapi.NewTenAPI(walletExt),
+			Service:   rpcapi.NewTenAPI(gwServices),
 		},
 	})
 
@@ -253,14 +253,14 @@ func NewContainerFromConfig(config wecommon.Config, logger gethlog.Logger) *Cont
 	return &Container{
 		stopControl:                 stopControl,
 		rpcServer:                   rpcServer,
-		newHeadsService:             walletExt.NewHeadsService,
-		services:                    walletExt,
+		newHeadsService:             gwServices.NewHeadsService,
+		services:                    gwServices,
 		sessionKeyExpirationService: sessionKeyExpirationService,
 		logger:                      logger,
 	}
 }
 
-// Start starts the wallet extension container
+// Start starts the gateway container
 func (w *Container) Start() error {
 	err := w.newHeadsService.Start()
 	if err != nil {

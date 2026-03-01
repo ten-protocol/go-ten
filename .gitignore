@@ -33,7 +33,7 @@ go/host/main/main
 go/enclave/main/main
 tools/gateway/main/main
 tools/gateway/bin/**
-tools/gateway/main/wallet_extension
+tools/gateway/main/gateway
 tools/networkmanager/main/main
 tools/tenscan/main/main
 integration/eth2network/main/main

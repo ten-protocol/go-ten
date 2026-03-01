@@ -12,7 +12,7 @@ import (
 	tencommonrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 	tenrpc "github.com/ten-protocol/go-ten/go/rpc"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 // dustThresholdWei is the minimum balance considered worth recovering from an expired
@@ -23,7 +23,7 @@ var dustThresholdWei = big.NewInt(200_000_000_000_000)
 // TxSender encapsulates sending ETH value transactions signed by a session key
 type TxSender interface {
 	// SendAllMinusGasWithSK transfers entire balance minus gas from `from` to `to`
-	SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWUser, from gethcommon.Address, to gethcommon.Address) (gethcommon.Hash, error)
+	SendAllMinusGasWithSK(ctx context.Context, user *gwcommon.GWUser, from gethcommon.Address, to gethcommon.Address) (gethcommon.Hash, error)
 }
 
 type txSender struct {
@@ -36,7 +36,7 @@ func NewTxSender(backend *BackendRPC, skManager SKManager, logger gethlog.Logger
 	return &txSender{backend: backend, skManager: skManager, logger: logger}
 }
 
-func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWUser, from gethcommon.Address, to gethcommon.Address) (gethcommon.Hash, error) {
+func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *gwcommon.GWUser, from gethcommon.Address, to gethcommon.Address) (gethcommon.Hash, error) {
 	// Get balance at pending block so pending txs are reflected
 	pending := rpc.PendingBlockNumber
 	blockNrOrHash := rpc.BlockNumberOrHash{BlockNumber: &pending}
@@ -122,7 +122,7 @@ func (s *txSender) SendAllMinusGasWithSK(ctx context.Context, user *wecommon.GWU
 // withSK opens an encrypted RPC connection authorized by the session key at `addr`
 func (s *txSender) withSK(
 	ctx context.Context,
-	user *wecommon.GWUser,
+	user *gwcommon.GWUser,
 	addr gethcommon.Address,
 	fn func(ctx context.Context, c *tenrpc.EncRPCClient) error,
 ) error {
@@ -185,7 +185,7 @@ func (s *txSender) getDynamicFees(ctx context.Context) (*big.Int, *big.Int, erro
 	return tip.ToInt(), feeCap, nil
 }
 
-func (s *txSender) estimateGas(ctx context.Context, user *wecommon.GWUser, from, to gethcommon.Address, value *hexutil.Big) (uint64, error) {
+func (s *txSender) estimateGas(ctx context.Context, user *gwcommon.GWUser, from, to gethcommon.Address, value *hexutil.Big) (uint64, error) {
 	var result hexutil.Uint64
 	err := s.withSK(ctx, user, from, func(ctx context.Context, rpcClient *tenrpc.EncRPCClient) error {
 		params := map[string]interface{}{
@@ -202,7 +202,7 @@ func (s *txSender) estimateGas(ctx context.Context, user *wecommon.GWUser, from,
 	return uint64(result), nil
 }
 
-func (s *txSender) sendRawTransaction(ctx context.Context, user *wecommon.GWUser, sessionKeyAddr gethcommon.Address, input hexutil.Bytes) (gethcommon.Hash, error) {
+func (s *txSender) sendRawTransaction(ctx context.Context, user *gwcommon.GWUser, sessionKeyAddr gethcommon.Address, input hexutil.Bytes) (gethcommon.Hash, error) {
 	var result gethcommon.Hash
 	err := s.withSK(ctx, user, sessionKeyAddr, func(ctx context.Context, rpcClient *tenrpc.EncRPCClient) error {
 		return rpcClient.CallContext(ctx, &result, tencommonrpc.ERPCSendRawTransaction, input)

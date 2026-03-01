@@ -30,7 +30,7 @@ import (
 
 	obscurocommon "github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 type SqliteDB struct {
@@ -137,7 +137,7 @@ func (s *SqliteDB) AddAccount(userID []byte, accountAddress []byte, signature []
 	})
 }
 
-func (s *SqliteDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error {
+func (s *SqliteDB) AddSessionKey(userID []byte, key gwcommon.GWSessionKey) error {
 	return s.withTx(func(dbTx *sql.Tx) error {
 		user, err := s.readUser(dbTx, userID)
 		if err != nil {
@@ -145,8 +145,8 @@ func (s *SqliteDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error
 		}
 
 		// Check session key limit
-		if len(user.SessionKeys) >= wecommon.MaxSessionKeysPerUser {
-			return fmt.Errorf("maximum number of session keys (%d) reached", wecommon.MaxSessionKeysPerUser)
+		if len(user.SessionKeys) >= gwcommon.MaxSessionKeysPerUser {
+			return fmt.Errorf("maximum number of session keys (%d) reached", gwcommon.MaxSessionKeysPerUser)
 		}
 
 		// Initialize SessionKeys map if nil
@@ -188,7 +188,7 @@ func (s *SqliteDB) RemoveSessionKey(userID []byte, sessionKeyAddr *common.Addres
 	})
 }
 
-func (s *SqliteDB) GetUser(userID []byte) (*wecommon.GWUser, error) {
+func (s *SqliteDB) GetUser(userID []byte) (*gwcommon.GWUser, error) {
 	var user dbcommon.GWUserDB
 	var err error
 	err = s.withTx(func(dbTx *sql.Tx) error {

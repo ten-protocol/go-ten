@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto/ecies"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 var ErrUserNotFound = errors.New("user not found")
@@ -35,17 +35,17 @@ type GWSessionKeyDB struct {
 	CreatedAt  time.Time   `json:"createdAt"`
 }
 
-func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
-	user := &wecommon.GWUser{
+func (userDB *GWUserDB) ToGWUser() (*gwcommon.GWUser, error) {
+	user := &gwcommon.GWUser{
 		ID:          userDB.UserId,
-		Accounts:    make(map[common.Address]*wecommon.GWAccount),
+		Accounts:    make(map[common.Address]*gwcommon.GWAccount),
 		UserKey:     userDB.PrivateKey,
-		SessionKeys: make(map[common.Address]*wecommon.GWSessionKey),
+		SessionKeys: make(map[common.Address]*gwcommon.GWSessionKey),
 	}
 
 	for _, accountDB := range userDB.Accounts {
 		address := common.BytesToAddress(accountDB.AccountAddress)
-		gwAccount := wecommon.GWAccount{
+		gwAccount := gwcommon.GWAccount{
 			User:          user,
 			Address:       &address,
 			Signature:     accountDB.Signature,
@@ -64,8 +64,8 @@ func (userDB *GWUserDB) ToGWUser() (*wecommon.GWUser, error) {
 		// Convert ECDSA private key to ECIES private key
 		eciesPrivateKey := ecies.ImportECDSA(ecdsaPrivateKey)
 		acc := sessionKeyDB.Account
-		user.SessionKeys[address] = &wecommon.GWSessionKey{
-			Account: &wecommon.GWAccount{
+		user.SessionKeys[address] = &gwcommon.GWSessionKey{
+			Account: &gwcommon.GWAccount{
 				User:          user,
 				Address:       &address,
 				Signature:     acc.Signature,

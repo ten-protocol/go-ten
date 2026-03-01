@@ -9,7 +9,7 @@ import (
 
 	"github.com/ten-protocol/go-ten/go/obsclient"
 	"github.com/ten-protocol/go-ten/tools/gateway"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
@@ -254,7 +254,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 	validatorWS := validator.HostRPCWSAddress()
 	// remove ws:// prefix for the gateway config
 	validatorWS = validatorWS[len("ws://"):]
-	cfg := wecommon.Config{
+	cfg := gwcommon.Config{
 		GatewayHost:             "127.0.0.1",
 		GatewayPortHTTP:         _gwHTTPPort,
 		GatewayPortWS:           _gwWSPort,

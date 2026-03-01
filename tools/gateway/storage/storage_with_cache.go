@@ -5,7 +5,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/viewingkey"
 	"github.com/ten-protocol/go-ten/tools/gateway/cache"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 )
 
 // UserStorageWithCache implements the UserStorage interface with caching
@@ -43,7 +43,7 @@ func (s *UserStorageWithCache) DeleteUser(userID []byte) error {
 	return nil
 }
 
-func (s *UserStorageWithCache) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error {
+func (s *UserStorageWithCache) AddSessionKey(userID []byte, key gwcommon.GWSessionKey) error {
 	err := s.storage.AddSessionKey(userID, key)
 	if err != nil {
 		return err
@@ -72,8 +72,8 @@ func (s *UserStorageWithCache) AddAccount(userID []byte, accountAddress []byte, 
 }
 
 // GetUser retrieves a user from the cache or underlying storage
-func (s *UserStorageWithCache) GetUser(userID []byte) (*wecommon.GWUser, error) {
-	return cache.WithCache(s.cache, &cache.Cfg{Type: cache.LongLiving}, userID, func() (*wecommon.GWUser, error) {
+func (s *UserStorageWithCache) GetUser(userID []byte) (*gwcommon.GWUser, error) {
+	return cache.WithCache(s.cache, &cache.Cfg{Type: cache.LongLiving}, userID, func() (*gwcommon.GWUser, error) {
 		return s.storage.GetUser(userID)
 	})
 }

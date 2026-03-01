@@ -38,7 +38,7 @@ type RPCHandles struct {
 	RPCClients []rpc.Client
 
 	// an RPC client per node per wallet, with a viewing key set up (on the client and registered on its corresponding host enclave),
-	//	to mimic user acc interaction via a wallet extension
+	//	to mimic user acc interaction via a gateway
 	// map of owner addresses to RPC clients for that owner (one per L2 node)
 	// todo (@matt) - simplify this with a client per node when we have clients that can support multiple wallets
 	AuthObsClients map[string][]*obsclient.AuthObsClient

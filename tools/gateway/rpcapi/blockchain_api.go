@@ -11,7 +11,7 @@ import (
 
 	tenrpc "github.com/ten-protocol/go-ten/go/common/rpc"
 
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 
 	"github.com/ten-protocol/go-ten/tools/gateway/cache"
 
@@ -317,10 +317,10 @@ func (api *BlockChainAPI) Call(ctx context.Context, args gethapi.TransactionArgs
 				return cacheBlockNumberOrHash(blockNrOrHash)
 			},
 		},
-		computeFromCallback: func(user *wecommon.GWUser) *gethcommon.Address {
+		computeFromCallback: func(user *gwcommon.GWUser) *gethcommon.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
-		adjustArgs: func(acct *wecommon.GWAccount) []any {
+		adjustArgs: func(acct *gwcommon.GWAccount) []any {
 			argsClone := populateFrom(acct, args)
 			return []any{argsClone, blockNrOrHash, overrides, blockOverrides}
 		},
@@ -349,10 +349,10 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 				return cache.LatestBatch
 			},
 		},
-		computeFromCallback: func(user *wecommon.GWUser) *gethcommon.Address {
+		computeFromCallback: func(user *gwcommon.GWUser) *gethcommon.Address {
 			return searchFromAndData(user.GetAllAddresses(), args)
 		},
-		adjustArgs: func(acct *wecommon.GWAccount) []any {
+		adjustArgs: func(acct *gwcommon.GWAccount) []any {
 			argsClone := populateFrom(acct, args)
 			return []any{argsClone, blockNrOrHash, overrides}
 		},
@@ -365,7 +365,7 @@ func (api *BlockChainAPI) EstimateGas(ctx context.Context, args gethapi.Transact
 	return *resp, err
 }
 
-func populateFrom(acct *wecommon.GWAccount, args gethapi.TransactionArgs) gethapi.TransactionArgs {
+func populateFrom(acct *gwcommon.GWAccount, args gethapi.TransactionArgs) gethapi.TransactionArgs {
 	// clone the args
 	argsClone := cloneArgs(args)
 	// set the from

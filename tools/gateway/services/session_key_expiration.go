@@ -6,7 +6,7 @@ import (
 
 	gethlog "github.com/ethereum/go-ethereum/log"
 	"github.com/ten-protocol/go-ten/go/common/stopcontrol"
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 	"github.com/ten-protocol/go-ten/tools/gateway/storage"
 )
 
@@ -17,14 +17,14 @@ type SessionKeyExpirationService struct {
 	logger          gethlog.Logger
 	stopControl     *stopcontrol.StopControl
 	ticker          *time.Ticker
-	config          *wecommon.Config
+	config          *gwcommon.Config
 	backendRPC      *BackendRPC
 	activityTracker SessionKeyActivityTracker
 	txSender        TxSender
 }
 
 // NewSessionKeyExpirationService creates a new session key expiration service
-func NewSessionKeyExpirationService(storage storage.UserStorage, activityStorage storage.SessionKeyActivityStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *wecommon.Config, backendRPC *BackendRPC, activityTracker SessionKeyActivityTracker, txSender TxSender) *SessionKeyExpirationService {
+func NewSessionKeyExpirationService(storage storage.UserStorage, activityStorage storage.SessionKeyActivityStorage, logger gethlog.Logger, stopControl *stopcontrol.StopControl, config *gwcommon.Config, backendRPC *BackendRPC, activityTracker SessionKeyActivityTracker, txSender TxSender) *SessionKeyExpirationService {
 	logger.Info("Creating session key expiration service", "expirationThreshold", config.SessionKeyExpirationThreshold.String())
 
 	service := &SessionKeyExpirationService{
@@ -66,9 +66,9 @@ func (s *SessionKeyExpirationService) start() {
 	if persisted, err := s.activityStorage.Load(); err != nil {
 		s.logger.Warn("Failed to load persisted session key activities", "error", err)
 	} else if len(persisted) > 0 {
-		loaded := make([]wecommon.SessionKeyActivity, 0, len(persisted))
+		loaded := make([]gwcommon.SessionKeyActivity, 0, len(persisted))
 		for _, a := range persisted {
-			loaded = append(loaded, wecommon.SessionKeyActivity{
+			loaded = append(loaded, gwcommon.SessionKeyActivity{
 				Addr:       a.Addr,
 				UserID:     a.UserID,
 				LastActive: a.LastActive,
@@ -128,7 +128,7 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 		// Transfer funds to user's primary account using TxSender (sends all minus gas)
 		firstAccount, err := user.GetFirstAccount()
 		if err != nil {
-			s.logger.Error("No primary account found for user", "error", err, "userID", wecommon.HashForLogging(user.ID))
+			s.logger.Error("No primary account found for user", "error", err, "userID", gwcommon.HashForLogging(user.ID))
 			continue
 		}
 
@@ -139,7 +139,7 @@ func (s *SessionKeyExpirationService) sessionKeyExpiration() {
 		if err != nil {
 			s.logger.Error("Failed to recover funds from expired session key",
 				"error", err,
-				"userID", wecommon.HashForLogging(user.ID),
+				"userID", gwcommon.HashForLogging(user.ID),
 				"sessionKeyAddress", c.Addr.Hex())
 			continue
 		}

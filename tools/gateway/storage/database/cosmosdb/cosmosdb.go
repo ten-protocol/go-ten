@@ -18,7 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos"
 
-	wecommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 	"github.com/ten-protocol/go-ten/tools/gateway/encryption"
 )
 
@@ -133,12 +133,12 @@ func (c *CosmosDB) DeleteUser(userID []byte) error {
 }
 
 // Adds or updates a session key for the user, with retries on ETag mismatch
-func (c *CosmosDB) AddSessionKey(userID []byte, key wecommon.GWSessionKey) error {
+func (c *CosmosDB) AddSessionKey(userID []byte, key gwcommon.GWSessionKey) error {
 	ctx := context.Background()
 	return c.updateUserWithRetries(ctx, userID, func(u *dbcommon.GWUserDB) error {
 		// Check session key limit
-		if len(u.SessionKeys) >= wecommon.MaxSessionKeysPerUser {
-			return fmt.Errorf("maximum number of session keys (%d) reached", wecommon.MaxSessionKeysPerUser)
+		if len(u.SessionKeys) >= gwcommon.MaxSessionKeysPerUser {
+			return fmt.Errorf("maximum number of session keys (%d) reached", gwcommon.MaxSessionKeysPerUser)
 		}
 
 		// Initialize SessionKeys map if nil
@@ -191,7 +191,7 @@ func (c *CosmosDB) AddAccount(userID []byte, accountAddress []byte, signature []
 	})
 }
 
-func (c *CosmosDB) GetUser(userID []byte) (*wecommon.GWUser, error) {
+func (c *CosmosDB) GetUser(userID []byte) (*gwcommon.GWUser, error) {
 	user, err := c.getUserDB(userID)
 	if err != nil {
 		return nil, err
