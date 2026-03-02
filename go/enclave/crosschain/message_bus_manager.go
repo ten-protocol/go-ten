@@ -204,7 +204,9 @@ func (m *MessageBusManager) CreateSyntheticTransactions(_ context.Context, messa
 
 	syntheticTransactions := make(types.Transactions, 0)
 	for idx, message := range messages {
+		println("CROSS CHAIN MESSAGE")
 		delayInBlocks := big.NewInt(int64(message.ConsistencyLevel))
+		println("CROSS CHAIN MESSAGE: delay in blocks", delayInBlocks.Uint64())
 		data, err := ethadapter.MessageBusABI.Pack("storeCrossChainMessage", message, delayInBlocks)
 		if err != nil {
 			return nil, fmt.Errorf("failed packing storeCrossChainMessage %w", err)
@@ -220,6 +222,7 @@ func (m *MessageBusManager) CreateSyntheticTransactions(_ context.Context, messa
 		}
 
 		stx := types.NewTx(tx)
+		println("CROSS CHAIN MESSAGE: createdTx", stx.Hash().Hex())
 		syntheticTransactions = append(syntheticTransactions, stx)
 	}
 

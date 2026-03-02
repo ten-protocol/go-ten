@@ -175,6 +175,15 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 		publicSystemContracts[key] = gethcommon.Address(value)
 	}
 
+	// Convert ChecksumFormattedNamedAddress array to NamedAddress array
+	additionalContracts := make([]*common.NamedAddress, len(cfg.AdditionalContracts))
+	for i, contract := range cfg.AdditionalContracts {
+		additionalContracts[i] = &common.NamedAddress{
+			Name: contract.Name,
+			Addr: gethcommon.Address(contract.Addr),
+		}
+	}
+
 	tenNetworkInfo := &common.TenNetworkInfo{
 		NetworkConfig:             gethcommon.Address(cfg.NetworkConfig),
 		EnclaveRegistry:           gethcommon.Address(cfg.EnclaveRegistry),
@@ -189,7 +198,7 @@ func (c *inMemTenClient) tenConfig(result interface{}) error {
 		TransactionsPostProcessor: gethcommon.Address(cfg.TransactionsPostProcessor),
 		L1StartHash:               cfg.L1StartHash,
 		PublicSystemContracts:     publicSystemContracts,
-		AdditionalContracts:       cfg.AdditionalContracts,
+		AdditionalContracts:       additionalContracts,
 	}
 	*result.(*common.TenNetworkInfo) = *tenNetworkInfo
 	return nil

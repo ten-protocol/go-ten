@@ -148,7 +148,7 @@ type NetworkConfigAddresses struct {
 	L2Bridge                 L2BridgeAddress
 	L1CrossChainMessenger    L1CrossChainMessengerAddress
 	L2CrossChainMessenger    L2CrossChainMessengerAddress
-	AdditionalContracts      []*NamedAddress // Dynamically named additional contracts
+	AdditionalContracts      []*NamedAddress
 }
 
 // NamedAddress matches the Solidity struct
