@@ -87,6 +87,12 @@ contract TenBridge is
         );
     }
 
+    function removeWhitelistedToken(address asset) external onlyRole(ADMIN_ROLE) {
+        require(hasRole(ERC20_TOKEN_ROLE, asset), "Token is not whitelisted");
+        _revokeRole(ERC20_TOKEN_ROLE, asset);
+        _revokeRole(SUSPENDED_ERC20_ROLE, asset);
+    }
+
     function pauseToken(address asset) external onlyRole(ADMIN_ROLE) {
         require(hasRole(ERC20_TOKEN_ROLE, asset), "Token is not whitelisted");
         _grantRole(SUSPENDED_ERC20_ROLE, asset);

@@ -69,6 +69,7 @@ func (w *BridgeTokenWhitelister) Start() error {
 		"TOKEN_NAME":          w.cfg.tokenName,
 		"TOKEN_SYMBOL":        w.cfg.tokenSymbol,
 		"NETWORK_CONFIG_ADDR": w.cfg.networkConfigAddr,
+		"FORCE_REWHITELIST":   fmt.Sprintf("%v", w.cfg.forceRewhitelist),
 	}
 
 	// Mount scripts and src directories so contracts can be compiled if needed

@@ -397,10 +397,26 @@ async function step2WhitelistToken(
     l1MessageBusAddress: string,
     tokenAddress: string,
     tokenName: string,
-    tokenSymbol: string
+    tokenSymbol: string,
+    forceRewhitelist = false
 ): Promise<{ whitelistReceipt: any; l1MessageBus: MessageBus }> {
     const l1Bridge = await ethers.getContractAt('TenBridge', l1BridgeAddress);
     const l1MessageBus = await ethers.getContractAt('MessageBus', l1MessageBusAddress);
+
+    const ERC20_TOKEN_ROLE = ethers.keccak256(ethers.toUtf8Bytes('ERC20_TOKEN'));
+    const alreadyWhitelisted = await l1Bridge.hasRole(ERC20_TOKEN_ROLE, tokenAddress);
+    if (alreadyWhitelisted) {
+        if (!forceRewhitelist) {
+            throw new Error(
+                `Token ${tokenAddress} is already whitelisted on L1 TenBridge. ` +
+                `Set FORCE_REWHITELIST=true to remove it and re-whitelist (issues a fresh cross-chain message).`
+            );
+        }
+        console.log(`Token already whitelisted — removing before re-whitelisting (FORCE_REWHITELIST=true)...`);
+        const removeTx = await l1Bridge.revokeRole(ERC20_TOKEN_ROLE, tokenAddress);
+        await removeTx.wait();
+        console.log(`Removed. Re-whitelisting...`);
+    }
 
     const whitelistTx = await l1Bridge.whitelistToken(tokenAddress, tokenName, tokenSymbol);
     console.log(`Transaction hash: ${whitelistTx.hash}`);
@@ -542,13 +558,15 @@ const whitelistAndRegisterToken = async function (): Promise<void> {
     console.log('[1/7] Querying network addresses...');
     const { networkConfig, addresses } = await step1QueryNetworkAddresses(config.networkConfigAddr);
 
+    const forceRewhitelist = process.env.FORCE_REWHITELIST === 'false';
     console.log('[2/7] Whitelisting token on L1 bridge...');
     const { whitelistReceipt, l1MessageBus } = await step2WhitelistToken(
         addresses.l1BridgeAddress,
         addresses.l1MessageBusAddress,
         config.tokenAddress,
         config.tokenName,
-        config.tokenSymbol
+        config.tokenSymbol,
+        forceRewhitelist
     );
 
     console.log('[3/7] Extracting cross-chain message...');
