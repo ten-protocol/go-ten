@@ -130,7 +130,7 @@ async function ensureGatewayAccountRegistered(gatewayBaseUrl: string, privateKey
     const baseUrl = gatewayBaseUrl.replace(/\/+$/, '');
     const wallet = new ethers.Wallet(privateKey);
 
-    const joinResponse = await fetch(`${baseUrl}/join`, { method: 'GET' });
+    const joinResponse = await fetch(`${baseUrl}/v1/join/`, { method: 'GET' });
     if (!joinResponse.ok) {
         throw new Error(`Gateway join failed with status ${joinResponse.status}`);
     }
@@ -139,7 +139,7 @@ async function ensureGatewayAccountRegistered(gatewayBaseUrl: string, privateKey
         throw new Error('Gateway join returned an empty token');
     }
 
-    const queryUrl = new URL(`${baseUrl}/query/address`);
+    const queryUrl = new URL(`${baseUrl}/v1/query/`);
     queryUrl.searchParams.set('token', token);
     queryUrl.searchParams.set('a', wallet.address);
     const queryResponse = await fetch(queryUrl.toString(), { method: 'GET' });
@@ -166,7 +166,7 @@ async function ensureGatewayAccountRegistered(gatewayBaseUrl: string, privateKey
         };
         const signature = await wallet.signTypedData(domain, types, message);
 
-        const authenticateUrl = new URL(`${baseUrl}/authenticate/`);
+        const authenticateUrl = new URL(`${baseUrl}/v1/authenticate/`);
         authenticateUrl.searchParams.set('token', token);
         const authResponse = await fetch(authenticateUrl.toString(), {
             method: 'POST',
