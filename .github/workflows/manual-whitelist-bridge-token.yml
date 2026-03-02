@@ -126,7 +126,7 @@ jobs:
           fi
 
           # External L2 gateway URL
-          L2_GATEWAY_URL="${{ vars.L2_RPC_URL_VALIDATOR }}"
+          L2_GATEWAY_URL="${{ vars.GATEWAY_URL }}"
           echo "L2 Gateway URL: $L2_GATEWAY_URL"
           echo "Network env: $TESTNET_TYPE"
           
