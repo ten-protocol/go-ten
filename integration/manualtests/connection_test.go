@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
-	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
+	"github.com/ten-protocol/go-ten/tools/gateway/lib"
 )
 
 func TestSubscribeToOG(t *testing.T) {

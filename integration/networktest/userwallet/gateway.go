@@ -17,7 +17,7 @@ import (
 	"github.com/ten-protocol/go-ten/go/common"
 	"github.com/ten-protocol/go-ten/go/common/retry"
 	"github.com/ten-protocol/go-ten/go/wallet"
-	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
+	"github.com/ten-protocol/go-ten/tools/gateway/lib"
 )
 
 type GatewayUser struct {

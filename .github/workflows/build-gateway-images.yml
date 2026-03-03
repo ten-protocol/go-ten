@@ -84,7 +84,7 @@ jobs:
           DOCKER_BUILDKIT=1 docker build \
             --build-arg TESTNET_TYPE=${{ github.event.inputs.testnet_type }} \
             -t ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY }} \
-            -f ./tools/walletextension/enclave.Dockerfile .
+            -f ./tools/gateway/enclave.Dockerfile .
 
           echo "Pushing TEN Gateway Backend Docker image..."
           docker push ${{ env.K8S_DOCKER_BUILD_TAG_GATEWAY }}

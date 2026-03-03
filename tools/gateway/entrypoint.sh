@@ -1,0 +1,10 @@
+#!/bin/sh
+
+# Start gateway_linux with parameters passed to the script
+/home/obscuro/go-obscuro/tools/gateway/bin/gateway_linux "$@"
+
+# Wait for any process to exit
+wait -n
+
+# Exit with the status of the process that exited first
+exit $?

@@ -16,13 +16,13 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ten-protocol/go-ten/lib/gethfork/rpc"
 
-	"github.com/ten-protocol/go-ten/tools/walletextension"
+	"github.com/ten-protocol/go-ten/tools/gateway"
 
 	"github.com/go-kit/kit/transport/http/jsonrpc"
 	log2 "github.com/ten-protocol/go-ten/go/common/log"
 
 	"github.com/ethereum/go-ethereum"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 
 	gethcommon "github.com/ethereum/go-ethereum/common"
 
@@ -41,7 +41,7 @@ import (
 	"github.com/ten-protocol/go-ten/integration/ethereummock"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
 	"github.com/ten-protocol/go-ten/integration/simulation/params"
-	"github.com/ten-protocol/go-ten/tools/walletextension/lib"
+	"github.com/ten-protocol/go-ten/tools/gateway/lib"
 	"github.com/valyala/fasthttp"
 )
 
@@ -62,10 +62,10 @@ func TestTenGateway(t *testing.T) {
 	startPort := integration.TestPorts.TestTenGatewayPort
 	createTenNetwork(t, startPort)
 
-	tenGatewayConf := wecommon.Config{
-		WalletExtensionHost:            "127.0.0.1",
-		WalletExtensionPortHTTP:        startPort + integration.DefaultTenGatewayHTTPPortOffset,
-		WalletExtensionPortWS:          startPort + integration.DefaultTenGatewayWSPortOffset,
+	tenGatewayConf := gwcommon.Config{
+		GatewayHost:                    "127.0.0.1",
+		GatewayPortHTTP:                startPort + integration.DefaultTenGatewayHTTPPortOffset,
+		GatewayPortWS:                  startPort + integration.DefaultTenGatewayWSPortOffset,
 		NodeRPCHTTPAddress:             fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCHTTPOffset),
 		NodeRPCWebsocketAddress:        fmt.Sprintf("127.0.0.1:%d", startPort+integration.DefaultHostRPCWSOffset),
 		LogPath:                        "sys_out",
@@ -80,7 +80,7 @@ func TestTenGateway(t *testing.T) {
 		SessionKeyExpirationInterval:   2 * time.Second,
 	}
 
-	tenGwContainer := walletextension.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
+	tenGwContainer := gateway.NewContainerFromConfig(tenGatewayConf, testlog.Logger())
 	go func() {
 		err := tenGwContainer.Start()
 		if err != nil {
@@ -92,8 +92,8 @@ func TestTenGateway(t *testing.T) {
 	time.Sleep(5 * time.Second)
 
 	// make sure the server is ready to receive requests
-	httpURL := fmt.Sprintf("http://%s:%d", tenGatewayConf.WalletExtensionHost, tenGatewayConf.WalletExtensionPortHTTP)
-	wsURL := fmt.Sprintf("ws://%s:%d", tenGatewayConf.WalletExtensionHost, tenGatewayConf.WalletExtensionPortWS)
+	httpURL := fmt.Sprintf("http://%s:%d", tenGatewayConf.GatewayHost, tenGatewayConf.GatewayPortHTTP)
+	wsURL := fmt.Sprintf("ws://%s:%d", tenGatewayConf.GatewayHost, tenGatewayConf.GatewayPortWS)
 
 	// make sure the server is ready to receive requests
 	err := waitServerIsReady(httpURL)
@@ -1636,10 +1636,10 @@ func makeHTTPEthJSONReq(url string, method string, userID string, params interfa
 
 func prepareRequestBody(method string, params interface{}) []byte {
 	reqBodyBytes, err := json.Marshal(map[string]interface{}{
-		wecommon.JSONKeyRPCVersion: jsonrpc.Version,
-		wecommon.JSONKeyMethod:     method,
-		wecommon.JSONKeyParams:     params,
-		wecommon.JSONKeyID:         "1",
+		gwcommon.JSONKeyRPCVersion: jsonrpc.Version,
+		gwcommon.JSONKeyMethod:     method,
+		gwcommon.JSONKeyParams:     params,
+		gwcommon.JSONKeyID:         "1",
 	})
 	if err != nil {
 		panic(fmt.Errorf("failed to prepare request body. Cause: %w", err))

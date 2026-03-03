@@ -7,14 +7,14 @@
 # final = copies over the solidity/hardhat source, takes the installed project from the 'install-npm-deps' and the final wallet executable
 #         in a lightweight image.
 
-FROM golang:1.25-alpine as system
+FROM golang:1.25-alpine AS system
 
 # set the base libs to build / run
 RUN apk add build-base bash git
 ENV CGO_ENABLED=1
 
 # Standard build stage that initializes the go dependencies
-FROM system as get-dependencies
+FROM system AS get-dependencies
 # create the base directory
 # setup container data structure
 RUN mkdir -p /home/obscuro/go-obscuro
@@ -25,18 +25,18 @@ COPY go.mod .
 COPY go.sum .
 RUN go mod download
 
-# Build stage that will create a wallet extension executable
-FROM get-dependencies as build-wallet
+# Build stage that will create a gateway executable
+FROM get-dependencies AS build-wallet
 # make sure the geth network code is available
 COPY . /home/obscuro/go-obscuro
 
 # build the contract deployer exec
-WORKDIR /home/obscuro/go-obscuro/tools/walletextension/main
+WORKDIR /home/obscuro/go-obscuro/tools/gateway/main
 RUN --mount=type=cache,target=/root/.cache/go-build \
-    go build -o ../bin/wallet_extension_linux
+    go build -o ../bin/gateway_linux
 
 # Standalone stage to perform npm install
-FROM node:20-alpine as install-npm-deps
+FROM node:20-alpine AS install-npm-deps
 
 COPY ./contracts/package.json /home/obscuro/go-obscuro/contracts/package.json
 WORKDIR /home/obscuro/go-obscuro/contracts
@@ -54,7 +54,7 @@ COPY --from=install-npm-deps /home/obscuro/go-obscuro/contracts/ /home/obscuro/g
 RUN npm config set update-notifier false
 RUN npx hardhat compile
 
-COPY --from=build-wallet /home/obscuro/go-obscuro/tools/walletextension/bin /home/obscuro/go-obscuro/tools/walletextension/bin
+COPY --from=build-wallet /home/obscuro/go-obscuro/tools/gateway/bin /home/obscuro/go-obscuro/tools/gateway/bin
 COPY --from=build-wallet /home/obscuro/go-obscuro/tools/hardhatdeployer/scripts/entrypoint.sh /home/obscuro/go-obscuro/entrypoint.sh
 
 ENTRYPOINT [ "/home/obscuro/go-obscuro/entrypoint.sh" ]

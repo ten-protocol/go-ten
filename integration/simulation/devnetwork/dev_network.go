@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/ten-protocol/go-ten/go/obsclient"
-	"github.com/ten-protocol/go-ten/tools/walletextension"
-	wecommon "github.com/ten-protocol/go-ten/tools/walletextension/common"
+	"github.com/ten-protocol/go-ten/tools/gateway"
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
 
 	"github.com/ten-protocol/go-ten/integration/common/testlog"
 	"github.com/ten-protocol/go-ten/integration/simulation/network"
@@ -59,7 +59,7 @@ type InMemDevNetwork struct {
 	tenConfig           *TenConfig
 	tenSequencer        *InMemNodeOperator
 	tenValidators       []*InMemNodeOperator
-	tenGatewayContainer *walletextension.Container
+	tenGatewayContainer *gateway.Container
 
 	faucet     userwallet.User
 	faucetLock sync.Mutex
@@ -254,10 +254,10 @@ func (s *InMemDevNetwork) startTenGateway() {
 	validatorWS := validator.HostRPCWSAddress()
 	// remove ws:// prefix for the gateway config
 	validatorWS = validatorWS[len("ws://"):]
-	cfg := wecommon.Config{
-		WalletExtensionHost:     "127.0.0.1",
-		WalletExtensionPortHTTP: _gwHTTPPort,
-		WalletExtensionPortWS:   _gwWSPort,
+	cfg := gwcommon.Config{
+		GatewayHost:             "127.0.0.1",
+		GatewayPortHTTP:         _gwHTTPPort,
+		GatewayPortWS:           _gwWSPort,
 		NodeRPCHTTPAddress:      validatorHTTP,
 		NodeRPCWebsocketAddress: validatorWS,
 		LogPath:                 "sys_out",
@@ -265,7 +265,7 @@ func (s *InMemDevNetwork) startTenGateway() {
 		DBType:                  "sqlite",
 		TenChainID:              integration.TenChainID,
 	}
-	tenGWContainer := walletextension.NewContainerFromConfig(cfg, s.logger)
+	tenGWContainer := gateway.NewContainerFromConfig(cfg, s.logger)
 	go func() {
 		fmt.Println("Starting TEN Gateway, HTTP Port:", _gwHTTPPort, "WS Port:", _gwWSPort)
 		err := tenGWContainer.Start()

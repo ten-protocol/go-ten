@@ -1,0 +1,33 @@
+package storage
+
+import (
+	gwcommon "github.com/ten-protocol/go-ten/tools/gateway/common"
+	"github.com/ten-protocol/go-ten/tools/gateway/storage/database/cosmosdb"
+)
+
+// SessionKeyActivityStorage defines persistence for session key activity tracker
+type SessionKeyActivityStorage interface {
+	Load() ([]gwcommon.SessionKeyActivity, error)
+	Save([]gwcommon.SessionKeyActivity) error
+}
+
+// NewSessionKeyActivityStorage is a factory that returns a concrete storage based on dbType
+func NewSessionKeyActivityStorage(dbType, dbConnectionURL string, encryptionKey []byte) (SessionKeyActivityStorage, error) {
+	if dbType == "cosmosDB" {
+		return cosmosdb.NewSessionKeyActivityStorage(dbConnectionURL, encryptionKey)
+	}
+	return NewNoOpSessionKeyActivityStorage(), nil
+}
+
+// noOpSessionKeyActivityStorage is a no-op implementation used for non-production DBs
+type noOpSessionKeyActivityStorage struct{}
+
+func NewNoOpSessionKeyActivityStorage() SessionKeyActivityStorage {
+	return &noOpSessionKeyActivityStorage{}
+}
+
+func (n *noOpSessionKeyActivityStorage) Load() ([]gwcommon.SessionKeyActivity, error) {
+	return nil, nil
+}
+
+func (n *noOpSessionKeyActivityStorage) Save([]gwcommon.SessionKeyActivity) error { return nil }
