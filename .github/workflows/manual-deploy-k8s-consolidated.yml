@@ -122,7 +122,7 @@ jobs:
               echo "CHILD_APPS=dev-sequencer dev-validator-01 dev-validator-02 dev-gateway dev-ten-tools" >> $GITHUB_OUTPUT
               ;;
             uat-testnet)
-              echo "CHILD_APPS=uat-sequencer uat-validator-01 uat-validator-02 uat-gateway uat-ten-tools uat-deploy-jobs" >> $GITHUB_OUTPUT
+              echo "CHILD_APPS=uat-sequencer uat-validator-01 uat-validator-02 uat-gateway uat-ten-tools" >> $GITHUB_OUTPUT
               ;;
             sepolia-testnet)
               echo "CHILD_APPS=sepolia-sequencer sepolia-validator-01 sepolia-validator-02 sepolia-gateway sepolia-gateway-dexynth sepolia-gateway-pentest sepolia-ten-tools" >> $GITHUB_OUTPUT
