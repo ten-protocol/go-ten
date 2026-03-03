@@ -26,8 +26,16 @@ const (
 
 // SessionKeyActivityStorage interface defines the session key activity storage operations
 type SessionKeyActivityStorage interface {
+	// Load retrieves all stored session key activities (used on startup)
 	Load() ([]wecommon.SessionKeyActivity, error)
+	// Save performs a full replacement of all stored activities
 	Save([]wecommon.SessionKeyActivity) error
+	// SaveBatch upserts a batch of activities (used for async persistence of evicted entries)
+	SaveBatch([]wecommon.SessionKeyActivity) error
+	// ListOlderThan returns activities with LastActive before the given cutoff
+	ListOlderThan(cutoff time.Time) ([]wecommon.SessionKeyActivity, error)
+	// Delete removes a specific activity by address
+	Delete(addr gethcommon.Address) error
 }
 
 type sessionKeyActivityStorageCosmosDB struct {
@@ -294,4 +302,141 @@ func (s *sessionKeyActivityStorageCosmosDB) shardIndexForAddress(addr gethcommon
 // This ID is used both as the document ID and partition key in CosmosDB.
 func (s *sessionKeyActivityStorageCosmosDB) getShardDocumentIDByIndex(index int) string {
 	return fmt.Sprintf("%s%d", skShardPrefix, index)
+}
+
+// SaveBatch upserts a batch of session key activities to the database.
+// Unlike Save(), this method performs incremental updates - it reads existing shard data,
+// merges with the new items, and writes back. This is used for async persistence of
+// evicted entries from the in-memory LRU cache.
+func (s *sessionKeyActivityStorageCosmosDB) SaveBatch(items []wecommon.SessionKeyActivity) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	ctx := context.Background()
+	timestamp := time.Now().UTC().Format(time.RFC3339)
+
+	// Group items by shard index
+	itemsByShardIndex := make(map[int][]wecommon.SessionKeyActivity)
+	for _, item := range items {
+		shardIdx := s.shardIndexForAddress(item.Addr)
+		itemsByShardIndex[shardIdx] = append(itemsByShardIndex[shardIdx], item)
+	}
+
+	// For each affected shard, read existing data, merge, and write back
+	for shardIdx, newItems := range itemsByShardIndex {
+		existing, err := s.readShard(ctx, shardIdx)
+		if err != nil {
+			return fmt.Errorf("failed to read shard %d for merge: %w", shardIdx, err)
+		}
+
+		// Merge: use a map to deduplicate by address, new items take precedence
+		merged := make(map[gethcommon.Address]wecommon.SessionKeyActivity)
+		for _, item := range existing {
+			merged[item.Addr] = item
+		}
+		for _, item := range newItems {
+			merged[item.Addr] = item
+		}
+
+		// Convert back to slice
+		mergedSlice := make([]wecommon.SessionKeyActivity, 0, len(merged))
+		for _, item := range merged {
+			mergedSlice = append(mergedSlice, item)
+		}
+
+		// Write the merged data
+		if err := s.writeShardData(ctx, shardIdx, mergedSlice, timestamp); err != nil {
+			return fmt.Errorf("failed to write merged shard %d: %w", shardIdx, err)
+		}
+	}
+
+	return nil
+}
+
+// readShard reads all activities from a specific shard.
+func (s *sessionKeyActivityStorageCosmosDB) readShard(ctx context.Context, shardIdx int) ([]wecommon.SessionKeyActivity, error) {
+	shardID := s.getShardDocumentIDByIndex(shardIdx)
+	pk := azcosmos.NewPartitionKeyString(shardID)
+	resp, err := s.container.ReadItem(ctx, pk, shardID, nil)
+	if err != nil {
+		if strings.Contains(err.Error(), "NotFound") {
+			return nil, nil // Shard doesn't exist yet
+		}
+		return nil, err
+	}
+
+	// Unmarshal into EncryptedDocument
+	var doc EncryptedDocument
+	if err := json.Unmarshal(resp.Value, &doc); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal document: %w", err)
+	}
+
+	// Decrypt the data
+	data, err := s.encryptor.Decrypt(doc.Data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt data: %w", err)
+	}
+
+	// Unmarshal decrypted JSON into DTO
+	var dto sessionKeyActivityDTO
+	if err := json.Unmarshal(data, &dto); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal session key activity data: %w", err)
+	}
+
+	result := make([]wecommon.SessionKeyActivity, 0, len(dto.Items))
+	for _, it := range dto.Items {
+		result = append(result, wecommon.SessionKeyActivity{
+			Addr:       gethcommon.BytesToAddress(it.Addr),
+			UserID:     it.UserID,
+			LastActive: it.LastActive,
+		})
+	}
+	return result, nil
+}
+
+// ListOlderThan returns all activities with LastActive before the given cutoff time.
+// This queries all shards and filters by the cutoff timestamp.
+func (s *sessionKeyActivityStorageCosmosDB) ListOlderThan(cutoff time.Time) ([]wecommon.SessionKeyActivity, error) {
+	ctx := context.Background()
+	result := make([]wecommon.SessionKeyActivity, 0)
+
+	for i := 0; i < s.shardCount; i++ {
+		shardItems, err := s.readShard(ctx, i)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read shard %d: %w", i, err)
+		}
+
+		for _, item := range shardItems {
+			if item.LastActive.Before(cutoff) {
+				result = append(result, item)
+			}
+		}
+	}
+
+	return result, nil
+}
+
+// Delete removes a specific activity by address from the database.
+// It reads the shard containing the address, removes the entry, and writes back.
+func (s *sessionKeyActivityStorageCosmosDB) Delete(addr gethcommon.Address) error {
+	ctx := context.Background()
+	shardIdx := s.shardIndexForAddress(addr)
+	timestamp := time.Now().UTC().Format(time.RFC3339)
+
+	existing, err := s.readShard(ctx, shardIdx)
+	if err != nil {
+		return fmt.Errorf("failed to read shard %d for delete: %w", shardIdx, err)
+	}
+
+	// Filter out the address to delete
+	filtered := make([]wecommon.SessionKeyActivity, 0, len(existing))
+	for _, item := range existing {
+		if item.Addr != addr {
+			filtered = append(filtered, item)
+		}
+	}
+
+	// Write back the filtered data
+	return s.writeShardData(ctx, shardIdx, filtered, timestamp)
 }
