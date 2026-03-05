@@ -25,6 +25,11 @@ on:
         description: 'Token Symbol (e.g., "USDC")'
         required: true
         type: string
+      force_rewhitelist:
+        description: 'Set to "true" to remove an existing whitelist entry and retry from scratch (use to recover from a failed run)'
+        required: false
+        default: 'false'
+        type: string
       confirmation:
         description: 'Type "confirm" if whitelisting on sepolia or mainnet'
         required: false
@@ -126,7 +131,7 @@ jobs:
           fi
 
           # External L2 gateway URL
-          L2_GATEWAY_URL="${{ vars.L2_RPC_URL_VALIDATOR }}"
+          L2_GATEWAY_URL="${{ vars.GATEWAY_URL }}"
           echo "L2 Gateway URL: $L2_GATEWAY_URL"
           echo "Network env: $TESTNET_TYPE"
           
@@ -140,7 +145,8 @@ jobs:
           -l2_gateway_url="$L2_GATEWAY_URL" \
           -private_key=${{ secrets.ACCOUNT_PK_WORKER }} \
           -docker_image=${{ vars.DOCKER_BUILD_TAG_L2_HARDHAT_DEPLOYER }} \
-          -network_config_addr="${{ steps.parse.outputs.network_config }}"
+          -network_config_addr="${{ steps.parse.outputs.network_config }}" \
+          -force_rewhitelist="${{ github.event.inputs.force_rewhitelist }}"
 
       - name: 'Save whitelisting container logs'
         if: ${{ always() }}

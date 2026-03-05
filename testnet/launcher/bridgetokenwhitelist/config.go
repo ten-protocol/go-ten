@@ -12,6 +12,7 @@ type Config struct {
 	privateKey        string
 	dockerImage       string
 	networkConfigAddr string
+	forceRewhitelist  bool
 }
 
 func NewConfig(opts ...ConfigOption) *Config {
@@ -78,6 +79,12 @@ func WithNetworkConfigAddress(addr string) ConfigOption {
 	}
 }
 
+func WithForceRewhitelist(force bool) ConfigOption {
+	return func(c *Config) {
+		c.forceRewhitelist = force
+	}
+}
+
 func (c *Config) Validate() error {
 	if c.tokenAddress == "" {
 		return fmt.Errorf("token address is required")
@@ -110,6 +117,6 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) String() string {
-	return fmt.Sprintf("Bridge Token Whitelist Config: tokenAddress=%s, tokenName=%s, tokenSymbol=%s, networkEnv=%s, l1HTTPURL=%s, l2GatewayURL=%s, dockerImage=%s, networkConfigAddr=%s",
-		c.tokenAddress, c.tokenName, c.tokenSymbol, c.networkEnv, c.l1HTTPURL, c.l2GatewayURL, c.dockerImage, c.networkConfigAddr)
+	return fmt.Sprintf("Bridge Token Whitelist Config: tokenAddress=%s, tokenName=%s, tokenSymbol=%s, networkEnv=%s, l1HTTPURL=%s, l2GatewayURL=%s, dockerImage=%s, networkConfigAddr=%s, forceRewhitelist=%v",
+		c.tokenAddress, c.tokenName, c.tokenSymbol, c.networkEnv, c.l1HTTPURL, c.l2GatewayURL, c.dockerImage, c.networkConfigAddr, c.forceRewhitelist)
 }

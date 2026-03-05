@@ -21,6 +21,7 @@ func main() {
 			bridgetokenwhitelist.WithPrivateKey(cliConfig.privateKey),
 			bridgetokenwhitelist.WithDockerImage(cliConfig.dockerImage),
 			bridgetokenwhitelist.WithNetworkConfigAddress(cliConfig.networkConfigAddr),
+			bridgetokenwhitelist.WithForceRewhitelist(cliConfig.forceRewhitelist),
 		),
 	)
 	if err != nil {

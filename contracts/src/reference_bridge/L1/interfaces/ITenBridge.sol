@@ -13,6 +13,10 @@ interface ITenBridge {
         string calldata symbol
     ) external;
 
+    // Removes a token from the whitelist entirely. Used to recover from a failed whitelistToken flow
+    // so the token can be re-whitelisted via a fresh cross-chain message.
+    function removeWhitelistedToken(address asset) external;
+
     // This will pause deposits for this token on the L1 bridge. Withdrawals are still fine.
     function pauseToken(address asset) external;
 

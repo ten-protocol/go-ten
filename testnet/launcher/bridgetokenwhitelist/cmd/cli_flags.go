@@ -1,6 +1,9 @@
 package main
 
-import "flag"
+import (
+	"flag"
+	"strings"
+)
 
 type CLIConfig struct {
 	tokenAddress      string
@@ -12,10 +15,12 @@ type CLIConfig struct {
 	privateKey        string
 	dockerImage       string
 	networkConfigAddr string
+	forceRewhitelist  bool
 }
 
 func ParseConfigCLI() *CLIConfig {
 	cfg := &CLIConfig{}
+	var forceRewhitelistStr string
 	flag.StringVar(&cfg.tokenAddress, "token_address", "", "Token contract address (e.g., 0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238)")
 	flag.StringVar(&cfg.tokenName, "token_name", "", "Token name (e.g., 'USD Coin')")
 	flag.StringVar(&cfg.tokenSymbol, "token_symbol", "", "Token symbol (e.g., 'USDC')")
@@ -25,6 +30,8 @@ func ParseConfigCLI() *CLIConfig {
 	flag.StringVar(&cfg.privateKey, "private_key", "", "Private key for deployment")
 	flag.StringVar(&cfg.dockerImage, "docker_image", "", "Docker image for hardhat deployer")
 	flag.StringVar(&cfg.networkConfigAddr, "network_config_addr", "", "NetworkConfig contract address")
+	flag.StringVar(&forceRewhitelistStr, "force_rewhitelist", "false", "If \"true\", removes an existing ERC20_TOKEN_ROLE from the token before re-whitelisting (use to recover from a failed run)")
 	flag.Parse()
+	cfg.forceRewhitelist = strings.EqualFold(forceRewhitelistStr, "true")
 	return cfg
 }
