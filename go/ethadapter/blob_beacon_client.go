@@ -295,7 +295,7 @@ func verifyBlobsMatchHashes(orderedSidecars []*BlobSidecar, hashes []gethcommon.
 	blobs := make([]*kzg4844.Blob, len(hashes))
 
 	// for fulu version, we should recompute the commitment from the blob
-	// for older vrsions we can just use the commitment from the API response directly
+	// for older versions we can just use the commitment from the API response directly
 	isFuluVersion := version == "fulu"
 
 	for i := range orderedSidecars {

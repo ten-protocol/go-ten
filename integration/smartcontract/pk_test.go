@@ -84,7 +84,7 @@ func TestRetrieve(t *testing.T) {
 	if !bytes.Equal(pubKeyABytes, recoveredPub) {
 		t.Errorf("unexpected pub keys. got: %s, expected: %s", recoveredPub, pubKeyABytes)
 	}
-	// recovered Pubkey yeilds the same address
+	// recovered Pubkey yields the same address
 	recoveredAddr := crypto.PubkeyToAddress(*recoveredPubKey)
 	if !bytes.Equal(addrA.Bytes(), recoveredAddr.Bytes()) {
 		t.Errorf("unexpected addresses Got %s, expected: %s", addrA.Hex(), recoveredAddr.Hex())
