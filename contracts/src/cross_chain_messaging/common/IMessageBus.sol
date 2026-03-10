@@ -43,7 +43,7 @@ interface IMessageBus {
     function getMessageTimeOfFinality(Structs.CrossChainMessage calldata crossChainMessage) external view returns (uint256);
 
     // This is the smart contract function which is used to store messages sent from the other linked layer. 
-    // The function will be called by the ManagementContract on L1 and the enclave on L2. 
+    // The function will only be called by the enclave on the L2.
     // It should be access controlled and called according to the consistencyLevel and Obscuro platform rules.
     function storeCrossChainMessage(Structs.CrossChainMessage calldata crossChainMessage, uint256 finalAfterTimestamp) external;
 
