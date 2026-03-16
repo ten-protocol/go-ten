@@ -24,7 +24,7 @@ type (
 // CheckSignature checks if signature is valid for provided encryptionToken and chainID and return address or nil if not valid
 func (psc PersonalSignChecker) CheckSignature(encryptionToken []byte, signature []byte, chainID int64) (*gethcommon.Address, error) {
 	if len(signature) != 65 {
-		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
+		return nil, fmt.Errorf("invalid signature length: %d", len(signature))
 	}
 	// We transform the V from 27/28 to 0/1. This same change is made in Geth internals, for legacy reasons to be able
 	// to recover the address: https://github.com/ethereum/go-ethereum/blob/55599ee95d4151a2502465e0afc7c47bd1acba77/internal/ethapi/api.go#L452-L459
@@ -53,7 +53,7 @@ func (psc PersonalSignChecker) CheckSignature(encryptionToken []byte, signature 
 
 func (e EIP712Checker) CheckSignature(encryptionToken []byte, signature []byte, chainID int64) (*gethcommon.Address, error) {
 	if len(signature) != 65 {
-		return nil, fmt.Errorf("invalid signaure length: %d", len(signature))
+		return nil, fmt.Errorf("invalid signature length: %d", len(signature))
 	}
 
 	msg, err := GenerateMessage(encryptionToken, chainID, 1, EIP712Signature)
