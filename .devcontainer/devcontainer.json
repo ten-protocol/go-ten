@@ -9,7 +9,7 @@
 			"version": "1.25.1"
 		},
 		"ghcr.io/dhoeric/features/act:1": {},
-		"ghcr.io/devcontainers/features/node:1": {
+		"ghcr.io/devcontainers/features/node:2": {
 			"version": "18"
 		},
 		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
